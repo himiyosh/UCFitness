@@ -1,0 +1,29 @@
+'use client';
+
+import { useState } from 'react';
+
+export default function RefreshButton() {
+    const [loading, setLoading] = useState(false);
+
+    const handleRefresh = async () => {
+        setLoading(true);
+        try {
+            await fetch('/api/cron/update-steps');
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to refresh steps', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className={`rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50`}
+        >
+            {loading ? 'Refreshing...' : 'Refresh Steps'}
+        </button>
+    );
+}
