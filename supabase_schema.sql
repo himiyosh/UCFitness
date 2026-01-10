@@ -41,3 +41,5 @@ CREATE POLICY "Allow public read daily_steps" ON public.daily_steps FOR SELECT U
 
 -- Allow service_role to do everything (for pure backend updates)
 -- Note: By default service_role bypasses RLS, but explicit policies can be good documentation.
+
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS group_keyword TEXT;
