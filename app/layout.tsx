@@ -7,8 +7,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 
 export const metadata: Metadata = {
-  title: "Step Competition",
-  description: "Fitbit Step Competition",
+  title: "UCFitness",
+  description: "Fitbit Step Competition Dashboard",
 };
 
 export default function RootLayout({

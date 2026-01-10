@@ -79,8 +79,23 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
     const maxSteps = Math.max(dataMax, stepGoal, 2000); // Ensure reasonable scale
     const goalPercentage = Math.min((stepGoal / maxSteps) * 100, 100);
 
+    // Tooltip state
+    const [tooltip, setTooltip] = useState<{ x: number; y: number; title: string; subtitle: string } | null>(null);
+
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            {/* Tooltip Portal */}
+            {tooltip && (
+                <div
+                    className="fixed z-[100] bg-gray-900 text-white text-xs rounded py-1 px-2 pointer-events-none shadow-xl transform -translate-x-1/2 -translate-y-full mt-[-8px]"
+                    style={{ left: tooltip.x, top: tooltip.y }}
+                >
+                    <div className="font-semibold">{tooltip.title}</div>
+                    <div className="text-gray-300">{tooltip.subtitle}</div>
+                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
                 <div className="flex bg-gray-100 p-1 rounded-lg self-start">
                     {(['7D', '30D', 'ALL'] as Range[]).map((r) => (
@@ -164,16 +179,19 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                                         : 'bg-indigo-500 group-hover:bg-indigo-600';
 
                                     return (
-                                        <div key={index} className={`flex flex-col items-center justify-end h-full group relative hover:z-20 ${barClass}`}>
-                                            {/* Tooltip */}
-                                            <div className="absolute bottom-full mb-2 hidden group-hover:block z-30 left-1/2 transform -translate-x-1/2 pointer-events-none">
-                                                <div className="bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap shadow-xl">
-                                                    <div className="font-semibold">{day.value.toLocaleString()} steps</div>
-                                                    <div className="text-gray-300">{day.fullDate}</div>
-                                                </div>
-                                                <div className="w-2 h-2 bg-gray-900 rotate-45 mx-auto -mt-1"></div>
-                                            </div>
-
+                                        <div
+                                            key={index}
+                                            className={`flex flex-col items-center justify-end h-full group relative hover:z-20 ${barClass}`}
+                                            onMouseMove={(e) => {
+                                                setTooltip({
+                                                    x: e.clientX,
+                                                    y: e.clientY,
+                                                    title: `${day.value.toLocaleString()} steps`,
+                                                    subtitle: day.fullDate
+                                                });
+                                            }}
+                                            onMouseLeave={() => setTooltip(null)}
+                                        >
                                             <div
                                                 className={`w-full rounded-t-sm transition-all duration-300 ease-out ${day.value > 0 ? barColor : 'bg-gray-100'
                                                     }`}
@@ -185,7 +203,7 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                                             ></div>
 
                                             {showLabel ? (
-                                                <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 text-center">
+                                                <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 text-center pointer-events-none">
                                                     <span className="text-[10px] text-gray-400 whitespace-nowrap block">
                                                         {day.label}
                                                     </span>

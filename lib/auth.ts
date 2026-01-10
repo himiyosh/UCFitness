@@ -40,9 +40,33 @@ export const authOptions: NextAuthOptions = {
         async signIn({ user, account, profile }: any) {
             if (!account || !user.email) return false;
 
-            // Upsert user into Supabase 'users' table
-            const { error } = await supabaseAdmin.from("users").upsert(
-                {
+            // Check if user exists first to preserve custom name
+            const { data: existingUser } = await supabaseAdmin
+                .from("users")
+                .select("id")
+                .eq("email", user.email)
+                .single();
+
+            let error;
+
+            if (existingUser) {
+                // Update only tokens and image, keep existing name
+                const { error: updateError } = await supabaseAdmin
+                    .from("users")
+                    .update({
+                        image: user.image,
+                        provider: account.provider,
+                        provider_account_id: account.providerAccountId,
+                        access_token: account.access_token,
+                        refresh_token: account.refresh_token,
+                        token_expires_at: account.expires_at,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq("email", user.email);
+                error = updateError;
+            } else {
+                // New user: Insert everything including name
+                const { error: insertError } = await supabaseAdmin.from("users").insert({
                     email: user.email,
                     name: user.name,
                     image: user.image,
@@ -52,9 +76,9 @@ export const authOptions: NextAuthOptions = {
                     refresh_token: account.refresh_token,
                     token_expires_at: account.expires_at,
                     updated_at: new Date().toISOString(),
-                },
-                { onConflict: "email" }
-            );
+                });
+                error = insertError;
+            }
 
             if (error) {
                 console.error("Error saving user to Supabase:", error);
@@ -70,12 +94,14 @@ export const authOptions: NextAuthOptions = {
                 // Fetch the actual UUID from Supabase users table
                 const { data } = await supabaseAdmin
                     .from("users")
-                    .select("id")
+                    .select("id, name, username")
                     .eq("email", session.user.email)
                     .single();
 
                 if (data) {
                     session.user.id = data.id;
+                    session.user.name = data.name; // Use DB name (Display Name)
+                    (session.user as any).username = data.username; // Expose User ID
                 } else {
                     // Fallback (shouldn't happen if signIn succeeded)
                     session.user.id = token.sub;
