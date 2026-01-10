@@ -62,19 +62,19 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
     const isLast = index === totalCount - 1;
 
     return (
-        <div className={`overflow-hidden rounded-xl bg-indigo-50 shadow-sm border border-indigo-100 relative group/panel ${isMoving ? 'opacity-50' : ''}`}>
-            <div className="px-4 py-3 border-b border-indigo-100 flex justify-between items-center">
+        <div className={`overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 relative group/panel ${isMoving ? 'opacity-50' : ''}`}>
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                 <div className="flex-1 min-w-0 pr-2">
-                    <h3 className="text-sm font-bold text-indigo-900 flex items-center gap-1.5 truncate">
+                    <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5 truncate">
                         Group:
-                        <span className="truncate bg-white text-indigo-600 py-0.5 px-2 rounded-full text-xs border border-indigo-200">{keyword}</span>
+                        <span className="truncate bg-gray-100 text-indigo-600 py-0.5 px-2 rounded-full text-xs border border-gray-200">{keyword}</span>
                     </h3>
                 </div>
                 <div className="flex items-center gap-1">
                     {!isFirst && (
                         <button
                             onClick={() => handleMove('up')}
-                            className="p-1 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100 rounded"
+                            className="p-1 text-gray-400 hover:text-indigo-700 hover:bg-gray-100 rounded"
                             title="Move Up"
                             disabled={isMoving}
                         >
@@ -86,7 +86,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                     {!isLast && (
                         <button
                             onClick={() => handleMove('down')}
-                            className="p-1 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100 rounded"
+                            className="p-1 text-gray-400 hover:text-indigo-700 hover:bg-gray-100 rounded"
                             title="Move Down"
                             disabled={isMoving}
                         >
@@ -95,54 +95,67 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                             </svg>
                         </button>
                     )}
-                    <div className="w-px h-3 bg-indigo-200 mx-1"></div>
+                    <div className="w-px h-3 bg-gray-200 mx-1"></div>
                     <button
                         onClick={handleLeave}
-                        className="text-xs text-indigo-400 hover:text-red-600 underline transition-colors px-1"
+                        className="text-xs text-gray-400 hover:text-red-600 underline transition-colors px-1"
                         title="Leave Group"
                     >
                         Leave
                     </button>
                 </div>
             </div>
-            <div className="p-3 space-y-2">
-                {neighbors.length > 0 ? neighbors.map((entry: any) => {
-                    const isMe = entry.users.email === userEmail;
-                    return (
-                        <div
-                            key={entry.originalRank}
-                            className={`
-                                flex items-center justify-between p-2 rounded-lg shadow-sm
-                                ${isMe ? 'bg-white ring-2 ring-indigo-500 z-10 scale-[1.01] transform transition-transform' : 'bg-white/60'}
-                            `}
-                        >
-                            <div className="flex items-center gap-2 min-w-0">
-                                <div className="flex flex-col items-center justify-center min-w-[1.5rem]">
-                                    <span className="text-[10px] text-gray-400 uppercase">Rank</span>
-                                    <span className={`text-lg font-black ${isMe ? 'text-indigo-600' : 'text-gray-400'}`}>
+            <div className="bg-white px-0">
+                <div role="list" className="divide-y divide-gray-50">
+                    {neighbors.length > 0 ? neighbors.map((entry: any, i: number) => {
+                        const isMe = entry.users.email === userEmail;
+                        const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
+
+                        if (isGap) {
+                            return (
+                                <div key={`gap-${i}`} className="px-6 py-2 bg-gray-50 flex justify-center border-b border-gray-50">
+                                    <span className="text-gray-400 text-xs tracking-widest">•••</span>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div
+                                key={entry.originalRank}
+                                className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${isMe ? 'bg-indigo-50/50' : ''}`}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <span className={`
+                                        flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
+                                        ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                                            entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
+                                                entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}
+                                    `}>
                                         {entry.originalRank}
                                     </span>
+                                    {entry.users?.image ? (
+                                        <img className="h-10 w-10 rounded-full border border-gray-100" src={entry.users.image} alt="" />
+                                    ) : (
+                                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold">
+                                            {(entry.users?.name || '?')[0]}
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col min-w-0">
+                                        <p className={`text-sm font-bold truncate ${isMe ? 'text-gray-900' : 'text-gray-900'}`}>
+                                            {entry.users.name || 'Anonymous'}
+                                        </p>
+                                        {isMe && <span className="text-[10px] text-indigo-500 font-medium leading-none">YOU</span>}
+                                    </div>
                                 </div>
-                                {entry.users?.image ? (
-                                    <img className="h-8 w-8 rounded-full" src={entry.users.image} alt="" />
-                                ) : (
-                                    <div className="h-8 w-8 rounded-full bg-gray-200" />
-                                )}
-                                <div className="flex flex-col min-w-0">
-                                    <span className={`text-sm font-bold truncate ${isMe ? 'text-gray-900' : 'text-gray-600'}`}>
-                                        {entry.users.name || 'Anonymous'}
-                                    </span>
-                                    {isMe && <span className="text-[10px] text-indigo-500 font-medium leading-none">YOU</span>}
+                                <div className="font-mono font-semibold text-indigo-600">
+                                    {entry.steps.toLocaleString()}
                                 </div>
                             </div>
-                            <div className={`text-base font-bold whitespace-nowrap pl-2 ${isMe ? 'text-indigo-600' : 'text-gray-500'}`}>
-                                {entry.steps.toLocaleString()}
-                            </div>
-                        </div>
-                    );
-                }) : (
-                    <p className="text-center text-indigo-400 py-4">No group activity yet today.</p>
-                )}
+                        );
+                    }) : (
+                        <p className="text-center text-gray-400 py-8">No group activity yet today.</p>
+                    )}
+                </div>
             </div>
         </div>
     );

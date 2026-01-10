@@ -6,6 +6,8 @@ import Link from 'next/link';
 
 interface UserMenuProps {
     user: {
+        username?: string | null;
+        id?: string | null;
         name?: string | null;
         email?: string | null;
         image?: string | null;
@@ -30,11 +32,11 @@ export default function UserMenu({ user }: UserMenuProps) {
     }, []);
 
     return (
-        <div className="relative ml-3" ref={menuRef}>
+        <div className="relative ml-3 flex-shrink-0" ref={menuRef}>
             <div>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="relative flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    className="relative flex flex-shrink-0 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     id="user-menu-button"
                     aria-expanded={isOpen}
                     aria-haspopup="true"
@@ -42,7 +44,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                     <span className="sr-only">Open user menu</span>
                     {user.image ? (
                         <img
-                            className="h-10 w-10 rounded-full border border-gray-200"
+                            className="h-10 w-10 rounded-full border border-gray-200 object-cover"
                             src={user.image}
                             alt=""
                         />
@@ -65,7 +67,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                 >
                     <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
                         Signed in as<br />
-                        <strong className="text-gray-900 truncate block">{user.name || user.email}</strong>
+                        <strong className="text-gray-900 truncate block">{user.username || user.name || user.email}</strong>
                     </div>
 
                     <Link
