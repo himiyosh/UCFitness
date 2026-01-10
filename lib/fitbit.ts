@@ -1,24 +1,35 @@
-export async function getFitbitSteps(accessToken: string, date: string = new Date().toISOString().split('T')[0]) {
-    try {
-        const res = await fetch(`https://api.fitbit.com/1/user/-/activities/date/${date}.json`, {
+export async function getFitbitSteps(accessToken: string, date: string = 'today') {
+    const response = await fetch(
+        `https://api.fitbit.com/1/user/-/activities/date/${date}.json`,
+        {
             headers: {
                 Authorization: `Bearer ${accessToken}`,
             },
-        });
-
-        if (!res.ok) {
-            console.error('Fitbit API Error:', res.status, res.statusText);
-            // Handle token expiration/refresh logic here if needed, or throw
-            const text = await res.text();
-            console.error('Body:', text);
-            return 0;
         }
+    );
 
-        const data = await res.json();
-        const steps = data.summary?.steps || 0;
-        return steps;
-    } catch (error) {
-        console.error('Failed to fetch Fitbit steps:', error);
-        return 0;
+    if (!response.ok) {
+        throw new Error(`Fitbit API error: ${response.statusText}`);
     }
+
+    const data = await response.json();
+    return data.summary.steps;
+}
+
+export async function getFitbitActivityTimeSeries(accessToken: string, range: '1w' | '1m' | '1y' = '1m') {
+    const response = await fetch(
+        `https://api.fitbit.com/1/user/-/activities/steps/date/today/${range}.json`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`Fitbit API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data['activities-steps'];
 }
