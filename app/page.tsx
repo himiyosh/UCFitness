@@ -12,7 +12,10 @@ import { getDisplayRankings } from '@/lib/ranking-utils';
 export const dynamic = 'force-dynamic';
 
 const getRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
-  const today = new Date().toISOString().split('T')[0];
+  // Use JST
+  const now = new Date();
+  const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const today = jstDate.toISOString().split('T')[0];
 
   let query = supabase
     .from('daily_steps')
@@ -62,7 +65,11 @@ export default async function Home() {
 
     groupKeywords = userData?.group_keyword || [];
 
-    const today = new Date().toISOString().split('T')[0];
+    // Use JST
+    const now = new Date();
+    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const today = jstDate.toISOString().split('T')[0];
+
     const { data } = await supabase
       .from('daily_steps')
       .select('steps')
@@ -71,8 +78,8 @@ export default async function Home() {
       .single();
     mySteps = data?.steps || 0;
 
-    // Fetch yesterday's steps
-    const yesterdayDate = new Date();
+    // Fetch yesterday's steps (JST)
+    const yesterdayDate = new Date(jstDate);
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterday = yesterdayDate.toISOString().split('T')[0];
 
