@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth/next";
+import ProfileImageEditor from "@/components/ProfileImageEditor";
 import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
@@ -21,9 +22,13 @@ export default async function ProfilePage() {
     // Fetch current user data
     const { data: user } = await supabase
         .from("users")
-        .select("name, email, image, group_keyword, username, step_goal") // Added username, step_goal
+        .select("name, email, image, group_keyword, username, step_goal, is_custom_image") // Added username, step_goal
         .eq("id", (session.user as any).id)
         .single();
+
+    if (!user) {
+        console.error("ProfilePage: User not found for ID:", (session.user as any).id);
+    }
 
     // Fetch stats (Total steps, etc.)
     let totalSteps = 0;
@@ -93,14 +98,15 @@ export default async function ProfilePage() {
                         <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 sticky top-8">
                             <div className="bg-indigo-600 h-32 w-full"></div>
                             <div className="px-6 pb-6 relative">
-                                <div className="-mt-16 mb-4 flex justify-center">
+                                <div className="-mt-16 mb-4 flex justify-center relative group/image">
                                     {user.image ? (
-                                        <img className="h-32 w-32 rounded-full border-4 border-white shadow-md bg-white" src={user.image} alt="" />
+                                        <img className="h-32 w-32 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
                                     ) : (
                                         <div className="h-32 w-32 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-4xl font-bold text-indigo-600">
                                             {user.name?.[0] || 'U'}
                                         </div>
                                     )}
+                                    <ProfileImageEditor initialImage={user.image} isCustom={user.is_custom_image || false} />
                                 </div>
                                 <div className="text-center mb-6">
                                     <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>

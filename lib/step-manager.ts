@@ -14,7 +14,10 @@ export async function updateAllUserSteps() {
         return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    // Use JST (UTC+9) for date calculation to ensure 00:00 JST reset
+    const now = new Date();
+    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const today = jstDate.toISOString().split('T')[0];
 
     for (const user of users) {
         let steps: number | null = null;

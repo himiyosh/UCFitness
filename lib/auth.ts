@@ -40,28 +40,38 @@ export const authOptions: NextAuthOptions = {
         async signIn({ user, account, profile }: any) {
             if (!account || !user.email) return false;
 
-            // Check if user exists first to preserve custom name
-            const { data: existingUser } = await supabaseAdmin
+            // Check if user exists first to preserve custom name and image
+            const { data: existingUser, error: selectError } = await supabaseAdmin
                 .from("users")
-                .select("id")
+                .select("id, is_custom_image")
                 .eq("email", user.email)
                 .single();
+
+            if (selectError && selectError.code !== 'PGRST116') {
+                console.error("Error finding user:", selectError);
+            }
 
             let error;
 
             if (existingUser) {
-                // Update only tokens and image, keep existing name
+                // Update tokens. Update image ONLY if is_custom_image is false (or null)
+                const updates: any = {
+                    provider: account.provider,
+                    provider_account_id: account.providerAccountId,
+                    access_token: account.access_token,
+                    refresh_token: account.refresh_token,
+                    token_expires_at: account.expires_at,
+                    updated_at: new Date().toISOString(),
+                };
+
+                // Only update image from Fitbit if user hasn't set a custom one
+                if (!existingUser.is_custom_image) {
+                    updates.image = user.image;
+                }
+
                 const { error: updateError } = await supabaseAdmin
                     .from("users")
-                    .update({
-                        image: user.image,
-                        provider: account.provider,
-                        provider_account_id: account.providerAccountId,
-                        access_token: account.access_token,
-                        refresh_token: account.refresh_token,
-                        token_expires_at: account.expires_at,
-                        updated_at: new Date().toISOString(),
-                    })
+                    .update(updates)
                     .eq("email", user.email);
                 error = updateError;
             } else {

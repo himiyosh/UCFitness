@@ -57,3 +57,23 @@ export async function refreshFitbitToken(refreshToken: string) {
 
     return response.json();
 }
+
+export async function getFitbitProfile(accessToken: string) {
+    const response = await fetch('https://api.fitbit.com/1/user/-/profile.json', {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!response.ok) {
+        // If 401, the caller should handle refresh
+        if (response.status === 401) {
+            throw new Error("Unauthorized");
+        }
+        const errorText = await response.text();
+        throw new Error(`Fitbit API error: ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.user;
+}
