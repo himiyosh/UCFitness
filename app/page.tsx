@@ -183,9 +183,7 @@ export default async function Home() {
                           <p className="text-sm font-medium text-gray-900">
                             {entry.users?.name || entry.users?.email}
                           </p>
-                          {entry.users?.group_keyword && Array.isArray(entry.users.group_keyword) && entry.users.group_keyword.length > 0 && (
-                            <span className="text-xs text-gray-400">Grp: {entry.users.group_keyword.join(', ')}</span>
-                          )}
+
                         </div>
                       </div>
                       <div className="font-mono font-semibold text-indigo-600">

@@ -6,7 +6,7 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
     id: "fitbit",
     name: "Fitbit",
     type: "oauth",
-    authorization: "https://www.fitbit.com/oauth2/authorize?response_type=code&scope=activity%20profile",
+    authorization: "https://www.fitbit.com/oauth2/authorize?response_type=code&scope=activity%20profile&prompt=login%20consent",
     token: "https://api.fitbit.com/oauth2/token",
     userinfo: "https://api.fitbit.com/1/user/-/profile.json",
     profile(profile: any) {
@@ -59,6 +59,8 @@ export const authOptions: NextAuthOptions = {
             if (error) {
                 console.error("Error saving user to Supabase:", error);
                 return false;
+            } else {
+                console.log(`Successfully updated user tokens for ${user.email}`);
             }
 
             return true;
