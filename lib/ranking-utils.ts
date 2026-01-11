@@ -1,6 +1,7 @@
 export type RankingEntry = {
     steps: number;
     users: {
+        id: string;
         name: string | null;
         image: string | null;
         email: string | null;
