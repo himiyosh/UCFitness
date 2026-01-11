@@ -2,27 +2,37 @@ import { supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
 
 export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, groupKeyword?: string) => {
-    // JST Calculation
+    // JST Calculation (Robust)
     const now = new Date();
-    const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const jstDateStr = formatter.format(now); // YYYY-MM-DD in JST
 
-    let startDate = jstNow.toISOString().split('T')[0];
+    let startDate = jstDateStr;
 
     if (period === 'WEEKLY') {
-        // This Week (Starts Monday)
-        const day = jstNow.getDay(); // 0 (Sun) to 6 (Sat)
-        const diff = jstNow.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-        const monday = new Date(jstNow);
-        monday.setDate(diff);
+        const currentDate = new Date(`${jstDateStr}T00:00:00Z`);
+        const utcDay = currentDate.getUTCDay(); // 0(Sun) - 6(Sat)
+        // Monday start logic:
+        // Mon(1) -> subtract 0
+        // Sun(0) -> subtract 6
+        // Tue(2) -> subtract 1
+        const daysToSubtract = (utcDay + 6) % 7;
+
+        const monday = new Date(currentDate);
+        monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
         startDate = monday.toISOString().split('T')[0];
     } else if (period === 'MONTHLY') {
         // This Month (1st)
-        const y = jstNow.toISOString().split('-')[0];
-        const m = jstNow.toISOString().split('-')[1];
+        const [y, m] = jstDateStr.split('-');
         startDate = `${y}-${m}-01`;
     } else if (period === 'YEARLY') {
         // This Year (Jan 1st)
-        const y = jstNow.toISOString().split('-')[0];
+        const y = jstDateStr.split('-')[0];
         startDate = `${y}-01-01`;
     }
 
@@ -74,22 +84,26 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
     return sortedRankings;
 };
 export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
-    // JST Calculation
+    // JST Calculation (Robust)
     const now = new Date();
-    const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-
-    const todayStr = jstNow.toISOString().split('T')[0];
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const todayStr = formatter.format(now); // YYYY-MM-DD (JST)
 
     // Weekly Start
-    const day = jstNow.getDay();
-    const diff = jstNow.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(jstNow);
-    monday.setDate(diff);
+    const currentDate = new Date(`${todayStr}T00:00:00Z`);
+    const utcDay = currentDate.getUTCDay();
+    const daysToSubtract = (utcDay + 6) % 7;
+    const monday = new Date(currentDate);
+    monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
     const weeklyStartStr = monday.toISOString().split('T')[0];
 
     // Monthly Start
-    const y = jstNow.toISOString().split('-')[0];
-    const m = jstNow.toISOString().split('-')[1];
+    const [y, m] = todayStr.split('-');
     const monthlyStartStr = `${y}-${m}-01`;
 
     // Yearly Start
