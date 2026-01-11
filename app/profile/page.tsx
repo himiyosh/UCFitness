@@ -9,6 +9,7 @@ import UsernameForm from "@/components/UsernameForm";
 import UserMenu from "@/components/UserMenu";
 import ActivityGraph from "@/components/ActivityGraph";
 import StepGoalForm from "@/components/StepGoalForm";
+import ProfileHeader from "@/components/ProfileHeader";
 
 export const dynamic = 'force-dynamic';
 
@@ -94,39 +95,14 @@ export default async function ProfilePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Column: Profile Card */}
-                    <div className="md:col-span-1">
-                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 sticky top-8">
-                            <div className="bg-indigo-600 h-32 w-full"></div>
-                            <div className="px-6 pb-6 relative">
-                                <div className="-mt-16 mb-4 flex justify-center relative group/image">
-                                    {user.image ? (
-                                        <img className="h-32 w-32 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
-                                    ) : (
-                                        <div className="h-32 w-32 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-4xl font-bold text-indigo-600">
-                                            {user.name?.[0] || 'U'}
-                                        </div>
-                                    )}
-                                    <ProfileImageEditor initialImage={user.image} isCustom={user.is_custom_image || false} />
-                                </div>
-                                <div className="text-center mb-6">
-                                    <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
-                                    <p className="text-sm text-gray-500">@{user.username || 'user'}</p>
-                                    {user.group_keyword && (
-                                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 mt-2">
-                                            Group: {Array.isArray(user.group_keyword) ? user.group_keyword.join(', ') : user.group_keyword}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="border-t border-gray-100 pt-6">
-                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Daily Goal</p>
-                                    <StepGoalForm initialGoal={user.step_goal || 10000} />
-                                </div>
-                                <div className="border-t border-gray-100 pt-6">
-                                    <ProfileForm initialName={user.name || ""} />
-                                </div>
-                                <div className="border-t border-gray-100 pt-6">
-                                    <UsernameForm initialUsername={user.username || ""} />
-                                </div>
+                    <div className="md:col-span-1 space-y-6">
+                        <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
+                        <div>
+                            <ProfileHeader user={user} />
+
+                            <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 p-4">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Daily Goal</p>
+                                <StepGoalForm initialGoal={user.step_goal || 10000} />
                             </div>
                         </div>
                     </div>
