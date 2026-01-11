@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import SyncHistoryButton from './SyncHistoryButton';
+
 
 type StepRecord = {
     date: string;
@@ -19,11 +19,22 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
     const [viewMode, setViewMode] = useState<ViewMode>('WEEKLY');
     // Current Week Offset (0 = current week, -1 = previous week)
     const [weekOffset, setWeekOffset] = useState(0);
+    // Current Month Offset (0 = current month, -1 = previous month)
+    const [monthOffset, setMonthOffset] = useState(0);
+
 
     const processedData = useMemo(() => {
         const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
+        // Helper to get YYYY-MM-DD in local time
+        const toLocalISOString = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
         let result: { label: string; value: number; fullDate: string; isToday: boolean }[] = [];
 
@@ -35,19 +46,16 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
             // If today is Monday (1), we go back 0 days.
             const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
 
-            const thisWeekMonday = new Date(today);
-            thisWeekMonday.setDate(diff);
-            thisWeekMonday.setHours(0, 0, 0, 0);
+            // Safe date construction using year/month/date to avoid overflows
+            const thisWeekMonday = new Date(today.getFullYear(), today.getMonth(), diff);
 
             // Apply offset
-            const targetMonday = new Date(thisWeekMonday);
-            targetMonday.setDate(targetMonday.getDate() + (weekOffset * 7));
+            const targetMonday = new Date(thisWeekMonday.getFullYear(), thisWeekMonday.getMonth(), thisWeekMonday.getDate() + (weekOffset * 7));
 
             // Generate 7 days (Mon-Sun)
             for (let i = 0; i < 7; i++) {
-                const d = new Date(targetMonday);
-                d.setDate(targetMonday.getDate() + i);
-                const dateStr = d.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+                const d = new Date(targetMonday.getFullYear(), targetMonday.getMonth(), targetMonday.getDate() + i);
+                const dateStr = toLocalISOString(d);
 
                 const found = sortedData.find(r => r.date === dateStr);
 
@@ -64,12 +72,16 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                 });
             }
         } else if (viewMode === 'MONTHLY') {
-            // Last 30 Days
-            const daysCount = 30;
-            for (let i = daysCount - 1; i >= 0; i--) {
-                const d = new Date(today);
-                d.setDate(today.getDate() - i);
-                const dateStr = d.toLocaleDateString('en-CA');
+            // Calendar Month View
+            // Safe construction of target month's 1st day
+            const targetMonthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+
+            const startOfMonth = new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth(), 1);
+            const endOfMonth = new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth() + 1, 0);
+
+            // Iterate using a new Date object to prevent reference issues
+            for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
+                const dateStr = toLocalISOString(d);
                 const found = sortedData.find(r => r.date === dateStr);
 
                 const checkToday = new Date();
@@ -85,12 +97,15 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                 });
             }
         } else {
-            // ALL - Daily from first record to today
+            // ALL - Daily
             if (sortedData.length > 0) {
-                const minDate = new Date(sortedData[0].date);
+                // Parse first date safely (assuming YYYY-MM-DD string)
+                const [y, m, d] = sortedData[0].date.split('-').map(Number);
+                const minDate = new Date(y, m - 1, d);
+
                 let current = new Date(minDate);
                 while (current <= today) {
-                    const dateStr = current.toLocaleDateString('en-CA');
+                    const dateStr = toLocalISOString(current);
                     const found = sortedData.find(r => r.date === dateStr);
 
                     const checkToday = new Date();
@@ -110,7 +125,7 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
         }
 
         return result;
-    }, [data, viewMode, weekOffset]);
+    }, [data, viewMode, weekOffset, monthOffset]);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -139,7 +154,7 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
     // Tooltip state
     const [tooltip, setTooltip] = useState<{ x: number; y: number; title: string; subtitle: string } | null>(null);
 
-    // Format Week Date Range for display
+    // Labels for navigation
     const weekRangeLabel = useMemo(() => {
         if (viewMode !== 'WEEKLY' || processedData.length === 0) return '';
         const start = new Date(processedData[0].fullDate);
@@ -147,8 +162,15 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
         return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
     }, [processedData, viewMode]);
 
+    const monthLabel = useMemo(() => {
+        if (viewMode !== 'MONTHLY') return '';
+        const today = new Date();
+        const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+        return targetDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    }, [monthOffset, viewMode]);
+
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
             {/* Tooltip Portal */}
             {tooltip && (
                 <div
@@ -162,53 +184,74 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
             )}
 
             <div className="flex flex-col gap-6 mb-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-gray-900 whitespace-nowrap">Activity History</h3>
-                        <div className="flex bg-gray-100 p-1 rounded-lg">
-                            {(['WEEKLY', 'MONTHLY', 'ALL'] as ViewMode[]).map((m) => (
-                                <button
-                                    key={m}
-                                    onClick={() => setViewMode(m)}
-                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === m
-                                        ? 'bg-white text-gray-900 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-900'
-                                        }`}
-                                >
-                                    {m === 'WEEKLY' ? 'Weekly' : m === 'MONTHLY' ? 'Monthly' : 'Total'}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <p className="text-xs text-gray-500">Period Total</p>
-                            <p className="text-lg font-bold text-indigo-600">{totalDisplayedSteps.toLocaleString()}</p>
-                        </div>
+                {/* Main Header Row */}
+                <div className="relative flex items-center justify-center py-2">
+                    <h3 className="absolute left-0 text-lg font-bold text-gray-900 whitespace-nowrap hidden sm:block">Activity History</h3>
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        {(['WEEKLY', 'MONTHLY', 'ALL'] as ViewMode[]).map((m) => (
+                            <button
+                                key={m}
+                                onClick={() => setViewMode(m)}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === m
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-900'
+                                    }`}
+                            >
+                                {m === 'WEEKLY' ? 'Weekly' : m === 'MONTHLY' ? 'Monthly' : 'Total'}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* Sub-header controls (Always visible to prevent layout shift) */}
-                <div className="flex items-center justify-between bg-gray-50 p-2 rounded-lg h-12">
-                    <div className="flex items-center gap-2">
+                {/* Sub-header Controls & Stats Toolbar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-y-3 gap-x-4 bg-gray-50 p-2 rounded-lg min-h-[48px]">
+
+                    {/* Navigation (Left Aligned) */}
+                    <div className="flex items-center gap-2 h-8">
                         {viewMode === 'WEEKLY' ? (
                             <>
                                 <button
                                     onClick={() => setWeekOffset(prev => prev - 1)}
-                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all"
+                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
                                     </svg>
                                 </button>
-                                <span className="text-sm font-medium text-gray-700 min-w-[120px] text-center">
-                                    {weekOffset === 0 ? 'Current Week' : weekRangeLabel}
-                                </span>
+                                <div className="min-w-[120px] flex items-center justify-center h-full">
+                                    <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                        {weekOffset === 0 ? 'Current Week' : weekRangeLabel}
+                                    </span>
+                                </div>
                                 <button
                                     onClick={() => setWeekOffset(prev => prev + 1)}
                                     disabled={weekOffset >= 0}
-                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            </>
+                        ) : viewMode === 'MONTHLY' ? (
+                            <>
+                                <button
+                                    onClick={() => setMonthOffset(prev => prev - 1)}
+                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                        <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div className="min-w-[120px] flex items-center justify-center h-full">
+                                    <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                        {monthLabel}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => setMonthOffset(prev => prev + 1)}
+                                    disabled={monthOffset >= 0}
+                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -216,32 +259,38 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                                 </button>
                             </>
                         ) : (
-                            <span className="text-sm font-medium text-gray-500 px-2">
-                                {viewMode === 'MONTHLY' ? 'Last 30 Days' : 'All Data'}
-                            </span>
+                            <div className="min-w-[120px] h-full flex items-center justify-center">
+                                <span className="text-sm font-medium text-gray-500 px-2 leading-none">
+                                    All Data
+                                </span>
+                            </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-xs text-gray-500 shrink-0">
-                            <span className="block w-3 h-0.5 bg-red-400 border-t border-dashed border-red-500"></span>
-                            Goal: {stepGoal.toLocaleString()}
+
+                    {/* Stats (Right Aligned on Desktop) */}
+                    <div className="flex items-center gap-4 h-8">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="block w-3 h-0.5 bg-indigo-500 rounded-full"></span>
+                            Total: <span className="font-bold text-indigo-700">{totalDisplayedSteps.toLocaleString()}</span>
                         </div>
-                        <div className="border-l border-gray-200 h-6 mx-2"></div>
-                        <SyncHistoryButton />
+                        <div className="flex items-center gap-2 text-xs text-gray-500 shrink-0">
+                            <span className="block w-2 sm:w-3 h-0.5 bg-red-400 border-t border-dashed border-red-500"></span>
+                            Target: {stepGoal.toLocaleString()}
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div className="flex">
                 {/* Y-axis Labels */}
-                <div className="flex flex-col justify-between text-xs text-gray-400 py-0 pr-2 h-64 text-right min-w-[30px] pb-6">
+                <div className="flex flex-col justify-between text-xs text-gray-400 py-0 pr-2 h-64 text-right min-w-[30px] pb-6 shrink-0">
                     <span>{maxSteps >= 1000 ? `${(maxSteps / 1000).toFixed(0)}k` : maxSteps}</span>
                     <span>{maxSteps / 2 >= 1000 ? `${(maxSteps / 2000).toFixed(0)}k` : (maxSteps / 2).toFixed(0)}</span>
                     <span>0</span>
                 </div>
 
                 {/* Graph Area */}
-                <div className="relative h-64 flex-1 min-w-0 border-b border-gray-100">
+                <div className="relative h-64 flex-1 min-w-0 border-b border-gray-100 overflow-hidden">
 
                     {/* Coordinate System Container - Leaves 1.5rem (24px) at bottom for labels */}
                     <div className="absolute top-0 left-0 right-0 bottom-6">
@@ -254,11 +303,11 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                         {/* Scroll Container */}
                         <div
                             ref={scrollContainerRef}
-                            className={`flex items-end w-full h-full gap-px px-1 relative z-0 ${viewMode === 'ALL' ? 'overflow-x-auto justify-between' : 'justify-between overflow-visible'}`}
+                            className={`flex items-end w-full h-full gap-px px-1 relative z-0 ${viewMode !== 'WEEKLY' ? 'overflow-x-auto' : 'justify-between overflow-hidden'}`}
                             style={{ scrollBehavior: 'smooth' }}
                         >
                             {processedData.length > 0 ? (
-                                <div className={`flex items-end h-full gap-1 ${viewMode === 'ALL' ? 'min-w-full' : 'w-full'}`}>
+                                <div className={`flex items-end h-full ${viewMode === 'MONTHLY' ? 'gap-px w-full' : 'gap-1'} ${viewMode === 'ALL' ? 'min-w-full' : 'w-full'}`}>
                                     {/* Inner flex container - Conditional layout */}
                                     {processedData.map((day, index) => {
                                         // Use same maxSteps for bars
@@ -284,7 +333,7 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                                         // Bar width styling
                                         const barClass = viewMode === 'ALL'
                                             ? 'flex-shrink-0 w-3'
-                                            : 'flex-1';
+                                            : 'flex-1 min-w-0';
 
                                         // Highlight goal achievement
                                         const isGoalReached = day.value >= stepGoal;

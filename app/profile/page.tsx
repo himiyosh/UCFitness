@@ -10,6 +10,7 @@ import UserMenu from "@/components/UserMenu";
 import ActivityGraph from "@/components/ActivityGraph";
 import StepGoalForm from "@/components/StepGoalForm";
 import ProfileHeader from "@/components/ProfileHeader";
+import SyncHistoryButton from "@/components/SyncHistoryButton";
 
 export const dynamic = 'force-dynamic';
 
@@ -107,9 +108,13 @@ export default async function ProfilePage() {
                         </div>
                     </div>
 
+
                     {/* Right Column: Stats & Achievements */}
                     <div className="md:col-span-2 space-y-6">
-                        <h2 className="text-2xl font-bold text-gray-900">Your Activity</h2>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-gray-900">Your Activity</h2>
+                            <SyncHistoryButton />
+                        </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
