@@ -47,7 +47,7 @@ export async function updateAllUserSteps() {
                             } else {
                                 console.log(`Tokens refreshed for ${user.email}`);
                                 // Retry fetching steps
-                                steps = await getFitbitSteps(newTokens.access_token);
+                                steps = await getFitbitSteps(newTokens.access_token, today);
                             }
                         } else {
                             console.error(`No refresh token available for ${user.email}`);

@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
-import { getFitbitActivityTimeSeries } from "@/lib/fitbit";
+import { getFitbitActivityTimeSeries, refreshFitbitToken } from "@/lib/fitbit";
 
 export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
@@ -13,11 +13,9 @@ export async function POST(request: Request) {
 
     try {
         // 1. Get access token from DB
-        // Note: In a production app, we should handle token refresh here if it's expired.
-        // For this prototype, we assume the token from the last login is still valid or user just logged in.
         const { data: user } = await supabaseAdmin
             .from("users")
-            .select("access_token")
+            .select("id, access_token, refresh_token")
             .eq("id", (session.user as any).id)
             .single();
 
@@ -25,17 +23,52 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "No Fitbit access token found. Please sign in again." }, { status: 400 });
         }
 
-        // 2. Fetch history from Fitbit (1 year)
-        const stepsSeries = await getFitbitActivityTimeSeries(user.access_token, '1y');
+        let accessToken = user.access_token;
+        let stepsSeries: any[] = [];
 
-        // stepsSeries is array of { dateTime: 'YYYY-MM-DD', value: 'string_number' }
+        // 2. Fetch history from Fitbit (1 year) with Retry Logic
+        try {
+            stepsSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
+        } catch (error: any) {
+            // Check for unauthorized/expired token
+            if (error.message?.includes("Unauthorized") || error.message?.includes("401")) {
+                console.log("Token expired during history sync, refreshing...");
+
+                if (!user.refresh_token) {
+                    throw new Error("Token expired and no refresh token available. Please sign in again.");
+                }
+
+                try {
+                    const newTokens = await refreshFitbitToken(user.refresh_token);
+                    accessToken = newTokens.access_token;
+
+                    // Update tokens in DB
+                    await supabaseAdmin.from("users").update({
+                        access_token: newTokens.access_token,
+                        refresh_token: newTokens.refresh_token,
+                        token_expires_at: Math.floor(Date.now() / 1000) + newTokens.expires_in,
+                        updated_at: new Date().toISOString()
+                    }).eq("id", user.id);
+
+                    // Retry fetch with new token
+                    stepsSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
+
+                } catch (refreshError) {
+                    console.error("Failed to refresh token:", refreshError);
+                    throw new Error("Session expired. Please sign out and sign in again.");
+                }
+            } else {
+                // Other errors
+                throw error;
+            }
+        }
 
         if (!stepsSeries || !Array.isArray(stepsSeries)) {
             throw new Error("Invalid response from Fitbit");
         }
 
         // 3. Prepare upsert data
-        const userId = (session.user as any).id;
+        const userId = user.id;
         const records = stepsSeries.map((entry: any) => ({
             user_id: userId,
             date: entry.dateTime,
