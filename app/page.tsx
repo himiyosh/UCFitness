@@ -4,48 +4,13 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import GroupSettings from '@/components/GroupSettings';
 import UserMenu from '@/components/UserMenu';
-import GroupRankingPanel from '@/components/GroupRankingPanel';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getDisplayRankings } from '@/lib/ranking-utils';
+import { getAllRankings } from '@/lib/ranking-service';
+import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
+import { RankingEntry } from '@/lib/ranking-utils';
 
 export const dynamic = 'force-dynamic';
-
-const getRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
-  // Use JST
-  const now = new Date();
-  const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const today = jstDate.toISOString().split('T')[0];
-
-  let query = supabase
-    .from('daily_steps')
-    .select(`
-      steps,
-      users!inner (
-        name,
-        image,
-        email,
-        group_keyword
-      )
-    `)
-    .eq('date', today)
-    .order('steps', { ascending: false });
-
-  if (scope === 'GROUP' && groupKeyword) {
-    // Check if array column contains the keyword.
-    // PostgREST: group_keyword.cs.{"value"}
-    query = query.filter('users.group_keyword', 'cs', `{"${groupKeyword}"}`);
-  }
-
-  const { data: dailySteps, error } = await query;
-
-  if (error) {
-    console.error(`Error fetching ${scope} rankings for group ${groupKeyword}:`, error);
-    return [];
-  }
-
-  return dailySteps || [];
-};
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -91,23 +56,25 @@ export default async function Home() {
       .single();
 
     yesterdaySteps = yesterdayData?.steps || 0;
-    const diff = mySteps - yesterdaySteps;
   }
 
-  // Fetch Global Leaderboard
-  const globalRankings = await getRankings('GLOBAL');
-  const { displayRankings: filteredGlobalRankings } = getDisplayRankings(globalRankings, userEmail);
+  // Pre-load ALL rankings (Optimization: Single query per scope)
+  const allGlobalRankings = await getAllRankings('GLOBAL');
 
-  // Fetch Group Leaderboards
-  type GroupRankingData = { keyword: string; neighbors: any[] };
-  const groupRankingsList: GroupRankingData[] = [];
+  // Extract Stats for Current User
+  const myWeeklyEntry = allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const myWeeklySteps = myWeeklyEntry?.steps || 0;
 
-  for (const keyword of groupKeywords) {
-    const rankings = await getRankings('GROUP', keyword);
-    const { displayRankings: filteredRankings } = getDisplayRankings(rankings, userEmail);
+  const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
-    groupRankingsList.push({ keyword, neighbors: filteredRankings });
-  }
+  // Pre-load ALL group rankings
+  const allGroupRankings = await Promise.all(
+    groupKeywords.map(async (keyword) => {
+      const rankings = await getAllRankings('GROUP', keyword);
+      return { keyword, neighbors: rankings };
+    })
+  );
 
   return (
     <main className="min-h-screen bg-white">
@@ -136,135 +103,115 @@ export default async function Home() {
       </header>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        {/* Top section moved to columns below */}
-
         {/* MAIN LAYOUT CONTAINER */}
         <div className="flex flex-col gap-8">
 
           {/* TOP SECTION: Stats & Motivation (Equal Height on Desktop) */}
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8">
-            {/* My Stats Panel (Left: 5 cols) */}
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 min-h-[220px]">
+            {/* My Stats Panel (Left: 5 cols) - Premium Design */}
             {session && (
-              <div className="lg:col-span-5 flex flex-col h-full overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-                <div className="flex justify-between items-center h-full">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">My Stats</h3>
-                    <p className="text-sm text-gray-500">Today's steps</p>
-                    <p className={`text-xs font-medium mt-1 ${mySteps - yesterdaySteps >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {mySteps - yesterdaySteps >= 0 ? '↑' : '↓'} {Math.abs(mySteps - yesterdaySteps).toLocaleString()} vs yesterday
-                    </p>
+              <div className="lg:col-span-5 flex flex-col h-full overflow-hidden rounded-2xl bg-white shadow-lg shadow-indigo-100/50 border border-indigo-50 relative group">
+                {/* Decorative Background Blob */}
+                <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+
+                <div className="p-6 relative z-10 flex flex-col h-full justify-between">
+                  {/* Header */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-indigo-600 rounded-lg text-white shadow-md shadow-indigo-200">
+                      {/* Bolt Icon */}
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">Your Activity</h3>
                   </div>
-                  <div className="text-4xl font-extrabold text-indigo-600">
-                    {mySteps.toLocaleString()}
+
+                  {/* Today's Main Stat */}
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 drop-shadow-sm">
+                        {mySteps.toLocaleString()}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-400">steps today</span>
+                    </div>
+
+                    {/* Comparison Badge */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${mySteps - yesterdaySteps >= 0
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : 'bg-red-50 text-red-600 border border-red-100'
+                        }`}>
+                        {mySteps - yesterdaySteps >= 0 ? (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                        ) : (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                        )}
+                        {Math.abs(mySteps - yesterdaySteps).toLocaleString()}
+                      </span>
+                      <span className="text-xs text-gray-400 font-medium">vs yesterday</span>
+                    </div>
+                  </div>
+
+                  {/* Secondary Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 mt-auto">
+                    {/* Weekly */}
+                    <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        This Week
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
+                          {myWeeklySteps.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Monthly */}
+                    <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        This Month
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
+                          {myMonthlySteps.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Motivation / Status (Right: 7 cols) */}
+            {/* Motivation / Status (Right: 7 cols) - Adjusted styling to match */}
             {session && (
-              <div className="lg:col-span-7 flex flex-col justify-center h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-                <h4 className="font-bold text-lg mb-2">Keep Stepping!</h4>
-                <p className="opacity-90 text-sm">Every step counts differently in every group!</p>
+              <div className="lg:col-span-7 flex flex-col justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 rounded-2xl p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden">
+                {/* Decorative circles */}
+                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+
+                <div className="relative z-10">
+                  <div className="mb-4 inline-flex items-center justify-center p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <h4 className="font-black text-2xl mb-2 tracking-tight">Keep Stepping!</h4>
+                  <p className="opacity-90 text-sm leading-relaxed max-w-md font-medium text-indigo-50">
+                    Every step counts differently in every group! Join more groups to compete with different people and maintain your streak.
+                  </p>
+
+                  <Link href="/profile" className="mt-6 px-5 py-2 bg-white text-indigo-600 text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
+                    View Details →
+                  </Link>
+                </div>
               </div>
             )}
           </div>
 
           {/* BOTTOM SECTION: Leaderboards */}
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
-
-            {/* Global Leaderboard (Mobile: Order 2, Desktop: Left 5 cols) */}
-            <div className="lg:col-span-5 order-2 lg:order-1 overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100">
-              <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-base font-bold text-gray-900">
-                  Global Leaderboard
-                </h3>
-                <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded text-xs font-semibold">Top 3 & Neighbors</span>
-              </div>
-              <div className="bg-white px-0">
-                <ul role="list" className="divide-y divide-gray-50">
-                  {(() => {
-                    if ((globalRankings as any[]).length === 0) {
-                      return <p className="text-gray-500 text-center py-8">No data available yet.</p>;
-                    }
-
-                    return filteredGlobalRankings.map((entry: any, index: number) => {
-                      const isGap = index > 0 && entry.originalRank > filteredGlobalRankings[index - 1].originalRank + 1;
-
-                      // Spacer row for gap
-                      if (isGap) {
-                        return (
-                          <div key={`gap-${index}`} className="px-6 py-2 bg-gray-50 flex justify-center border-b border-gray-50">
-                            <span className="text-gray-400 text-xs tracking-widest">•••</span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <li key={entry.originalRank} className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.email === userEmail ? 'bg-indigo-50/50' : ''}`}>
-                          <div className="flex items-center gap-4">
-                            <span className={`
-                                            flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
-                                            ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                                entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
-                                  entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}
-                                        `}>
-                              {entry.originalRank}
-                            </span>
-                            {entry.users?.image ? (
-                              <img className="h-10 w-10 rounded-full border border-gray-100" src={entry.users.image} alt="" />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                                {(entry.users?.name || '?')[0]}
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {entry.users?.name || entry.users?.email}
-                                {entry.users.email === userEmail && <span className="ml-2 text-xs text-indigo-600 font-bold">(YOU)</span>}
-                              </p>
-
-                            </div>
-                          </div>
-                          <div className="font-mono font-semibold text-indigo-600">
-                            {entry.steps.toLocaleString()}
-                          </div>
-                        </li>
-                      );
-                    });
-                  })()}
-                </ul>
-              </div>
-            </div>
-
-
-            {/* Right Column Stack (Mobile: Order 1, Desktop: Right 7 cols) */}
-            <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
-
-              {/* Group Leaderboards */}
-              {groupRankingsList.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
-                  {groupRankingsList.map((groupData, index) => (
-                    <GroupRankingPanel
-                      key={groupData.keyword}
-                      keyword={groupData.keyword}
-                      neighbors={groupData.neighbors}
-                      userEmail={userEmail}
-                      index={index}
-                      totalCount={groupRankingsList.length}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center text-gray-500">
-                  Join your first group to see rankings here!
-                </div>
-              )}
-
-              {/* Join Group Panel */}
-              {session && <GroupSettings />}
-            </div>
-          </div>
+          <AnimatedLeaderboard
+            userEmail={userEmail}
+            allGlobalRankings={allGlobalRankings}
+            allGroupRankings={allGroupRankings}
+          />
 
         </div>
       </div>

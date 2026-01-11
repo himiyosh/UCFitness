@@ -9,7 +9,7 @@ interface UsernameFormProps {
 }
 
 export default function UsernameForm({ initialUsername = '', isOnboarding = false }: UsernameFormProps) {
-    const [username, setUsername] = useState(initialUsername);
+    const [username, setUsername] = useState(initialUsername || '');
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const router = useRouter();
@@ -34,28 +34,26 @@ export default function UsernameForm({ initialUsername = '', isOnboarding = fals
                 throw new Error(data.error || 'Failed to update User ID');
             }
 
-            setMessage({ text: 'User ID updated successfully!', type: 'success' });
+            setMessage({ text: 'Updated!', type: 'success' });
 
             if (isOnboarding) {
-                router.replace('/'); // Go to dashboard after onboarding
+                router.replace('/');
             } else {
                 router.refresh();
             }
         } catch (error: any) {
             console.error(error);
-            setMessage({ text: error.message || 'Failed to save changes.', type: 'error' });
+            setMessage({ text: error.message || 'Failed to save.', type: 'error' });
         } finally {
             setIsSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSave} className="space-y-6">
+        <form onSubmit={handleSave} className="w-full space-y-2">
             <div>
-                <label htmlFor="username" className="block text-sm font-medium leading-6 text-gray-900">
-                    User ID {isOnboarding ? '(Required)' : ''}
-                </label>
-                <div className="mt-2">
+                <div className="flex gap-2 items-center">
+                    {!isOnboarding && <span className="text-gray-400 select-none">@</span>}
                     <input
                         type="text"
                         name="username"
@@ -69,24 +67,18 @@ export default function UsernameForm({ initialUsername = '', isOnboarding = fals
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                     />
+                    <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 whitespace-nowrap"
+                    >
+                        {isOnboarding ? 'Next' : 'Save'}
+                    </button>
                 </div>
-                <p className="mt-2 text-xs text-gray-500">
-                    Unique ID used for identification. Letters, numbers, and underscores only.
-                </p>
-            </div>
-
-            <div>
-                <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
-                >
-                    {isSaving ? 'Saving...' : (isOnboarding ? 'Get Started' : 'Update User ID')}
-                </button>
             </div>
 
             {message && (
-                <p className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text-xs ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
                     {message.text}
                 </p>
             )}
