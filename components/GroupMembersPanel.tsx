@@ -21,16 +21,19 @@ export default function GroupMembersPanel({
     members: initialMembers,
     groupKeyword,
     isOwner,
-    currentUserId
+    currentUserId,
+    isEditing,
+    onToggleEdit
 }: {
     members: Member[],
     groupKeyword: string,
     isOwner: boolean,
-    currentUserId: string
+    currentUserId: string,
+    isEditing: boolean,
+    onToggleEdit: () => void
 }) {
     const [members, setMembers] = useState(initialMembers);
     const [isProcessing, setIsProcessing] = useState<string | null>(null); // userId being processed
-    const [isEditing, setIsEditing] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -147,7 +150,7 @@ export default function GroupMembersPanel({
                 </div>
                 {isOwner && (
                     <button
-                        onClick={() => setIsEditing(!isEditing)}
+                        onClick={onToggleEdit}
                         className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
                     >
                         {isEditing ? 'Done' : 'Edit'}

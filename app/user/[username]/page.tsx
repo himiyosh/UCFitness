@@ -2,11 +2,13 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import UserMenu from "@/components/UserMenu";
-import ActivityGraph from "@/components/ActivityGraph";
-import ProfileHeader from "@/components/ProfileHeader";
+import { cookies } from 'next/headers';
+import Link from 'next/link';
+import ActivityGraph from '@/components/ActivityGraph';
+import UserMenu from '@/components/UserMenu';
+import ProfileHeader from '@/components/ProfileHeader';
+import BackButton from '@/components/BackButton';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,12 +50,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         };
     }
 
-    // Calculate Monthly Steps
-    let monthlySteps = 0;
-    let monthlyDiff = 0;
-    let isUp = false;
-
-    // Monthly Calculation Logic
+    // --- Stats Calculation (Comparison) ---
+    // JST Logic
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Tokyo',
@@ -61,44 +59,55 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         month: '2-digit',
         day: '2-digit'
     });
-    const jstDateStr = formatter.format(now);
-    const [y, m, d] = jstDateStr.split('-').map(Number);
-    const currentYear = y;
-    const currentMonth = m - 1; // 0-indexed for comparison
-    const currentDay = d;
+    const todayStr = formatter.format(now); // YYYY-MM-DD
 
-    // Previous Month Logic
-    const prevDate = new Date(currentYear, currentMonth - 1, 1);
-    const prevYear = prevDate.getFullYear();
-    const prevMonth = prevDate.getMonth();
+    // Weekly Start (Mon)
+    const currentDate = new Date(`${todayStr}T00:00:00Z`);
+    const utcDay = currentDate.getUTCDay();
+    const daysToSubtract = (utcDay + 6) % 7;
+    const monday = new Date(currentDate);
+    monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+    const weeklyStartStr = monday.toISOString().split('T')[0];
 
-    let currentMonthSteps = 0;
-    let prevMonthSteps = 0;
+    // Monthly Start
+    const [year, month] = todayStr.split('-');
+    const monthlyStartStr = `${year}-${month}-01`;
 
-    if (allHistoryData) {
-        allHistoryData.forEach((record: any) => {
-            const dateObj = new Date(record.date);
-            const rYear = dateObj.getFullYear();
-            const rMonth = dateObj.getMonth();
-            const rDay = dateObj.getDate();
+    // Target User Stats (In-Memory from allHistory)
+    const targetStats = {
+        daily: allHistoryData.find((r: any) => r.date === todayStr)?.steps || 0,
+        weekly: allHistoryData.filter((r: any) => r.date >= weeklyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0),
+        monthly: allHistoryData.filter((r: any) => r.date >= monthlyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0)
+    };
 
-            if (rYear === currentYear && rMonth === currentMonth) {
-                currentMonthSteps += record.steps;
-            }
+    // Viewer Stats (Fetch if logged in and different user)
+    const isOwner = session?.user?.email === user.email;
+    let viewerStats = { daily: 0, weekly: 0, monthly: 0 };
+    let hasViewerStats = false;
 
-            if (rYear === prevYear && rMonth === prevMonth && rDay <= currentDay) {
-                prevMonthSteps += record.steps;
-            }
-        });
+    if (session?.user && !isOwner) {
+        const viewerId = (session.user as any).id;
+        // Optimization: Fetch from the earliest required date
+        // Likely monthlyStart or weeklyStart. If default view is just these 3, we need max range.
+        const minDate = weeklyStartStr < monthlyStartStr ? weeklyStartStr : monthlyStartStr;
+
+        const { data: vData } = await supabase
+            .from('daily_steps')
+            .select('steps, date')
+            .eq('user_id', viewerId)
+            .gte('date', minDate);
+
+        if (vData) {
+            viewerStats.daily = vData.find(r => r.date === todayStr)?.steps || 0;
+            viewerStats.weekly = vData.filter(r => r.date >= weeklyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
+            viewerStats.monthly = vData.filter(r => r.date >= monthlyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
+            hasViewerStats = true;
+        }
     }
-
-    monthlySteps = currentMonthSteps;
-    monthlyDiff = currentMonthSteps - prevMonthSteps;
-    isUp = monthlyDiff >= 0;
 
     return (
         <main className="min-h-screen bg-white">
-            {/* Rich Header */}
+            {/* ... Header and Nav (unchanged) ... */}
             <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -118,22 +127,16 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
 
                 <div className="mb-6">
-                    <Link href="/" className="text-gray-500 hover:text-indigo-600 font-medium flex items-center gap-1 w-fit transition-colors group">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 group-hover:-translate-x-1 transition-transform">
-                            <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
-                        </svg>
-                        Back to Dashboard
-                    </Link>
+                    <BackButton />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Column: Profile Card */}
-                    <div className="md:col-span-1 space-y-6">
-                        {/* Profile Header (Read Only) */}
+                    <div className="md:col-span-1 space-y-6 order-last md:order-none">
                         <ProfileHeader user={user} readonly={true} />
 
-                        {/* Navigation Actions for Owner */}
-                        {session?.user?.email === user.email && (
+                        {/* Comparison/Owner Actions */}
+                        {isOwner ? (
                             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col gap-3">
                                 <h3 className="text-sm font-bold text-gray-700">Quick Links</h3>
                                 <Link
@@ -141,7 +144,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.07-.654.78.78 0 00.357-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.907 3.96 2.32 2.32 0 01-.026.654zM18 8a2 2 0 11-4 0 2 2 0 014 0zM5.304 16.191a.844.844 0 01-.277-.71c.076-.814.237-1.596.454-2.336a4.718 4.718 0 001.974.89c.034.008.069.017.103.025a5.619 5.619 0 01-2.254 2.131zM10.66 14.676a.75.75 0 01-.66 0 4.718 4.718 0 001.974-.89c.217.74.378 1.522.454 2.336a.844.844 0 01-.277.71 5.619 5.619 0 01-2.254-2.131z" />
+                                        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.07-.654.78.78 0 00.357-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.907 3.96 2.32 2.32 0 01-.026.654zM18 8a2 2 0 11-4 0 2 2 0 014 0zM5.304 16.191a.844.844 0 01-.277-.71c.076-.814.237-1.596.454-2.336a4.718 4.718 0 001.974.89c.034.008.069.017.103.025a5.619 5.619 0 01-2.254 2.131zM10.66 14.676a.75.75 0 01-.66 0 4.718 4.718 0 001.974-.89c.217.74.378 1.522.454 2.336a.844.844 0 01-.277.71 5.619 5.619 0 01-2.254 2.131z" />
                                     </svg>
                                     Manage My Groups
                                 </Link>
@@ -152,40 +155,56 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     Edit Profile
                                 </Link>
                             </div>
+                        ) : (
+                            // Maybe add a "Friend Request" button later?
+                            <div className="hidden"></div>
                         )}
-
-
-                        {/* No Edit Controls or Goal Form for Public View */}
                     </div>
 
                     {/* Right Column: Stats & Achievements */}
-                    <div className="md:col-span-2 space-y-6">
+                    <div className="md:col-span-2 space-y-6 order-first md:order-none">
                         <div className="flex items-center justify-between">
                             <h2 className="text-2xl font-bold text-gray-900">{user.name}'s Activity</h2>
-                            {/* No Sync Button */}
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                                <p className="text-sm font-medium text-gray-500">Total Steps Recorded</p>
-                                <p className="mt-2 text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                                <p className="text-sm font-medium text-gray-500">Monthly Steps (MTD)</p>
+                        {/* New Comparison Stats Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                            {/* Daily */}
+                            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Today</p>
                                 <div className="mt-2">
-                                    <p className="text-3xl font-bold text-gray-900">{monthlySteps.toLocaleString()}</p>
-                                    <p className={`text-xs font-medium mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
-                                        {isUp ? '↑' : '↓'} {Math.abs(monthlyDiff).toLocaleString()} vs last month
-                                    </p>
+                                    <p className="text-3xl font-black text-gray-900">{targetStats.daily.toLocaleString()}</p>
+                                    {!isOwner && hasViewerStats && (
+                                        <p className={`text-xs font-bold mt-1 ${targetStats.daily - viewerStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {targetStats.daily - viewerStats.daily >= 0 ? '+' : ''}{(targetStats.daily - viewerStats.daily).toLocaleString()} vs You
+                                        </p>
+                                    )}
                                 </div>
                             </div>
-                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                                <p className="text-sm font-medium text-gray-500">All-time Best Day</p>
+
+                            {/* Weekly */}
+                            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This Week</p>
                                 <div className="mt-2">
-                                    <p className="text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
-                                    <p className="text-xs font-medium mt-1 text-gray-500">
-                                        on {bestDay.date}
-                                    </p>
+                                    <p className="text-3xl font-black text-gray-900">{targetStats.weekly.toLocaleString()}</p>
+                                    {!isOwner && hasViewerStats && (
+                                        <p className={`text-xs font-bold mt-1 ${targetStats.weekly - viewerStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {targetStats.weekly - viewerStats.weekly >= 0 ? '+' : ''}{(targetStats.weekly - viewerStats.weekly).toLocaleString()} vs You
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Monthly */}
+                            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This Month</p>
+                                <div className="mt-2">
+                                    <p className="text-3xl font-black text-gray-900">{targetStats.monthly.toLocaleString()}</p>
+                                    {!isOwner && hasViewerStats && (
+                                        <p className={`text-xs font-bold mt-1 ${targetStats.monthly - viewerStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {targetStats.monthly - viewerStats.monthly >= 0 ? '+' : ''}{(targetStats.monthly - viewerStats.monthly).toLocaleString()} vs You
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>

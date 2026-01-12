@@ -5,10 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
-import GroupMembersPanel from "@/components/GroupMembersPanel";
-import LeaveGroupButton from "@/components/LeaveGroupButton";
 import UserMenu from "@/components/UserMenu";
 import GroupHeaderActions from "@/components/GroupHeaderActions";
+import GroupSettingsLayout from "@/components/GroupSettingsLayout";
 import { getAllGroupRankings } from "@/lib/ranking-service";
 
 export const dynamic = 'force-dynamic';
@@ -113,7 +112,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 </div>
 
                 {/* Group Info Card / Hero */}
-                <section className="relative overflow-hidden rounded-2xl border border-gray-200 shadow-lg bg-white group min-h-[200px] flex items-end">
+                <section className="relative overflow-hidden rounded-2xl border border-gray-200 shadow-lg bg-white group min-h-[140px] sm:min-h-[200px] flex items-end">
                     {/* Header Background */}
                     {group.header_image_url ? (
                         <div className="absolute inset-0">
@@ -124,11 +123,11 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50"></div>
                     )}
 
-                    <div className="relative p-6 sm:p-8 w-full flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 z-10">
+                    <div className="relative p-4 sm:p-8 w-full flex flex-col-reverse sm:flex-row items-end sm:items-end justify-between gap-4 sm:gap-6 z-10">
                         {/* Left: Icon + Text */}
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
                             {/* Icon */}
-                            <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-4 border-white shadow-xl overflow-hidden flex-shrink-0 bg-white flex items-center justify-center text-4xl font-black text-indigo-200">
+                            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl border-2 sm:border-4 border-white shadow-xl overflow-hidden flex-shrink-0 bg-white flex items-center justify-center text-2xl sm:text-4xl font-black text-indigo-200">
                                 {group.image_url ? (
                                     <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
                                 ) : (
@@ -139,10 +138,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             </div>
 
                             {/* Text */}
-                            <div className={group.header_image_url ? "text-white text-shadow-sm" : "text-gray-900"}>
-                                <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">{group.name}</h1>
+                            <div className={`flex-1 ${group.header_image_url ? "text-white text-shadow-sm" : "text-gray-900"}`}>
+                                <h1 className="text-2xl sm:text-4xl font-black tracking-tight mb-1 sm:mb-2 line-clamp-1">{group.name}</h1>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <div className={`px-2 py-1 rounded text-xs font-mono select-all flex items-center gap-2 ${group.header_image_url ? 'bg-white/20 text-white backdrop-blur-sm border border-white/30' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+                                    <div className={`px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs font-mono select-all flex items-center gap-2 ${group.header_image_url ? 'bg-white/20 text-white backdrop-blur-sm border border-white/30' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
                                         <span className="opacity-70">ID:</span>
                                         <span className="font-bold">{group.keyword}</span>
                                     </div>
@@ -151,7 +150,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         </div>
 
                         {/* Right: Actions */}
-                        <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="w-full sm:w-auto flex flex-col items-end gap-2 shrink-0 sm:relative">
                             <GroupHeaderActions group={group} isOwner={isOwner} />
                         </div>
                     </div>
@@ -170,24 +169,13 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
 
                     {/* Right: Members & Settings */}
-                    <div className="lg:col-span-5 space-y-6">
-                        <h2 className="text-lg font-bold text-gray-900">Settings</h2>
-
-                        {/* Member Management */}
-                        <GroupMembersPanel
-                            members={members as any}
-                            groupKeyword={group.keyword}
+                    <div className="lg:col-span-5">
+                        <GroupSettingsLayout
+                            members={members || []}
+                            group={group}
                             isOwner={isOwner}
                             currentUserId={userId}
                         />
-
-                        {/* Leave Button */}
-                        {!isOwner && (
-                            <LeaveGroupButton
-                                groupKeyword={group.keyword}
-                                groupName={group.name}
-                            />
-                        )}
                     </div>
                 </div>
 

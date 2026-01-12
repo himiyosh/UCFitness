@@ -4,8 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import GroupSettings from "@/components/GroupSettings";
+import GroupList from "@/components/GroupList";
 import UserMenu from "@/components/UserMenu";
+import GroupSettings from "@/components/GroupSettings";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,19 @@ export default async function MyGroupsPage() {
 
     const userId = (session.user as any).id;
 
-    // Fetch User's Groups with Member Count (optional, hard to do in one query without join aggregate)
-    // Let's just fetch basic group info first
+    // Fetch User's Group Preference (Order)
+    const { data: userData } = await supabase
+        .from('users')
+        .select('group_keyword')
+        .eq('id', userId)
+        .single();
+
+    // Ensure it's an array
+    const groupOrder = Array.isArray(userData?.group_keyword)
+        ? userData?.group_keyword
+        : (userData?.group_keyword ? [userData.group_keyword] : []);
+
+    // Fetch User's Groups
     const { data: memberships } = await supabase
         .from('group_members')
         .select(`
@@ -29,12 +41,34 @@ export default async function MyGroupsPage() {
         id,
         name,
         keyword,
-        created_at,
-        owner_id
+        image_url,
+        header_image_url
       )
     `)
-        .eq('user_id', userId)
-        .order('joined_at', { ascending: false });
+        .eq('user_id', userId);
+
+    // Normalize memberships (Handle array vs object for joined table)
+    const normalizedMemberships = (memberships || []).map((m: any) => ({
+        ...m,
+        groups: Array.isArray(m.groups) ? m.groups[0] : m.groups
+    }));
+
+    // Sort memberships based on groupOrder
+    const sortedMemberships = normalizedMemberships.sort((a: any, b: any) => {
+        const indexA = groupOrder.indexOf(a.groups.keyword);
+        const indexB = groupOrder.indexOf(b.groups.keyword);
+
+        // If both present, sort by index
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+
+        // If only A present, A comes first
+        if (indexA !== -1) return -1;
+        // If only B present, B comes first
+        if (indexB !== -1) return 1;
+
+        // If neither, sort by join date (newest first)
+        return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
+    });
 
     return (
         <main className="min-h-screen bg-gray-50">
@@ -61,56 +95,42 @@ export default async function MyGroupsPage() {
 
                 {/* Page Title & Back Nav */}
                 <div className="flex items-center gap-4">
+                    <Link
+                        href="/"
+                        className="p-2 -ml-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+                        title="Back to Dashboard"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    </Link>
                     <h1 className="text-2xl font-bold text-gray-900">My Groups</h1>
                 </div>
 
-                {/* Join / Create Section */}
-                <section>
-                    <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
-                        <h2 className="text-lg font-bold text-indigo-900 mb-2">Join or Create a Group</h2>
-                        <div className="max-w-md">
-                            <GroupSettings />
+                <div className="flex flex-col-reverse gap-8 md:flex-col">
+                    {/* Join / Create Section */}
+                    <section>
+                        <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
+                            <h2 className="text-lg font-bold text-indigo-900 mb-2">Join or Create a Group</h2>
+                            <div className="max-w-md">
+                                <GroupSettings />
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* Group List */}
-                <section>
-                    <h2 className="text-lg font-bold text-gray-900 mb-4">Your Groups</h2>
+                    {/* Group List */}
+                    <section>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-gray-900">Your Groups</h2>
+                        </div>
 
-                    {!memberships || memberships.length === 0 ? (
-                        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                            <p className="text-gray-500">You haven't joined any groups yet.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {memberships.map((m: any) => (
-                                <Link
-                                    key={m.groups.id}
-                                    href={`/group/${m.groups.id}`}
-                                    className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group"
-                                >
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="h-10 w-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
-                                            {m.groups.name.substring(0, 1).toUpperCase()}
-                                        </div>
-                                        {m.role === 'OWNER' && (
-                                            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wide rounded-full">
-                                                Owner
-                                            </span>
-                                        )}
-                                    </div>
-                                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 truncate">
-                                        {m.groups.name}
-                                    </h3>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Keyword: <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700">{m.groups.keyword}</code>
-                                    </p>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                        {!memberships || memberships.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                                <p className="text-gray-500">You haven't joined any groups yet.</p>
+                            </div>
+                        ) : (
+                            <GroupList initialMemberships={sortedMemberships} />
+                        )}
+                    </section>
+                </div>
             </div>
         </main>
     );

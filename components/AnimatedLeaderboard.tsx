@@ -41,6 +41,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 
 export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allGroupRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
+    const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
 
     // Handle Tab Switch
     const handleSwitch = (newPeriod: Period) => {
@@ -156,35 +157,52 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
 
                     {/* Group Leaderboards */}
                     {allGroupRankings.length > 0 ? (
-                        <FadeInWrapper
-                            key={period}
-                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4"
-                        >
-                            {allGroupRankings.map((groupData, index) => {
-                                // Calculate neighbors for this period
+                        <>
+                            {/* Group Selection Tabs (Scrollable) */}
+                            {allGroupRankings.length > 1 && (
+                                <div className="flex overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 gap-2">
+                                    {allGroupRankings.map((group, idx) => (
+                                        <button
+                                            key={group.keyword}
+                                            onClick={() => setSelectedGroupIndex(idx)}
+                                            className={`
+                                                whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all
+                                                ${selectedGroupIndex === idx
+                                                    ? 'bg-indigo-600 text-white shadow-md'
+                                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}
+                                            `}
+                                        >
+                                            {group.keyword}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Selected Group Panel */}
+                            {(() => {
+                                const groupData = allGroupRankings[selectedGroupIndex];
                                 const currentGroupRankings = groupData.neighbors[period];
                                 const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 3);
 
                                 return (
-                                    <GroupRankingPanel
-                                        key={groupData.keyword}
-                                        keyword={groupData.keyword}
-                                        groupId={groupData.groupId}
-                                        neighbors={displayRankings}
-                                        userEmail={userEmail}
-                                        index={index}
-                                        totalCount={allGroupRankings.length}
-                                    />
+                                    <FadeInWrapper key={`${groupData.keyword}-${period}`}>
+                                        <GroupRankingPanel
+                                            keyword={groupData.keyword}
+                                            groupId={groupData.groupId}
+                                            neighbors={displayRankings}
+                                            userEmail={userEmail}
+                                            index={0}
+                                            totalCount={1}
+                                        />
+                                    </FadeInWrapper>
                                 );
-                            })}
-                        </FadeInWrapper>
+                            })()}
+                        </>
                     ) : (
                         <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center text-gray-500">
                             Join your first group to see rankings here!
                         </div>
                     )}
-
-
                 </div>
             </div>
         </div>
