@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 
 interface Props {
@@ -105,13 +106,19 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
         }
     };
 
-    if (!isOpen) return null;
+    const [mounted, setMounted] = useState(false);
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
-            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in">
+    if (!mounted || !isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 isolate">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+
+            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in z-50 max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleSubmit}>
                     <div className="p-6">
                         <h2 className="text-xl font-bold text-gray-900 mb-6">Edit Group Details</h2>
@@ -174,7 +181,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                     </div>
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                    <p>Recommended: Square image (512x512px)</p>
+                                    <p>Recommended: Square image</p>
                                     <p>Click image to change.</p>
                                 </div>
                             </div>
@@ -208,6 +215,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

@@ -169,8 +169,29 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
         return targetDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     }, [monthOffset, viewMode]);
 
+    // Handle Hash Navigation (Deep Linking)
+    useEffect(() => {
+        const handleHash = () => {
+            if (typeof window === 'undefined') return;
+            const hash = window.location.hash;
+            if (hash === '#weekly-graph') {
+                setViewMode('WEEKLY');
+            } else if (hash === '#monthly-graph') {
+                setViewMode('MONTHLY');
+            }
+        };
+
+        handleHash(); // Check on mount
+        window.addEventListener('hashchange', handleHash);
+        return () => window.removeEventListener('hashchange', handleHash);
+    }, []);
+
     return (
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative">
+            {/* Anchors for scrolling (positioned with offset for sticky header) */}
+            <div id="weekly-graph" className="absolute -top-32 invisible pointer-events-none" />
+            <div id="monthly-graph" className="absolute -top-32 invisible pointer-events-none" />
+
             {/* Tooltip Portal */}
             {tooltip && (
                 <div

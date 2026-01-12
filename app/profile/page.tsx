@@ -96,7 +96,7 @@ export default async function ProfilePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Column: Profile Card */}
-                    <div className="md:col-span-1 space-y-6">
+                    <div className="md:col-span-1 space-y-6 order-last md:order-none">
                         <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
                         <div>
                             <ProfileHeader user={user} />
@@ -110,18 +110,18 @@ export default async function ProfilePage() {
 
 
                     {/* Right Column: Stats & Achievements */}
-                    <div className="md:col-span-2 space-y-6">
+                    <div className="md:col-span-2 space-y-6 order-first md:order-none">
                         <div className="flex items-center justify-between">
                             <h2 className="text-2xl font-bold text-gray-900">Your Activity</h2>
                             <SyncHistoryButton />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 text-center md:text-left">
                                 <p className="text-sm font-medium text-gray-500">Total Steps Recorded</p>
-                                <p className="mt-2 text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
+                                <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
                             </div>
-                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 text-center md:text-left">
                                 <p className="text-sm font-medium text-gray-500">Monthly Steps (MTD)</p>
                                 {(() => {
                                     const now = new Date();
@@ -161,20 +161,20 @@ export default async function ProfilePage() {
                                     const isUp = diff >= 0;
 
                                     return (
-                                        <div className="mt-2">
-                                            <p className="text-3xl font-bold text-gray-900">{currentMonthSteps.toLocaleString()}</p>
-                                            <p className={`text-xs font-medium mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
+                                        <div className="mt-1 sm:mt-2">
+                                            <p className="text-2xl sm:text-3xl font-bold text-gray-900">{currentMonthSteps.toLocaleString()}</p>
+                                            <p className={`text-xs font-medium mt-0.5 sm:mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
                                                 {isUp ? '↑' : '↓'} {Math.abs(diff).toLocaleString()} vs last month
                                             </p>
                                         </div>
                                     );
                                 })()}
                             </div>
-                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 text-center md:text-left">
                                 <p className="text-sm font-medium text-gray-500">All-time Best Day</p>
-                                <div className="mt-2">
-                                    <p className="text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
-                                    <p className="text-xs font-medium mt-1 text-gray-500">
+                                <div className="mt-1 sm:mt-2">
+                                    <p className="text-2xl sm:text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
+                                    <p className="text-xs font-medium mt-0.5 sm:mt-1 text-gray-500">
                                         on {bestDay.date}
                                     </p>
                                 </div>

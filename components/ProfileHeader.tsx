@@ -64,28 +64,28 @@ export default function ProfileHeader({ user, readonly = false }: { user: UserDa
     return (
         <div className="md:col-span-1">
             <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 sticky top-8">
-                <div className="bg-indigo-600 h-24 w-full"></div>
-                <div className="px-4 pb-4 relative">
-                    <div className="-mt-12 mb-3 flex justify-center relative group/image">
+                <div className="bg-indigo-600 h-16 sm:h-24 w-full"></div>
+                <div className="px-4 pb-3 sm:pb-4 relative">
+                    <div className="-mt-8 sm:-mt-12 mb-3 flex justify-center relative group/image">
                         {user.image ? (
-                            <img className="h-24 w-24 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
+                            <img className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
                         ) : (
-                            <div className="h-24 w-24 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-3xl font-bold text-indigo-600">
+                            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-2xl sm:text-3xl font-bold text-indigo-600">
                                 {(user.name?.[0] || 'U')}
                             </div>
                         )}
                         {!readonly && <ProfileImageEditor initialImage={user.image} isCustom={user.is_custom_image || false} />}
                     </div>
 
-                    <div className="text-center mb-6">
+                    <div className="text-center mb-4 sm:mb-6">
                         {!isEditing ? (
                             <>
-                                <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
-                                <p className="text-sm text-gray-500">@{user.username || 'user'}</p>
+                                <h1 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h1>
+                                <p className="text-xs sm:text-sm text-gray-500">@{user.username || 'user'}</p>
 
                                 {user.group_keyword && (
                                     <div className="mt-2">
-                                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-indigo-700">
                                             Group: {Array.isArray(user.group_keyword) ? user.group_keyword.join(', ') : user.group_keyword}
                                         </span>
                                     </div>
@@ -94,7 +94,7 @@ export default function ProfileHeader({ user, readonly = false }: { user: UserDa
                                 {!readonly && (
                                     <button
                                         onClick={() => setIsEditing(true)}
-                                        className="mt-4 px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded-full hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
+                                        className="mt-3 sm:mt-4 px-3 py-1 sm:px-4 sm:py-1.5 bg-gray-100 text-gray-700 text-[10px] sm:text-xs font-bold rounded-full hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                                             <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3L10.58 12.42a4 4 0 01-1.343.886l-3.155 1.262a.5.5 0 01-.65-.65z" />

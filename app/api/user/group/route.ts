@@ -15,12 +15,17 @@ export async function POST(request: Request) {
     const { action, keyword } = body;
     const userId = (session.user as any).id;
 
-    if (!action || !keyword) {
+    if (!action) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const target = keyword.trim();
-    if (!target) return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
+    // Keyword is required for all actions except 'reorder'
+    if (action !== 'reorder' && !keyword) {
+      return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
+    }
+
+    const target = keyword ? keyword.trim() : '';
+    if (action !== 'reorder' && !target) return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
 
     // 1. Handle New Schema (groups, group_members)
     if (action === 'add') {
@@ -254,6 +259,93 @@ export async function POST(request: Request) {
       if (updateError) {
         console.error("Group Update Error", updateError);
         return NextResponse.json({ error: "Failed to update group" }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
+
+    } else if (action === 'reorder') {
+      const { groupKeywords } = body;
+
+      if (!Array.isArray(groupKeywords)) {
+        return NextResponse.json({ error: "Invalid keywords format" }, { status: 400 });
+      }
+
+      // Validate that the user is actually a member of all these groups
+      // Fetch current memberships
+      const { data: memberships } = await supabaseAdmin
+        .from('group_members')
+        .select('groups(keyword)')
+        .eq('user_id', userId);
+
+      // @ts-ignore
+      const currentKeywords = memberships?.map((m: any) => {
+        const groupData = Array.isArray(m.groups) ? m.groups[0] : m.groups;
+        return groupData?.keyword;
+      }).filter(Boolean) || [];
+
+      // Ensure new list has same items (length and content)
+      if (groupKeywords.length !== currentKeywords.length) {
+        console.error('Length mismatch:', groupKeywords.length, 'vs', currentKeywords.length);
+        return NextResponse.json({ error: "Keyword count mismatch" }, { status: 400 });
+      }
+
+      const sortedCurrent = [...currentKeywords].sort();
+      const sortedNew = [...groupKeywords].sort();
+
+      const isSame = sortedCurrent.every((val, index) => val === sortedNew[index]);
+      if (!isSame) {
+        console.error('Content mismatch');
+        return NextResponse.json({ error: "Invalid group list provided" }, { status: 400 });
+      }
+
+      // Update Order
+      const { error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({ group_keyword: groupKeywords })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error("Reorder Error", updateError);
+        return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
+
+    } else if (action === 'delete_group') {
+      // Find group
+      const { data: group } = await supabaseAdmin
+        .from('groups')
+        .select('id')
+        .eq('keyword', target)
+        .single();
+
+      if (!group) return NextResponse.json({ error: "Group not found" }, { status: 404 });
+
+      // Verify Ownership
+      const { data: currentUserMember } = await supabaseAdmin
+        .from('group_members')
+        .select('role')
+        .eq('group_id', group.id)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentUserMember || currentUserMember.role !== 'OWNER') {
+        return NextResponse.json({ error: "Forbidden: Only owner can delete the group" }, { status: 403 });
+      }
+
+      // Delete Group (Cascade should handle members, but let's delete members first to be clean/safe if no cascade)
+      // Actually Supabase standard 'references' usually don't cascade on delete unless specified.
+      // Let's delete members first just to be sure.
+      await supabaseAdmin.from('group_members').delete().eq('group_id', group.id);
+
+      const { error: deleteError } = await supabaseAdmin
+        .from('groups')
+        .delete()
+        .eq('id', group.id);
+
+      if (deleteError) {
+        console.error("Delete Group Error", deleteError);
+        return NextResponse.json({ error: "Failed to delete group" }, { status: 500 });
       }
 
       return NextResponse.json({ success: true });

@@ -16,18 +16,23 @@ export default async function Home() {
   const userEmail = session?.user?.email;
 
   let groupKeywords: string[] = [];
+  let username: string | undefined;
   let mySteps = 0;
   let yesterdaySteps = 0;
+  let lastWeekSteps = 0;
+  let lastMonthSteps = 0;
 
   if (session?.user && (session.user as any).id) {
+    const userId = (session.user as any).id;
     // Fetch current user's group keywords
     const { data: userData } = await supabase
       .from('users')
-      .select('group_keyword')
-      .eq('id', (session.user as any).id)
+      .select('group_keyword, username')
+      .eq('id', userId)
       .single();
 
     groupKeywords = userData?.group_keyword || [];
+    username = userData?.username;
 
     // Use JST
     const now = new Date();
@@ -37,7 +42,7 @@ export default async function Home() {
     const { data } = await supabase
       .from('daily_steps')
       .select('steps')
-      .eq('user_id', (session.user as any).id)
+      .eq('user_id', userId)
       .eq('date', today)
       .single();
     mySteps = data?.steps || 0;
@@ -50,11 +55,54 @@ export default async function Home() {
     const { data: yesterdayData } = await supabase
       .from('daily_steps')
       .select('steps')
-      .eq('user_id', (session.user as any).id)
+      .eq('user_id', userId)
       .eq('date', yesterday)
       .single();
 
     yesterdaySteps = yesterdayData?.steps || 0;
+
+    // --- Calculate Last Week & Last Month Ranges ---
+    const currentDate = new Date(`${today}T00:00:00Z`);
+    const utcDay = currentDate.getUTCDay(); // 0(Sun) - 6(Sat)
+    const daysToSubtract = (utcDay + 6) % 7;
+
+    // This Week Start (Mon)
+    const thisWeekMonday = new Date(currentDate);
+    thisWeekMonday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+    const thisWeekStartStr = thisWeekMonday.toISOString().split('T')[0];
+
+    // Last Week Start (Mon - 7)
+    const lastWeekMonday = new Date(thisWeekMonday);
+    lastWeekMonday.setUTCDate(thisWeekMonday.getUTCDate() - 7);
+    const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
+
+    // This Month Start
+    const [y, m] = today.split('-');
+    const thisMonthStartStr = `${y}-${m}-01`;
+
+    // Last Month Start (1st of prev month)
+    const thisMonthDate = new Date(`${thisMonthStartStr}T00:00:00Z`);
+    const lastMonthDate = new Date(thisMonthDate);
+    lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
+    const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
+
+    // Query Last Week
+    const { data: lwData } = await supabase
+      .from('daily_steps')
+      .select('steps')
+      .eq('user_id', userId)
+      .gte('date', lastWeekStartStr)
+      .lt('date', thisWeekStartStr);
+    lastWeekSteps = lwData?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
+
+    // Query Last Month
+    const { data: lmData } = await supabase
+      .from('daily_steps')
+      .select('steps')
+      .eq('user_id', userId)
+      .gte('date', lastMonthStartStr)
+      .lt('date', thisMonthStartStr);
+    lastMonthSteps = lmData?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
   }
 
   // Pre-load ALL rankings (Optimization: Single query per scope)
@@ -154,30 +202,48 @@ export default async function Home() {
                   {/* Secondary Stats Grid */}
                   <div className="grid grid-cols-2 gap-3 mt-auto">
                     {/* Weekly */}
-                    <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item">
+                    <Link
+                      href={username ? `/user/${username}#weekly-graph` : '/profile'}
+                      className="block bg-gray-50/80 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item cursor-pointer"
+                    >
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         This Week
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col">
                         <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
                           {myWeeklySteps.toLocaleString()}
                         </span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className={`text-[10px] font-bold ${myWeeklySteps >= lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
+                            {myWeeklySteps >= lastWeekSteps ? '↑' : '↓'} {Math.abs(myWeeklySteps - lastWeekSteps).toLocaleString()}
+                          </span>
+                          <span className="text-[10px] text-gray-400">vs last wk</span>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
 
                     {/* Monthly */}
-                    <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item">
+                    <Link
+                      href={username ? `/user/${username}#monthly-graph` : '/profile'}
+                      className="block bg-gray-50/80 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item cursor-pointer"
+                    >
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                         This Month
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col">
                         <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
                           {myMonthlySteps.toLocaleString()}
                         </span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className={`text-[10px] font-bold ${myMonthlySteps >= lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
+                            {myMonthlySteps >= lastMonthSteps ? '↑' : '↓'} {Math.abs(myMonthlySteps - lastMonthSteps).toLocaleString()}
+                          </span>
+                          <span className="text-[10px] text-gray-400">vs last mo</span>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -185,25 +251,25 @@ export default async function Home() {
 
             {/* Motivation / Status (Right: 7 cols) - Adjusted styling to match */}
             {session && (
-              <div className="lg:col-span-7 flex flex-col justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 rounded-2xl p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden">
+              <div className="lg:col-span-7 flex flex-col justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 rounded-2xl p-6 sm:p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden">
                 {/* Decorative circles */}
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
 
                 <div className="relative z-10">
-                  <div className="mb-4 inline-flex items-center justify-center p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div className="mb-4 inline-flex items-center justify-center p-1.5 sm:p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  <h4 className="font-black text-2xl mb-2 tracking-tight">Keep Stepping!</h4>
-                  <p className="opacity-90 text-sm leading-relaxed max-w-md font-medium text-indigo-50">
+                  <h4 className="font-black text-xl sm:text-2xl mb-2 tracking-tight">Keep Stepping!</h4>
+                  <p className="opacity-90 text-xs sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50">
                     Every step counts differently in every group! Join more groups to compete with different people and maintain your streak.
                   </p>
 
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Link href="/profile" className="px-5 py-2 bg-white text-indigo-600 text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
+                  <div className="mt-4 sm:mt-6 flex flex-wrap gap-3">
+                    <Link href="/profile" className="px-4 py-1.5 sm:px-5 sm:py-2 bg-white text-indigo-600 text-xs sm:text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
                       View Profile
                     </Link>
-                    <Link href="/groups" className="px-5 py-2 bg-indigo-600/30 backdrop-blur-md text-white border border-white/20 text-sm font-bold rounded-full hover:bg-indigo-600/50 transition-colors inline-flex items-center gap-2">
+                    <Link href="/groups" className="px-4 py-1.5 sm:px-5 sm:py-2 bg-indigo-600/30 backdrop-blur-md text-white border border-white/20 text-xs sm:text-sm font-bold rounded-full hover:bg-indigo-600/50 transition-colors inline-flex items-center gap-2">
                       My Groups
                     </Link>
                   </div>
