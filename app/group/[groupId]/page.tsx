@@ -1,0 +1,197 @@
+
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
+import GroupMembersPanel from "@/components/GroupMembersPanel";
+import LeaveGroupButton from "@/components/LeaveGroupButton";
+import UserMenu from "@/components/UserMenu";
+import GroupHeaderActions from "@/components/GroupHeaderActions";
+import { getAllGroupRankings } from "@/lib/ranking-service";
+
+export const dynamic = 'force-dynamic';
+
+export default async function GroupDetailPage(props: { params: Promise<{ groupId: string }> }) {
+    const params = await props.params;
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user) {
+        redirect("/api/auth/signin");
+    }
+
+    const userId = (session.user as any).id;
+    const userEmail = session.user.email;
+    const { groupId } = params;
+
+    // 1. Fetch Group & Check Access
+    const { data: membership, error: membershipError } = await supabase
+        .from('group_members')
+        .select(`
+        role,
+        groups (
+            id,
+            name,
+            keyword,
+            owner_id,
+            image_url,
+            header_image_url
+        )
+    `)
+        .eq('group_id', groupId)
+        .eq('user_id', userId)
+        .single();
+
+    if (membershipError || !membership) {
+        // Check if group exists at all? 
+        // If it exists but user is not member -> Redirect to Groups page or 404
+        // Use notFound for security/simplicity or redirect
+        return notFound();
+    }
+
+    const group = membership.groups as any;
+    // @ts-ignore
+    const isOwner = membership.role === 'OWNER';
+
+    // 2. Fetch Rankings
+    const rankings = await getAllGroupRankings(groupId);
+
+    // 3. Fetch All Members for Management Panel
+    const { data: members } = await supabase
+        .from('group_members')
+        .select(`
+        user_id,
+        role,
+        users (
+            id,
+            name,
+            email,
+            image,
+            username
+        )
+    `)
+        .eq('group_id', groupId)
+        .order('role', { ascending: false }); // Owner first
+
+    return (
+        <main className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Link href="/" className="flex items-center gap-2 group">
+                            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
+                                UCFitness
+                            </h1>
+                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+                                Beta
+                            </span>
+                        </Link>
+                    </div>
+                    <div>
+                        <UserMenu user={session.user} />
+                    </div>
+                </div>
+            </header>
+
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+                {/* Back Nav & Badges */}
+                <div className="flex items-center justify-between">
+                    <Link href="/groups" className="text-gray-500 hover:text-indigo-600 transition-colors flex items-center gap-1 font-medium text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                        </svg>
+                        Back to Groups
+                    </Link>
+                    {isOwner && (
+                        <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">
+                            Owner
+                        </span>
+                    )}
+                </div>
+
+                {/* Group Info Card / Hero */}
+                <section className="relative overflow-hidden rounded-2xl border border-gray-200 shadow-lg bg-white group min-h-[200px] flex items-end">
+                    {/* Header Background */}
+                    {group.header_image_url ? (
+                        <div className="absolute inset-0">
+                            <img src={group.header_image_url} alt="Header" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10"></div>
+                        </div>
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50"></div>
+                    )}
+
+                    <div className="relative p-6 sm:p-8 w-full flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 z-10">
+                        {/* Left: Icon + Text */}
+                        <div className="flex items-center gap-6">
+                            {/* Icon */}
+                            <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-4 border-white shadow-xl overflow-hidden flex-shrink-0 bg-white flex items-center justify-center text-4xl font-black text-indigo-200">
+                                {group.image_url ? (
+                                    <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="bg-indigo-600 text-white w-full h-full flex items-center justify-center">
+                                        {group.name.substring(0, 1).toUpperCase()}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Text */}
+                            <div className={group.header_image_url ? "text-white text-shadow-sm" : "text-gray-900"}>
+                                <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">{group.name}</h1>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <div className={`px-2 py-1 rounded text-xs font-mono select-all flex items-center gap-2 ${group.header_image_url ? 'bg-white/20 text-white backdrop-blur-sm border border-white/30' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+                                        <span className="opacity-70">ID:</span>
+                                        <span className="font-bold">{group.keyword}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right: Actions */}
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                            <GroupHeaderActions group={group} isOwner={isOwner} />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Tabbed Interface or Stacked? Stacked is better for now */}
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left: Leaderboard (Main content) */}
+                    <div className="lg:col-span-7 space-y-6">
+                        <h2 className="text-lg font-bold text-gray-900">Leaderboard</h2>
+                        <GroupDetailLeaderboard
+                            rankings={rankings}
+                            userEmail={userEmail}
+                        />
+                    </div>
+
+                    {/* Right: Members & Settings */}
+                    <div className="lg:col-span-5 space-y-6">
+                        <h2 className="text-lg font-bold text-gray-900">Settings</h2>
+
+                        {/* Member Management */}
+                        <GroupMembersPanel
+                            members={members as any}
+                            groupKeyword={group.keyword}
+                            isOwner={isOwner}
+                            currentUserId={userId}
+                        />
+
+                        {/* Leave Button */}
+                        {!isOwner && (
+                            <LeaveGroupButton
+                                groupKeyword={group.keyword}
+                                groupName={group.name}
+                            />
+                        )}
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    );
+}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type Props = {
     keyword: string;
@@ -9,9 +10,10 @@ type Props = {
     userEmail?: string | null;
     index: number;
     totalCount: number;
+    groupId?: string;
 };
 
-export default function GroupRankingPanel({ keyword, neighbors, userEmail, index, totalCount }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userEmail, index, totalCount, groupId }: Props) {
     const [isLeaving, setIsLeaving] = useState(false);
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
@@ -61,14 +63,24 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
     const isFirst = index === 0;
     const isLast = index === totalCount - 1;
 
+    const HeaderContent = () => (
+        <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5 truncate group-hover/panel:text-indigo-600 transition-colors">
+            Group:
+            <span className="truncate bg-gray-100 text-indigo-600 py-0.5 px-2 rounded-full text-xs border border-gray-200">{keyword}</span>
+        </h3>
+    );
+
     return (
         <div className={`overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 relative group/panel ${isMoving ? 'opacity-50' : ''}`}>
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                 <div className="flex-1 min-w-0 pr-2">
-                    <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5 truncate">
-                        Group:
-                        <span className="truncate bg-gray-100 text-indigo-600 py-0.5 px-2 rounded-full text-xs border border-gray-200">{keyword}</span>
-                    </h3>
+                    {groupId ? (
+                        <Link href={`/group/${groupId}`}>
+                            <HeaderContent />
+                        </Link>
+                    ) : (
+                        <HeaderContent />
+                    )}
                 </div>
                 <div className="flex items-center gap-1">
                     {!isFirst && (
@@ -111,44 +123,48 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                         const isMe = entry.users.email === userEmail;
                         const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
 
-                        if (isGap) {
-                            return (
-                                <div key={`gap-${i}`} className="px-6 py-2 bg-gray-50 flex justify-center border-b border-gray-50">
-                                    <span className="text-gray-400 text-xs tracking-widest">•••</span>
-                                </div>
-                            );
-                        }
-
                         return (
-                            <div
-                                key={entry.originalRank}
-                                className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${isMe ? 'bg-indigo-50/50' : ''}`}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <span className={`
-                                        flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
-                                        ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                                            entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
-                                                entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}
-                                    `}>
-                                        {entry.originalRank}
-                                    </span>
-                                    {entry.users?.image ? (
-                                        <img className="h-10 w-10 rounded-full border border-gray-100" src={entry.users.image} alt="" />
-                                    ) : (
-                                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold">
-                                            {(entry.users?.name || '?')[0]}
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col min-w-0">
-                                        <p className={`text-sm font-bold truncate ${isMe ? 'text-gray-900' : 'text-gray-900'}`}>
-                                            {entry.users.name || 'Anonymous'}
-                                        </p>
-                                        {isMe && <span className="text-[10px] text-indigo-500 font-medium leading-none">YOU</span>}
+                            <div key={entry.originalRank}>
+                                {isGap && (
+                                    <div className="px-6 py-2 bg-gray-50 flex justify-center border-b border-gray-50">
+                                        <span className="text-gray-400 text-xs tracking-widest">•••</span>
                                     </div>
-                                </div>
-                                <div className="font-mono font-semibold text-indigo-600">
-                                    {entry.steps.toLocaleString()}
+                                )}
+                                <div
+                                    className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${isMe ? 'bg-indigo-50/50' : ''}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <span className={`
+                                            flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
+                                            ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                                                entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
+                                                    entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}
+                                        `}>
+                                            {entry.originalRank}
+                                        </span>
+                                        {entry.users?.image ? (
+                                            <img className="h-10 w-10 rounded-full border border-gray-100" src={entry.users.image} alt="" />
+                                        ) : (
+                                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold">
+                                                {(entry.users?.name || '?')[0]}
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col min-w-0">
+                                            <p className={`text-sm font-bold truncate ${isMe ? 'text-gray-900' : 'text-gray-900'}`}>
+                                                {entry.users.username ? (
+                                                    <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline">
+                                                        {entry.users.name || 'Anonymous'}
+                                                    </Link>
+                                                ) : (
+                                                    <span>{entry.users.name || 'Anonymous'}</span>
+                                                )}
+                                            </p>
+                                            {isMe && <span className="text-[10px] text-indigo-500 font-medium leading-none">YOU</span>}
+                                        </div>
+                                    </div>
+                                    <div className="font-mono font-semibold text-indigo-600">
+                                        {entry.steps.toLocaleString()}
+                                    </div>
                                 </div>
                             </div>
                         );

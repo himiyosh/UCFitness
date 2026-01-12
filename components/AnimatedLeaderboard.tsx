@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
+import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/GroupRankingPanel';
-import GroupSettings from '@/components/GroupSettings';
+
 
 const TABS: { key: Period; label: string }[] = [
     { key: 'DAILY', label: 'Today' },
@@ -16,7 +17,7 @@ const TABS: { key: Period; label: string }[] = [
 interface AnimatedLeaderboardProps {
     userEmail?: string | null;
     allGlobalRankings: Record<Period, RankingEntry[]>;
-    allGroupRankings: { keyword: string; neighbors: Record<Period, RankingEntry[]> }[];
+    allGroupRankings: { keyword: string; groupId?: string; neighbors: Record<Period, RankingEntry[]> }[];
 }
 
 // Sub-component to enforce remount animation
@@ -125,7 +126,13 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                             )}
                                                             <div>
                                                                 <p className="text-sm font-medium text-gray-900">
-                                                                    {entry.users?.name || entry.users?.email}
+                                                                    {entry.users.username ? (
+                                                                        <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline">
+                                                                            {entry.users?.name || entry.users?.email}
+                                                                        </Link>
+                                                                    ) : (
+                                                                        <span>{entry.users?.name || entry.users?.email}</span>
+                                                                    )}
                                                                     {entry.users.email === userEmail && <span className="ml-2 text-xs text-indigo-600 font-bold">(YOU)</span>}
                                                                 </p>
                                                             </div>
@@ -156,12 +163,13 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                             {allGroupRankings.map((groupData, index) => {
                                 // Calculate neighbors for this period
                                 const currentGroupRankings = groupData.neighbors[period];
-                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail);
+                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 3);
 
                                 return (
                                     <GroupRankingPanel
                                         key={groupData.keyword}
                                         keyword={groupData.keyword}
+                                        groupId={groupData.groupId}
                                         neighbors={displayRankings}
                                         userEmail={userEmail}
                                         index={index}
@@ -176,7 +184,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                         </div>
                     )}
 
-                    {userEmail && <GroupSettings />}
+
                 </div>
             </div>
         </div>
