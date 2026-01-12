@@ -5,11 +5,12 @@ export type RankingEntry = {
         name: string | null;
         image: string | null;
         email: string | null;
+        username: string | null;
     };
     originalRank: number;
 };
 
-export function getDisplayRankings(allRankings: any[], userEmail?: string | null): {
+export function getDisplayRankings(allRankings: any[], userEmail?: string | null, maxItems?: number): {
     displayRankings: RankingEntry[];
     isTruncated: boolean
 } {
@@ -20,16 +21,24 @@ export function getDisplayRankings(allRankings: any[], userEmail?: string | null
     }));
 
     if (!userEmail) {
-        // Not logged in: Just show top 5
-        return { displayRankings: rankedItems.slice(0, 5), isTruncated: rankedItems.length > 5 };
+        // Not logged in: Just show top 5 or maxItems
+        const limit = maxItems || 5;
+        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
     }
 
     const top3 = rankedItems.slice(0, 3);
     const userIndex = rankedItems.findIndex(r => r.users.email === userEmail);
 
     if (userIndex === -1) {
-        // User not in list (shouldn't happen if they have steps, but safely fallback)
-        return { displayRankings: top3, isTruncated: rankedItems.length > 3 };
+        // User not in list
+        const limit = maxItems || 3;
+        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+    }
+
+    // High Ranking User (Rank 1, 2, 3) -> Show Top 5 (or maxItems)
+    if (userIndex < 3) {
+        const limit = maxItems || 5;
+        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
     }
 
     // Neighbors: User-1, User, User+1
@@ -38,7 +47,7 @@ export function getDisplayRankings(allRankings: any[], userEmail?: string | null
     const neighbors = rankedItems.slice(start, end);
 
     // Merge Unique
-    const combined = [...top3];
+    let combined = [...top3];
     neighbors.forEach(n => {
         if (!combined.find(c => c.originalRank === n.originalRank)) {
             combined.push(n);
@@ -48,10 +57,20 @@ export function getDisplayRankings(allRankings: any[], userEmail?: string | null
     // Sort by rank again to be sure
     combined.sort((a, b) => a.originalRank - b.originalRank);
 
-    // Check if we need a gap/separator
-    // Logic: if there is a gap between the last item of 'top3' and the first item of 'neighbors'
-    // Actually, 'combined' now holds the tailored list.
-    // If we want to show a visual separator, we can infer it in the UI (e.g. if rank N+1 != rank N + 1)
+    // Apply strict limit if requested
+    if (maxItems && combined.length > maxItems) {
+        // We MUST keep the user (if they are in combined, which they should be)
+        const userEntry = combined.find(r => r.users.email === userEmail);
+
+        if (userEntry) {
+            // Take top (N-1) + User
+            const others = combined.filter(r => r.users.email !== userEmail).slice(0, maxItems - 1);
+            combined = [...others, userEntry].sort((a, b) => a.originalRank - b.originalRank);
+        } else {
+            // Should not happen as we added neighbors including user, but fallback
+            combined = combined.slice(0, maxItems);
+        }
+    }
 
     return { displayRankings: combined, isTruncated: rankedItems.length > combined.length };
 }

@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
-import GroupSettings from '@/components/GroupSettings';
 import UserMenu from '@/components/UserMenu';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -68,11 +67,13 @@ export default async function Home() {
   const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.email === userEmail);
   const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
-  // Pre-load ALL group rankings
   const allGroupRankings = await Promise.all(
     groupKeywords.map(async (keyword) => {
+      // Lookup groupId
+      const { data: grp } = await supabase.from('groups').select('id').eq('keyword', keyword).single();
+      const groupId = grp?.id;
       const rankings = await getAllRankings('GROUP', keyword);
-      return { keyword, neighbors: rankings };
+      return { keyword, groupId, neighbors: rankings };
     })
   );
 
@@ -136,8 +137,8 @@ export default async function Home() {
                     {/* Comparison Badge */}
                     <div className="mt-2 flex items-center gap-2">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${mySteps - yesterdaySteps >= 0
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : 'bg-red-50 text-red-600 border border-red-100'
+                        ? 'bg-green-100 text-green-700 border border-green-200'
+                        : 'bg-red-50 text-red-600 border border-red-100'
                         }`}>
                         {mySteps - yesterdaySteps >= 0 ? (
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
@@ -198,9 +199,14 @@ export default async function Home() {
                     Every step counts differently in every group! Join more groups to compete with different people and maintain your streak.
                   </p>
 
-                  <Link href="/profile" className="mt-6 px-5 py-2 bg-white text-indigo-600 text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
-                    View Details →
-                  </Link>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link href="/profile" className="px-5 py-2 bg-white text-indigo-600 text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
+                      View Profile
+                    </Link>
+                    <Link href="/groups" className="px-5 py-2 bg-indigo-600/30 backdrop-blur-md text-white border border-white/20 text-sm font-bold rounded-full hover:bg-indigo-600/50 transition-colors inline-flex items-center gap-2">
+                      My Groups
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}

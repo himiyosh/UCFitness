@@ -46,6 +46,7 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
         name,
         image,
         email,
+        username,
         group_keyword
       )
     `)
@@ -119,6 +120,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         name,
         image,
         email,
+        username,
         group_keyword
       )
     `)
@@ -193,6 +195,184 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
             .sort((a, b) => b.steps - a.steps);
 
         result[key] = list;
+    });
+
+    return result as Record<Period, any[]>;
+};
+
+// New Functions using 'groups' table
+
+export const getGroupRankings = async (groupId: string, period: Period) => {
+    // JST Calculation
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const jstDateStr = formatter.format(now);
+
+    let startDate = jstDateStr;
+
+    if (period === 'WEEKLY') {
+        const currentDate = new Date(`${jstDateStr}T00:00:00Z`);
+        const utcDay = currentDate.getUTCDay();
+        const daysToSubtract = (utcDay + 6) % 7;
+        const monday = new Date(currentDate);
+        monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+        startDate = monday.toISOString().split('T')[0];
+    } else if (period === 'MONTHLY') {
+        const [y, m] = jstDateStr.split('-');
+        startDate = `${y}-${m}-01`;
+    } else if (period === 'YEARLY') {
+        const y = jstDateStr.split('-')[0];
+        startDate = `${y}-01-01`;
+    }
+
+    // Join group_members -> users -> daily_steps
+    const { data: groupMembers, error: memberError } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+
+    if (memberError || !groupMembers) {
+        console.error('Error fetching group members:', memberError);
+        return [];
+    }
+
+    const userIds = groupMembers.map(m => m.user_id);
+
+    if (userIds.length === 0) return [];
+
+    const { data: rawSteps, error } = await supabase
+        .from('daily_steps')
+        .select(`
+            steps,
+            date,
+            users!inner (
+                id,
+                name,
+                image,
+                email,
+                username
+            )
+        `)
+        .in('user_id', userIds)
+        .gte('date', startDate);
+
+    if (error) {
+        console.error(`Error fetching group rankings for ${groupId}:`, error);
+        return [];
+    }
+
+    // Aggregate
+    const userMap = new Map<string, any>();
+    rawSteps?.forEach((row: any) => {
+        const email = row.users.email;
+        if (!userMap.has(email)) {
+            userMap.set(email, {
+                steps: 0,
+                users: row.users
+            });
+        }
+        const entry = userMap.get(email);
+        entry.steps += row.steps;
+    });
+
+    return Array.from(userMap.values()).sort((a, b) => b.steps - a.steps);
+};
+
+export const getAllGroupRankings = async (groupId: string) => {
+    // JST Calculation (Robust)
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const todayStr = formatter.format(now); // YYYY-MM-DD (JST)
+
+    // Weekly Start
+    const currentDate = new Date(`${todayStr}T00:00:00Z`);
+    const utcDay = currentDate.getUTCDay();
+    const daysToSubtract = (utcDay + 6) % 7;
+    const monday = new Date(currentDate);
+    monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+    const weeklyStartStr = monday.toISOString().split('T')[0];
+
+    // Monthly Start
+    const [y, m] = todayStr.split('-');
+    const monthlyStartStr = `${y}-${m}-01`;
+
+    // Yearly Start
+    const yearlyStartStr = `${y}-01-01`;
+
+    // Fetch Members
+    const { data: groupMembers } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+
+    const userIds = groupMembers?.map(m => m.user_id) || [];
+    if (userIds.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+
+    const { data: rawSteps, error } = await supabase
+        .from('daily_steps')
+        .select(`
+            steps,
+            date,
+            users!inner (
+                id,
+                name,
+                image,
+                email,
+                username
+            )
+        `)
+        .in('user_id', userIds)
+        .gte('date', yearlyStartStr);
+
+    if (error) {
+        console.error('Error fetching all group rankings:', error);
+        return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+    }
+
+    // Aggregate
+    const aggMap = new Map<string, any>();
+
+    rawSteps?.forEach((row: any) => {
+        const email = row.users.email;
+        if (!aggMap.has(email)) {
+            aggMap.set(email, {
+                users: row.users,
+                DAILY: 0,
+                WEEKLY: 0,
+                MONTHLY: 0,
+                YEARLY: 0
+            });
+        }
+        const entry = aggMap.get(email);
+        const steps = row.steps;
+        const date = row.date;
+
+        entry.YEARLY += steps;
+        if (date >= monthlyStartStr) entry.MONTHLY += steps;
+        if (date >= weeklyStartStr) entry.WEEKLY += steps;
+        if (date === todayStr) entry.DAILY += steps;
+    });
+
+    const result: Record<string, any[]> = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+    const allEntries = Array.from(aggMap.values());
+
+    (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+        result[key] = allEntries.map(e => ({
+            steps: e[key],
+            users: e.users
+        }))
+            .filter(e => e.steps > 0 || key === 'DAILY')
+            .sort((a, b) => b.steps - a.steps);
     });
 
     return result as Record<Period, any[]>;
