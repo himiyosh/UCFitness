@@ -159,6 +159,10 @@ export default async function Home() {
     YEARLY: compYearly
   };
 
+  // Determine Banner Image (Priority: First group's header image -> Default Gradient)
+  const primaryGroupBanner = allGroupRankings.length > 0 ? allGroupRankings[0].header_image_url : null;
+  const userImage = session?.user?.image;
+
   return (
     <main className="min-h-screen bg-white">
       {/* Rich Header */}
@@ -292,14 +296,26 @@ export default async function Home() {
 
             {/* Motivation / Status (Right: 7 cols) - Adjusted styling to match */}
             {session && (
-              <div className="lg:col-span-7 flex flex-col justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 rounded-2xl p-4 sm:p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden">
+              <div className="lg:col-span-7 flex flex-col justify-center h-full rounded-2xl p-4 sm:p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden group">
+
+                {/* Background Image or Gradient */}
+                {primaryGroupBanner ? (
+                  <>
+                    <div className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105" style={{ backgroundImage: `url(${primaryGroupBanner})` }}></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/90 to-purple-900/80"></div>
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600"></div>
+                )}
+
+
                 {/* Decorative circles */}
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
 
                 {/* Animation */}
-                <div className="absolute top-1/2 right-4 sm:right-12 transform -translate-y-1/2 opacity-80 pointer-events-none">
-                  <RunnerAnimation />
+                <div className="absolute top-1/2 right-4 sm:right-12 transform -translate-y-1/2 opacity-100 pointer-events-none">
+                  <RunnerAnimation userImage={userImage} />
                 </div>
 
                 <div className="relative z-10">

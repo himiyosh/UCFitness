@@ -11,6 +11,7 @@ import GroupSettingsLayout from "@/components/GroupSettingsLayout";
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/ranking-service";
 import { getGroupCompetitionRankings } from "@/lib/group-ranking-service";
+import JoinGroupPreview from "@/components/JoinGroupPreview";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,34 +27,66 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const userEmail = session.user.email;
     const { groupId } = params;
 
-    // 1. Fetch Group & Check Access
-    const { data: membership, error: membershipError } = await supabase
+    // 1. Fetch Group Details (Regardless of membership)
+    const { data: group, error: groupError } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('id', groupId)
+        .single();
+
+    if (groupError || !group) {
+        return notFound();
+    }
+
+    // 2. Check Membership
+    const { data: membership } = await supabase
         .from('group_members')
-        .select(`
-        role,
-        groups (
-            id,
-            name,
-            keyword,
-            owner_id,
-            image_url,
-            header_image_url
-        )
-    `)
+        .select('role')
         .eq('group_id', groupId)
         .eq('user_id', userId)
         .single();
 
-    if (membershipError || !membership) {
-        // Check if group exists at all? 
-        // If it exists but user is not member -> Redirect to Groups page or 404
-        // Use notFound for security/simplicity or redirect
-        return notFound();
-    }
-
-    const group = membership.groups as any;
+    const isMember = !!membership;
     // @ts-ignore
-    const isOwner = membership.role === 'OWNER';
+    const isOwner = membership?.role === 'OWNER';
+
+    // 3. Handle Non-Members -> Show Join Screen
+    if (!isMember) {
+        return (
+            <main className="min-h-screen bg-gray-50">
+                {/* Header */}
+                <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
+                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Link href="/" className="flex items-center gap-2 group">
+                                <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
+                                    UCFitness
+                                </h1>
+                                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+                                    Beta
+                                </span>
+                            </Link>
+                        </div>
+                        <div>
+                            <UserMenu user={session.user} />
+                        </div>
+                    </div>
+                </header>
+
+                <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="mb-6">
+                        <Breadcrumbs
+                            items={[
+                                { label: 'Groups', href: '/groups' },
+                                { label: group.name }
+                            ]}
+                        />
+                    </div>
+                    <JoinGroupPreview group={group} userId={userId} />
+                </div>
+            </main>
+        );
+    }
 
     // 2. Fetch Rankings
     const rankings = await getAllGroupRankings(groupId);

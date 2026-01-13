@@ -104,13 +104,14 @@ export const authOptions: NextAuthOptions = {
                 // Fetch the actual UUID from Supabase users table
                 const { data } = await supabaseAdmin
                     .from("users")
-                    .select("id, name, username")
+                    .select("id, name, username, image")
                     .eq("email", session.user.email)
                     .single();
 
                 if (data) {
                     session.user.id = data.id;
                     session.user.name = data.name; // Use DB name (Display Name)
+                    session.user.image = data.image; // Use DB image
                     (session.user as any).username = data.username; // Expose User ID
                 } else {
                     // Fallback (shouldn't happen if signIn succeeded)
