@@ -14,7 +14,7 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
             id: profile.user.encodedId,
             name: profile.user.fullName,
             image: profile.user.avatar,
-            email: profile.user.email || `${profile.user.encodedId}@fitbit.placeholder.com`, // Fallback for DB constraint
+            email: profile.user.email || `${profile.user.encodedId}@pending.setup`, // Distinct placeholder for onboarding detection
         };
     },
     clientId: options.clientId,
@@ -120,10 +120,29 @@ export const authOptions: NextAuthOptions = {
             }
             return session;
         },
-        async jwt({ token, account }: any) {
-            if (account) {
+        async jwt({ token, account, user, trigger, session }: any) {
+            // Initial sign in
+            if (account && user) {
                 token.accessToken = account.access_token;
+
+                // Fetch username from DB to persist in token (crucial for middleware)
+                const { data } = await supabaseAdmin
+                    .from("users")
+                    .select("username")
+                    .eq("email", user.email)
+                    .single();
+
+                if (data) {
+                    token.username = data.username;
+                }
             }
+
+            // Client side session update (e.g. after setup)
+            if (trigger === "update" && session?.user) {
+                token.username = session.user.username;
+                token.email = session.user.email;
+            }
+
             return token;
         },
     },
