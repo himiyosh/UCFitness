@@ -8,7 +8,9 @@ import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
 import UserMenu from "@/components/UserMenu";
 import GroupHeaderActions from "@/components/GroupHeaderActions";
 import GroupSettingsLayout from "@/components/GroupSettingsLayout";
+import Breadcrumbs from '@/components/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/ranking-service";
+import { getGroupCompetitionRankings } from "@/lib/group-ranking-service";
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +58,21 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     // 2. Fetch Rankings
     const rankings = await getAllGroupRankings(groupId);
 
+    // 3. Fetch Group Competition Rankings
+    const [compDaily, compWeekly, compMonthly, compYearly] = await Promise.all([
+        getGroupCompetitionRankings('DAILY'),
+        getGroupCompetitionRankings('WEEKLY'),
+        getGroupCompetitionRankings('MONTHLY'),
+        getGroupCompetitionRankings('YEARLY'),
+    ]);
+
+    const groupCompetitionRankings = {
+        DAILY: compDaily,
+        WEEKLY: compWeekly,
+        MONTHLY: compMonthly,
+        YEARLY: compYearly
+    };
+
     // 3. Fetch All Members for Management Panel
     const { data: members } = await supabase
         .from('group_members')
@@ -98,12 +115,12 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
 
                 {/* Back Nav & Badges */}
                 <div className="flex items-center justify-between">
-                    <Link href="/groups" className="text-gray-500 hover:text-indigo-600 transition-colors flex items-center gap-1 font-medium text-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                        </svg>
-                        Back to Groups
-                    </Link>
+                    <Breadcrumbs
+                        items={[
+                            { label: 'Groups', href: '/groups' },
+                            { label: group.name }
+                        ]}
+                    />
                     {isOwner && (
                         <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">
                             Owner
@@ -165,6 +182,8 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         <GroupDetailLeaderboard
                             rankings={rankings}
                             userEmail={userEmail}
+                            groupCompetitionRankings={groupCompetitionRankings}
+                            currentGroupId={groupId}
                         />
                     </div>
 

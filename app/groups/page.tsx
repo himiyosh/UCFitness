@@ -7,8 +7,13 @@ import Link from "next/link";
 import GroupList from "@/components/GroupList";
 import UserMenu from "@/components/UserMenu";
 import GroupSettings from "@/components/GroupSettings";
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export const dynamic = 'force-dynamic';
+
+import { getAllGroupRankings } from "@/lib/ranking-service";
+
+// ... imports ...
 
 export default async function MyGroupsPage() {
     const session = await getServerSession(authOptions);
@@ -18,6 +23,7 @@ export default async function MyGroupsPage() {
     }
 
     const userId = (session.user as any).id;
+    const userEmail = session.user.email;
 
     // Fetch User's Group Preference (Order)
     const { data: userData } = await supabase
@@ -53,8 +59,23 @@ export default async function MyGroupsPage() {
         groups: Array.isArray(m.groups) ? m.groups[0] : m.groups
     }));
 
+    // Fetch Rankings for each group to get "My Rank"
+    const membershipsWithRank = await Promise.all(normalizedMemberships.map(async (m: any) => {
+        // Optimization: We could perhaps fetch only WEEKLY but the service fetches all.
+        // Ideally we cache this or use a lighter query, but for now we follow the plan.
+        const rankings = await getAllGroupRankings(m.groups.id);
+        const weeklyRankings = rankings['WEEKLY'];
+        const myRankIndex = weeklyRankings.findIndex((r: any) => r.users.email === userEmail);
+
+        return {
+            ...m,
+            rank: myRankIndex !== -1 ? myRankIndex + 1 : null,
+            totalMembers: weeklyRankings.length
+        };
+    }));
+
     // Sort memberships based on groupOrder
-    const sortedMemberships = normalizedMemberships.sort((a: any, b: any) => {
+    const sortedMemberships = membershipsWithRank.sort((a: any, b: any) => {
         const indexA = groupOrder.indexOf(a.groups.keyword);
         const indexB = groupOrder.indexOf(b.groups.keyword);
 
@@ -94,14 +115,9 @@ export default async function MyGroupsPage() {
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
                 {/* Page Title & Back Nav */}
-                <div className="flex items-center gap-4">
-                    <Link
-                        href="/"
-                        className="p-2 -ml-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-                        title="Back to Dashboard"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    </Link>
+                {/* Page Title & Back Nav */}
+                <div className="space-y-4">
+                    <Breadcrumbs items={[{ label: 'Groups' }]} />
                     <h1 className="text-2xl font-bold text-gray-900">My Groups</h1>
                 </div>
 

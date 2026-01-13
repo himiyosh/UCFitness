@@ -11,28 +11,34 @@ export const contentType = 'image/png';
 export default function Icon() {
     return new ImageResponse(
         (
-            // ImageResponse JSX element
             <div
                 style={{
-                    fontSize: 20,
-                    background: 'linear-gradient(to bottom right, #4f46e5, #7c3aed)',
                     width: '100%',
                     height: '100%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'white',
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
                     borderRadius: '20%',
-                    fontWeight: 800,
                 }}
             >
-                UC
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="white"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    <path
+                        d="M13 10V3L4 14H11V21L20 10H13Z"
+                        stroke="white"
+                        strokeWidth="0"
+                        fill="white"
+                    />
+                </svg>
             </div>
         ),
-        // ImageResponse options
         {
-            // For convenience, we can re-use the exported icons size metadata
-            // config to also set the ImageResponse's width and height.
             ...size,
         }
     );
