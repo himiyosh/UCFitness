@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/GroupRankingPanel';
+import GroupCompetitionList from '@/components/GroupCompetitionList';
+import { GroupRankingEntry } from '@/lib/group-ranking-service';
 
 
 const TABS: { key: Period; label: string }[] = [
@@ -17,7 +19,14 @@ const TABS: { key: Period; label: string }[] = [
 interface AnimatedLeaderboardProps {
     userEmail?: string | null;
     allGlobalRankings: Record<Period, RankingEntry[]>;
-    allGroupRankings: { keyword: string; groupId?: string; neighbors: Record<Period, RankingEntry[]> }[];
+    allGroupRankings: {
+        keyword: string;
+        groupId?: string;
+        header_image_url?: string | null;
+        image_url?: string | null;
+        neighbors: Record<Period, RankingEntry[]>
+    }[];
+    groupCompetitionRankings?: Record<Period, GroupRankingEntry[]>;
 }
 
 // Sub-component to enforce remount animation
@@ -39,7 +48,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
     );
 }
 
-export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allGroupRankings }: AnimatedLeaderboardProps) {
+export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
 
@@ -150,6 +159,22 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                             </FadeInWrapper>
                         </div>
                     </div>
+
+
+                    {/* Group Competition Ranking */}
+                    {groupCompetitionRankings && groupCompetitionRankings[period] && (
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all duration-300">
+                            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+                                <h3 className="text-base font-bold text-gray-900">
+                                    Group Leaderboard
+                                </h3>
+                                <p className="text-xs text-gray-500">By Average Steps</p>
+                            </div>
+                            <GroupCompetitionList
+                                initialRankings={groupCompetitionRankings[period]}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Column Stack */}
@@ -184,17 +209,104 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                 const currentGroupRankings = groupData.neighbors[period];
                                 const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 3);
 
+                                // Find user's rank in this group
+                                const myRankIndex = currentGroupRankings.findIndex(r => r.users.email === userEmail);
+                                const myRankEntry = myRankIndex !== -1 ? currentGroupRankings[myRankIndex] : undefined;
+                                const myRank = myRankIndex + 1;
+
+                                // Calculate Average
+                                const totalSteps = currentGroupRankings.reduce((sum, r) => sum + r.steps, 0);
+                                const averageSteps = currentGroupRankings.length > 0 ? Math.round(totalSteps / currentGroupRankings.length) : 0;
+
+                                // Calculate Group Global Rank
+                                const periodGroupRankings = groupCompetitionRankings?.[period];
+                                const groupRankIndex = periodGroupRankings?.findIndex(g => g.groupId === groupData.groupId);
+                                const groupRank = groupRankIndex !== undefined && groupRankIndex !== -1 ? groupRankIndex + 1 : undefined;
+                                const totalGroups = periodGroupRankings?.length || 0;
+
                                 return (
-                                    <FadeInWrapper key={`${groupData.keyword}-${period}`}>
-                                        <GroupRankingPanel
-                                            keyword={groupData.keyword}
-                                            groupId={groupData.groupId}
-                                            neighbors={displayRankings}
-                                            userEmail={userEmail}
-                                            index={0}
-                                            totalCount={1}
-                                        />
-                                    </FadeInWrapper>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {/* My Rank Display */}
+                                            {myRankEntry && (
+                                                <Link href={`/group/${groupData.groupId}`} className="relative rounded-xl overflow-hidden shadow-lg animate-in fade-in zoom-in duration-300 group block hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500 transition-all">
+                                                    {/* Background Image or Gradient */}
+                                                    <div className="absolute inset-0 z-0">
+                                                        {groupData.header_image_url ? (
+                                                            <>
+                                                                <img
+                                                                    src={groupData.header_image_url}
+                                                                    alt=""
+                                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                                                />
+                                                                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40"></div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="w-full h-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="relative z-10 p-4 text-white flex items-center justify-between">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                {groupData.image_url && (
+                                                                    <img src={groupData.image_url} className="w-4 h-4 rounded-full border border-white/30" />
+                                                                )}
+                                                                <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Your Rank</p>
+                                                            </div>
+                                                            <div className="flex items-baseline gap-2">
+                                                                <span className="text-3xl font-black">#{myRank}</span>
+                                                                <span className="text-xs sm:text-sm font-medium opacity-90 line-clamp-1">in {groupData.keyword}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="text-2xl font-bold tracking-tight">{myRankEntry.steps.toLocaleString()}</div>
+                                                            <div className="text-xs text-white/80 font-medium uppercase tracking-wide">steps</div>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            )}
+
+                                            {/* Group Average Display */}
+                                            <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600">
+                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Group Rank</p>
+                                                </div>
+                                                <div className="flex items-baseline gap-2">
+                                                    {groupRank ? (
+                                                        <>
+                                                            <span className="text-3xl font-black text-indigo-600 tracking-tight">#{groupRank}</span>
+                                                            <span className="text-sm font-bold text-gray-400">/ {totalGroups}</span>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-xl font-bold text-gray-400">N/A</span>
+                                                    )}
+                                                </div>
+                                                <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] uppercase text-gray-400 font-bold">Average</span>
+                                                        <span className="text-sm font-bold text-gray-700">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <FadeInWrapper key={`${groupData.keyword}-${period}`}>
+                                            <GroupRankingPanel
+                                                keyword={groupData.keyword}
+                                                groupId={groupData.groupId}
+                                                neighbors={displayRankings}
+                                                userEmail={userEmail}
+                                                index={0}
+                                                totalCount={1}
+                                            />
+                                        </FadeInWrapper>
+                                    </div>
                                 );
                             })()}
                         </>
@@ -205,6 +317,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                     )}
                 </div>
             </div>
+
         </div>
     );
 }

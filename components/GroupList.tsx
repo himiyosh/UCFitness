@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 interface GroupMembership {
     role: string;
     joined_at: string;
+    rank?: number | null;
+    totalMembers?: number;
     groups: {
         id: string;
         name: string;
@@ -114,6 +116,16 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                     <Link href={`/group/${m.groups.id}`} className="block relative h-full flex flex-row sm:flex-col min-h-[110px] sm:min-h-0">
                         {/* Banner Section */}
                         <div className="w-20 sm:w-full h-auto sm:h-24 bg-indigo-50 relative overflow-hidden shrink-0 border-r sm:border-r-0 border-gray-100">
+                            {/* Rank Badge */}
+                            {m.rank && (
+                                <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
+                                    ${m.rank === 1 ? 'bg-yellow-300 text-yellow-900' :
+                                        m.rank === 2 ? 'bg-gray-300 text-gray-900' :
+                                            m.rank === 3 ? 'bg-orange-300 text-orange-900' : 'bg-black/50 text-white sm:bg-white/90 sm:text-indigo-900'}
+                                `}>
+                                    #{m.rank}
+                                </div>
+                            )}
                             {m.groups.header_image_url ? (
                                 <div className="absolute inset-0">
                                     <img

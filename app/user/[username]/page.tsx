@@ -7,7 +7,7 @@ import Link from 'next/link';
 import ActivityGraph from '@/components/ActivityGraph';
 import UserMenu from '@/components/UserMenu';
 import ProfileHeader from '@/components/ProfileHeader';
-import BackButton from '@/components/BackButton';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -127,7 +127,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
 
                 <div className="mb-6">
-                    <BackButton />
+                    <Breadcrumbs items={[{ label: user.name || username }]} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

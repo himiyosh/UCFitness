@@ -5,9 +5,12 @@ import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getAllRankings } from '@/lib/ranking-service';
+import { getAllRankings, getAllGroupRankings } from '@/lib/ranking-service';
+import { getGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
+import GoalProgressChart from '@/components/GoalProgressChart';
+import RunnerAnimation from '@/components/RunnerAnimation';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,16 +24,18 @@ export default async function Home() {
   let yesterdaySteps = 0;
   let lastWeekSteps = 0;
   let lastMonthSteps = 0;
+  let stepGoal = 10000;
 
   if (session?.user && (session.user as any).id) {
     const userId = (session.user as any).id;
     // Fetch current user's group keywords
     const { data: userData } = await supabase
       .from('users')
-      .select('group_keyword, username')
+      .select('group_keyword, username, step_goal')
       .eq('id', userId)
       .single();
 
+    stepGoal = userData?.step_goal || 10000;
     groupKeywords = userData?.group_keyword || [];
     username = userData?.username;
 
@@ -117,13 +122,42 @@ export default async function Home() {
 
   const allGroupRankings = await Promise.all(
     groupKeywords.map(async (keyword) => {
-      // Lookup groupId
-      const { data: grp } = await supabase.from('groups').select('id').eq('keyword', keyword).single();
+      // Lookup groupId & images
+      const { data: grp } = await supabase.from('groups').select('id, header_image_url, image_url').eq('keyword', keyword).single();
       const groupId = grp?.id;
-      const rankings = await getAllRankings('GROUP', keyword);
-      return { keyword, groupId, neighbors: rankings };
+
+      let rankings;
+      if (groupId) {
+        rankings = await getAllGroupRankings(groupId);
+      } else {
+        // Fallback if no group ID found (shouldn't happen if keyword exists)
+        rankings = await getAllRankings('GROUP', keyword);
+      }
+
+      return {
+        keyword,
+        groupId,
+        header_image_url: grp?.header_image_url,
+        image_url: grp?.image_url,
+        neighbors: rankings
+      };
     })
   );
+
+  // Fetch Group Competition Rankings
+  const [compDaily, compWeekly, compMonthly, compYearly] = await Promise.all([
+    getGroupCompetitionRankings('DAILY'),
+    getGroupCompetitionRankings('WEEKLY'),
+    getGroupCompetitionRankings('MONTHLY'),
+    getGroupCompetitionRankings('YEARLY'),
+  ]);
+
+  const groupCompetitionRankings = {
+    DAILY: compDaily,
+    WEEKLY: compWeekly,
+    MONTHLY: compMonthly,
+    YEARLY: compYearly
+  };
 
   return (
     <main className="min-h-screen bg-white">
@@ -174,28 +208,35 @@ export default async function Home() {
                   </div>
 
                   {/* Today's Main Stat */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 drop-shadow-sm">
-                        {mySteps.toLocaleString()}
-                      </span>
-                      <span className="text-sm font-semibold text-gray-400">steps today</span>
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 drop-shadow-sm">
+                          {mySteps.toLocaleString()}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-400">steps today</span>
+                      </div>
+
+                      {/* Comparison Badge */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${mySteps - yesterdaySteps >= 0
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : 'bg-red-50 text-red-600 border border-red-100'
+                          }`}>
+                          {mySteps - yesterdaySteps >= 0 ? (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                          ) : (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                          )}
+                          {Math.abs(mySteps - yesterdaySteps).toLocaleString()}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">vs yesterday</span>
+                      </div>
                     </div>
 
-                    {/* Comparison Badge */}
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${mySteps - yesterdaySteps >= 0
-                        ? 'bg-green-100 text-green-700 border border-green-200'
-                        : 'bg-red-50 text-red-600 border border-red-100'
-                        }`}>
-                        {mySteps - yesterdaySteps >= 0 ? (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                        ) : (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                        )}
-                        {Math.abs(mySteps - yesterdaySteps).toLocaleString()}
-                      </span>
-                      <span className="text-xs text-gray-400 font-medium">vs yesterday</span>
+                    {/* Goal Progress Chart */}
+                    <div className="flex-shrink-0 animate-in fade-in zoom-in duration-500 delay-150">
+                      <GoalProgressChart current={mySteps} goal={stepGoal} size={84} />
                     </div>
                   </div>
 
@@ -251,26 +292,34 @@ export default async function Home() {
 
             {/* Motivation / Status (Right: 7 cols) - Adjusted styling to match */}
             {session && (
-              <div className="lg:col-span-7 flex flex-col justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 rounded-2xl p-6 sm:p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden">
+              <div className="lg:col-span-7 flex flex-col justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 rounded-2xl p-4 sm:p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden">
                 {/* Decorative circles */}
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
 
+                {/* Animation */}
+                <div className="absolute top-1/2 right-4 sm:right-12 transform -translate-y-1/2 opacity-80 pointer-events-none">
+                  <RunnerAnimation />
+                </div>
+
                 <div className="relative z-10">
-                  <div className="mb-4 inline-flex items-center justify-center p-1.5 sm:p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div className="flex items-center gap-3 sm:block">
+                    <div className="mb-0 sm:mb-4 inline-flex items-center justify-center p-1.5 sm:p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <h4 className="font-black text-lg sm:text-2xl mb-0 sm:mb-2 tracking-tight">Keep Stepping!</h4>
                   </div>
-                  <h4 className="font-black text-xl sm:text-2xl mb-2 tracking-tight">Keep Stepping!</h4>
-                  <p className="opacity-90 text-xs sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50">
-                    Every step counts differently in every group! Join more groups to compete with different people and maintain your streak.
+
+                  <p className="opacity-90 text-[10px] sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50 mt-1 sm:mt-0">
+                    Every step counts! Join groups to compete and maintain your streak.
                   </p>
 
-                  <div className="mt-4 sm:mt-6 flex flex-wrap gap-3">
-                    <Link href="/profile" className="px-4 py-1.5 sm:px-5 sm:py-2 bg-white text-indigo-600 text-xs sm:text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
-                      View Profile
+                  <div className="mt-3 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
+                    <Link href="/profile" className="px-3 py-1 sm:px-5 sm:py-2 bg-white text-indigo-600 text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
+                      Profile
                     </Link>
-                    <Link href="/groups" className="px-4 py-1.5 sm:px-5 sm:py-2 bg-indigo-600/30 backdrop-blur-md text-white border border-white/20 text-xs sm:text-sm font-bold rounded-full hover:bg-indigo-600/50 transition-colors inline-flex items-center gap-2">
-                      My Groups
+                    <Link href="/groups" className="px-3 py-1 sm:px-5 sm:py-2 bg-indigo-600/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-indigo-600/50 transition-colors inline-flex items-center gap-2">
+                      Groups
                     </Link>
                   </div>
                 </div>
@@ -283,6 +332,7 @@ export default async function Home() {
             userEmail={userEmail}
             allGlobalRankings={allGlobalRankings}
             allGroupRankings={allGroupRankings}
+            groupCompetitionRankings={groupCompetitionRankings}
           />
 
         </div>
