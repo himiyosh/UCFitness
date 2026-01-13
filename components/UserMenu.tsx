@@ -59,16 +59,39 @@ export default function UserMenu({ user }: UserMenuProps) {
             {/* Dropdown menu */}
             {isOpen && (
                 <div
-                    className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    className="absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="user-menu-button"
                     tabIndex={-1}
                 >
-                    <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
-                        Signed in as<br />
-                        <strong className="text-gray-900 truncate block">{user.username || user.name || user.email}</strong>
-                    </div>
+                    <Link
+                        href="/profile"
+                        className="block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                        onClick={() => setIsOpen(false)}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0">
+                                {user.image ? (
+                                    <img
+                                        className="h-10 w-10 rounded-full border border-gray-200 object-cover group-hover:border-indigo-300 transition-colors"
+                                        src={user.image}
+                                        alt=""
+                                    />
+                                ) : (
+                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm border border-indigo-200 group-hover:border-indigo-300 transition-colors">
+                                        {user.name?.[0] || 'U'}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <span className="block text-xs text-gray-500 mb-0.5 font-medium">Signed in as</span>
+                                <p className="text-sm font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                                    {user.username || user.name || user.email}
+                                </p>
+                            </div>
+                        </div>
+                    </Link>
 
                     <Link
                         href="/groups"
@@ -78,16 +101,6 @@ export default function UserMenu({ user }: UserMenuProps) {
                         onClick={() => setIsOpen(false)}
                     >
                         My Groups
-                    </Link>
-
-                    <Link
-                        href="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                        tabIndex={-1}
-                        onClick={() => setIsOpen(false)}
-                    >
-                        Edit Profile
                     </Link>
 
                     <button
