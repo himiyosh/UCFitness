@@ -33,7 +33,10 @@ export default withAuth(
             // @ts-ignore
             const hasUsername = !!token.username; // Need to ensure username is in JWT
 
+            // console.log(`[Middleware] Check. Email: ${email}, Username: ${token.username}, IsPending: ${isPendingEmail}`);
+
             if (isPendingEmail || !hasUsername) {
+                console.log(`[Middleware] Redirecting to /setup. Email: ${email}, Username: ${token.username}`);
                 return NextResponse.redirect(new URL('/setup', req.url));
             }
         }
@@ -42,7 +45,7 @@ export default withAuth(
     },
     {
         callbacks: {
-            authorized: ({ token }) => !!token,
+            authorized: () => true,
         },
     }
 );
