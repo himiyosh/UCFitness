@@ -11,6 +11,7 @@ import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
 import GoalProgressChart from '@/components/GoalProgressChart';
 import RunnerAnimation from '@/components/RunnerAnimation';
+import AutoSync from '@/components/AutoSync';
 
 export const dynamic = 'force-dynamic';
 
@@ -350,6 +351,8 @@ export default async function Home() {
             allGroupRankings={allGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}
           />
+
+          <AutoSync />
 
         </div>
       </div>
