@@ -1,5 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import { supabaseAdmin } from "./supabase";
+import { backfillUserSteps } from "./step-manager";
 
 // Custom Fitbit Provider since it's missing from the installed next-auth package
 const FitbitProvider = (options: { clientId: string; clientSecret: string }) => ({
@@ -103,18 +104,28 @@ export const authOptions: NextAuthOptions = {
                 console.log(`[Auth] Creating new user: ${user.email}`);
                 // New user: Insert everything including name
                 // Note: user.email might be the pending one here.
-                const { error: insertError } = await supabaseAdmin.from("users").insert({
-                    email: user.email,
-                    name: user.name,
-                    image: user.image,
-                    provider: account.provider,
-                    provider_account_id: account.providerAccountId,
-                    access_token: account.access_token,
-                    refresh_token: account.refresh_token,
-                    token_expires_at: account.expires_at,
-                    updated_at: new Date().toISOString(),
-                });
+                const { data: newUser, error: insertError } = await supabaseAdmin
+                    .from("users")
+                    .insert({
+                        email: user.email,
+                        name: user.name,
+                        image: user.image,
+                        provider: account.provider,
+                        provider_account_id: account.providerAccountId,
+                        access_token: account.access_token,
+                        refresh_token: account.refresh_token,
+                        token_expires_at: account.expires_at,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .select()
+                    .single();
+
                 error = insertError;
+
+                if (newUser && !insertError) {
+                    console.log(`[Auth] New user created (ID: ${newUser.id}). Triggering backfill for steps history...`);
+                    await backfillUserSteps(newUser.id);
+                }
             }
 
             if (error) {
@@ -174,6 +185,27 @@ export const authOptions: NextAuthOptions = {
                     }
                 } else {
                     console.log(`[Auth] JWT DB Lookup Failed for ProvID: ${account.providerAccountId}`);
+                }
+            } else if (!token.username && token.sub) {
+                // Recovery: If token exists but has no username (e.g. session persistence issue or pre-migration session)
+                // Try to find user by Fitbit ID (token.sub)
+                // token.sub is the providerAccountId (Fitbit ID) because user.id in NextAuth (JWT strategy) usually maps to it unless customized.
+                // Wait, let's be careful. In 'profile' callback we returned id: encodedId.
+                // So token.sub IS the Fitbit ID.
+
+                console.log(`[Auth] JWT missing username, attempting recovery for sub: ${token.sub}`);
+                const { data } = await supabaseAdmin
+                    .from("users")
+                    .select("username, email")
+                    .eq("provider_account_id", token.sub)
+                    .single();
+
+                if (data) {
+                    console.log(`[Auth] JWT Recovery Success. Username: ${data.username}`);
+                    token.username = data.username;
+                    if (data.email) {
+                        token.email = data.email;
+                    }
                 }
             }
 
