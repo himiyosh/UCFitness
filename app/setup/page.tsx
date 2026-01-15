@@ -14,19 +14,42 @@ export default function SetupPage() {
     const [needsEmail, setNeedsEmail] = useState(false);
 
     useEffect(() => {
-        if (session?.user) {
-            // Check if email needs update
-            if (session.user.email?.includes('@pending.setup')) {
-                setNeedsEmail(true);
-            } else {
-                setEmail(session.user.email || '');
-            }
+        const checkStatus = async () => {
+            if (session?.user) {
+                // Check if email needs update
+                if (session.user.email?.includes('@pending.setup')) {
+                    setNeedsEmail(true);
+                } else {
+                    setEmail(session.user.email || '');
+                }
 
-            // Check if username is already set (unlikely if we are here via middleware, but possible directly)
-            // Note: session.user.username might be populated if we modified type, otherwise we rely on middleware check concept
-            // For now, assume empty.
-        }
-    }, [session]);
+                // Self-healing: Check if we are actually already set up in DB
+                try {
+                    const res = await fetch('/api/user/status');
+                    const data = await res.json();
+
+                    if (data.isSetup && data.username) {
+                        console.log('User already set up within DB. repairing session...');
+                        // Force session update
+                        await update({
+                            ...session,
+                            user: {
+                                ...session?.user,
+                                email: data.email,
+                                username: data.username
+                            }
+                        });
+                        router.refresh();
+                        router.push('/');
+                    }
+                } catch (e) {
+                    console.error("Failed to check status", e);
+                }
+            }
+        };
+
+        checkStatus();
+    }, [session, update, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
