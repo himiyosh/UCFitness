@@ -24,21 +24,20 @@ const nextConfig: NextConfig = {
         child_process: false,
         os: false,
         path: false,
+
+        // Explicitly provide the polyfill path in fallback as well (though alias usually wins)
+        util: path.join(process.cwd(), 'lib/polyfills/util.js'),
       };
 
-      // Explicitly provide the polyfill path in fallback as well (though alias usually wins)
-      util: path.join(process.cwd(), 'lib/polyfills/util.js'),
+      // Alias 'util' to the local polyfill
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        util: path.join(process.cwd(), 'lib/polyfills/util.js'),
+        'node:util': path.join(process.cwd(), 'lib/polyfills/util.js'),
       };
-
-    // Alias 'util' to the local polyfill
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      util: path.join(process.cwd(), 'lib/polyfills/util.js'),
-      'node:util': path.join(process.cwd(), 'lib/polyfills/util.js'),
-    };
-  }
+    }
     return config;
-},
+  },
 };
 
 
