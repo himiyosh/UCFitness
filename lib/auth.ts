@@ -1,4 +1,4 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import { supabaseAdmin } from "./supabase";
 import { backfillUserSteps } from "./step-manager";
 
@@ -29,7 +29,7 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
 });
 
 
-export const authOptions: NextAuthOptions = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
     providers: [
         // @ts-ignore
         FitbitProvider({
@@ -37,6 +37,7 @@ export const authOptions: NextAuthOptions = {
             clientSecret: process.env.FITBIT_CLIENT_SECRET || "",
         }),
     ],
+    // debug: true, // Enable for debugging if needed
     callbacks: {
         async signIn({ user, account, profile }: any) {
             console.log(`[Auth] SignIn Start: Email=${user.email}, Provider=${account?.provider}, ProviderID=${account?.providerAccountId}`);
@@ -124,6 +125,10 @@ export const authOptions: NextAuthOptions = {
 
                 if (newUser && !insertError) {
                     console.log(`[Auth] New user created (ID: ${newUser.id}). Triggering backfill for steps history...`);
+                    // Note: This backfill might take time, in Edge environment ensure it doesn't timeout or block response too long.
+                    // Ideally this should be offloaded to a queue or background job, but for now we await it or fire-and-forget?
+                    // Given runtime=edge, fire-and-forget might be killed. user setups page handles loading history too.
+                    // We'll await it for now, assuming it's fast enough or we accept strict timeout.
                     await backfillUserSteps(newUser.id);
                 }
             }
@@ -187,12 +192,7 @@ export const authOptions: NextAuthOptions = {
                     console.log(`[Auth] JWT DB Lookup Failed for ProvID: ${account.providerAccountId}`);
                 }
             } else if (!token.username && token.sub) {
-                // Recovery: If token exists but has no username (e.g. session persistence issue or pre-migration session)
-                // Try to find user by Fitbit ID (token.sub)
-                // token.sub is the providerAccountId (Fitbit ID) because user.id in NextAuth (JWT strategy) usually maps to it unless customized.
-                // Wait, let's be careful. In 'profile' callback we returned id: encodedId.
-                // So token.sub IS the Fitbit ID.
-
+                // Recovery logic
                 console.log(`[Auth] JWT missing username, attempting recovery for sub: ${token.sub}`);
                 const { data } = await supabaseAdmin
                     .from("users")
@@ -223,4 +223,4 @@ export const authOptions: NextAuthOptions = {
         strategy: "jwt",
     },
     secret: process.env.NEXTAUTH_SECRET,
-};
+});
