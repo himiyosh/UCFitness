@@ -26,10 +26,10 @@ const nextConfig: NextConfig = {
         path: false,
       };
 
-      // Alias 'util' to our polyfill
+      // Alias 'util' to the installed package
       config.resolve.alias = {
         ...config.resolve.alias,
-        util: path.join(process.cwd(), 'lib/polyfills/util.js'),
+        util: require.resolve('util/'),
       };
     }
     return config;
