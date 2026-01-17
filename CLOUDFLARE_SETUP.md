@@ -17,7 +17,7 @@ This project is configured to be deployed on Cloudflare Pages using the `@cloudf
     -   **Project Name**: `ucfitness` (or your preference)
     -   **Production branch**: `main`
     -   **Framework preset**: `Next.js`
-    -   **Build command**: `npm run pages:build`
+    -   **Build command**: `npm install --force && npm run pages:build`
     -   **Build output directory**: `.vercel/output/static`
     -   **Node.js Version**: Go to **Environment variables** and add `NODE_VERSION` = `20` (or higher, e.g. 20.10.0).
 
