@@ -10,6 +10,8 @@ export async function GET() {
         return NextResponse.json({ message: 'Steps updated successfully' });
     } catch (error) {
         console.error('Error updating steps:', error);
-        return NextResponse.json({ error: 'Failed to update steps' }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
+
+export const runtime = 'edge';

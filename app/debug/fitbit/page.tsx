@@ -85,3 +85,5 @@ export default async function FitbitDebugPage() {
         </div>
     );
 }
+
+export const runtime = 'edge';

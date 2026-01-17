@@ -234,3 +234,5 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         </main>
     );
 }
+
+export const runtime = 'edge';

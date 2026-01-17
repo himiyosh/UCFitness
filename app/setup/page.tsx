@@ -180,3 +180,5 @@ export default function SetupPage() {
         </div>
     );
 }
+
+export const runtime = 'edge';

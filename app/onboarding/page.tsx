@@ -43,3 +43,5 @@ export default async function OnboardingPage() {
         </main>
     );
 }
+
+export const runtime = 'edge';

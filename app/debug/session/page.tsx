@@ -92,3 +92,5 @@ export default async function SessionDebugPage() {
         </div>
     );
 }
+
+export const runtime = 'edge';

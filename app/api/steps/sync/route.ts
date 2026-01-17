@@ -26,3 +26,5 @@ export async function POST() {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+export const runtime = 'edge';

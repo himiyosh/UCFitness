@@ -151,3 +151,5 @@ export default async function MyGroupsPage() {
         </main>
     );
 }
+
+export const runtime = 'edge';

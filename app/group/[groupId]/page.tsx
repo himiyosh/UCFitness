@@ -235,3 +235,5 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         </main>
     );
 }
+
+export const runtime = 'edge';

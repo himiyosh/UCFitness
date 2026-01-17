@@ -198,3 +198,5 @@ export async function GET(request: Request) {
 
     return NextResponse.json(report);
 }
+
+export const runtime = 'edge';
