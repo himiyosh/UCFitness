@@ -3,8 +3,7 @@ import Link from 'next/link';
 import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { getAllRankings, getAllGroupRankings } from '@/lib/ranking-service';
 import { getGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
@@ -16,7 +15,7 @@ import AutoSync from '@/components/AutoSync';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   const userEmail = session?.user?.email;
 
   let groupKeywords: string[] = [];

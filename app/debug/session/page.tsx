@@ -1,11 +1,10 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = 'force-dynamic';
 
 export default async function SessionDebugPage() {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     let dbUser = null;
     let stepsRecord = null;

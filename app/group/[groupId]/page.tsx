@@ -1,6 +1,6 @@
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+
+import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function GroupDetailPage(props: { params: Promise<{ groupId: string }> }) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.user) {
         redirect("/api/auth/signin");

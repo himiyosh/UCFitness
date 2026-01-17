@@ -1,6 +1,6 @@
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+
+import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { cookies } from 'next/headers';
 import Link from 'next/link';
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function PublicProfilePage(props: { params: Promise<{ username: string }> }) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const { username } = params;
 
     // Fetch target user data

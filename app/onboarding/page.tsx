@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import UsernameForm from "@/components/UsernameForm";
@@ -7,7 +6,7 @@ import UsernameForm from "@/components/UsernameForm";
 export const dynamic = 'force-dynamic';
 
 export default async function OnboardingPage() {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.user) {
         redirect("/");

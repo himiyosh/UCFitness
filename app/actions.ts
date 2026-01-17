@@ -1,14 +1,13 @@
 'use server'
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 import { refreshFitbitToken, getFitbitProfile } from "@/lib/fitbit";
 
 export async function updateProfileImage(imageUrl: string | null) {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.user) {
         throw new Error("Not authenticated");
@@ -99,7 +98,7 @@ export async function updateProfileImage(imageUrl: string | null) {
 }
 
 export async function uploadProfileImage(formData: FormData) {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.user) {
         throw new Error("Not authenticated");
     }

@@ -1,12 +1,11 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import AuthButtons from '@/components/AuthButtons';
 
 export const dynamic = 'force-dynamic';
 
 export default async function FitbitDebugPage() {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user) {
         return (

@@ -1,6 +1,6 @@
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+
+import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +16,7 @@ import { getAllGroupRankings } from "@/lib/ranking-service";
 // ... imports ...
 
 export default async function MyGroupsPage() {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.user) {
         redirect("/api/auth/signin");

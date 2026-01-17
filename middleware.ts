@@ -1,54 +1,38 @@
-import { withAuth } from "next-auth/middleware";
+import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-export default withAuth(
-    function middleware(req) {
-        const token = req.nextauth.token;
-        const path = req.nextUrl.pathname;
+export default auth((req) => {
+    const token = req.auth; // In v5, req.auth is the session/token
+    const path = req.nextUrl.pathname;
 
-        // Allow access to setup page, api, and static files
-        if (path.startsWith('/setup') ||
-            path.startsWith('/api') ||
-            path.startsWith('/_next') ||
-            path.startsWith('/favicon.ico')) {
-            return NextResponse.next();
-        }
-
-        if (token) {
-            // Check if user needs setup
-            // We need to assume that if 'username' is missing from token (which comes from session callback presumably if we mapped it),
-            // OR if email implies pending setup.
-
-            // Note: In auth.ts JWT callback, we usually just pass token. 
-            // We need to make sure 'username' is in the JWT token for this middleware to work efficiently 
-            // without checking DB every time (which middleware can't do easily anyway).
-
-            // BUT, `req.nextauth.token` content depends on `callbacks.jwt`.
-            // Let's verify `lib/auth.ts` jwt callback later.
-            // If username is NOT in token, we might need to rely on email check if possible, 
-            // or just check email domain.
-
-            const email = token.email || "";
-            const isPendingEmail = email.includes("@pending.setup");
-            // @ts-ignore
-            const hasUsername = !!token.username; // Need to ensure username is in JWT
-
-            // console.log(`[Middleware] Check. Email: ${email}, Username: ${token.username}, IsPending: ${isPendingEmail}`);
-
-            if (isPendingEmail || !hasUsername) {
-                console.log(`[Middleware] Redirecting to /setup. Email: ${email}, Username: ${token.username}`);
-                return NextResponse.redirect(new URL('/setup', req.url));
-            }
-        }
-
+    // Allow access to setup page, api, and static files
+    if (path.startsWith('/setup') ||
+        path.startsWith('/api') ||
+        path.startsWith('/_next') ||
+        path.startsWith('/favicon.ico')) {
         return NextResponse.next();
-    },
-    {
-        callbacks: {
-            authorized: () => true,
-        },
     }
-);
+
+    if (token) {
+        // Check if user needs setup
+
+        // Note: req.auth roughly maps to the session/jwt contents.
+        // We need to verify if 'username' is present.
+
+        const email = token.user?.email || "";
+        const isPendingEmail = email.includes("@pending.setup");
+        const hasUsername = !!(token.user as any)?.username;
+
+        // console.log(`[Middleware] Check. Email: ${email}, Username: ${token.user?.username}, IsPending: ${isPendingEmail}`);
+
+        if (isPendingEmail || !hasUsername) {
+            console.log(`[Middleware] Redirecting to /setup. Email: ${email}, Username: ${(token.user as any)?.username}`);
+            return NextResponse.redirect(new URL('/setup', req.url));
+        }
+    }
+
+    return NextResponse.next();
+});
 
 export const config = {
     matcher: [

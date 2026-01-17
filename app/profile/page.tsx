@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth/next";
+import { auth } from "@/lib/auth";
 import ProfileImageEditor from "@/components/ProfileImageEditor";
-import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +15,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.user) {
         redirect("/");
