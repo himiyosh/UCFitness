@@ -11,6 +11,17 @@ const nextConfig: NextConfig = {
         ...config.resolve.fallback,
         crypto: false,
         stream: false,
+        http: false,
+        https: false,
+        querystring: false,
+        url: false,
+        zlib: false,
+        net: false,
+        tls: false,
+        fs: false,
+        child_process: false,
+        os: false,
+        path: false,
       };
     }
     return config;
