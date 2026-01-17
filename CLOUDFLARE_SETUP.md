@@ -20,6 +20,7 @@ This project is configured to be deployed on Cloudflare Pages using the `@cloudf
     -   **Build command**: `npm install --force && npm run pages:build`
     -   **Build output directory**: `.vercel/output/static`
     -   **Node.js Version**: Go to **Environment variables** and add `NODE_VERSION` = `20` (or higher, e.g. 20.10.0).
+    -   **Compatibility Flags**: Go to **Settings** > **Builds & deployments** > **Compatibility flags**. Add `nodejs_compat` to both **Production** and **Preview** builds.
 
 6.  **Environment Variables**:
     Add the following production environment variables (copy from your `.env.local` or Supabase/Auth provider):
