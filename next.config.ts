@@ -29,7 +29,8 @@ const nextConfig: NextConfig = {
       // Alias 'util' to the installed package
       config.resolve.alias = {
         ...config.resolve.alias,
-        util: require.resolve('util/'),
+        util: path.join(process.cwd(), 'node_modules/util/util.js'),
+        'node:util': path.join(process.cwd(), 'node_modules/util/util.js'),
       };
     }
     return config;
