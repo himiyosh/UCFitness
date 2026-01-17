@@ -248,6 +248,7 @@ export async function POST(request: Request) {
       if (name !== undefined) updates.name = name;
       if (image_url !== undefined) updates.image_url = image_url;
       if (header_image_url !== undefined) updates.header_image_url = header_image_url;
+      if (body.is_public !== undefined) updates.is_public = body.is_public;
 
       updates.updated_at = new Date().toISOString();
 
@@ -260,6 +261,64 @@ export async function POST(request: Request) {
         console.error("Group Update Error", updateError);
         return NextResponse.json({ error: "Failed to update group" }, { status: 500 });
       }
+
+      return NextResponse.json({ success: true });
+
+    } else if (action === 'invite') {
+      const { targetUserId } = body;
+      if (!targetUserId) return NextResponse.json({ error: "Missing target user" }, { status: 400 });
+
+      // Find group
+      const { data: group } = await supabaseAdmin
+        .from('groups')
+        .select('id')
+        .eq('keyword', target)
+        .single();
+
+      if (!group) return NextResponse.json({ error: "Group not found" }, { status: 404 });
+
+      // Verify Ownership (Only owner can invite directly or maybe members too? Plan said Owner)
+      const { data: currentUserMember } = await supabaseAdmin
+        .from('group_members')
+        .select('role')
+        .eq('group_id', group.id)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentUserMember || currentUserMember.role !== 'OWNER') {
+        return NextResponse.json({ error: "Forbidden: Only owner can invite members" }, { status: 403 });
+      }
+
+      // Check if target is already member
+      const { data: existingMember } = await supabaseAdmin
+        .from('group_members')
+        .select('id')
+        .eq('group_id', group.id)
+        .eq('user_id', targetUserId)
+        .single();
+
+      if (existingMember) {
+        return NextResponse.json({ error: "User is already a member" }, { status: 400 });
+      }
+
+      // Add Member
+      await supabaseAdmin
+        .from('group_members')
+        .insert({ group_id: group.id, user_id: targetUserId, role: 'MEMBER' });
+
+      // Sync Legacy Array for Target User
+      const { data: memberships } = await supabaseAdmin
+        .from('group_members')
+        .select('groups(keyword)')
+        .eq('user_id', targetUserId);
+
+      // @ts-ignore
+      const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+
+      await supabaseAdmin
+        .from('users')
+        .update({ group_keyword: newKeywords })
+        .eq('id', targetUserId);
 
       return NextResponse.json({ success: true });
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google"; // Fixed import
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import SplashScreen from "@/components/SplashScreen";
 import GlobalLoader from "@/components/GlobalLoader";
 import { Suspense } from "react";
 
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
+          <SplashScreen />
           <Suspense fallback={null}>
             <GlobalLoader />
           </Suspense>

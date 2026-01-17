@@ -24,6 +24,23 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         .eq("username", username)
         .single();
 
+    if (user) {
+        // Fetch valid public groups for this user
+        const { data: publicGroups } = await supabase
+            .from('group_members')
+            .select('groups!inner(keyword, is_public)')
+            .eq('user_id', user.id)
+            .eq('groups.is_public', true);
+
+        // Override the denormalized group_keyword with actual public groups
+        if (publicGroups) {
+            // @ts-ignore
+            user.group_keyword = publicGroups.map((g: any) => g.groups.keyword);
+        } else {
+            user.group_keyword = [];
+        }
+    }
+
     if (!user) {
         notFound();
     }

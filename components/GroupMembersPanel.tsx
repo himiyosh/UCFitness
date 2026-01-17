@@ -34,6 +34,10 @@ export default function GroupMembersPanel({
 }) {
     const [members, setMembers] = useState(initialMembers);
     const [isProcessing, setIsProcessing] = useState<string | null>(null); // userId being processed
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -141,6 +145,63 @@ export default function GroupMembersPanel({
         }
     };
 
+    const handleSearch = async (query: string) => {
+        setSearchQuery(query);
+        if (query.length < 3) {
+            setSearchResults([]);
+            return;
+        }
+
+        setIsSearching(true);
+        try {
+            const res = await fetch(`/api/user/search?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            if (res.ok) {
+                // Filter out existing members
+                const existingIds = new Set(members.map(m => m.user_id));
+                const filtered = (data.users || []).filter((u: any) => !existingIds.has(u.id));
+                setSearchResults(filtered);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleInvite = async (userId: string) => {
+        setIsProcessing(userId);
+        try {
+            const res = await fetch('/api/user/group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'invite',
+                    keyword: groupKeyword,
+                    targetUserId: userId
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.error || 'Failed to invite user');
+                return;
+            }
+
+            alert('User invited successfully!');
+            setSearchQuery('');
+            setSearchResults([]);
+            setIsInviteOpen(false);
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to invite user');
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -149,14 +210,79 @@ export default function GroupMembersPanel({
                     {isOwner && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">Owner</span>}
                 </div>
                 {isOwner && (
-                    <button
-                        onClick={onToggleEdit}
-                        className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
-                    >
-                        {isEditing ? 'Done' : 'Edit'}
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setIsInviteOpen(!isInviteOpen)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isInviteOpen ? 'bg-indigo-600 text-white' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100'}`}
+                        >
+                            {isInviteOpen ? 'Close' : 'Invite'}
+                        </button>
+                        <button
+                            onClick={onToggleEdit}
+                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
+                        >
+                            {isEditing ? 'Done' : 'Edit'}
+                        </button>
+                    </div>
                 )}
             </div>
+
+            {/* Invite Panel */}
+            {isInviteOpen && (
+                <div className="p-4 bg-indigo-50 border-b border-indigo-100 animate-fade-in">
+                    <p className="text-sm text-indigo-900 mb-2 font-bold">Invite New Member</p>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Search by ID, Username, or Email..."
+                            value={searchQuery}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            className="w-full pl-4 pr-4 py-2 text-sm text-gray-900 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                        />
+                        {isSearching && (
+                            <div className="absolute right-3 top-2.5">
+                                <svg className="animate-spin h-4 w-4 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Results */}
+                    {searchResults.length > 0 && (
+                        <div className="mt-3 bg-white rounded-lg border border-indigo-100 shadow-sm max-h-48 overflow-y-auto">
+                            {searchResults.map(user => (
+                                <div key={user.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-gray-200 overflow-hidden">
+                                            {user.image ? (
+                                                <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <div className="flex items-center justify-center h-full text-xs font-bold text-gray-500">
+                                                    {(user.name?.[0] || '?').toUpperCase()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">{user.name}</p>
+                                            <p className="text-xs text-gray-500">@{user.username || user.id.substring(0, 8)}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleInvite(user.id)}
+                                        disabled={!!isProcessing}
+                                        className="text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                    >
+                                        {isProcessing === user.id ? 'Adding...' : 'Add'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {searchQuery.length >= 3 && searchResults.length === 0 && !isSearching && (
+                        <p className="text-xs text-indigo-400 mt-2">No users found.</p>
+                    )}
+                </div>
+            )}
+
             <ul className="divide-y divide-gray-100">
                 {members.map((member) => (
                     <li key={member.user_id} className="px-6 py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 transition-colors">
