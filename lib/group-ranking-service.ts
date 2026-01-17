@@ -42,7 +42,8 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
     // 1. Fetch all groups
     const { data: groups } = await supabase
         .from('groups')
-        .select('id, name, keyword, image_url');
+        .select('id, name, keyword, image_url')
+        .eq('is_public', true);
 
     if (!groups) return [];
 

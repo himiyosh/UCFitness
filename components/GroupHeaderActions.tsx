@@ -10,6 +10,7 @@ interface Props {
         name: string;
         image_url?: string;
         header_image_url?: string;
+        is_public?: boolean;
     };
     isOwner: boolean;
 }
@@ -35,6 +36,7 @@ export default function GroupHeaderActions({ group, isOwner }: Props) {
                 currentName={group.name}
                 currentIcon={group.image_url}
                 currentHeader={group.header_image_url}
+                isVisible={group.is_public ?? true}
                 isOpen={isEditOpen}
                 onClose={() => setIsEditOpen(false)}
             />

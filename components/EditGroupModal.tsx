@@ -10,13 +10,15 @@ interface Props {
     currentName: string;
     currentIcon?: string;
     currentHeader?: string;
+    isVisible: boolean;
     isOpen: boolean;
     onClose: () => void;
 }
 
-export default function EditGroupModal({ groupId, groupKeyword, currentName, currentIcon, currentHeader, isOpen, onClose }: Props) {
+export default function EditGroupModal({ groupId, groupKeyword, currentName, currentIcon, currentHeader, isVisible, isOpen, onClose }: Props) {
     const router = useRouter();
     const [name, setName] = useState(currentName);
+    const [isPublic, setIsPublic] = useState(isVisible);
     const [iconFile, setIconFile] = useState<File | null>(null);
     const [headerFile, setHeaderFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,7 +92,8 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                     keyword: groupKeyword,
                     name: name,
                     image_url: uploadedIconUrl,
-                    header_image_url: uploadedHeaderUrl
+                    header_image_url: uploadedHeaderUrl,
+                    is_public: isPublic
                 }),
             });
 
@@ -156,6 +159,26 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                     <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Visibility Toggle */}
+                        <div className="mb-6 flex items-center justify-between">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-medium text-gray-700">Show in Rankings</span>
+                                <span className="text-xs text-gray-500">If disabled, the group will be hidden from public leaderboards.</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsPublic(!isPublic)}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${isPublic ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                                role="switch"
+                                aria-checked={isPublic}
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublic ? 'translate-x-5' : 'translate-x-0'}`}
+                                />
+                            </button>
                         </div>
 
                         {/* Icon Input */}
