@@ -74,9 +74,12 @@ body {
 }
 
 @keyframes pulseGentle {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
@@ -91,6 +94,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -100,4 +104,34 @@ body {
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out 0.2s forwards;
   opacity: 0;
+}
+
+@keyframes bounceRun {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+.animate-bounce-run {
+  animation: bounceRun 0.6s infinite ease-in-out;
+}
+
+@keyframes speedLines {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-speed-lines {
+  animation: speedLines 0.5s linear infinite;
 }
