@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          {/* <SplashScreen /> */}
+          <SplashScreen />
           <Suspense fallback={null}>
             <GlobalLoader />
           </Suspense>
