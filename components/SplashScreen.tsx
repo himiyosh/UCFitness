@@ -8,8 +8,17 @@ export default function SplashScreen() {
     const [progress, setProgress] = useState(0);
 
     useEffect(() => {
-        // Only run once per session (commented out for demo purposes as requested always show)
-        // const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+        // Check if splash has already been shown in this session
+        const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+
+        if (hasSeenSplash) {
+            setIsVisible(false);
+            setShouldRender(false);
+            return;
+        }
+
+        // Mark as seen
+        sessionStorage.setItem('hasSeenSplash', 'true');
 
         // Progress Counter Animation
         const interval = setInterval(() => {
