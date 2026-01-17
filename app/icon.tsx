@@ -23,14 +23,11 @@ export default function Icon() {
                 }}
             >
                 <svg
-                    width="20"
-                    height="20"
+                    width="19"
+                    height="19"
                     viewBox="0 0 24 24"
                     fill="white"
                     xmlns="http://www.w3.org/2000/svg"
-                    style={{
-                        transform: 'scale(0.6)'
-                    }}
                 >
                     <path
                         d="M13 10V3L4 14H11V21L20 10H13Z"
