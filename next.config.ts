@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import path from 'path';
+
 const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
@@ -23,9 +25,16 @@ const nextConfig: NextConfig = {
         os: false,
         path: false,
       };
+
+      // Alias 'util' to our polyfill
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        util: path.join(process.cwd(), 'lib/polyfills/util.js'),
+      };
     }
     return config;
   },
 };
+
 
 export default nextConfig;
