@@ -26,15 +26,19 @@ const nextConfig: NextConfig = {
         path: false,
       };
 
-      // Alias 'util' to the installed package
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        util: path.join(process.cwd(), 'node_modules/util/util.js'),
-        'node:util': path.join(process.cwd(), 'node_modules/util/util.js'),
+      // Explicitly provide the polyfill path in fallback as well (though alias usually wins)
+      util: path.join(process.cwd(), 'lib/polyfills/util.js'),
       };
-    }
+
+    // Alias 'util' to the local polyfill
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      util: path.join(process.cwd(), 'lib/polyfills/util.js'),
+      'node:util': path.join(process.cwd(), 'lib/polyfills/util.js'),
+    };
+  }
     return config;
-  },
+},
 };
 
 
