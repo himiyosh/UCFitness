@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from './Toast';
 
 export default function SyncHistoryButton() {
     const [isSyncing, setIsSyncing] = useState(false);
     const router = useRouter();
+    const toast = useToast();
 
     const handleSync = async () => {
         setIsSyncing(true);
@@ -13,10 +15,10 @@ export default function SyncHistoryButton() {
             const res = await fetch('/api/user/sync-history', { method: 'POST' });
             if (!res.ok) throw new Error('Sync failed');
             router.refresh();
-            alert('History synced successfully!'); // Simple feedback for now
+            toast.success('History synced successfully!');
         } catch (error) {
             console.error(error);
-            alert('Failed to sync history. Please try signing in again.');
+            toast.error('Failed to sync history. Please try signing in again.');
         } finally {
             setIsSyncing(false);
         }

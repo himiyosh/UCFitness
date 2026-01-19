@@ -35,7 +35,8 @@ export async function GET() {
             authenticated: true,
             isSetup,
             username: user.username,
-            email: user.email
+            email: user.email,
+            is_custom_image: user.is_custom_image
         });
 
     } catch (error) {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import ProfileImageEditor from "@/components/ProfileImageEditor";
 import { useRouter } from 'next/navigation';
+import ImageModal from '@/components/ImageModal';
 
 interface UserData {
     name: string | null;
@@ -19,6 +20,8 @@ export default function ProfileHeader({ user, readonly = false }: { user: UserDa
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const router = useRouter();
+
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -63,12 +66,25 @@ export default function ProfileHeader({ user, readonly = false }: { user: UserDa
 
     return (
         <div className="md:col-span-1">
+            {/* Image Modal */}
+            <ImageModal
+                isOpen={isImageModalOpen}
+                onClose={() => setIsImageModalOpen(false)}
+                src={user.image}
+                alt={`${user.name}'s profile picture`}
+            />
+
             <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 sticky top-8">
                 <div className="bg-indigo-600 h-16 sm:h-24 w-full"></div>
                 <div className="px-4 pb-3 sm:pb-4 relative">
                     <div className="-mt-8 sm:-mt-12 mb-3 flex justify-center relative group/image">
                         {user.image ? (
-                            <img className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
+                            <div
+                                onClick={() => setIsImageModalOpen(true)}
+                                className="cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                            >
+                                <img className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
+                            </div>
                         ) : (
                             <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-2xl sm:text-3xl font-bold text-indigo-600">
                                 {(user.name?.[0] || 'U')}

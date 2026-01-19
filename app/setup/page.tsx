@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import ProfileImageEditor from "@/components/ProfileImageEditor";
 
 export default function SetupPage() {
     const { data: session, update } = useSession();
@@ -12,10 +13,15 @@ export default function SetupPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [needsEmail, setNeedsEmail] = useState(false);
+    const [currentImage, setCurrentImage] = useState<string | null>(null);
+    const [isCustomImage, setIsCustomImage] = useState(false);
 
     useEffect(() => {
         const checkStatus = async () => {
             if (session?.user) {
+                // Initialize image from session initially
+                setCurrentImage(session.user.image || null);
+
                 // Check if email needs update
                 if (session.user.email?.includes('@pending.setup')) {
                     setNeedsEmail(true);
@@ -27,6 +33,16 @@ export default function SetupPage() {
                 try {
                     const res = await fetch('/api/user/status');
                     const data = await res.json();
+
+                    // Update local state with latest from DB
+                    if (data.is_custom_image !== undefined) {
+                        setIsCustomImage(data.is_custom_image);
+                    }
+                    if (data.username && !username) {
+                        // If partial setup exists? or just grabbing info.
+                        // Actually we want to check if FULLY setup.
+                    }
+
 
                     if (data.isSetup && data.username) {
                         console.log('User already set up within DB. repairing session...');
@@ -110,6 +126,54 @@ export default function SetupPage() {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+                {/* Avatar Selection */}
+                <div className="mb-6 flex justify-center">
+                    <ProfileImageEditor
+                        initialImage={currentImage}
+                        isCustom={isCustomImage}
+                        onSuccess={async (newUrl) => {
+                            if (newUrl) {
+                                setCurrentImage(newUrl);
+                                setIsCustomImage(true);
+                            } else {
+                                // Reset scenario
+                                setIsCustomImage(false);
+                                // Ideally fetch fitbit image again or reload
+                                window.location.reload();
+                            }
+                            // Optimistically update session so header updates too
+                            await update({
+                                ...session,
+                                user: {
+                                    ...session?.user,
+                                    image: newUrl || session?.user?.image
+                                }
+                            });
+                        }}
+                    >
+                        <div className="relative group cursor-pointer">
+                            <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100">
+                                {currentImage ? (
+                                    <img src={currentImage} alt="Profile" className="h-full w-full object-cover" />
+                                ) : (
+                                    <div className="h-full w-full flex items-center justify-center text-3xl font-bold text-indigo-300 bg-indigo-50">
+                                        {(session?.user?.name?.[0] || 'U')}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <div className="absolute bottom-0 right-0 bg-indigo-600 rounded-full p-1.5 border-2 border-white shadow-sm">
+                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                            </div>
+                        </div>
+                    </ProfileImageEditor>
+                </div>
+
                 <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         {error && (

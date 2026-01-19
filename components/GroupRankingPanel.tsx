@@ -14,7 +14,6 @@ type Props = {
 };
 
 export default function GroupRankingPanel({ keyword, neighbors, userEmail, index, totalCount, groupId }: Props) {
-    const [isLeaving, setIsLeaving] = useState(false);
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
 
@@ -33,32 +32,6 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
             setIsMoving(false);
         }
     };
-
-    const handleLeave = async () => {
-        if (!confirm(`Are you sure you want to leave the group "${keyword}"?`)) return;
-
-        setIsLeaving(true);
-        try {
-            await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'remove', keyword: keyword }),
-            });
-            router.refresh();
-        } catch (error) {
-            console.error(error);
-            alert('Failed to leave group');
-            setIsLeaving(false);
-        }
-    };
-
-    if (isLeaving) {
-        return (
-            <div className="overflow-hidden rounded-xl bg-gray-50 shadow-sm border border-gray-100 p-8 text-center opacity-50">
-                Leaving group...
-            </div>
-        );
-    }
 
     const isFirst = index === 0;
     const isLast = index === totalCount - 1;
@@ -107,14 +80,6 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                             </svg>
                         </button>
                     )}
-                    <div className="w-px h-3 bg-gray-200 mx-1"></div>
-                    <button
-                        onClick={handleLeave}
-                        className="text-xs text-gray-400 hover:text-red-600 underline transition-colors px-1"
-                        title="Leave Group"
-                    >
-                        Leave
-                    </button>
                 </div>
             </div>
             <div className="bg-white px-0">

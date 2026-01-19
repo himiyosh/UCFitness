@@ -1,0 +1,217 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Period } from '@/components/LeaderboardTabs';
+import GroupComparisonChart from '@/components/GroupComparisonChart';
+import GroupDetailLeaderboard from '@/components/GroupDetailLeaderboard';
+import { ChartData } from '@/lib/group-comparison-service';
+import { RankingEntry } from '@/lib/ranking-utils';
+import { GroupRankingEntry } from '@/lib/group-ranking-service';
+import GroupCompetitionList from '@/components/GroupCompetitionList';
+
+interface GroupAnalyticsProps {
+    rankings: Record<Period, RankingEntry[]>;
+    comparisonData: Record<Period, ChartData>;
+    groupCompetitionRankings: Record<Period, GroupRankingEntry[]>;
+    userEmail?: string | null;
+    currentGroupId: string;
+    currentUsername?: string;
+    children?: React.ReactNode;
+}
+
+const TABS: { key: Period; label: string }[] = [
+    { key: 'DAILY', label: 'Today' },
+    { key: 'WEEKLY', label: 'This Week' },
+    { key: 'MONTHLY', label: 'This Month' },
+    { key: 'YEARLY', label: 'This Year' },
+];
+
+export default function GroupAnalytics({
+    rankings,
+    comparisonData,
+    groupCompetitionRankings,
+    userEmail,
+    currentGroupId,
+    currentUsername,
+    children
+}: GroupAnalyticsProps) {
+    const [period, setPeriod] = useState<Period>('DAILY');
+    const [currentPage, setCurrentPage] = useState(1);
+
+    // Reset page when period changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [period]);
+
+    const currentChartData = comparisonData[period];
+    const allData = rankings[period];
+    const ITEMS_PER_PAGE = 10;
+
+    // Logic extracted from Leaderboard for Header Stats
+    // Check if user is in the full list
+    const userRank = userEmail ? allData.findIndex(r => r.users.email === userEmail) + 1 : 0;
+    const userEntry = userRank > 0 ? allData[userRank - 1] : null;
+
+    // Calculate Average
+    const totalSteps = allData.reduce((sum, r) => sum + r.steps, 0);
+    const averageSteps = allData.length > 0 ? Math.round(totalSteps / allData.length) : 0;
+
+    // Calculate Group Global Rank
+    const periodGroupRankings = groupCompetitionRankings?.[period];
+    const groupRankIndex = periodGroupRankings && currentGroupId
+        ? periodGroupRankings.findIndex(g => g.groupId === currentGroupId)
+        : -1;
+    const groupRank = groupRankIndex !== -1 ? groupRankIndex + 1 : undefined;
+    const totalGroups = periodGroupRankings?.length || 0;
+
+    const handleJumpToMe = () => {
+        if (!userEmail) return;
+        const userIndex = allData.findIndex(r => r.users.email === userEmail);
+        if (userIndex !== -1) {
+            const userPage = Math.floor(userIndex / ITEMS_PER_PAGE) + 1;
+            setCurrentPage(userPage);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Header: Tabs & Jump Button */}
+            <div className="flex justify-between items-center flex-wrap gap-4">
+                <div className="flex p-1 space-x-1 bg-gray-100/80 rounded-lg w-fit overflow-hidden relative">
+                    {TABS.map((tab) => {
+                        const isActive = period === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                onClick={() => setPeriod(tab.key)}
+                                className={`
+                                    relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200
+                                    ${isActive
+                                        ? 'bg-white text-indigo-600 shadow-sm scale-105'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
+                                `}
+                            >
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {userRank > 0 && (
+                    <button
+                        onClick={handleJumpToMe}
+                        className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.3 9.24a.75.75 0 00-1.1 1.02l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75z" clipRule="evenodd" />
+                        </svg>
+                        Jump to my rank (#{userRank})
+                    </button>
+                )}
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {userEntry ? (
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-4 text-white shadow-lg flex items-center justify-between animate-in fade-in zoom-in duration-300 h-full">
+                        <div>
+                            <p className="text-indigo-100 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">Your Rank</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black">#{userRank}</span>
+                                <span className="text-sm font-medium opacity-80 line-clamp-1">in this group</span>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-2xl font-bold">{userEntry.steps.toLocaleString()}</div>
+                            <div className="text-xs text-indigo-100 font-medium">steps</div>
+                        </div>
+                    </div>
+                ) : <div className="hidden sm:block"></div>}
+
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 h-full">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Group Rank</p>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        {groupRank ? (
+                            <>
+                                <span className="text-3xl font-black text-indigo-600 tracking-tight">#{groupRank}</span>
+                                <span className="text-sm font-bold text-gray-400">/ {totalGroups}</span>
+                            </>
+                        ) : (
+                            <span className="text-xl font-bold text-gray-400">N/A</span>
+                        )}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase text-gray-400 font-bold">Average</span>
+                            <span className="text-sm font-bold text-gray-700">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Row 1: Member Leaderboard & Chart (Equal Height) */}
+            <div className="flex flex-col xl:flex-row gap-6 items-stretch">
+                {/* Leaderboard */}
+                <div className="flex-1 min-w-0">
+                    <GroupDetailLeaderboard
+                        rankings={rankings}
+                        userEmail={userEmail}
+                        period={period}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
+
+                {/* Chart */}
+                <div className="flex-1 min-w-0 flex flex-col">
+                    <GroupComparisonChart
+                        data={currentChartData?.data || []}
+                        users={currentChartData?.users || []}
+                        currentUsername={currentUsername}
+                        title={`${period === 'DAILY' ? 'Last 7 Days' :
+                            period === 'WEEKLY' ? 'This Week' :
+                                period === 'MONTHLY' ? 'This Month' : 'This Year'} Comparison`}
+                    />
+                </div>
+            </div>
+
+            {/* Row 2: Global Group Rankings & Settings (Settings scrollable) */}
+            <div className="flex flex-col xl:flex-row gap-6">
+                {/* Global Rankings */}
+                <div className="flex-1 min-w-0">
+                    {groupCompetitionRankings && groupCompetitionRankings[period] && (
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[500px] flex flex-col transition-all duration-300">
+                            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
+                                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    Global Group Rankings
+                                </h3>
+                                <p className="text-xs text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-md">By Average Steps</p>
+                            </div>
+                            <GroupCompetitionList
+                                initialRankings={groupCompetitionRankings[period]}
+                                currentGroupId={currentGroupId}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* Settings & Members Panel */}
+                <div className="flex-1 min-w-0">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full min-h-[500px] max-h-[700px] overflow-hidden flex flex-col">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

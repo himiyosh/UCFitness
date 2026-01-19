@@ -12,6 +12,8 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/ranking-service";
 import { getGroupCompetitionRankings } from "@/lib/group-ranking-service";
 import JoinGroupPreview from "@/components/JoinGroupPreview";
+import GroupAnalytics from "@/components/GroupAnalytics";
+import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +100,9 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         getGroupCompetitionRankings('MONTHLY'),
         getGroupCompetitionRankings('YEARLY'),
     ]);
+
+    // 2.5 Fetch Comparison Data (New)
+    const comparisonData = await getAllGroupComparisonData(groupId, userId);
 
     const groupCompetitionRankings = {
         DAILY: compDaily,
@@ -206,28 +211,27 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                 </section>
 
-                {/* Tabbed Interface or Stacked? Stacked is better for now */}
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Left: Leaderboard (Main content) */}
-                    <div className="lg:col-span-7 space-y-6">
-                        <h2 className="text-lg font-bold text-gray-900">Leaderboard</h2>
-                        <GroupDetailLeaderboard
+                <div className="space-y-12">
+                    {/* Main Content Area - Layout controlled by GroupAnalytics */}
+                    <div>
+                        <GroupAnalytics
                             rankings={rankings}
-                            userEmail={userEmail}
+                            comparisonData={comparisonData}
                             groupCompetitionRankings={groupCompetitionRankings}
+                            userEmail={userEmail}
                             currentGroupId={groupId}
-                        />
-                    </div>
-
-                    {/* Right: Members & Settings */}
-                    <div className="lg:col-span-5">
-                        <GroupSettingsLayout
-                            members={members || []}
-                            group={group}
-                            isOwner={isOwner}
-                            currentUserId={userId}
-                        />
+                            currentUsername={session.user.name || undefined}
+                        >
+                            <div className="p-4 sm:p-6">
+                                <h2 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pb-2 border-b border-gray-100">Settings & Members</h2>
+                                <GroupSettingsLayout
+                                    members={members || []}
+                                    group={group}
+                                    isOwner={isOwner}
+                                    currentUserId={userId}
+                                />
+                            </div>
+                        </GroupAnalytics>
                     </div>
                 </div>
 

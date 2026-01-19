@@ -1,9 +1,10 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import ImageModal from '@/components/ImageModal';
+import LeaveGroupButton from './LeaveGroupButton';
 
 type Member = {
     user_id: string;
@@ -20,6 +21,7 @@ type Member = {
 export default function GroupMembersPanel({
     members: initialMembers,
     groupKeyword,
+    groupName,
     isOwner,
     currentUserId,
     isEditing,
@@ -27,6 +29,7 @@ export default function GroupMembersPanel({
 }: {
     members: Member[],
     groupKeyword: string,
+    groupName: string,
     isOwner: boolean,
     currentUserId: string,
     isEditing: boolean,
@@ -202,29 +205,67 @@ export default function GroupMembersPanel({
     };
 
 
+    const handleLeaveGroup = async () => {
+        if (!confirm(`Are you sure you want to leave ${groupName}?`)) return;
+
+        try {
+            const res = await fetch('/api/user/group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'remove',
+                    keyword: groupKeyword
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                alert(err.error || 'Failed to leave group');
+                return;
+            }
+
+            // Redirect to groups list
+            router.push('/groups');
+            router.refresh();
+
+        } catch (error) {
+            console.error(error);
+            alert('An error occurred.');
+        }
+    };
+
+    const ownerCount = members.filter(m => m.role === 'OWNER').length;
+    const [selectedImage, setSelectedImage] = useState<{ src: string, alt: string } | null>(null);
+
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div>
+            <ImageModal
+                isOpen={!!selectedImage}
+                onClose={() => setSelectedImage(null)}
+                src={selectedImage?.src || null}
+                alt={selectedImage?.alt}
+            />
+            <div className="px-0 py-2 pb-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <h3 className="font-bold text-gray-900">Members ({members.length})</h3>
                     {isOwner && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">Owner</span>}
                 </div>
-                {isOwner && (
-                    <div className="flex gap-2">
+                <div className="flex gap-2">
+                    {isOwner && (
                         <button
                             onClick={() => setIsInviteOpen(!isInviteOpen)}
                             className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isInviteOpen ? 'bg-indigo-600 text-white' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100'}`}
                         >
                             {isInviteOpen ? 'Close' : 'Invite'}
                         </button>
-                        <button
-                            onClick={onToggleEdit}
-                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
-                        >
-                            {isEditing ? 'Done' : 'Edit'}
-                        </button>
-                    </div>
-                )}
+                    )}
+                    <button
+                        onClick={onToggleEdit}
+                        className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
+                    >
+                        {isEditing ? 'Done' : 'Edit'}
+                    </button>
+                </div>
             </div>
 
             {/* Invite Panel */}
@@ -285,10 +326,18 @@ export default function GroupMembersPanel({
 
             <ul className="divide-y divide-gray-100">
                 {members.map((member) => (
-                    <li key={member.user_id} className="px-6 py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 transition-colors">
+                    <li key={member.user_id} className="py-3 sm:py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 transition-colors rounded-lg px-2">
                         <div className="flex items-center gap-3 min-w-0">
                             {/* Avatar */}
-                            <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                            <div
+                                className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={(e) => {
+                                    e.preventDefault(); // Prevent Link navigation
+                                    if (member.users.image) {
+                                        setSelectedImage({ src: member.users.image, alt: member.users.name || 'User' });
+                                    }
+                                }}
+                            >
                                 {member.users.image ? (
                                     <img src={member.users.image} alt={member.users.name || 'User'} className="h-full w-full object-cover" />
                                 ) : (
@@ -313,16 +362,27 @@ export default function GroupMembersPanel({
 
                         {/* Actions */}
                         {isOwner && (
-                            <div className={`flex flex-col gap-1 shrink-0 w-20 ${!isEditing ? 'invisible pointer-events-none' : ''}`}>
+                            <div className={`flex flex-row gap-2 shrink-0 ${!isEditing ? 'invisible pointer-events-none' : ''}`}>
                                 {member.user_id === currentUserId ? (
                                     member.role === 'OWNER' && (
-                                        <button
-                                            onClick={() => handleDemote(member.user_id, 'yourself', true)}
-                                            disabled={!!isProcessing}
-                                            className="text-[10px] text-amber-600 hover:text-amber-800 font-bold px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap text-center w-full"
-                                        >
-                                            Demote Self
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={() => handleDemote(member.user_id, 'yourself', true)}
+                                                disabled={!!isProcessing}
+                                                className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
+                                            >
+                                                Demote Self
+                                            </button>
+                                            {ownerCount > 1 && (
+                                                <button
+                                                    onClick={handleLeaveGroup}
+                                                    disabled={!!isProcessing}
+                                                    className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
+                                                >
+                                                    Leave
+                                                </button>
+                                            )}
+                                        </>
                                     )
                                 ) : (
                                     <>
@@ -330,7 +390,7 @@ export default function GroupMembersPanel({
                                             <button
                                                 onClick={() => handleDemote(member.user_id, member.users.name || 'this user', false)}
                                                 disabled={!!isProcessing}
-                                                className="text-[10px] text-amber-600 hover:text-amber-800 font-bold px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap text-center w-full"
+                                                className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
                                             >
                                                 Demote
                                             </button>
@@ -338,7 +398,7 @@ export default function GroupMembersPanel({
                                             <button
                                                 onClick={() => handleTransferOwnership(member.user_id, member.users.name || 'this user')}
                                                 disabled={!!isProcessing}
-                                                className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 transition-colors border border-indigo-100 whitespace-nowrap text-center w-full"
+                                                className="text-xs text-indigo-600 hover:text-indigo-800 font-bold px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors border border-indigo-100 whitespace-nowrap"
                                             >
                                                 Make Owner
                                             </button>
@@ -346,7 +406,7 @@ export default function GroupMembersPanel({
                                         <button
                                             onClick={() => handleKick(member.user_id, member.users.name || 'this user')}
                                             disabled={!!isProcessing}
-                                            className="text-[10px] text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap text-center w-full"
+                                            className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
                                         >
                                             {isProcessing === member.user_id ? '...' : 'Remove'}
                                         </button>
@@ -357,6 +417,19 @@ export default function GroupMembersPanel({
                     </li>
                 ))}
             </ul>
-        </div>
+
+            {/* Group Actions (Leave) - Only Visible in Edit Mode for Non-Owners */}
+            {
+                isEditing && !isOwner && (
+                    <div className="mt-6 pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Danger Zone</h4>
+                        <LeaveGroupButton
+                            groupKeyword={groupKeyword}
+                            groupName={groupName}
+                        />
+                    </div>
+                )
+            }
+        </div >
     );
 }
