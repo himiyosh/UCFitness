@@ -186,23 +186,50 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
         return () => window.removeEventListener('hashchange', handleHash);
     }, []);
 
+    const containerRef = useRef<HTMLDivElement>(null);
+
     return (
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative">
+        <div ref={containerRef} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative">
             {/* Anchors for scrolling (positioned with offset for sticky header) */}
             <div id="weekly-graph" className="absolute -top-32 invisible pointer-events-none" />
             <div id="monthly-graph" className="absolute -top-32 invisible pointer-events-none" />
 
-            {/* Tooltip Portal */}
-            {tooltip && (
-                <div
-                    className="fixed z-[100] bg-gray-900 text-white text-xs rounded py-1 px-2 pointer-events-none shadow-xl transform -translate-x-1/2 -translate-y-full mt-[-8px]"
-                    style={{ left: tooltip.x, top: tooltip.y }}
-                >
-                    <div className="font-semibold">{tooltip.title}</div>
-                    <div className="text-gray-300">{tooltip.subtitle}</div>
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
-                </div>
-            )}
+            {/* Tooltip Portal - Absolute Positioning relative to Container */}
+            {tooltip && (() => {
+                const tooltipWidth = 140;
+                const halfWidth = tooltipWidth / 2;
+                const tooltipHeadroom = 50; // Approx height of tooltip + arrow
+                const margin = 12; // Safety margin from edges
+
+                // Default to 0 if ref missing (shouldn't happen)
+                const containerWidth = containerRef.current?.offsetWidth || 300;
+
+                let adjustedX = tooltip.x;
+                let adjustedY = tooltip.y;
+
+                // Clamp X position within container
+                if (adjustedX < halfWidth + margin) adjustedX = halfWidth + margin;
+                else if (adjustedX > containerWidth - halfWidth - margin) adjustedX = containerWidth - halfWidth - margin;
+
+                // Clamp Y position to keep within container top
+                if (adjustedY < tooltipHeadroom + margin) adjustedY = tooltipHeadroom + margin;
+
+                const arrowOffset = tooltip.x - adjustedX;
+
+                return (
+                    <div
+                        className="absolute z-[20] bg-gray-900 text-white text-xs rounded py-1 px-2 pointer-events-none shadow-xl transform -translate-x-1/2 -translate-y-full mt-[-8px] whitespace-nowrap transition-all duration-75"
+                        style={{ left: adjustedX, top: adjustedY }}
+                    >
+                        <div className="font-semibold">{tooltip.title}</div>
+                        <div className="text-gray-300">{tooltip.subtitle}</div>
+                        <div
+                            className="absolute bottom-0 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"
+                            style={{ left: `calc(50% + ${arrowOffset}px)` }}
+                        ></div>
+                    </div>
+                );
+            })()}
 
             <div className="flex flex-col gap-6 mb-6">
                 {/* Main Header Row */}
@@ -370,9 +397,40 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                                                 key={index}
                                                 className={`flex flex-col items-center justify-end h-full group relative hover:z-20 ${barClass}`}
                                                 onMouseMove={(e) => {
+                                                    if (!containerRef.current) return;
+                                                    const containerRect = containerRef.current.getBoundingClientRect();
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+
+                                                    // Calculate relative bar position
+                                                    const barPixelHeight = (rect.height * heightPercentage) / 100;
+
+                                                    // Center X relative to container
+                                                    const targetX = rect.left - containerRect.left + rect.width / 2;
+                                                    // Top Y relative to container
+                                                    const targetY = rect.bottom - containerRect.top - barPixelHeight;
+
                                                     setTooltip({
-                                                        x: e.clientX,
-                                                        y: e.clientY,
+                                                        x: targetX,
+                                                        y: targetY,
+                                                        title: `${day.value.toLocaleString()} steps`,
+                                                        subtitle: `${day.label} (${day.fullDate})`
+                                                    });
+                                                }}
+                                                onTouchStart={(e) => {
+                                                    // Prevents scrolling while tapping graph
+                                                    // e.preventDefault();
+                                                    if (!containerRef.current) return;
+                                                    const containerRect = containerRef.current.getBoundingClientRect();
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+
+                                                    const barPixelHeight = (rect.height * heightPercentage) / 100;
+
+                                                    const targetX = rect.left - containerRect.left + rect.width / 2;
+                                                    const targetY = rect.bottom - containerRect.top - barPixelHeight;
+
+                                                    setTooltip({
+                                                        x: targetX,
+                                                        y: targetY,
                                                         title: `${day.value.toLocaleString()} steps`,
                                                         subtitle: `${day.label} (${day.fullDate})`
                                                     });

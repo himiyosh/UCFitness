@@ -192,8 +192,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.daily.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-xs font-bold mt-1 ${targetStats.daily - viewerStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {targetStats.daily - viewerStats.daily >= 0 ? '+' : ''}{(targetStats.daily - viewerStats.daily).toLocaleString()} vs You
+                                        <p className={`text-xs font-bold mt-1 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()} vs {user.name || user.username}
                                         </p>
                                     )}
                                 </div>
@@ -205,8 +205,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.weekly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-xs font-bold mt-1 ${targetStats.weekly - viewerStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {targetStats.weekly - viewerStats.weekly >= 0 ? '+' : ''}{(targetStats.weekly - viewerStats.weekly).toLocaleString()} vs You
+                                        <p className={`text-xs font-bold mt-1 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()} vs {user.name || user.username}
                                         </p>
                                     )}
                                 </div>
@@ -218,8 +218,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.monthly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-xs font-bold mt-1 ${targetStats.monthly - viewerStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {targetStats.monthly - viewerStats.monthly >= 0 ? '+' : ''}{(targetStats.monthly - viewerStats.monthly).toLocaleString()} vs You
+                                        <p className={`text-xs font-bold mt-1 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()} vs {user.name || user.username}
                                         </p>
                                     )}
                                 </div>
