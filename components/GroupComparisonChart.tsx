@@ -46,13 +46,13 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     // or we just handle styling.
 
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 xl:h-full flex flex-col">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 flex-none">
                 <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
                 {title || 'Weekly Comparison'}
             </h3>
 
-            <div className="w-full flex-1 min-h-[300px]">
+            <div className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] [&_.recharts-wrapper]:!outline-none [&_.recharts-surface]:!outline-none [&_svg]:!outline-none">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={data}

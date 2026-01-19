@@ -111,46 +111,46 @@ export default function GroupAnalytics({
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {userEntry ? (
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-4 text-white shadow-lg flex items-center justify-between animate-in fade-in zoom-in duration-300 h-full">
-                        <div>
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-3 sm:p-4 text-white shadow-lg flex items-center justify-between animate-in fade-in zoom-in duration-300 h-full">
+                        <div className="min-w-0 flex-1">
                             <p className="text-indigo-100 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">Your Rank</p>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-black">#{userRank}</span>
-                                <span className="text-sm font-medium opacity-80 line-clamp-1">in this group</span>
+                            <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
+                                <span className="text-2xl sm:text-3xl font-black leading-none">#{userRank}</span>
+                                <span className="text-[10px] sm:text-sm font-medium opacity-80 line-clamp-1">in group</span>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <div className="text-2xl font-bold">{userEntry.steps.toLocaleString()}</div>
-                            <div className="text-xs text-indigo-100 font-medium">steps</div>
+                        <div className="text-right ml-2 shrink-0">
+                            <div className="text-lg sm:text-2xl font-bold leading-none mb-1">{userEntry.steps.toLocaleString()}</div>
+                            <div className="text-[10px] sm:text-xs text-indigo-100 font-medium">steps</div>
                         </div>
                     </div>
                 ) : <div className="hidden sm:block"></div>}
 
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 h-full">
+                <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 h-full">
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600">
+                        <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600 shrink-0">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                             </svg>
                         </div>
-                        <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Group Rank</p>
+                        <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Group Rank</p>
                     </div>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 flex-wrap">
                         {groupRank ? (
                             <>
-                                <span className="text-3xl font-black text-indigo-600 tracking-tight">#{groupRank}</span>
-                                <span className="text-sm font-bold text-gray-400">/ {totalGroups}</span>
+                                <span className="text-2xl sm:text-3xl font-black text-indigo-600 tracking-tight leading-none">#{groupRank}</span>
+                                <span className="text-xs sm:text-sm font-bold text-gray-400">/ {totalGroups}</span>
                             </>
                         ) : (
                             <span className="text-xl font-bold text-gray-400">N/A</span>
                         )}
                     </div>
                     <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] uppercase text-gray-400 font-bold">Average</span>
-                            <span className="text-sm font-bold text-gray-700">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] uppercase text-gray-400 font-bold truncate">Average</span>
+                            <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
                         </div>
                     </div>
                 </div>
@@ -187,7 +187,7 @@ export default function GroupAnalytics({
                 {/* Global Rankings */}
                 <div className="flex-1 min-w-0">
                     {groupCompetitionRankings && groupCompetitionRankings[period] && (
-                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[500px] flex flex-col transition-all duration-300">
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col transition-all duration-300">
                             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                                 <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>

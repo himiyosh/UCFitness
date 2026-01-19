@@ -226,7 +226,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
 
                                 return (
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                             {/* My Rank Display */}
                                             {myRankEntry && (
                                                 <Link href={`/group/${groupData.groupId}`} className="relative rounded-xl overflow-hidden shadow-lg animate-in fade-in zoom-in duration-300 group block hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500 transition-all">
@@ -246,51 +246,51 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                         )}
                                                     </div>
 
-                                                    <div className="relative z-10 p-4 text-white flex items-center justify-between">
-                                                        <div>
+                                                    <div className="relative z-10 p-3 sm:p-4 text-white flex items-center justify-between">
+                                                        <div className="min-w-0 flex-1">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 {groupData.image_url && (
                                                                     <img src={groupData.image_url} className="w-4 h-4 rounded-full border border-white/30" />
                                                                 )}
-                                                                <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Your Rank</p>
+                                                                <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Your Rank</p>
                                                             </div>
-                                                            <div className="flex items-baseline gap-2">
-                                                                <span className="text-3xl font-black">#{myRank}</span>
-                                                                <span className="text-xs sm:text-sm font-medium opacity-90 line-clamp-1">in {groupData.keyword}</span>
+                                                            <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
+                                                                <span className="text-2xl sm:text-3xl font-black leading-none">#{myRank}</span>
+                                                                <span className="text-[10px] sm:text-sm font-medium opacity-90 line-clamp-1">in {groupData.keyword}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <div className="text-2xl font-bold tracking-tight">{myRankEntry.steps.toLocaleString()}</div>
-                                                            <div className="text-xs text-white/80 font-medium uppercase tracking-wide">steps</div>
+                                                        <div className="text-right ml-2 shrink-0">
+                                                            <div className="text-lg sm:text-2xl font-bold tracking-tight leading-none mb-1">{myRankEntry.steps.toLocaleString()}</div>
+                                                            <div className="text-[10px] sm:text-xs text-white/80 font-medium uppercase tracking-wide">steps</div>
                                                         </div>
                                                     </div>
                                                 </Link>
                                             )}
 
                                             {/* Group Average Display */}
-                                            <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75">
+                                            <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-3 sm:p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600">
+                                                    <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600 shrink-0">
                                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                                         </svg>
                                                     </div>
-                                                    <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Group Rank</p>
+                                                    <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Group Rank</p>
                                                 </div>
-                                                <div className="flex items-baseline gap-2">
+                                                <div className="flex items-baseline gap-2 flex-wrap">
                                                     {groupRank ? (
                                                         <>
-                                                            <span className="text-3xl font-black text-indigo-600 tracking-tight">#{groupRank}</span>
-                                                            <span className="text-sm font-bold text-gray-400">/ {totalGroups}</span>
+                                                            <span className="text-2xl sm:text-3xl font-black text-indigo-600 tracking-tight leading-none">#{groupRank}</span>
+                                                            <span className="text-xs sm:text-sm font-bold text-gray-400">/ {totalGroups}</span>
                                                         </>
                                                     ) : (
                                                         <span className="text-xl font-bold text-gray-400">N/A</span>
                                                     )}
                                                 </div>
                                                 <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] uppercase text-gray-400 font-bold">Average</span>
-                                                        <span className="text-sm font-bold text-gray-700">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-[10px] uppercase text-gray-400 font-bold truncate">Average</span>
+                                                        <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
                                                     </div>
                                                 </div>
                                             </div>

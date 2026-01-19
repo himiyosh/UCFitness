@@ -348,7 +348,7 @@ export default function GroupMembersPanel({
                             </div>
 
                             <div className="min-w-0">
-                                <Link href={`/user/${member.users.username}`} className="font-medium text-gray-900 hover:text-indigo-600 transition-colors truncate block flex items-center gap-2">
+                                <Link href={`/user/${member.users.username}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors truncate block flex items-center gap-2">
                                     <span>{member.users.name || 'Unknown User'}</span>
                                     {member.user_id === currentUserId && (
                                         <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 shrink-0">YOU</span>
