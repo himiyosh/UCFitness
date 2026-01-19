@@ -23,30 +23,53 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
     const now = new Date();
     const todayStr = formatter.format(now);
-    const [year, month] = todayStr.split('-');
-
     // 1. Define Date Ranges for each period
 
-    // DAILY: Last 7 Days
+    // DAILY: Last 7 Days (Context for "Today")
     const dailyStart = new Date(now);
     dailyStart.setDate(dailyStart.getDate() - 6);
     const dailyStartStr = formatter.format(dailyStart);
 
-    // WEEKLY: Last 12 Weeks
-    const weeklyStart = new Date(now);
-    weeklyStart.setDate(weeklyStart.getDate() - (12 * 7)); // 84 days ago
-    // Adjust to start of that week (e.g. Sunday or Monday) - Optional, but cleaner.
-    // Let's just stick to 84 days ago as rough start, or align to nearest Monday/Sunday if critical.
-    // For simplicity: 84 days ago.
-    const weeklyStartStr = formatter.format(weeklyStart);
+    // WEEKLY: Last 12 Weeks (Monday Start - This Week's Sunday End)
+    // 1. Get "This Week's Monday" based on todayStr to align strictly with Leaderboard
+    const currentDate = new Date(`${todayStr}T00:00:00Z`);
+    const utcDay = currentDate.getUTCDay(); // 0(Sun) - 6(Sat) of Today
+    const daysToSubtract = (utcDay + 6) % 7; // Distance to Monday
+    const thisMonday = new Date(currentDate);
+    thisMonday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
 
-    // MONTHLY: This Month (1st to now/end)
-    const monthlyStartStr = `${year}-${month}-01`;
+    // 2. Start Date = This Monday - 11 weeks (to show 12 weeks total including current)
+    const startMonday = new Date(thisMonday);
+    startMonday.setUTCDate(thisMonday.getUTCDate() - (11 * 7));
+    const weeklyStartStr = startMonday.toISOString().split('T')[0];
 
-    // YEARLY: This Year (Jan 1st to now)
+    // 3. End Date = This Week's Sunday (This Monday + 6 days)
+    const thisSunday = new Date(thisMonday);
+    thisSunday.setUTCDate(thisMonday.getUTCDate() + 6);
+    const weeklyEndStr = thisSunday.toISOString().split('T')[0];
+
+
+    // MONTHLY: Last 12 Months (1st of 11 months ago to End of This Month)
+    // todayStr is YYYY-MM-DD
+    const [year, month] = todayStr.split('-');
+    // year/month are strings from todayStr split (1-based month)
+    const mDate = new Date(Number(year), Number(month) - 1, 1); // Current Month 1st
+    mDate.setMonth(mDate.getMonth() - 11); // Go back 11 months
+    const monthlyStartStr = formatter.format(mDate);
+
+    // Get last day of current month
+    // new Date(y, m, 0) gives last day of month m-1. 
+    // We want last day of 'month' (which is 1-based string, e.g. "01").
+    // new Date(2025, 1, 0) -> Feb 0 -> Jan 31. Correct.
+    const lastDayOfMonth = new Date(Number(year), Number(month), 0);
+    const monthlyEndStr = formatter.format(lastDayOfMonth);
+
+    // YEARLY: This Year (Jan 1st to Dec 31st)
     const yearlyStartStr = `${year}-01-01`;
+    const yearlyEndStr = `${year}-12-31`;
 
-    // Determine the earliest date needed for fetching
+    // Determine the earliest date needed for fetching (Min Date)
+    // Max date doesn't matter for fetching (we fetch >= min), but we need to build full range in chart
     const dates = [dailyStartStr, weeklyStartStr, monthlyStartStr, yearlyStartStr].sort();
     const minDateStr = dates[0]; // The earliest date
 
@@ -70,7 +93,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             steps,
             date,
             user_id,
-            users (username)
+            users!inner (username)
         `)
         .in('user_id', memberIds)
         .gte('date', minDateStr);
@@ -80,13 +103,13 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
     }
 
-    // Identify Top 10 based on Total Steps in the fetched range (Last 12 weeks or This Year)
+    // Identify Top 10 based on Total Steps in the fetched range
     const userTotals = new Map<string, number>();
     const userIdToName = new Map<string, string>();
 
     allSteps.forEach((row: any) => {
         const uid = row.user_id;
-        userTotals.set(uid, (userTotals.get(uid) || 0) + row.steps);
+        userTotals.set(uid, (userTotals.get(uid) || 0) + Number(row.steps));
         if (row.users?.username) userIdToName.set(uid, row.users.username);
     });
 
@@ -118,7 +141,8 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         const map = new Map<string, ComparisonDataPoint>();
 
         let current = new Date(startStr);
-        const end = new Date(endStr);
+        // Ensure end comparison handles string correctly or use dates loop
+        // The previous string comparison loop `formatter.format(current) <= endStr` works for YYYY-MM-DD
 
         if (aggregation === 'day') {
             while (formatter.format(current) <= endStr) {
@@ -139,7 +163,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                 // Determine Week End for range check
                 const weekEnd = new Date(current);
                 weekEnd.setDate(weekEnd.getDate() + 6);
-                const weekEndStr = formatter.format(weekEnd);
+                // const weekEndStr = formatter.format(weekEnd); // Not used directly for map key
 
                 const dateObj = new Date(weekStartStr);
                 const label = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
@@ -157,6 +181,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             // Iterate months
             while (true) {
                 const mStr = `${cY}-${String(cM).padStart(2, '0')}`;
+                // Compare YYYY-MM
                 if (mStr > endStr.slice(0, 7)) break;
 
                 const dateObj = new Date(cY, cM - 1, 1);
@@ -169,6 +194,13 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             }
         }
 
+        // Initialize all users to 0 for every point to ensure continuous lines
+        for (const point of map.values()) {
+            chartUsers.forEach(u => {
+                point[u.username] = 0;
+            });
+        }
+
         // Fill Data
         relevantSteps.forEach((row: any) => {
             if (row.date < startStr || row.date > endStr) return;
@@ -178,31 +210,29 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             if (aggregation === 'month') {
                 key = row.date.substring(0, 7); // YYYY-MM
             } else if (aggregation === 'week') {
-                // Find which week this date belongs to
-                // We generated weeks starting from startStr with +7 increments.
-                // It's easiest to iterate our map keys (weekStarts) and find the one covering this date.
-                // Or better: ensure we snapped startStr to something consistent (e.g. Sunday) 
-                // and do math.
-                // Let's use the Map keys for exact matching if range fits.
-
                 const rowDate = new Date(row.date);
                 // Find the latest key <= rowDate
                 let bestKey = null;
                 for (const k of map.keys()) {
-                    if (k <= row.date) {
+                    // k is a YYYY-MM-DD string representing the start of a week
+                    // We need to check if rowDate falls within the week starting at k
+                    const weekStartDate = new Date(k);
+                    const weekEndDate = new Date(weekStartDate);
+                    weekEndDate.setDate(weekEndDate.getDate() + 6); // End of the week
+
+                    if (rowDate >= weekStartDate && rowDate <= weekEndDate) {
                         bestKey = k;
-                    } else {
-                        break; // Sorted insertion would optimize, but Map iteration order is insertion order
+                        break; // Found the correct week
                     }
                 }
-                key = bestKey || '';
+                key = bestKey || ''; // If no week found, it won't be added
             }
 
             if (map.has(key)) {
                 const p = map.get(key)!;
                 const username = userIdToName.get(row.user_id);
                 if (username) {
-                    p[username] = (Number(p[username]) || 0) + row.steps;
+                    p[username] = (Number(p[username]) || 0) + Number(row.steps);
                 }
             }
         });
@@ -212,19 +242,19 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
     return {
         DAILY: {
-            data: buildChartData(dailyStartStr, todayStr, 'day'),
+            data: buildChartData(dailyStartStr, todayStr, 'day'), // Daily stays as "Last 7 days to Today" usually
             users: chartUsers
         },
         WEEKLY: {
-            data: buildChartData(weeklyStartStr, todayStr, 'week'),
+            data: buildChartData(weeklyStartStr, weeklyEndStr, 'week'),
             users: chartUsers
         },
         MONTHLY: {
-            data: buildChartData(monthlyStartStr, todayStr, 'day'),
+            data: buildChartData(monthlyStartStr, monthlyEndStr, 'month'),
             users: chartUsers
         },
         YEARLY: {
-            data: buildChartData(yearlyStartStr, todayStr, 'month'),
+            data: buildChartData(yearlyStartStr, yearlyEndStr, 'month'),
             users: chartUsers
         }
     };

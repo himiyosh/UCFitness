@@ -76,7 +76,7 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
             });
         }
         const entry = userMap.get(email);
-        entry.steps += row.steps;
+        entry.steps += Number(row.steps);
     });
 
     // Convert to array and sort
@@ -153,7 +153,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
             });
         }
         const entry = aggMap.get(email);
-        const steps = row.steps;
+        const steps = Number(row.steps);
         const date = row.date;
 
         // Yearly (always since we filtered by year start)
@@ -277,7 +277,7 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
             });
         }
         const entry = userMap.get(email);
-        entry.steps += row.steps;
+        entry.steps += Number(row.steps);
     });
 
     return Array.from(userMap.values()).sort((a, b) => b.steps - a.steps);
@@ -354,7 +354,7 @@ export const getAllGroupRankings = async (groupId: string) => {
             });
         }
         const entry = aggMap.get(email);
-        const steps = row.steps;
+        const steps = Number(row.steps);
         const date = row.date;
 
         entry.YEARLY += steps;
