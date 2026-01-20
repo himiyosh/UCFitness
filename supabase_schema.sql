@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS public.daily_steps (
     UNIQUE(user_id, date) -- One record per user per day
 );
 
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_daily_steps_date ON public.daily_steps (date);
+
 -- Enable RLS (Row Level Security)
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_steps ENABLE ROW LEVEL SECURITY;
