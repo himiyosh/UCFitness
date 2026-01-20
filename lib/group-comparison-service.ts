@@ -85,20 +85,41 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
     }
 
-    // 3. Determine Top 10 Members
-    // Fetch steps from the earliest needed date
-    const { data: allSteps } = await supabase
-        .from('daily_steps')
-        .select(`
-            steps,
-            date,
-            user_id,
-            users!inner (username)
-        `)
-        .in('user_id', memberIds)
-        .gte('date', minDateStr);
+    // 3. Determine Top 10 Members - Fetching ALL steps with pagination
+    let allSteps: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
 
-    if (!allSteps) {
+    while (true) {
+        const { data: stepsChunk, error } = await supabase
+            .from('daily_steps')
+            .select(`
+                steps,
+                date,
+                user_id,
+                users!inner (username, name, email)
+            `)
+            .in('user_id', memberIds)
+            .gte('date', minDateStr)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+            console.error('Error fetching steps chunk:', error);
+            break;
+        }
+
+        if (!stepsChunk || stepsChunk.length === 0) break;
+
+        allSteps = allSteps.concat(stepsChunk);
+
+        if (stepsChunk.length < pageSize) break; // Reached end
+        page++;
+    }
+
+    // DEBUG LOGGING
+    console.log('[GroupChart] Total fetched rows (pagination):', allSteps.length);
+
+    if (allSteps.length === 0) {
         const empty = { data: [], users: [] };
         return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
     }
@@ -109,8 +130,14 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
     allSteps.forEach((row: any) => {
         const uid = row.user_id;
-        userTotals.set(uid, (userTotals.get(uid) || 0) + Number(row.steps));
-        if (row.users?.username) userIdToName.set(uid, row.users.username);
+        const safeSteps = Number(row.steps);
+        const stepsToAdd = isNaN(safeSteps) ? 0 : safeSteps;
+        userTotals.set(uid, (userTotals.get(uid) || 0) + stepsToAdd);
+
+        // Robust name resolution
+        const u = row.users;
+        const displayName = u?.username || u?.name || u?.email?.split('@')[0] || 'Unknown';
+        userIdToName.set(uid, displayName);
     });
 
     let topUserIds = Array.from(userTotals.entries())
@@ -203,14 +230,18 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
         // Fill Data
         relevantSteps.forEach((row: any) => {
-            if (row.date < startStr || row.date > endStr) return;
+            // NORMALIZE DATE: Extract YYYY-MM-DD only
+            const rowDateRaw = row.date;
+            const rowDateStr = rowDateRaw.length >= 10 ? rowDateRaw.substring(0, 10) : rowDateRaw;
 
-            let key = row.date; // Default for 'day'
+            if (rowDateStr < startStr || rowDateStr > endStr) return;
+
+            let key = rowDateStr; // Default for 'day'
 
             if (aggregation === 'month') {
-                key = row.date.substring(0, 7); // YYYY-MM
+                key = rowDateStr.substring(0, 7); // YYYY-MM
             } else if (aggregation === 'week') {
-                const rowDate = new Date(row.date);
+                const rowDate = new Date(rowDateStr);
                 // Find the latest key <= rowDate
                 let bestKey = null;
                 for (const k of map.keys()) {
@@ -232,7 +263,11 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                 const p = map.get(key)!;
                 const username = userIdToName.get(row.user_id);
                 if (username) {
-                    p[username] = (Number(p[username]) || 0) + Number(row.steps);
+                    const currentVal = typeof p[username] === 'number' ? p[username] as number : 0;
+                    const increment = Number(row.steps);
+                    // Ensure we don't propagate NaNs
+                    const safeIncrement = isNaN(increment) ? 0 : increment;
+                    p[username] = currentVal + safeIncrement;
                 }
             }
         });
@@ -240,7 +275,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         return Array.from(map.values());
     };
 
-    return {
+    const result = {
         DAILY: {
             data: buildChartData(dailyStartStr, todayStr, 'day'), // Daily stays as "Last 7 days to Today" usually
             users: chartUsers
@@ -258,4 +293,6 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             users: chartUsers
         }
     };
+
+    return result;
 };
