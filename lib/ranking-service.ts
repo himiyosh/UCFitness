@@ -124,6 +124,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         group_keyword
       )
     `)
+        // Performance: This range query relies on idx_daily_steps_date
         .gte('date', yearlyStartStr);
 
     if (scope === 'GROUP' && groupKeyword) {
