@@ -11,11 +11,17 @@ type StepRecord = {
 type ActivityGraphProps = {
     data: StepRecord[];
     stepGoal?: number;
+    groupInfo?: {
+        name: string;
+        header_image_url?: string;
+        image_url?: string;
+        keyword: string;
+    };
 };
 
 type ViewMode = 'WEEKLY' | 'MONTHLY' | 'ALL';
 
-export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphProps) {
+export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: ActivityGraphProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('WEEKLY');
     // Current Week Offset (0 = current week, -1 = previous week)
     const [weekOffset, setWeekOffset] = useState(0);
@@ -129,16 +135,15 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+
+
     useEffect(() => {
         if (scrollContainerRef.current) {
-            // Use setTimeout to ensure the DOM has updated and scrollWidth is accurate
-            setTimeout(() => {
-                if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
-                }
-            }, 0);
+            scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
         }
     }, [processedData, viewMode]);
+
+    // Calculate Max Steps including goal
 
     // Calculate Max Steps including goal
     // Calculate Max Steps including goal (add 20% buffer for visual clarity)
@@ -187,6 +192,7 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
     }, []);
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const shareCardRef = useRef<HTMLDivElement>(null);
 
     return (
         <div ref={containerRef} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative">
@@ -472,14 +478,20 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                 <button
                     onClick={async () => {
                         const { toBlob } = await import('html-to-image');
-                        if (!containerRef.current) return;
+                        if (!shareCardRef.current) return;
 
                         try {
-                            const blob = await toBlob(containerRef.current, { cacheBust: true, backgroundColor: '#ffffff' });
+                            // Capture the Share Card
+                            const blob = await toBlob(shareCardRef.current, {
+                                cacheBust: true,
+                                backgroundColor: '#ffffff',
+                                canvasWidth: 1080,
+                                canvasHeight: 1920
+                            });
 
                             if (!blob) return;
 
-                            const file = new File([blob], 'activity_graph.png', { type: 'image/png' });
+                            const file = new File([blob], 'activity.png', { type: 'image/png' });
 
                             if (navigator.share) {
                                 try {
@@ -496,7 +508,7 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                                 const url = URL.createObjectURL(blob);
                                 const a = document.createElement('a');
                                 a.href = url;
-                                a.download = 'activity_graph.png';
+                                a.download = 'activity.png';
                                 document.body.appendChild(a);
                                 a.click();
                                 document.body.removeChild(a);
@@ -515,7 +527,82 @@ export default function ActivityGraph({ data, stepGoal = 10000 }: ActivityGraphP
                     Share
                 </button>
             </div>
-            <div className="mt-0"></div>
+
+            {/* Hidden Share Card (1080x1920) */}
+            <div
+                ref={shareCardRef}
+                style={{
+                    position: 'fixed',
+                    left: '-9999px',
+                    top: '-9999px',
+                    width: '1080px',
+                    height: '1920px',
+                    zIndex: -1,
+                }}
+                className="flex flex-col relative overflow-hidden bg-gray-900"
+            >
+                {/* Background */}
+                {groupInfo?.header_image_url ? (
+                    <div className="absolute inset-0 z-0">
+                        <img src={groupInfo.header_image_url} className="w-full h-full object-cover opacity-60" crossOrigin="anonymous" alt="bg" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
+                    </div>
+                ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-black z-0"></div>
+                )}
+
+                {/* Content */}
+                <div className="relative z-10 flex flex-col items-center justify-between h-full p-16 pb-24 text-white">
+                    {/* Header */}
+                    <div className="flex flex-col items-center gap-6">
+                        <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-indigo-500 pb-2">UCFitness</span>
+                        {groupInfo && (
+                            <div className="flex flex-col items-center gap-4 mt-8">
+                                <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
+                                    {groupInfo.image_url ? (
+                                        <img src={groupInfo.image_url} className="w-full h-full object-cover" crossOrigin="anonymous" alt="group" />
+                                    ) : (
+                                        <span className="text-5xl font-black">{groupInfo.keyword.substring(0, 1).toUpperCase()}</span>
+                                    )}
+                                </div>
+                                <h2 className="text-5xl font-black text-center text-shadow-lg">{groupInfo.name}</h2>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Stats & Title */}
+                    <div className="flex flex-col items-center gap-4 w-full">
+                        <h3 className="text-4xl font-bold text-indigo-200">
+                            {viewMode === 'WEEKLY' ? 'This Week' : viewMode === 'MONTHLY' ? 'This Month' : 'Total Activity'}
+                        </h3>
+                        <div className="text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                            {totalDisplayedSteps.toLocaleString()}
+                        </div>
+                        <p className="text-2xl font-medium opacity-80 uppercase tracking-widest">Steps</p>
+                    </div>
+
+                    {/* Graph Visual */}
+                    <div className="w-full h-96 flex items-end justify-between gap-4 px-8 mb-12">
+                        {processedData.map((d, i) => {
+                            const isGoal = d.value >= stepGoal;
+                            const height = Math.max((d.value / maxSteps) * 100, 2); // Min 2%
+                            return (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-3">
+                                    <div
+                                        className={`w-full rounded-t-lg transition-all ${isGoal ? 'bg-green-400 shadow-[0_0_20px_rgba(74,222,128,0.5)]' : 'bg-indigo-400 shadow-[0_0_20px_rgba(129,140,248,0.4)]'}`}
+                                        style={{ height: `${height}%` }}
+                                    ></div>
+                                    <span className="text-2xl font-bold uppercase text-gray-400">{d.label.substring(0, 3)}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="absolute bottom-12 text-center opacity-50 text-xl font-medium tracking-wide">
+                        Keep stepping with UCFitness
+                    </div>
+                </div>
+            </div>
         </div >
     );
 }

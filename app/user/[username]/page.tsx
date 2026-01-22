@@ -24,11 +24,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         .eq("username", username)
         .single();
 
+    let primaryGroup: any = undefined;
+
     if (user) {
         // Fetch valid public groups for this user
         const { data: publicGroups } = await supabase
             .from('group_members')
-            .select('groups!inner(keyword, is_public)')
+            .select('groups!inner(keyword, is_public, name, header_image_url, image_url)')
             .eq('user_id', user.id)
             .eq('groups.is_public', true);
 
@@ -36,6 +38,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         if (publicGroups) {
             // @ts-ignore
             user.group_keyword = publicGroups.map((g: any) => g.groups.keyword);
+            // @ts-ignore
+            primaryGroup = publicGroups[0]?.groups;
         } else {
             user.group_keyword = [];
         }
@@ -185,7 +189,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
                         {/* New Comparison Stats Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-3 gap-3 sm:gap-4">
                             {/* Daily */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Today</p>
@@ -227,7 +231,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
                         {/* Activity Graph */}
-                        <ActivityGraph data={allHistoryData} stepGoal={user.step_goal || 10000} />
+                        <ActivityGraph
+                            data={allHistoryData}
+                            stepGoal={user.step_goal || 10000}
+                            groupInfo={primaryGroup}
+                        />
                     </div>
                 </div>
             </div>

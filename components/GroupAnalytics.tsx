@@ -17,6 +17,7 @@ interface GroupAnalyticsProps {
     currentGroupId: string;
     currentUsername?: string;
     children?: React.ReactNode;
+    isPublic: boolean;
 }
 
 const TABS: { key: Period; label: string }[] = [
@@ -33,7 +34,8 @@ export default function GroupAnalytics({
     userEmail,
     currentGroupId,
     currentUsername,
-    children
+    children,
+    isPublic
 }: GroupAnalyticsProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [currentPage, setCurrentPage] = useState(1);
@@ -186,7 +188,7 @@ export default function GroupAnalytics({
             <div className="flex flex-col xl:flex-row gap-6">
                 {/* Global Rankings */}
                 <div className="flex-1 min-w-0">
-                    {groupCompetitionRankings && groupCompetitionRankings[period] && (
+                    {groupCompetitionRankings && groupCompetitionRankings[period] && isPublic && (
                         <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col transition-all duration-300">
                             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                                 <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">

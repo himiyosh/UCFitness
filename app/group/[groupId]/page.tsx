@@ -221,6 +221,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             userEmail={userEmail}
                             currentGroupId={groupId}
                             currentUsername={session.user.name || undefined}
+                            isPublic={group.is_public}
                         >
                             <div className="p-4 sm:p-6">
                                 <h2 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pb-2 border-b border-gray-100">Settings & Members</h2>
