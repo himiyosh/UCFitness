@@ -103,3 +103,5 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Internal Server Error", details: String(error) }, { status: 500 });
     }
 }
+
+export const runtime = 'edge';
