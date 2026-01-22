@@ -3,11 +3,20 @@ import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeries } from 
 
 export const dynamic = 'force-dynamic';
 
+interface User {
+    id: string;
+    email: string;
+    provider: string | null;
+    refresh_token: string | null;
+    access_token: string | null;
+    token_expires_at: number | null;
+}
+
 /**
  * Helper to ensure we have a valid access token.
  * If the current one is expired (or near expiry) or if a request fails, we refresh it.
  */
-async function ensureFitbitAccessToken(user: any) {
+async function ensureFitbitAccessToken(user: User) {
     // Simple check: if we have a refresh token but no access token, or if we want to be proactive
     // For now, we'll return the current tokens and let the caller handle 401s by retrying,
     // OR we can wrap the logic here.
@@ -29,7 +38,7 @@ async function ensureFitbitAccessToken(user: any) {
     return user.access_token;
 }
 
-async function performTokenRefresh(user: any) {
+async function performTokenRefresh(user: User) {
     try {
         if (!user.refresh_token) {
             console.error(`No refresh token available for ${user.email} (ID: ${user.id})`);
@@ -62,19 +71,11 @@ async function performTokenRefresh(user: any) {
     }
 }
 
-export async function updateUserSteps(userId: string) {
-    // Fetch user details
-    const { data: user, error } = await supabaseAdmin
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-    if (error || !user) {
-        console.error(`Failed to fetch user ${userId}:`, error);
-        return null;
-    }
-
+/**
+ * Core logic to update steps for a user object.
+ * This avoids re-fetching the user if we already have the data.
+ */
+async function processUserSteps(user: User) {
     // Use JST (UTC+9) for date calculation
     const now = new Date();
     const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -91,6 +92,7 @@ export async function updateUserSteps(userId: string) {
 
         try {
             steps = await getFitbitSteps(accessToken, today);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             if (error.message.includes('Unauthorized') || error.message.includes('401')) {
                 console.log(`Received 401 for ${user.email}, forcing refresh...`);
@@ -109,10 +111,9 @@ export async function updateUserSteps(userId: string) {
         }
     }
 
-    console.log(`Updating steps for ${user.email} (${user.provider}): ${steps}`);
-
-    // Update daily_steps table
+    // Only update if steps were fetched successfully (steps >= 0)
     if (steps !== null && steps >= 0) {
+        console.log(`Updating steps for ${user.email} (${user.provider}): ${steps}`);
         const { error: upsertError } = await supabaseAdmin
             .from('daily_steps')
             .upsert(
@@ -131,6 +132,22 @@ export async function updateUserSteps(userId: string) {
     }
 
     return steps;
+}
+
+export async function updateUserSteps(userId: string) {
+    // Fetch user details
+    const { data: user, error } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (error || !user) {
+        console.error(`Failed to fetch user ${userId}:`, error);
+        return null;
+    }
+
+    return processUserSteps(user);
 }
 
 export async function backfillUserSteps(userId: string) {
@@ -162,6 +179,7 @@ export async function backfillUserSteps(userId: string) {
         let timeSeries;
         try {
             timeSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             if (e.message.includes('Unauthorized') || e.message.includes('401')) {
                 accessToken = await performTokenRefresh(user);
@@ -178,6 +196,7 @@ export async function backfillUserSteps(userId: string) {
 
             // Prepare upsert operations
             // Supabase upsert can take an array
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const stepsData = timeSeries.map((entry: any) => ({
                 user_id: user.id,
                 date: entry.dateTime,
@@ -202,17 +221,21 @@ export async function backfillUserSteps(userId: string) {
 }
 
 export async function updateAllUserSteps() {
-    // 1. Fetch all users
+    // 1. Fetch all users with necessary fields
+    // Optimization: Select only needed fields, not just ID, to avoid N+1 queries
     const { data: users, error } = await supabaseAdmin
         .from('users')
-        .select('id');
+        .select('id, email, provider, access_token, refresh_token, token_expires_at');
 
     if (error || !users) {
         console.error('Failed to fetch users:', error);
         return;
     }
 
-    for (const user of users) {
-        await updateUserSteps(user.id);
-    }
+    console.log(`Updating steps for ${users.length} users in parallel...`);
+
+    // Optimization: Run updates in parallel
+    // We can map over users and call processUserSteps
+    // Promise.all ensures we wait for all to complete
+    await Promise.all(users.map(user => processUserSteps(user as User)));
 }
