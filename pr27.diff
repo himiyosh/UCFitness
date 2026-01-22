@@ -1,0 +1,77 @@
+diff --git a/app/page.tsx b/app/page.tsx
+index 5d90cb9..10065d8 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -44,28 +44,11 @@ export default async function Home() {
+     const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+     const today = jstDate.toISOString().split('T')[0];
+ 
+-    const { data } = await supabase
+-      .from('daily_steps')
+-      .select('steps')
+-      .eq('user_id', userId)
+-      .eq('date', today)
+-      .single();
+-    mySteps = data?.steps || 0;
+-
+     // Fetch yesterday's steps (JST)
+     const yesterdayDate = new Date(jstDate);
+     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+     const yesterday = yesterdayDate.toISOString().split('T')[0];
+ 
+-    const { data: yesterdayData } = await supabase
+-      .from('daily_steps')
+-      .select('steps')
+-      .eq('user_id', userId)
+-      .eq('date', yesterday)
+-      .single();
+-
+-    yesterdaySteps = yesterdayData?.steps || 0;
+-
+     // --- Calculate Last Week & Last Month Ranges ---
+     const currentDate = new Date(`${today}T00:00:00Z`);
+     const utcDay = currentDate.getUTCDay(); // 0(Sun) - 6(Sat)
+@@ -91,23 +74,29 @@ export default async function Home() {
+     lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
+     const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
+ 
+-    // Query Last Week
+-    const { data: lwData } = await supabase
++    // ⚡ Bolt Optimization: Combined Query
++    // Fetch all needed data in a single request (Today, Yesterday, Last Week, Last Month)
++    // We fetch from the earliest date needed (Last Month Start)
++    const { data: userStepsData } = await supabase
+       .from('daily_steps')
+-      .select('steps')
++      .select('steps, date')
+       .eq('user_id', userId)
+-      .gte('date', lastWeekStartStr)
+-      .lt('date', thisWeekStartStr);
+-    lastWeekSteps = lwData?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
++      .gte('date', lastMonthStartStr);
+ 
+-    // Query Last Month
+-    const { data: lmData } = await supabase
+-      .from('daily_steps')
+-      .select('steps')
+-      .eq('user_id', userId)
+-      .gte('date', lastMonthStartStr)
+-      .lt('date', thisMonthStartStr);
+-    lastMonthSteps = lmData?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
++    // Process results in memory
++    const stepsMap = new Map<string, number>();
++    userStepsData?.forEach(row => {
++      stepsMap.set(row.date, row.steps);
++    });
++
++    mySteps = stepsMap.get(today) || 0;
++    yesterdaySteps = stepsMap.get(yesterday) || 0;
++
++    lastWeekSteps = (userStepsData ?? []).filter(row => row.date >= lastWeekStartStr && row.date < thisWeekStartStr)
++      .reduce((sum, row) => sum + row.steps, 0) || 0;
++
++    lastMonthSteps = (userStepsData ?? []).filter(row => row.date >= lastMonthStartStr && row.date < thisMonthStartStr)
++      .reduce((sum, row) => sum + row.steps, 0) || 0;
+   }
+ 
+   // Pre-load ALL rankings (Optimization: Single query per scope)

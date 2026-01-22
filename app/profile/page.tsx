@@ -111,68 +111,159 @@ export default async function ProfilePage() {
                             <SyncHistoryButton />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 text-center md:text-left">
-                                <p className="text-sm font-medium text-gray-500">Total Steps Recorded</p>
-                                <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
+                        {/* Top Row: Total & Best Day (2 columns on mobile) */}
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                <p className="text-xs sm:text-sm font-medium text-gray-500">Total Steps Recorded</p>
+                                <p className="mt-1 text-xl sm:text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
                             </div>
-                            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 text-center md:text-left">
-                                <p className="text-sm font-medium text-gray-500">Monthly Steps (MTD)</p>
+                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                <p className="text-xs sm:text-sm font-medium text-gray-500">All-time Best Day</p>
+                                <div className="mt-1">
+                                    <p className="text-xl sm:text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
+                                    <p className="text-[10px] sm:text-xs font-medium mt-0.5 text-gray-500">
+                                        on {bestDay.date}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Bottom Row: Daily / Weekly / Monthly (Single Container, 3 cols) - Compact */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="grid grid-cols-3 divide-x divide-gray-100">
                                 {(() => {
                                     const now = new Date();
-                                    const currentMonth = now.getMonth();
-                                    const currentYear = now.getFullYear();
-                                    const currentDay = now.getDate();
+                                    // JST Adjustment: Add 9 hours to current UTC time to get JST time
+                                    // We use this shifted time's UTC components to form the YYYY-MM-DD string
+                                    const jstOffset = 9 * 60 * 60 * 1000;
+                                    const jstDate = new Date(now.getTime() + jstOffset);
 
-                                    // Calculate previous month
-                                    const prevDate = new Date(now);
-                                    prevDate.setMonth(now.getMonth() - 1);
-                                    const prevMonth = prevDate.getMonth();
-                                    const prevYear = prevDate.getFullYear();
+                                    const currentYear = jstDate.getUTCFullYear();
+                                    const currentMonth = jstDate.getUTCMonth(); // 0-indexed
 
-                                    let currentMonthSteps = 0;
-                                    let prevMonthSteps = 0;
+                                    const year = jstDate.getUTCFullYear();
+                                    const month = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
+                                    const day = String(jstDate.getUTCDate()).padStart(2, '0');
+                                    const todayYMD = `${year}-${month}-${day}`;
+
+                                    // Week start (Sunday)
+                                    // We need "Start of Week" in JST.
+                                    const dayOfWeek = jstDate.getUTCDay(); // 0 (Sun) - 6 (Sat)
+                                    const startOfWeek = new Date(jstDate);
+                                    startOfWeek.setUTCDate(jstDate.getUTCDate() - dayOfWeek);
+                                    startOfWeek.setUTCHours(0, 0, 0, 0);
+
+                                    // Previous Week Start
+                                    const startOfLastWeek = new Date(startOfWeek);
+                                    startOfLastWeek.setUTCDate(startOfLastWeek.getUTCDate() - 7);
+
+                                    // Previous Month logic
+                                    // currentMonth is 0-indexed.
+                                    // If current is Jan (0), prev is Dec (11) of prev year.
+                                    const prevMonthDate = new Date(year, currentMonth - 1, 1);
+                                    const prevMonthYear = prevMonthDate.getFullYear();
+                                    const prevMonthIndex = prevMonthDate.getMonth();
+
+                                    // Logic
+                                    let dailySteps = 0;
+                                    let weeklySteps = 0;
+                                    let monthlySteps = 0;
+
+                                    let prevWeeklySteps = 0;
+                                    let prevMonthlySteps = 0;
+
+                                    // Comparison data (dummy for now or strict prev period)
+                                    let prevDailySteps = 0; // Yesterday
 
                                     if (allHistoryData) {
                                         allHistoryData.forEach((record: any) => {
-                                            const d = new Date(record.date);
-                                            const rYear = d.getFullYear();
-                                            const rMonth = d.getMonth();
-                                            const rDay = d.getDate();
+                                            // record.date is "YYYY-MM-DD" string
+                                            // We treat this string as if it's JST Date (because it WAS saved as JST date string)
 
-                                            // Current Month
-                                            if (rYear === currentYear && rMonth === currentMonth) {
-                                                currentMonthSteps += record.steps;
+                                            // Simpler Weekly Comparison:
+                                            // Convert record.date "YYYY-MM-DD" to a Timestamp that represents that day at 00:00 UTC (effectively treating it as JST-value-but-in-UTC-variable)
+                                            // because 'startOfWeek' is also JST-value-but-in-UTC-variable.
+                                            const recordDateParts = record.date.split('-').map(Number);
+                                            const recordTime = Date.UTC(recordDateParts[0], recordDateParts[1] - 1, recordDateParts[2]);
+
+                                            if (record.date === todayYMD) {
+                                                dailySteps += record.steps;
                                             }
 
-                                            // Previous Month (Same Period)
-                                            if (rYear === prevYear && rMonth === prevMonth && rDay <= currentDay) {
-                                                prevMonthSteps += record.steps;
+                                            // Weekly
+                                            if (recordTime >= startOfWeek.getTime()) {
+                                                weeklySteps += record.steps;
+                                            }
+                                            // Previous Weekly
+                                            else if (recordTime >= startOfLastWeek.getTime() && recordTime < startOfWeek.getTime()) {
+                                                prevWeeklySteps += record.steps;
+                                            }
+
+                                            // Monthly
+                                            const rYear = recordDateParts[0];
+                                            const rMonth = recordDateParts[1] - 1; // 0-indexed
+                                            if (rYear === currentYear && rMonth === currentMonth) {
+                                                monthlySteps += record.steps;
+                                            }
+                                            // Previous Monthly
+                                            else if (rYear === prevMonthYear && rMonth === prevMonthIndex) {
+                                                prevMonthlySteps += record.steps;
+                                            }
+
+                                            // Yesterday logic
+                                            // Calculate Yesterday YMD from our JST Date
+                                            const y = new Date(jstDate);
+                                            y.setUTCDate(y.getUTCDate() - 1);
+                                            const yy = y.getUTCFullYear();
+                                            const ym = String(y.getUTCMonth() + 1).padStart(2, '0');
+                                            const yd = String(y.getUTCDate()).padStart(2, '0');
+                                            const yesterdayYMD = `${yy}-${ym}-${yd}`;
+
+                                            if (record.date === yesterdayYMD) {
+                                                prevDailySteps = record.steps;
                                             }
                                         });
                                     }
 
-                                    const diff = currentMonthSteps - prevMonthSteps;
-                                    const isUp = diff >= 0;
+
+
+                                    // Render Block
+                                    const dailyDiff = dailySteps - prevDailySteps;
+                                    const weeklyDiff = weeklySteps - prevWeeklySteps;
+                                    const monthlyDiff = monthlySteps - prevMonthlySteps;
+
+                                    const formatDiff = (diff: number) => {
+                                        return diff > 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
+                                    };
 
                                     return (
-                                        <div className="mt-1 sm:mt-2">
-                                            <p className="text-2xl sm:text-3xl font-bold text-gray-900">{currentMonthSteps.toLocaleString()}</p>
-                                            <p className={`text-xs font-medium mt-0.5 sm:mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
-                                                {isUp ? '↑' : '↓'} {Math.abs(diff).toLocaleString()} vs last month
-                                            </p>
-                                        </div>
+                                        <>
+                                            <div className="p-3 sm:p-4 text-center">
+                                                <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Daily</p>
+                                                <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{dailySteps.toLocaleString()}</p>
+                                                <p className={`text-[10px] font-medium mt-1 ${dailySteps >= prevDailySteps ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {dailySteps >= prevDailySteps ? '↑' : '↓'} {formatDiff(dailyDiff)} vs Yest.
+                                                </p>
+                                            </div>
+
+                                            <div className="p-3 sm:p-4 text-center">
+                                                <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Weekly</p>
+                                                <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{weeklySteps.toLocaleString()}</p>
+                                                <p className={`text-[10px] font-medium mt-1 ${weeklySteps >= prevWeeklySteps ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {weeklySteps >= prevWeeklySteps ? '↑' : '↓'} {formatDiff(weeklyDiff)} vs L.Wk
+                                                </p>
+                                            </div>
+
+                                            <div className="p-3 sm:p-4 text-center">
+                                                <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Monthly</p>
+                                                <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{monthlySteps.toLocaleString()}</p>
+                                                <p className={`text-[10px] font-medium mt-1 ${monthlySteps >= prevMonthlySteps ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {monthlySteps >= prevMonthlySteps ? '↑' : '↓'} {formatDiff(monthlyDiff)} vs L.Mo
+                                                </p>
+                                            </div>
+                                        </>
                                     );
                                 })()}
-                            </div>
-                            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 text-center md:text-left">
-                                <p className="text-sm font-medium text-gray-500">All-time Best Day</p>
-                                <div className="mt-1 sm:mt-2">
-                                    <p className="text-2xl sm:text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
-                                    <p className="text-xs font-medium mt-0.5 sm:mt-1 text-gray-500">
-                                        on {bestDay.date}
-                                    </p>
-                                </div>
                             </div>
                         </div>
 

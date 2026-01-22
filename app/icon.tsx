@@ -23,8 +23,8 @@ export default function Icon() {
                 }}
             >
                 <svg
-                    width="300"
-                    height="300"
+                    width="192"
+                    height="192"
                     viewBox="0 0 24 24"
                     fill="white"
                     xmlns="http://www.w3.org/2000/svg"
