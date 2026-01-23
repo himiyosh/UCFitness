@@ -18,6 +18,8 @@ interface GroupAnalyticsProps {
     currentUsername?: string;
     children?: React.ReactNode;
     isPublic: boolean;
+    groupName?: string;
+    groupImage?: string;
 }
 
 const TABS: { key: Period; label: string }[] = [
@@ -35,7 +37,9 @@ export default function GroupAnalytics({
     currentGroupId,
     currentUsername,
     children,
-    isPublic
+    isPublic,
+    groupName,
+    groupImage
 }: GroupAnalyticsProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [currentPage, setCurrentPage] = useState(1);
@@ -180,6 +184,8 @@ export default function GroupAnalytics({
                         title={`${period === 'DAILY' ? 'Last 7 Days' :
                             period === 'WEEKLY' ? 'This Week' :
                                 period === 'MONTHLY' ? 'This Month' : 'This Year'} Comparison`}
+                        groupName={groupName}
+                        groupImage={groupImage}
                     />
                 </div>
             </div>
