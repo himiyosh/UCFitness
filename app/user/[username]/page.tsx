@@ -189,7 +189,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
                         {/* New Comparison Stats Grid */}
-                        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                             {/* Daily */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Today</p>

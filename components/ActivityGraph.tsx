@@ -481,12 +481,16 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                         if (!shareCardRef.current) return;
 
                         try {
+                            // Wait a moment for any potential renders
+                            await new Promise(resolve => setTimeout(resolve, 100));
+
                             // Capture the Share Card
                             const blob = await toBlob(shareCardRef.current, {
                                 cacheBust: true,
                                 backgroundColor: '#ffffff',
                                 canvasWidth: 1080,
-                                canvasHeight: 1920
+                                canvasHeight: 1920,
+                                pixelRatio: 1
                             });
 
                             if (!blob) return;
@@ -504,7 +508,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                                     console.log('Share canceled or failed', shareError);
                                 }
                             } else {
-                                // Fallback download
+                                // Fallback download as before
                                 const url = URL.createObjectURL(blob);
                                 const a = document.createElement('a');
                                 a.href = url;
@@ -519,12 +523,12 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                             console.error('Failed to generate image', err);
                         }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all text-sm font-semibold"
+                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
+                    title="Share Statistics"
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                        <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
                     </svg>
-                    Share
                 </button>
             </div>
 
@@ -533,11 +537,13 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                 ref={shareCardRef}
                 style={{
                     position: 'fixed',
-                    left: '-9999px',
-                    top: '-9999px',
+                    top: 0,
+                    left: 0,
                     width: '1080px',
                     height: '1920px',
-                    zIndex: -1,
+                    zIndex: -50,
+                    opacity: 1,
+                    pointerEvents: 'none',
                 }}
                 className="flex flex-col relative overflow-hidden bg-gray-900"
             >
@@ -582,15 +588,20 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                     </div>
 
                     {/* Graph Visual */}
-                    <div className="w-full h-96 flex items-end justify-between gap-4 px-8 mb-12">
+                    {/* Explicitly set height in pixels for safer capture */}
+                    <div className="w-full flex items-end justify-between gap-4 px-8 mb-12" style={{ height: '400px' }}>
                         {processedData.map((d, i) => {
                             const isGoal = d.value >= stepGoal;
                             const height = Math.max((d.value / maxSteps) * 100, 2); // Min 2%
                             return (
-                                <div key={i} className="flex-1 flex flex-col items-center gap-3">
+                                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-3">
                                     <div
-                                        className={`w-full rounded-t-lg transition-all ${isGoal ? 'bg-green-400 shadow-[0_0_20px_rgba(74,222,128,0.5)]' : 'bg-indigo-400 shadow-[0_0_20px_rgba(129,140,248,0.4)]'}`}
-                                        style={{ height: `${height}%` }}
+                                        className={`w-full rounded-t-lg ${isGoal ? 'shadow-[0_0_20px_rgba(74,222,128,0.5)]' : 'shadow-[0_0_20px_rgba(129,140,248,0.4)]'}`}
+                                        style={{
+                                            height: `${height}%`,
+                                            backgroundColor: isGoal ? '#4ade80' : '#818cf8', // Tailwind green-400 : indigo-400
+                                            minWidth: '20px' // Ensure bar has width
+                                        }}
                                     ></div>
                                     <span className="text-2xl font-bold uppercase text-gray-400">{d.label.substring(0, 3)}</span>
                                 </div>
