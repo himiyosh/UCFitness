@@ -109,10 +109,24 @@ export default async function Home() {
   const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.email === userEmail);
   const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
+  // ⚡ Bolt Optimization: Bulk fetch group metadata to avoid N+1 queries
+  const groupMetadataMap = new Map<string, { id: string; header_image_url: string | null; image_url: string | null }>();
+
+  if (groupKeywords.length > 0) {
+    const { data: groupsData } = await supabase
+      .from('groups')
+      .select('id, keyword, header_image_url, image_url')
+      .in('keyword', groupKeywords);
+
+    groupsData?.forEach(g => {
+      groupMetadataMap.set(g.keyword, g);
+    });
+  }
+
   const allGroupRankings = await Promise.all(
     groupKeywords.map(async (keyword) => {
-      // Lookup groupId & images
-      const { data: grp } = await supabase.from('groups').select('id, header_image_url, image_url').eq('keyword', keyword).single();
+      // Lookup groupId & images from memory
+      const grp = groupMetadataMap.get(keyword);
       const groupId = grp?.id;
 
       let rankings;
