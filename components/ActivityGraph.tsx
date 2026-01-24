@@ -26,7 +26,9 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
     // Current Week Offset (0 = current week, -1 = previous week)
     const [weekOffset, setWeekOffset] = useState(0);
     // Current Month Offset (0 = current month, -1 = previous month)
+    // Current Month Offset (0 = current month, -1 = previous month)
     const [monthOffset, setMonthOffset] = useState(0);
+    const [isSharing, setIsSharing] = useState(false);
 
 
     const processedData = useMemo(() => {
@@ -203,10 +205,13 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
             {/* Share Button (moved to Top Right of Container) */}
             <button
                 onClick={async () => {
-                    const { toBlob } = await import('html-to-image');
-                    if (!shareCardRef.current) return;
+                    if (isSharing) return;
+                    setIsSharing(true);
 
                     try {
+                        const { toBlob } = await import('html-to-image');
+                        if (!shareCardRef.current) return;
+
                         await new Promise(resolve => setTimeout(resolve, 100));
                         const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
                         if (!blob) return;
@@ -221,14 +226,23 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                             a.href = url; a.download = 'activity.png';
                             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                         }
-                    } catch (err) { console.error('Failed to generate image', err); }
+                    } catch (err) {
+                        console.error('Failed to generate image', err);
+                    } finally {
+                        setIsSharing(false);
+                    }
                 }}
-                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-full transition-all z-20"
+                disabled={isSharing}
+                className={`absolute top-4 right-4 p-2 rounded-full transition-all z-20 ${isSharing ? 'bg-indigo-50 text-indigo-400 cursor-wait' : 'text-gray-400 hover:text-indigo-600 hover:bg-gray-50'}`}
                 title="Share Statistics"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
-                </svg>
+                {isSharing ? (
+                    <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                        <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
+                    </svg>
+                )}
             </button>
 
             {/* Tooltip Portal - Absolute Positioning relative to Container */}

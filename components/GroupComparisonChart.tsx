@@ -24,6 +24,7 @@ interface GroupComparisonChartProps {
 export default function GroupComparisonChart({ data, users, currentUsername, title, groupName, groupImage }: GroupComparisonChartProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [activeUser, setActiveUser] = useState<string | null>(null);
+    const [isSharing, setIsSharing] = useState(false);
     const shareCardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -104,10 +105,13 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                 {/* Share Button */}
                 <button
                     onClick={async () => {
-                        const { toBlob } = await import('html-to-image');
-                        if (!shareCardRef.current) return;
+                        if (isSharing) return;
+                        setIsSharing(true);
 
                         try {
+                            const { toBlob } = await import('html-to-image');
+                            if (!shareCardRef.current) return;
+
                             await new Promise(resolve => setTimeout(resolve, 200));
 
                             const blob = await toBlob(shareCardRef.current, {
@@ -144,14 +148,21 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                             }
                         } catch (err) {
                             console.error('Failed to generate image', err);
+                        } finally {
+                            setIsSharing(false);
                         }
                     }}
-                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
+                    disabled={isSharing}
+                    className={`p-1.5 rounded-full transition-all ${isSharing ? 'bg-indigo-50 text-indigo-400 cursor-wait' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
                     title="Share Group Stats"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                        <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
-                    </svg>
+                    {isSharing ? (
+                        <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
+                        </svg>
+                    )}
                 </button>
             </div>
 

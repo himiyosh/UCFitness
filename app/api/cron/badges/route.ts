@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assignBadges } from '@/lib/badge-service';
 import { Period } from '@/components/LeaderboardTabs';
 
+export const runtime = 'edge';
 export const maxDuration = 300; // 5 minutes max (Vercel Limit for Pro is higher, but 300 is safe)
 
 export async function GET(request: NextRequest) {
