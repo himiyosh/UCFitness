@@ -11,6 +11,7 @@ import StepGoalForm from "@/components/StepGoalForm";
 import ProfileHeader from "@/components/ProfileHeader";
 import SyncHistoryButton from "@/components/SyncHistoryButton";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { getUserBadges } from "@/lib/badge-service";
 
 export const dynamic = 'force-dynamic';
 
@@ -36,8 +37,14 @@ export default async function ProfilePage() {
     let totalSteps = 0;
     let bestDay = { date: '-', steps: 0 };
     let allHistoryData: any[] = [];
+    let userBadges: any[] = [];
 
     if (user) {
+        // Fetch Badges
+        userBadges = await getUserBadges((session.user as any).id);
+
+        // Fetch All History
+
         // Fetch All History
         const { data: allHistory } = await supabase
             .from('daily_steps')
@@ -94,7 +101,7 @@ export default async function ProfilePage() {
                     <div className="md:col-span-1 space-y-6 order-last md:order-none">
                         <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
                         <div>
-                            <ProfileHeader user={user} />
+                            <ProfileHeader user={user} badges={userBadges} />
 
                             <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 p-4">
                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Daily Goal</p>

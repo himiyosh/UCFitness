@@ -255,6 +255,63 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                             </button>
                         ))}
                     </div>
+
+                    {/* Share Button (Top Right) */}
+                    <button
+                        onClick={async () => {
+                            const { toBlob } = await import('html-to-image');
+                            if (!shareCardRef.current) return;
+
+                            try {
+                                // Wait a moment for any potential renders
+                                await new Promise(resolve => setTimeout(resolve, 100));
+
+                                // Capture the Share Card
+                                const blob = await toBlob(shareCardRef.current, {
+                                    cacheBust: true,
+                                    backgroundColor: '#ffffff',
+                                    canvasWidth: 1080,
+                                    canvasHeight: 1920,
+                                    pixelRatio: 1
+                                });
+
+                                if (!blob) return;
+
+                                const file = new File([blob], 'activity.png', { type: 'image/png' });
+
+                                if (navigator.share) {
+                                    try {
+                                        await navigator.share({
+                                            title: 'My Activity',
+                                            text: 'Check out my activity on UCFitness!',
+                                            files: [file]
+                                        });
+                                    } catch (shareError) {
+                                        console.log('Share canceled or failed', shareError);
+                                    }
+                                } else {
+                                    // Fallback download as before
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = 'activity.png';
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                }
+
+                            } catch (err) {
+                                console.error('Failed to generate image', err);
+                            }
+                        }}
+                        className="absolute right-0 p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
+                        title="Share Statistics"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
+                        </svg>
+                    </button>
                 </div>
 
                 {/* Sub-header Controls & Stats Toolbar */}
@@ -474,63 +531,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                 </div>
             </div>
 
-            <div className="mt-4 flex justify-end" data-html2canvas-ignore="true">
-                <button
-                    onClick={async () => {
-                        const { toBlob } = await import('html-to-image');
-                        if (!shareCardRef.current) return;
 
-                        try {
-                            // Wait a moment for any potential renders
-                            await new Promise(resolve => setTimeout(resolve, 100));
-
-                            // Capture the Share Card
-                            const blob = await toBlob(shareCardRef.current, {
-                                cacheBust: true,
-                                backgroundColor: '#ffffff',
-                                canvasWidth: 1080,
-                                canvasHeight: 1920,
-                                pixelRatio: 1
-                            });
-
-                            if (!blob) return;
-
-                            const file = new File([blob], 'activity.png', { type: 'image/png' });
-
-                            if (navigator.share) {
-                                try {
-                                    await navigator.share({
-                                        title: 'My Activity',
-                                        text: 'Check out my activity on UCFitness!',
-                                        files: [file]
-                                    });
-                                } catch (shareError) {
-                                    console.log('Share canceled or failed', shareError);
-                                }
-                            } else {
-                                // Fallback download as before
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = 'activity.png';
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
-                            }
-
-                        } catch (err) {
-                            console.error('Failed to generate image', err);
-                        }
-                    }}
-                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
-                    title="Share Statistics"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                        <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
-                    </svg>
-                </button>
-            </div>
 
             {/* Hidden Share Card (1080x1920) */}
             <div

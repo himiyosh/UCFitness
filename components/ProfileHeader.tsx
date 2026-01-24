@@ -4,6 +4,7 @@ import { useState } from 'react';
 import ProfileImageEditor from "@/components/ProfileImageEditor";
 import { useRouter } from 'next/navigation';
 import ImageModal from '@/components/ImageModal';
+import BadgeIcon from '@/components/BadgeIcon';
 
 interface UserData {
     name: string | null;
@@ -13,7 +14,18 @@ interface UserData {
     is_custom_image: boolean | null;
 }
 
-export default function ProfileHeader({ user, readonly = false }: { user: UserData; readonly?: boolean }) {
+interface Badge {
+    badge_code: string;
+    period_date: string;
+    badges: {
+        name: string;
+        category: string;
+        type: string;
+        rank: number;
+    };
+}
+
+export default function ProfileHeader({ user, badges = [], readonly = false }: { user: UserData; badges?: Badge[]; readonly?: boolean }) {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
@@ -107,6 +119,26 @@ export default function ProfileHeader({ user, readonly = false }: { user: UserDa
                                     </div>
                                 )}
 
+                                {badges && badges.length > 0 && (
+                                    <div className="mt-3 flex justify-center flex-wrap gap-2">
+                                        {badges.map((badge, idx) => (
+                                            <div key={`${badge.badge_code}-${badge.period_date}-${idx}`} className="group relative">
+                                                <BadgeIcon
+                                                    type={badge.badges.type}
+                                                    category={badge.badges.category}
+                                                    rank={badge.badges.rank}
+                                                    className="w-8 h-8 sm:w-10 sm:h-10 hover:scale-110 transition-transform cursor-pointer"
+                                                />
+                                                {/* Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                    <p className="font-bold">{badge.badges.name}</p>
+                                                    <p className="text-gray-300">{badge.period_date}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                                 {!readonly && (
                                     <button
                                         onClick={() => setIsEditing(true)}
@@ -176,6 +208,6 @@ export default function ProfileHeader({ user, readonly = false }: { user: UserDa
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
