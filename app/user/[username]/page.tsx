@@ -246,7 +246,6 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         <ActivityGraph
                             data={allHistoryData}
                             stepGoal={user.step_goal || 10000}
-                            groupInfo={primaryGroup}
                         />
                     </div>
                 </div>
