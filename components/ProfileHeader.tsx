@@ -123,47 +123,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                                     </div>
                                 )}
 
-                                {/* Badge List */}
-                                {badges && badges.length > 0 && (() => {
-                                    // Filter to show only highest rank per category
-                                    const bestBadgesMap = new Map<string, Badge>();
 
-                                    badges.forEach(b => {
-                                        const key = `${b.badges.type}_${b.badges.category}`;
-                                        const currentBest = bestBadgesMap.get(key);
-
-                                        if (!currentBest || b.badges.rank < currentBest.badges.rank) {
-                                            bestBadgesMap.set(key, b);
-                                        }
-                                    });
-
-                                    const displayBadges = Array.from(bestBadgesMap.values()).sort((a, b) => {
-                                        if (a.badges.type !== b.badges.type) return a.badges.type === 'GLOBAL' ? -1 : 1;
-                                        if (a.badges.category !== b.badges.category) return a.badges.category.localeCompare(b.badges.category);
-                                        return a.badges.rank - b.badges.rank;
-                                    });
-
-                                    return (
-                                        <div className="mt-3 flex justify-center flex-wrap gap-2">
-                                            {displayBadges.map((badge, idx) => (
-                                                <div key={`${badge.badge_code}-${idx}`} className="group relative">
-                                                    <BadgeIcon
-                                                        type={badge.badges.type}
-                                                        category={badge.badges.category}
-                                                        rank={badge.badges.rank}
-                                                        className="w-10 h-10 hover:scale-110 transition-transform cursor-pointer"
-                                                    />
-                                                    {/* Tooltip: Positioned below to avoid z-index/overflow issues with header */}
-                                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 bg-gray-900/95 text-white text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg border border-white/10">
-                                                        <p className="font-bold">{badge.badges.name}</p>
-                                                        <p className="text-gray-300 text-[9px]">Best: {badge.period_date}</p>
-                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900/95"></div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    );
-                                })()}
 
                                 {!readonly && (
                                     <button

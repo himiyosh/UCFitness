@@ -9,6 +9,7 @@ import UserMenu from "@/components/UserMenu";
 import ActivityGraph from "@/components/ActivityGraph";
 import StepGoalForm from "@/components/StepGoalForm";
 import ProfileHeader from "@/components/ProfileHeader";
+import ProfileBadges from "@/components/ProfileBadges";
 import SyncHistoryButton from "@/components/SyncHistoryButton";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getUserBadges } from "@/lib/badge-service";
@@ -102,6 +103,10 @@ export default async function ProfilePage() {
                         <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
                         <div>
                             <ProfileHeader user={user} badges={userBadges} />
+
+                            <div className="mt-6">
+                                <ProfileBadges badges={userBadges} />
+                            </div>
 
                             <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 p-4">
                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Daily Goal</p>

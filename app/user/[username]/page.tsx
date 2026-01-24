@@ -7,6 +7,7 @@ import Link from 'next/link';
 import ActivityGraph from '@/components/ActivityGraph';
 import UserMenu from '@/components/UserMenu';
 import ProfileHeader from '@/components/ProfileHeader';
+import ProfileBadges from '@/components/ProfileBadges';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
@@ -162,6 +163,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     {/* Left Column: Profile Card */}
                     <div className="md:col-span-1 space-y-6 order-last md:order-none">
                         <ProfileHeader user={user} readonly={true} badges={userBadges} />
+
+                        <div className="mt-2">
+                            <ProfileBadges badges={userBadges} />
+                        </div>
 
                         {/* Comparison/Owner Actions */}
                         {isOwner ? (
