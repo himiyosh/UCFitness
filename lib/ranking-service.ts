@@ -378,3 +378,129 @@ export const getAllGroupRankings = async (groupId: string) => {
 
     return result as Record<Period, any[]>;
 };
+
+export const getBatchGroupRankings = async (groupIds: string[]) => {
+    // JST Calculation (Robust)
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const todayStr = formatter.format(now); // YYYY-MM-DD (JST)
+
+    // Weekly Start
+    const currentDate = new Date(`${todayStr}T00:00:00Z`);
+    const utcDay = currentDate.getUTCDay();
+    const daysToSubtract = (utcDay + 6) % 7;
+    const monday = new Date(currentDate);
+    monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+    const weeklyStartStr = monday.toISOString().split('T')[0];
+
+    // Monthly Start
+    const [y, m] = todayStr.split('-');
+    const monthlyStartStr = `${y}-${m}-01`;
+
+    // Yearly Start
+    const yearlyStartStr = `${y}-01-01`;
+
+    if (groupIds.length === 0) return {};
+
+    // 1. Fetch all members for these groups
+    const { data: groupMembers, error: membersError } = await supabase
+        .from('group_members')
+        .select('group_id, user_id')
+        .in('group_id', groupIds);
+
+    if (membersError || !groupMembers) {
+        console.error('Error fetching batch group members:', membersError);
+        return {};
+    }
+
+    // Map groupId -> userIds[] AND Collect all unique userIds
+    const groupUserMap = new Map<string, string[]>();
+    const allUserIds = new Set<string>();
+
+    groupMembers.forEach(m => {
+        if (!groupUserMap.has(m.group_id)) {
+            groupUserMap.set(m.group_id, []);
+        }
+        groupUserMap.get(m.group_id)?.push(m.user_id);
+        allUserIds.add(m.user_id);
+    });
+
+    const uniqueUserIds = Array.from(allUserIds);
+
+    if (uniqueUserIds.length === 0) return {};
+
+    // 2. Fetch steps for all users
+    const { data: rawSteps, error } = await supabase
+        .from('daily_steps')
+        .select(`
+            steps,
+            date,
+            users!inner (
+                id,
+                name,
+                image,
+                email,
+                username
+            )
+        `)
+        .in('user_id', uniqueUserIds)
+        .gte('date', yearlyStartStr);
+
+    if (error) {
+        console.error('Error fetching batch group rankings:', error);
+        return {};
+    }
+
+    // 3. Aggregate steps per user (Global Aggregation)
+    // Map<userId, { user, DAILY, WEEKLY, MONTHLY, YEARLY }>
+    const userAggMap = new Map<string, any>();
+
+    rawSteps?.forEach((row: any) => {
+        const userId = row.users.id;
+        if (!userAggMap.has(userId)) {
+            userAggMap.set(userId, {
+                users: row.users,
+                DAILY: 0,
+                WEEKLY: 0,
+                MONTHLY: 0,
+                YEARLY: 0
+            });
+        }
+        const entry = userAggMap.get(userId);
+        const steps = Number(row.steps);
+        const date = row.date;
+
+        entry.YEARLY += steps;
+        if (date >= monthlyStartStr) entry.MONTHLY += steps;
+        if (date >= weeklyStartStr) entry.WEEKLY += steps;
+        if (date === todayStr) entry.DAILY += steps;
+    });
+
+    // 4. Distribute to groups
+    const result: Record<string, Record<Period, any[]>> = {};
+
+    groupIds.forEach(gid => {
+        const memberIds = groupUserMap.get(gid) || [];
+        const groupEntries = memberIds.map(uid => userAggMap.get(uid)).filter(Boolean);
+
+        const groupResult: Record<string, any[]> = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+
+        (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+            groupResult[key] = groupEntries.map(e => ({
+                steps: e[key],
+                users: e.users
+            }))
+            .filter(e => e.steps > 0 || key === 'DAILY')
+            .sort((a, b) => b.steps - a.steps);
+        });
+
+        result[gid] = groupResult as Record<Period, any[]>;
+    });
+
+    return result;
+};

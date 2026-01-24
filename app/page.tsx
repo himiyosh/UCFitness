@@ -4,7 +4,7 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
-import { getAllRankings, getAllGroupRankings } from '@/lib/ranking-service';
+import { getAllRankings, getAllGroupRankings, getBatchGroupRankings } from '@/lib/ranking-service';
 import { getGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -123,6 +123,17 @@ export default async function Home() {
     });
   }
 
+  // ⚡ Bolt Optimization: Batch fetch group rankings to prevent N+1 queries
+  const groupIds: string[] = [];
+  groupKeywords.forEach(keyword => {
+    const grp = groupMetadataMap.get(keyword);
+    if (grp?.id) {
+      groupIds.push(grp.id);
+    }
+  });
+
+  const batchRankings = groupIds.length > 0 ? await getBatchGroupRankings(groupIds) : {};
+
   const allGroupRankings = await Promise.all(
     groupKeywords.map(async (keyword) => {
       // Lookup groupId & images from memory
@@ -130,7 +141,9 @@ export default async function Home() {
       const groupId = grp?.id;
 
       let rankings;
-      if (groupId) {
+      if (groupId && batchRankings[groupId]) {
+        rankings = batchRankings[groupId];
+      } else if (groupId) {
         rankings = await getAllGroupRankings(groupId);
       } else {
         // Fallback if no group ID found (shouldn't happen if keyword exists)
