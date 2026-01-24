@@ -200,6 +200,37 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
             <div id="weekly-graph" className="absolute -top-32 invisible pointer-events-none" />
             <div id="monthly-graph" className="absolute -top-32 invisible pointer-events-none" />
 
+            {/* Share Button (moved to Top Right of Container) */}
+            <button
+                onClick={async () => {
+                    const { toBlob } = await import('html-to-image');
+                    if (!shareCardRef.current) return;
+
+                    try {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
+                        if (!blob) return;
+                        const file = new File([blob], 'activity.png', { type: 'image/png' });
+
+                        if (navigator.share) {
+                            try { await navigator.share({ title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] }); }
+                            catch (shareError) { console.log('Share canceled or failed', shareError); }
+                        } else {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url; a.download = 'activity.png';
+                            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                        }
+                    } catch (err) { console.error('Failed to generate image', err); }
+                }}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-full transition-all z-20"
+                title="Share Statistics"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
+                </svg>
+            </button>
+
             {/* Tooltip Portal - Absolute Positioning relative to Container */}
             {tooltip && (() => {
                 const tooltipWidth = 140;
@@ -256,62 +287,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                         ))}
                     </div>
 
-                    {/* Share Button (Top Right) */}
-                    <button
-                        onClick={async () => {
-                            const { toBlob } = await import('html-to-image');
-                            if (!shareCardRef.current) return;
 
-                            try {
-                                // Wait a moment for any potential renders
-                                await new Promise(resolve => setTimeout(resolve, 100));
-
-                                // Capture the Share Card
-                                const blob = await toBlob(shareCardRef.current, {
-                                    cacheBust: true,
-                                    backgroundColor: '#ffffff',
-                                    canvasWidth: 1080,
-                                    canvasHeight: 1920,
-                                    pixelRatio: 1
-                                });
-
-                                if (!blob) return;
-
-                                const file = new File([blob], 'activity.png', { type: 'image/png' });
-
-                                if (navigator.share) {
-                                    try {
-                                        await navigator.share({
-                                            title: 'My Activity',
-                                            text: 'Check out my activity on UCFitness!',
-                                            files: [file]
-                                        });
-                                    } catch (shareError) {
-                                        console.log('Share canceled or failed', shareError);
-                                    }
-                                } else {
-                                    // Fallback download as before
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = 'activity.png';
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    URL.revokeObjectURL(url);
-                                }
-
-                            } catch (err) {
-                                console.error('Failed to generate image', err);
-                            }
-                        }}
-                        className="absolute right-0 p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
-                        title="Share Statistics"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                            <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
-                        </svg>
-                    </button>
                 </div>
 
                 {/* Sub-header Controls & Stats Toolbar */}
@@ -534,84 +510,80 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
 
 
             {/* Hidden Share Card (1080x1920) */}
-            <div
-                ref={shareCardRef}
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '1080px',
-                    height: '1920px',
-                    zIndex: -50,
-                    opacity: 1,
-                    pointerEvents: 'none',
-                }}
-                className="flex flex-col relative overflow-hidden bg-gray-900"
-            >
-                {/* Background */}
-                {groupInfo?.header_image_url ? (
-                    <div className="absolute inset-0 z-0">
-                        <img src={groupInfo.header_image_url} className="w-full h-full object-cover opacity-60" crossOrigin="anonymous" alt="bg" />
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
-                    </div>
-                ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-black z-0"></div>
-                )}
-
-                {/* Content */}
-                <div className="relative z-10 flex flex-col items-center justify-between h-full p-16 pb-24 text-white">
-                    {/* Header */}
-                    <div className="flex flex-col items-center gap-6">
-                        <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-indigo-500 pb-2">UCFitness</span>
-                        {groupInfo && (
-                            <div className="flex flex-col items-center gap-4 mt-8">
-                                <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
-                                    {groupInfo.image_url ? (
-                                        <img src={groupInfo.image_url} className="w-full h-full object-cover" crossOrigin="anonymous" alt="group" />
-                                    ) : (
-                                        <span className="text-5xl font-black">{groupInfo.keyword.substring(0, 1).toUpperCase()}</span>
-                                    )}
-                                </div>
-                                <h2 className="text-5xl font-black text-center text-shadow-lg">{groupInfo.name}</h2>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Stats & Title */}
-                    <div className="flex flex-col items-center gap-4 w-full">
-                        <h3 className="text-4xl font-bold text-indigo-200">
-                            {viewMode === 'WEEKLY' ? 'This Week' : viewMode === 'MONTHLY' ? 'This Month' : 'Total Activity'}
-                        </h3>
-                        <div className="text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
-                            {totalDisplayedSteps.toLocaleString()}
+            <div style={{ width: 0, height: 0, overflow: 'hidden' }}>
+                <div
+                    ref={shareCardRef}
+                    style={{
+                        width: '1080px',
+                        height: '1920px',
+                    }}
+                    className="flex flex-col relative overflow-hidden bg-gray-900"
+                >
+                    {/* Background */}
+                    {groupInfo?.header_image_url ? (
+                        <div className="absolute inset-0 z-0">
+                            <img src={groupInfo.header_image_url} className="w-full h-full object-cover opacity-60" crossOrigin="anonymous" alt="bg" />
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
                         </div>
-                        <p className="text-2xl font-medium opacity-80 uppercase tracking-widest">Steps</p>
-                    </div>
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-black z-0"></div>
+                    )}
 
-                    {/* Graph Visual */}
-                    {/* Explicitly set height in pixels for safer capture */}
-                    <div className="w-full flex items-end justify-between gap-4 px-8 mb-12" style={{ height: '400px' }}>
-                        {processedData.map((d, i) => {
-                            const isGoal = d.value >= stepGoal;
-                            const height = Math.max((d.value / maxSteps) * 100, 2); // Min 2%
-                            return (
-                                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-3">
-                                    <div
-                                        className={`w-full rounded-t-lg ${isGoal ? 'shadow-[0_0_20px_rgba(74,222,128,0.5)]' : 'shadow-[0_0_20px_rgba(129,140,248,0.4)]'}`}
-                                        style={{
-                                            height: `${height}%`,
-                                            backgroundColor: isGoal ? '#4ade80' : '#818cf8', // Tailwind green-400 : indigo-400
-                                            minWidth: '20px' // Ensure bar has width
-                                        }}
-                                    ></div>
-                                    <span className="text-2xl font-bold uppercase text-gray-400">{d.label.substring(0, 3)}</span>
+                    {/* Content */}
+                    <div className="relative z-10 flex flex-col items-center justify-between h-full p-16 pb-24 text-white">
+                        {/* Header */}
+                        <div className="flex flex-col items-center gap-6">
+                            <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-indigo-500 pb-2">UCFitness</span>
+                            {groupInfo && (
+                                <div className="flex flex-col items-center gap-4 mt-8">
+                                    <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
+                                        {groupInfo.image_url ? (
+                                            <img src={groupInfo.image_url} className="w-full h-full object-cover" crossOrigin="anonymous" alt="group" />
+                                        ) : (
+                                            <span className="text-5xl font-black">{groupInfo.keyword.substring(0, 1).toUpperCase()}</span>
+                                        )}
+                                    </div>
+                                    <h2 className="text-5xl font-black text-center text-shadow-lg">{groupInfo.name}</h2>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            )}
+                        </div>
 
-                    <div className="absolute bottom-12 text-center opacity-50 text-xl font-medium tracking-wide">
-                        Keep stepping with UCFitness
+                        {/* Stats & Title */}
+                        <div className="flex flex-col items-center gap-4 w-full">
+                            <h3 className="text-4xl font-bold text-indigo-200">
+                                {viewMode === 'WEEKLY' ? 'This Week' : viewMode === 'MONTHLY' ? 'This Month' : 'Total Activity'}
+                            </h3>
+                            <div className="text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                                {totalDisplayedSteps.toLocaleString()}
+                            </div>
+                            <p className="text-2xl font-medium opacity-80 uppercase tracking-widest">Steps</p>
+                        </div>
+
+                        {/* Graph Visual */}
+                        {/* Explicitly set height in pixels for safer capture */}
+                        <div className="w-full flex items-end justify-between gap-4 px-8 mb-12" style={{ height: '400px' }}>
+                            {processedData.map((d, i) => {
+                                const isGoal = d.value >= stepGoal;
+                                const height = Math.max((d.value / maxSteps) * 100, 2); // Min 2%
+                                return (
+                                    <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-3">
+                                        <div
+                                            className={`w-full rounded-t-lg ${isGoal ? 'shadow-[0_0_20px_rgba(74,222,128,0.5)]' : 'shadow-[0_0_20px_rgba(129,140,248,0.4)]'}`}
+                                            style={{
+                                                height: `${height}%`,
+                                                backgroundColor: isGoal ? '#4ade80' : '#818cf8', // Tailwind green-400 : indigo-400
+                                                minWidth: '20px' // Ensure bar has width
+                                            }}
+                                        ></div>
+                                        <span className="text-2xl font-bold uppercase text-gray-400">{d.label.substring(0, 3)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="absolute bottom-12 text-center opacity-50 text-xl font-medium tracking-wide">
+                            Keep stepping with UCFitness
+                        </div>
                     </div>
                 </div>
             </div>

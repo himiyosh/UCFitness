@@ -86,9 +86,13 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                 alt={`${user.name}'s profile picture`}
             />
 
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 sticky top-8">
-                <div className="bg-indigo-600 h-16 sm:h-24 w-full"></div>
+            {/* Main Card - Removed overflow-hidden to allow tooltips */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8">
+                {/* Banner - Added rounded-t-xl manually */}
+                <div className="bg-indigo-600 h-16 sm:h-24 w-full rounded-t-xl"></div>
+
                 <div className="px-4 pb-3 sm:pb-4 relative">
+                    {/* Profile Image - Negative Top Margin */}
                     <div className="-mt-8 sm:-mt-12 mb-3 flex justify-center relative group/image">
                         {user.image ? (
                             <div
@@ -119,25 +123,47 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                                     </div>
                                 )}
 
-                                {badges && badges.length > 0 && (
-                                    <div className="mt-3 flex justify-center flex-wrap gap-2">
-                                        {badges.map((badge, idx) => (
-                                            <div key={`${badge.badge_code}-${badge.period_date}-${idx}`} className="group relative">
-                                                <BadgeIcon
-                                                    type={badge.badges.type}
-                                                    category={badge.badges.category}
-                                                    rank={badge.badges.rank}
-                                                    className="w-8 h-8 sm:w-10 sm:h-10 hover:scale-110 transition-transform cursor-pointer"
-                                                />
-                                                {/* Tooltip */}
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                                    <p className="font-bold">{badge.badges.name}</p>
-                                                    <p className="text-gray-300">{badge.period_date}</p>
+                                {/* Badge List */}
+                                {badges && badges.length > 0 && (() => {
+                                    // Filter to show only highest rank per category
+                                    const bestBadgesMap = new Map<string, Badge>();
+
+                                    badges.forEach(b => {
+                                        const key = `${b.badges.type}_${b.badges.category}`;
+                                        const currentBest = bestBadgesMap.get(key);
+
+                                        if (!currentBest || b.badges.rank < currentBest.badges.rank) {
+                                            bestBadgesMap.set(key, b);
+                                        }
+                                    });
+
+                                    const displayBadges = Array.from(bestBadgesMap.values()).sort((a, b) => {
+                                        if (a.badges.type !== b.badges.type) return a.badges.type === 'GLOBAL' ? -1 : 1;
+                                        if (a.badges.category !== b.badges.category) return a.badges.category.localeCompare(b.badges.category);
+                                        return a.badges.rank - b.badges.rank;
+                                    });
+
+                                    return (
+                                        <div className="mt-3 flex justify-center flex-wrap gap-2">
+                                            {displayBadges.map((badge, idx) => (
+                                                <div key={`${badge.badge_code}-${idx}`} className="group relative">
+                                                    <BadgeIcon
+                                                        type={badge.badges.type}
+                                                        category={badge.badges.category}
+                                                        rank={badge.badges.rank}
+                                                        className="w-10 h-10 hover:scale-110 transition-transform cursor-pointer"
+                                                    />
+                                                    {/* Tooltip: Positioned below to avoid z-index/overflow issues with header */}
+                                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1.5 bg-gray-900/95 text-white text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg border border-white/10">
+                                                        <p className="font-bold">{badge.badges.name}</p>
+                                                        <p className="text-gray-300 text-[9px]">Best: {badge.period_date}</p>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900/95"></div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
 
                                 {!readonly && (
                                     <button
@@ -208,6 +234,6 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

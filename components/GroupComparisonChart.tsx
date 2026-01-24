@@ -208,93 +208,89 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             </div>
 
             {/* Hidden Share Card (1080x1920) */}
-            <div
-                ref={shareCardRef}
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '1080px',
-                    height: '1920px',
-                    zIndex: -50,
-                    opacity: 1,
-                    pointerEvents: 'none',
-                }}
-                className="flex flex-col relative overflow-hidden bg-gray-900"
-            >
-                {/* Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-black z-0"></div>
-                <div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #4f46e5 0%, transparent 50%)' }}></div>
+            <div style={{ width: 0, height: 0, overflow: 'hidden' }}>
+                <div
+                    ref={shareCardRef}
+                    style={{
+                        width: '1080px',
+                        height: '1920px',
+                    }}
+                    className="flex flex-col relative overflow-hidden bg-gray-900"
+                >
+                    {/* Background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-black z-0"></div>
+                    <div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #4f46e5 0%, transparent 50%)' }}></div>
 
-                {/* Content */}
-                <div className="relative z-10 flex flex-col h-full p-16 pb-24 text-white">
-                    {/* Header */}
-                    <div className="flex flex-col items-center gap-8 mt-12">
-                        <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-indigo-500 pb-2">UCFitness</span>
+                    {/* Content */}
+                    <div className="relative z-10 flex flex-col h-full p-16 pb-24 text-white">
+                        {/* Header */}
+                        <div className="flex flex-col items-center gap-8 mt-12">
+                            <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-indigo-500 pb-2">UCFitness</span>
 
-                        <div className="flex flex-col items-center gap-6">
-                            <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
-                                {groupImage ? (
-                                    <img src={groupImage} className="w-full h-full object-cover" crossOrigin="anonymous" alt="group" />
-                                ) : (
-                                    <span className="text-5xl font-black">{groupName?.substring(0, 1).toUpperCase()}</span>
-                                )}
+                            <div className="flex flex-col items-center gap-6">
+                                <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
+                                    {groupImage ? (
+                                        <img src={groupImage} className="w-full h-full object-cover" crossOrigin="anonymous" alt="group" />
+                                    ) : (
+                                        <span className="text-5xl font-black">{groupName?.substring(0, 1).toUpperCase()}</span>
+                                    )}
+                                </div>
+                                <h2 className="text-5xl font-black text-center text-shadow-lg max-w-2xl leading-tight">{groupName}</h2>
                             </div>
-                            <h2 className="text-5xl font-black text-center text-shadow-lg max-w-2xl leading-tight">{groupName}</h2>
                         </div>
-                    </div>
 
-                    {/* Chart Container */}
-                    <div className="flex-1 flex flex-col justify-center gap-8 px-8">
-                        <h3 className="text-center text-4xl font-bold text-indigo-200 mb-8">{title || 'Group Comparison'}</h3>
-                        <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10 shadow-2xl h-[800px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart
-                                    data={data}
-                                    margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                                    <XAxis
-                                        dataKey="label"
-                                        stroke="rgba(255,255,255,0.5)"
-                                        fontSize={24}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={20}
-                                        interval={0} // Force all labels if possible, or let Recharts decide
-                                    />
-                                    <YAxis
-                                        stroke="rgba(255,255,255,0.5)"
-                                        fontSize={24}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        width={60}
-                                        tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
-                                    />
-                                    <Legend
-                                        wrapperStyle={{ paddingTop: '40px', fontSize: '24px' }}
-                                        formatter={(value) => <span className="text-white ml-2 mr-4">{value}</span>}
-                                    />
-                                    {users.map((user: any) => (
-                                        <Line
-                                            key={user.username}
-                                            type="monotoneX"
-                                            dataKey={user.username}
-                                            stroke={user.color}
-                                            strokeWidth={6}
-                                            dot={{ r: 6, strokeWidth: 0, fill: user.color }}
-                                            activeDot={false} // No interaction on static image
-                                            isAnimationActive={false} // CRITICAL: Disable animation for capture
-                                            connectNulls
+                        {/* Chart Container */}
+                        <div className="flex-1 flex flex-col justify-center gap-8 px-8">
+                            <h3 className="text-center text-4xl font-bold text-indigo-200 mb-8">{title || 'Group Comparison'}</h3>
+                            <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10 shadow-2xl h-[800px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart
+                                        data={data}
+                                        margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                                        <XAxis
+                                            dataKey="label"
+                                            stroke="rgba(255,255,255,0.5)"
+                                            fontSize={24}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={20}
+                                            interval={0} // Force all labels if possible, or let Recharts decide
                                         />
-                                    ))}
-                                </LineChart>
-                            </ResponsiveContainer>
+                                        <YAxis
+                                            stroke="rgba(255,255,255,0.5)"
+                                            fontSize={24}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            width={60}
+                                            tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
+                                        />
+                                        <Legend
+                                            wrapperStyle={{ paddingTop: '40px', fontSize: '24px' }}
+                                            formatter={(value) => <span className="text-white ml-2 mr-4">{value}</span>}
+                                        />
+                                        {users.map((user: any) => (
+                                            <Line
+                                                key={user.username}
+                                                type="monotoneX"
+                                                dataKey={user.username}
+                                                stroke={user.color}
+                                                strokeWidth={6}
+                                                dot={{ r: 6, strokeWidth: 0, fill: user.color }}
+                                                activeDot={false} // No interaction on static image
+                                                isAnimationActive={false} // CRITICAL: Disable animation for capture
+                                                connectNulls
+                                            />
+                                        ))}
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="absolute bottom-12 left-0 right-0 text-center opacity-50 text-2xl font-medium tracking-wide">
-                        Join the competition on UCFitness
+                        <div className="absolute bottom-12 left-0 right-0 text-center opacity-50 text-2xl font-medium tracking-wide">
+                            Join the competition on UCFitness
+                        </div>
                     </div>
                 </div>
             </div>

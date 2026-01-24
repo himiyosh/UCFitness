@@ -9,6 +9,10 @@ import UserMenu from '@/components/UserMenu';
 import ProfileHeader from '@/components/ProfileHeader';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
+import { getUserBadges } from "@/lib/badge-service";
+
+
+
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +48,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             user.group_keyword = [];
         }
     }
+
+    // Fetch Badges
+    const userBadges = user ? await getUserBadges(user.id) : [];
 
     if (!user) {
         notFound();
@@ -154,7 +161,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Column: Profile Card */}
                     <div className="md:col-span-1 space-y-6 order-last md:order-none">
-                        <ProfileHeader user={user} readonly={true} />
+                        <ProfileHeader user={user} readonly={true} badges={userBadges} />
 
                         {/* Comparison/Owner Actions */}
                         {isOwner ? (
