@@ -4,7 +4,7 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
-import { getAllRankings, getAllGroupRankings } from '@/lib/ranking-service';
+import { getAllRankings, getAllGroupRankings, getBatchGroupRankings } from '@/lib/ranking-service';
 import { getGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -111,6 +111,7 @@ export default async function Home() {
 
   // ⚡ Bolt Optimization: Bulk fetch group metadata to avoid N+1 queries
   const groupMetadataMap = new Map<string, { id: string; header_image_url: string | null; image_url: string | null }>();
+  const validGroupIds: string[] = [];
 
   if (groupKeywords.length > 0) {
     const { data: groupsData } = await supabase
@@ -120,8 +121,12 @@ export default async function Home() {
 
     groupsData?.forEach(g => {
       groupMetadataMap.set(g.keyword, g);
+      validGroupIds.push(g.id);
     });
   }
+
+  // ⚡ Bolt Optimization: Batch fetch rankings for all groups to avoid N+1 queries
+  const batchGroupRankings = await getBatchGroupRankings(validGroupIds);
 
   const allGroupRankings = await Promise.all(
     groupKeywords.map(async (keyword) => {
@@ -130,7 +135,10 @@ export default async function Home() {
       const groupId = grp?.id;
 
       let rankings;
-      if (groupId) {
+      if (groupId && batchGroupRankings[groupId]) {
+        rankings = batchGroupRankings[groupId];
+      } else if (groupId) {
+        // Fallback (should normally be covered by batch)
         rankings = await getAllGroupRankings(groupId);
       } else {
         // Fallback if no group ID found (shouldn't happen if keyword exists)

@@ -9,3 +9,7 @@
 ## 2025-02-24 - Parallel N+1 Queries in Server Components
 **Learning:** Even when using `Promise.all` to parallelize queries (e.g., fetching group details for a list of keywords), it still results in N separate database requests, which can saturate connections and increase latency.
 **Action:** Replace parallel individual queries with a single bulk query (e.g., `.in('field', values)`) and use an in-memory Map to associate results back to the original list.
+
+## 2025-02-25 - N+1 Queries in Complex Aggregations
+**Learning:** The dashboard was fetching group rankings by iterating through group IDs and executing a complex aggregation query for each. Although parallelized with `Promise.all`, this resulted in N+1 (actually 2N+1) database calls, scaling poorly with the number of groups a user belongs to.
+**Action:** Implement "Batch Aggregation" functions that accept a list of IDs (e.g., `getBatchGroupRankings(groupIds)`), fetch all related raw data in constant queries (using `.in()`), and perform the grouping and aggregation in memory.
