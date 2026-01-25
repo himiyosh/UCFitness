@@ -46,3 +46,21 @@ CREATE POLICY "Allow public read daily_steps" ON public.daily_steps FOR SELECT U
 -- Note: By default service_role bypasses RLS, but explicit policies can be good documentation.
 
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS group_keyword TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS step_goal INTEGER DEFAULT 10000;
+
+-- Secure the users table by restricting column access
+-- Revoke the broad table-level SELECT permission (for anon and authenticated)
+REVOKE SELECT ON public.users FROM anon, authenticated;
+
+-- Grant SELECT only on safe columns
+GRANT SELECT (
+    id,
+    name,
+    email,
+    image,
+    username,
+    group_keyword,
+    step_goal,
+    created_at,
+    updated_at
+) ON public.users TO anon, authenticated;
