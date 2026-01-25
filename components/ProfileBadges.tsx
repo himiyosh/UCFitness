@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import BadgeIcon from '@/components/BadgeIcon';
 
 interface Badge {
@@ -21,6 +22,22 @@ interface ProfileBadgesProps {
 
 export default function ProfileBadges({ badges }: ProfileBadgesProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (isModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isModalOpen]);
 
     // We want to display specific "Slots" for achievements.
     const SLOTS = [
@@ -95,10 +112,14 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
             </div>
 
             {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col animate-in zoom-in-95 duration-200">
-                        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+            {mounted && isModalOpen && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 pt-14 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={() => setIsModalOpen(false)}>
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto flex flex-col animate-in zoom-in-95 duration-200 slide-in-from-top-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="pl-4 pr-6 py-4 sm:p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900">All Achievements</h2>
                                 <p className="text-sm text-gray-500 hidden sm:block">Unlock badges by ranking in groups or hitting personal milestones.</p>
@@ -113,13 +134,14 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
                             </button>
                         </div>
 
-                        <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        <div className="pl-4 pr-6 py-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             {bestBadges.map((slot) => (
                                 <BadgeSlot key={`${slot.type}-${slot.category}-${slot.label}`} slot={slot} />
                             ))}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );
