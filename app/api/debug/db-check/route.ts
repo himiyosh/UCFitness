@@ -3,7 +3,21 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
+    // 🛡️ Sentinel: Security Check
+    // Allow access only if:
+    // 1. We are in development mode
+    // 2. OR a valid CRON_SECRET is provided (admin/system access)
+
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    const isDev = process.env.NODE_ENV === 'development';
+    const isAuthorized = (cronSecret && authHeader === `Bearer ${cronSecret}`);
+
+    if (!isDev && !isAuthorized) {
+        return new NextResponse('Unauthorized', { status: 401 });
+    }
+
     const results: any = {
         env: {
             url_configured: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
