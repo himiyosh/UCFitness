@@ -110,25 +110,31 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     // Yearly Start
     const yearlyStartStr = `${y}-01-01`;
 
+    // ⚡ Bolt Optimization: Split user and step fetching to avoid heavy joins
+    let userIds: string[] | null = null;
+    const usersMap = new Map<string, any>();
+
+    if (scope === 'GROUP' && groupKeyword) {
+        // Fetch specific users first
+        const { data: users } = await supabase
+            .from('users')
+            .select('id, name, image, email, username, group_keyword')
+            .contains('group_keyword', [groupKeyword]);
+
+        if (!users || users.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+
+        userIds = users.map(u => u.id);
+        users.forEach(u => usersMap.set(u.id, u));
+    }
+
     let query = supabase
         .from('daily_steps')
-        .select(`
-      steps,
-      date,
-      users!inner (
-        id,
-        name,
-        image,
-        email,
-        username,
-        group_keyword
-      )
-    `)
+        .select('steps, date, user_id') // No join
         // Performance: This range query relies on idx_daily_steps_date
         .gte('date', yearlyStartStr);
 
-    if (scope === 'GROUP' && groupKeyword) {
-        query = query.filter('users.group_keyword', 'cs', `{"${groupKeyword}"}`);
+    if (userIds) {
+        query = query.in('user_id', userIds);
     }
 
     const { data: rawSteps, error } = await query;
@@ -138,22 +144,40 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     }
 
+    // If GLOBAL (userIds was null), we need to fetch users now based on the steps we got
+    if (!userIds) {
+        const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
+
+        if (uniqueUserIds.length > 0) {
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, name, image, email, username, group_keyword')
+                .in('id', uniqueUserIds);
+
+            users?.forEach((u: any) => usersMap.set(u.id, u));
+        }
+    }
+
     // Aggregate
-    // structure: Map<email, { user: User, daily: 0, weekly: 0, monthly: 0, yearly: 0 }>
+    // structure: Map<userId, { user: User, daily: 0, weekly: 0, monthly: 0, yearly: 0 }>
     const aggMap = new Map<string, any>();
 
     rawSteps?.forEach((row: any) => {
-        const email = row.users.email;
-        if (!aggMap.has(email)) {
-            aggMap.set(email, {
-                users: row.users,
+        const userId = row.user_id;
+        const user = usersMap.get(userId);
+
+        if (!user) return; // Skip if user details missing
+
+        if (!aggMap.has(userId)) {
+            aggMap.set(userId, {
+                users: user,
                 DAILY: 0,
                 WEEKLY: 0,
                 MONTHLY: 0,
                 YEARLY: 0
             });
         }
-        const entry = aggMap.get(email);
+        const entry = aggMap.get(userId);
         const steps = Number(row.steps);
         const date = row.date;
 
@@ -319,19 +343,10 @@ export const getAllGroupRankings = async (groupId: string) => {
     const userIds = groupMembers?.map(m => m.user_id) || [];
     if (userIds.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
+    // ⚡ Bolt Optimization: Fetch steps without join
     const { data: rawSteps, error } = await supabase
         .from('daily_steps')
-        .select(`
-            steps,
-            date,
-            users!inner (
-                id,
-                name,
-                image,
-                email,
-                username
-            )
-        `)
+        .select('steps, date, user_id') // No join
         .in('user_id', userIds)
         .gte('date', yearlyStartStr);
 
@@ -340,21 +355,33 @@ export const getAllGroupRankings = async (groupId: string) => {
         return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     }
 
+    // Fetch User Details separately
+    const { data: users } = await supabase
+        .from('users')
+        .select('id, name, image, email, username')
+        .in('id', userIds);
+
+    const usersMap = new Map(users?.map(u => [u.id, u]));
+
     // Aggregate
     const aggMap = new Map<string, any>();
 
     rawSteps?.forEach((row: any) => {
-        const email = row.users.email;
-        if (!aggMap.has(email)) {
-            aggMap.set(email, {
-                users: row.users,
+        const userId = row.user_id;
+        const user = usersMap.get(userId);
+
+        if (!user) return; // Should not happen
+
+        if (!aggMap.has(userId)) {
+            aggMap.set(userId, {
+                users: user,
                 DAILY: 0,
                 WEEKLY: 0,
                 MONTHLY: 0,
                 YEARLY: 0
             });
         }
-        const entry = aggMap.get(email);
+        const entry = aggMap.get(userId);
         const steps = Number(row.steps);
         const date = row.date;
 
@@ -418,20 +445,10 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     // 2. Get unique User IDs
     const uniqueUserIds = Array.from(new Set(groupMembers.map(m => m.user_id)));
 
-    // 3. Fetch Steps for ALL users
+    // 3. Fetch Steps for ALL users (Optimization: No Join)
     const { data: rawSteps, error } = await supabase
         .from('daily_steps')
-        .select(`
-            steps,
-            date,
-            users!inner (
-                id,
-                name,
-                image,
-                email,
-                username
-            )
-        `)
+        .select('steps, date, user_id')
         .in('user_id', uniqueUserIds)
         .gte('date', yearlyStartStr);
 
@@ -440,15 +457,27 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
         return {};
     }
 
+    // 3b. Fetch Users details
+    const { data: users } = await supabase
+        .from('users')
+        .select('id, name, image, email, username')
+        .in('id', uniqueUserIds);
+
+    const usersMap = new Map(users?.map(u => [u.id, u]));
+
     // 4. Aggregate Steps per User
     // Map<UserId, { user: User, DAILY: number, ... }>
     const userStats = new Map<string, any>();
 
     rawSteps?.forEach((row: any) => {
-        const userId = row.users.id;
+        const userId = row.user_id;
+        const user = usersMap.get(userId);
+
+        if (!user) return;
+
         if (!userStats.has(userId)) {
             userStats.set(userId, {
-                users: row.users,
+                users: user,
                 DAILY: 0,
                 WEEKLY: 0,
                 MONTHLY: 0,
