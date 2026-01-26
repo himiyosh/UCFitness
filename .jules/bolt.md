@@ -13,3 +13,7 @@
 ## 2025-02-25 - N+1 Queries in Complex Aggregations
 **Learning:** The dashboard was fetching group rankings by iterating through group IDs and executing a complex aggregation query for each. Although parallelized with `Promise.all`, this resulted in N+1 (actually 2N+1) database calls, scaling poorly with the number of groups a user belongs to.
 **Action:** Implement "Batch Aggregation" functions that accept a list of IDs (e.g., `getBatchGroupRankings(groupIds)`), fetch all related raw data in constant queries (using `.in()`), and perform the grouping and aggregation in memory.
+
+## 2025-05-24 - Payload Bloat from Table Joins
+**Learning:** Joining `users` in `daily_steps` queries (`users!inner`) caused user profile data to be repeated for every single daily step record, massively bloating the JSON response size from Supabase.
+**Action:** For large time-series datasets linked to static entities, fetch the time-series data (IDs only) and entities (User Profiles) in two separate queries, then join in memory to reduce network payload.
