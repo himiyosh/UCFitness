@@ -7,6 +7,7 @@ import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/GroupRankingPanel';
 import GroupCompetitionList from '@/components/GroupCompetitionList';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';
+import TopUsersChart from '@/components/TopUsersChart';
 
 
 const TABS: { key: Period; label: string }[] = [
@@ -15,6 +16,41 @@ const TABS: { key: Period; label: string }[] = [
     { key: 'MONTHLY', label: 'This Month' },
     { key: 'YEARLY', label: 'This Year' },
 ];
+
+// Sparkline Component
+function Sparkline({ history, className = "" }: { history: { date: string; steps: number }[], className?: string }) {
+    if (!history || history.length === 0) return null;
+
+    // Last 7 days logic
+    // We want to show a consistent 7 bars, even if data is missing for some days
+    // But since `history` from backend contains sparse data (only days with steps), we need to fill gaps OR just show what we have.
+    // For simplicity, let's just show the last N entries we have, or up to 7, sorted by date.
+    // 
+    // Ideally: 
+    // 1. Get today
+    // 2. Generate last 7 dates
+    // 3. Map to steps (0 if missing)
+
+    // Quick approximation: Just slice last 7 of sorted history
+    const recentHistory = history.slice(-7);
+    const max = Math.max(...recentHistory.map(h => h.steps)) || 1;
+
+    return (
+        <div className={`flex items-end gap-0.5 h-8 w-16 ${className}`}>
+            {recentHistory.map((h, i) => {
+                const heightPct = Math.max((h.steps / max) * 100, 10); // Min 10% height
+                return (
+                    <div
+                        key={h.date}
+                        className="w-2 bg-indigo-200 rounded-t-sm"
+                        style={{ height: `${heightPct}%` }}
+                        title={`${h.date}: ${h.steps}`}
+                    />
+                );
+            })}
+        </div>
+    );
+}
 
 interface AnimatedLeaderboardProps {
     userEmail?: string | null;
@@ -51,16 +87,17 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
+    const [page, setPage] = useState(1);
 
     // Handle Tab Switch
     const handleSwitch = (newPeriod: Period) => {
         if (newPeriod === period) return;
         setPeriod(newPeriod);
+        setPage(1); // Reset to page 1 on tab switch
     };
 
     // Filter current view data
     const currentGlobal = allGlobalRankings[period];
-    const { displayRankings: filteredGlobal } = getDisplayRankings(currentGlobal, userEmail);
 
     return (
         <div className="space-y-6">
@@ -101,59 +138,126 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                             </span>
                         </div>
 
-                        <div className="bg-white px-0 relative overflow-hidden">
+                        <div className="bg-white px-0 relative overflow-hidden flex flex-col min-h-[460px]">
                             <FadeInWrapper key={period}>
-                                <ul role="list" className="divide-y divide-gray-50">
-                                    {filteredGlobal.length === 0 ? (
+                                <div className="px-6 pt-6">
+                                    <TopUsersChart
+                                        data={currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 }))}
+                                        userEmail={userEmail}
+                                        title="Top 10 Leaders"
+                                    />
+                                </div>
+
+                                <ul role="list" className="divide-y divide-gray-50 border-t border-gray-50 flex-1">
+                                    {currentGlobal.length === 0 ? (
                                         <p className="text-gray-500 text-center py-8">No data available yet.</p>
                                     ) : (
-                                        filteredGlobal.map((entry, index) => {
-                                            const isGap = index > 0 && entry.originalRank > filteredGlobal[index - 1].originalRank + 1;
+                                        (() => {
+                                            const ITEMS_PER_PAGE = 5;
+                                            const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
+                                            const SafePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1); // Ensure SafePage is at least 1 if totalPages is 0
+
+                                            // Ensure currentPage is valid if data changes
+                                            useEffect(() => {
+                                                if (page !== SafePage && totalPages > 0) {
+                                                    setPage(SafePage);
+                                                } else if (totalPages === 0 && page !== 1) { // If no data, reset to page 1
+                                                    setPage(1);
+                                                }
+                                            }, [currentGlobal.length, page, totalPages, SafePage]);
+
+                                            const startIndex = (SafePage - 1) * ITEMS_PER_PAGE;
+                                            const paginatedItems = currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
+                                                ...entry,
+                                                originalRank: startIndex + idx + 1
+                                            }));
+
+                                            const maxSteps = Math.max(...paginatedItems.map(g => g.steps)) || 1;
 
                                             return (
-                                                <div key={`${entry.users.id}-${period}`}>
-                                                    {isGap && (
-                                                        <div className="px-6 py-2 bg-gray-50 flex justify-center border-b border-gray-50">
-                                                            <span className="text-gray-400 text-xs tracking-widest">•••</span>
+                                                <div className="flex flex-col h-full">
+                                                    <div className="flex-1">
+                                                        {paginatedItems.map((entry) => {
+                                                            const percentage = Math.max((entry.steps / maxSteps) * 100, 2); // Min 2% visibility
+
+                                                            return (
+                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden`}>
+                                                                    {/* Progress Bar Background */}
+                                                                    <div
+                                                                        className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10 
+                                                                            ${entry.originalRank === 1 ? 'bg-gradient-to-r from-yellow-100/80 to-yellow-50/20' :
+                                                                                entry.originalRank === 2 ? 'bg-gradient-to-r from-slate-200/80 to-slate-50/20' :
+                                                                                    entry.originalRank === 3 ? 'bg-gradient-to-r from-amber-100/80 to-amber-50/20' :
+                                                                                        entry.users.email === userEmail ? 'bg-gradient-to-r from-indigo-100/80 to-indigo-50/20' :
+                                                                                            'bg-gray-50/50'}`}
+                                                                        style={{ width: `${percentage}%` }}
+                                                                    ></div>
+
+                                                                    {/* Content Wrapper */}
+                                                                    <div className="relative z-10 flex items-center gap-4">
+                                                                        <span className={`
+                                                      flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shadow-sm
+                                                      ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                                                                                entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
+                                                                                    entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'bg-white text-gray-400 border border-gray-200'}
+                                                  `}>
+                                                                            {entry.originalRank}
+                                                                        </span>
+                                                                        {entry.users?.image ? (
+                                                                            <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm" src={entry.users.image} alt="" />
+                                                                        ) : (
+                                                                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold border-2 border-white shadow-sm">
+                                                                                {(entry.users?.name || '?')[0]}
+                                                                            </div>
+                                                                        )}
+                                                                        <div>
+                                                                            <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                                                                {entry.users.username ? (
+                                                                                    <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline">
+                                                                                        {entry.users?.name || entry.users?.email}
+                                                                                    </Link>
+                                                                                ) : (
+                                                                                    <span>{entry.users?.name || entry.users?.email}</span>
+                                                                                )}
+                                                                                {entry.users.email === userEmail && <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-bold">YOU</span>}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4 relative z-10">
+                                                                        <div className="font-mono font-black text-indigo-600 text-lg">
+                                                                            {entry.steps.toLocaleString()}
+                                                                        </div>
+                                                                    </div>
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* Pagination Controls */}
+                                                    {totalPages > 1 && (
+                                                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                                                            <button
+                                                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                                disabled={page === 1}
+                                                                className="px-3 py-1 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                Previous
+                                                            </button>
+                                                            <span className="text-xs font-medium text-gray-500">
+                                                                Page {page} of {totalPages}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                                disabled={page === totalPages}
+                                                                className="px-3 py-1 text-xs font-bold text-indigo-600 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                Next
+                                                            </button>
                                                         </div>
                                                     )}
-                                                    <li className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.email === userEmail ? 'bg-indigo-50/50' : ''}`}>
-                                                        <div className="flex items-center gap-4">
-                                                            <span className={`
-                                              flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
-                                              ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                                                                    entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
-                                                                        entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}
-                                          `}>
-                                                                {entry.originalRank}
-                                                            </span>
-                                                            {entry.users?.image ? (
-                                                                <img className="h-10 w-10 rounded-full border border-gray-100" src={entry.users.image} alt="" />
-                                                            ) : (
-                                                                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                                                                    {(entry.users?.name || '?')[0]}
-                                                                </div>
-                                                            )}
-                                                            <div>
-                                                                <p className="text-sm font-medium text-gray-900">
-                                                                    {entry.users.username ? (
-                                                                        <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline">
-                                                                            {entry.users?.name || entry.users?.email}
-                                                                        </Link>
-                                                                    ) : (
-                                                                        <span>{entry.users?.name || entry.users?.email}</span>
-                                                                    )}
-                                                                    {entry.users.email === userEmail && <span className="ml-2 text-xs text-indigo-600 font-bold">(YOU)</span>}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="font-mono font-semibold text-indigo-600">
-                                                            {entry.steps.toLocaleString()}
-                                                        </div>
-                                                    </li>
                                                 </div>
                                             );
-                                        })
+                                        })()
                                     )}
                                 </ul>
                             </FadeInWrapper>

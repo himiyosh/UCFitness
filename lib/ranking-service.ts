@@ -212,10 +212,12 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
 
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
         // Create ranking entries for this key
-        const list = allEntries.map(e => ({
-            steps: e[key],
-            users: e.users
-        }))
+        const list = allEntries.map(e => {
+            return {
+                steps: e[key],
+                users: e.users
+            };
+        })
             .filter(e => e.steps > 0 || key === 'DAILY') // Optional: hide 0 steps if desired, but for daily we might keep
             .sort((a, b) => b.steps - a.steps);
 
@@ -302,10 +304,12 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
             });
         }
         const entry = userMap.get(email);
-        entry.steps += Number(row.steps);
+        const steps = Number(row.steps);
+        entry.steps += steps;
     });
 
-    return Array.from(userMap.values()).sort((a, b) => b.steps - a.steps);
+    return Array.from(userMap.values())
+        .sort((a, b) => b.steps - a.steps);
 };
 
 export const getAllGroupRankings = async (groupId: string) => {
@@ -529,8 +533,8 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
                 steps: e[key],
                 users: e.users
             }))
-            .filter(e => e.steps > 0 || key === 'DAILY')
-            .sort((a, b) => b.steps - a.steps);
+                .filter(e => e.steps > 0 || key === 'DAILY')
+                .sort((a, b) => b.steps - a.steps);
         });
     });
 
