@@ -147,3 +147,54 @@ export async function uploadProfileImage(formData: FormData) {
     revalidatePath('/profile');
     revalidatePath('/');
 }
+
+export async function uploadBannerImage(formData: FormData) {
+    const session = await auth();
+    if (!session || !session.user) {
+        throw new Error("Not authenticated");
+    }
+
+    const file = formData.get('file') as File;
+    if (!file) {
+        throw new Error("No file uploaded");
+    }
+
+    const userId = (session.user as any).id;
+    const fileExt = file.name.split('.').pop();
+    const filePath = `banner-${userId}-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabaseAdmin
+        .storage
+        .from('avatars') // Reusing avatars bucket
+        .upload(filePath, file, {
+            contentType: file.type,
+            upsert: true
+        });
+
+    if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw new Error("Failed to upload image");
+    }
+
+    const { data: { publicUrl } } = supabaseAdmin
+        .storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+    // Update user profile
+    const { error: dbError } = await supabaseAdmin
+        .from("users")
+        .update({
+            banner_url: publicUrl
+        })
+        .eq("id", userId);
+
+    if (dbError) {
+        console.error("Database update error:", dbError);
+        throw new Error("Failed to update banner URL");
+    }
+
+    revalidatePath('/profile');
+    revalidatePath('/settings');
+    revalidatePath('/');
+}

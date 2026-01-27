@@ -25,19 +25,21 @@ export default async function Home() {
   let lastWeekSteps = 0;
   let lastMonthSteps = 0;
   let stepGoal = 10000;
+  let bannerUrl: string | null | undefined;
 
   if (session?.user && (session.user as any).id) {
     const userId = (session.user as any).id;
     // Fetch current user's group keywords
     const { data: userData } = await supabase
       .from('users')
-      .select('group_keyword, username, step_goal')
+      .select('group_keyword, username, step_goal, banner_url')
       .eq('id', userId)
       .single();
 
     stepGoal = userData?.step_goal || 10000;
     groupKeywords = userData?.group_keyword || [];
     username = userData?.username;
+    bannerUrl = userData?.banner_url;
 
     // Use JST
     const now = new Date();
@@ -171,8 +173,9 @@ export default async function Home() {
     YEARLY: compYearly
   };
 
-  // Determine Banner Image (Priority: First group's header image -> Default Gradient)
-  const primaryGroupBanner = allGroupRankings.length > 0 ? allGroupRankings[0].header_image_url : null;
+  // Determine Banner Image (Priority: User Banner -> First group's header image -> Default Gradient)
+  const userDataBanner = bannerUrl;
+  const primaryGroupBanner = userDataBanner || (allGroupRankings.length > 0 ? allGroupRankings[0].header_image_url : null);
   const userImage = session?.user?.image;
 
   return (

@@ -25,7 +25,7 @@ export default async function ProfilePage() {
     // Fetch current user data
     const { data: user } = await supabase
         .from("users")
-        .select("name, email, image, group_keyword, username, step_goal, is_custom_image") // Added username, step_goal
+        .select("name, email, image, group_keyword, username, step_goal, is_custom_image, banner_url") // Added username, step_goal, banner_url
         .eq("id", (session.user as any).id)
         .single();
 

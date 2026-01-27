@@ -9,6 +9,7 @@ interface UserData {
     username: string | null;
     group_keyword: string[] | string | null;
     is_custom_image: boolean | null;
+    banner_url?: string | null;
 }
 
 interface Badge {
@@ -38,7 +39,11 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
             {/* Main Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8">
                 {/* Banner */}
-                <div className="bg-indigo-600 h-16 sm:h-24 w-full rounded-t-xl"></div>
+                <div
+                    className={`h-16 sm:h-24 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url && 'bg-indigo-600'}`}
+                    style={user.banner_url ? { backgroundImage: `url(${user.banner_url})` } : {}}
+                >
+                </div>
 
                 <div className="px-4 pb-3 sm:pb-4 relative">
                     {/* Profile Image */}

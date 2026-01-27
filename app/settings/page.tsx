@@ -18,7 +18,7 @@ export default async function SettingsPage() {
     // Fetch current user data
     const { data: user } = await supabase
         .from("users")
-        .select("name, image, username, is_custom_image, step_goal")
+        .select("name, image, username, is_custom_image, step_goal, banner_url")
         .eq("id", (session.user as any).id)
         .single();
 

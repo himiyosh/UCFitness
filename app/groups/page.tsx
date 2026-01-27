@@ -121,19 +121,21 @@ export default async function MyGroupsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">My Groups</h1>
                 </div>
 
-                <div className="flex flex-col-reverse gap-8 md:flex-col">
-                    {/* Join / Create Section */}
-                    <section>
+                <div className="flex flex-col lg:flex-row gap-8 items-start">
+                    {/* Join / Create Section (Right on Desktop, Top on Mobile) */}
+                    <aside className="w-full lg:w-80 flex-shrink-0 lg:order-2 sticky top-24">
+                        <div className="flex items-center mb-4">
+                            <h2 className="text-lg font-bold text-gray-900">Join or Create</h2>
+                        </div>
                         <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
-                            <h2 className="text-lg font-bold text-indigo-900 mb-2">Join or Create a Group</h2>
-                            <div className="max-w-md">
+                            <div className="w-full">
                                 <GroupSettings />
                             </div>
                         </div>
-                    </section>
+                    </aside>
 
-                    {/* Group List */}
-                    <section>
+                    {/* Group List (Left on Desktop, Bottom on Mobile) */}
+                    <section className="flex-1 w-full lg:order-1">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold text-gray-900">Your Groups</h2>
                         </div>

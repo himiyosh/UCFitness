@@ -18,12 +18,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "User ID is required" }, { status: 400 });
         }
 
-        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-            return NextResponse.json({ error: "User ID can only contain letters, numbers, and underscores." }, { status: 400 });
+        if (username.length < 6) {
+            return NextResponse.json({ error: "User ID must be at least 6 characters" }, { status: 400 });
         }
 
         if (username.length > 20) {
             return NextResponse.json({ error: "User ID is too long (max 20 chars)" }, { status: 400 });
+        }
+
+        // Allowed: a-z, A-Z, 0-9, _, -, .
+        if (!/^[a-zA-Z0-9_\-\.]+$/.test(username)) {
+            return NextResponse.json({ error: "User ID can only contain letters, numbers, underscores, hyphens, and dots." }, { status: 400 });
         }
 
         // Check uniqueness
