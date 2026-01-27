@@ -204,66 +204,12 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
             <div id="weekly-graph" className="absolute -top-32 invisible pointer-events-none" />
             <div id="monthly-graph" className="absolute -top-32 invisible pointer-events-none" />
 
-            {/* Copy Button */}
-            <button
-                onClick={async () => {
-                    if (isCopying) return;
-                    setIsCopying(true);
-
-                    try {
-                        const { toBlob } = await import('html-to-image');
-                        if (!shareCardRef.current) return;
-
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
-                        if (!blob) return;
-
-                        await navigator.clipboard.write([
-                            new ClipboardItem({
-                                [blob.type]: blob
-                            })
-                        ]);
-
-                        setCopySuccess(true);
-                        setTimeout(() => setCopySuccess(false), 2000);
-                    } catch (err) {
-                        console.error('Failed to copy image', err);
-                    } finally {
-                        setIsCopying(false);
-                    }
-                }}
-                disabled={isCopying}
-                className={`absolute top-4 right-16 p-2 rounded-full transition-all z-20 ${isCopying || copySuccess ? 'bg-indigo-50 text-indigo-400' : 'text-gray-400 hover:text-indigo-600 hover:bg-gray-50'}`}
-                title="Copy Image to Clipboard"
-            >
-                {isCopying ? (
-                    <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
-                ) : copySuccess ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-500">
-                        <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-                    </svg>
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                        <path fillRule="evenodd" d="M17.663 3.118c.225.015.45.032.673.05C19.876 3.298 21 4.604 21 6.109v9.642a3 3 0 0 1-3 3V16.5c0-5.922-4.576-10.775-10.384-12.862.18-.035.36-.066.544-.094a8.963 8.963 0 0 1 3.483.056.75.75 0 0 1 .6 1.153 6.002 6.002 0 0 0-4.66 4.966v1.94l-1.96-1.579a.9.9 0 0 0-1.036-.054l-5.653 3.208a.9.9 0 0 0-.466.786v9.065A3 3 0 0 0 1.5 24h13.125a3 3 0 0 0 3-3v-4.5H21c.553 0 1-.448 1-1v-2.055a1 1 0 0 0-.25-.662l-2.029-2.316a.995.995 0 0 1-.166-.27l-.872-2.184a.75.75 0 0 1 .521-1.002ZM7.042 3.142A9 9 0 0 1 12 2.25c1.472 0 2.879.356 4.135.986.046.023.115.01.127-.042A6 6 0 0 0 3.75 4.5l-.234.469a.75.75 0 0 0 .672 1.086h7.5c2.9 0 5.25 2.35 5.25 5.25v3.45a.75.75 0 0 0 1.5 0v-3.45a6.75 6.75 0 0 0-6.75-6.75H4.188c-.622 0-1.125-.504-1.125-1.125a1.125 1.125 0 0 1 1.125-1.125h2.854Z" clipRule="evenodd" />
-                        <path d="M7.5 3a.75.75 0 01.75.75V7h6V3.75a.75.75 0 01.75-.75h.75A.75.75 0 0116.5 3.75v3.75a.75.75 0 01-.75.75H14.25v2.25H9.75V8.25H7.5V11.25H2.25V4.5A.75.75 0 013 3.75h4.5z" opacity="0" />
-                        <path fillRule="evenodd" d="M10.5 3.75a6.775 6.775 0 0 0-2.558.5h2.558a.75.75 0 0 0 0-1.5H5.25.75.75 0 0 0-.75.75v10.5a.75.75 0 0 0 .75.75h4.5a.75.75 0 0 0 .75-.75V8.384a6.75 6.75 0 0 1 6.75 6.75h.75a.75.75 0 0 0 .75-.75v-2.1l-1.525-1.74a.76.76 0 0 1-.168-.27l-.872-2.181a2.25 2.25 0 0 1 1.562-3.006A8.995 8.995 0 0 0 10.5 3.75Z" clipRule="evenodd" />
-
-                        <path fillRule="evenodd" d="M15.75 4.5a3 3 0 1 1 .825 2.066l-8.421 4.679a3.002 3.002 0 0 1 0 1.51l8.421 4.679a3 3 0 1 1-.729 1.31l-8.421-4.678a3 3 0 1 1 0-4.132l8.421-4.679a3 3 0 0 1-.096-.755Z" clipRule="evenodd" opacity="0" />
-                        <path d="M16.5 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" opacity="0" />
-                        <path fillRule="evenodd" d="M8.25 3.75A2.25 2.25 0 1 0 6 6v10.384a.75.75 0 0 1-.75.75H1.5a.75.75 0 0 1-.75-.75V6c0-1.243 1.008-2.25 2.25-2.25h5.25Z" clipRule="evenodd" />
-                        <path d="M10.5 6a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" opacity="0" />
-                        <path fillRule="evenodd" d="M12 2.25a.75.75 0 0 1 .75.75v2.25H9.75a.75.75 0 0 0 0 1.5H12.75v2.25a.75.75 0 0 1-1.5 0V6.75H8.25a3.75 3.75 0 0 0-3.75 3.75V15.75h-2.25a.75.75 0 0 1 0-1.5H4.5V10.5A2.25 2.25 0 0 1 6.75 8.25h4.5a.75.75 0 0 0 0-1.5h-4.5A3.75 3.75 0 0 0 3 10.5v6H1.5a.75.75 0 0 1 0-1.5h1.5v-4.5a5.25 5.25 0 0 1 5.25-5.25h3v-2.25a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" opacity="0" />
-                        <path d="M7.5 15h2.25a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9ZM9 12a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z" opacity="0" />
-                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2ZM6 6v14h12V6H6Zm4-1h4V3h-4v2Z" />
-                    </svg>
-                )}
-            </button>
-
             {/* Share Button (moved to Top Right of Container) */}
             <button
                 onClick={async () => {
                     if (isSharing) return;
                     setIsSharing(true);
+                    setCopySuccess(false);
 
                     try {
                         const { toBlob } = await import('html-to-image');
@@ -272,6 +218,21 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                         await new Promise(resolve => setTimeout(resolve, 100));
                         const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
                         if (!blob) return;
+
+                        // 1. Copy to Clipboard
+                        try {
+                            await navigator.clipboard.write([
+                                new ClipboardItem({
+                                    [blob.type]: blob
+                                })
+                            ]);
+                            setCopySuccess(true);
+                            setTimeout(() => setCopySuccess(false), 3000);
+                        } catch (clipboardErr) {
+                            console.warn('Clipboard write failed', clipboardErr);
+                        }
+
+                        // 2. Share
                         const file = new File([blob], 'activity.png', { type: 'image/png' });
 
                         if (navigator.share) {
@@ -290,11 +251,15 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                     }
                 }}
                 disabled={isSharing}
-                className={`absolute top-4 right-4 p-2 rounded-full transition-all z-20 ${isSharing ? 'bg-indigo-50 text-indigo-400 cursor-wait' : 'text-gray-400 hover:text-indigo-600 hover:bg-gray-50'}`}
+                className={`absolute top-4 right-4 p-2 rounded-full transition-all z-20 ${isSharing || copySuccess ? 'bg-indigo-50 text-indigo-400' : 'text-gray-400 hover:text-indigo-600 hover:bg-gray-50'}`}
                 title="Share Statistics"
             >
                 {isSharing ? (
                     <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                ) : copySuccess ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-500 animate-in zoom-in spin-in-180 duration-300">
+                        <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                    </svg>
                 ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                         <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
