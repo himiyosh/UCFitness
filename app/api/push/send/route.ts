@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendWebPushNotification } from '@/lib/web-push';
 
+export const runtime = 'edge';
+
 export async function POST(request: NextRequest) {
     const session = await auth();
     const user = session?.user;
