@@ -5,7 +5,7 @@ import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
 import { getAllRankings, getAllGroupRankings, getBatchGroupRankings } from '@/lib/ranking-service';
-import { getGroupCompetitionRankings } from '@/lib/group-ranking-service';
+import { getGroupCompetitionRankings, getCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
 import GoalProgressChart from '@/components/GoalProgressChart';
@@ -156,12 +156,13 @@ export default async function Home() {
   );
 
   // Fetch Group Competition Rankings
-  const [compDaily, compWeekly, compMonthly, compYearly] = await Promise.all([
-    getGroupCompetitionRankings('DAILY'),
-    getGroupCompetitionRankings('WEEKLY'),
-    getGroupCompetitionRankings('MONTHLY'),
-    getGroupCompetitionRankings('YEARLY'),
-  ]);
+  // ⚡ Bolt Optimization: Combined call to reduce DB queries (12 -> 3)
+  const {
+    DAILY: compDaily,
+    WEEKLY: compWeekly,
+    MONTHLY: compMonthly,
+    YEARLY: compYearly
+  } = await getCombinedGroupCompetitionRankings();
 
   const groupCompetitionRankings = {
     DAILY: compDaily,
