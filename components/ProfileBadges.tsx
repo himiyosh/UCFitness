@@ -203,7 +203,13 @@ function BadgeSlot({ slot }: { slot: any }) {
                                 {slot.category === 'MILESTONE' && "Reach total lifetime steps (Min: 100k Steps)."}
                                 {slot.category === 'LIFESTYLE' && "Active >20k steps on a weekend."}
                                 {slot.category === 'TITLE' && `Maintain a daily average of ${slot.label.split('(')[1].replace(')', '')} steps.`}
-                                {['DAILY', 'WEEKLY', 'MONTHLY'].includes(slot.category) && `Rank top 3 in ${slot.label}.`}
+                                {['DAILY', 'WEEKLY', 'MONTHLY'].includes(slot.category) && (
+                                    <>
+                                        Rank top 3 in {slot.label}.
+                                        {slot.type === 'GROUP' && <span className="block text-gray-400 text-[9px] mt-0.5">(Min: 5 Members)</span>}
+                                        {slot.type === 'GLOBAL' && <span className="block text-gray-400 text-[9px] mt-0.5">(Min: 10 Active Users)</span>}
+                                    </>
+                                )}
                             </p>
                         </div>
                     )}

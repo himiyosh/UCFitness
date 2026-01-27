@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
 import SplashScreen from "@/components/SplashScreen";
 import GlobalLoader from "@/components/GlobalLoader";
+import PushNotificationManager from "@/components/PushNotificationManager";
 import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -29,6 +30,7 @@ export default function RootLayout({
             <Suspense fallback={null}>
               <GlobalLoader />
             </Suspense>
+            <PushNotificationManager />
             {children}
           </ToastProvider>
         </AuthProvider>
