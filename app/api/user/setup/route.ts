@@ -52,6 +52,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
         }
 
+        // 🛡️ Sentinel: Security Check
+        // Prevent email change if user already has a valid email (not pending)
+        const isPendingEmail = session.user.email.includes('@pending.setup');
+        if (!isPendingEmail && updates.email && updates.email !== session.user.email) {
+            return NextResponse.json({ error: "Cannot change email address after setup." }, { status: 403 });
+        }
+
         // Check uniqueness for email if changing
         if (updates.email && updates.email !== session.user.email) {
             const { data: existingEmail } = await supabaseAdmin
