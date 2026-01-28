@@ -17,3 +17,7 @@
 ## 2025-05-24 - Payload Bloat from Table Joins
 **Learning:** Joining `users` in `daily_steps` queries (`users!inner`) caused user profile data to be repeated for every single daily step record, massively bloating the JSON response size from Supabase.
 **Action:** For large time-series datasets linked to static entities, fetch the time-series data (IDs only) and entities (User Profiles) in two separate queries, then join in memory to reduce network payload.
+
+## 2025-05-25 - Redundant Historical Data Queries
+**Learning:** The badge assignment logic was re-querying the entire step history for each user multiple times (for streaks, milestones, titles) within a sequential loop, leading to 4x queries per user.
+**Action:** Fetch the user's full history once in the loop (or in batch) and pass the in-memory array to all calculation helper functions.

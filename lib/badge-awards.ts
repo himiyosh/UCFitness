@@ -37,7 +37,7 @@ const assignPersonalBadges = async (dateStr: string) => {
     // Get all users who have steps on this date
     const { data: activeUsers } = await supabaseAdmin
         .from('daily_steps')
-        .select('user_id, steps')
+        .select('user_id, steps, users (step_goal)')
         .eq('date', dateStr);
 
     if (!activeUsers) return;
@@ -45,27 +45,31 @@ const assignPersonalBadges = async (dateStr: string) => {
     for (const user of activeUsers) {
         if (user.steps < 1000) continue;
 
-        await assignStreakBadges(user.user_id, dateStr);
-        await assignMilestoneBadges(user.user_id);
-        await assignTitleBadges(user.user_id, dateStr);
+        // Fetch history once for all badge calculations
+        // Optimization: Fetch all needed history in one go instead of 3 separate queries per user
+        const { data: allSteps } = await supabaseAdmin
+            .from('daily_steps')
+            .select('date, steps')
+            .eq('user_id', user.user_id)
+            .lte('date', dateStr)
+            .order('date', { ascending: false });
+
+        const history = allSteps || [];
+        // @ts-ignore - Supabase join returns object/array depending on relation, handling implicitly
+        const stepGoal = (user.users as any)?.step_goal || 10000;
+
+        await assignStreakBadges(user.user_id, dateStr, history, stepGoal);
+        await assignMilestoneBadges(user.user_id, dateStr, history);
+        await assignTitleBadges(user.user_id, dateStr, history);
         await assignLifestyleBadges(user.user_id, dateStr, user.steps);
     }
 }
 
-const assignStreakBadges = async (userId: string, dateStr: string) => {
-    // Check 30 days back
-    const { data: steps } = await supabaseAdmin
-        .from('daily_steps')
-        .select('date, steps')
-        .eq('user_id', userId)
-        .lte('date', dateStr)
-        .order('date', { ascending: false })
-        .limit(30);
+const assignStreakBadges = async (userId: string, dateStr: string, history: { date: string; steps: number }[], goal: number) => {
+    if (!history || history.length < 3) return;
 
-    if (!steps || steps.length < 3) return;
-
-    const { data: user } = await supabaseAdmin.from('users').select('step_goal').eq('id', userId).single();
-    const goal = user?.step_goal || 10000;
+    // Use passed history (already sorted desc)
+    const steps = history.slice(0, 30);
 
     let streak = 0;
     const today = new Date(dateStr);
@@ -91,32 +95,19 @@ const assignStreakBadges = async (userId: string, dateStr: string) => {
     if (streak >= 3) await awardBadge(userId, 'STREAK_3', dateStr, null);
 }
 
-const assignMilestoneBadges = async (userId: string) => {
-    const { data: allSteps } = await supabaseAdmin
-        .from('daily_steps')
-        .select('steps')
-        .eq('user_id', userId);
-
-    const total = allSteps?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
-    const dateStr = new Date().toISOString().split('T')[0];
+const assignMilestoneBadges = async (userId: string, dateStr: string, history: { steps: number }[]) => {
+    const total = history.reduce((acc, curr) => acc + curr.steps, 0);
 
     if (total >= 1000000) await awardBadge(userId, 'MILESTONE_1M', dateStr, null);
     if (total >= 500000) await awardBadge(userId, 'MILESTONE_500K', dateStr, null);
     if (total >= 100000) await awardBadge(userId, 'MILESTONE_100K', dateStr, null);
 }
 
+const assignTitleBadges = async (userId: string, dateStr: string, history: { steps: number }[]) => {
+    if (!history || history.length === 0) return;
 
-
-const assignTitleBadges = async (userId: string, dateStr: string) => {
-    const { data: stepRecords } = await supabaseAdmin
-        .from('daily_steps')
-        .select('steps')
-        .eq('user_id', userId);
-
-    if (!stepRecords || stepRecords.length === 0) return;
-
-    const totalSteps = stepRecords.reduce((acc, curr) => acc + curr.steps, 0);
-    const totalDays = stepRecords.length;
+    const totalSteps = history.reduce((acc, curr) => acc + curr.steps, 0);
+    const totalDays = history.length;
 
     const average = totalDays > 0 ? totalSteps / totalDays : 0;
 
