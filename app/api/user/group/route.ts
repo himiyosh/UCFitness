@@ -38,6 +38,14 @@ export async function POST(request: Request) {
       let groupId = existingGroup?.id;
 
       if (!groupId) {
+        // 🛡️ Sentinel: Validate Keyword for New Groups
+        if (target.length < 3 || target.length > 50) {
+           return NextResponse.json({ error: "Group ID must be between 3 and 50 characters" }, { status: 400 });
+        }
+        if (!/^[a-zA-Z0-9_\-]+$/.test(target)) {
+           return NextResponse.json({ error: "Group ID can only contain letters, numbers, underscores, and hyphens" }, { status: 400 });
+        }
+
         // Create New Group
         const { data: newGroup, error: createError } = await supabaseAdmin
           .from('groups')
@@ -244,7 +252,13 @@ export async function POST(request: Request) {
       // Filter out undefined values to avoid overwriting with null if client doesn't send them
       // But typical patterns send full or partial. Let's assume passed values are what to update.
       const updates: any = {};
-      if (name !== undefined) updates.name = name;
+      if (name !== undefined) {
+        // 🛡️ Sentinel: Validate Name Length
+        if (name.length > 50) {
+             return NextResponse.json({ error: "Group name too long (max 50 chars)" }, { status: 400 });
+        }
+        updates.name = name;
+      }
       if (image_url !== undefined) updates.image_url = image_url;
       if (header_image_url !== undefined) updates.header_image_url = header_image_url;
       if (body.is_public !== undefined) updates.is_public = body.is_public;
