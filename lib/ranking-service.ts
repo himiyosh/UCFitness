@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
+import { unstable_cache } from 'next/cache';
 
 export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, groupKeyword?: string) => {
     // JST Calculation (Robust)
@@ -84,7 +85,8 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
 
     return sortedRankings;
 };
-export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
+
+const fetchAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
     // JST Calculation (Robust)
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -225,6 +227,19 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     });
 
     return result as Record<Period, any[]>;
+};
+
+const getCachedGlobalRankings = unstable_cache(
+    async () => fetchAllRankings('GLOBAL'),
+    ['global-rankings-v1'],
+    { revalidate: 60, tags: ['rankings'] }
+);
+
+export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
+    if (scope === 'GLOBAL') {
+        return getCachedGlobalRankings();
+    }
+    return fetchAllRankings(scope, groupKeyword);
 };
 
 // New Functions using 'groups' table

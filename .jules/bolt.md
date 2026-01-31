@@ -17,3 +17,7 @@
 ## 2025-05-24 - Payload Bloat from Table Joins
 **Learning:** Joining `users` in `daily_steps` queries (`users!inner`) caused user profile data to be repeated for every single daily step record, massively bloating the JSON response size from Supabase.
 **Action:** For large time-series datasets linked to static entities, fetch the time-series data (IDs only) and entities (User Profiles) in two separate queries, then join in memory to reduce network payload.
+
+## 2026-01-31 - Expensive Aggregation in Dynamic Routes
+**Learning:** The homepage (`app/page.tsx`) is `force-dynamic`, causing expensive global and group competition aggregations to run on every request. This creates unnecessary database load even when data hasn't changed.
+**Action:** Wrap expensive aggregation functions (e.g., `getAllRankings`, `getCombinedGroupCompetitionRankings`) with `unstable_cache` and a short revalidation time (e.g., 60s) to serve fresh-enough data from cache without hitting the database on every visit.

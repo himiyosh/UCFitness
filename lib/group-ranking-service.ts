@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
+import { unstable_cache } from 'next/cache';
 
 export interface GroupRankingEntry {
     groupId: string;
@@ -128,7 +129,7 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
 };
 
 // ⚡ Bolt Optimization: Fetch all periods in one go to reduce DB calls
-export const getCombinedGroupCompetitionRankings = async () => {
+const fetchCombinedGroupCompetitionRankings = async () => {
     // JST Calculation
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -255,3 +256,9 @@ export const getCombinedGroupCompetitionRankings = async () => {
 
     return result;
 };
+
+export const getCombinedGroupCompetitionRankings = unstable_cache(
+    fetchCombinedGroupCompetitionRankings,
+    ['combined-group-competition-rankings-v1'],
+    { revalidate: 60, tags: ['group-rankings'] }
+);
