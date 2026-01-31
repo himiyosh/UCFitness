@@ -21,3 +21,9 @@
 **Vulnerability:** `app/api/notify-teams/route.ts` was a public GET endpoint that triggered external Teams notifications without authentication. This allowed unauthenticated users to spam the Teams channel (DoS/Annoyance) by repeatedly calling the endpoint.
 **Learning:** API routes that trigger side effects (emails, notifications, DB writes) must always be protected, even if they are "internal" cron jobs. Security through obscurity (hidden URL) is not sufficient.
 **Prevention:** Enforce authentication on all API routes. For cron jobs, require a shared secret (e.g., `CRON_SECRET`) in the Authorization header.
+
+## 2026-01-26 - Added Global Security Headers
+
+**Vulnerability:** Missing HTTP security headers (HSTS, X-Frame-Options, X-Content-Type-Options) left the application vulnerable to clickjacking, protocol downgrade attacks, and MIME sniffing.
+**Learning:** Next.js allows defining global headers in `next.config.ts` which is a centralized and effective way to enforce browser-side security policies without middleware overhead for static assets.
+**Prevention:** Always configure `headers()` in `next.config.js/ts` for production applications.
