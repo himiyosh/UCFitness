@@ -11,11 +11,17 @@ import { RankingEntry } from '@/lib/ranking-utils';
 import GoalProgressChart from '@/components/GoalProgressChart';
 import RunnerAnimation from '@/components/RunnerAnimation';
 import AutoSync from '@/components/AutoSync';
+import LandingPage from '@/components/LandingPage';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const session = await auth();
+
+  if (!session?.user) {
+    return <LandingPage />;
+  }
+
   const userEmail = session?.user?.email;
 
   let groupKeywords: string[] = [];
