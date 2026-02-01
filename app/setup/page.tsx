@@ -46,17 +46,8 @@ export default function SetupPage() {
 
                     if (data.isSetup && data.username) {
                         console.log('User already set up within DB. repairing session...');
-                        // Force session update
-                        await update({
-                            ...session,
-                            user: {
-                                ...session?.user,
-                                email: data.email,
-                                username: data.username
-                            }
-                        });
-                        router.refresh();
-                        router.push('/');
+                        // Force full reload to update session
+                        window.location.href = '/';
                     }
                 } catch (e) {
                     console.error("Failed to check status", e);
@@ -90,18 +81,8 @@ export default function SetupPage() {
 
             // Force session update to reflect new email/username
             // This is crucial so middleware doesn't redirect back here
-            await update({
-                ...session,
-                user: {
-                    ...session?.user,
-                    email: needsEmail ? email : session?.user?.email,
-                    username: username // Optimistic update
-                }
-            });
-
-            // Redirect to home
-            router.refresh(); // Refresh middleware state
-            router.push('/');
+            // Force full reload to update session and redirect home
+            window.location.href = '/';
 
         } catch (err: any) {
             setError(err.message);

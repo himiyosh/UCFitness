@@ -23,8 +23,6 @@ export default auth((req) => {
         const isPendingEmail = email.includes("@pending.setup");
         const hasUsername = !!(token.user as any)?.username;
 
-        // console.log(`[Middleware] Check. Email: ${email}, Username: ${token.user?.username}, IsPending: ${isPendingEmail}`);
-
         if (isPendingEmail || !hasUsername) {
             console.log(`[Middleware] Redirecting to /setup. Email: ${email}, Username: ${(token.user as any)?.username}`);
             return NextResponse.redirect(new URL('/setup', req.url));
