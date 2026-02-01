@@ -40,32 +40,58 @@ const assignPersonalBadges = async (dateStr: string) => {
         .select('user_id, steps')
         .eq('date', dateStr);
 
-    if (!activeUsers) return;
+    if (!activeUsers || activeUsers.length === 0) return;
+
+    // OPTIMIZATION: Batch fetch data to avoid N+1 queries
+    const userIds = activeUsers.map(u => u.user_id);
+
+    // 1. Batch Fetch Goals
+    const { data: usersData } = await supabaseAdmin
+        .from('users')
+        .select('id, step_goal')
+        .in('id', userIds);
+    const userGoals = new Map(usersData?.map(u => [u.id, u.step_goal || 10000]));
+
+    // 2. Batch Fetch History (Last 35 days for streaks)
+    // Fetching slightly more than 30 days to be safe against timezone/gaps
+    const thirtyFiveDaysAgo = new Date(dateStr);
+    thirtyFiveDaysAgo.setDate(thirtyFiveDaysAgo.getDate() - 35);
+    const minDateStr = thirtyFiveDaysAgo.toISOString().split('T')[0];
+
+    const { data: historyData } = await supabaseAdmin
+        .from('daily_steps')
+        .select('user_id, date, steps')
+        .in('user_id', userIds)
+        .gte('date', minDateStr)
+        .lte('date', dateStr);
+
+    const userHistory = new Map<string, any[]>();
+    historyData?.forEach(row => {
+        if (!userHistory.has(row.user_id)) userHistory.set(row.user_id, []);
+        userHistory.get(row.user_id)?.push(row);
+    });
+
+    // Sort history for each user descending by date
+    userHistory.forEach(steps => {
+        steps.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
 
     for (const user of activeUsers) {
         if (user.steps < 1000) continue;
 
-        await assignStreakBadges(user.user_id, dateStr);
+        const goal = userGoals.get(user.user_id) || 10000;
+        const history = userHistory.get(user.user_id) || [];
+
+        await assignStreakBadges(user.user_id, dateStr, goal, history);
         await assignMilestoneBadges(user.user_id);
         await assignTitleBadges(user.user_id, dateStr);
         await assignLifestyleBadges(user.user_id, dateStr, user.steps);
     }
 }
 
-const assignStreakBadges = async (userId: string, dateStr: string) => {
-    // Check 30 days back
-    const { data: steps } = await supabaseAdmin
-        .from('daily_steps')
-        .select('date, steps')
-        .eq('user_id', userId)
-        .lte('date', dateStr)
-        .order('date', { ascending: false })
-        .limit(30);
-
+const assignStreakBadges = async (userId: string, dateStr: string, goal: number, steps: any[]) => {
+    // Steps are already fetched and sorted
     if (!steps || steps.length < 3) return;
-
-    const { data: user } = await supabaseAdmin.from('users').select('step_goal').eq('id', userId).single();
-    const goal = user?.step_goal || 10000;
 
     let streak = 0;
     const today = new Date(dateStr);

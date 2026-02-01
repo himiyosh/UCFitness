@@ -17,3 +17,7 @@
 ## 2025-05-24 - Payload Bloat from Table Joins
 **Learning:** Joining `users` in `daily_steps` queries (`users!inner`) caused user profile data to be repeated for every single daily step record, massively bloating the JSON response size from Supabase.
 **Action:** For large time-series datasets linked to static entities, fetch the time-series data (IDs only) and entities (User Profiles) in two separate queries, then join in memory to reduce network payload.
+
+## 2025-02-26 - Batched History Fetching for Badge Logic
+**Learning:** `assignStreakBadges` was causing N+1 queries by fetching history and goals for each user individually. Replacing this with a batch fetch of goals and a single date-range query for history (last 35 days) for all active users significantly reduces database load.
+**Action:** When calculating streaks or time-windowed achievements for many users, always fetch the data in bulk using `.in('user_id', ids)` and `.gte('date', start_date)` and process in memory using Maps.
