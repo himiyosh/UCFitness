@@ -33,6 +33,13 @@ export async function POST(request: Request) {
         };
 
         if (email) {
+            // 🛡️ Sentinel: Security Check
+            // Prevent verified users from changing their email via this endpoint.
+            // Only users with a pending placeholder email can set their email here.
+            if (!session.user.email.includes('@pending.setup')) {
+                return NextResponse.json({ error: "Email cannot be changed after setup is complete" }, { status: 403 });
+            }
+
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 return NextResponse.json({ error: "Invalid email format" }, { status: 400 });

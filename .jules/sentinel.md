@@ -21,3 +21,9 @@
 **Vulnerability:** `app/api/notify-teams/route.ts` was a public GET endpoint that triggered external Teams notifications without authentication. This allowed unauthenticated users to spam the Teams channel (DoS/Annoyance) by repeatedly calling the endpoint.
 **Learning:** API routes that trigger side effects (emails, notifications, DB writes) must always be protected, even if they are "internal" cron jobs. Security through obscurity (hidden URL) is not sufficient.
 **Prevention:** Enforce authentication on all API routes. For cron jobs, require a shared secret (e.g., `CRON_SECRET`) in the Authorization header.
+
+## 2026-01-26 - Email Modification Vulnerability
+
+**Vulnerability:** `app/api/user/setup/route.ts` allowed any authenticated user to change their email address, regardless of whether their setup was pending or complete.
+**Learning:** "Setup" endpoints can be abused by verified users to bypass standard change-email verification flows if not explicitly restricted.
+**Prevention:** check user status (e.g. email placeholder pattern) in one-time setup endpoints to prevent reuse by established users.
