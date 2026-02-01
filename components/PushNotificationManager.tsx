@@ -2,9 +2,13 @@
 
 import { useWebPush } from '@/hooks/useWebPush';
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 
 export default function PushNotificationManager() {
     const { isSupported, permission, subscription, subscribeToPush } = useWebPush();
+    const { status } = useSession();
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
@@ -13,7 +17,15 @@ export default function PushNotificationManager() {
         // 2. Permission is 'default' (not explicitly denied or granted yet)
         // 3. Not already subscribed (redundant check but safe)
         // 4. User hasn't dismissed it previously
-        if (isSupported && permission === 'default' && !subscription) {
+        // 5. User is authenticated
+        // 6. Not on setup page
+        if (
+            isSupported &&
+            permission === 'default' &&
+            !subscription &&
+            status === 'authenticated' &&
+            pathname !== '/setup'
+        ) {
             const hasDismissed = localStorage.getItem('push_notification_dismissed');
             if (!hasDismissed) {
                 // Determine if this is "first access" - we can assume if they haven't dismissed it, show it.
@@ -24,7 +36,7 @@ export default function PushNotificationManager() {
         } else {
             setIsOpen(false);
         }
-    }, [isSupported, permission, subscription]);
+    }, [isSupported, permission, subscription, status, pathname]);
 
     const handleEnable = async () => {
         const success = await subscribeToPush();
