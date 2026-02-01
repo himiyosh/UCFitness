@@ -43,7 +43,7 @@ export default async function SettingsPage() {
                 </div>
             </header>
 
-            <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
                     <Breadcrumbs items={[{ label: 'Settings' }]} />
                     <h1 className="text-3xl font-bold text-gray-900 mt-2">Settings</h1>

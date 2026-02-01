@@ -57,16 +57,16 @@ export default function SettingsForm({ user }: { user: UserData }) {
     };
 
     return (
-        <div className="space-y-8">
-            {/* Profile Section */}
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Column: Profile Settings */}
+            <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Profile Settings</h2>
 
                 <div className="flex flex-col gap-8">
                     {/* Top Row: Images (Icon & Banner) */}
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 sm:gap-12">
+                    <div className="flex flex-col xl:flex-row items-center xl:items-start gap-8">
                         {/* Icon */}
-                        <div className="flex flex-col items-center gap-4">
+                        <div className="flex flex-col items-center gap-4 shrink-0">
                             <div className="relative group">
                                 {user.image ? (
                                     <img
@@ -86,7 +86,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
 
                         {/* Banner Image */}
                         <div className="flex flex-col items-center gap-4">
-                            <div className="relative group w-72 h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                            <div className="relative group w-full max-w-sm h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                                 {user.banner_url ? (
                                     <img
                                         className="w-full h-full object-cover"
@@ -98,7 +98,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                                         No Banner
                                     </div>
                                 )}
-                                {/* Edit Button - Bottom Right, matching Profile Icon style */}
+                                {/* Edit Button */}
                                 <div className="absolute bottom-2 right-2">
                                     <BannerImageEditor currentBanner={user.banner_url || null}>
                                         <div className="bg-white rounded-full p-1.5 shadow-md border border-gray-200 text-gray-500 hover:text-indigo-600 transition-colors cursor-pointer">
@@ -114,38 +114,42 @@ export default function SettingsForm({ user }: { user: UserData }) {
                         </div>
                     </div>
 
-                    {/* Bottom Row: Inputs */}
-                    <div className="flex-1 space-y-4 max-w-md">
+                    {/* Inputs */}
+                    <div className="space-y-6 w-full max-w-xl">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5"
                                 maxLength={50}
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">User ID (Unique)</label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500 font-medium">@</span>
+                            <div className="relative rounded-md shadow-sm">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 sm:text-sm">@</span>
                                 <input
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                    className="block w-full rounded-lg border-gray-300 pl-8 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5"
                                     maxLength={20}
                                     minLength={6}
                                     pattern="[a-zA-Z0-9_\-\.]+"
-                                    title="6-20 characters. Alphanumeric, dot, hyphen, underscore."
                                 />
                             </div>
                             <p className="text-xs text-gray-500 mt-1">Visible in URLs and leaderboards. Min 6 chars (letters, numbers, <code>. - _</code>).</p>
                         </div>
 
                         {message && (
-                            <div className={`p-3 rounded-md text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            <div className={`p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                {message.type === 'success' ? (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                )}
                                 {message.text}
                             </div>
                         )}
@@ -154,7 +158,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                                className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm hover:shadow-md"
                             >
                                 {isSaving ? 'Saving...' : 'Save Profile Changes'}
                             </button>
@@ -163,19 +167,29 @@ export default function SettingsForm({ user }: { user: UserData }) {
                 </div>
             </section>
 
-            {/* Daily Goal Section */}
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Daily Goal</h2>
-                <p className="text-sm text-gray-500 mb-6">Set your daily step target.</p>
-                <div className="max-w-xs">
-                    <StepGoalForm initialGoal={user.step_goal || 10000} />
-                </div>
-            </section>
+            {/* Sidebar Column: Preferences */}
+            <div className="space-y-8">
+                {/* Daily Goal */}
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                    <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        Daily Goal
+                    </h2>
+                    <p className="text-xs text-gray-500 mb-6 font-medium">Set your daily step target.</p>
+                    <div className="w-full">
+                        <StepGoalForm initialGoal={user.step_goal || 10000} />
+                    </div>
+                </section>
 
-            {/* Notifications Section */}
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <PushSubscriptionButton />
-            </section>
+                {/* Notifications */}
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                        Notifications
+                    </h2>
+                    <PushSubscriptionButton />
+                </section>
+            </div>
         </div>
     );
 }
