@@ -218,7 +218,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
                 users: e.users
             };
         })
-            .filter(e => e.steps > 0 || key === 'DAILY') // Optional: hide 0 steps if desired, but for daily we might keep
+            // .filter(e => e.steps > 0 || key === 'DAILY') // Removed: Show all users even with 0 steps
             .sort((a, b) => b.steps - a.steps);
 
         result[key] = list;
@@ -403,7 +403,7 @@ export const getAllGroupRankings = async (groupId: string) => {
             steps: e[key],
             users: e.users
         }))
-            .filter(e => e.steps > 0 || key === 'DAILY')
+            // .filter(e => e.steps > 0 || key === 'DAILY')
             .sort((a, b) => b.steps - a.steps);
     });
 
@@ -533,7 +533,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
                 steps: e[key],
                 users: e.users
             }))
-                .filter(e => e.steps > 0 || key === 'DAILY')
+                // .filter(e => e.steps > 0 || key === 'DAILY')
                 .sort((a, b) => b.steps - a.steps);
         });
     });

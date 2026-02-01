@@ -103,8 +103,22 @@ export default async function ProfilePage() {
                         <div>
                             <ProfileHeader user={user} badges={userBadges} />
 
+
+
                             <div className="mt-6">
                                 <ProfileBadges badges={userBadges} />
+                            </div>
+
+                            <div className="mt-4">
+                                <Link
+                                    href="/settings"
+                                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm group"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors">
+                                        <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clipRule="evenodd" />
+                                    </svg>
+                                    Go to Settings
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -273,16 +287,29 @@ export default async function ProfilePage() {
                             </div>
                         </div>
 
+                        <div className="hidden md:flex bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-4 items-center gap-4 text-white shadow-lg shadow-indigo-200 relative overflow-hidden group">
+                            {/* Decorative Background */}
+                            <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
+                            <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+
+                            <div className="relative z-10 p-3 bg-white/20 backdrop-blur-sm rounded-xl shrink-0 border border-white/20 shadow-inner">
+                                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+
+                            <div className="relative z-10">
+                                <h3 className="font-bold text-base mb-0.5 tracking-tight">Keep it up!</h3>
+                                <p className="text-xs sm:text-sm opacity-90 leading-relaxed font-medium">
+                                    Integrating fitness into your daily routine is the best way to stay healthy.
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Activity Graph */}
                         <ActivityGraph data={allHistoryData} stepGoal={user.step_goal || 10000} />
 
-                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
-                            <h3 className="text-lg font-bold mb-2">Keep it up!</h3>
-                            <p className="opacity-90">
-                                Integrating fitness into your daily routine is the best way to stay healthy.
-                                Check back daily to see how you stack up against the competition.
-                            </p>
-                        </div>
+
                     </div>
                 </div>
             </div>

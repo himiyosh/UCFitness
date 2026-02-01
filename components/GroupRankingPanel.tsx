@@ -166,7 +166,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4 relative z-10">
-                                                <div className="font-mono font-black text-indigo-600 text-lg">
+                                                <div className="tabular-nums font-black text-indigo-600 text-lg">
                                                     {entry.steps.toLocaleString()}
                                                 </div>
                                             </div>

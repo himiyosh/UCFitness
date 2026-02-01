@@ -68,7 +68,7 @@ export default function LandingPage() {
             </div>
 
             <footer className="absolute bottom-4 text-center text-xs text-gray-400">
-                &copy; {new Date().getFullYear()} UCFitness. Internal Use Only.
+                &copy; {new Date().getFullYear()} Studio344
             </footer>
         </div>
     );
