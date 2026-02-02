@@ -136,7 +136,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                 {t('titleGlobal')}
                             </h3>
                             <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded text-xs font-semibold">
-                                {t(TABS.find(t => t.key === period)?.labelKey)}
+                                {t(TABS.find(t => t.key === period)?.labelKey || 'daily')}
                             </span>
                         </div>
 
