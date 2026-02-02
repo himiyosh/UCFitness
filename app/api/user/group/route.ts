@@ -19,15 +19,25 @@ export async function POST(request: Request) {
     }
 
     // Keyword is required for all actions except 'reorder'
-    if (action !== 'reorder' && !keyword) {
-      return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
+    if (action !== 'reorder') {
+        if (!keyword || typeof keyword !== 'string') {
+            return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
+        }
     }
 
-    const target = keyword ? keyword.trim() : '';
+    const target = (typeof keyword === 'string') ? keyword.trim() : '';
     if (action !== 'reorder' && !target) return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
 
     // 1. Handle New Schema (groups, group_members)
     if (action === 'add') {
+      // 🛡️ Sentinel: Strict Validation for New Groups
+      const keywordRegex = /^[a-zA-Z0-9_-]{3,50}$/;
+      if (!keywordRegex.test(target)) {
+          return NextResponse.json({
+              error: "Keyword must be 3-50 characters and contain only letters, numbers, underscores, and hyphens."
+          }, { status: 400 });
+      }
+
       // Check if group exists
       const { data: existingGroup } = await supabaseAdmin
         .from('groups')
@@ -218,6 +228,11 @@ export async function POST(request: Request) {
 
     } else if (action === 'update_metadata') {
       const { name, image_url, header_image_url } = body;
+
+      // 🛡️ Sentinel: Validation
+      if (name && (typeof name !== 'string' || name.length > 50)) {
+          return NextResponse.json({ error: "Name must be a string under 50 characters" }, { status: 400 });
+      }
 
       // Find group
       const { data: group } = await supabaseAdmin
