@@ -11,6 +11,7 @@ import ProfileBadges from '@/components/ProfileBadges';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
+import { getTranslations } from "next-intl/server";
 
 
 
@@ -21,6 +22,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const params = await props.params;
     const session = await auth();
     const { username } = params;
+    const t = await getTranslations('Profile');
+    const commonT = await getTranslations('Common');
+    const dashboardT = await getTranslations('Dashboard');
 
     // Fetch target user data
     const { data: user } = await supabase
@@ -145,7 +149,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 UCFitness
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
-                                Beta
+                                {dashboardT('beta')}
                             </span>
                         </Link>
                     </div>
@@ -171,7 +175,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         {/* Comparison/Owner Actions */}
                         {isOwner ? (
                             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col gap-3">
-                                <h3 className="text-sm font-bold text-gray-700">Quick Links</h3>
+                                <h3 className="text-sm font-bold text-gray-700">{t('quickLinks')}</h3>
                                 <Link
                                     href="/groups"
                                     className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors"
@@ -179,13 +183,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.07-.654.78.78 0 00.357-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.907 3.96 2.32 2.32 0 01-.026.654zM18 8a2 2 0 11-4 0 2 2 0 014 0zM5.304 16.191a.844.844 0 01-.277-.71c.076-.814.237-1.596.454-2.336a4.718 4.718 0 001.974.89c.034.008.069.017.103.025a5.619 5.619 0 01-2.254 2.131zM10.66 14.676a.75.75 0 01-.66 0 4.718 4.718 0 001.974-.89c.217.74.378 1.522.454 2.336a.844.844 0 01-.277.71 5.619 5.619 0 01-2.254 2.131z" />
                                     </svg>
-                                    Manage My Groups
+                                    {t('manageGroups')}
                                 </Link>
                                 <Link
                                     href="/profile"
                                     className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-50 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-100 transition-colors border border-gray-100"
                                 >
-                                    Edit Profile
+                                    {t('editProfile')}
                                 </Link>
                             </div>
                         ) : (
@@ -197,19 +201,19 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     {/* Right Column: Stats & Achievements */}
                     <div className="md:col-span-2 space-y-6 order-first md:order-none">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">{user.name}'s Activity</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
                         </div>
 
                         {/* New Comparison Stats Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                             {/* Daily */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Today</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('today')}</p>
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.daily.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()} vs {user.name || user.username}
+                                            {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
                                         </p>
                                     )}
                                 </div>
@@ -217,12 +221,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                             {/* Weekly */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This Week</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisWeek')}</p>
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.weekly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()} vs {user.name || user.username}
+                                            {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
                                         </p>
                                     )}
                                 </div>
@@ -230,12 +234,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                             {/* Monthly */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This Month</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisMonth')}</p>
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.monthly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()} vs {user.name || user.username}
+                                            {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
                                         </p>
                                     )}
                                 </div>

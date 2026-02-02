@@ -92,8 +92,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 };
 
                 // Only update image from Fitbit if user hasn't set a custom one
+                console.log(`[DEBUG_AUTH] Checking user ${existingUser.id}`);
+                console.log(`[DEBUG_AUTH] is_custom_image: ${existingUser.is_custom_image} (Type: ${typeof existingUser.is_custom_image})`);
+
                 if (!existingUser.is_custom_image) {
+                    console.log(`[DEBUG_AUTH] Overwriting image with Fitbit: ${user.image}`);
                     updates.image = user.image;
+                } else {
+                    console.log(`[DEBUG_AUTH] Keeping custom image.`); // Removed .image access to avoid type error if not selected
                 }
 
                 const { error: updateError } = await supabaseAdmin

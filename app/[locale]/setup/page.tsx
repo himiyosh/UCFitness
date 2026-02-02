@@ -8,6 +8,7 @@ import ProfileImageEditor from "@/components/ProfileImageEditor";
 export default function SetupPage() {
     const { data: session, update } = useSession();
     const router = useRouter();
+    const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,6 +22,7 @@ export default function SetupPage() {
             if (session?.user) {
                 // Initialize image from session initially
                 setCurrentImage(session.user.image || null);
+                setName(session.user.name || '');
 
                 // Check if email needs update
                 if (session.user.email?.includes('@pending.setup')) {
@@ -69,6 +71,7 @@ export default function SetupPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username,
+                    name,
                     email: needsEmail ? email : undefined
                 }),
             });
@@ -169,7 +172,7 @@ export default function SetupPage() {
 
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                                Username (Required)
+                                User ID (Username)
                             </label>
                             <div className="mt-1">
                                 <input
@@ -185,6 +188,26 @@ export default function SetupPage() {
                                 <p className="mt-1 text-xs text-gray-500">
                                     Only letters, numbers, and underscores.
                                 </p>
+                            </div>
+                        </div>
+
+
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                                Display Name
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    id="name"
+                                    name="name"
+                                    type="text"
+                                    required
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="e.g. John Doe"
+                                    maxLength={50}
+                                />
                             </div>
                         </div>
 
@@ -221,8 +244,8 @@ export default function SetupPage() {
                         </div>
                     </form>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

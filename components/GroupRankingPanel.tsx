@@ -37,9 +37,12 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
     );
 }
 
+import { useTranslations } from 'next-intl';
+
 export default function GroupRankingPanel({ keyword, neighbors, userEmail, index, totalCount, groupId }: Props) {
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
+    const t = useTranslations('Graph');
 
     const handleMove = async (direction: 'up' | 'down') => {
         setIsMoving(true);
@@ -101,7 +104,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                     <TopUsersChart
                         data={neighbors}
                         userEmail={userEmail}
-                        title="Group Leaders"
+                        title={t('groupLeaders')}
                     />
                 </div>
                 <div role="list" className="divide-y divide-gray-50 border-t border-gray-50 lg:border-t-0 lg:col-span-7">

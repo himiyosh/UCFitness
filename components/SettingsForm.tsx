@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import ProfileImageEditor from "@/components/ProfileImageEditor";
 import BannerImageEditor from "@/components/BannerImageEditor";
-import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+import { useRouter, usePathname } from '@/navigation';
 import PushSubscriptionButton from '@/components/PushSubscriptionButton';
 import StepGoalForm from '@/components/StepGoalForm';
 
@@ -21,7 +22,15 @@ export default function SettingsForm({ user }: { user: UserData }) {
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-    const router = useRouter();
+    const router = useRouter(); // Use navigation router
+    const pathname = usePathname();
+    const locale = useLocale();
+    const t = useTranslations('Settings');
+    const commonT = useTranslations('Common');
+
+    const handleLanguageChange = (newLocale: string) => {
+        router.replace(pathname, { locale: newLocale });
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -46,11 +55,11 @@ export default function SettingsForm({ user }: { user: UserData }) {
             const usernameData = await usernameRes.json();
             if (!usernameRes.ok) throw new Error(usernameData.error || 'Failed to update ID');
 
-            setMessage({ text: 'Profile updated successfully!', type: 'success' });
+            setMessage({ text: t('saveSuccess'), type: 'success' }); // Use translation
             router.refresh();
         } catch (error: any) {
             console.error(error);
-            setMessage({ text: error.message || 'Failed to save changes.', type: 'error' });
+            setMessage({ text: error.message || t('saveError'), type: 'error' }); // Use translation
         } finally {
             setIsSaving(false);
         }
@@ -60,7 +69,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Column: Profile Settings */}
             <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Profile Settings</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">{t('profileSettings')}</h2>
 
                 <div className="flex flex-col gap-8">
                     {/* Top Row: Images (Icon & Banner) */}
@@ -81,7 +90,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                                 )}
                                 <ProfileImageEditor initialImage={user.image} isCustom={user.is_custom_image || false} />
                             </div>
-                            <p className="text-xs text-gray-500 font-medium">Profile photo</p>
+                            <p className="text-xs text-gray-500 font-medium">{t('profilePhoto')}</p>
                         </div>
 
                         {/* Banner Image */}
@@ -95,7 +104,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                                     />
                                 ) : (
                                     <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-xs text-indigo-400 font-medium">
-                                        No Banner
+                                        {t('noBanner')}
                                     </div>
                                 )}
                                 {/* Edit Button */}
@@ -110,37 +119,37 @@ export default function SettingsForm({ user }: { user: UserData }) {
                                     </BannerImageEditor>
                                 </div>
                             </div>
-                            <p className="text-xs text-gray-500 font-medium">Banner</p>
+                            <p className="text-xs text-gray-500 font-medium">{t('banner')}</p>
                         </div>
                     </div>
 
                     {/* Inputs */}
                     <div className="space-y-6 w-full max-w-xl">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('displayName')}</label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5"
+                                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 text-gray-900"
                                 maxLength={50}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">User ID (Unique)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('userId')} {t('unique')}</label>
                             <div className="relative rounded-md shadow-sm">
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 sm:text-sm">@</span>
                                 <input
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    className="block w-full rounded-lg border-gray-300 pl-8 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5"
+                                    className="block w-full rounded-lg border-gray-300 pl-8 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 text-gray-900"
                                     maxLength={20}
                                     minLength={6}
                                     pattern="[a-zA-Z0-9_\-\.]+"
                                 />
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">Visible in URLs and leaderboards. Min 6 chars (letters, numbers, <code>. - _</code>).</p>
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t.raw('usernameHint') }} />
                         </div>
 
                         {message && (
@@ -160,7 +169,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                                 disabled={isSaving}
                                 className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm hover:shadow-md"
                             >
-                                {isSaving ? 'Saving...' : 'Save Profile Changes'}
+                                {isSaving ? t('saving') : t('saveChanges')}
                             </button>
                         </div>
                     </div>
@@ -169,13 +178,45 @@ export default function SettingsForm({ user }: { user: UserData }) {
 
             {/* Sidebar Column: Preferences */}
             <div className="space-y-8">
+
+                {/* Language Switcher */}
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                    <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                        {commonT('language')}
+                    </h2>
+                    <p className="text-xs text-gray-500 mb-6 font-medium">{t('languageDescription')}</p>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={() => handleLanguageChange('ja')}
+                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors ${locale === 'ja'
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                }`}
+                        >
+                            <span>日本語</span>
+                            {locale === 'ja' && <span className="text-indigo-600">✓</span>}
+                        </button>
+                        <button
+                            onClick={() => handleLanguageChange('en')}
+                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors ${locale === 'en'
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                }`}
+                        >
+                            <span>English</span>
+                            {locale === 'en' && <span className="text-indigo-600">✓</span>}
+                        </button>
+                    </div>
+                </section>
+
                 {/* Daily Goal */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
                         <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        Daily Goal
+                        {t('dailyGoal')}
                     </h2>
-                    <p className="text-xs text-gray-500 mb-6 font-medium">Set your daily step target.</p>
+                    <p className="text-xs text-gray-500 mb-6 font-medium">{t('setDailyGoal')}</p>
                     <div className="w-full">
                         <StepGoalForm initialGoal={user.step_goal || 10000} />
                     </div>
@@ -185,7 +226,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                        Notifications
+                        {t('notifications')}
                     </h2>
                     <PushSubscriptionButton />
                 </section>

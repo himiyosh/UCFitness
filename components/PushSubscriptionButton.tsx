@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 // Helper to convert VAPID key
 function urlBase64ToUint8Array(base64String: string) {
@@ -22,6 +23,7 @@ export default function PushSubscriptionButton() {
     const [isSupported, setIsSupported] = useState(false);
     const [subscription, setSubscription] = useState<PushSubscription | null>(null);
     const [loading, setLoading] = useState(false);
+    const t = useTranslations('Notifications');
 
     useEffect(() => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -47,7 +49,7 @@ export default function PushSubscriptionButton() {
             const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
             if (!vapidKey) {
-                alert('VAPID Public Key is missing!');
+                alert(t('missingKey'));
                 return;
             }
 
@@ -65,10 +67,10 @@ export default function PushSubscriptionButton() {
                 body: JSON.stringify(sub)
             });
 
-            alert('Notifications enabled!');
+            alert(t('success'));
         } catch (error) {
             console.error('Failed to subscribe', error);
-            alert('Failed to subscribe to notifications.');
+            alert(t('error'));
         } finally {
             setLoading(false);
         }
@@ -90,26 +92,26 @@ export default function PushSubscriptionButton() {
     };
 
     if (!isSupported) {
-        return <div className="text-sm text-gray-500">Push notifications are not supported in this browser.</div>;
+        return <div className="text-sm text-gray-500">{t('notSupported')}</div>;
     }
 
     return (
         <div className="flex flex-col items-start gap-2 p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <h3 className="font-semibold text-gray-900">Notifications</h3>
-            <p className="text-sm text-gray-600 mb-2">Enable push notifications to get updates when you earn a badge!</p>
+            <h3 className="font-semibold text-gray-900">{t('title')}</h3>
+            <p className="text-sm text-gray-600 mb-2">{t('description')}</p>
 
             {subscription ? (
                 <div className="flex items-center gap-3">
                     <span className="text-sm text-green-600 font-medium flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        Active
+                        {t('active')}
                     </span>
                     <button
                         onClick={unsubscribeFromPush}
                         disabled={loading}
                         className="text-xs text-red-500 hover:text-red-700 underline"
                     >
-                        Disable
+                        {t('disable')}
                     </button>
                 </div>
             ) : (
@@ -118,7 +120,7 @@ export default function PushSubscriptionButton() {
                     disabled={loading}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
-                    {loading ? 'Enabling...' : 'Enable Notifications'}
+                    {loading ? t('enabling') : t('enable')}
                 </button>
             )}
         </div>

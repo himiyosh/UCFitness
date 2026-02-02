@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import BadgeIcon from '@/components/BadgeIcon';
+import { useTranslations } from 'next-intl';
 
 interface Badge {
     badge_code: string;
@@ -23,6 +24,7 @@ interface ProfileBadgesProps {
 export default function ProfileBadges({ badges }: ProfileBadgesProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const t = useTranslations('Profile');
 
     useEffect(() => {
         setMounted(true);
@@ -87,26 +89,26 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
             <div className="md:col-span-1 bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">
-                        Achievements
+                        {t('achievements')}
                     </h3>
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
                     >
-                        View All ({bestBadges.length})
+                        {t('viewAll')} ({bestBadges.length})
                     </button>
                 </div>
 
                 {displayBadges.length > 0 ? (
                     <div className="grid grid-cols-3 gap-2">
                         {displayBadges.map((slot) => (
-                            <BadgeSlot key={`${slot.type}-${slot.category}-${slot.label}`} slot={slot} />
+                            <BadgeSlot key={`${slot.type}-${slot.category}-${slot.label}`} slot={slot} t={t} />
                         ))}
                     </div>
                 ) : (
                     <div className="text-center py-6 text-gray-400 text-xs">
-                        <p>No achievements yet.</p>
-                        <p className="mt-1">Keep walking to unlock!</p>
+                        <p>{t('noAchievements')}</p>
+                        <p className="mt-1">{t('keepWalking')}</p>
                     </div>
                 )}
             </div>
@@ -121,8 +123,8 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
                     >
                         <div className="pl-4 pr-6 py-4 sm:p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">All Achievements</h2>
-                                <p className="text-sm text-gray-500 hidden sm:block">Unlock badges by ranking in groups or hitting personal milestones.</p>
+                                <h2 className="text-xl font-bold text-gray-900">{t('allAchievements')}</h2>
+                                <p className="text-sm text-gray-500 hidden sm:block">{t('unlockDesc')}</p>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(false)}
@@ -136,7 +138,7 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
 
                         <div className="pl-4 pr-6 py-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             {bestBadges.map((slot) => (
-                                <BadgeSlot key={`${slot.type}-${slot.category}-${slot.label}`} slot={slot} />
+                                <BadgeSlot key={`${slot.type}-${slot.category}-${slot.label}`} slot={slot} t={t} />
                             ))}
                         </div>
                     </div>
@@ -148,7 +150,7 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
 }
 
 // Extracted Component for consistency
-function BadgeSlot({ slot }: { slot: any }) {
+function BadgeSlot({ slot, t }: { slot: any, t: any }) {
     const [hovered, setHovered] = useState(false);
     const hasBadge = !!slot.badge;
 
@@ -168,7 +170,7 @@ function BadgeSlot({ slot }: { slot: any }) {
         >
             {/* Header Label */}
             <div className={`text-[9px] font-bold uppercase tracking-wide mb-1 text-center ${slot.color} h-6 flex items-center justify-center leading-none`}>
-                {slot.label}
+                {t(`badges.${slot.label}`)}
             </div>
 
             {/* Icon */}
@@ -194,20 +196,20 @@ function BadgeSlot({ slot }: { slot: any }) {
             {hovered && (
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 px-3 py-2 bg-gray-900/95 text-white text-[10px] rounded-md transition-opacity pointer-events-none z-[100] text-center shadow-xl border border-white/10 animate-in fade-in zoom-in-95 duration-200">
                     {hasBadge ? (
-                        <p className="font-semibold leading-tight">{slot.badge!.badges.description || slot.label}</p>
+                        <p className="font-semibold leading-tight">{slot.badge!.badges.description || t(`badges.${slot.label}`)}</p>
                     ) : (
                         <div className="space-y-1">
-                            <p className="font-bold text-gray-300 uppercase tracking-wider text-[9px] border-b border-gray-700 pb-1 mb-1">How to Unlock</p>
+                            <p className="font-bold text-gray-300 uppercase tracking-wider text-[9px] border-b border-gray-700 pb-1 mb-1">{t('howToUnlock')}</p>
                             <p className="leading-tight text-gray-200">
-                                {slot.category === 'STREAK' && "Reach step goal for consecutive days (Min: 3 Days)."}
-                                {slot.category === 'MILESTONE' && "Reach total lifetime steps (Min: 100k Steps)."}
-                                {slot.category === 'LIFESTYLE' && "Active >20k steps on a weekend."}
-                                {slot.category === 'TITLE' && `Maintain a daily average of ${slot.label.split('(')[1].replace(')', '')} steps.`}
+                                {slot.category === 'STREAK' && t('streakDesc')}
+                                {slot.category === 'MILESTONE' && t('milestoneDesc')}
+                                {slot.category === 'LIFESTYLE' && t('lifestyleDesc')}
+                                {slot.category === 'TITLE' && t('titleDesc', { val: slot.label.split('(')[1].replace(')', '') })}
                                 {['DAILY', 'WEEKLY', 'MONTHLY'].includes(slot.category) && (
                                     <>
-                                        Rank top 3 in {slot.label}.
-                                        {slot.type === 'GROUP' && <span className="block text-gray-400 text-[9px] mt-0.5">(Min: 5 Members)</span>}
-                                        {slot.type === 'GLOBAL' && <span className="block text-gray-400 text-[9px] mt-0.5">(Min: 10 Active Users)</span>}
+                                        {t('rankDesc', { label: t(`badges.${slot.label}`) })}
+                                        {slot.type === 'GROUP' && <span className="block text-gray-400 text-[9px] mt-0.5">{t('minMembers')}</span>}
+                                        {slot.type === 'GLOBAL' && <span className="block text-gray-400 text-[9px] mt-0.5">{t('minUsers')}</span>}
                                     </>
                                 )}
                             </p>
@@ -225,7 +227,7 @@ function BadgeSlot({ slot }: { slot: any }) {
                     </p>
                 ) : (
                     <p className="text-[9px] font-medium text-gray-400">
-                        Locked
+                        {t('locked')}
                     </p>
                 )}
             </div>

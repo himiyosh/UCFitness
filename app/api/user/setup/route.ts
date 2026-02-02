@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { username, email } = body;
+        const { username, email, name } = body;
 
         // Validation
         if (!username || username.length < 3) {
@@ -29,6 +29,7 @@ export async function POST(request: Request) {
 
         const updates: any = {
             username: username,
+            name: name,
             updated_at: new Date().toISOString()
         };
 

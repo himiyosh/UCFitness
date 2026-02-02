@@ -1,16 +1,20 @@
 import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import { redirect } from "next/navigation";
+import { redirect } from "next/navigation"; // Standard redirect works fine for root
 import UserMenu from "@/components/UserMenu";
-import Link from "next/link";
+import { Link } from "@/navigation"; // Localized Link
 import Breadcrumbs from "@/components/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
 
 export default async function SettingsPage() {
     const session = await auth();
+    const t = await getTranslations('Settings');
+    const commonT = await getTranslations('Common');
+    const landingT = await getTranslations('Landing'); // For main title if needed, or use hardcoded/Common
 
     if (!session || !session.user) {
         redirect("/");
@@ -35,19 +39,22 @@ export default async function SettingsPage() {
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
-                                UCFitness
+                                {landingT('title')}
                             </h1>
                         </Link>
                     </div>
-                    <UserMenu user={session.user} />
+                    <UserMenu user={{
+                        ...session.user,
+                        image: user?.image || session.user.image
+                    }} />
                 </div>
             </header>
 
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
-                    <Breadcrumbs items={[{ label: 'Settings' }]} />
-                    <h1 className="text-3xl font-bold text-gray-900 mt-2">Settings</h1>
-                    <p className="text-gray-500">Manage your profile and preferences.</p>
+                    <Breadcrumbs items={[{ label: t('title') }]} />
+                    <h1 className="text-3xl font-bold text-gray-900 mt-2">{t('title')}</h1>
+                    <p className="text-gray-500">{t('description')}</p>
                 </div>
 
                 <SettingsForm user={user} />

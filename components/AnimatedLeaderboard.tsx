@@ -8,13 +8,14 @@ import GroupRankingPanel from '@/components/GroupRankingPanel';
 import GroupCompetitionList from '@/components/GroupCompetitionList';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';
 import TopUsersChart from '@/components/TopUsersChart';
+import { useTranslations } from 'next-intl';
 
 
-const TABS: { key: Period; label: string }[] = [
-    { key: 'DAILY', label: 'Today' },
-    { key: 'WEEKLY', label: 'This Week' },
-    { key: 'MONTHLY', label: 'This Month' },
-    { key: 'YEARLY', label: 'This Year' },
+const TABS: { key: Period; labelKey: string }[] = [
+    { key: 'DAILY', labelKey: 'periods.daily' },
+    { key: 'WEEKLY', labelKey: 'periods.weekly' },
+    { key: 'MONTHLY', labelKey: 'periods.monthly' },
+    { key: 'YEARLY', labelKey: 'periods.yearly' },
 ];
 
 // Sparkline Component
@@ -88,6 +89,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [page, setPage] = useState(1);
+    const t = useTranslations('Leaderboard');
 
     // Handle Tab Switch
     const handleSwitch = (newPeriod: Period) => {
@@ -117,7 +119,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
                         `}
                             >
-                                {tab.label}
+                                {t(tab.labelKey)}
                             </button>
                         );
                     })}
@@ -131,10 +133,10 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                     <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[400px] transition-all duration-300">
                         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="text-base font-bold text-gray-900">
-                                Global Leaderboard
+                                {t('titleGlobal')}
                             </h3>
                             <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded text-xs font-semibold">
-                                {TABS.find(t => t.key === period)?.label}
+                                {t(TABS.find(t => t.key === period)?.labelKey)}
                             </span>
                         </div>
 
@@ -144,13 +146,13 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                     <TopUsersChart
                                         data={currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 }))}
                                         userEmail={userEmail}
-                                        title="Top 10 Leaders"
+                                        title={t('titleTop10')}
                                     />
                                 </div>
 
                                 <ul role="list" className="divide-y divide-gray-50 border-t border-gray-50 flex-1">
                                     {currentGlobal.length === 0 ? (
-                                        <p className="text-gray-500 text-center py-8">No data available yet.</p>
+                                        <p className="text-gray-500 text-center py-8">{t('noData')}</p>
                                     ) : (
                                         (() => {
                                             const ITEMS_PER_PAGE = 5;
@@ -241,17 +243,17 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                                 disabled={page === 1}
                                                                 className="px-3 py-1 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
-                                                                Previous
+                                                                {t('prev')}
                                                             </button>
                                                             <span className="text-xs font-medium text-gray-500">
-                                                                Page {page} of {totalPages}
+                                                                {t('pageInfo', { current: page, total: totalPages })}
                                                             </span>
                                                             <button
                                                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                                                 disabled={page === totalPages}
                                                                 className="px-3 py-1 text-xs font-bold text-indigo-600 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
-                                                                Next
+                                                                {t('next')}
                                                             </button>
                                                         </div>
                                                     )}
@@ -270,9 +272,9 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                         <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all duration-300">
                             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                                 <h3 className="text-base font-bold text-gray-900">
-                                    Group Leaderboard
+                                    {t('titleGroup')}
                                 </h3>
-                                <p className="text-xs text-gray-500">By Average Steps</p>
+                                <p className="text-xs text-gray-500">{t('byAverage')}</p>
                             </div>
                             <GroupCompetitionList
                                 initialRankings={groupCompetitionRankings[period]}
@@ -356,16 +358,16 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                                 {groupData.image_url && (
                                                                     <img src={groupData.image_url} className="w-4 h-4 rounded-full border border-white/30" />
                                                                 )}
-                                                                <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Your Rank</p>
+                                                                <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">{t('yourRank')}</p>
                                                             </div>
                                                             <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
                                                                 <span className="text-2xl sm:text-3xl font-black leading-none">#{myRank}</span>
-                                                                <span className="text-[10px] sm:text-sm font-medium opacity-90 line-clamp-1">in {groupData.keyword}</span>
+                                                                <span className="text-[10px] sm:text-sm font-medium opacity-90 line-clamp-1">{t('inGroup', { group: groupData.keyword })}</span>
                                                             </div>
                                                         </div>
                                                         <div className="text-right ml-2 shrink-0">
                                                             <div className="text-lg sm:text-2xl font-bold tracking-tight leading-none mb-1">{myRankEntry.steps.toLocaleString()}</div>
-                                                            <div className="text-[10px] sm:text-xs text-white/80 font-medium uppercase tracking-wide">steps</div>
+                                                            <div className="text-[10px] sm:text-xs text-white/80 font-medium uppercase tracking-wide">{t('steps')}</div>
                                                         </div>
                                                     </div>
                                                 </Link>
@@ -379,7 +381,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                                         </svg>
                                                     </div>
-                                                    <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Group Rank</p>
+                                                    <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">{t('groupRank')}</p>
                                                 </div>
                                                 <div className="flex items-baseline gap-2 flex-wrap">
                                                     {groupRank ? (
@@ -393,8 +395,8 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                 </div>
                                                 <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="text-[10px] uppercase text-gray-400 font-bold truncate">Average</span>
-                                                        <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
+                                                        <span className="text-[10px] uppercase text-gray-400 font-bold truncate">{t('average')}</span>
+                                                        <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">{t('steps')}</span></span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -416,7 +418,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                         </>
                     ) : (
                         <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center text-gray-500">
-                            Join your first group to see rankings here!
+                            {t('joinPrompt')}
                         </div>
                     )}
                 </div>
