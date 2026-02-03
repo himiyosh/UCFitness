@@ -12,7 +12,7 @@ export default function AuthButtons() {
         <div className="flex gap-4">
             <button
                 onClick={() => signIn('fitbit')}
-                className="rounded-md bg-teal-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-500"
+                className="cursor-pointer rounded-md bg-teal-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-500"
             >
                 Sign in with Fitbit
             </button>

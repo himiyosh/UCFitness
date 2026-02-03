@@ -187,7 +187,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                 if (index !== 0) handleMakePrimary(m.groups.id);
                             }}
                             disabled={isUpdating || index === 0}
-                            className={`p-1.5 rounded-full transition-colors ${index === 0
+                            className={`cursor-pointer p-1.5 rounded-full transition-colors ${index === 0
                                 ? 'text-indigo-600 bg-indigo-50 cursor-default shadow-sm border border-indigo-100'
                                 : 'text-gray-400 bg-white/80 backdrop-blur-sm shadow-sm hover:text-indigo-600 hover:bg-white border border-transparent hover:border-indigo-100'
                                 }`}
@@ -215,7 +215,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     handleMove(index, -1);
                                 }}
                                 disabled={isUpdating || index === 0}
-                                className="p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                                 title="Move Up"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" /></svg>
@@ -227,7 +227,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     handleMove(index, 1);
                                 }}
                                 disabled={isUpdating || index === memberships.length - 1}
-                                className="p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                                 title="Move Down"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
