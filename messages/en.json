@@ -41,7 +41,9 @@
         "keepStepping": "Keep Stepping!",
         "joinGroups": "Every step counts! Join groups to compete and maintain your streak.",
         "profile": "Profile",
-        "groups": "Groups"
+        "groups": "Groups",
+        "refreshSteps": "Refresh Steps",
+        "refreshing": "Refreshing..."
     },
     "Landing": {
         "title": "UCFitness",

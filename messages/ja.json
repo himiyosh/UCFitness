@@ -41,7 +41,9 @@
         "keepStepping": "歩き続けよう！",
         "joinGroups": "一歩一歩が大切です！グループに参加して競争し、ストリークを維持しましょう。",
         "profile": "プロフィール",
-        "groups": "グループ"
+        "groups": "グループ",
+        "refreshSteps": "歩数更新",
+        "refreshing": "更新中..."
     },
     "Landing": {
         "title": "UCFitness",
