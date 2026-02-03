@@ -36,25 +36,29 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
         startDate = `${y}-01-01`;
     }
 
-    let query = supabase
-        .from('daily_steps')
-        .select(`
-      steps,
-      date,
-      users!inner (
-        id,
-        name,
-        image,
-        email,
-        username,
-        group_keyword
-      )
-    `)
-        .gte('date', startDate);
+    // ⚡ Bolt Optimization: Split user and step fetching to avoid heavy joins
+    let userIds: string[] | null = null;
+    const usersMap = new Map<string, any>();
 
     if (scope === 'GROUP' && groupKeyword) {
-        // PostgREST: group_keyword.cs.{"value"}
-        query = query.filter('users.group_keyword', 'cs', `{"${groupKeyword}"}`);
+        const { data: users } = await supabase
+            .from('users')
+            .select('id, name, image, email, username, group_keyword')
+            .contains('group_keyword', [groupKeyword]);
+
+        if (!users || users.length === 0) return [];
+
+        userIds = users.map(u => u.id);
+        users.forEach(u => usersMap.set(u.id, u));
+    }
+
+    let query = supabase
+        .from('daily_steps')
+        .select('steps, date, user_id') // No join
+        .gte('date', startDate);
+
+    if (userIds) {
+        query = query.in('user_id', userIds);
     }
 
     const { data: rawSteps, error } = await query;
@@ -64,23 +68,41 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
         return [];
     }
 
+    // If GLOBAL (userIds was null), we need to fetch users now based on the steps we got
+    if (!userIds) {
+        const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
+
+        if (uniqueUserIds.length > 0) {
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, name, image, email, username, group_keyword')
+                .in('id', uniqueUserIds);
+
+            users?.forEach((u: any) => usersMap.set(u.id, u));
+        }
+    }
+
     // Aggregate steps by user
-    const userMap = new Map<string, any>();
+    const userStats = new Map<string, any>();
 
     rawSteps?.forEach((row: any) => {
-        const email = row.users.email;
-        if (!userMap.has(email)) {
-            userMap.set(email, {
+        const userId = row.user_id;
+        const user = usersMap.get(userId);
+
+        if (!user) return;
+
+        if (!userStats.has(userId)) {
+            userStats.set(userId, {
                 steps: 0,
-                users: row.users
+                users: user
             });
         }
-        const entry = userMap.get(email);
+        const entry = userStats.get(userId);
         entry.steps += Number(row.steps);
     });
 
     // Convert to array and sort
-    const sortedRankings = Array.from(userMap.values()).sort((a, b) => b.steps - a.steps);
+    const sortedRankings = Array.from(userStats.values()).sort((a, b) => b.steps - a.steps);
 
     return sortedRankings;
 };
