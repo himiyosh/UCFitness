@@ -81,7 +81,14 @@ export default function PushSubscriptionButton() {
         try {
             if (subscription) {
                 await subscription.unsubscribe();
-                // Optionally notify backend to delete, but local unsubscribe satisfies the "stop receiving" part.
+
+                // Notify backend to remove subscription
+                await fetch('/api/push/subscribe', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: subscription.endpoint })
+                });
+
                 setSubscription(null);
             }
         } catch (error) {
