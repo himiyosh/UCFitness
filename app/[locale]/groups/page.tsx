@@ -134,20 +134,8 @@ export default async function MyGroupsPage() {
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
-                    {/* Join / Create Section (Right on Desktop, Top on Mobile) */}
-                    <aside className="w-full lg:w-80 flex-shrink-0 lg:order-2 sticky top-24">
-                        <div className="flex items-center mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">{t('joinOrCreate')}</h2>
-                        </div>
-                        <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
-                            <div className="w-full">
-                                <GroupSettings />
-                            </div>
-                        </div>
-                    </aside>
-
-                    {/* Group List (Left on Desktop, Bottom on Mobile) */}
-                    <section className="flex-1 w-full lg:order-1">
+                    {/* Group List (Left on Desktop, Top on Mobile) */}
+                    <section className="flex-1 w-full">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold text-gray-900">{t('yourGroups')}</h2>
                         </div>
@@ -160,6 +148,18 @@ export default async function MyGroupsPage() {
                             <GroupList initialMemberships={sortedMemberships} />
                         )}
                     </section>
+
+                    {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
+                    <aside className="w-full lg:w-80 flex-shrink-0 sticky top-24">
+                        <div className="flex items-center mb-4">
+                            <h2 className="text-lg font-bold text-gray-900">{t('joinOrCreate')}</h2>
+                        </div>
+                        <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
+                            <div className="w-full">
+                                <GroupSettings />
+                            </div>
+                        </div>
+                    </aside>
                 </div>
             </div>
         </main>
