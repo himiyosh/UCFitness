@@ -27,13 +27,21 @@ export async function POST(request: Request) {
         // If the user already has a valid email, they might not send it, or send same.
         // But logic says we ask for email if it's pending.
 
-        const updates: any = {
+        const updates: { username: string; name: string; updated_at: string; email?: string } = {
             username: username,
             name: name,
             updated_at: new Date().toISOString()
         };
 
         if (email) {
+            // 🛡️ Sentinel: Security Check
+            // Only allow email updates if the current email is a temporary setup email.
+            // This prevents account takeover attempts via email change on already set up accounts.
+            const isPendingSetup = session.user.email.endsWith('@pending.setup');
+            if (!isPendingSetup && email !== session.user.email) {
+                return NextResponse.json({ error: "Email change not allowed for fully registered users" }, { status: 403 });
+            }
+
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
@@ -81,7 +89,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Setup error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
