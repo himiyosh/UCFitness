@@ -95,6 +95,7 @@ export default async function MyGroupsPage() {
     });
 
     const t = await getTranslations('Groups');
+    const dashboardT = await getTranslations('Dashboard');
 
     // Use custom image if available, otherwise fallback to session image
     const finalUser = {
@@ -111,10 +112,10 @@ export default async function MyGroupsPage() {
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
-                                UCFitness
+                                {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
-                                Beta
+                                {dashboardT('beta')}
                             </span>
                         </Link>
                     </div>

@@ -14,7 +14,8 @@ export default async function SettingsPage() {
     const session = await auth();
     const t = await getTranslations('Settings');
     const commonT = await getTranslations('Common');
-    const landingT = await getTranslations('Landing'); // For main title if needed, or use hardcoded/Common
+    const landingT = await getTranslations('Landing');
+    const dashboardT = await getTranslations('Dashboard'); // Added
 
     if (!session || !session.user) {
         redirect("/");
@@ -34,13 +35,16 @@ export default async function SettingsPage() {
     return (
         <main className="min-h-screen bg-white">
             {/* Header (Consistent with Profile) */}
-            <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+            <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
-                                {landingT('title')}
+                                {dashboardT('title')}
                             </h1>
+                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+                                {dashboardT('beta')}
+                            </span>
                         </Link>
                     </div>
                     <UserMenu user={{
