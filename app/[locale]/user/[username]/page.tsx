@@ -117,9 +117,28 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const isOwner = session?.user?.email === user.email;
     let viewerStats = { daily: 0, weekly: 0, monthly: 0 };
     let hasViewerStats = false;
+    let viewerUser = session?.user; // Default to session user
 
     if (session?.user && !isOwner) {
         const viewerId = (session.user as any).id;
+
+        // Fetch viewer's fresh data (image) to ensure header is correct
+        const { data: vUser } = await supabase
+            .from("users")
+            .select("name, image, username")
+            .eq("id", viewerId)
+            .single();
+
+        if (vUser) {
+            viewerUser = {
+                ...session.user,
+                name: vUser.name || session.user.name,
+                image: vUser.image || session.user.image,
+                // @ts-ignore
+                username: vUser.username || (session.user as any).username,
+            };
+        }
+
         // Optimization: Fetch from the earliest required date
         // Likely monthlyStart or weeklyStart. If default view is just these 3, we need max range.
         const minDate = weeklyStartStr < monthlyStartStr ? weeklyStartStr : monthlyStartStr;
@@ -136,11 +155,20 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             viewerStats.monthly = vData.filter(r => r.date >= monthlyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
             hasViewerStats = true;
         }
+    } else if (isOwner && user) {
+        // If owner, we already have fresh user data
+        viewerUser = {
+            ...session?.user,
+            name: user.name,
+            image: user.image,
+            // @ts-ignore
+            username: user.username
+        };
     }
 
     return (
         <main className="min-h-screen bg-white">
-            {/* ... Header and Nav (unchanged) ... */}
+            {/* ... Header and Nav ... */}
             <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -153,7 +181,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             </span>
                         </Link>
                     </div>
-                    {session?.user && <UserMenu user={session.user} />}
+                    {/* Use updated viewerUser for correct image */}
+                    {session?.user && viewerUser && <UserMenu user={viewerUser} />}
                 </div>
             </header>
 
