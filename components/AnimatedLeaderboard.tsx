@@ -113,7 +113,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                 key={tab.key}
                                 onClick={() => handleSwitch(tab.key)}
                                 className={`
-                            relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200
+                            relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer
                             ${isActive
                                         ? 'bg-white text-indigo-600 shadow-sm scale-105'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
@@ -241,7 +241,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                             <button
                                                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                                                 disabled={page === 1}
-                                                                className="px-3 py-1 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                className="px-3 py-1 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                                             >
                                                                 {t('prev')}
                                                             </button>
@@ -251,7 +251,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                                             <button
                                                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                                                 disabled={page === totalPages}
-                                                                className="px-3 py-1 text-xs font-bold text-indigo-600 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                className="px-3 py-1 text-xs font-bold text-indigo-600 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                                             >
                                                                 {t('next')}
                                                             </button>
@@ -297,7 +297,7 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                             key={group.keyword}
                                             onClick={() => setSelectedGroupIndex(idx)}
                                             className={`
-                                                whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all
+                                                cursor-pointer whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all
                                                 ${selectedGroupIndex === idx
                                                     ? 'bg-indigo-600 text-white shadow-md'
                                                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}
