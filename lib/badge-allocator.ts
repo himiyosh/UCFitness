@@ -30,7 +30,7 @@ export async function checkAndAwardBadges(userId: string) {
     // 2. Fetch user's current awarded badges
     const { data: userBadges, error: userBadgeError } = await supabaseAdmin
         .from('user_badges')
-        .select('badge_id')
+        .select('badge_code')
         .eq('user_id', userId);
 
     if (userBadgeError) {
@@ -38,7 +38,7 @@ export async function checkAndAwardBadges(userId: string) {
         return;
     }
 
-    const earnedBadgeIds = new Set(userBadges?.map(ub => ub.badge_id));
+    const earnedBadgeIds = new Set(userBadges?.map(ub => ub.badge_code));
 
     // 3. Fetch User Stats (Steps)
     // We need: Today's steps, All-time total steps, Streak (calculated)
@@ -68,7 +68,7 @@ export async function checkAndAwardBadges(userId: string) {
     const totalSteps = allHistory?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
 
     // 4. Evaluate Badges
-    const newBadges: { user_id: string; badge_id: string; awarded_at: string }[] = [];
+    const newBadges: { user_id: string; badge_code: string; awarded_at: string }[] = [];
 
     for (const badge of allBadges) {
         if (earnedBadgeIds.has(badge.id)) continue; // Already earned
@@ -113,7 +113,7 @@ export async function checkAndAwardBadges(userId: string) {
             console.log(`User ${userId} earned badge: ${badge.name}`);
             newBadges.push({
                 user_id: userId,
-                badge_id: badge.id,
+                badge_code: badge.id,
                 awarded_at: new Date().toISOString()
             });
         }
