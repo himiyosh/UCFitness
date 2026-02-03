@@ -160,14 +160,18 @@ export async function uploadBannerImage(formData: FormData) {
     }
 
     const userId = (session.user as any).id;
-    const fileExt = file.name.split('.').pop();
+    // Client compresses to JPEG, so we enforce .jpg extension to match content type
+    const fileExt = 'jpg';
     const filePath = `banner-${userId}-${Date.now()}.${fileExt}`;
+
+    // Convert to ArrayBuffer for reliable upload in all environments (Edge safe)
+    const arrayBuffer = await file.arrayBuffer();
 
     const { error: uploadError } = await supabaseAdmin
         .storage
         .from('avatars') // Reusing avatars bucket
-        .upload(filePath, file, {
-            contentType: file.type,
+        .upload(filePath, arrayBuffer, {
+            contentType: 'image/jpeg',
             upsert: true
         });
 

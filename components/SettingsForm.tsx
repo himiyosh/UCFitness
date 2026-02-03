@@ -72,54 +72,52 @@ export default function SettingsForm({ user }: { user: UserData }) {
                 <h2 className="text-xl font-bold text-gray-900 mb-6">{t('profileSettings')}</h2>
 
                 <div className="flex flex-col gap-8">
-                    {/* Top Row: Images (Icon & Banner) */}
-                    <div className="flex flex-col xl:flex-row items-center xl:items-start gap-8">
-                        {/* Icon */}
-                        <div className="flex flex-col items-center gap-4 shrink-0">
+                    {/* Profile Visuals (Banner + Avatar) */}
+                    <div className="relative mb-6">
+                        {/* Banner Image */}
+                        <div className="relative group w-full h-48 sm:h-64 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                            {user.banner_url ? (
+                                <img
+                                    className="w-full h-full object-cover"
+                                    src={user.banner_url}
+                                    alt="Banner"
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-xs text-indigo-400 font-medium">
+                                    {t('noBanner')}
+                                </div>
+                            )}
+
+                            {/* Edit Banner Button (Bottom Right) */}
+                            <div className="absolute bottom-4 right-4 z-10">
+                                <BannerImageEditor currentBanner={user.banner_url || null}>
+                                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-sm border border-gray-200 text-gray-700 hover:text-indigo-600 transition-all cursor-pointer flex items-center gap-2 font-bold text-xs hover:bg-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                            <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                                            <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                                        </svg>
+                                        {t('banner')}
+                                    </div>
+                                </BannerImageEditor>
+                            </div>
+                        </div>
+
+                        {/* Avatar Image (Overlapping) */}
+                        <div className="absolute -bottom-12 left-6 sm:left-10">
                             <div className="relative group">
                                 {user.image ? (
                                     <img
-                                        className="h-32 w-32 rounded-full border-4 border-white shadow-md bg-white object-cover"
+                                        className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white shadow-md bg-white object-cover"
                                         src={user.image}
                                         alt=""
                                     />
                                 ) : (
-                                    <div className="h-32 w-32 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-5xl font-bold text-indigo-600">
+                                    <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-4xl font-bold text-indigo-600">
                                         {(name?.[0] || 'U')}
                                     </div>
                                 )}
                                 <ProfileImageEditor initialImage={user.image} isCustom={user.is_custom_image || false} />
                             </div>
-                            <p className="text-xs text-gray-500 font-medium">{t('profilePhoto')}</p>
-                        </div>
-
-                        {/* Banner Image */}
-                        <div className="flex flex-col items-center gap-4">
-                            <div className="relative group w-full max-w-sm h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-                                {user.banner_url ? (
-                                    <img
-                                        className="w-full h-full object-cover"
-                                        src={user.banner_url}
-                                        alt="Banner"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-xs text-indigo-400 font-medium">
-                                        {t('noBanner')}
-                                    </div>
-                                )}
-                                {/* Edit Button */}
-                                <div className="absolute bottom-2 right-2">
-                                    <BannerImageEditor currentBanner={user.banner_url || null}>
-                                        <div className="bg-white rounded-full p-1.5 shadow-md border border-gray-200 text-gray-500 hover:text-indigo-600 transition-colors cursor-pointer">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                                <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                                                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                                            </svg>
-                                        </div>
-                                    </BannerImageEditor>
-                                </div>
-                            </div>
-                            <p className="text-xs text-gray-500 font-medium">{t('banner')}</p>
                         </div>
                     </div>
 
