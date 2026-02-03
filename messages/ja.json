@@ -24,8 +24,8 @@
         "banner": "バナー",
         "unique": "(一意)",
         "usernameHint": "URLやランキングに表示されます。6文字以上（英数字、. - _）。",
-        "saveChanges": "変更を保存",
-        "saving": "保存中...",
+        "saveChanges": "保存する",
+        "saving": "保存しています...",
         "setDailyGoal": "1日の目標歩数を設定します。"
     },
     "Dashboard": {
@@ -38,12 +38,12 @@
         "thisMonth": "今月",
         "vsLastWeek": "前週比",
         "vsLastMonth": "前月比",
-        "keepStepping": "歩き続けよう！",
-        "joinGroups": "一歩一歩が大切です！グループに参加して競争し、ストリークを維持しましょう。",
+        "keepStepping": "この調子で続けよう！",
+        "joinGroups": "毎日の積み重ねが大切です。グループに参加して、仲間と競い合いましょう！",
         "profile": "プロフィール",
         "groups": "グループ",
-        "refreshSteps": "歩数更新",
-        "refreshing": "更新中..."
+        "refreshSteps": "歩数を同期",
+        "refreshing": "同期中..."
     },
     "Landing": {
         "title": "UCFitness",
@@ -122,8 +122,8 @@
         "vsLMo": "先月比",
         "keepItUp": "その調子！",
         "keepItUpDesc": "毎日の習慣に運動を取り入れることが、健康維持への一番の近道です。",
-        "syncHistory": "履歴を同期",
-        "syncing": "同期中...",
+        "syncHistory": "履歴を同期する",
+        "syncing": "同期しています...",
         "goToSettings": "設定へ移動",
         "achievements": "実績",
         "viewAll": "すべて見る",
