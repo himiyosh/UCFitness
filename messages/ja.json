@@ -169,7 +169,9 @@
         "join": "参加",
         "joining": "参加中...",
         "success": "参加しました: {keyword}",
-        "error": "グループへの参加に失敗しました。"
+        "error": "グループへの参加に失敗しました。",
+        "primaryTooltip": "現在のメイングループ",
+        "setPrimaryTooltip": "メイングループに設定"
     },
     "Graph": {
         "activityHistory": "アクティビティ履歴",

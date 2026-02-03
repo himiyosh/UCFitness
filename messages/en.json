@@ -169,7 +169,9 @@
         "join": "Join",
         "joining": "Joining...",
         "success": "Joined group: {keyword}",
-        "error": "Failed to join group."
+        "error": "Failed to join group.",
+        "primaryTooltip": "Currently Primary Group",
+        "setPrimaryTooltip": "Set as Primary Group"
     },
     "Graph": {
         "activityHistory": "Activity History",
