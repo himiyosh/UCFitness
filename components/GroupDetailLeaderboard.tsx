@@ -130,7 +130,7 @@ export default function GroupDetailLeaderboard({
                         <button
                             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}
-                            className="text-sm font-medium text-gray-700 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1"
+                            className="text-sm font-medium text-gray-700 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                             Prev
@@ -147,7 +147,7 @@ export default function GroupDetailLeaderboard({
                                     <button
                                         key={p}
                                         onClick={() => onPageChange(p)}
-                                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 ${currentPage === p
+                                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
                                             ? 'bg-indigo-600 text-white shadow-sm scale-110'
                                             : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
                                             }`}
@@ -160,7 +160,7 @@ export default function GroupDetailLeaderboard({
                         <button
                             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
                             disabled={currentPage === totalPages}
-                            className="text-sm font-medium text-gray-700 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1"
+                            className="text-sm font-medium text-gray-700 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
                             Next
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>

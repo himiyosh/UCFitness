@@ -193,7 +193,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                     <div className="flex flex-col gap-2">
                         <button
                             onClick={() => handleLanguageChange('ja')}
-                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors ${locale === 'ja'
+                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'ja'
                                 ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                 }`}
@@ -203,7 +203,7 @@ export default function SettingsForm({ user }: { user: UserData }) {
                         </button>
                         <button
                             onClick={() => handleLanguageChange('en')}
-                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors ${locale === 'en'
+                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'en'
                                 ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                 }`}
