@@ -58,8 +58,6 @@ export default function PushSubscriptionButton() {
                 applicationServerKey: urlBase64ToUint8Array(vapidKey)
             });
 
-            setSubscription(sub);
-
             // Send subscription to backend
             await fetch('/api/push/subscribe', {
                 method: 'POST',
@@ -67,6 +65,7 @@ export default function PushSubscriptionButton() {
                 body: JSON.stringify(sub)
             });
 
+            setSubscription(sub);
             alert(t('success'));
         } catch (error) {
             console.error('Failed to subscribe', error);
