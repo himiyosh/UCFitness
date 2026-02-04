@@ -28,6 +28,14 @@ export async function POST(request: Request) {
 
     // 1. Handle New Schema (groups, group_members)
     if (action === 'add') {
+      // 🛡️ Sentinel: Validate Group Keyword Format
+      const KEYWORD_REGEX = /^[a-zA-Z0-9_-]{3,50}$/;
+      if (!KEYWORD_REGEX.test(target)) {
+        return NextResponse.json({
+          error: "Invalid keyword. Must be 3-50 characters, alphanumeric with underscores and hyphens only."
+        }, { status: 400 });
+      }
+
       // Check if group exists
       const { data: existingGroup } = await supabaseAdmin
         .from('groups')

@@ -21,3 +21,9 @@
 **Vulnerability:** `app/api/notify-teams/route.ts` was a public GET endpoint that triggered external Teams notifications without authentication. This allowed unauthenticated users to spam the Teams channel (DoS/Annoyance) by repeatedly calling the endpoint.
 **Learning:** API routes that trigger side effects (emails, notifications, DB writes) must always be protected, even if they are "internal" cron jobs. Security through obscurity (hidden URL) is not sufficient.
 **Prevention:** Enforce authentication on all API routes. For cron jobs, require a shared secret (e.g., `CRON_SECRET`) in the Authorization header.
+
+## 2026-01-26 - Missing Input Validation in API
+
+**Vulnerability:** `app/api/user/group/route.ts` lacked validation for group keywords during creation, potentially allowing injection attacks or system path traversal if keywords were used in file operations, despite documentation claiming validation existed.
+**Learning:** Documentation and memory can drift from code reality; "assumed" validation is a common security gap.
+**Prevention:** Implement strict regex validation (`/^[a-zA-Z0-9_-]{3,50}$/`) on all user-supplied input at the API boundary, specifically for identifiers like keywords that might be used in URLs or file paths.
