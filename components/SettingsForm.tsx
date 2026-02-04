@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from '@/navigation';
 import PushSubscriptionButton from '@/components/PushSubscriptionButton';
 import StepGoalForm from '@/components/StepGoalForm';
+import { updateUserLanguage } from '@/app/actions'; // Import server action
 
 interface UserData {
     name: string | null;
@@ -28,8 +29,14 @@ export default function SettingsForm({ user }: { user: UserData }) {
     const t = useTranslations('Settings');
     const commonT = useTranslations('Common');
 
-    const handleLanguageChange = (newLocale: string) => {
-        router.replace(pathname, { locale: newLocale });
+    const handleLanguageChange = async (newLocale: string) => {
+        try {
+            await updateUserLanguage(newLocale);
+            router.replace(pathname, { locale: newLocale });
+            router.refresh();
+        } catch (e) {
+            console.error("Failed to update language:", e);
+        }
     };
 
     const handleSave = async () => {

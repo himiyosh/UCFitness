@@ -202,3 +202,31 @@ export async function uploadBannerImage(formData: FormData) {
     revalidatePath('/settings');
     revalidatePath('/');
 }
+
+export async function updateUserLanguage(language: string) {
+    const session = await auth();
+
+    if (!session || !session.user) {
+        throw new Error("Not authenticated");
+    }
+
+    if (!['ja', 'en'].includes(language)) {
+        throw new Error("Invalid language");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userId = (session.user as any).id;
+
+    const { error } = await supabaseAdmin
+        .from("users")
+        .update({
+            language: language,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", userId);
+
+    if (error) {
+        console.error("Database update error:", error);
+        throw new Error("Failed to update language");
+    }
+}

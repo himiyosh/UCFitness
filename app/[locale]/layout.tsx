@@ -10,6 +10,8 @@ import { Suspense } from "react";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { auth } from "@/lib/auth";
+import LanguageSyncer from "@/components/LanguageSyncer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,6 +28,7 @@ export default async function LocaleLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const session = await auth();
 
   // Ensure that the incoming `locale` is valid
   if (!['ja', 'en'].includes(locale)) {
@@ -47,6 +50,7 @@ export default async function LocaleLayout({
                 <GlobalLoader />
               </Suspense>
               <PushNotificationManager />
+              <LanguageSyncer user={session?.user as any} />
               {children}
             </ToastProvider>
           </AuthProvider>
