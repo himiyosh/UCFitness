@@ -13,6 +13,7 @@ export async function updateProfileImage(imageUrl: string | null) {
         throw new Error("Not authenticated");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
     console.log("updateProfileImage called for user:", userId, "with URL:", imageUrl);
 
@@ -48,7 +49,7 @@ export async function updateProfileImage(imageUrl: string | null) {
         try {
             const profile = await getFitbitProfile(accessToken);
             fitbitImage = profile.avatar;
-        } catch (e: any) {
+        } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
             if (e.message === "Unauthorized" || e.message?.includes("401")) {
                 console.log("Token expired during reset, refreshing...");
                 try {
@@ -108,6 +109,7 @@ export async function uploadProfileImage(formData: FormData) {
         throw new Error("No file uploaded");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
     const fileExt = file.name.split('.').pop();
     const filePath = `${userId}-${Date.now()}.${fileExt}`;
@@ -159,19 +161,17 @@ export async function uploadBannerImage(formData: FormData) {
         throw new Error("No file uploaded");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
     // Client compresses to JPEG, so we enforce .jpg extension to match content type
     const fileExt = 'jpg';
     const filePath = `banner-${userId}-${Date.now()}.${fileExt}`;
 
-    // Convert to ArrayBuffer for reliable upload in all environments (Edge safe)
-    const arrayBuffer = await file.arrayBuffer();
-
     const { error: uploadError } = await supabaseAdmin
         .storage
         .from('avatars') // Reusing avatars bucket
-        .upload(filePath, arrayBuffer, {
-            contentType: 'image/jpeg',
+        .upload(filePath, file, {
+            contentType: file.type,
             upsert: true
         });
 
