@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 interface BadgeDefinition {
     id: string;
+    code: string;
     name: string;
     category: string; // 'daily_steps', 'milestone', 'streak', etc.
     type: string;     // Specific identifier like 'walker_6k' or generic
@@ -27,7 +28,7 @@ export async function checkAndAwardBadges(userId: string) {
         return;
     }
 
-    // 2. Fetch user's current awarded badges
+    // 3. Fetch user's current awarded badges
     const { data: userBadges, error: userBadgeError } = await supabaseAdmin
         .from('user_badges')
         .select('badge_code')
@@ -71,7 +72,7 @@ export async function checkAndAwardBadges(userId: string) {
     const newBadges: { user_id: string; badge_code: string; awarded_at: string }[] = [];
 
     for (const badge of allBadges) {
-        if (earnedBadgeIds.has(badge.id)) continue; // Already earned
+        if (earnedBadgeIds.has(badge.code)) continue; // Already earned
 
         let earned = false;
 
@@ -113,7 +114,7 @@ export async function checkAndAwardBadges(userId: string) {
             console.log(`User ${userId} earned badge: ${badge.name}`);
             newBadges.push({
                 user_id: userId,
-                badge_code: badge.id,
+                badge_code: badge.code,
                 awarded_at: new Date().toISOString()
             });
         }
