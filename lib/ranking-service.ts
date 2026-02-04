@@ -1,7 +1,20 @@
 import { supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
+import { unstable_cache } from 'next/cache';
 
-export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, groupKeyword?: string) => {
+/**
+ * ⚡ Bolt Optimization: Cached Ranking Services
+ *
+ * The functions below are wrapped with Next.js `unstable_cache` to significantly reduce
+ * database load on high-traffic pages (like the Dashboard).
+ *
+ * Impact:
+ * - Reduces `daily_steps` table scans by serving cached data for 60 seconds.
+ * - Prevents N+1 query spikes when multiple users access the dynamic homepage simultaneously.
+ * - Improves Time to First Byte (TTFB) for the Dashboard.
+ */
+
+const _getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, groupKeyword?: string) => {
     // JST Calculation (Robust)
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -84,7 +97,14 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
 
     return sortedRankings;
 };
-export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
+
+export const getRankings = unstable_cache(
+    _getRankings,
+    ['rankings-v1'],
+    { revalidate: 60, tags: ['rankings'] }
+);
+
+const _getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
     // JST Calculation (Robust)
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -227,9 +247,15 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     return result as Record<Period, any[]>;
 };
 
+export const getAllRankings = unstable_cache(
+    _getAllRankings,
+    ['all-rankings-v1'],
+    { revalidate: 60, tags: ['rankings'] }
+);
+
 // New Functions using 'groups' table
 
-export const getGroupRankings = async (groupId: string, period: Period) => {
+const _getGroupRankings = async (groupId: string, period: Period) => {
     // JST Calculation
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -312,7 +338,13 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
         .sort((a, b) => b.steps - a.steps);
 };
 
-export const getAllGroupRankings = async (groupId: string) => {
+export const getGroupRankings = unstable_cache(
+    _getGroupRankings,
+    ['group-rankings-v1'],
+    { revalidate: 60, tags: ['rankings'] }
+);
+
+const _getAllGroupRankings = async (groupId: string) => {
     // JST Calculation (Robust)
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -410,7 +442,13 @@ export const getAllGroupRankings = async (groupId: string) => {
     return result as Record<Period, any[]>;
 };
 
-export const getBatchGroupRankings = async (groupIds: string[]) => {
+export const getAllGroupRankings = unstable_cache(
+    _getAllGroupRankings,
+    ['all-group-rankings-v1'],
+    { revalidate: 60, tags: ['rankings'] }
+);
+
+const _getBatchGroupRankings = async (groupIds: string[]) => {
     if (groupIds.length === 0) return {};
 
     // JST Calculation (Robust)
@@ -540,3 +578,9 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 
     return result;
 };
+
+export const getBatchGroupRankings = unstable_cache(
+    _getBatchGroupRankings,
+    ['batch-group-rankings-v1'],
+    { revalidate: 60, tags: ['rankings'] }
+);
