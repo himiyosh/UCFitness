@@ -165,7 +165,7 @@ export async function uploadBannerImage(formData: FormData) {
     const userId = (session.user as any).id;
     // Client compresses to JPEG, so we enforce .jpg extension to match content type
     const fileExt = 'jpg';
-    const filePath = `banner-${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `${userId}-banner-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseAdmin
         .storage
@@ -176,8 +176,8 @@ export async function uploadBannerImage(formData: FormData) {
         });
 
     if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw new Error("Failed to upload image");
+        console.error("Upload error detail:", JSON.stringify(uploadError, null, 2));
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
     }
 
     const { data: { publicUrl } } = supabaseAdmin

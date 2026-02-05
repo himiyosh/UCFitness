@@ -5,6 +5,7 @@ import ProfileImageEditor from "@/components/ProfileImageEditor";
 import BannerImageEditor from "@/components/BannerImageEditor";
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from '@/navigation';
+import { useSession } from 'next-auth/react'; // Import useSession
 import PushNotificationManager from '@/components/PushNotificationManager';
 import StepGoalForm from '@/components/StepGoalForm';
 import { updateUserLanguage } from '@/app/actions'; // Import server action
@@ -22,20 +23,26 @@ export default function SettingsForm({ user }: { user: UserData }) {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [switchingLocale, setSwitchingLocale] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const router = useRouter(); // Use navigation router
     const pathname = usePathname();
     const locale = useLocale();
     const t = useTranslations('Settings');
     const commonT = useTranslations('Common');
+    const { update } = useSession(); // Get update function
 
     const handleLanguageChange = async (newLocale: string) => {
+        if (switchingLocale) return;
+        setSwitchingLocale(newLocale);
         try {
             await updateUserLanguage(newLocale);
+            await update({ user: { language: newLocale } }); // Update session immediately
             router.replace(pathname, { locale: newLocale });
             router.refresh();
         } catch (e) {
             console.error("Failed to update language:", e);
+            setSwitchingLocale(null);
         }
     };
 
@@ -200,23 +207,41 @@ export default function SettingsForm({ user }: { user: UserData }) {
                     <div className="flex flex-col gap-2">
                         <button
                             onClick={() => handleLanguageChange('ja')}
+                            disabled={!!switchingLocale}
                             className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'ja'
                                 ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
-                            <span>日本語</span>
-                            {locale === 'ja' && <span className="text-indigo-600">✓</span>}
+                            <span className="flex items-center gap-2">
+                                日本語
+                                {switchingLocale === 'ja' && (
+                                    <svg className="animate-spin h-3.5 w-3.5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                )}
+                            </span>
+                            {locale === 'ja' && !switchingLocale && <span className="text-indigo-600">✓</span>}
                         </button>
                         <button
                             onClick={() => handleLanguageChange('en')}
+                            disabled={!!switchingLocale}
                             className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'en'
                                 ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
-                            <span>English</span>
-                            {locale === 'en' && <span className="text-indigo-600">✓</span>}
+                            <span className="flex items-center gap-2">
+                                English
+                                {switchingLocale === 'en' && (
+                                    <svg className="animate-spin h-3.5 w-3.5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                )}
+                            </span>
+                            {locale === 'en' && !switchingLocale && <span className="text-indigo-600">✓</span>}
                         </button>
                     </div>
                 </section>

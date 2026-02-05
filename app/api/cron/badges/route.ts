@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { assignBadges } from '@/lib/badge-awards';
 import { Period } from '@/components/LeaderboardTabs';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -55,11 +56,60 @@ export async function GET(request: NextRequest) {
     }
 
 
+    const jobName = `badges-${type}`;
+    let logId: number | null = null;
+
     try {
+        // 1. Log Start
+        const { data: logEntry, error: logError } = await supabaseAdmin
+            .from('cron_logs')
+            .insert({
+                job_name: jobName,
+                status: 'STARTED',
+                details: { type, date: date || 'auto' }
+            })
+            .select()
+            .single();
+
+        if (logEntry) logId = logEntry.id;
+
         await assignBadges(type, date);
+
+        // 2. Log Completion
+        if (logId) {
+            await supabaseAdmin
+                .from('cron_logs')
+                .update({
+                    status: 'COMPLETED',
+                    details: { type, date: date || 'auto', success: true }
+                })
+                .eq('id', logId);
+        }
+
         return NextResponse.json({ success: true, type, date });
     } catch (error: any) {
         console.error('Badge Cron Error:', error);
+
+        // 3. Log Failure
+        if (logId) {
+            await supabaseAdmin
+                .from('cron_logs')
+                .update({
+                    status: 'FAILED',
+                    details: { error: error.message }
+                })
+                .eq('id', logId);
+        } else {
+            // Try to insert failure log if start log failed
+            await supabaseAdmin
+                .from('cron_logs')
+                .insert({
+                    job_name: jobName,
+                    status: 'FAILED',
+                    details: { error: error.message, context: 'Start log failed' }
+                });
+        }
+
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
