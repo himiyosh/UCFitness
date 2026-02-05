@@ -58,7 +58,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     const monthlyStartStr = formatter.format(mDate);
 
     // Get last day of current month
-    // new Date(y, m, 0) gives last day of month m-1. 
+    // new Date(y, m, 0) gives last day of month m-1.
     // We want last day of 'month' (which is 1-based string, e.g. "01").
     // new Date(2025, 1, 0) -> Feb 0 -> Jan 31. Correct.
     const lastDayOfMonth = new Date(Number(year), Number(month), 0);
@@ -85,6 +85,15 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
     }
 
+    // ⚡ Bolt Optimization: Fetch users separately to avoid payload bloat from Joins
+    const { data: users } = await supabase
+        .from('users')
+        .select('id, username, name, email')
+        .in('id', memberIds);
+
+    const userMap = new Map<string, { username: string | null, name: string | null, email: string | null }>();
+    users?.forEach(u => userMap.set(u.id, u));
+
     // 3. Determine Top 10 Members - Fetching ALL steps with pagination
     let allSteps: any[] = [];
     let page = 0;
@@ -96,9 +105,8 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             .select(`
                 steps,
                 date,
-                user_id,
-                users!inner (username, name, email)
-            `)
+                user_id
+            `) // Optimization: Removed users!inner join
             .in('user_id', memberIds)
             .gte('date', minDateStr)
             .range(page * pageSize, (page + 1) * pageSize - 1);
@@ -135,12 +143,13 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         userTotals.set(uid, (userTotals.get(uid) || 0) + stepsToAdd);
 
         // Robust name resolution
-        const u = row.users;
+        // Optimization: Use in-memory map instead of row.users
+        const u = userMap.get(uid);
         const displayName = u?.username || u?.name || u?.email?.split('@')[0] || 'Unknown';
         userIdToName.set(uid, displayName);
     });
 
-    let topUserIds = Array.from(userTotals.entries())
+    const topUserIds = Array.from(userTotals.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(e => e[0]);
@@ -167,7 +176,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     const buildChartData = (startStr: string, endStr: string, aggregation: 'day' | 'week' | 'month'): ComparisonDataPoint[] => {
         const map = new Map<string, ComparisonDataPoint>();
 
-        let current = new Date(startStr);
+        const current = new Date(startStr);
         // Ensure end comparison handles string correctly or use dates loop
         // The previous string comparison loop `formatter.format(current) <= endStr` works for YYYY-MM-DD
 
@@ -176,13 +185,13 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
                 const dStr = formatter.format(current);
                 const dateObj = new Date(dStr);
                 // Label: MM/DD
-                let label = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+                const label = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
 
                 map.set(dStr, { date: dStr, label });
                 current.setDate(current.getDate() + 1);
             }
         } else if (aggregation === 'week') {
-            // Align start to start of week? 
+            // Align start to start of week?
             // For simplicity, just step 7 days from startStr until past endStr
             while (formatter.format(current) <= endStr) {
                 const weekStartStr = formatter.format(current);
