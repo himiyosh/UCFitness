@@ -15,7 +15,7 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
             id: profile.user.encodedId,
             name: profile.user.fullName,
             image: profile.user.avatar,
-            email: profile.user.email || `${profile.user.encodedId}@pending.setup`, // Distinct placeholder for onboarding detection
+            email: profile.user.email || `${profile.user.encodedId.toLowerCase()}@pending.setup`, // Distinct placeholder for onboarding detection
         };
     },
     clientId: options.clientId,
@@ -44,14 +44,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (!account) return false;
 
             // 1. Try to find user by Provider Account ID (Fitbit ID) first - This is stable
+            console.log(`[Auth] Querying DB for provider=${account.provider}, provider_account_id=${account.providerAccountId}`);
+
             let { data: existingUser, error: selectError } = await supabaseAdmin
                 .from("users")
-                .select("id, is_custom_image, email")
+                .select("id, is_custom_image, email, provider, provider_account_id") // Added fields for debug
                 .eq("provider", account.provider)
                 .eq("provider_account_id", account.providerAccountId)
                 .single();
 
             console.log(`[Auth] Lookup by ProviderID result:`, existingUser ? `Found (ID: ${existingUser.id})` : "Not Found");
+            if (selectError && selectError.code !== 'PGRST116') {
+                console.log(`[Auth] Lookup Error:`, selectError);
+            }
 
             // 2. Fallback: Try by Email (legacy or first-time sync issue)
             // Only if not found by provider ID and user has an email
@@ -123,7 +128,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         refresh_token: account.refresh_token,
                         token_expires_at: account.expires_at,
                         updated_at: new Date().toISOString(),
-                        language: 'ja' // Default to Japanese
+                        // language: 'ja' // Default to Japanese - Column missing
                     })
                     .select()
                     .single();
@@ -158,7 +163,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     (session.user as any).username = token.username;
                     session.user.email = token.email;
                     session.user.image = token.picture || token.image || session.user.image;
-                    (session.user as any).language = token.language || 'ja';
+                    // (session.user as any).language = token.language || 'ja';
                     return session;
                 }
 
@@ -171,7 +176,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (token.id) {
                     const res = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email, language")
+                        .select("id, name, username, image, email") // language removed
                         .eq("id", token.id)
                         .single();
                     if (res.data) data = res.data;
@@ -181,7 +186,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!data && token.provider_account_id) {
                     const res = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email, language")
+                        .select("id, name, username, image, email") // language removed
                         .eq("provider_account_id", token.provider_account_id)
                         .single();
                     if (res.data) data = res.data;
@@ -191,7 +196,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!data && token.sub) {
                     const res = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email, language")
+                        .select("id, name, username, image, email") // language removed
                         .eq("provider_account_id", token.sub)
                         .single();
                     if (res.data) data = res.data;
@@ -201,7 +206,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!data && token.email) {
                     const { data: byEmail } = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email, language")
+                        .select("id, name, username, image, email") // language removed
                         .eq("email", token.email)
                         .single();
                     data = byEmail;
@@ -213,7 +218,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     session.user.image = data.image;
                     session.user.email = data.email;
                     (session.user as any).username = data.username;
-                    (session.user as any).language = data.language;
+                    // (session.user as any).language = data.language;
                 } else {
                     session.user.id = token.sub;
                 }
@@ -223,24 +228,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async jwt({ token, account, user, trigger, session }: any) {
             // Initial sign in
             if (account && user) {
-                console.log(`[Auth] JWT Initial Signin. ProvID: ${account.providerAccountId}.`);
+                console.log(`[Auth] JWT Initial Signin. ProvID: ${account.providerAccountId}. UserID from NextAuth: ${user.id}`);
                 token.accessToken = account.access_token;
                 token.provider_account_id = account.providerAccountId; // Persist for recovery
 
                 // Sync with DB to get real ID/Username
-                const { data } = await supabaseAdmin
+                const { data, error } = await supabaseAdmin
                     .from("users")
-                    .select("id, username, email, image, language")
+                    .select("id, username, email, image") // language removed
                     .eq("provider", account.provider)
                     .eq("provider_account_id", account.providerAccountId)
                     .single();
 
+                if (error) {
+                    console.log(`[Auth] JWT Lookup Error:`, error);
+                }
+
                 if (data) {
+                    console.log(`[Auth] JWT Lookup Success: ${data.username} (${data.id})`);
                     token.id = data.id;
                     token.username = data.username;
                     token.email = data.email; // Real DB email
                     token.image = data.image;
-                    token.language = data.language;
+                    // token.language = data.language;
+                } else {
+                    console.log(`[Auth] JWT Lookup Failed: No user found for ${account.providerAccountId}`);
                 }
             }
 
@@ -254,7 +266,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (token.id) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id, language")
+                            .select("id, username, email, image, provider_account_id") // language removed
                             .eq("id", token.id)
                             .single();
                         data = res.data;
@@ -264,7 +276,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (!data && token.provider_account_id) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id, language")
+                            .select("id, username, email, image, provider_account_id") // language removed
                             .eq("provider_account_id", token.provider_account_id)
                             .single();
                         data = res.data;
@@ -274,7 +286,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (!data && token.sub) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id, language")
+                            .select("id, username, email, image, provider_account_id") // language removed
                             .eq("provider_account_id", token.sub)
                             .single();
                         data = res.data;
@@ -287,7 +299,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         token.email = data.email;
                         token.image = data.image;
                         token.provider_account_id = data.provider_account_id;
-                        token.language = data.language;
+                        // token.language = data.language;
                     }
                 }
             }
@@ -298,7 +310,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (session.user.username) token.username = session.user.username;
                 if (session.user.email) token.email = session.user.email;
                 if (session.user.image) token.image = session.user.image;
-                if (session.user.language) token.language = session.user.language;
+                // if (session.user.language) token.language = session.user.language;
             }
 
             return token;

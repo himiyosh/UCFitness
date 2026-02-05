@@ -5,7 +5,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
 import SplashScreen from "@/components/SplashScreen";
 import GlobalLoader from "@/components/GlobalLoader";
-import PushNotificationManager from "@/components/PushNotificationManager";
+
 import { Suspense } from "react";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -49,7 +49,7 @@ export default async function LocaleLayout({
               <Suspense fallback={null}>
                 <GlobalLoader />
               </Suspense>
-              <PushNotificationManager />
+
               <LanguageSyncer user={session?.user as any} />
               {children}
             </ToastProvider>

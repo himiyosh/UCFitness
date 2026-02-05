@@ -130,6 +130,29 @@ export async function checkAndAwardBadges(userId: string) {
             console.error("Failed to award badges:", insertError);
         } else {
             // Optional: Send Push Notification here if we want standardizing
+            try {
+                const { data: subs } = await supabaseAdmin
+                    .from('push_subscriptions')
+                    .select('*')
+                    .eq('user_id', userId);
+
+                if (subs && subs.length > 0) {
+                    const { sendWebPushNotification } = await import('./web-push');
+
+                    // Simple text for notification
+                    const badgeNames = newBadges.map(b => allBadges.find(def => def.code === b.badge_code)?.name).join(', ');
+
+                    for (const sub of subs) {
+                        await sendWebPushNotification(sub, {
+                            title: 'New Badge Earned!',
+                            body: `Congrats! You unlocked: ${badgeNames}`,
+                            url: '/profile' // Helper to open profile
+                        });
+                    }
+                }
+            } catch (notifyError) {
+                console.error("Failed to notify user:", notifyError);
+            }
         }
     }
 }

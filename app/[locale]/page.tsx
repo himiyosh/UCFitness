@@ -159,15 +159,49 @@ export default async function Home() {
       const grp = groupMetadataMap.get(keyword);
       const groupId = grp?.id;
 
-      let rankings;
+      let neighbors: Record<Period, RankingEntry[]>;
       if (groupId && batchGroupRankings[groupId]) {
-        rankings = batchGroupRankings[groupId];
+        neighbors = batchGroupRankings[groupId];
       } else if (groupId) {
         // Fallback (should normally be covered by batch)
-        rankings = await getAllGroupRankings(groupId);
+        neighbors = await getAllGroupRankings(groupId);
       } else {
         // Fallback if no group ID found (shouldn't happen if keyword exists)
-        rankings = await getAllRankings('GROUP', keyword);
+        neighbors = await getAllRankings('GROUP', keyword);
+      }
+
+      // Robustness: Ensure *Current User* is in the list
+      // This handles cases where `group_members` table is out of sync with `users.group_keyword`
+      // or if the user has 0 steps and was excluded by some upstream logic.
+      if (session?.user && (session.user as any).id) {
+        const myId = (session.user as any).id;
+
+        (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(periodKey => {
+          const list = neighbors[periodKey];
+          const inList = list.find(r => r.users.id === myId);
+
+          if (!inList) {
+            // User missing! We must inject them to ensure UI doesn't break.
+            // Try to find real stats from Global Ranking
+            const globalEntry = allGlobalRankings[periodKey].find(r => r.users.id === myId);
+
+            const injectedEntry: RankingEntry = globalEntry ? { ...globalEntry } : {
+              steps: 0,
+              users: {
+                id: myId,
+                username: username || '',
+                name: session.user?.name || '',
+                image: session.user?.image || '',
+                email: userEmail || '',
+                group_keyword: groupKeywords
+              }
+            };
+
+            // Add and resort
+            list.push(injectedEntry);
+            list.sort((a, b) => b.steps - a.steps);
+          }
+        });
       }
 
       return {
@@ -175,7 +209,7 @@ export default async function Home() {
         groupId,
         header_image_url: grp?.header_image_url,
         image_url: grp?.image_url,
-        neighbors: rankings
+        neighbors: neighbors
       };
     })
   );
@@ -384,6 +418,7 @@ export default async function Home() {
           {/* BOTTOM SECTION: Leaderboards */}
           <AnimatedLeaderboard
             userEmail={userEmail}
+            userId={(session?.user as any)?.id}
             allGlobalRankings={allGlobalRankings}
             allGroupRankings={allGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import ProfileImageEditor from "@/components/ProfileImageEditor";
 
 export default function SetupPage() {
@@ -80,6 +80,13 @@ export default function SetupPage() {
 
             if (!res.ok) {
                 throw new Error(data.error || 'Something went wrong');
+            }
+
+            if (data.merged) {
+                // Account linked successfully.
+                // We must sign out the "temp" session so the user can sign in with the real one (Fitbit logic will now find the real user)
+                await signOut({ callbackUrl: '/' });
+                return;
             }
 
             // Force session update to reflect new email/username

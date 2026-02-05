@@ -55,6 +55,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
 
 interface AnimatedLeaderboardProps {
     userEmail?: string | null;
+    userId?: string | null; // Added userId
     allGlobalRankings: Record<Period, RankingEntry[]>;
     allGroupRankings: {
         keyword: string;
@@ -85,7 +86,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
     );
 }
 
-export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
+export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [page, setPage] = useState(1);
@@ -315,8 +316,11 @@ export default function AnimatedLeaderboard({ userEmail, allGlobalRankings, allG
                                 const currentGroupRankings = groupData.neighbors[period];
                                 const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 3);
 
-                                // Find user's rank in this group
-                                const myRankIndex = currentGroupRankings.findIndex(r => r.users.email === userEmail);
+                                // Find user's rank in this group (Use ID first, then Email)
+                                const myRankIndex = currentGroupRankings.findIndex(r =>
+                                    (userId && r.users.id === userId) ||
+                                    (userEmail && r.users.email === userEmail)
+                                );
                                 const myRankEntry = myRankIndex !== -1 ? currentGroupRankings[myRankIndex] : undefined;
                                 const myRank = myRankIndex + 1;
 
