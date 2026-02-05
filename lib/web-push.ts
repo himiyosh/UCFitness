@@ -14,11 +14,9 @@ function base64UrlToUint8Array(base64Url: string) {
         .replace(/-/g, '+')
         .replace(/_/g, '/');
 
-    const rawData = typeof atob === 'function'
-        ? atob(base64)
-        : Buffer.from(base64, 'base64').toString('binary');
-
+    const rawData = atob(base64);
     const outputArray = new Uint8Array(rawData.length);
+
     for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
     }
@@ -26,10 +24,7 @@ function base64UrlToUint8Array(base64Url: string) {
 }
 
 function uint8ArrayToBase64Url(uint8Array: Uint8Array) {
-    const base64 = typeof btoa === 'function'
-        ? btoa(String.fromCharCode(...uint8Array))
-        : Buffer.from(uint8Array).toString('base64');
-
+    const base64 = btoa(String.fromCharCode(...uint8Array));
     return base64
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
