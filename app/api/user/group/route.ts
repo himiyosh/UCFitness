@@ -38,6 +38,15 @@ export async function POST(request: Request) {
       let groupId = existingGroup?.id;
 
       if (!groupId) {
+        // 🛡️ Sentinel: Validate Keyword before creation
+        // Enforce: 3-50 chars, alphanumeric, underscores, hyphens only
+        const KEYWORD_REGEX = /^[a-zA-Z0-9_-]{3,50}$/;
+        if (!KEYWORD_REGEX.test(target)) {
+          return NextResponse.json({
+            error: "New group keywords must be 3-50 characters and contain only letters, numbers, hyphens, or underscores."
+          }, { status: 400 });
+        }
+
         // Create New Group
         const { data: newGroup, error: createError } = await supabaseAdmin
           .from('groups')
