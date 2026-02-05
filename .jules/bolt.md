@@ -17,3 +17,7 @@
 ## 2025-05-24 - Payload Bloat from Table Joins
 **Learning:** Joining `users` in `daily_steps` queries (`users!inner`) caused user profile data to be repeated for every single daily step record, massively bloating the JSON response size from Supabase.
 **Action:** For large time-series datasets linked to static entities, fetch the time-series data (IDs only) and entities (User Profiles) in two separate queries, then join in memory to reduce network payload.
+
+## 2026-02-05 - Hooks in IIFEs & Memoization
+**Learning:** Found a critical performance and correctness issue where `useEffect` was declared inside an IIFE within JSX. This violates Rules of Hooks and causes crashes if the conditional logic changes. Also, heavy computations were happening inside these IIFEs on every render.
+**Action:** Always extract logic from IIFEs in JSX into top-level `useMemo` hooks. This fixes the Hook violation and optimizes performance by preventing recalculation on unrelated state changes.

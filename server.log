@@ -1,0 +1,28 @@
+
+> step-tracker@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+ ✓ Ready in 919ms
+Missing Supabase environment variables. App will function in limited mode.
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: http://localhost:3000/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+    at /app/.next/server/edge-chunks/886.js:404:51334
+    at e$ (/app/.next/server/edge-chunks/886.js:404:53999)
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: http://localhost:3000/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+    at /app/.next/server/edge-chunks/886.js:404:51334
+    at e$ (/app/.next/server/edge-chunks/886.js:404:53999)
+Missing Supabase environment variables. App will function in limited mode.
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: http://localhost:3000/api/auth/session?nextauth=session. Read more at https://errors.authjs.dev#untrustedhost
+    at /app/.next/server/edge-chunks/886.js:404:51334
+    at e$ (/app/.next/server/edge-chunks/886.js:404:53999)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async ad.do (/app/.next/server/edge-chunks/138.js:5:7754)
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: http://localhost:3000/api/auth/session?nextauth=session. Read more at https://errors.authjs.dev#untrustedhost
+    at /app/.next/server/edge-chunks/886.js:404:51334
+    at e$ (/app/.next/server/edge-chunks/886.js:404:53999)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async ad.do (/app/.next/server/edge-chunks/138.js:5:7754)
