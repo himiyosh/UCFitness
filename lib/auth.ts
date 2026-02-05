@@ -64,7 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 console.log(`[Auth] Fallback lookup by Email: ${user.email}`);
                 const { data: userByEmail, error: emailError } = await supabaseAdmin
                     .from("users")
-                    .select("id, is_custom_image, email")
+                    .select("id, is_custom_image, email, provider, provider_account_id")
                     .eq("email", user.email)
                     .single();
 
