@@ -19,9 +19,12 @@ type ActivityGraphProps = {
     };
 };
 
+import { useTranslations } from 'next-intl';
+
 type ViewMode = 'WEEKLY' | 'MONTHLY' | 'ALL';
 
 export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: ActivityGraphProps) {
+    const t = useTranslations('Graph');
     const [viewMode, setViewMode] = useState<ViewMode>('WEEKLY');
     // Current Week Offset (0 = current week, -1 = previous week)
     const [weekOffset, setWeekOffset] = useState(0);
@@ -307,7 +310,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
             <div className="flex flex-col gap-6 mb-6">
                 {/* Main Header Row */}
                 <div className="relative flex items-center justify-center py-2">
-                    <h3 className="absolute left-0 text-lg font-bold text-gray-900 whitespace-nowrap hidden sm:block">Activity History</h3>
+                    <h3 className="absolute left-0 text-lg font-bold text-gray-900 whitespace-nowrap hidden sm:block">{t('activityHistory')}</h3>
                     <div className="flex bg-gray-100 p-1 rounded-lg">
                         {(['WEEKLY', 'MONTHLY', 'ALL'] as ViewMode[]).map((m) => (
                             <button
@@ -318,7 +321,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                                     : 'text-gray-500 hover:text-gray-900'
                                     }`}
                             >
-                                {m === 'WEEKLY' ? 'Weekly' : m === 'MONTHLY' ? 'Monthly' : 'Total'}
+                                {m === 'WEEKLY' ? t('weekly') : m === 'MONTHLY' ? t('monthly') : t('total')}
                             </button>
                         ))}
                     </div>
@@ -343,7 +346,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                                 </button>
                                 <div className="min-w-[120px] flex items-center justify-center h-full">
                                     <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                                        {weekOffset === 0 ? 'Current Week' : weekRangeLabel}
+                                        {weekOffset === 0 ? t('currentWeek') : weekRangeLabel}
                                     </span>
                                 </div>
                                 <button
@@ -384,7 +387,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                         ) : (
                             <div className="min-w-[120px] h-full flex items-center justify-center">
                                 <span className="text-sm font-medium text-gray-500 px-2 leading-none">
-                                    All Data
+                                    {t('allData')}
                                 </span>
                             </div>
                         )}
@@ -394,11 +397,11 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                     <div className="flex items-center gap-4 h-8">
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                             <span className="block w-3 h-0.5 bg-indigo-500 rounded-full"></span>
-                            Total: <span className="font-bold text-indigo-700">{totalDisplayedSteps.toLocaleString()}</span>
+                            {t('totalLabel')} <span className="font-bold text-indigo-700">{totalDisplayedSteps.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500 shrink-0">
                             <span className="block w-2 sm:w-3 h-0.5 bg-red-400 border-t border-dashed border-red-500"></span>
-                            Target: {stepGoal.toLocaleString()}
+                            {t('targetLabel')} {stepGoal.toLocaleString()}
                         </div>
                     </div>
                 </div>

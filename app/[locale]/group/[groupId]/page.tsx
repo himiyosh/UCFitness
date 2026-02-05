@@ -29,6 +29,21 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const userEmail = session.user.email;
     const { groupId } = params;
 
+    // 0. Fetch Current User (to ensure fresh profile image/name)
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    // Construct user object for menu, preferring DB data
+    const currentUser = dbUser ? {
+        ...session.user,
+        name: dbUser.name || session.user.name,
+        image: dbUser.image || session.user.image,
+        username: dbUser.username
+    } : session.user;
+
     // 1. Fetch Group Details (Regardless of membership)
     const { data: group, error: groupError } = await supabase
         .from('groups')
@@ -70,7 +85,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             </Link>
                         </div>
                         <div>
-                            <UserMenu user={session.user} />
+                            <UserMenu user={currentUser} />
                         </div>
                     </div>
                 </header>
@@ -144,7 +159,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         </Link>
                     </div>
                     <div>
-                        <UserMenu user={session.user} />
+                        <UserMenu user={currentUser} />
                     </div>
                 </div>
             </header>

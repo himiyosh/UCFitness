@@ -69,7 +69,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                                 key={tab.key}
                                 onClick={() => setPeriod(tab.key)}
                                 className={`
-                            px-4 py-2 text-sm font-medium rounded-md transition-all
+                            px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer
                             ${isActive
                                         ? 'bg-white text-indigo-600 shadow-sm'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}

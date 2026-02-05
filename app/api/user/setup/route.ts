@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { backfillUserSteps } from "@/lib/step-manager";
 
 export async function POST(request: Request) {
     const session = await auth();
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { username, email } = body;
+        const { username, email, name } = body;
 
         // Validation
         if (!username || username.length < 3) {
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
 
         const updates: any = {
             username: username,
+            name: name,
             updated_at: new Date().toISOString()
         };
 
@@ -38,6 +40,31 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
             }
             updates.email = email;
+        }
+
+        // Check uniqueness for email if changing
+        // CRITICAL: Check this BEFORE username, because if we are merging accounts,
+        // we don't care if the username is taken (since we are deleting the temp user anyway).
+        if (updates.email && updates.email !== session.user.email) {
+            console.log(`[Setup] Checking email change: ${session.user.email} -> ${updates.email}`);
+
+            const { data: existingEmail } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('email', updates.email)
+                .neq('email', session.user.email)
+                .single();
+
+            if (existingEmail) {
+                console.log(`[Setup] Email is already registered: ${existingEmail.id}`);
+                // Security Decision: 
+                // We do NOT automatically merge accounts based on email verification alone,
+                // as this allows account takeover if the previous email was insecure/placeholder.
+                // Since the root cause of login failures (SQL error) is fixed, legitimate users 
+                // should login automatically via Fitbit ID match and never see this screen.
+
+                return NextResponse.json({ error: "Email is already registered" }, { status: 409 });
+            }
         }
 
         // Check uniqueness for username
@@ -50,20 +77,6 @@ export async function POST(request: Request) {
 
         if (existingUser) {
             return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
-        }
-
-        // Check uniqueness for email if changing
-        if (updates.email && updates.email !== session.user.email) {
-            const { data: existingEmail } = await supabaseAdmin
-                .from('users')
-                .select('id')
-                .eq('email', updates.email)
-                .neq('email', session.user.email)
-                .single();
-
-            if (existingEmail) {
-                return NextResponse.json({ error: "Email is already registered" }, { status: 409 });
-            }
         }
 
         // Update User

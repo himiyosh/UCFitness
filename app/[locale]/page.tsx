@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
+import { Link } from '@/navigation';
+import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
@@ -11,11 +13,19 @@ import { RankingEntry } from '@/lib/ranking-utils';
 import GoalProgressChart from '@/components/GoalProgressChart';
 import RunnerAnimation from '@/components/RunnerAnimation';
 import AutoSync from '@/components/AutoSync';
+import LandingPage from '@/components/LandingPage';
+import { Period } from '@/components/LeaderboardTabs';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const session = await auth();
+  const t = await getTranslations('Dashboard');
+
+  if (!session?.user) {
+    return <LandingPage />;
+  }
+
   const userEmail = session?.user?.email;
 
   let groupKeywords: string[] = [];
@@ -29,10 +39,10 @@ export default async function Home() {
 
   if (session?.user && (session.user as any).id) {
     const userId = (session.user as any).id;
-    // Fetch current user's group keywords
+    // Fetch current user's group keywords AND fresh image
     const { data: userData } = await supabase
       .from('users')
-      .select('group_keyword, username, step_goal, banner_url')
+      .select('group_keyword, username, step_goal, banner_url, image, name') // Added image, name
       .eq('id', userId)
       .single();
 
@@ -40,6 +50,20 @@ export default async function Home() {
     groupKeywords = userData?.group_keyword || [];
     username = userData?.username;
     bannerUrl = userData?.banner_url;
+
+
+    // Override session image with fresh DB image if available
+    if (userData) {
+      if (session.user) {
+        if (userData.image) session.user.image = userData.image;
+        if (userData.name) session.user.name = userData.name;
+      }
+    }
+
+    // Redirect to setup if username is missing
+    if (!userData?.username) {
+      redirect('/setup');
+    }
 
     // Use JST
     const now = new Date();
@@ -136,15 +160,49 @@ export default async function Home() {
       const grp = groupMetadataMap.get(keyword);
       const groupId = grp?.id;
 
-      let rankings;
+      let neighbors: Record<Period, RankingEntry[]>;
       if (groupId && batchGroupRankings[groupId]) {
-        rankings = batchGroupRankings[groupId];
+        neighbors = batchGroupRankings[groupId];
       } else if (groupId) {
         // Fallback (should normally be covered by batch)
-        rankings = await getAllGroupRankings(groupId);
+        neighbors = await getAllGroupRankings(groupId);
       } else {
         // Fallback if no group ID found (shouldn't happen if keyword exists)
-        rankings = await getAllRankings('GROUP', keyword);
+        neighbors = await getAllRankings('GROUP', keyword);
+      }
+
+      // Robustness: Ensure *Current User* is in the list
+      // This handles cases where `group_members` table is out of sync with `users.group_keyword`
+      // or if the user has 0 steps and was excluded by some upstream logic.
+      if (session?.user && (session.user as any).id) {
+        const myId = (session.user as any).id;
+
+        (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(periodKey => {
+          const list = neighbors[periodKey];
+          const inList = list.find(r => r.users.id === myId);
+
+          if (!inList) {
+            // User missing! We must inject them to ensure UI doesn't break.
+            // Try to find real stats from Global Ranking
+            const globalEntry = allGlobalRankings[periodKey].find(r => r.users.id === myId);
+
+            const injectedEntry: RankingEntry = globalEntry ? { ...globalEntry } : {
+              steps: 0,
+              users: {
+                id: myId,
+                username: username || '',
+                name: session.user?.name || '',
+                image: session.user?.image || '',
+                email: userEmail || '',
+                group_keyword: groupKeywords
+              }
+            };
+
+            // Add and resort
+            list.push(injectedEntry);
+            list.sort((a, b) => b.steps - a.steps);
+          }
+        });
       }
 
       return {
@@ -152,7 +210,7 @@ export default async function Home() {
         groupId,
         header_image_url: grp?.header_image_url,
         image_url: grp?.image_url,
-        neighbors: rankings
+        neighbors: neighbors
       };
     })
   );
@@ -186,10 +244,10 @@ export default async function Home() {
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 group">
               <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
-                UCFitness
+                {t('title', { defaultMessage: 'UCFitness' })}
               </h1>
               <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
-                Beta
+                {t('beta')}
               </span>
             </Link>
           </div>
@@ -223,7 +281,7 @@ export default async function Home() {
                       {/* Bolt Icon */}
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">Your Activity</h3>
+                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">{t('yourActivity')}</h3>
                   </div>
 
                   {/* Today's Main Stat */}
@@ -233,7 +291,7 @@ export default async function Home() {
                         <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 drop-shadow-sm">
                           {mySteps.toLocaleString()}
                         </span>
-                        <span className="text-sm font-semibold text-gray-400">steps today</span>
+                        <span className="text-sm font-semibold text-gray-400">{t('stepsToday')}</span>
                       </div>
 
                       {/* Comparison Badge */}
@@ -249,7 +307,7 @@ export default async function Home() {
                           )}
                           {Math.abs(mySteps - yesterdaySteps).toLocaleString()}
                         </span>
-                        <span className="text-xs text-gray-400 font-medium">vs yesterday</span>
+                        <span className="text-xs text-gray-400 font-medium">{t('vsYesterday')}</span>
                       </div>
                     </div>
 
@@ -268,7 +326,7 @@ export default async function Home() {
                     >
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        This Week
+                        {t('thisWeek')}
                       </p>
                       <div className="flex flex-col">
                         <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
@@ -278,7 +336,7 @@ export default async function Home() {
                           <span className={`text-[10px] font-bold ${myWeeklySteps >= lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
                             {myWeeklySteps >= lastWeekSteps ? '↑' : '↓'} {Math.abs(myWeeklySteps - lastWeekSteps).toLocaleString()}
                           </span>
-                          <span className="text-[10px] text-gray-400">vs last wk</span>
+                          <span className="text-[10px] text-gray-400">{t('vsLastWeek')}</span>
                         </div>
                       </div>
                     </Link>
@@ -290,7 +348,7 @@ export default async function Home() {
                     >
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        This Month
+                        {t('thisMonth')}
                       </p>
                       <div className="flex flex-col">
                         <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
@@ -300,7 +358,7 @@ export default async function Home() {
                           <span className={`text-[10px] font-bold ${myMonthlySteps >= lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
                             {myMonthlySteps >= lastMonthSteps ? '↑' : '↓'} {Math.abs(myMonthlySteps - lastMonthSteps).toLocaleString()}
                           </span>
-                          <span className="text-[10px] text-gray-400">vs last mo</span>
+                          <span className="text-[10px] text-gray-400">{t('vsLastMonth')}</span>
                         </div>
                       </div>
                     </Link>
@@ -338,19 +396,19 @@ export default async function Home() {
                     <div className="mb-0 sm:mb-4 inline-flex items-center justify-center p-1.5 sm:p-2 bg-white/20 backdrop-blur-sm rounded-lg">
                       <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    <h4 className="font-black text-lg sm:text-2xl mb-0 sm:mb-2 tracking-tight">Keep Stepping!</h4>
+                    <h4 className="font-black text-lg sm:text-2xl mb-0 sm:mb-2 tracking-tight">{t('keepStepping')}</h4>
                   </div>
 
                   <p className="opacity-90 text-[10px] sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50 mt-1 sm:mt-0">
-                    Every step counts! Join groups to compete and maintain your streak.
+                    {t('joinGroups')}
                   </p>
 
                   <div className="mt-3 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
                     <Link href="/profile" className="px-3 py-1 sm:px-5 sm:py-2 bg-white text-indigo-600 text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
-                      Profile
+                      {t('profile')}
                     </Link>
                     <Link href="/groups" className="px-3 py-1 sm:px-5 sm:py-2 bg-indigo-600/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-indigo-600/50 transition-colors inline-flex items-center gap-2">
-                      Groups
+                      {t('groups')}
                     </Link>
                   </div>
                 </div>
@@ -361,6 +419,7 @@ export default async function Home() {
           {/* BOTTOM SECTION: Leaderboards */}
           <AnimatedLeaderboard
             userEmail={userEmail}
+            userId={(session?.user as any)?.id}
             allGlobalRankings={allGlobalRankings}
             allGroupRankings={allGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}

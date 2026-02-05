@@ -11,6 +11,7 @@ import ProfileBadges from '@/components/ProfileBadges';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
+import { getTranslations } from "next-intl/server";
 
 
 
@@ -21,6 +22,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const params = await props.params;
     const session = await auth();
     const { username } = params;
+    const t = await getTranslations('Profile');
+    const commonT = await getTranslations('Common');
+    const dashboardT = await getTranslations('Dashboard');
 
     // Fetch target user data
     const { data: user } = await supabase
@@ -113,9 +117,28 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const isOwner = session?.user?.email === user.email;
     let viewerStats = { daily: 0, weekly: 0, monthly: 0 };
     let hasViewerStats = false;
+    let viewerUser = session?.user; // Default to session user
 
     if (session?.user && !isOwner) {
         const viewerId = (session.user as any).id;
+
+        // Fetch viewer's fresh data (image) to ensure header is correct
+        const { data: vUser } = await supabase
+            .from("users")
+            .select("name, image, username")
+            .eq("id", viewerId)
+            .single();
+
+        if (vUser) {
+            viewerUser = {
+                ...session.user,
+                name: vUser.name || session.user.name,
+                image: vUser.image || session.user.image,
+                // @ts-ignore
+                username: vUser.username || (session.user as any).username,
+            };
+        }
+
         // Optimization: Fetch from the earliest required date
         // Likely monthlyStart or weeklyStart. If default view is just these 3, we need max range.
         const minDate = weeklyStartStr < monthlyStartStr ? weeklyStartStr : monthlyStartStr;
@@ -132,24 +155,34 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             viewerStats.monthly = vData.filter(r => r.date >= monthlyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
             hasViewerStats = true;
         }
+    } else if (isOwner && user) {
+        // If owner, we already have fresh user data
+        viewerUser = {
+            ...session?.user,
+            name: user.name,
+            image: user.image,
+            // @ts-ignore
+            username: user.username
+        };
     }
 
     return (
         <main className="min-h-screen bg-white">
-            {/* ... Header and Nav (unchanged) ... */}
+            {/* ... Header and Nav ... */}
             <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
-                                UCFitness
+                                {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
-                                Beta
+                                {dashboardT('beta')}
                             </span>
                         </Link>
                     </div>
-                    {session?.user && <UserMenu user={session.user} />}
+                    {/* Use updated viewerUser for correct image */}
+                    {session?.user && viewerUser && <UserMenu user={viewerUser} />}
                 </div>
             </header>
 
@@ -171,21 +204,25 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         {/* Comparison/Owner Actions */}
                         {isOwner ? (
                             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col gap-3">
-                                <h3 className="text-sm font-bold text-gray-700">Quick Links</h3>
+                                <h3 className="text-sm font-bold text-gray-700">{t('quickLinks')}</h3>
                                 <Link
                                     href="/groups"
                                     className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.07-.654.78.78 0 00.357-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.907 3.96 2.32 2.32 0 01-.026.654zM18 8a2 2 0 11-4 0 2 2 0 014 0zM5.304 16.191a.844.844 0 01-.277-.71c.076-.814.237-1.596.454-2.336a4.718 4.718 0 001.974.89c.034.008.069.017.103.025a5.619 5.619 0 01-2.254 2.131zM10.66 14.676a.75.75 0 01-.66 0 4.718 4.718 0 001.974-.89c.217.74.378 1.522.454 2.336a.844.844 0 01-.277.71 5.619 5.619 0 01-2.254 2.131z" />
+                                        <path d="M7 8a3 3 0 100-6 3 3 0 000 6zM14.5 9a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.615 16.428a1.224 1.224 0 01-.569-1.175 6.002 6.002 0 0111.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 017 18a9.953 9.953 0 01-5.385-1.572zM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 00-1.588-3.755 4.502 4.502 0 015.874 2.636.818.818 0 01-.36.98A7.465 7.465 0 0114.5 16z" />
                                     </svg>
-                                    Manage My Groups
+                                    {t('manageGroups')}
                                 </Link>
                                 <Link
                                     href="/profile"
                                     className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-50 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-100 transition-colors border border-gray-100"
                                 >
-                                    Edit Profile
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400">
+                                        <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                                        <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                                    </svg>
+                                    {t('editProfile')}
                                 </Link>
                             </div>
                         ) : (
@@ -197,19 +234,19 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     {/* Right Column: Stats & Achievements */}
                     <div className="md:col-span-2 space-y-6 order-first md:order-none">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">{user.name}'s Activity</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
                         </div>
 
                         {/* New Comparison Stats Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                             {/* Daily */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Today</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('today')}</p>
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.daily.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()} vs {user.name || user.username}
+                                            {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
                                         </p>
                                     )}
                                 </div>
@@ -217,12 +254,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                             {/* Weekly */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This Week</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisWeek')}</p>
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.weekly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()} vs {user.name || user.username}
+                                            {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
                                         </p>
                                     )}
                                 </div>
@@ -230,12 +267,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                             {/* Monthly */}
                             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">This Month</p>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisMonth')}</p>
                                 <div className="mt-2">
                                     <p className="text-3xl font-black text-gray-900">{targetStats.monthly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()} vs {user.name || user.username}
+                                            {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
                                         </p>
                                     )}
                                 </div>

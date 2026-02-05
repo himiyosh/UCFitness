@@ -1,0 +1,14 @@
+
+> step-tracker@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.9
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+uncaughtException [Error: EPERM: operation not permitted, open 'C:\GitHub\UCFitness\.next\trace'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'open',
+  path: 'C:\\GitHub\\UCFitness\\.next\\trace'
+}
