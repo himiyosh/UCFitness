@@ -14,6 +14,7 @@ import GoalProgressChart from '@/components/GoalProgressChart';
 import RunnerAnimation from '@/components/RunnerAnimation';
 import AutoSync from '@/components/AutoSync';
 import LandingPage from '@/components/LandingPage';
+import { Period } from '@/components/LeaderboardTabs';
 
 export const dynamic = 'force-dynamic';
 
