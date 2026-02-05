@@ -18,9 +18,9 @@ self.addEventListener('push', function(event) {
       console.error('Push data parse error', e);
     }
   } else {
-    // Tickle (payload-less) push
-    title = 'New Badge Earned!';
-    options.body = 'Check your profile for details.';
+    // Tickle (payload-less) push - Default "Pop" Message
+    title = '🎉 New Achievement Unlocked! 🏆';
+    options.body = 'Wow! You reached a new milestone in UCFitness! ✨\nTap to see your shiny new badge! 👀';
     options.data.url = '/profile';
   }
 

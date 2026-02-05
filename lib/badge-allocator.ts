@@ -144,8 +144,8 @@ export async function checkAndAwardBadges(userId: string) {
 
                     for (const sub of subs) {
                         await sendWebPushNotification(sub, {
-                            title: 'New Badge Earned!',
-                            body: `Congrats! You unlocked: ${badgeNames}`,
+                            title: '🎉 New Badge Unlocked! 🏆',
+                            body: `Wow! You've earned: ${badgeNames} ✨\nKeep being awesome! 🚀`,
                             url: '/profile' // Helper to open profile
                         });
                     }
