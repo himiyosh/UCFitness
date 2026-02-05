@@ -203,6 +203,10 @@ export async function uploadBannerImage(formData: FormData) {
     revalidatePath('/');
 }
 
+import { cookies } from 'next/headers';
+
+// ... (existing imports)
+
 export async function updateUserLanguage(language: string) {
     const session = await auth();
 
@@ -229,4 +233,7 @@ export async function updateUserLanguage(language: string) {
         console.error("Database update error:", error);
         throw new Error("Failed to update language");
     }
+
+    // Explicitly set the cookie for next-intl
+    cookies().set('NEXT_LOCALE', language, { path: '/', maxAge: 31536000 }); // 1 year
 }

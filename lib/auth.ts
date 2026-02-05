@@ -163,7 +163,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     (session.user as any).username = token.username;
                     session.user.email = token.email;
                     session.user.image = token.picture || token.image || session.user.image;
-                    // (session.user as any).language = token.language || 'ja';
+                    (session.user as any).language = token.language || 'ja';
                     return session;
                 }
 
@@ -176,7 +176,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (token.id) {
                     const res = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email") // language removed
+                        .select("id, name, username, image, email, language")
                         .eq("id", token.id)
                         .single();
                     if (res.data) data = res.data;
@@ -250,7 +250,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     token.username = data.username;
                     token.email = data.email; // Real DB email
                     token.image = data.image;
-                    // token.language = data.language;
+                    token.language = (data as any).language;
                 } else {
                     console.log(`[Auth] JWT Lookup Failed: No user found for ${account.providerAccountId}`);
                 }
@@ -266,7 +266,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (token.id) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id") // language removed
+                            .select("id, username, email, image, provider_account_id, language")
                             .eq("id", token.id)
                             .single();
                         data = res.data;
@@ -299,7 +299,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         token.email = data.email;
                         token.image = data.image;
                         token.provider_account_id = data.provider_account_id;
-                        // token.language = data.language;
+                        token.language = (data as any).language;
                     }
                 }
             }
@@ -310,7 +310,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (session.user.username) token.username = session.user.username;
                 if (session.user.email) token.email = session.user.email;
                 if (session.user.image) token.image = session.user.image;
-                // if (session.user.language) token.language = session.user.language;
+                if (session.user.language) token.language = session.user.language;
             }
 
             return token;
