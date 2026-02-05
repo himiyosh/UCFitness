@@ -1,0 +1,51 @@
+
+> step-tracker@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 1748ms (283 modules)
+ ○ Compiling /[locale]/verify ...
+ ✓ Compiled /[locale]/verify in 7.4s (1208 modules)
+Missing Supabase environment variables. App will function in limited mode.
+Missing Supabase environment variables. App will function in limited mode.
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processTimers (node:internal/timers:520:9)
+ GET /verify 200 in 10281ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 2.7s (1020 modules)
+Missing Supabase environment variables. App will function in limited mode.
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (webpack-internal:///(rsc)/./node_modules/next/dist/esm/server/route-modules/app-route/module.js:399:23)
+ ✓ Compiled in 276ms (362 modules)
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processTimers (node:internal/timers:520:9)
+ GET /verify 200 in 471ms
+Missing Supabase environment variables. App will function in limited mode.
+Missing Supabase environment variables. App will function in limited mode.
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (webpack-internal:///(rsc)/./node_modules/next/dist/esm/server/route-modules/app-route/module.js:399:23)
+ GET /api/auth/session 500 in 368ms
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (webpack-internal:///(rsc)/./node_modules/next/dist/esm/server/route-modules/app-route/module.js:399:23)
+ GET /api/auth/session 500 in 27ms
+ ✓ Compiled in 381ms (355 modules)
+ ✓ Compiled in 389ms (355 modules)
+ ✓ Compiled in 205ms (355 modules)

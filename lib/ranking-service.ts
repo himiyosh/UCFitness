@@ -45,7 +45,6 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
         id,
         name,
         image,
-        email,
         username,
         group_keyword
       )
@@ -68,14 +67,14 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
     const userMap = new Map<string, any>();
 
     rawSteps?.forEach((row: any) => {
-        const email = row.users.email;
-        if (!userMap.has(email)) {
-            userMap.set(email, {
+        const userId = row.users.id;
+        if (!userMap.has(userId)) {
+            userMap.set(userId, {
                 steps: 0,
                 users: row.users
             });
         }
-        const entry = userMap.get(email);
+        const entry = userMap.get(userId);
         entry.steps += Number(row.steps);
     });
 
@@ -118,7 +117,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         // Fetch specific users first
         const { data: users } = await supabase
             .from('users')
-            .select('id, name, image, email, username, group_keyword')
+            .select('id, name, image, username, group_keyword')
             .contains('group_keyword', [groupKeyword]);
 
         if (!users || users.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
@@ -151,7 +150,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         if (uniqueUserIds.length > 0) {
             const { data: users } = await supabase
                 .from('users')
-                .select('id, name, image, email, username, group_keyword')
+                .select('id, name, image, username, group_keyword')
                 .in('id', uniqueUserIds);
 
             users?.forEach((u: any) => usersMap.set(u.id, u));
@@ -281,7 +280,6 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
                 id,
                 name,
                 image,
-                email,
                 username
             )
         `)
@@ -296,14 +294,14 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
     // Aggregate
     const userMap = new Map<string, any>();
     rawSteps?.forEach((row: any) => {
-        const email = row.users.email;
-        if (!userMap.has(email)) {
-            userMap.set(email, {
+        const userId = row.users.id;
+        if (!userMap.has(userId)) {
+            userMap.set(userId, {
                 steps: 0,
                 users: row.users
             });
         }
-        const entry = userMap.get(email);
+        const entry = userMap.get(userId);
         const steps = Number(row.steps);
         entry.steps += steps;
     });
@@ -362,7 +360,7 @@ export const getAllGroupRankings = async (groupId: string) => {
     // Fetch User Details separately
     const { data: users } = await supabase
         .from('users')
-        .select('id, name, image, email, username')
+        .select('id, name, image, username')
         .in('id', userIds);
 
     const usersMap = new Map(users?.map(u => [u.id, u]));
@@ -465,7 +463,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     // 3b. Fetch Users details
     const { data: users } = await supabase
         .from('users')
-        .select('id, name, image, email, username')
+        .select('id, name, image, username')
         .in('id', uniqueUserIds);
 
     const usersMap = new Map(users?.map(u => [u.id, u]));

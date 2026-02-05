@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopUsersChart from '@/components/TopUsersChart';
+import { useTranslations } from 'next-intl';
 
 type Props = {
     keyword: string;
     neighbors: any[];
-    userEmail?: string | null;
+    userId?: string | null;
     index: number;
     totalCount: number;
     groupId?: string;
@@ -37,9 +38,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
     );
 }
 
-import { useTranslations } from 'next-intl';
-
-export default function GroupRankingPanel({ keyword, neighbors, userEmail, index, totalCount, groupId }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId }: Props) {
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
     const t = useTranslations('Graph');
@@ -103,7 +102,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                 <div className="px-6 pt-6 lg:col-span-5 lg:border-r lg:border-gray-50 flex flex-col justify-center h-full">
                     <TopUsersChart
                         data={neighbors}
-                        userEmail={userEmail}
+                        userId={userId}
                         title={t('groupLeaders')}
                     />
                 </div>
@@ -113,7 +112,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                             const maxSteps = Math.max(...neighbors.map((n: any) => n.steps)) || 1;
 
                             return neighbors.map((entry: any, i: number) => {
-                                const isMe = entry.users.email === userEmail;
+                                const isMe = entry.users.id === userId;
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
                                 const percentage = Math.max((entry.steps / maxSteps) * 100, 2);
 
@@ -129,7 +128,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                                         >
                                             {/* Progress Bar Background */}
                                             <div
-                                                className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10 
+                                                className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10
                                                     ${entry.originalRank === 1 ? 'bg-gradient-to-r from-yellow-100/80 to-yellow-50/20' :
                                                         entry.originalRank === 2 ? 'bg-gradient-to-r from-slate-200/80 to-slate-50/20' :
                                                             entry.originalRank === 3 ? 'bg-gradient-to-r from-amber-100/80 to-amber-50/20' :
@@ -159,10 +158,10 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                                                     <p className={`text-sm font-bold truncate text-gray-900`}>
                                                         {entry.users.username ? (
                                                             <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline">
-                                                                {entry.users.name || 'Anonymous'}
+                                                                {entry.users.name || entry.users.username || 'Anonymous'}
                                                             </Link>
                                                         ) : (
-                                                            <span>{entry.users.name || 'Anonymous'}</span>
+                                                            <span>{entry.users.name || entry.users.username || 'Anonymous'}</span>
                                                         )}
                                                     </p>
                                                     {isMe && <span className="w-fit px-1.5 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-bold leading-none">YOU</span>}

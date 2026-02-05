@@ -23,16 +23,6 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
     if (!history || history.length === 0) return null;
 
     // Last 7 days logic
-    // We want to show a consistent 7 bars, even if data is missing for some days
-    // But since `history` from backend contains sparse data (only days with steps), we need to fill gaps OR just show what we have.
-    // For simplicity, let's just show the last N entries we have, or up to 7, sorted by date.
-    // 
-    // Ideally: 
-    // 1. Get today
-    // 2. Generate last 7 dates
-    // 3. Map to steps (0 if missing)
-
-    // Quick approximation: Just slice last 7 of sorted history
     const recentHistory = history.slice(-7);
     const max = Math.max(...recentHistory.map(h => h.steps)) || 1;
 
@@ -146,7 +136,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                 <div className="px-6 pt-6">
                                     <TopUsersChart
                                         data={currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 }))}
-                                        userEmail={userEmail}
+                                        userId={userId}
                                         title={t('titleTop10')}
                                     />
                                 </div>
@@ -182,16 +172,17 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                     <div className="flex-1">
                                                         {paginatedItems.map((entry) => {
                                                             const percentage = Math.max((entry.steps / maxSteps) * 100, 2); // Min 2% visibility
+                                                            const isMe = entry.users.id === userId;
 
                                                             return (
                                                                 <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden`}>
                                                                     {/* Progress Bar Background */}
                                                                     <div
-                                                                        className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10 
+                                                                        className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10
                                                                             ${entry.originalRank === 1 ? 'bg-gradient-to-r from-yellow-100/80 to-yellow-50/20' :
                                                                                 entry.originalRank === 2 ? 'bg-gradient-to-r from-slate-200/80 to-slate-50/20' :
                                                                                     entry.originalRank === 3 ? 'bg-gradient-to-r from-amber-100/80 to-amber-50/20' :
-                                                                                        entry.users.email === userEmail ? 'bg-gradient-to-r from-indigo-100/80 to-indigo-50/20' :
+                                                                                        isMe ? 'bg-gradient-to-r from-indigo-100/80 to-indigo-50/20' :
                                                                                             'bg-gray-50/50'}`}
                                                                         style={{ width: `${percentage}%` }}
                                                                     ></div>
@@ -217,12 +208,12 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 {entry.users.username ? (
                                                                                     <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline">
-                                                                                        {entry.users?.name || entry.users?.email}
+                                                                                        {entry.users?.name || entry.users?.username || 'Anonymous'}
                                                                                     </Link>
                                                                                 ) : (
-                                                                                    <span>{entry.users?.name || entry.users?.email}</span>
+                                                                                    <span>{entry.users?.name || entry.users?.username || 'Anonymous'}</span>
                                                                                 )}
-                                                                                {entry.users.email === userEmail && <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-bold">YOU</span>}
+                                                                                {isMe && <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-bold">YOU</span>}
                                                                             </p>
                                                                         </div>
                                                                     </div>
@@ -314,12 +305,11 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                             {(() => {
                                 const groupData = allGroupRankings[selectedGroupIndex];
                                 const currentGroupRankings = groupData.neighbors[period];
-                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 3);
+                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userId, 3);
 
                                 // Find user's rank in this group (Use ID first, then Email)
                                 const myRankIndex = currentGroupRankings.findIndex(r =>
-                                    (userId && r.users.id === userId) ||
-                                    (userEmail && r.users.email === userEmail)
+                                    (userId && r.users.id === userId)
                                 );
                                 const myRankEntry = myRankIndex !== -1 ? currentGroupRankings[myRankIndex] : undefined;
                                 const myRank = myRankIndex + 1;
@@ -411,7 +401,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                 keyword={groupData.keyword}
                                                 groupId={groupData.groupId}
                                                 neighbors={displayRankings}
-                                                userEmail={userEmail}
+                                                userId={userId}
                                                 index={0}
                                                 totalCount={1}
                                             />

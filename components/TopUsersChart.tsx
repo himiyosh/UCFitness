@@ -5,11 +5,11 @@ import Link from 'next/link';
 
 interface TopUsersChartProps {
     data: RankingEntry[];
-    userEmail?: string | null;
+    userId?: string | null;
     title?: string;
 }
 
-export default function TopUsersChart({ data, userEmail, title }: TopUsersChartProps) {
+export default function TopUsersChart({ data, userId, title }: TopUsersChartProps) {
     if (!data || data.length === 0) return null;
 
     // Use top 10 users max
@@ -22,7 +22,7 @@ export default function TopUsersChart({ data, userEmail, title }: TopUsersChartP
 
             <div className="flex items-end justify-between gap-2 h-auto w-full pt-4 pb-2">
                 {chartData.map((entry, index) => {
-                    const isMe = entry.users.email === userEmail;
+                    const isMe = entry.users.id === userId;
                     const heightPercentage = Math.max((entry.steps / maxSteps) * 100, 5); // Min 5% height
                     // Fallback to index+1 if originalRank is missing (Global list case)
                     const rank = entry.originalRank ?? (index + 1);

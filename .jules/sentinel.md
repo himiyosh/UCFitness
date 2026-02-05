@@ -21,3 +21,9 @@
 **Vulnerability:** `app/api/notify-teams/route.ts` was a public GET endpoint that triggered external Teams notifications without authentication. This allowed unauthenticated users to spam the Teams channel (DoS/Annoyance) by repeatedly calling the endpoint.
 **Learning:** API routes that trigger side effects (emails, notifications, DB writes) must always be protected, even if they are "internal" cron jobs. Security through obscurity (hidden URL) is not sufficient.
 **Prevention:** Enforce authentication on all API routes. For cron jobs, require a shared secret (e.g., `CRON_SECRET`) in the Authorization header.
+
+## 2026-02-01 - User Email Exposure in Public Rankings
+
+**Vulnerability:** The public ranking API endpoints and service functions (`getRankings`, `getAllRankings`) were selecting and returning user emails. The frontend also displayed the email as a fallback if the name was missing.
+**Learning:** Selecting all user fields or including sensitive fields like `email` in public API responses leads to Information Disclosure, even if the UI doesn't prominently display it.
+**Prevention:** Always use explicit field selection (e.g., `.select('id, name, username, image')`) in database queries for public endpoints. Use `userId` for identification logic instead of comparing emails on the client side.

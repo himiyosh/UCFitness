@@ -27,6 +27,7 @@ export default async function Home() {
   }
 
   const userEmail = session?.user?.email;
+  const userId = (session?.user as any).id;
 
   let groupKeywords: string[] = [];
   let username: string | undefined;
@@ -37,8 +38,7 @@ export default async function Home() {
   let stepGoal = 10000;
   let bannerUrl: string | null | undefined;
 
-  if (session?.user && (session.user as any).id) {
-    const userId = (session.user as any).id;
+  if (userId) {
     // Fetch current user's group keywords AND fresh image
     const { data: userData } = await supabase
       .from('users')
@@ -129,10 +129,10 @@ export default async function Home() {
   const allGlobalRankings = await getAllRankings('GLOBAL');
 
   // Extract Stats for Current User
-  const myWeeklyEntry = allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const myWeeklyEntry = allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.id === userId);
   const myWeeklySteps = myWeeklyEntry?.steps || 0;
 
-  const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.id === userId);
   const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
   // ⚡ Bolt Optimization: Bulk fetch group metadata to avoid N+1 queries
@@ -419,7 +419,7 @@ export default async function Home() {
           {/* BOTTOM SECTION: Leaderboards */}
           <AnimatedLeaderboard
             userEmail={userEmail}
-            userId={(session?.user as any)?.id}
+            userId={userId}
             allGlobalRankings={allGlobalRankings}
             allGroupRankings={allGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}
