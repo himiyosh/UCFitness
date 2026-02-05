@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
+import { unstable_cache } from 'next/cache';
 
 export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, groupKeyword?: string) => {
     // JST Calculation (Robust)
@@ -542,3 +543,9 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 
     return result;
 };
+
+export const getCachedGlobalRankings = unstable_cache(
+    async () => getAllRankings('GLOBAL'),
+    ['global-rankings'],
+    { revalidate: 60, tags: ['rankings'] }
+);

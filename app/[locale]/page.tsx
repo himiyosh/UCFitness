@@ -6,7 +6,7 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
-import { getAllRankings, getAllGroupRankings, getBatchGroupRankings } from '@/lib/ranking-service';
+import { getAllRankings, getAllGroupRankings, getBatchGroupRankings, getCachedGlobalRankings } from '@/lib/ranking-service';
 import { getGroupCompetitionRankings, getCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -126,7 +126,7 @@ export default async function Home() {
   }
 
   // Pre-load ALL rankings (Optimization: Single query per scope)
-  const allGlobalRankings = await getAllRankings('GLOBAL');
+  const allGlobalRankings = await getCachedGlobalRankings();
 
   // Extract Stats for Current User
   const myWeeklyEntry = allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.email === userEmail);
