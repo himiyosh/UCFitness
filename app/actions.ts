@@ -235,5 +235,5 @@ export async function updateUserLanguage(language: string) {
     }
 
     // Explicitly set the cookie for next-intl
-    cookies().set('NEXT_LOCALE', language, { path: '/', maxAge: 31536000 }); // 1 year
+    (await cookies()).set('NEXT_LOCALE', language, { path: '/', maxAge: 31536000 }); // 1 year
 }
