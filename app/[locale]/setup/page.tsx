@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import ProfileImageEditor from "@/components/ProfileImageEditor";
 
 export default function SetupPage() {
     const { data: session, update } = useSession();
     const router = useRouter();
+    const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,6 +22,7 @@ export default function SetupPage() {
             if (session?.user) {
                 // Initialize image from session initially
                 setCurrentImage(session.user.image || null);
+                setName(session.user.name || '');
 
                 // Check if email needs update
                 if (session.user.email?.includes('@pending.setup')) {
@@ -46,17 +48,8 @@ export default function SetupPage() {
 
                     if (data.isSetup && data.username) {
                         console.log('User already set up within DB. repairing session...');
-                        // Force session update
-                        await update({
-                            ...session,
-                            user: {
-                                ...session?.user,
-                                email: data.email,
-                                username: data.username
-                            }
-                        });
-                        router.refresh();
-                        router.push('/');
+                        // Force full reload to update session
+                        window.location.href = '/';
                     }
                 } catch (e) {
                     console.error("Failed to check status", e);
@@ -78,6 +71,7 @@ export default function SetupPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username,
+                    name,
                     email: needsEmail ? email : undefined
                 }),
             });
@@ -88,20 +82,17 @@ export default function SetupPage() {
                 throw new Error(data.error || 'Something went wrong');
             }
 
+            if (data.merged) {
+                // Account linked successfully.
+                // We must sign out the "temp" session so the user can sign in with the real one (Fitbit logic will now find the real user)
+                await signOut({ callbackUrl: '/' });
+                return;
+            }
+
             // Force session update to reflect new email/username
             // This is crucial so middleware doesn't redirect back here
-            await update({
-                ...session,
-                user: {
-                    ...session?.user,
-                    email: needsEmail ? email : session?.user?.email,
-                    username: username // Optimistic update
-                }
-            });
-
-            // Redirect to home
-            router.refresh(); // Refresh middleware state
-            router.push('/');
+            // Force full reload to update session and redirect home
+            window.location.href = '/';
 
         } catch (err: any) {
             setError(err.message);
@@ -188,7 +179,7 @@ export default function SetupPage() {
 
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                                Username (Required)
+                                User ID (Username)
                             </label>
                             <div className="mt-1">
                                 <input
@@ -204,6 +195,26 @@ export default function SetupPage() {
                                 <p className="mt-1 text-xs text-gray-500">
                                     Only letters, numbers, and underscores.
                                 </p>
+                            </div>
+                        </div>
+
+
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                                Display Name
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    id="name"
+                                    name="name"
+                                    type="text"
+                                    required
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="e.g. John Doe"
+                                    maxLength={50}
+                                />
                             </div>
                         </div>
 
@@ -240,8 +251,8 @@ export default function SetupPage() {
                         </div>
                     </form>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

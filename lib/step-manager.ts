@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase';
 import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeries } from './fitbit';
+import { checkAndAwardBadges } from './badge-allocator';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +93,7 @@ async function processUserSteps(user: User) {
 
         try {
             steps = await getFitbitSteps(accessToken, today);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             if (error.message.includes('Unauthorized') || error.message.includes('401')) {
                 console.log(`Received 401 for ${user.email}, forcing refresh...`);
@@ -128,6 +129,15 @@ async function processUserSteps(user: User) {
 
         if (upsertError) {
             console.error(`Failed to update steps for ${user.email}:`, upsertError);
+        } else {
+            // Check for badges
+            // Fire and forget to not block response? Or await to ensure consistency?
+            // Await is safer for now to ensure debugging logs appear in order.
+            try {
+                await checkAndAwardBadges(user.id);
+            } catch (badgeError) {
+                console.error(`Error checking badges for ${user.email}:`, badgeError);
+            }
         }
     }
 
@@ -179,7 +189,7 @@ export async function backfillUserSteps(userId: string) {
         let timeSeries;
         try {
             timeSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             if (e.message.includes('Unauthorized') || e.message.includes('401')) {
                 accessToken = await performTokenRefresh(user);

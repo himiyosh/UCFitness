@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
-import Link from 'next/link';
+import { Link } from '@/navigation';
+import { useTranslations } from 'next-intl';
 
 interface UserMenuProps {
     user: {
@@ -17,6 +18,8 @@ interface UserMenuProps {
 export default function UserMenu({ user }: UserMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const t = useTranslations('UserMenu');
+    const commonT = useTranslations('Common');
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -41,7 +44,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                     aria-expanded={isOpen}
                     aria-haspopup="true"
                 >
-                    <span className="sr-only">Open user menu</span>
+                    <span className="sr-only">{t('signedInAs')}</span>
                     {user.image ? (
                         <img
                             className="h-10 w-10 rounded-full border border-gray-200 object-cover"
@@ -85,7 +88,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <span className="block text-xs text-gray-500 mb-0.5 font-medium">Signed in as</span>
+                                <span className="block text-xs text-gray-500 mb-0.5 font-medium">{t('signedInAs')}</span>
                                 <p className="text-sm font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
                                     {user.username || user.name || user.email}
                                 </p>
@@ -100,7 +103,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
                     >
-                        My Groups
+                        {t('myGroups')}
                     </Link>
 
                     <Link
@@ -110,7 +113,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
                     >
-                        Settings
+                        {commonT('settings')}
                     </Link>
 
                     <button
@@ -119,10 +122,11 @@ export default function UserMenu({ user }: UserMenuProps) {
                         role="menuitem"
                         tabIndex={-1}
                     >
-                        Sign out
+                        {commonT('logout')}
                     </button>
                 </div>
             )}
         </div>
     );
 }
+

@@ -218,7 +218,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
                 users: e.users
             };
         })
-            .filter(e => e.steps > 0 || key === 'DAILY') // Optional: hide 0 steps if desired, but for daily we might keep
+            // .filter(e => e.steps > 0 || key === 'DAILY') // Removed: Show all users even with 0 steps
             .sort((a, b) => b.steps - a.steps);
 
         result[key] = list;
@@ -370,22 +370,23 @@ export const getAllGroupRankings = async (groupId: string) => {
     // Aggregate
     const aggMap = new Map<string, any>();
 
+    // Initialize for ALL users (Ensure 0 step users are included)
+    users?.forEach(u => {
+        aggMap.set(u.id, {
+            users: u,
+            DAILY: 0,
+            WEEKLY: 0,
+            MONTHLY: 0,
+            YEARLY: 0
+        });
+    });
+
     rawSteps?.forEach((row: any) => {
         const userId = row.user_id;
-        const user = usersMap.get(userId);
-
-        if (!user) return; // Should not happen
-
-        if (!aggMap.has(userId)) {
-            aggMap.set(userId, {
-                users: user,
-                DAILY: 0,
-                WEEKLY: 0,
-                MONTHLY: 0,
-                YEARLY: 0
-            });
-        }
         const entry = aggMap.get(userId);
+
+        if (!entry) return; // Should not happen as we pre-filled
+
         const steps = Number(row.steps);
         const date = row.date;
 
@@ -403,7 +404,7 @@ export const getAllGroupRankings = async (groupId: string) => {
             steps: e[key],
             users: e.users
         }))
-            .filter(e => e.steps > 0 || key === 'DAILY')
+            // .filter(e => e.steps > 0 || key === 'DAILY')
             .sort((a, b) => b.steps - a.steps);
     });
 
@@ -473,22 +474,23 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     // Map<UserId, { user: User, DAILY: number, ... }>
     const userStats = new Map<string, any>();
 
+    // Initialize for ALL users
+    users?.forEach(u => {
+        userStats.set(u.id, {
+            users: u,
+            DAILY: 0,
+            WEEKLY: 0,
+            MONTHLY: 0,
+            YEARLY: 0
+        });
+    });
+
     rawSteps?.forEach((row: any) => {
         const userId = row.user_id;
-        const user = usersMap.get(userId);
-
-        if (!user) return;
-
-        if (!userStats.has(userId)) {
-            userStats.set(userId, {
-                users: user,
-                DAILY: 0,
-                WEEKLY: 0,
-                MONTHLY: 0,
-                YEARLY: 0
-            });
-        }
         const entry = userStats.get(userId);
+
+        if (!entry) return; // Should not happen
+
         const steps = Number(row.steps);
         const date = row.date;
 
@@ -533,7 +535,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
                 steps: e[key],
                 users: e.users
             }))
-                .filter(e => e.steps > 0 || key === 'DAILY')
+                // .filter(e => e.steps > 0 || key === 'DAILY')
                 .sort((a, b) => b.steps - a.steps);
         });
     });

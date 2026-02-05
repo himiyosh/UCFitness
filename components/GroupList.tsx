@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface GroupMembership {
     role: string;
@@ -22,6 +23,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
     const [memberships, setMemberships] = useState(initialMemberships);
     const [isUpdating, setIsUpdating] = useState(false);
     const router = useRouter();
+    const t = useTranslations('Groups');
 
     const handleMakePrimary = async (targetId: string) => {
         if (isUpdating) return;
@@ -187,21 +189,26 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                 if (index !== 0) handleMakePrimary(m.groups.id);
                             }}
                             disabled={isUpdating || index === 0}
-                            className={`p-1.5 rounded-full transition-colors ${index === 0
+                            className={`cursor-pointer p-1.5 rounded-full transition-colors flex items-center justify-center ${index === 0
                                 ? 'text-indigo-600 bg-indigo-50 cursor-default shadow-sm border border-indigo-100'
                                 : 'text-gray-400 bg-white/80 backdrop-blur-sm shadow-sm hover:text-indigo-600 hover:bg-white border border-transparent hover:border-indigo-100'
                                 }`}
-                            title={index === 0 ? "Currently Primary Group" : "Pin as Primary Group"}
+                            title={index === 0 ? t('primaryTooltip') : t('setPrimaryTooltip')}
                         >
-                            {index === 0 ? (
-                                // Solid Pin (Active)
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 6a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2h-1v2.586l2.707 2.707a1 1 0 01-1.414 1.414l-3-3A1 1 0 0111 11.414V10h-2v1.414a1 1 0 01-.293.707l-3 3a1 1 0 01-1.414-1.414l2.707-2.707V10H6a2 2 0 01-2-2V6z" />
+                            {isUpdating && index !== 0 ? (
+                                <svg className="animate-spin h-5 w-5 sm:w-6 sm:h-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            ) : index === 0 ? (
+                                // Solid Star (Active)
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 fill-current" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                 </svg>
                             ) : (
-                                // Outline Pin (Inactive)
+                                // Outline Star (Inactive)
                                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                 </svg>
                             )}
                         </button>
@@ -215,7 +222,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     handleMove(index, -1);
                                 }}
                                 disabled={isUpdating || index === 0}
-                                className="p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                                 title="Move Up"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" /></svg>
@@ -227,7 +234,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     handleMove(index, 1);
                                 }}
                                 disabled={isUpdating || index === memberships.length - 1}
-                                className="p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                                 title="Move Down"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>

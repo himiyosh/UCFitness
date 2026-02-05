@@ -13,4 +13,13 @@ export const supabase = createClient(supabaseUrl || "https://placeholder.supabas
 
 // Admin client for backend operations (bypasses RLS)
 // Use this CAREFULLY, only in API routes/cron jobs.
-export const supabaseAdmin = createClient(supabaseUrl || "https://placeholder.supabase.co", serviceRoleKey || supabaseKey || "placeholder");
+export const supabaseAdmin = createClient(supabaseUrl || "https://placeholder.supabase.co", serviceRoleKey || supabaseKey || "placeholder", {
+    auth: {
+        persistSession: false,
+    },
+    global: {
+        fetch: (url, options) => {
+            return fetch(url, { ...options, cache: 'no-store' });
+        }
+    }
+});

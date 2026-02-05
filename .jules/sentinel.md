@@ -27,3 +27,8 @@
 **Vulnerability:** `app/api/user/setup/route.ts` allowed any authenticated user to change their email address to any unregistered email. An attacker could claim a victim's email before the victim signed up, causing the victim to be logged into the attacker's account upon their first login.
 **Learning:** Allowing email changes without verification (magic link/OTP) is dangerous, especially when the system relies on email for account linking/recovery. Trusted emails from OAuth providers should not be mutable to arbitrary values.
 **Prevention:** Restrict email updates to only users with temporary/placeholder emails (e.g., `@pending.setup`). Verified emails from providers should be immutable or require strong verification to change.
+
+## 2026-01-30 - Missing Input Validation on Group Creation
+**Vulnerability:** `app/api/user/group/route.ts` allowed creating groups with any string as a keyword (including `<script>` tags or overly long strings), leading to potential Stored XSS or data integrity issues.
+**Learning:** Assuming that "if it's not in the database, create it" is safe ignores the validity of the input itself. Also, retroactive validation breaks existing data, so validation must be applied at the point of creation (ingestion) to be safe without migration.
+**Prevention:** Always validate input format (length, allowed characters) *before* checking database existence or inserting. Use strictly defined schemas for identifiers (slugs).

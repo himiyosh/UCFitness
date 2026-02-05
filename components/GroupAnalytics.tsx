@@ -91,7 +91,7 @@ export default function GroupAnalytics({
                                 key={tab.key}
                                 onClick={() => setPeriod(tab.key)}
                                 className={`
-                                    relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200
+                                    relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer
                                     ${isActive
                                         ? 'bg-white text-indigo-600 shadow-sm scale-105'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
@@ -106,7 +106,7 @@ export default function GroupAnalytics({
                 {userRank > 0 && (
                     <button
                         onClick={handleJumpToMe}
-                        className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                        className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.3 9.24a.75.75 0 00-1.1 1.02l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75z" clipRule="evenodd" />

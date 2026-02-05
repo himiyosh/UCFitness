@@ -15,7 +15,7 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
             id: profile.user.encodedId,
             name: profile.user.fullName,
             image: profile.user.avatar,
-            email: profile.user.email || `${profile.user.encodedId}@pending.setup`, // Distinct placeholder for onboarding detection
+            email: profile.user.email || `${profile.user.encodedId.toLowerCase()}@pending.setup`, // Distinct placeholder for onboarding detection
         };
     },
     clientId: options.clientId,
@@ -44,14 +44,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (!account) return false;
 
             // 1. Try to find user by Provider Account ID (Fitbit ID) first - This is stable
+            console.log(`[Auth] Querying DB for provider=${account.provider}, provider_account_id=${account.providerAccountId}`);
+
             let { data: existingUser, error: selectError } = await supabaseAdmin
                 .from("users")
-                .select("id, is_custom_image, email")
+                .select("id, is_custom_image, email, provider, provider_account_id") // Added fields for debug
                 .eq("provider", account.provider)
                 .eq("provider_account_id", account.providerAccountId)
                 .single();
 
             console.log(`[Auth] Lookup by ProviderID result:`, existingUser ? `Found (ID: ${existingUser.id})` : "Not Found");
+            if (selectError && selectError.code !== 'PGRST116') {
+                console.log(`[Auth] Lookup Error:`, selectError);
+            }
 
             // 2. Fallback: Try by Email (legacy or first-time sync issue)
             // Only if not found by provider ID and user has an email
@@ -59,7 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 console.log(`[Auth] Fallback lookup by Email: ${user.email}`);
                 const { data: userByEmail, error: emailError } = await supabaseAdmin
                     .from("users")
-                    .select("id, is_custom_image, email")
+                    .select("id, is_custom_image, email, provider, provider_account_id")
                     .eq("email", user.email)
                     .single();
 
@@ -92,8 +97,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 };
 
                 // Only update image from Fitbit if user hasn't set a custom one
+                console.log(`[DEBUG_AUTH] Checking user ${existingUser.id}`);
+                console.log(`[DEBUG_AUTH] is_custom_image: ${existingUser.is_custom_image} (Type: ${typeof existingUser.is_custom_image})`);
+
                 if (!existingUser.is_custom_image) {
+                    console.log(`[DEBUG_AUTH] Overwriting image with Fitbit: ${user.image}`);
                     updates.image = user.image;
+                } else {
+                    console.log(`[DEBUG_AUTH] Keeping custom image.`); // Removed .image access to avoid type error if not selected
                 }
 
                 const { error: updateError } = await supabaseAdmin
@@ -117,6 +128,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         refresh_token: account.refresh_token,
                         token_expires_at: account.expires_at,
                         updated_at: new Date().toISOString(),
+                        // language: 'ja' // Default to Japanese - Column missing
                     })
                     .select()
                     .single();
@@ -145,20 +157,69 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async session({ session, token }: any) {
             // console.log(`[Auth] Session Callback. User Email: ${session.user?.email}`);
             if (session.user) {
-                // Fetch the actual UUID from Supabase users table
-                const { data } = await supabaseAdmin
-                    .from("users")
-                    .select("id, name, username, image")
-                    .eq("email", session.user.email)
-                    .single();
+                // Optimization: Populate from Token if available to avoid DB hits in Middleware
+                if (token.id && token.username && token.email) {
+                    session.user.id = token.id;
+                    (session.user as any).username = token.username;
+                    session.user.email = token.email;
+                    session.user.image = token.picture || token.image || session.user.image;
+                    (session.user as any).language = token.language || 'ja';
+                    return session;
+                }
+
+                // Fallback: DB Lookup (Only if token is missing data)
+                console.log("[Auth] Session missing token data, querying DB...");
+
+                let data = null;
+
+                // 1. Try by ID (Most reliable if we have it)
+                if (token.id) {
+                    const res = await supabaseAdmin
+                        .from("users")
+                        .select("id, name, username, image, email, language")
+                        .eq("id", token.id)
+                        .single();
+                    if (res.data) data = res.data;
+                }
+
+                // 2. Try by Provider Account ID (if saved)
+                if (!data && token.provider_account_id) {
+                    const res = await supabaseAdmin
+                        .from("users")
+                        .select("id, name, username, image, email") // language removed
+                        .eq("provider_account_id", token.provider_account_id)
+                        .single();
+                    if (res.data) data = res.data;
+                }
+
+                // 3. Fallback: Try token.sub as Provider Account ID (Legacy/Fitbit ID)
+                if (!data && token.sub) {
+                    const res = await supabaseAdmin
+                        .from("users")
+                        .select("id, name, username, image, email") // language removed
+                        .eq("provider_account_id", token.sub)
+                        .single();
+                    if (res.data) data = res.data;
+                }
+
+                // 4. Fallback by email (Last resort)
+                if (!data && token.email) {
+                    const { data: byEmail } = await supabaseAdmin
+                        .from("users")
+                        .select("id, name, username, image, email") // language removed
+                        .eq("email", token.email)
+                        .single();
+                    data = byEmail;
+                }
 
                 if (data) {
                     session.user.id = data.id;
-                    session.user.name = data.name; // Use DB name (Display Name)
-                    session.user.image = data.image; // Use DB image
-                    (session.user as any).username = data.username; // Expose User ID
+                    session.user.name = data.name;
+                    session.user.image = data.image;
+                    session.user.email = data.email;
+                    (session.user as any).username = data.username;
+                    // (session.user as any).language = data.language;
                 } else {
-                    // Fallback (shouldn't happen if signIn succeeded)
                     session.user.id = token.sub;
                 }
             }
@@ -167,53 +228,89 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async jwt({ token, account, user, trigger, session }: any) {
             // Initial sign in
             if (account && user) {
-                console.log(`[Auth] JWT Initial Signin. ProvID: ${account.providerAccountId}. Token Email: ${token.email}`);
+                console.log(`[Auth] JWT Initial Signin. ProvID: ${account.providerAccountId}. UserID from NextAuth: ${user.id}`);
                 token.accessToken = account.access_token;
+                token.provider_account_id = account.providerAccountId; // Persist for recovery
 
-                // Fetch username AND real email from DB to persist in token
-                // We must look up by Provider ID because the DB email might have been updated (setup complated)
-                // and might not match the user.email (which comes from Fitbit provider headers)
-                const { data } = await supabaseAdmin
+                // Sync with DB to get real ID/Username
+                const { data, error } = await supabaseAdmin
                     .from("users")
-                    .select("username, email")
+                    .select("id, username, email, image") // language removed
                     .eq("provider", account.provider)
                     .eq("provider_account_id", account.providerAccountId)
                     .single();
 
-                if (data) {
-                    console.log(`[Auth] JWT DB Lookup Success. Username: ${data.username}, RealEmail: ${data.email}`);
-                    token.username = data.username;
-                    // IMPORTANT: Overwrite the token email with the REAL email from DB
-                    // Otherwise middleware sees the pending email from Fitbit and redirects to setup
-                    if (data.email) {
-                        token.email = data.email;
-                    }
-                } else {
-                    console.log(`[Auth] JWT DB Lookup Failed for ProvID: ${account.providerAccountId}`);
+                if (error) {
+                    console.log(`[Auth] JWT Lookup Error:`, error);
                 }
-            } else if (!token.username && token.sub) {
-                // Recovery logic
-                console.log(`[Auth] JWT missing username, attempting recovery for sub: ${token.sub}`);
-                const { data } = await supabaseAdmin
-                    .from("users")
-                    .select("username, email")
-                    .eq("provider_account_id", token.sub)
-                    .single();
 
                 if (data) {
-                    console.log(`[Auth] JWT Recovery Success. Username: ${data.username}`);
+                    console.log(`[Auth] JWT Lookup Success: ${data.username} (${data.id})`);
+                    token.id = data.id;
                     token.username = data.username;
-                    if (data.email) {
+                    token.email = data.email; // Real DB email
+                    token.image = data.image;
+                    token.language = (data as any).language;
+                } else {
+                    console.log(`[Auth] JWT Lookup Failed: No user found for ${account.providerAccountId}`);
+                }
+            }
+
+            // Recovery: If token is missing critical data
+            if (!token.id || !token.username) {
+                if (trigger !== 'update') {
+                    let data = null;
+                    console.log(`[Auth] JWT Recovery. TokenID: ${token.id}, Sub: ${token.sub}`);
+
+                    // 1. Try by ID
+                    if (token.id) {
+                        const res = await supabaseAdmin
+                            .from("users")
+                            .select("id, username, email, image, provider_account_id, language")
+                            .eq("id", token.id)
+                            .single();
+                        data = res.data;
+                    }
+
+                    // 2. Try by saved Provider Account ID
+                    if (!data && token.provider_account_id) {
+                        const res = await supabaseAdmin
+                            .from("users")
+                            .select("id, username, email, image, provider_account_id") // language removed
+                            .eq("provider_account_id", token.provider_account_id)
+                            .single();
+                        data = res.data;
+                    }
+
+                    // 3. Fallback to sub as ProviderID (Legacy)
+                    if (!data && token.sub) {
+                        const res = await supabaseAdmin
+                            .from("users")
+                            .select("id, username, email, image, provider_account_id") // language removed
+                            .eq("provider_account_id", token.sub)
+                            .single();
+                        data = res.data;
+                    }
+
+                    if (data) {
+                        console.log(`[Auth] JWT Recovery Success. Username: ${data.username}`);
+                        token.id = data.id;
+                        token.username = data.username;
                         token.email = data.email;
+                        token.image = data.image;
+                        token.provider_account_id = data.provider_account_id;
+                        token.language = (data as any).language;
                     }
                 }
             }
 
-            // Client side session update (e.g. after setup)
+            // Client side session update
             if (trigger === "update" && session?.user) {
-                console.log(`[Auth] JWT Update Trigger. New Username: ${session.user.username}`);
-                token.username = session.user.username;
-                token.email = session.user.email;
+                // console.log(`[Auth] JWT Update Trigger. New Username: ${session.user.username}`);
+                if (session.user.username) token.username = session.user.username;
+                if (session.user.email) token.email = session.user.email;
+                if (session.user.image) token.image = session.user.image;
+                if (session.user.language) token.language = session.user.language;
             }
 
             return token;

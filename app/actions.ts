@@ -13,6 +13,7 @@ export async function updateProfileImage(imageUrl: string | null) {
         throw new Error("Not authenticated");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
     console.log("updateProfileImage called for user:", userId, "with URL:", imageUrl);
 
@@ -48,7 +49,7 @@ export async function updateProfileImage(imageUrl: string | null) {
         try {
             const profile = await getFitbitProfile(accessToken);
             fitbitImage = profile.avatar;
-        } catch (e: any) {
+        } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
             if (e.message === "Unauthorized" || e.message?.includes("401")) {
                 console.log("Token expired during reset, refreshing...");
                 try {
@@ -108,6 +109,7 @@ export async function uploadProfileImage(formData: FormData) {
         throw new Error("No file uploaded");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
     const fileExt = file.name.split('.').pop();
     const filePath = `${userId}-${Date.now()}.${fileExt}`;
@@ -159,9 +161,11 @@ export async function uploadBannerImage(formData: FormData) {
         throw new Error("No file uploaded");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
-    const fileExt = file.name.split('.').pop();
-    const filePath = `banner-${userId}-${Date.now()}.${fileExt}`;
+    // Client compresses to JPEG, so we enforce .jpg extension to match content type
+    const fileExt = 'jpg';
+    const filePath = `${userId}-banner-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseAdmin
         .storage
@@ -172,8 +176,8 @@ export async function uploadBannerImage(formData: FormData) {
         });
 
     if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw new Error("Failed to upload image");
+        console.error("Upload error detail:", JSON.stringify(uploadError, null, 2));
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
     }
 
     const { data: { publicUrl } } = supabaseAdmin
@@ -197,4 +201,39 @@ export async function uploadBannerImage(formData: FormData) {
     revalidatePath('/profile');
     revalidatePath('/settings');
     revalidatePath('/');
+}
+
+import { cookies } from 'next/headers';
+
+// ... (existing imports)
+
+export async function updateUserLanguage(language: string) {
+    const session = await auth();
+
+    if (!session || !session.user) {
+        throw new Error("Not authenticated");
+    }
+
+    if (!['ja', 'en'].includes(language)) {
+        throw new Error("Invalid language");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userId = (session.user as any).id;
+
+    const { error } = await supabaseAdmin
+        .from("users")
+        .update({
+            language: language,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", userId);
+
+    if (error) {
+        console.error("Database update error:", error);
+        throw new Error("Failed to update language");
+    }
+
+    // Explicitly set the cookie for next-intl
+    (await cookies()).set('NEXT_LOCALE', language, { path: '/', maxAge: 31536000 }); // 1 year
 }

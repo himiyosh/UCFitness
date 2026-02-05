@@ -74,10 +74,10 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                                 {/* Badge removed to save space */}
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono font-bold text-indigo-600">
+                                        <td className="px-6 py-4 text-right tabular-nums font-bold text-indigo-600">
                                             {group.averageSteps.toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-gray-500 hidden sm:table-cell">
+                                        <td className="px-6 py-4 text-right tabular-nums text-gray-500 hidden sm:table-cell">
                                             {group.totalSteps.toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 text-right text-gray-500 hidden sm:table-cell">

@@ -73,7 +73,7 @@ const assignStreakBadges = async (userId: string, dateStr: string) => {
     for (let i = 0; i < steps.length; i++) {
         const d = new Date(steps[i].date);
         const expectedDate = new Date(today);
-        expectedDate.setDate(today.getDate() - i);
+        expectedDate.setUTCDate(today.getUTCDate() - i);
 
         if (d.toISOString().split('T')[0] !== expectedDate.toISOString().split('T')[0]) {
             break;
@@ -130,7 +130,7 @@ const assignTitleBadges = async (userId: string, dateStr: string) => {
 const assignLifestyleBadges = async (userId: string, dateStr: string, steps: number) => {
     // Weekend Warrior: High steps on Sat/Sun
     const d = new Date(dateStr);
-    const day = d.getDay(); // 0=Sun, 6=Sat
+    const day = d.getUTCDay(); // 0=Sun, 6=Sat
 
     if (day === 0 || day === 6) {
         if (steps >= 20000) {
@@ -147,7 +147,7 @@ const assignGlobalBadges = async (period: Period, dateStr: string) => {
     if (period === 'WEEKLY') {
         const d = new Date(dateStr);
         const end = new Date(d);
-        end.setDate(end.getDate() + 6);
+        end.setUTCDate(end.getUTCDate() + 6);
         endDate = end.toISOString().split('T')[0];
     } else if (period === 'MONTHLY') {
         const [y, m] = dateStr.split('-').map(Number);
@@ -223,7 +223,7 @@ const assignGroupBadges = async (period: Period, dateStr: string) => {
     if (period === 'WEEKLY') {
         const d = new Date(dateStr);
         const end = new Date(d);
-        end.setDate(end.getDate() + 6);
+        end.setUTCDate(end.getUTCDate() + 6);
         endDate = end.toISOString().split('T')[0];
     } else if (period === 'MONTHLY') {
         const [y, m] = dateStr.split('-').map(Number);

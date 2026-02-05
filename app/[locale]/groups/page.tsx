@@ -12,6 +12,7 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 export const dynamic = 'force-dynamic';
 
 import { getAllGroupRankings } from "@/lib/ranking-service";
+import { getTranslations } from "next-intl/server";
 
 // ... imports ...
 
@@ -25,10 +26,11 @@ export default async function MyGroupsPage() {
     const userId = (session.user as any).id;
     const userEmail = session.user.email;
 
-    // Fetch User's Group Preference (Order)
+    // Fetch User's Group Preference and Custom Image
+    // Fetch User's Group Preference and Custom Image
     const { data: userData } = await supabase
         .from('users')
-        .select('group_keyword')
+        .select('name, group_keyword, image')
         .eq('id', userId)
         .single();
 
@@ -89,7 +91,18 @@ export default async function MyGroupsPage() {
 
         // If neither, sort by join date (newest first)
         return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
+        return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
     });
+
+    const t = await getTranslations('Groups');
+    const dashboardT = await getTranslations('Dashboard');
+
+    // Use custom image if available, otherwise fallback to session image
+    const finalUser = {
+        ...session.user,
+        name: userData?.name || session.user.name,
+        image: userData?.image || session.user.image,
+    };
 
     return (
         <main className="min-h-screen bg-gray-50">
@@ -99,15 +112,15 @@ export default async function MyGroupsPage() {
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
-                                UCFitness
+                                {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
-                                Beta
+                                {dashboardT('beta')}
                             </span>
                         </Link>
                     </div>
                     <div>
-                        <UserMenu user={session.user} />
+                        <UserMenu user={finalUser} />
                     </div>
                 </div>
             </header>
@@ -117,15 +130,30 @@ export default async function MyGroupsPage() {
                 {/* Page Title & Back Nav */}
                 {/* Page Title & Back Nav */}
                 <div className="space-y-4">
-                    <Breadcrumbs items={[{ label: 'Groups' }]} />
-                    <h1 className="text-2xl font-bold text-gray-900">My Groups</h1>
+                    <Breadcrumbs items={[{ label: t('title') }]} />
+                    <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
-                    {/* Join / Create Section (Right on Desktop, Top on Mobile) */}
-                    <aside className="w-full lg:w-80 flex-shrink-0 lg:order-2 sticky top-24">
+                    {/* Group List (Left on Desktop, Top on Mobile) */}
+                    <section className="flex-1 w-full">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-gray-900">{t('yourGroups')}</h2>
+                        </div>
+
+                        {!memberships || memberships.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                                <p className="text-gray-500">{t('noGroups')}</p>
+                            </div>
+                        ) : (
+                            <GroupList initialMemberships={sortedMemberships} />
+                        )}
+                    </section>
+
+                    {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
+                    <aside className="w-full lg:w-80 flex-shrink-0 sticky top-24">
                         <div className="flex items-center mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">Join or Create</h2>
+                            <h2 className="text-lg font-bold text-gray-900">{t('joinOrCreate')}</h2>
                         </div>
                         <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
                             <div className="w-full">
@@ -133,21 +161,6 @@ export default async function MyGroupsPage() {
                             </div>
                         </div>
                     </aside>
-
-                    {/* Group List (Left on Desktop, Bottom on Mobile) */}
-                    <section className="flex-1 w-full lg:order-1">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">Your Groups</h2>
-                        </div>
-
-                        {!memberships || memberships.length === 0 ? (
-                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                                <p className="text-gray-500">You haven't joined any groups yet.</p>
-                            </div>
-                        ) : (
-                            <GroupList initialMemberships={sortedMemberships} />
-                        )}
-                    </section>
                 </div>
             </div>
         </main>
