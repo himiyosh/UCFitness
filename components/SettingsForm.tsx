@@ -8,7 +8,7 @@ import { useRouter, usePathname } from '@/navigation';
 import { useSession } from 'next-auth/react'; // Import useSession
 import PushNotificationManager from '@/components/PushNotificationManager';
 import StepGoalForm from '@/components/StepGoalForm';
-import { updateUserLanguage } from '@/app/actions'; // Import server action
+
 
 interface UserData {
     name: string | null;
@@ -36,7 +36,17 @@ export default function SettingsForm({ user }: { user: UserData }) {
         if (switchingLocale) return;
         setSwitchingLocale(newLocale);
         try {
-            await updateUserLanguage(newLocale);
+            // Use API Route instead of Server Action
+            const res = await fetch('/api/user/language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language: newLocale }),
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to update language');
+            }
+
             await update({ user: { language: newLocale } }); // Update session immediately
             router.replace(pathname, { locale: newLocale });
             router.refresh();

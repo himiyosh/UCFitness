@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { uploadBannerImage } from '@/app/actions';
+
 import { compressImage } from '@/lib/image-utils';
 
 interface BannerImageEditorProps {
@@ -36,7 +36,16 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
                 const formData = new FormData();
                 formData.append('file', compressedFile);
-                await uploadBannerImage(formData);
+
+                const res = await fetch('/api/user/banner', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!res.ok) {
+                    throw new Error('Failed to upload banner');
+                }
+
                 setIsOpen(false);
                 router.refresh();
             }
