@@ -8,7 +8,7 @@ import SettingsForm from "@/components/SettingsForm";
 import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
+
 
 export default async function SettingsPage() {
     const session = await auth();
