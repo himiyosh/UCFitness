@@ -6,7 +6,7 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
-import { getAllRankings, getAllGroupRankings, getBatchGroupRankings, getCachedGlobalRankings } from '@/lib/ranking-service';
+import { getAllRankings, getAllGroupRankings, getBatchGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
 import { getGroupCompetitionRankings, getCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -152,7 +152,8 @@ export default async function Home() {
   }
 
   // ⚡ Bolt Optimization: Batch fetch rankings for all groups to avoid N+1 queries
-  const batchGroupRankings = await getBatchGroupRankings(validGroupIds);
+  // ⚡ Bolt Optimization: Use cached global rankings to derive group rankings (Avoids heavy DB query)
+  const batchGroupRankings = await deriveBatchGroupRankings(validGroupIds, allGlobalRankings);
 
   const allGroupRankings = await Promise.all(
     groupKeywords.map(async (keyword) => {
