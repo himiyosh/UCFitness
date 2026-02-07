@@ -933,15 +933,15 @@ body {
    12. 絵文字キラキラエフェクト (Emoji Twinkle)
    ============================================ */
 
-/* --- Classic テーマ (デフォルト): 落ち着いた控えめ表示 --- */
+/* --- Classic テーマ (デフォルト): 控えめだが視認できる表示 --- */
 @keyframes emojiTwinkle {
-  0%, 100% { opacity: 0.08; }
-  50% { opacity: 0.18; }
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.3; }
 }
 
 .emoji-twinkle {
   animation: emojiTwinkle 5s ease-in-out infinite;
-  filter: grayscale(0.4) opacity(0.9);
+  filter: grayscale(0.3);
 }
 
 /* --- Pop テーマ: カラフル＆鮮やかに目立たせる --- */
