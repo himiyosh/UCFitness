@@ -35,12 +35,13 @@ export default function FloatingEmojis() {
       {EMOJIS.map((item, i) => (
         <span
           key={i}
-          className={`absolute ${item.size}`}
+          className={`absolute emoji-twinkle ${item.size}`}
           style={{
             left: item.left,
             top: item.top,
-            opacity: isMidnight ? 0.18 : 0.12,
-          }}
+            animationDelay: `${(i * 2.3) % 12}s`,
+            '--emoji-opacity': isMidnight ? 0.2 : 0.14,
+          } as React.CSSProperties}
         >
           {item.emoji}
         </span>
