@@ -932,13 +932,38 @@ body {
 /* ============================================
    12. 絵文字キラキラエフェクト (Emoji Twinkle)
    ============================================ */
+
+/* --- Classic テーマ (デフォルト): 落ち着いた控えめ表示 --- */
 @keyframes emojiTwinkle {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.35; }
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.18; }
 }
 
 .emoji-twinkle {
   animation: emojiTwinkle 5s ease-in-out infinite;
+  filter: grayscale(0.4) opacity(0.9);
+}
+
+/* --- Pop テーマ: カラフル＆鮮やかに目立たせる --- */
+[data-theme="pop"] .emoji-twinkle {
+  animation-name: emojiTwinklePop;
+  filter: saturate(1.3) drop-shadow(0 0 4px rgba(255, 107, 107, 0.15));
+}
+
+@keyframes emojiTwinklePop {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.5; }
+}
+
+/* --- Midnight テーマ: ダーク背景に映える微妙な輝き --- */
+[data-theme="midnight"] .emoji-twinkle {
+  animation-name: emojiTwinkleMidnight;
+  filter: brightness(1.2) drop-shadow(0 0 6px rgba(129, 140, 248, 0.2));
+}
+
+@keyframes emojiTwinkleMidnight {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.35; }
 }
 
 /* Celebrate pulse for achievements */

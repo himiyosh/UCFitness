@@ -1,13 +1,13 @@
 import { ImageResponse } from 'next/og';
 
-// Image metadata
+// Image metadata — ブラウザタブ用32×32ファビコン
 export const size = {
-    width: 512,
-    height: 512,
+    width: 32,
+    height: 32,
 };
 export const contentType = 'image/png';
 
-// ファビコン生成 — ⚡ 稲妻ボルトデザイン
+// ファビコン生成 — ⚡ 稲妻ボルトデザイン（32×32に最適化）
 export default function Icon() {
     return new ImageResponse(
         (
@@ -23,24 +23,11 @@ export default function Icon() {
                     position: 'relative',
                 }}
             >
-                {/* 背景のアクセント円 */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        width: '360px',
-                        height: '360px',
-                        borderRadius: '50%',
-                        background: 'rgba(255,255,255,0.06)',
-                        display: 'flex',
-                        top: '68px',
-                        left: '76px',
-                    }}
-                />
-                {/* ⚡ 稲妻ボルト */}
+                {/* ⚡ 稲妻ボルト — viewBoxでスケール */}
                 <svg
                     viewBox="0 0 512 512"
-                    width="512"
-                    height="512"
+                    width="32"
+                    height="32"
                     style={{ position: 'absolute', top: 0, left: 0 }}
                 >
                     <polygon
