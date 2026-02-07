@@ -18,11 +18,9 @@
   --theme-gradient-to: #9333EA;
   --theme-badge-bg: #EEF2FF;
   --theme-badge-text: #4F46E5;
-  /* Page backgrounds - subtle */
-  --theme-page-bg: #FAFAFF;
-  /* very light indigo - almost white */
+  /* Page backgrounds - semi-transparent (絵文字が微かに透過して見える) */
+  --theme-page-bg: rgba(250, 250, 255, 0.93);
   --theme-header-bg: #EEF2FF;
-  /* indigo-50 - stronger for header */
 
   /* Pop & Fun Colors (available for both themes) */
   --accent-coral: #FF6B6B;
@@ -47,12 +45,9 @@
   --theme-gradient-to: #A855F7;
   --theme-badge-bg: linear-gradient(to right, #FFE66D, #FF6B6B);
   --theme-badge-text: #ffffff;
-  /* Page backgrounds - subtle */
-  --theme-page-bg: #FFFAFA;
-  /* very light coral - almost white */
+  /* Page backgrounds - semi-transparent (絵文字が微かに透過して見える) */
+  --theme-page-bg: rgba(255, 250, 250, 0.93);
   --theme-header-bg: #FFF5F5;
-  /* light coral - stronger for header */
-  /* light coral - stronger for header */
 }
 
 /* Midnight Theme (Dark) - Light Frosted Glass (Lighter & Richer) */
