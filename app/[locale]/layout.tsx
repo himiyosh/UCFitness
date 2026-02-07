@@ -52,7 +52,7 @@ export default async function LocaleLayout({
                 </Suspense>
 
                 <LanguageSyncer user={session?.user as any} />
-                <FloatingEmojis />
+                {session && <FloatingEmojis />}
                 {children}
               </ThemeProvider>
             </ToastProvider>
