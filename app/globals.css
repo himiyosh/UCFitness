@@ -353,24 +353,24 @@
 
 /* --- 11b. Rank ROW full-width backgrounds (all themes) --- */
 .rank-row-1 {
-  background: linear-gradient(90deg, rgba(234, 179, 8, 0.18) 0%, rgba(234, 179, 8, 0.08) 70%, transparent 100%) !important;
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.10) 0%, rgba(234, 179, 8, 0.04) 70%, transparent 100%) !important;
 }
 .rank-row-2 {
-  background: linear-gradient(90deg, rgba(148, 163, 184, 0.15) 0%, rgba(148, 163, 184, 0.06) 70%, transparent 100%) !important;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0%, rgba(148, 163, 184, 0.03) 70%, transparent 100%) !important;
 }
 .rank-row-3 {
-  background: linear-gradient(90deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.06) 70%, transparent 100%) !important;
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.03) 70%, transparent 100%) !important;
 }
 
-/* Midnight: stronger row tinting */
+/* Midnight: slightly stronger row tinting */
 [data-theme="midnight"] .rank-row-1 {
-  background: linear-gradient(90deg, rgba(234, 179, 8, 0.25) 0%, rgba(234, 179, 8, 0.12) 70%, transparent 100%) !important;
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.14) 0%, rgba(234, 179, 8, 0.06) 70%, transparent 100%) !important;
 }
 [data-theme="midnight"] .rank-row-2 {
-  background: linear-gradient(90deg, rgba(148, 163, 184, 0.20) 0%, rgba(148, 163, 184, 0.08) 70%, transparent 100%) !important;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.10) 0%, rgba(148, 163, 184, 0.04) 70%, transparent 100%) !important;
 }
 [data-theme="midnight"] .rank-row-3 {
-  background: linear-gradient(90deg, rgba(249, 115, 22, 0.22) 0%, rgba(249, 115, 22, 0.10) 70%, transparent 100%) !important;
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0.05) 70%, transparent 100%) !important;
 }
 
 /* --- 12. Chart bars (gray gradient bars for non-top-3) --- */
