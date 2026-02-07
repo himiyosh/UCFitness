@@ -46,9 +46,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setThemeState(newTheme);
     };
 
-    // Prevent flash of wrong theme
+    // Prevent flash of wrong theme — still provide context for child components
     if (!mounted) {
-        return <>{children}</>;
+        return (
+            <ThemeContext.Provider value={{ theme, setTheme }}>
+                {children}
+            </ThemeContext.Provider>
+        );
     }
 
     return (
