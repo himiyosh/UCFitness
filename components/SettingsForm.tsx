@@ -221,8 +221,8 @@ export default function SettingsForm({ user }: { user: UserData }) {
                             onClick={() => handleLanguageChange('ja')}
                             disabled={!!switchingLocale}
                             className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'ja'
-                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)]'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}
                         >
                             <span className="flex items-center gap-2">
@@ -240,8 +240,8 @@ export default function SettingsForm({ user }: { user: UserData }) {
                             onClick={() => handleLanguageChange('en')}
                             disabled={!!switchingLocale}
                             className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'en'
-                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)]'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}
                         >
                             <span className="flex items-center gap-2">
@@ -269,8 +269,8 @@ export default function SettingsForm({ user }: { user: UserData }) {
                         <button
                             onClick={() => setTheme('classic')}
                             className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${theme === 'classic'
-                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)]'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}
                         >
                             <span className="flex items-center gap-3">
@@ -282,8 +282,8 @@ export default function SettingsForm({ user }: { user: UserData }) {
                         <button
                             onClick={() => setTheme('pop')}
                             className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${theme === 'pop'
-                                ? 'bg-pink-50 border-pink-200 text-pink-700'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-pink-50 border-pink-200 text-pink-700 midnight-option-selected'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}
                         >
                             <span className="flex items-center gap-3">
@@ -295,8 +295,8 @@ export default function SettingsForm({ user }: { user: UserData }) {
                         <button
                             onClick={() => setTheme('midnight')}
                             className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${theme === 'midnight'
-                                ? 'bg-slate-900 border-slate-700 text-indigo-400'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-slate-900 border-slate-700 text-indigo-400 midnight-option-selected'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}
                         >
                             <span className="flex items-center gap-3 whitespace-nowrap">
