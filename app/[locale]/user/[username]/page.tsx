@@ -234,7 +234,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     {/* Right Column: Stats & Achievements */}
                     <div className="md:col-span-2 space-y-6 order-first md:order-none">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
+                            {/* Heading removed for alignment with left column path
+                             <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
+                             */}
                         </div>
 
 
