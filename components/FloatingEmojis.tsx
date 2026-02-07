@@ -7,29 +7,30 @@
  */
 
 const EMOJIS = [
-  // Row 1 (top: 6%) — left: 5%, 32%, 58%, 85%
-  { emoji: '🏃', size: 'text-5xl', left: '5%',  top: '6%',  anim: 'animate-float',         mobileHide: false },
-  { emoji: '✨', size: 'text-lg',  left: '32%', top: '6%',  anim: 'animate-float-delayed',  mobileHide: false },
-  { emoji: '💪', size: 'text-3xl', left: '58%', top: '6%',  anim: 'animate-float',          mobileHide: false },
-  { emoji: '🎯', size: 'text-xl',  left: '85%', top: '6%',  anim: 'animate-float-delayed',  mobileHide: false },
-  // Row 2 (top: 28%) — モバイル非表示
-  { emoji: '🔥', size: 'text-2xl', left: '20%', top: '28%', anim: 'animate-float',          mobileHide: true },
-  { emoji: '🏆', size: 'text-5xl', left: '50%', top: '28%', anim: 'animate-float-delayed',  mobileHide: true },
-  { emoji: '⚡', size: 'text-lg',  left: '78%', top: '28%', anim: 'animate-float',          mobileHide: true },
-  // Row 3 (top: 42%) — left: 18%, 45%, 72%, 94%（Row 1から+13%オフセット）
-  { emoji: '👟', size: 'text-4xl', left: '18%', top: '42%', anim: 'animate-float-delayed',  mobileHide: false },
-  { emoji: '🎉', size: 'text-xl',  left: '45%', top: '42%', anim: 'animate-float',          mobileHide: false },
-  { emoji: '💫', size: 'text-5xl', left: '72%', top: '42%', anim: 'animate-float-delayed',  mobileHide: false },
-  { emoji: '🏃', size: 'text-lg',  left: '94%', top: '42%', anim: 'animate-float',          mobileHide: false },
-  // Row 4 (top: 68%) — モバイル非表示
-  { emoji: '✨', size: 'text-3xl', left: '20%', top: '68%', anim: 'animate-float-delayed',  mobileHide: true },
-  { emoji: '💪', size: 'text-lg',  left: '50%', top: '68%', anim: 'animate-float',          mobileHide: true },
-  { emoji: '🔥', size: 'text-5xl', left: '78%', top: '68%', anim: 'animate-float-delayed',  mobileHide: true },
-  // Row 5 (top: 82%) — left: 10%, 38%, 65%, 90%（Row 1/3の中間）
-  { emoji: '🏆', size: 'text-xl',  left: '10%', top: '82%', anim: 'animate-float',          mobileHide: false },
-  { emoji: '⚡', size: 'text-4xl', left: '38%', top: '82%', anim: 'animate-float-delayed',  mobileHide: false },
-  { emoji: '🎉', size: 'text-lg',  left: '65%', top: '82%', anim: 'animate-float',          mobileHide: false },
-  { emoji: '👟', size: 'text-3xl', left: '90%', top: '82%', anim: 'animate-float-delayed',  mobileHide: false },
+  // 散布配置: モバイルで見える12個がグリッドに見えないよう、不規則な座標に配置
+  // --- 上部エリア ---
+  { emoji: '💪', size: 'text-3xl', left: '38%', top: '3%',  anim: 'animate-float',          mobileHide: false },
+  { emoji: '🏃', size: 'text-5xl', left: '3%',  top: '5%',  anim: 'animate-float-delayed',  mobileHide: false },
+  { emoji: '✨', size: 'text-lg',  left: '72%', top: '10%', anim: 'animate-float',           mobileHide: false },
+  { emoji: '🎯', size: 'text-xl',  left: '88%', top: '15%', anim: 'animate-float-delayed',  mobileHide: false },
+  // --- 上中部 (モバイル非表示で隙間を埋める) ---
+  { emoji: '🏆', size: 'text-5xl', left: '60%', top: '20%', anim: 'animate-float-delayed',  mobileHide: true },
+  { emoji: '🔥', size: 'text-2xl', left: '25%', top: '22%', anim: 'animate-float',          mobileHide: true },
+  { emoji: '⚡', size: 'text-lg',  left: '90%', top: '26%', anim: 'animate-float',          mobileHide: true },
+  // --- 中部エリア ---
+  { emoji: '🎉', size: 'text-xl',  left: '55%', top: '32%', anim: 'animate-float',          mobileHide: false },
+  { emoji: '👟', size: 'text-4xl', left: '15%', top: '38%', anim: 'animate-float-delayed',  mobileHide: false },
+  { emoji: '💫', size: 'text-5xl', left: '82%', top: '42%', anim: 'animate-float-delayed',  mobileHide: false },
+  { emoji: '🏃', size: 'text-lg',  left: '30%', top: '48%', anim: 'animate-float',          mobileHide: false },
+  // --- 下中部 (モバイル非表示) ---
+  { emoji: '🔥', size: 'text-5xl', left: '75%', top: '55%', anim: 'animate-float-delayed',  mobileHide: true },
+  { emoji: '✨', size: 'text-3xl', left: '18%', top: '58%', anim: 'animate-float-delayed',  mobileHide: true },
+  { emoji: '💪', size: 'text-lg',  left: '45%', top: '62%', anim: 'animate-float',          mobileHide: true },
+  // --- 下部エリア ---
+  { emoji: '🎉', size: 'text-lg',  left: '70%', top: '70%', anim: 'animate-float',          mobileHide: false },
+  { emoji: '🏆', size: 'text-xl',  left: '8%',  top: '75%', anim: 'animate-float',          mobileHide: false },
+  { emoji: '⚡', size: 'text-4xl', left: '48%', top: '82%', anim: 'animate-float-delayed',  mobileHide: false },
+  { emoji: '👟', size: 'text-3xl', left: '92%', top: '85%', anim: 'animate-float-delayed',  mobileHide: false },
 ];
 
 export default function FloatingEmojis() {
