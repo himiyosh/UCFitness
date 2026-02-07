@@ -314,7 +314,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                             {(() => {
                                 const groupData = allGroupRankings[selectedGroupIndex];
                                 const currentGroupRankings = groupData.neighbors[period];
-                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 3);
+                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 5);
 
                                 // Find user's rank in this group (Use ID first, then Email)
                                 const myRankIndex = currentGroupRankings.findIndex(r =>
