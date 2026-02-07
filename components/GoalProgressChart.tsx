@@ -36,7 +36,7 @@ export default function GoalProgressChart({ current, goal, size = 80, strokeWidt
 
     const percentColor = isAchieved
         ? 'text-[var(--accent-lime)]'
-        : 'text-gray-600';
+        : 'text-[var(--theme-primary)]';
 
     return (
         <>

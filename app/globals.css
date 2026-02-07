@@ -61,13 +61,13 @@
   --background: linear-gradient(135deg, #64748b 0%, #475569 50%, #334155 100%);
   --foreground: #ffffff;
 
-  --theme-primary: #a5b4fc;
+  --theme-primary: #818cf8;
   --theme-primary-light: rgba(255, 255, 255, 0.15);
-  --theme-secondary: #d8b4fe;
-  --theme-accent: #7dd3fc;
+  --theme-secondary: #c084fc;
+  --theme-accent: #38bdf8;
 
-  --theme-gradient-from: #a5b4fc;
-  --theme-gradient-to: #d8b4fe;
+  --theme-gradient-from: #818cf8;
+  --theme-gradient-to: #c084fc;
 
   --theme-badge-bg: rgba(255, 255, 255, 0.2);
   --theme-badge-text: #ffffff;
@@ -425,6 +425,46 @@
 }
 [data-theme="midnight"] .hover\:bg-gray-100:hover {
   background-color: rgba(51, 65, 85, 0.5) !important;
+}
+
+/* --- 11e. Your Activity panel midnight --- */
+[data-theme="midnight"] .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+[data-theme="midnight"] .text-green-700 {
+  color: #34d399 !important;
+}
+[data-theme="midnight"] .border-green-200 {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+[data-theme="midnight"] .text-green-600 {
+  color: #34d399 !important;
+}
+[data-theme="midnight"] .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+[data-theme="midnight"] .text-red-600 {
+  color: #f87171 !important;
+}
+[data-theme="midnight"] .text-red-500 {
+  color: #f87171 !important;
+}
+[data-theme="midnight"] .border-red-100 {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+[data-theme="midnight"] .hover\:bg-white:hover {
+  background-color: rgba(30, 41, 59, 0.6) !important;
+}
+[data-theme="midnight"] .hover\:border-indigo-100:hover {
+  border-color: rgba(129, 140, 248, 0.3) !important;
+}
+[data-theme="midnight"] .group-hover\/item\:text-indigo-600 {
+  color: #a5b4fc !important;
+}
+
+/* --- 11f. Goal progress circle midnight --- */
+[data-theme="midnight"] .text-gray-100 {
+  color: rgba(100, 116, 139, 0.3) !important;
 }
 
 /* --- 12. Chart bars (gray gradient bars for non-top-3) --- */
