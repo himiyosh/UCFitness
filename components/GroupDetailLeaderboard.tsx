@@ -57,7 +57,7 @@ export default function GroupDetailLeaderboard({
                     </div>
                 </div>
 
-                <div className="bg-white px-0 relative flex-1">
+                <div className="bg-white px-0 relative flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
                     <FadeInWrapper key={`${period}-${currentPage}`}>
                         <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
                             {displayData.length === 0 ? (
