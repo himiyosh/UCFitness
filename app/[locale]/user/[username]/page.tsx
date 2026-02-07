@@ -197,7 +197,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     <div className="md:col-span-1 space-y-6 order-last md:order-none">
                         {/* Heading for alignment */}
                         <div className="flex items-center justify-between h-8"> {/* Fixed height for alignment */}
-                            <h2 className="text-2xl font-bold text-gray-900 truncate">{user.name || username}</h2>
+                            <h2 className="text-2xl font-bold text-gray-900 truncate">{t('profile')}</h2>
                         </div>
 
                         <ProfileHeader user={user} readonly={true} badges={userBadges} />

@@ -40,7 +40,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8">
                 {/* Banner */}
                 <div
-                    className={`h-16 sm:h-24 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url && 'bg-[var(--theme-primary)]'}`}
+                    className={`h-24 sm:h-32 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url && 'bg-[var(--theme-primary)]'}`}
                     style={user.banner_url ? { backgroundImage: `url(${user.banner_url})` } : {}}
                 >
                 </div>
