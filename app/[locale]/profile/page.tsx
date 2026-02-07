@@ -130,180 +130,64 @@ export default async function ProfilePage() {
                             <SyncHistoryButton />
                         </div>
 
-                        {/* Top Row: Total & Best Day (2 columns on mobile) */}
-                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                                <p className="text-xs sm:text-sm font-medium text-gray-500">{t('totalStepsRecorded')}</p>
-                                <p className="mt-1 text-xl sm:text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                                <p className="text-xs sm:text-sm font-medium text-gray-500">{t('allTimeBestDay')}</p>
-                                <div className="mt-1">
-                                    <p className="text-xl sm:text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
-                                    <p className="text-[10px] sm:text-xs font-medium mt-0.5 text-gray-500">
-                                        {t('onDate', { date: bestDay.date })}
-                                    </p>
+
+                        {/* Stats Calculation Logic */}
+                        {(() => {
+                            // JST Logic setup
+                            const now = new Date();
+                            const formatter = new Intl.DateTimeFormat('en-CA', {
+                                timeZone: 'Asia/Tokyo',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit'
+                            });
+                            const todayStr = formatter.format(now); // YYYY-MM-DD
+
+                            // Weekly Start (Mon)
+                            const currentDate = new Date(`${todayStr}T00:00:00Z`);
+                            const utcDay = currentDate.getUTCDay();
+                            const daysToSubtract = (utcDay + 6) % 7;
+                            const monday = new Date(currentDate);
+                            monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+                            const weeklyStartStr = monday.toISOString().split('T')[0];
+
+                            // Monthly Start
+                            const [year, month] = todayStr.split('-');
+                            const monthlyStartStr = `${year}-${month}-01`;
+
+                            // Calculate Stats
+                            const dailySteps = allHistoryData.find((r: any) => r.date === todayStr)?.steps || 0;
+                            const weeklySteps = allHistoryData.filter((r: any) => r.date >= weeklyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0);
+                            const monthlySteps = allHistoryData.filter((r: any) => r.date >= monthlyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0);
+
+                            return (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                    {/* Daily */}
+                                    <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('daily')}</p>
+                                        <div className="mt-2">
+                                            <p className="text-3xl font-black text-gray-900">{dailySteps.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Weekly */}
+                                    <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('weekly')}</p>
+                                        <div className="mt-2">
+                                            <p className="text-3xl font-black text-gray-900">{weeklySteps.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Monthly */}
+                                    <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('monthly')}</p>
+                                        <div className="mt-2">
+                                            <p className="text-3xl font-black text-gray-900">{monthlySteps.toLocaleString()}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Bottom Row: Daily / Weekly / Monthly (Single Container, 3 cols) - Compact */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="grid grid-cols-3 divide-x divide-gray-100">
-                                {(() => {
-                                    const now = new Date();
-                                    // JST Adjustment: Add 9 hours to current UTC time to get JST time
-                                    // We use this shifted time's UTC components to form the YYYY-MM-DD string
-                                    const jstOffset = 9 * 60 * 60 * 1000;
-                                    const jstDate = new Date(now.getTime() + jstOffset);
-
-                                    const currentYear = jstDate.getUTCFullYear();
-                                    const currentMonth = jstDate.getUTCMonth(); // 0-indexed
-
-                                    const year = jstDate.getUTCFullYear();
-                                    const month = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
-                                    const day = String(jstDate.getUTCDate()).padStart(2, '0');
-                                    const todayYMD = `${year}-${month}-${day}`;
-
-                                    // Week start (Sunday)
-                                    // We need "Start of Week" in JST.
-                                    const dayOfWeek = jstDate.getUTCDay(); // 0 (Sun) - 6 (Sat)
-                                    const startOfWeek = new Date(jstDate);
-                                    startOfWeek.setUTCDate(jstDate.getUTCDate() - dayOfWeek);
-                                    startOfWeek.setUTCHours(0, 0, 0, 0);
-
-                                    // Previous Week Start
-                                    const startOfLastWeek = new Date(startOfWeek);
-                                    startOfLastWeek.setUTCDate(startOfLastWeek.getUTCDate() - 7);
-
-                                    // Previous Month logic
-                                    // currentMonth is 0-indexed.
-                                    // If current is Jan (0), prev is Dec (11) of prev year.
-                                    const prevMonthDate = new Date(year, currentMonth - 1, 1);
-                                    const prevMonthYear = prevMonthDate.getFullYear();
-                                    const prevMonthIndex = prevMonthDate.getMonth();
-
-                                    // Logic
-                                    let dailySteps = 0;
-                                    let weeklySteps = 0;
-                                    let monthlySteps = 0;
-
-                                    let prevWeeklySteps = 0;
-                                    let prevMonthlySteps = 0;
-
-                                    // Comparison data (dummy for now or strict prev period)
-                                    let prevDailySteps = 0; // Yesterday
-
-                                    if (allHistoryData) {
-                                        allHistoryData.forEach((record: any) => {
-                                            // record.date is "YYYY-MM-DD" string
-                                            // We treat this string as if it's JST Date (because it WAS saved as JST date string)
-
-                                            // Simpler Weekly Comparison:
-                                            // Convert record.date "YYYY-MM-DD" to a Timestamp that represents that day at 00:00 UTC (effectively treating it as JST-value-but-in-UTC-variable)
-                                            // because 'startOfWeek' is also JST-value-but-in-UTC-variable.
-                                            const recordDateParts = record.date.split('-').map(Number);
-                                            const recordTime = Date.UTC(recordDateParts[0], recordDateParts[1] - 1, recordDateParts[2]);
-
-                                            if (record.date === todayYMD) {
-                                                dailySteps += record.steps;
-                                            }
-
-                                            // Weekly
-                                            if (recordTime >= startOfWeek.getTime()) {
-                                                weeklySteps += record.steps;
-                                            }
-                                            // Previous Weekly
-                                            else if (recordTime >= startOfLastWeek.getTime() && recordTime < startOfWeek.getTime()) {
-                                                prevWeeklySteps += record.steps;
-                                            }
-
-                                            // Monthly
-                                            const rYear = recordDateParts[0];
-                                            const rMonth = recordDateParts[1] - 1; // 0-indexed
-                                            if (rYear === currentYear && rMonth === currentMonth) {
-                                                monthlySteps += record.steps;
-                                            }
-                                            // Previous Monthly
-                                            else if (rYear === prevMonthYear && rMonth === prevMonthIndex) {
-                                                prevMonthlySteps += record.steps;
-                                            }
-
-                                            // Yesterday logic
-                                            // Calculate Yesterday YMD from our JST Date
-                                            const y = new Date(jstDate);
-                                            y.setUTCDate(y.getUTCDate() - 1);
-                                            const yy = y.getUTCFullYear();
-                                            const ym = String(y.getUTCMonth() + 1).padStart(2, '0');
-                                            const yd = String(y.getUTCDate()).padStart(2, '0');
-                                            const yesterdayYMD = `${yy}-${ym}-${yd}`;
-
-                                            if (record.date === yesterdayYMD) {
-                                                prevDailySteps = record.steps;
-                                            }
-                                        });
-                                    }
-
-
-
-                                    // Render Block
-                                    const dailyDiff = dailySteps - prevDailySteps;
-                                    const weeklyDiff = weeklySteps - prevWeeklySteps;
-                                    const monthlyDiff = monthlySteps - prevMonthlySteps;
-
-                                    const formatDiff = (diff: number) => {
-                                        return diff > 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
-                                    };
-
-                                    return (
-                                        <>
-                                            <div className="p-3 sm:p-4 text-center">
-                                                <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{t('daily')}</p>
-                                                <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{dailySteps.toLocaleString()}</p>
-                                                <p className={`text-[10px] font-medium mt-1 ${dailySteps >= prevDailySteps ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {dailySteps >= prevDailySteps ? '↑' : '↓'} {formatDiff(dailyDiff)} {t('vsYest')}
-                                                </p>
-                                            </div>
-
-                                            <div className="p-3 sm:p-4 text-center">
-                                                <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{t('weekly')}</p>
-                                                <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{weeklySteps.toLocaleString()}</p>
-                                                <p className={`text-[10px] font-medium mt-1 ${weeklySteps >= prevWeeklySteps ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {weeklySteps >= prevWeeklySteps ? '↑' : '↓'} {formatDiff(weeklyDiff)} {t('vsLWk')}
-                                                </p>
-                                            </div>
-
-                                            <div className="p-3 sm:p-4 text-center">
-                                                <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{t('monthly')}</p>
-                                                <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight">{monthlySteps.toLocaleString()}</p>
-                                                <p className={`text-[10px] font-medium mt-1 ${monthlySteps >= prevMonthlySteps ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {monthlySteps >= prevMonthlySteps ? '↑' : '↓'} {formatDiff(monthlyDiff)} {t('vsLMo')}
-                                                </p>
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        </div>
-
-                        <div className="hidden md:flex bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-2xl p-4 items-center gap-4 text-white shadow-lg shadow-[var(--theme-primary)]/20 relative overflow-hidden group">
-                            {/* Decorative Background */}
-                            <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
-                            <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-
-                            <div className="relative z-10 p-3 bg-white/20 backdrop-blur-sm rounded-xl shrink-0 border border-white/20 shadow-inner">
-                                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-
-                            <div className="relative z-10">
-                                <h3 className="font-bold text-base mb-0.5 tracking-tight">{t('keepItUp')}</h3>
-                                <p className="text-xs sm:text-sm opacity-90 leading-relaxed font-medium">
-                                    {t('keepItUpDesc')}
-                                </p>
-                            </div>
-                        </div>
+                            );
+                        })()}
 
                         {/* Activity Graph */}
                         <ActivityGraph data={allHistoryData} stepGoal={user.step_goal || 10000} />
