@@ -18,6 +18,12 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "UCFitness",
   description: "Fitbit Step Competition Dashboard",
+  manifest: "/manifest.json",
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+  },
 };
 
 export default async function LocaleLayout({
