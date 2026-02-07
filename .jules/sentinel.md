@@ -37,3 +37,8 @@
 **Vulnerability:** `app/api/user/search/route.ts` returned the `email` field for all users found in search results. This allowed any authenticated user to harvest email addresses by searching for usernames (or partial usernames).
 **Learning:** `SELECT *` or overly broad field selection in API responses is a common source of PII leaks. APIs should only return the minimum data necessary for the UI (Principle of Least Privilege/Data Minimization).
 **Prevention:** Explicitly select only public fields (id, name, username, image) in Supabase queries destined for public or semi-public responses. Never include email, tokens, or PII unless strictly required and authorized.
+
+## 2026-05-23 - Massive PII Leak in Public Rankings
+**Vulnerability:** The public ranking endpoints (`getRankings`, `getAllRankings`, `getGroupRankings`) were selecting and returning user `email` addresses in the API response. This allowed harvesting the email addresses of every active user on the platform simply by querying the leaderboard API.
+**Learning:** Even if the frontend doesn't *display* the data, returning it in the API payload is a leak. "Security by not rendering" is not security. Code reviews must verify the *shape of the data* leaving the server, not just the UI components.
+**Prevention:** Strictly type API responses (DTOs) to exclude PII. Use `select('id, name, username')` instead of relying on frontend logic to ignore sensitive fields. Refactor frontend logic to identify users by stable IDs, not email addresses.

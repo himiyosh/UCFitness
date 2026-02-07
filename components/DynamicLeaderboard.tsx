@@ -15,11 +15,11 @@ const TABS: { key: Period; label: string }[] = [
 ];
 
 interface DynamicLeaderboardProps {
-    userEmail?: string | null;
+    userId?: string | null;
     groupKeywords: string[];
 }
 
-export default function DynamicLeaderboard({ userEmail, groupKeywords }: DynamicLeaderboardProps) {
+export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [globalRankings, setGlobalRankings] = useState<RankingEntry[]>([]);
     const [groupRankingsList, setGroupRankingsList] = useState<{ keyword: string; neighbors: RankingEntry[] }[]>([]);
@@ -32,7 +32,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                 // Fetch Global
                 const globalRes = await fetch(`/api/rankings?scope=GLOBAL&period=${period}`);
                 const globalData = await globalRes.json();
-                const { displayRankings: filteredGlobal } = getDisplayRankings(globalData, userEmail);
+                const { displayRankings: filteredGlobal } = getDisplayRankings(globalData, userId);
                 setGlobalRankings(filteredGlobal);
 
                 // Fetch Groups
@@ -40,7 +40,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                     groupKeywords.map(async (keyword) => {
                         const res = await fetch(`/api/rankings?scope=GROUP&period=${period}&keyword=${keyword}`);
                         const data = await res.json();
-                        const { displayRankings: filtered } = getDisplayRankings(data, userEmail);
+                        const { displayRankings: filtered } = getDisplayRankings(data, userId);
                         return { keyword, neighbors: filtered };
                     })
                 );
@@ -53,7 +53,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
         };
 
         fetchData();
-    }, [period, userEmail, groupKeywords]);
+    }, [period, userId, groupKeywords]);
 
     return (
         <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
@@ -110,7 +110,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                                                     <span className="text-gray-400 text-xs tracking-widest">•••</span>
                                                 </div>
                                             )}
-                                            <li className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.email === userEmail ? 'bg-[var(--theme-primary-light)]' : ''}`}>
+                                            <li className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${userId && entry.users.id === userId ? 'bg-[var(--theme-primary-light)]' : ''}`}>
                                                 <div className="flex items-center gap-4">
                                                     <span className={`
                                         flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
@@ -129,8 +129,8 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                                                     )}
                                                     <div>
                                                         <p className="text-sm font-medium text-gray-900">
-                                                            {entry.users?.name || entry.users?.email}
-                                                            {entry.users.email === userEmail && <span className="ml-2 text-xs text-[var(--theme-primary)] font-bold">(YOU)</span>}
+                                                            {entry.users?.name || 'User'}
+                                                            {(userId && entry.users.id === userId) && <span className="ml-2 text-xs text-[var(--theme-primary)] font-bold">(YOU)</span>}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -158,7 +158,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                                 <GroupRankingPanel
                                     keyword={groupData.keyword}
                                     neighbors={groupData.neighbors}
-                                    userEmail={userEmail}
+                                    userId={userId}
                                     index={index}
                                     totalCount={groupRankingsList.length}
                                 />
@@ -183,7 +183,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                 {/* Actually GroupSettings uses client side supabase or server actions? */}
                 {/* Looking at imports in page.tsx: GroupSettings is imported. It likely needs 'session' prop or uses User data internally? */}
                 {/* Checking page.tsx: <GroupSettings /> is rendered if session exists. */}
-                {userEmail && <GroupSettings />}
+                {userId && <GroupSettings />}
             </div>
         </div>
     );

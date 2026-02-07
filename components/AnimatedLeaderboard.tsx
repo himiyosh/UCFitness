@@ -26,8 +26,8 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
     // We want to show a consistent 7 bars, even if data is missing for some days
     // But since `history` from backend contains sparse data (only days with steps), we need to fill gaps OR just show what we have.
     // For simplicity, let's just show the last N entries we have, or up to 7, sorted by date.
-    // 
-    // Ideally: 
+    //
+    // Ideally:
     // 1. Get today
     // 2. Generate last 7 dates
     // 3. Map to steps (0 if missing)
@@ -54,8 +54,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
 }
 
 interface AnimatedLeaderboardProps {
-    userEmail?: string | null;
-    userId?: string | null; // Added userId
+    userId?: string | null;
     allGlobalRankings: Record<Period, RankingEntry[]>;
     allGroupRankings: {
         keyword: string;
@@ -86,7 +85,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
     );
 }
 
-export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
+export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [page, setPage] = useState(1);
@@ -146,7 +145,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                 <div className="px-6 pt-6">
                                     <TopUsersChart
                                         data={currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 }))}
-                                        userEmail={userEmail}
+                                        userId={userId}
                                         title={t('titleTop10')}
                                     />
                                 </div>
@@ -187,11 +186,11 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                 <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden`}>
                                                                     {/* Progress Bar Background */}
                                                                     <div
-                                                                        className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10 
+                                                                        className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10
                                                                             ${entry.originalRank === 1 ? 'bg-gradient-to-r from-yellow-100/80 to-yellow-50/20' :
                                                                                 entry.originalRank === 2 ? 'bg-gradient-to-r from-slate-200/80 to-slate-50/20' :
                                                                                     entry.originalRank === 3 ? 'bg-gradient-to-r from-amber-100/80 to-amber-50/20' :
-                                                                                        entry.users.email === userEmail ? 'bg-gradient-to-r from-[var(--theme-primary)]/20 to-[var(--theme-primary)]/5' :
+                                                                                        (userId && entry.users.id === userId) ? 'bg-gradient-to-r from-[var(--theme-primary)]/20 to-[var(--theme-primary)]/5' :
                                                                                             'bg-gray-50/50'}`}
                                                                         style={{ width: `${percentage}%` }}
                                                                     ></div>
@@ -217,12 +216,12 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 {entry.users.username ? (
                                                                                     <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
-                                                                                        {entry.users?.name || entry.users?.email}
+                                                                                        {entry.users?.name || 'User'}
                                                                                     </Link>
                                                                                 ) : (
-                                                                                    <span>{entry.users?.name || entry.users?.email}</span>
+                                                                                    <span>{entry.users?.name || 'User'}</span>
                                                                                 )}
-                                                                                {entry.users.email === userEmail && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
+                                                                                {(userId && entry.users.id === userId) && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
                                                                             </p>
                                                                         </div>
                                                                     </div>
@@ -314,12 +313,11 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                             {(() => {
                                 const groupData = allGroupRankings[selectedGroupIndex];
                                 const currentGroupRankings = groupData.neighbors[period];
-                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 5);
+                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userId, 5);
 
-                                // Find user's rank in this group (Use ID first, then Email)
+                                // Find user's rank in this group (Use ID first)
                                 const myRankIndex = currentGroupRankings.findIndex(r =>
-                                    (userId && r.users.id === userId) ||
-                                    (userEmail && r.users.email === userEmail)
+                                    (userId && r.users.id === userId)
                                 );
                                 const myRankEntry = myRankIndex !== -1 ? currentGroupRankings[myRankIndex] : undefined;
                                 const myRank = myRankIndex + 1;
@@ -411,7 +409,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                 keyword={groupData.keyword}
                                                 groupId={groupData.groupId}
                                                 neighbors={displayRankings}
-                                                userEmail={userEmail}
+                                                userId={userId}
                                                 index={0}
                                                 totalCount={1}
                                             />

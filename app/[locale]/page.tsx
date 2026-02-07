@@ -26,7 +26,8 @@ export default async function Home() {
     return <LandingPage />;
   }
 
-  const userEmail = session?.user?.email;
+  // const userEmail = session?.user?.email; // Removed usage
+  const userId = (session.user as any)?.id; // Get ID early
 
   let groupKeywords: string[] = [];
   let username: string | undefined;
@@ -37,8 +38,7 @@ export default async function Home() {
   let stepGoal = 10000;
   let bannerUrl: string | null | undefined;
 
-  if (session?.user && (session.user as any).id) {
-    const userId = (session.user as any).id;
+  if (userId) {
     // Fetch current user's group keywords AND fresh image
     const { data: userData } = await supabase
       .from('users')
@@ -129,10 +129,10 @@ export default async function Home() {
   const allGlobalRankings = await getCachedGlobalRankings();
 
   // Extract Stats for Current User
-  const myWeeklyEntry = allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const myWeeklyEntry = allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.id === userId);
   const myWeeklySteps = myWeeklyEntry?.steps || 0;
 
-  const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.id === userId);
   const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
   // ⚡ Bolt Optimization: Bulk fetch group metadata to avoid N+1 queries
@@ -175,8 +175,8 @@ export default async function Home() {
       // Robustness: Ensure *Current User* is in the list
       // This handles cases where `group_members` table is out of sync with `users.group_keyword`
       // or if the user has 0 steps and was excluded by some upstream logic.
-      if (session?.user && (session.user as any).id) {
-        const myId = (session.user as any).id;
+      if (userId) {
+        const myId = userId;
 
         (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(periodKey => {
           const list = neighbors[periodKey];
@@ -194,7 +194,7 @@ export default async function Home() {
                 username: username || '',
                 name: session.user?.name || '',
                 image: session.user?.image || '',
-                email: userEmail || '',
+                // email: userEmail || '', // Removed for security
                 group_keyword: groupKeywords
               }
             };
@@ -419,8 +419,7 @@ export default async function Home() {
 
           {/* BOTTOM SECTION: Leaderboards */}
           <AnimatedLeaderboard
-            userEmail={userEmail}
-            userId={(session?.user as any)?.id}
+            userId={userId}
             allGlobalRankings={allGlobalRankings}
             allGroupRankings={allGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}

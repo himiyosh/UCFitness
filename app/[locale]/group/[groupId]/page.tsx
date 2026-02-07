@@ -233,7 +233,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             rankings={rankings}
                             comparisonData={comparisonData}
                             groupCompetitionRankings={groupCompetitionRankings}
-                            userEmail={userEmail}
+                            userId={userId}
                             currentGroupId={groupId}
                             currentUsername={session.user.name || undefined}
                             isPublic={group.is_public}

@@ -4,13 +4,13 @@ export type RankingEntry = {
         id: string;
         name: string | null;
         image: string | null;
-        email: string | null;
+        // email: string | null; // Removed for security
         username: string | null;
     };
     originalRank: number;
 };
 
-export function getDisplayRankings(allRankings: any[], userEmail?: string | null, maxItems?: number): {
+export function getDisplayRankings(allRankings: any[], userId?: string | null, maxItems?: number): {
     displayRankings: RankingEntry[];
     isTruncated: boolean
 } {
@@ -20,14 +20,14 @@ export function getDisplayRankings(allRankings: any[], userEmail?: string | null
         originalRank: i + 1
     }));
 
-    if (!userEmail) {
+    if (!userId) {
         // Not logged in: Just show top 5 or maxItems
         const limit = maxItems || 5;
         return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
     }
 
     const top3 = rankedItems.slice(0, 3);
-    const userIndex = rankedItems.findIndex(r => r.users.email === userEmail);
+    const userIndex = rankedItems.findIndex(r => r.users.id === userId);
 
     if (userIndex === -1) {
         // User not in list
@@ -60,11 +60,11 @@ export function getDisplayRankings(allRankings: any[], userEmail?: string | null
     // Apply strict limit if requested
     if (maxItems && combined.length > maxItems) {
         // We MUST keep the user (if they are in combined, which they should be)
-        const userEntry = combined.find(r => r.users.email === userEmail);
+        const userEntry = combined.find(r => r.users.id === userId);
 
         if (userEntry) {
             // Take top (N-1) + User
-            const others = combined.filter(r => r.users.email !== userEmail).slice(0, maxItems - 1);
+            const others = combined.filter(r => r.users.id !== userId).slice(0, maxItems - 1);
             combined = [...others, userEntry].sort((a, b) => a.originalRank - b.originalRank);
         } else {
             // Should not happen as we added neighbors including user, but fallback
