@@ -66,13 +66,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                         <h1 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h1>
                         <p className="text-xs sm:text-sm text-gray-500">@{user.username || 'user'}</p>
 
-                        {user.group_keyword && (
-                            <div className="mt-2">
-                                <span className="inline-flex items-center rounded-full bg-[var(--theme-primary-light)] px-2 py-0.5 text-[10px] sm:text-xs font-medium text-[var(--theme-primary)]">
-                                    Group: {Array.isArray(user.group_keyword) ? user.group_keyword.join(', ') : user.group_keyword}
-                                </span>
-                            </div>
-                        )}
+
                     </div>
                 </div>
             </div>
