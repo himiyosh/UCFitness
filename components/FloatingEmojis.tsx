@@ -1,7 +1,5 @@
 'use client';
 
-import { useTheme } from './ThemeProvider';
-
 /**
  * 背景に浮遊する絵文字を表示するデコレーションコンポーネント
  * フィットネス関連の絵文字がゆっくり漂い、サイトにポップな雰囲気を与える
@@ -23,9 +21,6 @@ const EMOJIS = [
 ];
 
 export default function FloatingEmojis() {
-  const { theme } = useTheme();
-  const isMidnight = theme === 'midnight';
-
   return (
     <div
       className="fixed inset-0 overflow-hidden pointer-events-none"
@@ -40,8 +35,7 @@ export default function FloatingEmojis() {
             left: item.left,
             top: item.top,
             animationDelay: `${(i * 2.3) % 12}s`,
-            '--emoji-opacity': isMidnight ? 0.2 : 0.14,
-          } as React.CSSProperties}
+          }}
         >
           {item.emoji}
         </span>

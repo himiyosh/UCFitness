@@ -933,8 +933,8 @@ body {
    12. 絵文字キラキラエフェクト (Emoji Twinkle)
    ============================================ */
 @keyframes emojiTwinkle {
-  0%, 100% { opacity: var(--emoji-opacity, 0.12); }
-  50% { opacity: calc(var(--emoji-opacity, 0.12) * 2.5); }
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.35; }
 }
 
 .emoji-twinkle {
