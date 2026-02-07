@@ -29,7 +29,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     // Fetch target user data
     const { data: user } = await supabase
         .from("users")
-        .select("id, name, email, image, group_keyword, username, step_goal, is_custom_image")
+        .select("id, name, email, image, group_keyword, username, step_goal, is_custom_image, banner_url")
         .eq("username", username)
         .single();
 

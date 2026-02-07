@@ -186,7 +186,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!data && token.provider_account_id) {
                     const res = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email") // language removed
+                        .select("id, name, username, image, email, language")
                         .eq("provider_account_id", token.provider_account_id)
                         .single();
                     if (res.data) data = res.data;
@@ -196,7 +196,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!data && token.sub) {
                     const res = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email") // language removed
+                        .select("id, name, username, image, email, language")
                         .eq("provider_account_id", token.sub)
                         .single();
                     if (res.data) data = res.data;
@@ -206,7 +206,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!data && token.email) {
                     const { data: byEmail } = await supabaseAdmin
                         .from("users")
-                        .select("id, name, username, image, email") // language removed
+                        .select("id, name, username, image, email, language")
                         .eq("email", token.email)
                         .single();
                     data = byEmail;
@@ -218,7 +218,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     session.user.image = data.image;
                     session.user.email = data.email;
                     (session.user as any).username = data.username;
-                    // (session.user as any).language = data.language;
+                    (session.user as any).language = (data as any).language || 'ja';
                 } else {
                     session.user.id = token.sub;
                 }
@@ -235,7 +235,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 // Sync with DB to get real ID/Username
                 const { data, error } = await supabaseAdmin
                     .from("users")
-                    .select("id, username, email, image") // language removed
+                    .select("id, username, email, image, language")
                     .eq("provider", account.provider)
                     .eq("provider_account_id", account.providerAccountId)
                     .single();
