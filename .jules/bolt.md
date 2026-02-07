@@ -25,3 +25,7 @@
 ## 2025-05-26 - In-Memory Derivation from Cached Globals
 **Learning:** The dashboard was fetching group rankings using `getBatchGroupRankings` which executed a heavy range query on `daily_steps` for all group members on every request (due to `force-dynamic`). However, the global rankings (containing all users' aggregated data) were already fetched and cached.
 **Action:** Implemented `deriveBatchGroupRankings` to reuse the cached global data. This eliminates the need for redundant `daily_steps` queries, replacing them with a much lighter in-memory pivot and a small query to fetch group membership and missing (0-step) users.
+
+## 2025-05-27 - Uncached Global Aggregation in Dynamic Page
+**Learning:** `getCombinedGroupCompetitionRankings` was performing a heavy aggregation of all daily steps for all users for the entire year on every request because `page.tsx` is `force-dynamic`. This duplicated the cost of `getAllRankings` but for a different view (Group Competition).
+**Action:** Wrapped the function in `unstable_cache` with a 60-second revalidation. This allows the expensive aggregation to be shared across all users and requests, reducing database load from O(Requests) to O(1) per minute.

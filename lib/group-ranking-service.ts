@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
+import { unstable_cache } from 'next/cache';
 
 export interface GroupRankingEntry {
     groupId: string;
@@ -255,3 +256,16 @@ export const getCombinedGroupCompetitionRankings = async () => {
 
     return result;
 };
+
+/**
+ * ⚡ Bolt Optimization:
+ * Caches the heavy aggregation of daily steps for all users to reduce database load.
+ * This function is used in the main dashboard which is force-dynamic, so caching this expensive
+ * computation separately allows us to maintain freshness for user-specific data while
+ * reusing global stats.
+ */
+export const getCachedCombinedGroupCompetitionRankings = unstable_cache(
+    async () => getCombinedGroupCompetitionRankings(),
+    ['combined-group-competition-rankings-v1'],
+    { revalidate: 60, tags: ['rankings'] }
+);
