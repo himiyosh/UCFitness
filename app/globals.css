@@ -85,6 +85,51 @@
   /* slate-900 */
 }
 
+/* slate-900 */
+}
+
+/* Force override for Midnight theme compatibility without rewriting all components */
+[data-theme="midnight"] .bg-white {
+  background-color: #1e293b !important;
+  /* slate-800 */
+  color: #f8fafc !important;
+  /* slate-50 */
+}
+
+[data-theme="midnight"] .bg-gray-50,
+[data-theme="midnight"] .bg-gray-100 {
+  background-color: #0f172a !important;
+  /* slate-900 */
+  color: #f8fafc !important;
+}
+
+[data-theme="midnight"] .text-gray-900,
+[data-theme="midnight"] .text-gray-800,
+[data-theme="midnight"] .text-gray-700 {
+  color: #f1f5f9 !important;
+  /* slate-100 */
+}
+
+[data-theme="midnight"] .text-gray-600,
+[data-theme="midnight"] .text-gray-500,
+[data-theme="midnight"] .text-gray-400 {
+  color: #94a3b8 !important;
+  /* slate-400 */
+}
+
+[data-theme="midnight"] .border-gray-100,
+[data-theme="midnight"] .border-gray-200,
+[data-theme="midnight"] .border-gray-300 {
+  border-color: #334155 !important;
+  /* slate-700 */
+}
+
+[data-theme="midnight"] .shadow-sm,
+[data-theme="midnight"] .shadow-md {
+  box-shadow: none !important;
+  /* Remove shadows in dark mode or make them subtle */
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
