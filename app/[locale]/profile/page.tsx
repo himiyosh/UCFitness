@@ -155,37 +155,66 @@ export default async function ProfilePage() {
                             const [year, month] = todayStr.split('-');
                             const monthlyStartStr = `${year}-${month}-01`;
 
+
                             // Calculate Stats
+                            const totalSteps = allHistoryData.reduce((acc, curr) => acc + curr.steps, 0);
+                            const bestDayEntry = allHistoryData.reduce((max, curr) => curr.steps > max.steps ? curr : max, { steps: 0, date: '-' });
+                            const bestDay = {
+                                date: bestDayEntry.date === '-' ? '-' : new Date(bestDayEntry.date).toLocaleDateString(),
+                                steps: bestDayEntry.steps
+                            };
+
                             const dailySteps = allHistoryData.find((r: any) => r.date === todayStr)?.steps || 0;
                             const weeklySteps = allHistoryData.filter((r: any) => r.date >= weeklyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0);
                             const monthlySteps = allHistoryData.filter((r: any) => r.date >= monthlyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0);
 
                             return (
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                    {/* Daily */}
-                                    <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('daily')}</p>
-                                        <div className="mt-2">
-                                            <p className="text-3xl font-black text-gray-900">{dailySteps.toLocaleString()}</p>
+                                <div className="space-y-4">
+                                    {/* Top Row: Total & Best Day */}
+                                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                            <p className="text-xs sm:text-sm font-medium text-gray-500">{t('totalStepsRecorded')}</p>
+                                            <p className="mt-1 text-xl sm:text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
+                                        </div>
+                                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                            <p className="text-xs sm:text-sm font-medium text-gray-500">{t('allTimeBestDay')}</p>
+                                            <div className="mt-1">
+                                                <p className="text-xl sm:text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
+                                                <p className="text-[10px] sm:text-xs font-medium mt-0.5 text-gray-500">
+                                                    {bestDay.date !== '-' ? t('onDate', { date: bestDay.date }) : '-'}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Weekly */}
-                                    <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('weekly')}</p>
-                                        <div className="mt-2">
-                                            <p className="text-3xl font-black text-gray-900">{weeklySteps.toLocaleString()}</p>
+                                    {/* Daily / Weekly / Monthly Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                        {/* Daily */}
+                                        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('daily')}</p>
+                                            <div className="mt-2">
+                                                <p className="text-3xl font-black text-gray-900">{dailySteps.toLocaleString()}</p>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Monthly */}
-                                    <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('monthly')}</p>
-                                        <div className="mt-2">
-                                            <p className="text-3xl font-black text-gray-900">{monthlySteps.toLocaleString()}</p>
+                                        {/* Weekly */}
+                                        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('weekly')}</p>
+                                            <div className="mt-2">
+                                                <p className="text-3xl font-black text-gray-900">{weeklySteps.toLocaleString()}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Monthly */}
+                                        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('monthly')}</p>
+                                            <div className="mt-2">
+                                                <p className="text-3xl font-black text-gray-900">{monthlySteps.toLocaleString()}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+
                             );
                         })()}
 

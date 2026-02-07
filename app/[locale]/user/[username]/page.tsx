@@ -237,6 +237,24 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
                         </div>
 
+
+                        {/* Comparison Stats Grid */}
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                <p className="text-xs sm:text-sm font-medium text-gray-500">{t('totalStepsRecorded')}</p>
+                                <p className="mt-1 text-xl sm:text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                                <p className="text-xs sm:text-sm font-medium text-gray-500">{t('allTimeBestDay')}</p>
+                                <div className="mt-1">
+                                    <p className="text-xl sm:text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
+                                    <p className="text-[10px] sm:text-xs font-medium mt-0.5 text-gray-500">
+                                        {bestDay.date !== '-' ? t('onDate', { date: bestDay.date }) : '-'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* New Comparison Stats Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                             {/* Daily */}
