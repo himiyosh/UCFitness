@@ -72,11 +72,7 @@
   --theme-header-bg: rgba(255, 255, 255, 0.1);
 }
 
-/* コンテンツレイヤー: 絵文字(z:10)より上に配置 */
-main {
-  position: relative;
-  z-index: 20;
-}
+/* コンテンツレイヤー: layout.tsxのラッパーdiv(z:20)で管理 */
 
 /* Base Body Background — Deeper & Richer */
 [data-theme="midnight"] body {
