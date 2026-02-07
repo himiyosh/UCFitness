@@ -18,8 +18,8 @@
   --theme-gradient-to: #9333EA;
   --theme-badge-bg: #EEF2FF;
   --theme-badge-text: #4F46E5;
-  /* Page backgrounds */
-  --theme-page-bg: #FAFAFF;
+  /* Page backgrounds: 透明にして絵文字がパネル間から見えるように */
+  --theme-page-bg: transparent;
   --theme-header-bg: #EEF2FF;
 
   /* Pop & Fun Colors (available for both themes) */
@@ -45,8 +45,8 @@
   --theme-gradient-to: #A855F7;
   --theme-badge-bg: linear-gradient(to right, #FFE66D, #FF6B6B);
   --theme-badge-text: #ffffff;
-  /* Page backgrounds */
-  --theme-page-bg: #FFFAFA;
+  /* Page backgrounds: 透明にして絵文字がパネル間から見えるように */
+  --theme-page-bg: transparent;
   --theme-header-bg: #FFF5F5;
 }
 
@@ -70,6 +70,20 @@
   /* Glass Page Background */
   --theme-page-bg: rgba(0, 0, 0, 0.1);
   --theme-header-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* ページ背景色をbodyに設定（mainはtransparentにしたため） */
+body {
+  background-color: #FAFAFF;
+}
+[data-theme="pop"] body {
+  background-color: #FFFAFA;
+}
+
+/* コンテンツレイヤー: 絵文字(z:10)より上に配置 */
+main {
+  position: relative;
+  z-index: 20;
 }
 
 /* Base Body Background — Deeper & Richer */
