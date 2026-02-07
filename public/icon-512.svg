@@ -9,17 +9,19 @@
       <stop offset="0%" style="stop-color:rgba(255,255,255,0.15)"/>
       <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
     </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
   </defs>
   <!-- 背景（角丸） -->
   <rect width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
   <!-- 光沢オーバーレイ -->
   <rect width="512" height="512" rx="112" ry="112" fill="url(#shine)"/>
   <!-- アクセント円 -->
-  <circle cx="256" cy="256" r="190" fill="rgba(255,255,255,0.07)"/>
-  <!-- UC テキスト -->
-  <text x="256" y="270" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="210" fill="white" letter-spacing="-8">UC</text>
-  <!-- FIT テキスト -->
-  <text x="265" y="360" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="88" fill="rgba(255,255,255,0.85)" letter-spacing="16">FIT</text>
-  <!-- ボトムアクセントライン -->
-  <rect x="156" y="390" width="200" height="4" rx="2" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="256" cy="248" r="180" fill="rgba(255,255,255,0.06)"/>
+  <!-- ボルトのグロー（影） -->
+  <polygon points="290,60 178,258 254,258 192,452 334,238 258,238" fill="rgba(255,255,255,0.12)" filter="url(#glow)"/>
+  <!-- ⚡ 稲妻ボルト -->
+  <polygon points="290,60 178,258 254,258 192,452 334,238 258,238" fill="white"/>
 </svg>

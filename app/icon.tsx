@@ -7,7 +7,7 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-// ファビコン生成 — フィットネスアプリらしいランナー+炎のデザイン
+// ファビコン生成 — ⚡ 稲妻ボルトデザイン
 export default function Icon() {
     return new ImageResponse(
         (
@@ -27,48 +27,27 @@ export default function Icon() {
                 <div
                     style={{
                         position: 'absolute',
-                        width: '380px',
-                        height: '380px',
+                        width: '360px',
+                        height: '360px',
                         borderRadius: '50%',
-                        background: 'rgba(255,255,255,0.08)',
+                        background: 'rgba(255,255,255,0.06)',
                         display: 'flex',
+                        top: '68px',
+                        left: '76px',
                     }}
                 />
-                {/* UCF テキスト */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0px',
-                    }}
+                {/* ⚡ 稲妻ボルト */}
+                <svg
+                    viewBox="0 0 512 512"
+                    width="512"
+                    height="512"
+                    style={{ position: 'absolute', top: 0, left: 0 }}
                 >
-                    <span
-                        style={{
-                            fontSize: '200px',
-                            fontWeight: 900,
-                            color: 'white',
-                            letterSpacing: '-8px',
-                            lineHeight: '1',
-                            textShadow: '0 4px 20px rgba(0,0,0,0.2)',
-                        }}
-                    >
-                        UC
-                    </span>
-                    <span
-                        style={{
-                            fontSize: '80px',
-                            fontWeight: 800,
-                            color: 'rgba(255,255,255,0.85)',
-                            letterSpacing: '16px',
-                            lineHeight: '1',
-                            marginTop: '-10px',
-                        }}
-                    >
-                        FIT
-                    </span>
-                </div>
+                    <polygon
+                        points="290,60 178,258 254,258 192,452 334,238 258,238"
+                        fill="white"
+                    />
+                </svg>
             </div>
         ),
         {
