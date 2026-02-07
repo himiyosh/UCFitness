@@ -53,9 +53,7 @@ export default async function LocaleLayout({
 
                 <LanguageSyncer user={session?.user as any} />
                 {session && <FloatingEmojis />}
-                <div className="relative z-[2]">
-                  {children}
-                </div>
+                {children}
               </ThemeProvider>
             </ToastProvider>
           </AuthProvider>

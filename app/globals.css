@@ -75,9 +75,20 @@
 /* Body背景カラー — 絵文字レイヤーの下地 */
 body {
   background-color: #FAFAFF;
+  isolation: isolate; /* スタッキングコンテキストルート */
 }
 [data-theme="pop"] body {
   background-color: #FFFAFA;
+}
+
+/* ============================================
+   コンテンツレイヤー: 絵文字より上に配置
+   main/headerをz-index:5でスタッキングコンテキスト化
+   絵文字(z:1)は透明な背景の隨間からのみ見える
+   ============================================ */
+main {
+  position: relative;
+  z-index: 5;
 }
 
 /* Base Body Background — Deeper & Richer */
