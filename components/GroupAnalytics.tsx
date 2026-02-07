@@ -8,6 +8,7 @@ import { ChartData } from '@/lib/group-comparison-service';
 import { RankingEntry } from '@/lib/ranking-utils';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';
 import GroupCompetitionList from '@/components/GroupCompetitionList';
+import { useTheme } from '@/components/ThemeProvider';
 
 interface GroupAnalyticsProps {
     rankings: Record<Period, RankingEntry[]>;
@@ -43,6 +44,7 @@ export default function GroupAnalytics({
 }: GroupAnalyticsProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [currentPage, setCurrentPage] = useState(1);
+    const { theme } = useTheme();
 
     // Reset page when period changes
     useEffect(() => {
@@ -76,19 +78,22 @@ export default function GroupAnalytics({
         <div className="space-y-6">
             {/* Header: Tabs & Jump Button */}
             <div className="flex justify-between items-center flex-wrap gap-4">
-                <div className="flex p-1 space-x-1 bg-gray-100/80 rounded-lg w-fit overflow-hidden relative">
+                <div
+                    className={`flex p-1 space-x-1 rounded-lg w-fit overflow-hidden relative ${theme !== 'midnight' ? 'bg-white/80 backdrop-blur-sm border border-gray-200' : ''}`}
+                    style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}
+                >
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;
                         return (
                             <button
                                 key={tab.key}
                                 onClick={() => setPeriod(tab.key)}
-                                className={`
-                                    relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer
-                                    ${isActive
-                                        ? 'bg-white text-[var(--theme-primary)] shadow-sm scale-105'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
-                                `}
+                                className={`relative z-10 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 cursor-pointer ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
+                                style={theme === 'midnight' ? {
+                                    backgroundColor: isActive ? 'var(--theme-primary)' : 'transparent',
+                                    color: '#ffffff',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                                } : undefined}
                             >
                                 {tab.label}
                             </button>

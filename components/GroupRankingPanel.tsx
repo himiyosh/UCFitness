@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopUsersChart from '@/components/TopUsersChart';
+import { useTheme } from '@/components/ThemeProvider';
 
 type Props = {
     keyword: string;
@@ -43,6 +44,8 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
     const t = useTranslations('Graph');
+    const { theme } = useTheme();
+    const isMidnight = theme === 'midnight';
 
     const handleMove = async (direction: 'up' | 'down') => {
         setIsMoving(true);
@@ -100,14 +103,14 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                 )}
             </div>
             <div className="bg-white px-0 lg:grid lg:grid-cols-12 lg:items-start">
-                <div className="px-6 pt-6 lg:col-span-5 lg:border-r lg:border-gray-50 flex flex-col justify-center h-full">
+                <div className={`px-6 pt-6 lg:col-span-5 lg:border-r flex flex-col justify-center h-full ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
                     <TopUsersChart
                         data={neighbors}
                         userEmail={userEmail}
                         title={t('groupLeaders')}
                     />
                 </div>
-                <div role="list" className="divide-y divide-gray-50 border-t border-gray-50 lg:border-t-0 lg:col-span-7">
+                <div role="list" className={`divide-y lg:border-t-0 lg:col-span-7 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                     {neighbors.length > 0 ? (
                         (() => {
                             const maxSteps = Math.max(...neighbors.map((n: any) => n.steps)) || 1;
@@ -115,7 +118,6 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                             return neighbors.map((entry: any, i: number) => {
                                 const isMe = entry.users.email === userEmail;
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
-                                const percentage = Math.max((entry.steps / maxSteps) * 100, 2);
 
                                 return (
                                     <div key={entry.originalRank}>
@@ -125,27 +127,30 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                                             </div>
                                         )}
                                         <div
-                                            className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden`}
+                                            className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                         >
-                                            {/* Progress Bar Background */}
-                                            <div
-                                                className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10 
-                                                    ${entry.originalRank === 1 ? 'bg-gradient-to-r from-yellow-100/80 to-yellow-50/20' :
-                                                        entry.originalRank === 2 ? 'bg-gradient-to-r from-slate-200/80 to-slate-50/20' :
-                                                            entry.originalRank === 3 ? 'bg-gradient-to-r from-amber-100/80 to-amber-50/20' :
-                                                                isMe ? 'bg-gradient-to-r from-[var(--theme-primary)]/20 to-[var(--theme-primary)]/5' :
-                                                                    'bg-gray-50/50'}`}
-                                                style={{ width: `${percentage}%` }}
-                                            ></div>
 
                                             {/* Content Wrapper */}
                                             <div className="relative z-10 flex items-center gap-4">
-                                                <span className={`
-                                                    flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shadow-sm
-                                                    ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                                                        entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
-                                                            entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'bg-white text-gray-400 border border-gray-200'}
-                                                `}>
+                                                <span className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                                    style={entry.originalRank === 1 ? {
+                                                        background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
+                                                        color: '#ffffff',
+                                                        boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
+                                                    } : entry.originalRank === 2 ? {
+                                                        background: isMidnight ? 'linear-gradient(160deg, #64748b, #94a3b8)' : 'linear-gradient(160deg, #6b7280, #9ca3af)',
+                                                        color: '#ffffff',
+                                                        boxShadow: '0 2px 6px rgba(148, 163, 184, 0.3)',
+                                                    } : entry.originalRank === 3 ? {
+                                                        background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
+                                                        color: '#ffffff',
+                                                        boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
+                                                    } : {
+                                                        background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
+                                                        color: isMidnight ? '#64748b' : '#94a3b8',
+                                                        border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
+                                                    }}
+                                                >
                                                     {entry.originalRank}
                                                 </span>
                                                 {entry.users?.image ? (

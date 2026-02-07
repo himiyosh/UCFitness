@@ -55,79 +55,522 @@
   /* light coral - stronger for header */
 }
 
-/* Midnight Theme (Dark) */
+/* Midnight Theme (Dark) - Light Frosted Glass (Lighter & Richer) */
 [data-theme="midnight"] {
-  --background: #0f172a;
-  /* slate-900 */
-  --foreground: #f8fafc;
-  /* slate-50 */
+  /* Light Gradient Background - Slate-500 to Slate-600 */
+  --background: linear-gradient(135deg, #64748b 0%, #475569 50%, #334155 100%);
+  --foreground: #ffffff;
 
-  --theme-primary: #818cf8;
-  /* indigo-400 */
-  --theme-primary-light: #1e293b;
-  /* slate-800 */
-  --theme-secondary: #c084fc;
-  /* purple-400 */
-  --theme-accent: #38bdf8;
-  /* sky-400 */
-  --theme-gradient-from: #6366f1;
-  /* indigo-500 */
-  --theme-gradient-to: #a855f7;
-  /* purple-500 */
-  --theme-badge-bg: #1e293b;
-  /* slate-800 */
-  --theme-badge-text: #818cf8;
-  /* indigo-400 */
-  /* Page backgrounds - deep dark */
-  --theme-page-bg: #020617;
-  /* slate-950 */
-  --theme-header-bg: #0f172a;
-  /* slate-900 */
+  --theme-primary: #a5b4fc;
+  --theme-primary-light: rgba(255, 255, 255, 0.15);
+  --theme-secondary: #d8b4fe;
+  --theme-accent: #7dd3fc;
+
+  --theme-gradient-from: #a5b4fc;
+  --theme-gradient-to: #d8b4fe;
+
+  --theme-badge-bg: rgba(255, 255, 255, 0.2);
+  --theme-badge-text: #ffffff;
+
+  /* Glass Page Background */
+  --theme-page-bg: rgba(0, 0, 0, 0.1);
+  --theme-header-bg: rgba(255, 255, 255, 0.1);
 }
 
-/* slate-900 */
+/* Base Body Background — Deeper & Richer */
+[data-theme="midnight"] body {
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 5%, rgba(99, 102, 241, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 85% 85%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(56, 189, 248, 0.04) 0%, transparent 60%),
+    linear-gradient(160deg, #1e293b 0%, #0f172a 35%, #020617 100%) !important;
+  background-attachment: fixed !important;
+  min-height: 100vh;
 }
 
-/* Force override for Midnight theme compatibility without rewriting all components */
-[data-theme="midnight"] .bg-white {
-  background-color: #1e293b !important;
-  /* slate-800 */
-  color: #f8fafc !important;
-  /* slate-50 */
+/* Shimmer animation for premium card edges */
+@keyframes midnight-shimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
+/* ============================================
+   Midnight Theme — Frosted Glass Dark Mode
+   ============================================ */
+
+/* --- 1. Frosted Glass Cards (bg-white + high-opacity variants) --- */
+[data-theme="midnight"] .bg-white,
+[data-theme="midnight"] .bg-white\/50,
+[data-theme="midnight"] .bg-white\/60,
+[data-theme="midnight"] .bg-white\/70,
+[data-theme="midnight"] .bg-white\/80,
+[data-theme="midnight"] .bg-white\/90,
+[data-theme="midnight"] .bg-white\/95 {
+  background:
+    linear-gradient(170deg, rgba(51, 65, 85, 0.25) 0%, rgba(30, 41, 59, 0) 40%),
+    linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.88) 50%, rgba(22, 30, 50, 0.92) 100%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%) brightness(1.05) !important;
+  backdrop-filter: blur(20px) saturate(150%) brightness(1.05) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  border-top: 1px solid rgba(165, 180, 252, 0.25) !important;
+  border-left: 1px solid rgba(165, 180, 252, 0.16) !important;
+  box-shadow:
+    0 10px 40px -5px rgba(0, 0, 0, 0.5),
+    0 4px 16px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(148, 163, 184, 0.07),
+    0 0 60px -20px rgba(99, 102, 241, 0.06),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 40px 0 rgba(99, 102, 241, 0.02) !important;
+  transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease !important;
+}
+
+/* Hover glow for interactive cards */
+[data-theme="midnight"] .bg-white:hover,
+[data-theme="midnight"] .bg-white\/80:hover,
+[data-theme="midnight"] .bg-white\/90:hover,
+[data-theme="midnight"] .bg-white\/95:hover {
+  border-top-color: rgba(165, 180, 252, 0.35) !important;
+  border-left-color: rgba(165, 180, 252, 0.22) !important;
+  transform: translateY(-1px) !important;
+  box-shadow:
+    0 16px 56px -8px rgba(0, 0, 0, 0.55),
+    0 6px 20px -4px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(165, 180, 252, 0.12),
+    0 0 50px -10px rgba(99, 102, 241, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 60px 0 rgba(99, 102, 241, 0.04) !important;
+}
+
+/* --- 2. Inset/Secondary areas (bg-gray-50/100 + opacity variants) --- */
 [data-theme="midnight"] .bg-gray-50,
-[data-theme="midnight"] .bg-gray-100 {
-  background-color: #0f172a !important;
-  /* slate-900 */
-  color: #f8fafc !important;
+[data-theme="midnight"] .bg-gray-100,
+[data-theme="midnight"] .bg-gray-50\/30,
+[data-theme="midnight"] .bg-gray-50\/50,
+[data-theme="midnight"] .bg-gray-50\/80,
+[data-theme="midnight"] .bg-gray-100\/80 {
+  background:
+    linear-gradient(170deg, rgba(51, 65, 85, 0.12) 0%, rgba(15, 23, 42, 0) 50%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.6) 0%, rgba(10, 15, 30, 0.55) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.08) !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.1) !important;
+  box-shadow:
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0 20px 0 rgba(0, 0, 0, 0.1) !important;
 }
 
+[data-theme="midnight"] .bg-gray-200,
+[data-theme="midnight"] .bg-gray-200\/50 {
+  background:
+    linear-gradient(170deg, rgba(51, 65, 85, 0.15) 0%, rgba(15, 23, 42, 0) 50%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.78) 0%, rgba(10, 15, 30, 0.72) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.06) !important;
+  box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.25) !important;
+}
+
+/* --- 3. Text Hierarchy (graduated brightness, NOT all white) --- */
 [data-theme="midnight"] .text-gray-900,
-[data-theme="midnight"] .text-gray-800,
+[data-theme="midnight"] .text-gray-800 {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
 [data-theme="midnight"] .text-gray-700 {
-  color: #f1f5f9 !important;
-  /* slate-100 */
+  color: #f1f5f9 !important;  /* slate-100 */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
-[data-theme="midnight"] .text-gray-600,
-[data-theme="midnight"] .text-gray-500,
+[data-theme="midnight"] .text-gray-600 {
+  color: #e2e8f0 !important;  /* slate-200 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="midnight"] .text-gray-500 {
+  color: #cbd5e1 !important;  /* slate-300 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
 [data-theme="midnight"] .text-gray-400 {
-  color: #94a3b8 !important;
-  /* slate-400 */
+  color: #94a3b8 !important;  /* slate-400 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
+[data-theme="midnight"] .text-gray-300 {
+  color: #94a3b8 !important;  /* slate-400 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* --- 4. Borders (all gray shades + border-gray-50) --- */
+[data-theme="midnight"] .border-gray-50,
 [data-theme="midnight"] .border-gray-100,
 [data-theme="midnight"] .border-gray-200,
 [data-theme="midnight"] .border-gray-300 {
-  border-color: #334155 !important;
-  /* slate-700 */
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-[data-theme="midnight"] .shadow-sm,
+[data-theme="midnight"] [class*="border-white"],
+[data-theme="midnight"] .border-transparent {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="midnight"] .border-indigo-100 {
+  border-color: rgba(165, 180, 252, 0.25) !important;
+}
+
+/* --- 5. Shadows (layered depth) --- */
+[data-theme="midnight"] .shadow-sm {
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.45),
+    0 1px 3px -1px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(148, 163, 184, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
 [data-theme="midnight"] .shadow-md {
-  box-shadow: none !important;
-  /* Remove shadows in dark mode or make them subtle */
+  box-shadow:
+    0 8px 28px -6px rgba(0, 0, 0, 0.55),
+    0 3px 10px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(148, 163, 184, 0.07),
+    0 0 40px -15px rgba(99, 102, 241, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+[data-theme="midnight"] .shadow-lg {
+  box-shadow:
+    0 14px 52px -10px rgba(0, 0, 0, 0.65),
+    0 5px 18px -4px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(148, 163, 184, 0.08),
+    0 0 70px -18px rgba(99, 102, 241, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 30px rgba(99, 102, 241, 0.02) !important;
+}
+[data-theme="midnight"] .shadow-xl {
+  box-shadow:
+    0 22px 70px -14px rgba(0, 0, 0, 0.75),
+    0 8px 28px -6px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(148, 163, 184, 0.1),
+    0 0 90px -22px rgba(99, 102, 241, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 40px rgba(99, 102, 241, 0.03) !important;
+}
+
+/* --- 6. Dividers --- */
+[data-theme="midnight"] .divide-gray-50 > :not(:first-child),
+[data-theme="midnight"] .divide-gray-100 > :not(:first-child) {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* --- 7. Hover states --- */
+[data-theme="midnight"] .hover\:bg-gray-50:hover,
+[data-theme="midnight"] .hover\:bg-gray-100:hover,
+[data-theme="midnight"] .hover\:bg-gray-200:hover,
+[data-theme="midnight"] .hover\:bg-gray-200\/50:hover,
+[data-theme="midnight"] .hover\:bg-white:hover {
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(99, 102, 241, 0.08) 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(165, 180, 252, 0.22) !important;
+  box-shadow:
+    inset 0 0 30px rgba(99, 102, 241, 0.06),
+    0 4px 16px -4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Group-hover states */
+[data-theme="midnight"] .group-hover\/item\:text-indigo-600 {
+  color: #a5b4fc !important;
+}
+
+/* --- 8. Semantic Color Badges: Success (green) --- */
+[data-theme="midnight"] .bg-green-50,
+[data-theme="midnight"] .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+}
+[data-theme="midnight"] .text-green-700,
+[data-theme="midnight"] .text-green-600,
+[data-theme="midnight"] .text-green-500 {
+  color: #6ee7b7 !important;
+}
+[data-theme="midnight"] .border-green-200,
+[data-theme="midnight"] .border-green-100 {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* --- 8b. Blue/Indigo text in dark mode --- */
+[data-theme="midnight"] .text-indigo-600 {
+  color: #a5b4fc !important;
+}
+
+/* --- 9. Semantic Color Badges: Error (red) --- */
+[data-theme="midnight"] .bg-red-50,
+[data-theme="midnight"] [class*="bg-red-50\/"] {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+}
+[data-theme="midnight"] .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.25) !important;
+  color: #fca5a5 !important;
+}
+[data-theme="midnight"] .text-red-600,
+[data-theme="midnight"] .text-red-500,
+[data-theme="midnight"] .text-red-700 {
+  color: #fca5a5 !important;
+}
+[data-theme="midnight"] .border-red-100,
+[data-theme="midnight"] .border-red-200 {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* --- 10. Semantic Color Badges: Medal/Rank (yellow/orange/amber) --- */
+[data-theme="midnight"] .bg-yellow-50 {
+  background-color: rgba(234, 179, 8, 0.1) !important;
+}
+[data-theme="midnight"] .bg-yellow-100 {
+  background-color: rgba(234, 179, 8, 0.2) !important;
+  color: #fde68a !important;
+}
+[data-theme="midnight"] .text-yellow-700 {
+  color: #fde68a !important;
+}
+
+[data-theme="midnight"] .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.2) !important;
+  color: #fdba74 !important;
+}
+[data-theme="midnight"] .text-orange-800 {
+  color: #fdba74 !important;
+}
+
+[data-theme="midnight"] .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+[data-theme="midnight"] .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #fcd34d !important;
+}
+
+/* --- 11. Rank number badges (now styled via inline styles in component) --- */
+
+/* --- 11b. Rank ROW full-width backgrounds (all themes) --- */
+.rank-row-1 {
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.18) 0%, rgba(234, 179, 8, 0.08) 70%, transparent 100%) !important;
+}
+.rank-row-2 {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.15) 0%, rgba(148, 163, 184, 0.06) 70%, transparent 100%) !important;
+}
+.rank-row-3 {
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.06) 70%, transparent 100%) !important;
+}
+
+/* Midnight: stronger row tinting */
+[data-theme="midnight"] .rank-row-1 {
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.25) 0%, rgba(234, 179, 8, 0.12) 70%, transparent 100%) !important;
+}
+[data-theme="midnight"] .rank-row-2 {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.20) 0%, rgba(148, 163, 184, 0.08) 70%, transparent 100%) !important;
+}
+[data-theme="midnight"] .rank-row-3 {
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.22) 0%, rgba(249, 115, 22, 0.10) 70%, transparent 100%) !important;
+}
+
+/* --- 12. Chart bars (gray gradient bars for non-top-3) --- */
+[data-theme="midnight"] .bg-emerald-400,
+[data-theme="midnight"] .bg-green-400 {
+  background-color: #10b981 !important;
+}
+
+/* --- 13. Progress ring track --- */
+[data-theme="midnight"] .text-gray-100 {
+  color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* --- 14. Buttons --- */
+[data-theme="midnight"] button {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Primary buttons (theme-primary bg) — use vivid saturated indigo, not pastel */
+[data-theme="midnight"] .midnight-vivid-btn,
+[data-theme="midnight"] button[class*="bg-[var(--theme-primary)"],
+[data-theme="midnight"] a[class*="bg-[var(--theme-primary)"] {
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(165, 180, 252, 0.3) !important;
+  box-shadow:
+    0 4px 20px -3px rgba(99, 102, 241, 0.5),
+    0 0 0 1px rgba(99, 102, 241, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="midnight"] .midnight-vivid-btn:hover,
+[data-theme="midnight"] button[class*="bg-[var(--theme-primary)"]:hover,
+[data-theme="midnight"] a[class*="bg-[var(--theme-primary)"]:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%) !important;
+  box-shadow:
+    0 6px 28px -3px rgba(99, 102, 241, 0.6),
+    0 0 50px -10px rgba(124, 58, 237, 0.3),
+    0 0 0 1px rgba(165, 180, 252, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Enhance indigo/blue background buttons with glow */
+[data-theme="midnight"] button[class*="bg-indigo"],
+[data-theme="midnight"] button[class*="bg-blue"] {
+  box-shadow:
+    0 4px 16px -2px rgba(99, 102, 241, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="midnight"] button[class*="bg-indigo"]:hover,
+[data-theme="midnight"] button[class*="bg-blue"]:hover {
+  box-shadow:
+    0 6px 24px -2px rgba(99, 102, 241, 0.5),
+    0 0 40px -8px rgba(99, 102, 241, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Teal buttons (Sign In) */
+[data-theme="midnight"] button[class*="bg-teal"],
+[data-theme="midnight"] a[class*="bg-teal"] {
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%) !important;
+  box-shadow:
+    0 4px 20px -3px rgba(20, 184, 166, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Ghost / outline buttons (bg-white on buttons = glass pill) */
+[data-theme="midnight"] button.bg-white,
+[data-theme="midnight"] button[class*="bg-white"] {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%) !important;
+  border: 1px solid rgba(165, 180, 252, 0.3) !important;
+  color: #c7d2fe !important;
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+}
+[data-theme="midnight"] button.bg-white:hover,
+[data-theme="midnight"] button[class*="bg-white"]:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.18) 100%) !important;
+  border-color: rgba(165, 180, 252, 0.45) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 4px 16px -3px rgba(99, 102, 241, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* --- 15. Input fields --- */
+[data-theme="midnight"] input,
+[data-theme="midnight"] select,
+[data-theme="midnight"] textarea {
+  background: linear-gradient(180deg, rgba(10, 15, 30, 0.7) 0%, rgba(15, 23, 42, 0.6) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="midnight"] input:focus,
+[data-theme="midnight"] select:focus,
+[data-theme="midnight"] textarea:focus {
+  border-color: rgba(165, 180, 252, 0.4) !important;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+[data-theme="midnight"] input::placeholder,
+[data-theme="midnight"] textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* --- 16. Ring colors for focus states --- */
+[data-theme="midnight"] .ring-gray-300 {
+  --tw-ring-color: rgba(255, 255, 255, 0.2) !important;
+}
+[data-theme="midnight"] .ring-black {
+  --tw-ring-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* --- 17. Table header backgrounds (sticky) --- */
+[data-theme="midnight"] thead,
+[data-theme="midnight"] thead th {
+  background:
+    linear-gradient(170deg, rgba(51, 65, 85, 0.15) 0%, rgba(22, 30, 50, 0) 40%),
+    linear-gradient(180deg, rgba(22, 30, 50, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(148, 163, 184, 0.1) !important;
+  box-shadow:
+    0 1px 0 rgba(148, 163, 184, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+/* --- 18. Indigo backgrounds (setup page etc.) --- */
+[data-theme="midnight"] .bg-indigo-50 {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* --- 19. Slate backgrounds (already dark — keep) --- */
+[data-theme="midnight"] .bg-slate-900,
+[data-theme="midnight"] .bg-slate-950 {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+/* --- 20. Motivation Banner (Keep Stepping panel) --- */
+[data-theme="midnight"] .motivation-panel {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(165, 180, 252, 0.22) !important;
+  border-left: 1px solid rgba(165, 180, 252, 0.15) !important;
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(165, 180, 252, 0.08),
+    inset 0 0 100px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Deeper, richer overlay gradient for midnight */
+[data-theme="midnight"] .motivation-overlay {
+  background: linear-gradient(135deg,
+    rgba(30, 27, 75, 0.92) 0%,
+    rgba(55, 48, 107, 0.88) 30%,
+    rgba(88, 28, 135, 0.82) 60%,
+    rgba(67, 56, 202, 0.78) 100%
+  ) !important;
+}
+
+/* Profile button — bright and visible on dark banner */
+[data-theme="midnight"] .motivation-btn-primary {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #4338ca !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(165, 180, 252, 0.2) !important;
+  text-shadow: none !important;
+}
+[data-theme="midnight"] .motivation-btn-primary:hover {
+  background: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(165, 180, 252, 0.3) !important;
+}
+
+/* Groups button — glass effect on dark banner */
+[data-theme="midnight"] .motivation-btn-secondary {
+  background: rgba(165, 180, 252, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+}
+[data-theme="midnight"] .motivation-btn-secondary:hover {
+  background: rgba(165, 180, 252, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* --- 21. TopUsersChart bar gradients (non-top-3) --- */
+[data-theme="midnight"] [class*="from-gray-300"] {
+  --tw-gradient-from: rgba(148, 163, 184, 0.4) !important;
+}
+[data-theme="midnight"] [class*="to-gray-100"] {
+  --tw-gradient-to: rgba(148, 163, 184, 0.15) !important;
+}
+[data-theme="midnight"] [class*="from-gray-100"] {
+  --tw-gradient-from: rgba(148, 163, 184, 0.15) !important;
 }
 
 @theme inline {
