@@ -12,8 +12,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { auth } from "@/lib/auth";
-import LanguageSyncer from "@/components/LanguageSyncer";
-
+import LanguageSyncer from "@/components/LanguageSyncer";import FloatingEmojis from '@/components/FloatingEmojis';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -53,6 +52,7 @@ export default async function LocaleLayout({
                 </Suspense>
 
                 <LanguageSyncer user={session?.user as any} />
+                <FloatingEmojis />
                 {children}
               </ThemeProvider>
             </ToastProvider>
