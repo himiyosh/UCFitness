@@ -7,34 +7,60 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-// ファビコン生成 — ⚡ 稲妻ボルトデザイン（32×32に最適化）
+// ファビコン生成 — Landing Pageアイコン再現（レインボーボーダー＋稲妻ストローク）
 export default function Icon() {
     return new ImageResponse(
         (
             <div
                 style={{
-                    width: '100%',
-                    height: '100%',
+                    width: '32px',
+                    height: '32px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
-                    borderRadius: '22%',
                     position: 'relative',
                 }}
             >
-                {/* ⚡ 稲妻ボルト — viewBoxでスケール */}
-                <svg
-                    viewBox="0 0 512 512"
-                    width="32"
-                    height="32"
-                    style={{ position: 'absolute', top: 0, left: 0 }}
+                {/* レインボーボーダー背景 */}
+                <div
+                    style={{
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #4F46E5 75%, #FF85A2 100%)',
+                        borderRadius: '8px',
+                        transform: 'rotate(12deg)',
+                    }}
                 >
-                    <polygon
-                        points="290,60 178,258 254,258 192,452 334,238 258,238"
-                        fill="white"
-                    />
-                </svg>
+                    {/* Indigo 内側背景 */}
+                    <div
+                        style={{
+                            width: '26px',
+                            height: '26px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: '#4F46E5',
+                            borderRadius: '6px',
+                        }}
+                    >
+                        {/* ⚡ 稲妻ボルト — ストロークスタイル */}
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                </div>
             </div>
         ),
         {
