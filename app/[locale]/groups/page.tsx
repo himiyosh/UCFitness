@@ -105,16 +105,16 @@ export default async function MyGroupsPage() {
     };
 
     return (
-        <main className="min-h-screen bg-gray-50">
+        <main className="min-h-screen bg-[var(--theme-page-bg)]">
             {/* Header */}
-            <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
+            <header className="bg-white/80 backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
+                            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity">
                                 {dashboardT('title')}
                             </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
                                 {dashboardT('beta')}
                             </span>
                         </Link>
@@ -155,7 +155,7 @@ export default async function MyGroupsPage() {
                         <div className="flex items-center mb-4">
                             <h2 className="text-lg font-bold text-gray-900">{t('joinOrCreate')}</h2>
                         </div>
-                        <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
+                        <div className="bg-[var(--theme-primary-light)] rounded-xl p-6 border border-[var(--theme-primary)]/20">
                             <div className="w-full">
                                 <GroupSettings />
                             </div>

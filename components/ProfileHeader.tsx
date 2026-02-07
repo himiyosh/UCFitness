@@ -40,7 +40,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8">
                 {/* Banner */}
                 <div
-                    className={`h-16 sm:h-24 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url && 'bg-indigo-600'}`}
+                    className={`h-24 sm:h-32 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url && 'bg-[var(--theme-primary)]'}`}
                     style={user.banner_url ? { backgroundImage: `url(${user.banner_url})` } : {}}
                 >
                 </div>
@@ -56,7 +56,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                                 <img className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
                             </div>
                         ) : (
-                            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-indigo-100 flex items-center justify-center text-2xl sm:text-3xl font-bold text-indigo-600">
+                            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-[var(--theme-primary-light)] flex items-center justify-center text-2xl sm:text-3xl font-bold text-[var(--theme-primary)]">
                                 {(user.name?.[0] || 'U')}
                             </div>
                         )}
@@ -66,13 +66,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                         <h1 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h1>
                         <p className="text-xs sm:text-sm text-gray-500">@{user.username || 'user'}</p>
 
-                        {user.group_keyword && (
-                            <div className="mt-2">
-                                <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-indigo-700">
-                                    Group: {Array.isArray(user.group_keyword) ? user.group_keyword.join(', ') : user.group_keyword}
-                                </span>
-                            </div>
-                        )}
+
                     </div>
                 </div>
             </div>

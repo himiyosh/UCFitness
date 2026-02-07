@@ -67,7 +67,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             ) : (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="text-indigo-600 font-medium text-sm hover:underline"
+                    className="text-[var(--theme-primary)] font-medium text-sm hover:underline"
                 >
                     Change Banner
                 </button>
@@ -98,8 +98,8 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         file:mr-4 file:py-2 file:px-4
                                         file:rounded-md file:border-0
                                         file:text-sm file:font-semibold
-                                        file:bg-indigo-50 file:text-indigo-700
-                                        hover:file:bg-indigo-100"
+                                        file:bg-[var(--theme-primary-light)] file:text-[var(--theme-primary)]
+                                        hover:file:bg-[var(--theme-primary-light)]"
                                 />
                                 <p className="text-xs text-gray-400 mt-1">Recommended size: 1200x300px (approx 4:1 ratio)</p>
                             </div>
@@ -131,7 +131,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                 <button
                                     onClick={handleSave}
                                     disabled={isLoading || !file}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isLoading ? 'Saving...' : 'Save Banner'}
                                 </button>

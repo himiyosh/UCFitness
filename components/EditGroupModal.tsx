@@ -135,7 +135,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-900"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-[var(--theme-primary)] outline-none text-gray-900"
                                 required
                             />
                         </div>
@@ -143,7 +143,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                         {/* Header Image Input */}
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">Header Image</label>
-                            <div className="relative h-32 w-full rounded-xl bg-gray-100 overflow-hidden border border-dashed border-gray-300 group cursor-pointer hover:border-indigo-500 transition-colors">
+                            <div className="relative h-32 w-full rounded-xl bg-gray-100 overflow-hidden border border-dashed border-gray-300 group cursor-pointer hover:border-[var(--theme-primary)] transition-colors">
                                 {headerPreview ? (
                                     <img src={headerPreview} alt="Header Preview" className="h-full w-full object-cover" />
                                 ) : (
@@ -172,7 +172,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                             <button
                                 type="button"
                                 onClick={() => setIsPublic(!isPublic)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${isPublic ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2 ${isPublic ? 'bg-[var(--theme-primary)]' : 'bg-gray-200'}`}
                                 role="switch"
                                 aria-checked={isPublic}
                             >
@@ -187,7 +187,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">Group Icon</label>
                             <div className="flex items-center gap-4">
-                                <div className="relative h-20 w-20 rounded-xl bg-indigo-100 overflow-hidden border border-dashed border-gray-300 group cursor-pointer hover:border-indigo-500 transition-colors flex-shrink-0">
+                                <div className="relative h-20 w-20 rounded-xl bg-[var(--theme-primary-light)] overflow-hidden border border-dashed border-gray-300 group cursor-pointer hover:border-[var(--theme-primary)] transition-colors flex-shrink-0">
                                     {iconPreview ? (
                                         <img src={iconPreview} alt="Icon Preview" className="h-full w-full object-cover" />
                                     ) : (
@@ -226,7 +226,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 text-sm font-medium text-white bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? (
                                 <>

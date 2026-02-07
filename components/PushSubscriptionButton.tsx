@@ -124,7 +124,7 @@ export default function PushSubscriptionButton() {
                 <button
                     onClick={subscribeToPush}
                     disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--theme-primary)] text-white rounded-lg text-sm font-medium hover:bg-[var(--theme-primary)]/90 transition-colors disabled:opacity-50"
                 >
                     {loading && (
                         <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

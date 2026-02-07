@@ -254,7 +254,7 @@ export default function GroupMembersPanel({
                     {isOwner && (
                         <button
                             onClick={() => setIsInviteOpen(!isInviteOpen)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isInviteOpen ? 'bg-indigo-600 text-white' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100'}`}
+                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isInviteOpen ? 'bg-[var(--theme-primary)] text-white' : 'text-[var(--theme-primary)] bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20'}`}
                         >
                             {isInviteOpen ? 'Close' : 'Invite'}
                         </button>
@@ -270,26 +270,26 @@ export default function GroupMembersPanel({
 
             {/* Invite Panel */}
             {isInviteOpen && (
-                <div className="p-4 bg-indigo-50 border-b border-indigo-100 animate-fade-in">
-                    <p className="text-sm text-indigo-900 mb-2 font-bold">Invite New Member</p>
+                <div className="p-4 bg-[var(--theme-primary-light)] border-b border-[var(--theme-primary)]/20 animate-fade-in">
+                    <p className="text-sm text-[var(--theme-primary)] mb-2 font-bold">Invite New Member</p>
                     <div className="relative">
                         <input
                             type="text"
                             placeholder="Search by ID, Username, or Email..."
                             value={searchQuery}
                             onChange={(e) => handleSearch(e.target.value)}
-                            className="w-full pl-4 pr-4 py-2 text-sm text-gray-900 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                            className="w-full pl-4 pr-4 py-2 text-sm text-gray-900 border border-[var(--theme-primary)]/30 rounded-lg focus:ring-2 focus:ring-[var(--theme-primary)] outline-none bg-white"
                         />
                         {isSearching && (
                             <div className="absolute right-3 top-2.5">
-                                <svg className="animate-spin h-4 w-4 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <svg className="animate-spin h-4 w-4 text-[var(--theme-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             </div>
                         )}
                     </div>
 
                     {/* Results */}
                     {searchResults.length > 0 && (
-                        <div className="mt-3 bg-white rounded-lg border border-indigo-100 shadow-sm max-h-48 overflow-y-auto">
+                        <div className="mt-3 bg-white rounded-lg border border-[var(--theme-primary)]/20 shadow-sm max-h-48 overflow-y-auto">
                             {searchResults.map(user => (
                                 <div key={user.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
                                     <div className="flex items-center gap-3">
@@ -310,7 +310,7 @@ export default function GroupMembersPanel({
                                     <button
                                         onClick={() => handleInvite(user.id)}
                                         disabled={!!isProcessing}
-                                        className="text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                        className="text-xs font-bold text-white bg-[var(--theme-primary)] px-3 py-1.5 rounded hover:bg-[var(--theme-primary)]/90 transition-colors disabled:opacity-50"
                                     >
                                         {isProcessing === user.id ? 'Adding...' : 'Add'}
                                     </button>
@@ -319,7 +319,7 @@ export default function GroupMembersPanel({
                         </div>
                     )}
                     {searchQuery.length >= 3 && searchResults.length === 0 && !isSearching && (
-                        <p className="text-xs text-indigo-400 mt-2">No users found.</p>
+                        <p className="text-xs text-[var(--theme-primary)]/70 mt-2">No users found.</p>
                     )}
                 </div>
             )}
@@ -348,10 +348,10 @@ export default function GroupMembersPanel({
                             </div>
 
                             <div className="min-w-0">
-                                <Link href={`/user/${member.users.username}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors truncate block flex items-center gap-2">
+                                <Link href={`/user/${member.users.username}`} className="text-sm font-medium text-gray-900 hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2">
                                     <span>{member.users.name || 'Unknown User'}</span>
                                     {member.user_id === currentUserId && (
-                                        <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 shrink-0">YOU</span>
+                                        <span className="text-[10px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">YOU</span>
                                     )}
                                 </Link>
                                 <p className="text-xs text-gray-500 truncate">
@@ -398,7 +398,7 @@ export default function GroupMembersPanel({
                                             <button
                                                 onClick={() => handleTransferOwnership(member.user_id, member.users.name || 'this user')}
                                                 disabled={!!isProcessing}
-                                                className="text-xs text-indigo-600 hover:text-indigo-800 font-bold px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors border border-indigo-100 whitespace-nowrap"
+                                                className="text-xs text-[var(--theme-primary)] hover:text-[var(--theme-primary)] font-bold px-3 py-1.5 rounded-lg bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] transition-colors border border-[var(--theme-primary)]/20 whitespace-nowrap"
                                             >
                                                 Make Owner
                                             </button>

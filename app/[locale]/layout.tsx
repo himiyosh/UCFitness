@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "../globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import SplashScreen from "@/components/SplashScreen";
 import GlobalLoader from "@/components/GlobalLoader";
 
@@ -45,13 +46,15 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <ToastProvider>
-              <SplashScreen />
-              <Suspense fallback={null}>
-                <GlobalLoader />
-              </Suspense>
+              <ThemeProvider>
+                <SplashScreen />
+                <Suspense fallback={null}>
+                  <GlobalLoader />
+                </Suspense>
 
-              <LanguageSyncer user={session?.user as any} />
-              {children}
+                <LanguageSyncer user={session?.user as any} />
+                {children}
+              </ThemeProvider>
             </ToastProvider>
           </AuthProvider>
         </NextIntlClientProvider>

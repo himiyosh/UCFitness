@@ -50,7 +50,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                     id="name"
                     required
                     maxLength={50}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Display Name"
@@ -58,7 +58,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                 <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 whitespace-nowrap"
+                    className="rounded-md bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--theme-primary)] disabled:opacity-50 whitespace-nowrap"
                 >
                     Save
                 </button>

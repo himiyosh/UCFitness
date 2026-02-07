@@ -1,8 +1,57 @@
 @import "tailwindcss";
 
+/* ==== THEME SYSTEM ==== */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Classic Theme (Default) - シンプルなindigo/purpleベース */
+  --theme-primary: #4F46E5;
+  /* indigo-600 */
+  --theme-primary-light: #EEF2FF;
+  /* indigo-50 */
+  --theme-secondary: #9333EA;
+  /* purple-600 */
+  --theme-accent: #4F46E5;
+  /* indigo-600 */
+  --theme-gradient-from: #4F46E5;
+  --theme-gradient-to: #9333EA;
+  --theme-badge-bg: #EEF2FF;
+  --theme-badge-text: #4F46E5;
+  /* Page backgrounds - subtle */
+  --theme-page-bg: #FAFAFF;
+  /* very light indigo - almost white */
+  --theme-header-bg: #EEF2FF;
+  /* indigo-50 - stronger for header */
+
+  /* Pop & Fun Colors (available for both themes) */
+  --accent-coral: #FF6B6B;
+  --accent-turquoise: #4ECDC4;
+  --accent-lime: #95E500;
+  --accent-pink: #FF85A2;
+  --accent-yellow: #FFE66D;
+  --accent-purple: #A855F7;
+}
+
+/* Pop & Fun Theme */
+[data-theme="pop"] {
+  --theme-primary: #FF6B6B;
+  /* coral */
+  --theme-primary-light: #FFF5F5;
+  /* light coral */
+  --theme-secondary: #FF85A2;
+  /* pink */
+  --theme-accent: #4ECDC4;
+  /* turquoise */
+  --theme-gradient-from: #FF6B6B;
+  --theme-gradient-to: #A855F7;
+  --theme-badge-bg: linear-gradient(to right, #FFE66D, #FF6B6B);
+  --theme-badge-text: #ffffff;
+  /* Page backgrounds - subtle */
+  --theme-page-bg: #FFFAFA;
+  /* very light coral - almost white */
+  --theme-header-bg: #FFF5F5;
+  /* light coral - stronger for header */
 }
 
 @theme inline {
@@ -10,6 +59,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Accent Colors for Tailwind */
+  --color-coral: var(--accent-coral);
+  --color-turquoise: var(--accent-turquoise);
+  --color-lime: var(--accent-lime);
+  --color-pink: var(--accent-pink);
+  --color-yellow: var(--accent-yellow);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -134,4 +189,148 @@ body {
 
 .animate-speed-lines {
   animation: speedLines 0.5s linear infinite;
+}
+
+/* 🎨 Pop & Fun Animations */
+
+/* Button bounce on hover */
+@keyframes bounceHover {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.animate-bounce-hover:hover {
+  animation: bounceHover 0.4s ease-in-out;
+}
+
+/* Pop animation for elements */
+@keyframes popIn {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pop-in {
+  animation: popIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+/* Rainbow shimmer effect */
+@keyframes rainbowShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-rainbow {
+  background: linear-gradient(90deg, var(--accent-coral), var(--accent-yellow), var(--accent-lime), var(--accent-turquoise), var(--accent-pink), var(--accent-coral));
+  background-size: 300% 100%;
+  animation: rainbowShimmer 3s ease infinite;
+}
+
+/* Confetti animations */
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes confettiSway {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(25px);
+  }
+}
+
+/* Wiggle animation for playful elements */
+@keyframes wiggle {
+
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+.animate-wiggle {
+  animation: wiggle 0.5s ease-in-out infinite;
+}
+
+/* Float animation for background decorations */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 6s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* Celebrate pulse for achievements */
+@keyframes celebratePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 20px rgba(255, 107, 107, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+  }
+}
+
+.animate-celebrate {
+  animation: celebratePulse 1.5s infinite;
 }

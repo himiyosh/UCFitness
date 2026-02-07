@@ -83,7 +83,7 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
             ) : (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-200 text-gray-500 hover:text-indigo-600 transition-colors"
+                    className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-200 text-gray-500 hover:text-[var(--theme-primary)] transition-colors"
                     title="Change Profile Image"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -118,8 +118,8 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                                         file:mr-4 file:py-2 file:px-4
                                         file:rounded-md file:border-0
                                         file:text-sm file:font-semibold
-                                        file:bg-indigo-50 file:text-indigo-700
-                                        hover:file:bg-indigo-100"
+                                        file:bg-[var(--theme-primary-light)] file:text-[var(--theme-primary)]
+                                        hover:file:bg-[var(--theme-primary-light)]"
                                 />
                             </div>
 
@@ -140,7 +140,7 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                                 <button
                                     onClick={handleSave}
                                     disabled={isLoading || !file}
-                                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isLoading ? 'Saving...' : 'Save & Close'}
                                 </button>

@@ -13,7 +13,7 @@ export default function BackButton({ className, children }: BackButtonProps) {
     return (
         <button
             onClick={() => router.back()}
-            className={className || "text-gray-500 hover:text-indigo-600 font-medium flex items-center gap-1 w-fit transition-colors group cursor-pointer"}
+            className={className || "text-gray-500 hover:text-[var(--theme-primary)] font-medium flex items-center gap-1 w-fit transition-colors group cursor-pointer"}
         >
             {children || (
                 <>

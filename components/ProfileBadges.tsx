@@ -53,7 +53,7 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
 
         // Personal Achievements
         { type: 'ACHIEVEMENT', category: 'STREAK', label: 'Best Streak', color: 'text-orange-500' },
-        { type: 'ACHIEVEMENT', category: 'MILESTONE', label: 'Milestone', color: 'text-indigo-500' },
+        { type: 'ACHIEVEMENT', category: 'MILESTONE', label: 'Milestone', color: 'text-[var(--theme-primary)]' },
         { type: 'ACHIEVEMENT', category: 'LIFESTYLE', label: 'Weekend Warrior', color: 'text-teal-500' },
 
         // Titles (Average Daily Steps)
@@ -93,7 +93,7 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
                     </h3>
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                        className="text-xs font-semibold text-[var(--theme-primary)] hover:text-[var(--theme-primary)] transition-colors"
                     >
                         {t('viewAll')} ({bestBadges.length})
                     </button>
@@ -163,9 +163,9 @@ function BadgeSlot({ slot, t }: { slot: any, t: any }) {
                 relative flex flex-col items-center justify-between p-2 rounded-lg border 
                 transition-all duration-300 cursor-pointer touch-manipulation h-32
                 ${hasBadge
-                    ? 'bg-white border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow-md'
+                    ? 'bg-white border-gray-200 shadow-sm hover:border-[var(--theme-primary)]/50 hover:shadow-md'
                     : 'bg-gray-50 border-gray-100 opacity-60 grayscale hover:opacity-100'}
-                ${hovered ? 'z-[60] border-indigo-300 shadow-md opacity-100 grayscale-0' : ''}
+                ${hovered ? 'z-[60] border-[var(--theme-primary)]/50 shadow-md opacity-100 grayscale-0' : ''}
             `}
         >
             {/* Header Label */}

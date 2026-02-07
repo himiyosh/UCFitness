@@ -52,7 +52,7 @@ export default function SplashScreen() {
 
     return (
         <div
-            className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-indigo-600 transition-opacity duration-500 ease-in-out overflow-hidden ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--theme-primary)] transition-opacity duration-500 ease-in-out overflow-hidden ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
             {/* Speed Lines Effect */}
             <div className="absolute inset-0 opacity-10 animate-speed-lines">
@@ -66,7 +66,7 @@ export default function SplashScreen() {
                     <div className="absolute -left-4 top-1/2 w-8 h-1 bg-white/50 rounded blur-sm transform -translate-y-1/2 animate-pulse" />
 
                     <svg
-                        className="w-16 h-16 text-indigo-600 transform -rotate-12"
+                        className="w-16 h-16 text-[var(--theme-primary)] transform -rotate-12"
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
                         fill="currentColor"
@@ -81,7 +81,7 @@ export default function SplashScreen() {
 
                 {/* Progress Bar / Steps */}
                 <div className="mt-8 w-48">
-                    <div className="flex justify-between text-xs font-bold text-indigo-200 mb-1 uppercase tracking-wider">
+                    <div className="flex justify-between text-xs font-bold text-[var(--theme-primary)]/40 mb-1 uppercase tracking-wider">
                         <span>Loading Steps...</span>
                         <span>{progress}%</span>
                     </div>

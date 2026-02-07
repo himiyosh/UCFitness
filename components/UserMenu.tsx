@@ -39,7 +39,7 @@ export default function UserMenu({ user }: UserMenuProps) {
             <div>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="relative flex flex-shrink-0 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    className="relative flex flex-shrink-0 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2"
                     id="user-menu-button"
                     aria-expanded={isOpen}
                     aria-haspopup="true"
@@ -52,7 +52,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                             alt=""
                         />
                     ) : (
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm border border-indigo-200">
+                        <div className="h-10 w-10 rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center text-[var(--theme-primary)] font-bold text-sm border border-[var(--theme-primary)]/30">
                             {user.name?.[0] || 'U'}
                         </div>
                     )}
@@ -77,19 +77,19 @@ export default function UserMenu({ user }: UserMenuProps) {
                             <div className="flex-shrink-0">
                                 {user.image ? (
                                     <img
-                                        className="h-10 w-10 rounded-full border border-gray-200 object-cover group-hover:border-indigo-300 transition-colors"
+                                        className="h-10 w-10 rounded-full border border-gray-200 object-cover group-hover:border-[var(--theme-primary)]/50 transition-colors"
                                         src={user.image}
                                         alt=""
                                     />
                                 ) : (
-                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm border border-indigo-200 group-hover:border-indigo-300 transition-colors">
+                                    <div className="h-10 w-10 rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center text-[var(--theme-primary)] font-bold text-sm border border-[var(--theme-primary)]/30 group-hover:border-[var(--theme-primary)]/50 transition-colors">
                                         {user.name?.[0] || 'U'}
                                     </div>
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <span className="block text-xs text-gray-500 mb-0.5 font-medium">{t('signedInAs')}</span>
-                                <p className="text-sm font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                                <p className="text-sm font-bold text-gray-900 truncate group-hover:text-[var(--theme-primary)] transition-colors">
                                     {user.username || user.name || user.email}
                                 </p>
                             </div>
