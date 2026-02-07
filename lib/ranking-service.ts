@@ -566,6 +566,102 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     return result;
 };
 
+// ⚡ Bolt Optimization: Derive group rankings from cached global rankings to avoid expensive DB calls
+export const deriveBatchGroupRankings = async (
+    groupIds: string[],
+    globalRankings: Record<Period, any[]>
+) => {
+    if (groupIds.length === 0) return {};
+
+    // 1. Fetch Members for ALL groups
+    const { data: groupMembers } = await supabase
+        .from('group_members')
+        .select('group_id, user_id')
+        .in('group_id', groupIds);
+
+    if (!groupMembers || groupMembers.length === 0) return {};
+
+    // 2. Build User Stats Map from Global Rankings (In-Memory pivot)
+    // Map<UserId, { user: User, DAILY: number, WEEKLY: number, ... }>
+    const userStats = new Map<string, any>();
+
+    (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
+        const list = globalRankings[period];
+        if (list) {
+            list.forEach((entry: any) => {
+                const userId = entry.users.id;
+                if (!userStats.has(userId)) {
+                    userStats.set(userId, {
+                        users: entry.users,
+                        DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0
+                    });
+                }
+                userStats.get(userId)[period] = entry.steps;
+            });
+        }
+    });
+
+    // 3. Identify Missing Users (who have 0 steps across all periods, so not in global rankings)
+    const uniqueMemberIds = new Set(groupMembers.map(m => m.user_id));
+    const missingUserIds: string[] = [];
+
+    uniqueMemberIds.forEach(uid => {
+        if (!userStats.has(uid)) {
+            missingUserIds.push(uid);
+        }
+    });
+
+    // 4. Fetch Missing Users Profile Data
+    if (missingUserIds.length > 0) {
+        const { data: users } = await supabase
+            .from('users')
+            .select('id, name, image, email, username')
+            .in('id', missingUserIds);
+
+        users?.forEach(u => {
+            userStats.set(u.id, {
+                users: u,
+                DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0
+            });
+        });
+    }
+
+    // 5. Distribute to Groups
+    const result: Record<string, Record<Period, any[]>> = {};
+    groupIds.forEach(gid => {
+        result[gid] = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+    });
+
+    const groupUsersMap = new Map<string, string[]>();
+    groupMembers.forEach(m => {
+        if (!groupUsersMap.has(m.group_id)) {
+            groupUsersMap.set(m.group_id, []);
+        }
+        groupUsersMap.get(m.group_id)?.push(m.user_id);
+    });
+
+    groupIds.forEach(gid => {
+        const memberIds = groupUsersMap.get(gid) || [];
+        const groupEntries: any[] = [];
+
+        memberIds.forEach(uid => {
+            const stats = userStats.get(uid);
+            if (stats) {
+                groupEntries.push(stats);
+            }
+        });
+
+        (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+            result[gid][key] = groupEntries.map(e => ({
+                steps: e[key],
+                users: e.users
+            })).sort((a, b) => b.steps - a.steps);
+        });
+    });
+
+    return result;
+};
+
 export const getCachedGlobalRankings = unstable_cache(
     async () => getAllRankings('GLOBAL'),
     ['global-rankings'],
