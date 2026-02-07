@@ -9,7 +9,7 @@
         </linearGradient>
     </defs>
     <!-- 回転グループ -->
-    <g transform="rotate(12 256 256)">
+    <g>
         <!-- レインボーボーダー -->
         <rect x="16" y="16" width="480" height="480" rx="100" ry="100" fill="url(#rainbow)"/>
         <!-- Indigo 内側 -->
