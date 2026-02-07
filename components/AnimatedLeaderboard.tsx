@@ -136,7 +136,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
         <div className="space-y-6">
             {/* TABS - Moved to top for alignment */}
             <div className="flex justify-center sm:justify-start">
-                <div className={`flex p-1 space-x-1 rounded-lg shadow-sm w-fit overflow-hidden relative ${isMidnight ? '' : 'bg-white/80 backdrop-blur-sm border border-gray-200'}`}
+                <div className={`flex p-1 space-x-1 rounded-lg shadow-sm w-fit overflow-hidden relative ${isMidnight ? '' : 'bg-white border border-gray-200'}`}
                      style={isMidnight ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}>
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;

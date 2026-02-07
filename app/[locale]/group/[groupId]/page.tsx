@@ -72,7 +72,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         return (
             <main className="min-h-screen bg-[var(--theme-page-bg)]">
                 {/* Header */}
-                <header className="bg-white/80 backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
+                <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Link href="/" className="flex items-center gap-2 group">
@@ -146,7 +146,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
             {/* Header */}
-            <header className="bg-white/80 backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
+            <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">

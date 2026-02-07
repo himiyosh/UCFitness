@@ -191,7 +191,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                             disabled={isUpdating || index === 0}
                             className={`cursor-pointer p-1.5 rounded-full transition-colors flex items-center justify-center ${index === 0
                                 ? 'text-[var(--theme-primary)] bg-[var(--theme-primary-light)] cursor-default shadow-sm border border-[var(--theme-primary)]/20'
-                                : 'text-gray-400 bg-white/80 backdrop-blur-sm shadow-sm hover:text-[var(--theme-primary)] hover:bg-white border border-transparent hover:border-[var(--theme-primary)]/20'
+                                : 'text-gray-400 bg-white shadow-sm hover:text-[var(--theme-primary)] hover:bg-white border border-transparent hover:border-[var(--theme-primary)]/20'
                                 }`}
                             title={index === 0 ? t('primaryTooltip') : t('setPrimaryTooltip')}
                         >

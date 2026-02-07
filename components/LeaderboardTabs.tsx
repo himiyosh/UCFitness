@@ -20,7 +20,7 @@ export default function LeaderboardTabs() {
 
     return (
         <div
-            className={`flex p-1 space-x-1 rounded-lg mb-6 w-fit ${theme !== 'midnight' ? 'bg-white/80 backdrop-blur-sm border border-gray-200' : ''}`}
+            className={`flex p-1 space-x-1 rounded-lg mb-6 w-fit ${theme !== 'midnight' ? 'bg-white border border-gray-200' : ''}`}
             style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}
         >
             {tabs.map((tab) => {

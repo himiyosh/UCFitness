@@ -18,8 +18,8 @@
   --theme-gradient-to: #9333EA;
   --theme-badge-bg: #EEF2FF;
   --theme-badge-text: #4F46E5;
-  /* Page backgrounds - transparent (bodyに色をつけ、絵文字はパネル間から透ける) */
-  --theme-page-bg: transparent;
+  /* Page backgrounds */
+  --theme-page-bg: #FAFAFF;
   --theme-header-bg: #EEF2FF;
 
   /* Pop & Fun Colors (available for both themes) */
@@ -45,8 +45,8 @@
   --theme-gradient-to: #A855F7;
   --theme-badge-bg: linear-gradient(to right, #FFE66D, #FF6B6B);
   --theme-badge-text: #ffffff;
-  /* Page backgrounds - transparent (bodyに色をつけ、絵文字はパネル間から透ける) */
-  --theme-page-bg: transparent;
+  /* Page backgrounds */
+  --theme-page-bg: #FFFAFA;
   --theme-header-bg: #FFF5F5;
 }
 
@@ -70,25 +70,6 @@
   /* Glass Page Background */
   --theme-page-bg: rgba(0, 0, 0, 0.1);
   --theme-header-bg: rgba(255, 255, 255, 0.1);
-}
-
-/* Body背景カラー — 絵文字レイヤーの下地 */
-body {
-  background-color: #FAFAFF;
-  isolation: isolate; /* スタッキングコンテキストルート */
-}
-[data-theme="pop"] body {
-  background-color: #FFFAFA;
-}
-
-/* ============================================
-   コンテンツレイヤー: 絵文字より上に配置
-   main/headerをz-index:5でスタッキングコンテキスト化
-   絵文字(z:1)は透明な背景の隨間からのみ見える
-   ============================================ */
-main {
-  position: relative;
-  z-index: 5;
 }
 
 /* Base Body Background — Deeper & Richer */
