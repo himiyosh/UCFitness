@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
         let queryBuilder = supabaseAdmin
             .from('users')
-            .select('id, name, username, image, email')
+            .select('id, name, username, image')
             .limit(10);
 
         if (isUuid) {
