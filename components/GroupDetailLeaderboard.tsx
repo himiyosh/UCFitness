@@ -38,7 +38,7 @@ export default function GroupDetailLeaderboard({
     const allData = rankings[period];
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
-    const ITEMS_PER_PAGE = 10;
+    const ITEMS_PER_PAGE = 5;
     const totalPages = Math.ceil(allData.length / ITEMS_PER_PAGE);
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -46,7 +46,7 @@ export default function GroupDetailLeaderboard({
 
     return (
         <div className="space-y-6">
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[400px] flex flex-col h-full">
+            <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col h-full">
                 <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
@@ -58,6 +58,7 @@ export default function GroupDetailLeaderboard({
                 </div>
 
                 <div className="bg-white px-0 relative flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
+                    {/* 5人 × 72px = 360px 固定高 */}
                     <FadeInWrapper key={`${period}-${currentPage}`}>
                         <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
                             {displayData.length === 0 ? (
