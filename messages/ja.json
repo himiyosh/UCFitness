@@ -106,6 +106,7 @@
     },
     "Profile": {
         "title": "プロフィール",
+        "profile": "プロフィール",
         "quickLinks": "クイックリンク",
         "manageGroups": "グループ管理",
         "editProfile": "プロフィール編集",

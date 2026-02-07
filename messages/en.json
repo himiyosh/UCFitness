@@ -106,6 +106,7 @@
     },
     "Profile": {
         "title": "Profile",
+        "profile": "Profile",
         "quickLinks": "Quick Links",
         "manageGroups": "Manage My Groups",
         "editProfile": "Edit Profile",
