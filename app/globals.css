@@ -52,6 +52,37 @@
   /* very light coral - almost white */
   --theme-header-bg: #FFF5F5;
   /* light coral - stronger for header */
+  /* light coral - stronger for header */
+}
+
+/* Midnight Theme (Dark) */
+[data-theme="midnight"] {
+  --background: #0f172a;
+  /* slate-900 */
+  --foreground: #f8fafc;
+  /* slate-50 */
+
+  --theme-primary: #818cf8;
+  /* indigo-400 */
+  --theme-primary-light: #1e293b;
+  /* slate-800 */
+  --theme-secondary: #c084fc;
+  /* purple-400 */
+  --theme-accent: #38bdf8;
+  /* sky-400 */
+  --theme-gradient-from: #6366f1;
+  /* indigo-500 */
+  --theme-gradient-to: #a855f7;
+  /* purple-500 */
+  --theme-badge-bg: #1e293b;
+  /* slate-800 */
+  --theme-badge-text: #818cf8;
+  /* indigo-400 */
+  /* Page backgrounds - deep dark */
+  --theme-page-bg: #020617;
+  /* slate-950 */
+  --theme-header-bg: #0f172a;
+  /* slate-900 */
 }
 
 @theme inline {
