@@ -930,40 +930,26 @@ body {
 }
 
 /* ============================================
-   12. 絵文字キラキラエフェクト (Emoji Twinkle)
+   12. 絵文字フロートエフェクト (Landing Page統一)
    ============================================ */
 
-/* --- Classic テーマ (デフォルト): 控えめだが視認できる表示 --- */
-@keyframes emojiTwinkle {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.3; }
+/* --- Classic テーマ (デフォルト): Landing Pageと同じopacity-60 --- */
+.emoji-float {
+  opacity: 0.6;
+  filter: grayscale(0.2);
+  transition: filter 0.3s, opacity 0.3s;
 }
 
-.emoji-twinkle {
-  animation: emojiTwinkle 5s ease-in-out infinite;
-  filter: grayscale(0.3);
+/* --- Pop テーマ: 鮮やかでポップ、少し高いopacity --- */
+[data-theme="pop"] .emoji-float {
+  opacity: 0.65;
+  filter: saturate(1.4) drop-shadow(0 0 6px rgba(255, 107, 107, 0.2));
 }
 
-/* --- Pop テーマ: カラフル＆鮮やかに目立たせる --- */
-[data-theme="pop"] .emoji-twinkle {
-  animation-name: emojiTwinklePop;
-  filter: saturate(1.3) drop-shadow(0 0 4px rgba(255, 107, 107, 0.15));
-}
-
-@keyframes emojiTwinklePop {
-  0%, 100% { opacity: 0.2; }
-  50% { opacity: 0.5; }
-}
-
-/* --- Midnight テーマ: ダーク背景に映える微妙な輝き --- */
-[data-theme="midnight"] .emoji-twinkle {
-  animation-name: emojiTwinkleMidnight;
-  filter: brightness(1.2) drop-shadow(0 0 6px rgba(129, 140, 248, 0.2));
-}
-
-@keyframes emojiTwinkleMidnight {
-  0%, 100% { opacity: 0.12; }
-  50% { opacity: 0.35; }
+/* --- Midnight テーマ: ダーク背景に映える輝き --- */
+[data-theme="midnight"] .emoji-float {
+  opacity: 0.4;
+  filter: brightness(1.3) drop-shadow(0 0 8px rgba(129, 140, 248, 0.25));
 }
 
 /* Celebrate pulse for achievements */
