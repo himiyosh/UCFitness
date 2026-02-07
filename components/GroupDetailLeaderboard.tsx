@@ -4,6 +4,7 @@ import { useState, useEffect, ReactNode } from 'react';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
+import { useTheme } from '@/components/ThemeProvider';
 
 function FadeInWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {
     const [show, setShow] = useState(false);
@@ -35,6 +36,8 @@ export default function GroupDetailLeaderboard({
     onPageChange: (page: number) => void
 }) {
     const allData = rankings[period];
+    const { theme } = useTheme();
+    const isMidnight = theme === 'midnight';
     const ITEMS_PER_PAGE = 10;
     const totalPages = Math.ceil(allData.length / ITEMS_PER_PAGE);
 
@@ -56,7 +59,7 @@ export default function GroupDetailLeaderboard({
 
                 <div className="bg-white px-0 relative flex-1">
                     <FadeInWrapper key={`${period}-${currentPage}`}>
-                        <ul role="list" className="divide-y divide-gray-50">
+                        <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
                             {displayData.length === 0 ? (
                                 <p className="text-gray-500 text-center py-12 flex flex-col items-center gap-2">
                                     <span className="bg-gray-50 p-3 rounded-full">
@@ -73,14 +76,27 @@ export default function GroupDetailLeaderboard({
                                     const isCurrentUser = entry.users.email === userEmail;
 
                                     return (
-                                        <li key={entry.users.id} className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 ${isCurrentUser ? 'bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)]' : ''}`}>
+                                        <li key={entry.users.id} className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)]' : ''}`}>
                                             <div className="flex items-center gap-4">
-                                                <div className={`
-                                                    flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shadow-sm border
-                                                    ${rank === 1 ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                                                        rank === 2 ? 'bg-gray-100 text-gray-700 border-gray-200' :
-                                                            rank === 3 ? 'bg-orange-100 text-orange-800 border-orange-200' : 'bg-white text-gray-500 border-gray-100'}
-                                                `}>
+                                                <div className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                                    style={rank === 1 ? {
+                                                        background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
+                                                        color: '#ffffff',
+                                                        boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
+                                                    } : rank === 2 ? {
+                                                        background: isMidnight ? 'linear-gradient(160deg, #64748b, #94a3b8)' : 'linear-gradient(160deg, #6b7280, #9ca3af)',
+                                                        color: '#ffffff',
+                                                        boxShadow: '0 2px 6px rgba(148, 163, 184, 0.3)',
+                                                    } : rank === 3 ? {
+                                                        background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
+                                                        color: '#ffffff',
+                                                        boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
+                                                    } : {
+                                                        background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
+                                                        color: isMidnight ? '#64748b' : '#94a3b8',
+                                                        border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
+                                                    }}
+                                                >
                                                     {rank}
                                                 </div>
 

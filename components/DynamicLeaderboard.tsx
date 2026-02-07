@@ -5,6 +5,7 @@ import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/GroupRankingPanel';
 import GroupSettings from '@/components/GroupSettings';
+import { useTheme } from '@/components/ThemeProvider';
 
 // Helper to tabs
 const TABS: { key: Period; label: string }[] = [
@@ -21,6 +22,7 @@ interface DynamicLeaderboardProps {
 
 export default function DynamicLeaderboard({ userEmail, groupKeywords }: DynamicLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
+    const { theme } = useTheme();
     const [globalRankings, setGlobalRankings] = useState<RankingEntry[]>([]);
     const [groupRankingsList, setGroupRankingsList] = useState<{ keyword: string; neighbors: RankingEntry[] }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -60,20 +62,23 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
             {/* Global Leaderboard (Mobile: Order 2, Desktop: Left 5 cols) */}
             <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
-                {/* TABS */}
-                <div className="flex p-1 space-x-1 bg-gray-100/80 rounded-lg w-fit">
+                {/* TABS - Using inline styles for guaranteed dark theme */}
+                <div
+                    className={`flex p-1 space-x-1 rounded-lg w-fit ${theme !== 'midnight' ? 'bg-white/80 backdrop-blur-sm border border-gray-200' : ''}`}
+                    style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}
+                >
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;
                         return (
                             <button
                                 key={tab.key}
                                 onClick={() => setPeriod(tab.key)}
-                                className={`
-                            px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer
-                            ${isActive
-                                        ? 'bg-white text-[var(--theme-primary)] shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
-                        `}
+                                className={`px-4 py-2 text-sm font-semibold rounded-md transition-all cursor-pointer ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
+                                style={theme === 'midnight' ? {
+                                    backgroundColor: isActive ? 'var(--theme-primary)' : 'transparent',
+                                    color: '#ffffff',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                                } : undefined}
                             >
                                 {tab.label}
                             </button>

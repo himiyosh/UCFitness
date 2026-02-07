@@ -292,6 +292,20 @@ export default function SettingsForm({ user }: { user: UserData }) {
                             </span>
                             {theme === 'pop' && <span className="text-pink-600">✓</span>}
                         </button>
+                        <button
+                            onClick={() => setTheme('midnight')}
+                            className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${theme === 'midnight'
+                                ? 'bg-slate-900 border-slate-700 text-indigo-400'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                }`}
+                        >
+                            <span className="flex items-center gap-3 whitespace-nowrap">
+                                <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-600 via-slate-900 to-slate-950 border border-indigo-400/50 shadow-[0_0_6px_rgba(99,102,241,0.4)] shrink-0"></span>
+                                Midnight (Dark) 🌙
+                                <span className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded border border-slate-200 ml-1 shrink-0">Beta</span>
+                            </span>
+                            {theme === 'midnight' && <span className="text-indigo-400">✓</span>}
+                        </button>
                     </div>
                 </section>
 

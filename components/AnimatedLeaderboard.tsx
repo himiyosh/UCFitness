@@ -9,6 +9,7 @@ import GroupCompetitionList from '@/components/GroupCompetitionList';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';
 import TopUsersChart from '@/components/TopUsersChart';
 import { useTranslations } from 'next-intl';
+import { useTheme } from '@/components/ThemeProvider';
 
 
 const TABS: { key: Period; labelKey: string }[] = [
@@ -91,6 +92,8 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [page, setPage] = useState(1);
     const t = useTranslations('Leaderboard');
+    const { theme } = useTheme();
+    const isMidnight = theme === 'midnight';
 
     // Handle Tab Switch
     const handleSwitch = (newPeriod: Period) => {
@@ -106,19 +109,22 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
         <div className="space-y-6">
             {/* TABS - Moved to top for alignment */}
             <div className="flex justify-center sm:justify-start">
-                <div className="flex p-1 space-x-1 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--theme-primary)]/10 w-fit overflow-hidden relative">
+                <div className={`flex p-1 space-x-1 rounded-lg shadow-sm w-fit overflow-hidden relative ${isMidnight ? '' : 'bg-white/80 backdrop-blur-sm border border-gray-200'}`}
+                     style={isMidnight ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}>
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;
                         return (
                             <button
                                 key={tab.key}
                                 onClick={() => handleSwitch(tab.key)}
-                                className={`
-                            relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer
-                            ${isActive
-                                        ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-105'
-                                        : 'text-gray-500 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/10'}
-                        `}
+                                className={`relative z-10 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 cursor-pointer ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
+                                style={isMidnight ? {
+                                    backgroundColor: isActive ? '#6366f1' : 'transparent',
+                                    color: '#ffffff',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                                    boxShadow: isActive ? '0 4px 16px -3px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.15)' : 'none',
+                                    transform: isActive ? 'scale(1.05)' : 'scale(1)'
+                                } : undefined}
                             >
                                 {t(tab.labelKey)}
                             </button>
@@ -151,7 +157,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                     />
                                 </div>
 
-                                <ul role="list" className="divide-y divide-gray-50 border-t border-gray-50 flex-1">
+                                <ul role="list" className={`divide-y flex-1 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                                     {currentGlobal.length === 0 ? (
                                         <p className="text-gray-500 text-center py-8">{t('noData')}</p>
                                     ) : (
@@ -175,35 +181,35 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                 originalRank: startIndex + idx + 1
                                             }));
 
-                                            const maxSteps = Math.max(...paginatedItems.map(g => g.steps)) || 1;
-
                                             return (
                                                 <div className="flex flex-col h-full">
                                                     <div className="flex-1">
                                                         {paginatedItems.map((entry) => {
-                                                            const percentage = Math.max((entry.steps / maxSteps) * 100, 2); // Min 2% visibility
 
                                                             return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden`}>
-                                                                    {/* Progress Bar Background */}
-                                                                    <div
-                                                                        className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-out -z-10 
-                                                                            ${entry.originalRank === 1 ? 'bg-gradient-to-r from-yellow-100/80 to-yellow-50/20' :
-                                                                                entry.originalRank === 2 ? 'bg-gradient-to-r from-slate-200/80 to-slate-50/20' :
-                                                                                    entry.originalRank === 3 ? 'bg-gradient-to-r from-amber-100/80 to-amber-50/20' :
-                                                                                        entry.users.email === userEmail ? 'bg-gradient-to-r from-[var(--theme-primary)]/20 to-[var(--theme-primary)]/5' :
-                                                                                            'bg-gray-50/50'}`}
-                                                                        style={{ width: `${percentage}%` }}
-                                                                    ></div>
+                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
 
                                                                     {/* Content Wrapper */}
                                                                     <div className="relative z-10 flex items-center gap-4">
-                                                                        <span className={`
-                                                      flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shadow-sm
-                                                      ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                                                                                entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
-                                                                                    entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'bg-white text-gray-400 border border-gray-200'}
-                                                  `}>
+                                                                        <span className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                                                            style={entry.originalRank === 1 ? {
+                                                                                background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
+                                                                                color: '#ffffff',
+                                                                                boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
+                                                                            } : entry.originalRank === 2 ? {
+                                                                                background: isMidnight ? 'linear-gradient(160deg, #64748b, #94a3b8)' : 'linear-gradient(160deg, #6b7280, #9ca3af)',
+                                                                                color: '#ffffff',
+                                                                                boxShadow: '0 2px 6px rgba(148, 163, 184, 0.3)',
+                                                                            } : entry.originalRank === 3 ? {
+                                                                                background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
+                                                                                color: '#ffffff',
+                                                                                boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
+                                                                            } : {
+                                                                                background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
+                                                                                color: isMidnight ? '#64748b' : '#94a3b8',
+                                                                                border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
+                                                                            }}
+                                                                        >
                                                                             {entry.originalRank}
                                                                         </span>
                                                                         {entry.users?.image ? (
@@ -242,7 +248,13 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                             <button
                                                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                                                 disabled={page === 1}
-                                                                className="px-3 py-1 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                                                className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${!isMidnight ? 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200' : ''}`}
+                                                                style={isMidnight ? {
+                                                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
+                                                                    color: '#c7d2fe',
+                                                                    border: '1px solid rgba(165,180,252,0.3)',
+                                                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                                                } : undefined}
                                                             >
                                                                 {t('prev')}
                                                             </button>
@@ -252,7 +264,14 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                             <button
                                                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                                                 disabled={page === totalPages}
-                                                                className="px-3 py-1 text-xs font-bold text-[var(--theme-primary)] bg-white border border-gray-200 rounded-lg hover:bg-[var(--theme-primary-light)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                                                className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${isMidnight ? 'midnight-vivid-btn' : 'bg-[var(--theme-primary)] text-white hover:opacity-80'}`}
+                                                                style={isMidnight ? {
+                                                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                                                    color: '#ffffff',
+                                                                    border: '1px solid rgba(165,180,252,0.3)',
+                                                                    boxShadow: '0 2px 10px -2px rgba(99,102,241,0.4)',
+                                                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                                                } : undefined}
                                                             >
                                                                 {t('next')}
                                                             </button>
@@ -297,12 +316,20 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                         <button
                                             key={group.keyword}
                                             onClick={() => setSelectedGroupIndex(idx)}
-                                            className={`
-                                                cursor-pointer whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all
-                                                ${selectedGroupIndex === idx
-                                                    ? 'bg-[var(--theme-primary)] text-white shadow-md'
-                                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}
-                                            `}
+                                            className={`cursor-pointer whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all ${!isMidnight ? (selectedGroupIndex === idx ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
+                                            style={isMidnight ? (selectedGroupIndex === idx ? {
+                                                background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
+                                                color: '#ffffff',
+                                                boxShadow: '0 4px 20px -3px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                                border: '1px solid rgba(165,180,252,0.3)',
+                                                textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                            } : {
+                                                background: 'rgba(30, 41, 59, 0.7)',
+                                                color: '#94a3b8',
+                                                border: '1px solid rgba(148,163,184,0.2)',
+                                                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
+                                                textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                            }) : undefined}
                                         >
                                             {group.keyword}
                                         </button>
