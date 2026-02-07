@@ -195,6 +195,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Column: Profile Card */}
                     <div className="md:col-span-1 space-y-6 order-last md:order-none">
+                        {/* Heading for alignment */}
+                        <div className="flex items-center justify-between h-8"> {/* Fixed height for alignment */}
+                            <h2 className="text-2xl font-bold text-gray-900 truncate">{user.name || username}</h2>
+                        </div>
+
                         <ProfileHeader user={user} readonly={true} badges={userBadges} />
 
                         <div className="mt-2">
@@ -233,10 +238,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                     {/* Right Column: Stats & Achievements */}
                     <div className="md:col-span-2 space-y-6 order-first md:order-none">
-                        <div className="flex items-center justify-between">
-                            {/* Heading removed for alignment with left column path
-                             <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
-                             */}
+                        <div className="flex items-center justify-between h-8"> {/* Fixed height for alignment */}
+                            <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
                         </div>
 
 
