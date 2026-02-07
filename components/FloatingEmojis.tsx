@@ -8,18 +8,18 @@ import { useTheme } from './ThemeProvider';
  */
 
 const EMOJIS = [
-  { emoji: '🏃', size: 'text-2xl', delay: '0s', duration: '18s', left: '5%', top: '-5%' },
-  { emoji: '💪', size: 'text-xl', delay: '3s', duration: '22s', left: '15%', top: '-8%' },
-  { emoji: '🎯', size: 'text-2xl', delay: '7s', duration: '20s', left: '25%', top: '-6%' },
-  { emoji: '✨', size: 'text-lg', delay: '1s', duration: '24s', left: '35%', top: '-4%' },
-  { emoji: '🏆', size: 'text-2xl', delay: '5s', duration: '19s', left: '50%', top: '-7%' },
-  { emoji: '⚡', size: 'text-lg', delay: '9s', duration: '21s', left: '60%', top: '-5%' },
-  { emoji: '🔥', size: 'text-xl', delay: '2s', duration: '23s', left: '70%', top: '-8%' },
-  { emoji: '👟', size: 'text-lg', delay: '6s', duration: '17s', left: '80%', top: '-6%' },
-  { emoji: '🎉', size: 'text-xl', delay: '11s', duration: '25s', left: '90%', top: '-4%' },
-  { emoji: '💫', size: 'text-lg', delay: '4s', duration: '20s', left: '42%', top: '-9%' },
-  { emoji: '🏃', size: 'text-lg', delay: '8s', duration: '26s', left: '55%', top: '-3%' },
-  { emoji: '🎯', size: 'text-lg', delay: '13s', duration: '22s', left: '10%', top: '-7%' },
+  { emoji: '🏃', size: 'text-2xl', left: '3%', top: '8%' },
+  { emoji: '💪', size: 'text-xl', left: '14%', top: '35%' },
+  { emoji: '🎯', size: 'text-2xl', left: '25%', top: '65%' },
+  { emoji: '✨', size: 'text-lg', left: '38%', top: '15%' },
+  { emoji: '🏆', size: 'text-2xl', left: '52%', top: '80%' },
+  { emoji: '⚡', size: 'text-lg', left: '62%', top: '28%' },
+  { emoji: '🔥', size: 'text-xl', left: '75%', top: '55%' },
+  { emoji: '👟', size: 'text-lg', left: '85%', top: '12%' },
+  { emoji: '🎉', size: 'text-xl', left: '92%', top: '45%' },
+  { emoji: '💫', size: 'text-lg', left: '45%', top: '90%' },
+  { emoji: '🏃', size: 'text-lg', left: '8%', top: '72%' },
+  { emoji: '🎯', size: 'text-lg', left: '70%', top: '88%' },
 ];
 
 export default function FloatingEmojis() {
@@ -35,12 +35,10 @@ export default function FloatingEmojis() {
       {EMOJIS.map((item, i) => (
         <span
           key={i}
-          className={`absolute floating-emoji ${item.size}`}
+          className={`absolute ${item.size}`}
           style={{
             left: item.left,
             top: item.top,
-            animationDelay: item.delay,
-            animationDuration: item.duration,
             opacity: isMidnight ? 0.18 : 0.12,
           }}
         >

@@ -929,34 +929,6 @@ body {
   animation-delay: 2s;
 }
 
-/* ============================================
-   12. 浮遊絵文字アニメーション (Floating Emojis)
-   ============================================ */
-@keyframes floatingDrift {
-  0% {
-    transform: translateY(0) translateX(0) rotate(0deg);
-    opacity: 0;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  90% {
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateY(110vh) translateX(30px) rotate(360deg);
-    opacity: 0;
-  }
-}
-
-.floating-emoji {
-  animation: floatingDrift linear infinite;
-  will-change: transform, opacity;
-}
-
 /* Celebrate pulse for achievements */
 @keyframes celebratePulse {
   0% {
