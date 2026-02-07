@@ -183,7 +183,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
 
                                             return (
                                                 <div className="flex flex-col h-full">
-                                                    <div className="flex-1">
+                                                    <div className="flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
