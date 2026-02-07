@@ -70,14 +70,7 @@ export default function GroupAnalytics({
     const groupRank = groupRankIndex !== -1 ? groupRankIndex + 1 : undefined;
     const totalGroups = periodGroupRankings?.length || 0;
 
-    const handleJumpToMe = () => {
-        if (!userEmail) return;
-        const userIndex = allData.findIndex(r => r.users.email === userEmail);
-        if (userIndex !== -1) {
-            const userPage = Math.floor(userIndex / ITEMS_PER_PAGE) + 1;
-            setCurrentPage(userPage);
-        }
-    };
+
 
     return (
         <div className="space-y-6">
@@ -103,17 +96,7 @@ export default function GroupAnalytics({
                     })}
                 </div>
 
-                {userRank > 0 && (
-                    <button
-                        onClick={handleJumpToMe}
-                        className="text-sm font-semibold text-[var(--theme-primary)] hover:text-[var(--theme-primary)]/80 hover:bg-[var(--theme-primary-light)] px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.3 9.24a.75.75 0 00-1.1 1.02l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75z" clipRule="evenodd" />
-                        </svg>
-                        Jump to my rank (#{userRank})
-                    </button>
-                )}
+
             </div>
 
             {/* Stats Cards */}
