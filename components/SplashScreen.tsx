@@ -2,13 +2,27 @@
 
 import { useState, useEffect } from 'react';
 
+// 浮遊する絵文字パーティクル設定
+const PARTICLES = [
+    { emoji: '🏃', x: 8, y: 12, size: 'text-4xl', delay: '0s', dur: '3s' },
+    { emoji: '⚡', x: 82, y: 8, size: 'text-3xl', delay: '0.4s', dur: '2.5s' },
+    { emoji: '🔥', x: 15, y: 75, size: 'text-3xl', delay: '0.8s', dur: '3.2s' },
+    { emoji: '💪', x: 88, y: 70, size: 'text-4xl', delay: '0.2s', dur: '2.8s' },
+    { emoji: '🎯', x: 5, y: 45, size: 'text-2xl', delay: '1s', dur: '3.5s' },
+    { emoji: '✨', x: 92, y: 40, size: 'text-2xl', delay: '0.6s', dur: '2.6s' },
+    { emoji: '🏆', x: 25, y: 88, size: 'text-3xl', delay: '1.2s', dur: '3s' },
+    { emoji: '👟', x: 75, y: 85, size: 'text-2xl', delay: '0.3s', dur: '2.9s' },
+    { emoji: '💥', x: 50, y: 5, size: 'text-2xl', delay: '0.7s', dur: '3.1s' },
+    { emoji: '🌟', x: 40, y: 90, size: 'text-3xl', delay: '1.1s', dur: '2.7s' },
+];
+
 export default function SplashScreen() {
     const [isVisible, setIsVisible] = useState(true);
     const [shouldRender, setShouldRender] = useState(true);
     const [progress, setProgress] = useState(0);
 
     useEffect(() => {
-        // Check if splash has already been shown in this session
+        // セッション内でスプラッシュ済みならスキップ
         const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
 
         if (hasSeenSplash) {
@@ -17,29 +31,28 @@ export default function SplashScreen() {
             return;
         }
 
-        // Mark as seen
         sessionStorage.setItem('hasSeenSplash', 'true');
 
-        // Progress Counter Animation
+        // プログレスカウンターアニメーション
         const interval = setInterval(() => {
             setProgress(prev => {
                 if (prev >= 100) {
                     clearInterval(interval);
                     return 100;
                 }
-                return prev + 2; // finish in roughly 1-1.5s
+                return prev + 2;
             });
         }, 20);
 
-        // Start fade out
+        // フェードアウト開始
         const timer = setTimeout(() => {
             setIsVisible(false);
-        }, 2500);
+        }, 2800);
 
-        // Unmount
+        // アンマウント
         const unmountTimer = setTimeout(() => {
             setShouldRender(false);
-        }, 3000);
+        }, 3300);
 
         return () => {
             clearTimeout(timer);
@@ -52,43 +65,89 @@ export default function SplashScreen() {
 
     return (
         <div
-            className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--theme-primary)] transition-opacity duration-500 ease-in-out overflow-hidden ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out overflow-hidden ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #fda085 100%)',
+                backgroundSize: '400% 400%',
+                animation: 'splashGradientShift 3s ease infinite',
+            }}
         >
-            {/* Speed Lines Effect */}
-            <div className="absolute inset-0 opacity-10 animate-speed-lines">
-                <div className="w-full h-full bg-[repeating-linear-gradient(90deg,transparent,transparent_50px,#ffffff_50px,#ffffff_51px)]" />
+            {/* キラキラパーティクル背景 */}
+            <div className="absolute inset-0 overflow-hidden">
+                {/* 浮遊する絵文字たち */}
+                {PARTICLES.map((p, i) => (
+                    <span
+                        key={i}
+                        className={`absolute ${p.size} splash-particle`}
+                        style={{
+                            left: `${p.x}%`,
+                            top: `${p.y}%`,
+                            animationDelay: p.delay,
+                            animationDuration: p.dur,
+                        }}
+                    >
+                        {p.emoji}
+                    </span>
+                ))}
+
+                {/* 浮遊する円形バブル */}
+                <div className="absolute w-32 h-32 rounded-full bg-white/10 splash-bubble" style={{ left: '10%', top: '20%', animationDelay: '0s' }} />
+                <div className="absolute w-20 h-20 rounded-full bg-yellow-300/15 splash-bubble" style={{ left: '70%', top: '15%', animationDelay: '0.5s' }} />
+                <div className="absolute w-24 h-24 rounded-full bg-pink-300/10 splash-bubble" style={{ left: '50%', top: '70%', animationDelay: '1s' }} />
+                <div className="absolute w-16 h-16 rounded-full bg-cyan-300/15 splash-bubble" style={{ left: '20%', top: '60%', animationDelay: '1.5s' }} />
+                <div className="absolute w-28 h-28 rounded-full bg-white/8 splash-bubble" style={{ left: '80%', top: '55%', animationDelay: '0.3s' }} />
             </div>
 
-            <div className="relative z-10 flex flex-col items-center">
-                {/* Bouncing Shoe */}
-                <div className="animate-bounce-run bg-white p-6 rounded-full shadow-lg mb-8 relative">
-                    {/* Speed effect behind shoe */}
-                    <div className="absolute -left-4 top-1/2 w-8 h-1 bg-white/50 rounded blur-sm transform -translate-y-1/2 animate-pulse" />
+            {/* メインコンテンツ */}
+            <div className="relative z-10 flex flex-col items-center splash-pop-in">
+                {/* アイコン＋リング */}
+                <div className="relative mb-6">
+                    {/* 外側リングアニメーション */}
+                    <div className="absolute -inset-4 rounded-full border-4 border-white/30 splash-ring" />
+                    <div className="absolute -inset-8 rounded-full border-2 border-white/15 splash-ring-outer" />
 
-                    <svg
-                        className="w-16 h-16 text-[var(--theme-primary)] transform -rotate-12"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                    >
-                        <path d="M2.273 5.625A4.483 4.483 0 015.25 4.5h2.756a2.5 2.5 0 012.396 1.9l.477 1.905a5 5 0 003.352 3.65L19.5 13.5a1.5 1.5 0 01.353 2.662l-3.78 2.016a5.001 5.001 0 01-3.67.31L6 17H5a2 2 0 01-2-2v-4.5a3.5 3.5 0 01-.727-4.875zM8 6a1 1 0 100 2 1 1 0 000-2z" />
-                    </svg>
+                    {/* メインアイコン */}
+                    <div className="splash-bounce-icon bg-white/95 backdrop-blur-sm p-5 rounded-2xl shadow-2xl relative">
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-yellow-200/30 to-pink-200/30" />
+                        <span className="relative text-5xl block">🏃‍♂️</span>
+                    </div>
                 </div>
 
-                <h1 className="text-white text-3xl font-black italic tracking-tighter transform -skew-x-6">
-                    GET MOVING!
+                {/* タイトル */}
+                <h1 className="text-white text-4xl font-black tracking-tight mt-2 splash-title-reveal">
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.3s' }}>G</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.35s' }}>E</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.4s' }}>T</span>
+                    <span className="inline-block mx-2" />
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.5s' }}>M</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.55s' }}>O</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.6s' }}>V</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.65s' }}>I</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.7s' }}>N</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.75s' }}>G</span>
+                    <span className="inline-block splash-letter" style={{ animationDelay: '0.8s' }}>!</span>
                 </h1>
 
-                {/* Progress Bar / Steps */}
-                <div className="mt-8 w-48">
-                    <div className="flex justify-between text-xs font-bold text-[var(--theme-primary)]/40 mb-1 uppercase tracking-wider">
+                {/* サブテキスト */}
+                <p className="text-white/70 text-sm font-medium mt-2 tracking-widest uppercase splash-fade-up" style={{ animationDelay: '1s' }}>
+                    Let&apos;s crush those steps 🎉
+                </p>
+
+                {/* プログレスバー */}
+                <div className="mt-8 w-56 splash-fade-up" style={{ animationDelay: '0.8s' }}>
+                    <div className="flex justify-between text-xs font-bold text-white/60 mb-2 uppercase tracking-wider">
                         <span>Loading Steps...</span>
-                        <span>{progress}%</span>
+                        <span className="tabular-nums">{progress}%</span>
                     </div>
-                    <div className="h-2 bg-indigo-900/30 rounded-full overflow-hidden backdrop-blur-sm">
+                    <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm shadow-inner">
                         <div
-                            className="h-full bg-white rounded-full transition-all duration-75 ease-out"
-                            style={{ width: `${progress}%` }}
+                            className="h-full rounded-full transition-all duration-75 ease-out shadow-lg"
+                            style={{
+                                width: `${progress}%`,
+                                background: 'linear-gradient(90deg, #fda085, #f5576c, #f093fb, #667eea)',
+                                backgroundSize: '200% 100%',
+                                animation: 'splashProgressShimmer 1.5s ease infinite',
+                            }}
                         />
                     </div>
                 </div>

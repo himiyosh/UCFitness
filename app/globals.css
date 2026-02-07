@@ -804,6 +804,106 @@ body {
   animation: speedLines 0.5s linear infinite;
 }
 
+/* ============================================
+   スプラッシュスクリーン ポップアニメーション
+   ============================================ */
+
+/* 背景グラデーションアニメーション */
+@keyframes splashGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 絵文字パーティクル：浮遊＋回転 */
+@keyframes splashParticleFloat {
+  0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
+  15% { opacity: 0.7; }
+  50% { transform: translateY(-20px) rotate(15deg) scale(1.15); opacity: 0.5; }
+  85% { opacity: 0.7; }
+  100% { transform: translateY(0) rotate(-10deg) scale(1); opacity: 0.4; }
+}
+.splash-particle {
+  animation: splashParticleFloat 3s ease-in-out infinite;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.15));
+}
+
+/* バブル浮遊 */
+@keyframes splashBubbleFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-30px) scale(1.1); }
+}
+.splash-bubble {
+  animation: splashBubbleFloat 4s ease-in-out infinite;
+}
+
+/* メインコンテンツ ポップイン */
+@keyframes splashPopIn {
+  0% { transform: scale(0.3) translateY(40px); opacity: 0; }
+  60% { transform: scale(1.05) translateY(-5px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.splash-pop-in {
+  animation: splashPopIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* アイコンバウンス */
+@keyframes splashBounceIcon {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-12px) rotate(-5deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(-8px) rotate(5deg); }
+}
+.splash-bounce-icon {
+  animation: splashBounceIcon 1.2s ease-in-out infinite;
+  animation-delay: 0.8s;
+}
+
+/* リングアニメーション */
+@keyframes splashRingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.15); opacity: 0.6; }
+}
+.splash-ring {
+  animation: splashRingPulse 2s ease-in-out infinite;
+}
+@keyframes splashRingOuterPulse {
+  0%, 100% { transform: scale(1); opacity: 0.15; }
+  50% { transform: scale(1.2); opacity: 0.3; }
+}
+.splash-ring-outer {
+  animation: splashRingOuterPulse 2.5s ease-in-out infinite;
+}
+
+/* 文字バウンスイン（1文字ずつ） */
+@keyframes splashLetterBounce {
+  0% { transform: translateY(30px) scale(0); opacity: 0; }
+  60% { transform: translateY(-8px) scale(1.1); opacity: 1; }
+  80% { transform: translateY(3px) scale(0.95); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.splash-letter {
+  opacity: 0;
+  animation: splashLetterBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2), 0 0 40px rgba(255,255,255,0.3);
+}
+
+/* フェードアップ */
+@keyframes splashFadeUp {
+  0% { transform: translateY(15px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.splash-fade-up {
+  opacity: 0;
+  animation: splashFadeUp 0.6s ease-out forwards;
+}
+
+/* プログレスバーのシマー */
+@keyframes splashProgressShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* 🎨 Pop & Fun Animations */
 
 /* Button bounce on hover */
