@@ -30,7 +30,6 @@ export default function AppleIcon() {
                         justifyContent: 'center',
                         background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #4F46E5 75%, #FF85A2 100%)',
                         borderRadius: '40px',
-                        transform: 'rotate(12deg)',
                     }}
                 >
                     {/* Indigo 内側背景 */}
