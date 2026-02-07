@@ -138,9 +138,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                                                         color: '#ffffff',
                                                         boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
                                                     } : entry.originalRank === 2 ? {
-                                                        background: isMidnight ? 'linear-gradient(160deg, #64748b, #94a3b8)' : 'linear-gradient(160deg, #6b7280, #9ca3af)',
+                                                        background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
                                                         color: '#ffffff',
-                                                        boxShadow: '0 2px 6px rgba(148, 163, 184, 0.3)',
+                                                        boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)',
                                                     } : entry.originalRank === 3 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
                                                         color: '#ffffff',

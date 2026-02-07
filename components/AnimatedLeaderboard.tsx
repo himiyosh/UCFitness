@@ -95,6 +95,33 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
 
+    // --- Rank Change Tracking (localStorage) ---
+    const [rankChanges, setRankChanges] = useState<Record<string, Record<string, number>>>({});
+
+    useEffect(() => {
+        try {
+            const storageKey = 'ucf_rank_snapshot';
+            const stored = localStorage.getItem(storageKey);
+            const prev: Record<string, Record<string, number>> = stored ? JSON.parse(stored) : {};
+            const changes: Record<string, Record<string, number>> = {};
+            const current: Record<string, Record<string, number>> = {};
+
+            for (const p of ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as Period[]) {
+                current[p] = {};
+                changes[p] = {};
+                allGlobalRankings[p]?.forEach((entry, i) => {
+                    const uid = entry.users.id;
+                    current[p][uid] = i + 1;
+                    if (prev[p] && prev[p][uid] !== undefined) {
+                        changes[p][uid] = prev[p][uid] - (i + 1); // positive = moved up
+                    }
+                });
+            }
+            setRankChanges(changes);
+            localStorage.setItem(storageKey, JSON.stringify(current));
+        } catch { /* localStorage unavailable */ }
+    }, [allGlobalRankings]);
+
     // Handle Tab Switch
     const handleSwitch = (newPeriod: Period) => {
         if (newPeriod === period) return;
@@ -197,9 +224,9 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                                 color: '#ffffff',
                                                                                 boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
                                                                             } : entry.originalRank === 2 ? {
-                                                                                background: isMidnight ? 'linear-gradient(160deg, #64748b, #94a3b8)' : 'linear-gradient(160deg, #6b7280, #9ca3af)',
+                                                                                background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
                                                                                 color: '#ffffff',
-                                                                                boxShadow: '0 2px 6px rgba(148, 163, 184, 0.3)',
+                                                                                boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35),'
                                                                             } : entry.originalRank === 3 ? {
                                                                                 background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
                                                                                 color: '#ffffff',
@@ -232,10 +259,19 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                             </p>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center gap-4 relative z-10">
+                                                                    <div className="flex items-center gap-2 relative z-10">
                                                                         <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg">
                                                                             {entry.steps.toLocaleString()}
                                                                         </div>
+                                                                        {(() => {
+                                                                            const change = rankChanges[period]?.[entry.users.id];
+                                                                            if (!change || change === 0) return null;
+                                                                            return (
+                                                                                <span className={`text-[10px] font-bold flex items-center gap-0.5 ${change > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                                                    {change > 0 ? '▲' : '▼'}{Math.abs(change)}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
                                                                     </div>
                                                                 </li>
                                                             );

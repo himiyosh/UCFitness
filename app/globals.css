@@ -373,6 +373,60 @@
   background: linear-gradient(90deg, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0.05) 70%, transparent 100%) !important;
 }
 
+/* --- 11c. Header midnight override --- */
+[data-theme="midnight"] header.sticky {
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(12px);
+  border-bottom-color: rgba(100, 116, 139, 0.3) !important;
+}
+
+/* --- 11d. Leaderboard card midnight override --- */
+[data-theme="midnight"] .bg-white {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+[data-theme="midnight"] .bg-white\/80 {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+}
+[data-theme="midnight"] .border-gray-100 {
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+[data-theme="midnight"] .border-gray-200 {
+  border-color: rgba(100, 116, 139, 0.3) !important;
+}
+[data-theme="midnight"] .bg-gray-50 {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+[data-theme="midnight"] .bg-gray-50\/80 {
+  background-color: rgba(30, 41, 59, 0.4) !important;
+}
+[data-theme="midnight"] .bg-gray-50\/30 {
+  background-color: rgba(30, 41, 59, 0.3) !important;
+}
+[data-theme="midnight"] .bg-gray-50\/50 {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+[data-theme="midnight"] .text-gray-900 {
+  color: #e2e8f0 !important;
+}
+[data-theme="midnight"] .text-gray-700 {
+  color: #cbd5e1 !important;
+}
+[data-theme="midnight"] .text-gray-600 {
+  color: #94a3b8 !important;
+}
+[data-theme="midnight"] .text-gray-500 {
+  color: #94a3b8 !important;
+}
+[data-theme="midnight"] .text-gray-400 {
+  color: #64748b !important;
+}
+[data-theme="midnight"] .hover\:bg-gray-50:hover {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+[data-theme="midnight"] .hover\:bg-gray-100:hover {
+  background-color: rgba(51, 65, 85, 0.5) !important;
+}
+
 /* --- 12. Chart bars (gray gradient bars for non-top-3) --- */
 [data-theme="midnight"] .bg-emerald-400,
 [data-theme="midnight"] .bg-green-400 {

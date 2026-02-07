@@ -2,6 +2,7 @@
 
 import { RankingEntry } from '@/lib/ranking-utils';
 import Link from 'next/link';
+import { useTheme } from '@/components/ThemeProvider';
 
 interface TopUsersChartProps {
     data: RankingEntry[];
@@ -10,6 +11,9 @@ interface TopUsersChartProps {
 }
 
 export default function TopUsersChart({ data, userEmail, title }: TopUsersChartProps) {
+    const { theme } = useTheme();
+    const isMidnight = theme === 'midnight';
+
     if (!data || data.length === 0) return null;
 
     // Use top 10 users max
@@ -17,8 +21,8 @@ export default function TopUsersChart({ data, userEmail, title }: TopUsersChartP
     const maxSteps = Math.max(...chartData.map(d => d.steps)) || 1;
 
     return (
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6">
-            {title && <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">{title}</h3>}
+        <div className={`p-4 rounded-xl shadow-sm mb-6 ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}>
+            {title && <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>}
 
             <div className="flex items-end justify-between gap-2 h-auto w-full pt-4 pb-2">
                 {chartData.map((entry, index) => {
@@ -68,7 +72,7 @@ export default function TopUsersChart({ data, userEmail, title }: TopUsersChartP
                                 ) : (
                                     <div className={`
                                         w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2
-                                        ${isMe ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border-[var(--theme-primary)]' : 'bg-gray-100 text-gray-500 border-gray-50'}
+                                        ${isMe ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border-[var(--theme-primary)]' : isMidnight ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-gray-100 text-gray-500 border-gray-50'}
                                     `}>
                                         {(entry.users.name || '?')[0]}
                                     </div>
