@@ -188,28 +188,28 @@ export default async function ProfilePage() {
                                     </div>
 
                                     {/* Daily / Weekly / Monthly Grid */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                    <div className="grid grid-cols-3 gap-2 sm:gap-4">
                                         {/* Daily */}
-                                        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('daily')}</p>
-                                            <div className="mt-2">
-                                                <p className="text-3xl font-black text-gray-900">{dailySteps.toLocaleString()}</p>
+                                        <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('daily')}</p>
+                                            <div className="mt-1 sm:mt-2">
+                                                <p className="text-xl sm:text-3xl font-black text-gray-900">{dailySteps.toLocaleString()}</p>
                                             </div>
                                         </div>
 
                                         {/* Weekly */}
-                                        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('weekly')}</p>
-                                            <div className="mt-2">
-                                                <p className="text-3xl font-black text-gray-900">{weeklySteps.toLocaleString()}</p>
+                                        <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('weekly')}</p>
+                                            <div className="mt-1 sm:mt-2">
+                                                <p className="text-xl sm:text-3xl font-black text-gray-900">{weeklySteps.toLocaleString()}</p>
                                             </div>
                                         </div>
 
                                         {/* Monthly */}
-                                        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('monthly')}</p>
-                                            <div className="mt-2">
-                                                <p className="text-3xl font-black text-gray-900">{monthlySteps.toLocaleString()}</p>
+                                        <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('monthly')}</p>
+                                            <div className="mt-1 sm:mt-2">
+                                                <p className="text-xl sm:text-3xl font-black text-gray-900">{monthlySteps.toLocaleString()}</p>
                                             </div>
                                         </div>
                                     </div>
