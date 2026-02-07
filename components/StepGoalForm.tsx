@@ -39,12 +39,12 @@ export default function StepGoalForm({ initialGoal }: { initialGoal: number }) {
                     type="number"
                     value={goal}
                     onChange={(e) => setGoal(parseInt(e.target.value) || 0)}
-                    className="block w-24 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-24 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
                 />
                 <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-md bg-indigo-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-2"
+                    className="rounded-md bg-[var(--theme-primary)] px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--theme-primary)] disabled:opacity-50 flex items-center gap-2"
                 >
                     {isSaving ? (
                         <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

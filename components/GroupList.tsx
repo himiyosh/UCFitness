@@ -117,13 +117,13 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                 >
                     <Link href={`/group/${m.groups.id}`} className="block relative h-full flex flex-row sm:flex-col min-h-[110px] sm:min-h-0">
                         {/* Banner Section */}
-                        <div className="w-20 sm:w-full h-auto sm:h-24 bg-indigo-50 relative overflow-hidden shrink-0 border-r sm:border-r-0 border-gray-100">
+                        <div className="w-20 sm:w-full h-auto sm:h-24 bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-r sm:border-r-0 border-gray-100">
                             {/* Rank Badge */}
                             {m.rank && (
                                 <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
                                     ${m.rank === 1 ? 'bg-yellow-300 text-yellow-900' :
                                         m.rank === 2 ? 'bg-gray-300 text-gray-900' :
-                                            m.rank === 3 ? 'bg-orange-300 text-orange-900' : 'bg-black/50 text-white sm:bg-white/90 sm:text-indigo-900'}
+                                            m.rank === 3 ? 'bg-orange-300 text-orange-900' : 'bg-black/50 text-white sm:bg-white/90 sm:text-[var(--theme-primary)]'}
                                 `}>
                                     #{m.rank}
                                 </div>
@@ -138,7 +138,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                                 </div>
                             ) : (
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50" />
+                                <div className="absolute inset-0 bg-gradient-to-br from-[var(--theme-primary-light)] to-[var(--theme-gradient-to)]/20" />
                             )}
                         </div>
 
@@ -148,12 +148,12 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                             sm:top-24 sm:left-8 sm:translate-x-[-50%] 
                             w-12 h-12 rounded-xl border-2 border-white shadow-sm 
                             sm:w-16 sm:h-16 sm:rounded-2xl sm:border-4
-                            flex items-center justify-center bg-indigo-50 overflow-hidden text-indigo-600">
+                            flex items-center justify-center bg-[var(--theme-primary-light)] overflow-hidden text-[var(--theme-primary)]">
 
                             {m.groups.image_url ? (
                                 <img src={m.groups.image_url} alt="" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center font-bold text-lg sm:text-xl bg-indigo-50 text-indigo-600">
+                                <div className="w-full h-full flex items-center justify-center font-bold text-lg sm:text-xl bg-[var(--theme-primary-light)] text-[var(--theme-primary)]">
                                     {m.groups.name.substring(0, 1).toUpperCase()}
                                 </div>
                             )}
@@ -162,7 +162,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                         {/* Content Section */}
                         <div className="flex-1 p-3 pl-4 sm:p-4 sm:pt-12 relative min-w-0 flex flex-col justify-center sm:block">
                             <div className="min-w-0 pr-10 sm:pr-0">
-                                <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-indigo-600 truncate">
+                                <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-[var(--theme-primary)] truncate">
                                     {m.groups.name}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1">
@@ -190,13 +190,13 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                             }}
                             disabled={isUpdating || index === 0}
                             className={`cursor-pointer p-1.5 rounded-full transition-colors flex items-center justify-center ${index === 0
-                                ? 'text-indigo-600 bg-indigo-50 cursor-default shadow-sm border border-indigo-100'
-                                : 'text-gray-400 bg-white/80 backdrop-blur-sm shadow-sm hover:text-indigo-600 hover:bg-white border border-transparent hover:border-indigo-100'
+                                ? 'text-[var(--theme-primary)] bg-[var(--theme-primary-light)] cursor-default shadow-sm border border-[var(--theme-primary)]/20'
+                                : 'text-gray-400 bg-white/80 backdrop-blur-sm shadow-sm hover:text-[var(--theme-primary)] hover:bg-white border border-transparent hover:border-[var(--theme-primary)]/20'
                                 }`}
                             title={index === 0 ? t('primaryTooltip') : t('setPrimaryTooltip')}
                         >
                             {isUpdating && index !== 0 ? (
-                                <svg className="animate-spin h-5 w-5 sm:w-6 sm:h-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <svg className="animate-spin h-5 w-5 sm:w-6 sm:h-6 text-[var(--theme-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
@@ -222,7 +222,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     handleMove(index, -1);
                                 }}
                                 disabled={isUpdating || index === 0}
-                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] hover:border-[var(--theme-primary)]/30 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                                 title="Move Up"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" /></svg>
@@ -234,7 +234,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     handleMove(index, 1);
                                 }}
                                 disabled={isUpdating || index === memberships.length - 1}
-                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] hover:border-[var(--theme-primary)]/30 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                                 title="Move Down"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>

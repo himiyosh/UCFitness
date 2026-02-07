@@ -42,9 +42,9 @@ export default function TopUsersChart({ data, userEmail, title }: TopUsersChartP
                                         ${rank === 1 ? 'bg-gradient-to-t from-yellow-400 to-yellow-200 shadow-yellow-100' :
                                             rank === 2 ? 'bg-gradient-to-t from-slate-400 to-slate-200 shadow-slate-100' :
                                                 rank === 3 ? 'bg-gradient-to-t from-amber-600 to-amber-400 shadow-orange-100' :
-                                                    isMe ? 'bg-gradient-to-t from-indigo-500 to-indigo-300 shadow-indigo-200' :
-                                                        'bg-gradient-to-t from-gray-300 to-gray-100 hover:from-indigo-300 hover:to-indigo-200'}
-                                        ${isMe ? 'ring-2 ring-indigo-600 ring-offset-2 z-10 shadow-lg' : 'shadow-md'}
+                                                    isMe ? 'bg-gradient-to-t from-[var(--theme-primary)] to-[var(--theme-primary)]/60 shadow-[var(--theme-primary)]/30' :
+                                                        'bg-gradient-to-t from-gray-300 to-gray-100 hover:from-[var(--theme-primary)]/60 hover:to-[var(--theme-primary)]/40'}
+                                        ${isMe ? 'ring-2 ring-[var(--theme-primary)] ring-offset-2 z-10 shadow-lg' : 'shadow-md'}
                                     `}
                                     style={{ height: `${heightPercentage}%` }}
                                 >
@@ -62,13 +62,13 @@ export default function TopUsersChart({ data, userEmail, title }: TopUsersChartP
                                 {entry.users.image ? (
                                     <img
                                         src={entry.users.image}
-                                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 ${isMe ? 'border-indigo-600' : 'border-white shadow-sm'}`}
+                                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 ${isMe ? 'border-[var(--theme-primary)]' : 'border-white shadow-sm'}`}
                                         alt={entry.users.name || ''}
                                     />
                                 ) : (
                                     <div className={`
                                         w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2
-                                        ${isMe ? 'bg-indigo-100 text-indigo-600 border-indigo-600' : 'bg-gray-100 text-gray-500 border-gray-50'}
+                                        ${isMe ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border-[var(--theme-primary)]' : 'bg-gray-100 text-gray-500 border-gray-50'}
                                     `}>
                                         {(entry.users.name || '?')[0]}
                                     </div>

@@ -43,7 +43,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
                 return (
                     <div
                         key={h.date}
-                        className="w-2 bg-indigo-200 rounded-t-sm"
+                        className="w-2 bg-[var(--theme-primary)]/30 rounded-t-sm"
                         style={{ height: `${heightPct}%` }}
                         title={`${h.date}: ${h.steps}`}
                     />
@@ -106,7 +106,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
         <div className="space-y-6">
             {/* TABS - Moved to top for alignment */}
             <div className="flex justify-center sm:justify-start">
-                <div className="flex p-1 space-x-1 bg-gray-100/80 rounded-lg w-fit overflow-hidden relative">
+                <div className="flex p-1 space-x-1 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-[var(--theme-primary)]/10 w-fit overflow-hidden relative">
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;
                         return (
@@ -116,8 +116,8 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                 className={`
                             relative z-10 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer
                             ${isActive
-                                        ? 'bg-white text-indigo-600 shadow-sm scale-105'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
+                                        ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-105'
+                                        : 'text-gray-500 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/10'}
                         `}
                             >
                                 {t(tab.labelKey)}
@@ -131,12 +131,12 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                 {/* Global Leaderboard */}
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
-                    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[400px] transition-all duration-300">
+                    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 min-h-[400px] transition-all duration-300">
                         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="text-base font-bold text-gray-900">
                                 {t('titleGlobal')}
                             </h3>
-                            <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded text-xs font-semibold">
+                            <span className="bg-[var(--theme-primary)] text-white py-1 px-2.5 rounded-full text-xs font-bold">
                                 {t(TABS.find(t => t.key === period)?.labelKey || 'daily')}
                             </span>
                         </div>
@@ -191,7 +191,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                             ${entry.originalRank === 1 ? 'bg-gradient-to-r from-yellow-100/80 to-yellow-50/20' :
                                                                                 entry.originalRank === 2 ? 'bg-gradient-to-r from-slate-200/80 to-slate-50/20' :
                                                                                     entry.originalRank === 3 ? 'bg-gradient-to-r from-amber-100/80 to-amber-50/20' :
-                                                                                        entry.users.email === userEmail ? 'bg-gradient-to-r from-indigo-100/80 to-indigo-50/20' :
+                                                                                        entry.users.email === userEmail ? 'bg-gradient-to-r from-[var(--theme-primary)]/20 to-[var(--theme-primary)]/5' :
                                                                                             'bg-gray-50/50'}`}
                                                                         style={{ width: `${percentage}%` }}
                                                                     ></div>
@@ -209,25 +209,25 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                         {entry.users?.image ? (
                                                                             <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm" src={entry.users.image} alt="" />
                                                                         ) : (
-                                                                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold border-2 border-white shadow-sm">
+                                                                            <div className="h-10 w-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold border-2 border-white shadow-sm">
                                                                                 {(entry.users?.name || '?')[0]}
                                                                             </div>
                                                                         )}
                                                                         <div>
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 {entry.users.username ? (
-                                                                                    <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline">
+                                                                                    <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
                                                                                         {entry.users?.name || entry.users?.email}
                                                                                     </Link>
                                                                                 ) : (
                                                                                     <span>{entry.users?.name || entry.users?.email}</span>
                                                                                 )}
-                                                                                {entry.users.email === userEmail && <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-bold">YOU</span>}
+                                                                                {entry.users.email === userEmail && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
                                                                             </p>
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex items-center gap-4 relative z-10">
-                                                                        <div className="tabular-nums font-black text-indigo-600 text-lg">
+                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg">
                                                                             {entry.steps.toLocaleString()}
                                                                         </div>
                                                                     </div>
@@ -252,7 +252,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                             <button
                                                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                                                 disabled={page === totalPages}
-                                                                className="px-3 py-1 text-xs font-bold text-indigo-600 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                                                className="px-3 py-1 text-xs font-bold text-[var(--theme-primary)] bg-white border border-gray-200 rounded-lg hover:bg-[var(--theme-primary-light)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                                             >
                                                                 {t('next')}
                                                             </button>
@@ -300,7 +300,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                             className={`
                                                 cursor-pointer whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all
                                                 ${selectedGroupIndex === idx
-                                                    ? 'bg-indigo-600 text-white shadow-md'
+                                                    ? 'bg-[var(--theme-primary)] text-white shadow-md'
                                                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}
                                             `}
                                         >
@@ -339,7 +339,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                         <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                             {/* My Rank Display */}
                                             {myRankEntry && (
-                                                <Link href={`/group/${groupData.groupId}`} className="relative rounded-xl overflow-hidden shadow-lg animate-in fade-in zoom-in duration-300 group block hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500 transition-all">
+                                                <Link href={`/group/${groupData.groupId}`} className="relative rounded-xl overflow-hidden shadow-lg animate-in fade-in zoom-in duration-300 group block hover:ring-2 hover:ring-offset-2 hover:ring-[var(--theme-primary)] transition-all">
                                                     {/* Background Image or Gradient */}
                                                     <div className="absolute inset-0 z-0">
                                                         {groupData.header_image_url ? (
@@ -352,7 +352,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40"></div>
                                                             </>
                                                         ) : (
-                                                            <div className="w-full h-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
+                                                            <div className="w-full h-full bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]"></div>
                                                         )}
                                                     </div>
 
@@ -380,7 +380,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                             {/* Group Average Display */}
                                             <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-3 sm:p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600 shrink-0">
+                                                    <div className="p-1.5 bg-[var(--theme-primary)]/10 rounded-full text-[var(--theme-primary)] shrink-0">
                                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                                         </svg>
@@ -390,7 +390,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                 <div className="flex items-baseline gap-2 flex-wrap">
                                                     {groupRank ? (
                                                         <>
-                                                            <span className="text-2xl sm:text-3xl font-black text-indigo-600 tracking-tight leading-none">#{groupRank}</span>
+                                                            <span className="text-2xl sm:text-3xl font-black text-[var(--theme-primary)] tracking-tight leading-none">#{groupRank}</span>
                                                             <span className="text-xs sm:text-sm font-bold text-gray-400">/ {totalGroups}</span>
                                                         </>
                                                     ) : (

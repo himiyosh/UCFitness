@@ -237,16 +237,16 @@ export default async function Home() {
   const userImage = session?.user?.image;
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-[var(--theme-page-bg)]">
       {/* Rich Header */}
-      <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
+      <header className="bg-white/80 backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 group">
-              <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
+              <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity">
                 {t('title', { defaultMessage: 'UCFitness' })}
               </h1>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
                 {t('beta')}
               </span>
             </Link>
@@ -270,14 +270,14 @@ export default async function Home() {
           <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 min-h-[220px]">
             {/* My Stats Panel (Left: 5 cols) - Premium Design */}
             {session && (
-              <div className="lg:col-span-5 flex flex-col h-full overflow-hidden rounded-2xl bg-white shadow-lg shadow-indigo-100/50 border border-indigo-50 relative group">
+              <div className="lg:col-span-5 flex flex-col h-full overflow-hidden rounded-2xl bg-white shadow-lg shadow-[var(--theme-primary)]/10 border border-[var(--theme-primary)]/10 relative group">
                 {/* Decorative Background Blob */}
-                <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-gradient-to-br from-[var(--theme-primary)]/20 to-[var(--theme-secondary)]/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
 
                 <div className="p-6 relative z-10 flex flex-col h-full justify-between">
                   {/* Header */}
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-indigo-600 rounded-lg text-white shadow-md shadow-indigo-200">
+                    <div className="p-2 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
                       {/* Bolt Icon */}
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
@@ -288,7 +288,7 @@ export default async function Home() {
                   <div className="mb-6 flex items-center justify-between">
                     <div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 drop-shadow-sm">
+                        <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] drop-shadow-sm">
                           {mySteps.toLocaleString()}
                         </span>
                         <span className="text-sm font-semibold text-gray-400">{t('stepsToday')}</span>
@@ -369,16 +369,16 @@ export default async function Home() {
 
             {/* Motivation / Status (Right: 7 cols) - Adjusted styling to match */}
             {session && (
-              <div className="lg:col-span-7 flex flex-col justify-center h-full rounded-2xl p-4 sm:p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden group">
+              <div className="lg:col-span-7 flex flex-col justify-center h-full rounded-2xl p-4 sm:p-8 text-white shadow-xl shadow-[var(--theme-primary)]/20 relative overflow-hidden group">
 
                 {/* Background Image or Gradient */}
                 {primaryGroupBanner ? (
                   <>
                     <div className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105" style={{ backgroundImage: `url(${primaryGroupBanner})` }}></div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/90 to-purple-900/80"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-[var(--theme-primary)]/90 to-[var(--theme-secondary)]/80"></div>
                   </>
                 ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-[var(--theme-gradient-from)] via-[var(--theme-secondary)] to-[var(--theme-gradient-to)]"></div>
                 )}
 
 
@@ -404,10 +404,10 @@ export default async function Home() {
                   </p>
 
                   <div className="mt-3 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
-                    <Link href="/profile" className="px-3 py-1 sm:px-5 sm:py-2 bg-white text-indigo-600 text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-indigo-50 transition-colors inline-flex items-center gap-2">
+                    <Link href="/profile" className="px-3 py-1 sm:px-5 sm:py-2 bg-white text-[var(--theme-primary)] text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-[var(--theme-primary-light)] transition-colors inline-flex items-center gap-2">
                       {t('profile')}
                     </Link>
-                    <Link href="/groups" className="px-3 py-1 sm:px-5 sm:py-2 bg-indigo-600/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-indigo-600/50 transition-colors inline-flex items-center gap-2">
+                    <Link href="/groups" className="px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-2">
                       {t('groups')}
                     </Link>
                   </div>

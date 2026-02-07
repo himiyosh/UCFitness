@@ -50,7 +50,7 @@ export default function JoinGroupPreview({ group, userId }: JoinGroupPreviewProp
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
 
             {/* Preview Card */}
-            <div className="w-full max-w-lg bg-white rounded-3xl shadow-xl overflow-hidden border border-indigo-50 transform transition-all hover:scale-[1.01] duration-500">
+            <div className="w-full max-w-lg bg-white rounded-3xl shadow-xl overflow-hidden border border-[var(--theme-primary-light)] transform transition-all hover:scale-[1.01] duration-500">
 
                 {/* Header Image */}
                 <div className="h-32 sm:h-48 bg-gray-200 relative">
@@ -60,7 +60,7 @@ export default function JoinGroupPreview({ group, userId }: JoinGroupPreviewProp
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                         </>
                     ) : (
-                        <div className="w-full h-full bg-gradient-to-r from-indigo-400 to-purple-500"></div>
+                        <div className="w-full h-full bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]"></div>
                     )}
                 </div>
 
@@ -69,11 +69,11 @@ export default function JoinGroupPreview({ group, userId }: JoinGroupPreviewProp
 
                     {/* Group Icon (Negative Margin to overlap header) */}
                     <div className="flex justify-center -mt-12 mb-6">
-                        <div className="h-24 w-24 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center text-3xl font-black text-indigo-100">
+                        <div className="h-24 w-24 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center text-3xl font-black text-[var(--theme-primary-light)]">
                             {group.image_url ? (
                                 <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
                             ) : (
-                                <span className="bg-indigo-600 w-full h-full flex items-center justify-center text-white">
+                                <span className="bg-[var(--theme-primary)] w-full h-full flex items-center justify-center text-white">
                                     {group.name.substring(0, 1).toUpperCase()}
                                 </span>
                             )}
@@ -89,7 +89,7 @@ export default function JoinGroupPreview({ group, userId }: JoinGroupPreviewProp
                         <button
                             onClick={handleJoin}
                             disabled={isJoining}
-                            className="w-full py-4 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg shadow-lg shadow-indigo-200 transition-all transform active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-4 px-6 rounded-xl bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 text-white font-bold text-lg shadow-lg shadow-[var(--theme-primary)]/20 transition-all transform active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isJoining ? (
                                 <>

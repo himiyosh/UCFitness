@@ -254,11 +254,11 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                     }
                 }}
                 disabled={isSharing}
-                className={`absolute top-4 right-4 p-2 rounded-full transition-all z-20 ${isSharing || copySuccess ? 'bg-indigo-50 text-indigo-400' : 'text-gray-400 hover:text-indigo-600 hover:bg-gray-50'}`}
+                className={`absolute top-4 right-4 p-2 rounded-full transition-all z-20 ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-gray-50'}`}
                 title="Share Statistics"
             >
                 {isSharing ? (
-                    <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-5 h-5 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin"></div>
                 ) : copySuccess ? (
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-500 animate-in zoom-in spin-in-180 duration-300">
                         <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
@@ -338,7 +338,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                             <>
                                 <button
                                     onClick={() => setWeekOffset(prev => prev - 1)}
-                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
+                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -352,7 +352,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                                 <button
                                     onClick={() => setWeekOffset(prev => prev + 1)}
                                     disabled={weekOffset >= 0}
-                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
+                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -363,7 +363,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                             <>
                                 <button
                                     onClick={() => setMonthOffset(prev => prev - 1)}
-                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
+                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -377,7 +377,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                                 <button
                                     onClick={() => setMonthOffset(prev => prev + 1)}
                                     disabled={monthOffset >= 0}
-                                    className="p-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
+                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -396,8 +396,8 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                     {/* Stats (Right Aligned on Desktop) */}
                     <div className="flex items-center gap-4 h-8">
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="block w-3 h-0.5 bg-indigo-500 rounded-full"></span>
-                            {t('totalLabel')} <span className="font-bold text-indigo-700">{totalDisplayedSteps.toLocaleString()}</span>
+                            <span className="block w-3 h-0.5 bg-[var(--theme-primary)] rounded-full"></span>
+                            {t('totalLabel')} <span className="font-bold text-[var(--theme-primary)]">{totalDisplayedSteps.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500 shrink-0">
                             <span className="block w-2 sm:w-3 h-0.5 bg-red-400 border-t border-dashed border-red-500"></span>
@@ -464,11 +464,11 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                                         // Highlight goal achievement
                                         const isGoalReached = day.value >= stepGoal;
                                         const barColor = isGoalReached
-                                            ? 'bg-green-500 group-hover:bg-green-600' // Green if goal met
-                                            : 'bg-indigo-500 group-hover:bg-indigo-600';
+                                            ? 'bg-emerald-400 group-hover:bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' // Bright emerald with glow
+                                            : 'bg-[var(--theme-primary)] group-hover:bg-[var(--theme-primary)]/80';
 
                                         // Highlight Today
-                                        const todayIndicator = day.isToday ? 'ring-2 ring-offset-2 ring-indigo-400' : '';
+                                        const todayIndicator = day.isToday ? 'ring-2 ring-offset-2 ring-[var(--theme-primary)]' : '';
 
                                         return (
                                             <div
@@ -536,7 +536,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
 
                                                 {showLabel ? (
                                                     <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 text-center pointer-events-none">
-                                                        <span className={`text-[10px] whitespace-nowrap block ${day.isToday ? 'font-bold text-indigo-600' : 'text-gray-400'}`}>
+                                                        <span className={`text-[10px] whitespace-nowrap block ${day.isToday ? 'font-bold text-[var(--theme-primary)]' : 'text-gray-400'}`}>
                                                             {day.label}
                                                         </span>
                                                     </div>
@@ -581,7 +581,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
                     <div className="relative z-10 flex flex-col items-center justify-between h-full p-16 pb-24 text-white">
                         {/* Header */}
                         <div className="flex flex-col items-center gap-6">
-                            <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-indigo-500 pb-2">UCFitness</span>
+                            <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-[var(--theme-primary)] pb-2">UCFitness</span>
                             {groupInfo && (
                                 <div className="flex flex-col items-center gap-4 mt-8">
                                     <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
@@ -598,7 +598,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo }: Act
 
                         {/* Stats & Title */}
                         <div className="flex flex-col items-center gap-4 w-full">
-                            <h3 className="text-4xl font-bold text-indigo-200">
+                            <h3 className="text-4xl font-bold text-[var(--theme-primary)]/40">
                                 {viewMode === 'WEEKLY' ? 'This Week' : viewMode === 'MONTHLY' ? 'This Month' : 'Total Activity'}
                             </h3>
                             <div className="text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">

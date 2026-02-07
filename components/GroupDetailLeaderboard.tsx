@@ -46,7 +46,7 @@ export default function GroupDetailLeaderboard({
             <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[400px] flex flex-col h-full">
                 <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
                         Member Rankings
                     </h3>
                     <div className="text-xs text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-md">
@@ -73,7 +73,7 @@ export default function GroupDetailLeaderboard({
                                     const isCurrentUser = entry.users.email === userEmail;
 
                                     return (
-                                        <li key={entry.users.id} className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 ${isCurrentUser ? 'bg-indigo-50/40 hover:bg-indigo-50/60' : ''}`}>
+                                        <li key={entry.users.id} className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 ${isCurrentUser ? 'bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)]' : ''}`}>
                                             <div className="flex items-center gap-4">
                                                 <div className={`
                                                     flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shadow-sm border
@@ -88,7 +88,7 @@ export default function GroupDetailLeaderboard({
                                                     {entry.users?.image ? (
                                                         <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm object-cover" src={entry.users.image} alt="" />
                                                     ) : (
-                                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-50 flex items-center justify-center text-indigo-600 font-bold border-2 border-white shadow-sm">
+                                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[var(--theme-primary)]/20 to-[var(--theme-primary)]/10 flex items-center justify-center text-[var(--theme-primary)] font-bold border-2 border-white shadow-sm">
                                                             {(entry.users?.name || '?')[0].toUpperCase()}
                                                         </div>
                                                     )}
@@ -97,13 +97,13 @@ export default function GroupDetailLeaderboard({
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
                                                         {entry.users.username ? (
-                                                            <Link href={`/user/${entry.users.username}`} className="hover:text-indigo-600 hover:underline decoration-indigo-600/30">
+                                                            <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline decoration-[var(--theme-primary)]/30">
                                                                 {entry.users?.name || entry.users?.email}
                                                             </Link>
                                                         ) : (
                                                             <span>{entry.users?.name || entry.users?.email}</span>
                                                         )}
-                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700">YOU</span>}
+                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">YOU</span>}
                                                     </p>
                                                     <p className="text-xs text-gray-400">
                                                         Rank #{rank}
@@ -111,7 +111,7 @@ export default function GroupDetailLeaderboard({
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="font-mono font-bold text-indigo-600 text-lg">
+                                                <div className="font-mono font-bold text-[var(--theme-primary)] text-lg">
                                                     {entry.steps.toLocaleString()}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">steps</div>
@@ -130,7 +130,7 @@ export default function GroupDetailLeaderboard({
                         <button
                             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}
-                            className="text-sm font-medium text-gray-700 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                            className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                             Prev
@@ -148,7 +148,7 @@ export default function GroupDetailLeaderboard({
                                         key={p}
                                         onClick={() => onPageChange(p)}
                                         className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
-                                            ? 'bg-indigo-600 text-white shadow-sm scale-110'
+                                            ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-110'
                                             : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
                                             }`}
                                     >
@@ -160,7 +160,7 @@ export default function GroupDetailLeaderboard({
                         <button
                             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
                             disabled={currentPage === totalPages}
-                            className="text-sm font-medium text-gray-700 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                            className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
                             Next
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>

@@ -70,16 +70,16 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     // 3. Handle Non-Members -> Show Join Screen
     if (!isMember) {
         return (
-            <main className="min-h-screen bg-gray-50">
+            <main className="min-h-screen bg-[var(--theme-page-bg)]">
                 {/* Header */}
-                <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
+                <header className="bg-white/80 backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Link href="/" className="flex items-center gap-2 group">
-                                <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
+                                <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity">
                                     UCFitness
                                 </h1>
-                                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+                                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
                                     Beta
                                 </span>
                             </Link>
@@ -144,16 +144,16 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         .order('role', { ascending: false }); // Owner first
 
     return (
-        <main className="min-h-screen bg-gray-50">
+        <main className="min-h-screen bg-[var(--theme-page-bg)]">
             {/* Header */}
-            <header className="bg-indigo-50/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-50">
+            <header className="bg-white/80 backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 group-hover:opacity-80 transition-opacity">
+                            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity">
                                 UCFitness
                             </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold tracking-wide uppercase border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
                                 Beta
                             </span>
                         </Link>
@@ -175,7 +175,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         ]}
                     />
                     {isOwner && (
-                        <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">
+                        <span className="bg-[var(--theme-primary-light)] text-[var(--theme-primary)] px-3 py-1 rounded-full text-xs font-bold border border-[var(--theme-primary)]/20">
                             Owner
                         </span>
                     )}
@@ -190,18 +190,18 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10"></div>
                         </div>
                     ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50"></div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--theme-primary-light)] to-[var(--theme-secondary)]/20"></div>
                     )}
 
                     <div className="relative p-4 sm:p-8 w-full flex flex-col-reverse sm:flex-row items-end sm:items-end justify-between gap-4 sm:gap-6 z-10">
                         {/* Left: Icon + Text */}
                         <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
                             {/* Icon */}
-                            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl border-2 sm:border-4 border-white shadow-xl overflow-hidden flex-shrink-0 bg-white flex items-center justify-center text-2xl sm:text-4xl font-black text-indigo-200">
+                            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl border-2 sm:border-4 border-white shadow-xl overflow-hidden flex-shrink-0 bg-white flex items-center justify-center text-2xl sm:text-4xl font-black text-[var(--theme-primary)]/30">
                                 {group.image_url ? (
                                     <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="bg-indigo-600 text-white w-full h-full flex items-center justify-center">
+                                    <span className="bg-[var(--theme-primary)] text-white w-full h-full flex items-center justify-center">
                                         {group.name.substring(0, 1).toUpperCase()}
                                     </span>
                                 )}

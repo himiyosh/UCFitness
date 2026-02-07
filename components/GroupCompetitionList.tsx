@@ -45,7 +45,7 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                         key={group.groupId}
                                         className={`
                                                 transition-colors hover:bg-gray-50
-                                                ${isCurrent ? 'bg-indigo-50/60 border-l-4 border-indigo-500' : 'border-l-4 border-transparent'}
+                                                ${isCurrent ? 'bg-[var(--theme-primary-light)] border-l-4 border-[var(--theme-primary)]' : 'border-l-4 border-transparent'}
                                             `}
                                     >
                                         <td className="px-6 py-4 text-center">
@@ -61,20 +61,20 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                         <td className="px-6 py-4 max-w-[130px] sm:max-w-[220px]">
                                             <Link href={`/group/${group.groupId}`} className="flex items-center gap-3 group">
                                                 {group.imageUrl ? (
-                                                    <img src={group.imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 group-hover:ring-2 ring-indigo-100 transition-all" />
+                                                    <img src={group.imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 group-hover:ring-2 ring-[var(--theme-primary-light)] transition-all" />
                                                 ) : (
-                                                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs group-hover:bg-indigo-200 transition-colors">
+                                                    <div className="w-8 h-8 rounded-lg bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold text-xs group-hover:bg-[var(--theme-primary)]/30 transition-colors">
                                                         {group.keyword[0]}
                                                     </div>
                                                 )}
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors" title={group.groupName}>{group.groupName}</div>
+                                                    <div className="font-medium text-gray-900 truncate group-hover:text-[var(--theme-primary)] transition-colors" title={group.groupName}>{group.groupName}</div>
                                                     <div className="text-xs text-gray-400 hidden sm:block truncate">{group.keyword}</div>
                                                 </div>
                                                 {/* Badge removed to save space */}
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-4 text-right tabular-nums font-bold text-indigo-600">
+                                        <td className="px-6 py-4 text-right tabular-nums font-bold text-[var(--theme-primary)]">
                                             {group.averageSteps.toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 text-right tabular-nums text-gray-500 hidden sm:table-cell">

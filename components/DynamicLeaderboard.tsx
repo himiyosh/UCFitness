@@ -71,7 +71,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                                 className={`
                             px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer
                             ${isActive
-                                        ? 'bg-white text-indigo-600 shadow-sm'
+                                        ? 'bg-white text-[var(--theme-primary)] shadow-sm'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
                         `}
                             >
@@ -92,7 +92,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                     <div className="bg-white px-0 relative">
                         {isLoading && (
                             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-10">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--theme-primary)]"></div>
                             </div>
                         )}
 
@@ -110,7 +110,7 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                                                     <span className="text-gray-400 text-xs tracking-widest">•••</span>
                                                 </div>
                                             )}
-                                            <li className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.email === userEmail ? 'bg-indigo-50/50' : ''}`}>
+                                            <li className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.email === userEmail ? 'bg-[var(--theme-primary-light)]' : ''}`}>
                                                 <div className="flex items-center gap-4">
                                                     <span className={`
                                         flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
@@ -123,18 +123,18 @@ export default function DynamicLeaderboard({ userEmail, groupKeywords }: Dynamic
                                                     {entry.users?.image ? (
                                                         <img className="h-10 w-10 rounded-full border border-gray-100" src={entry.users.image} alt="" />
                                                     ) : (
-                                                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                                        <div className="h-10 w-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold">
                                                             {(entry.users?.name || '?')[0]}
                                                         </div>
                                                     )}
                                                     <div>
                                                         <p className="text-sm font-medium text-gray-900">
                                                             {entry.users?.name || entry.users?.email}
-                                                            {entry.users.email === userEmail && <span className="ml-2 text-xs text-indigo-600 font-bold">(YOU)</span>}
+                                                            {entry.users.email === userEmail && <span className="ml-2 text-xs text-[var(--theme-primary)] font-bold">(YOU)</span>}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="font-mono font-semibold text-indigo-600">
+                                                <div className="font-mono font-semibold text-[var(--theme-primary)]">
                                                     {entry.steps.toLocaleString()}
                                                 </div>
                                             </li>

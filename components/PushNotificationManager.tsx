@@ -120,7 +120,7 @@ export default function PushNotificationManager() {
             )}
 
             {message && (
-                <p className={`mt-3 text-xs font-bold text-center animate-in fade-in slide-in-from-bottom-1 ${message.includes('Failed') ? 'text-red-500' : 'text-indigo-600'}`}>
+                <p className={`mt-3 text-xs font-bold text-center animate-in fade-in slide-in-from-bottom-1 ${message.includes('Failed') ? 'text-red-500' : 'text-[var(--theme-primary)]'}`}>
                     {message} {message.includes('enabled') ? '🎉' : ''}
                 </p>
             )}

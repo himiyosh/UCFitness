@@ -99,7 +99,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 xl:h-full flex flex-col relative">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 flex-none">
-                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                    <svg className="w-5 h-5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
                     {title || 'Comparison'}
                 </h3>
 
@@ -169,11 +169,11 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         }
                     }}
                     disabled={isSharing}
-                    className={`p-1.5 rounded-full transition-all ${isSharing || copySuccess ? 'bg-indigo-50 text-indigo-400 cursor-wait' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                    className={`p-1.5 rounded-full transition-all ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] cursor-wait' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'}`}
                     title="Share Group Stats"
                 >
                     {isSharing ? (
-                        <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-5 h-5 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin"></div>
                     ) : copySuccess ? (
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-500 animate-in zoom-in spin-in-180 duration-300">
                             <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
@@ -256,7 +256,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                     <div className="relative z-10 flex flex-col h-full p-16 pb-24 text-white">
                         {/* Header */}
                         <div className="flex flex-col items-center gap-8 mt-12">
-                            <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-indigo-500 pb-2">UCFitness</span>
+                            <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-[var(--theme-primary)] pb-2">UCFitness</span>
 
                             <div className="flex flex-col items-center gap-6">
                                 <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
@@ -272,7 +272,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
 
                         {/* Chart Container */}
                         <div className="flex-1 flex flex-col justify-center gap-8 px-8">
-                            <h3 className="text-center text-4xl font-bold text-indigo-200 mb-8">{title || 'Group Comparison'}</h3>
+                            <h3 className="text-center text-4xl font-bold text-[var(--theme-primary)]/40 mb-8">{title || 'Group Comparison'}</h3>
                             <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10 shadow-2xl h-[800px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart

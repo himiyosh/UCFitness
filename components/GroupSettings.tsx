@@ -54,7 +54,7 @@ export default function GroupSettings() {
             type="text"
             name="keyword"
             id="keyword"
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
             placeholder={t('placeholder')}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
@@ -64,7 +64,7 @@ export default function GroupSettings() {
             type="button"
             onClick={handleJoin}
             disabled={isSaving || !keyword.trim()}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 whitespace-nowrap gap-2"
+            className="inline-flex items-center rounded-md bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--theme-primary)]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-primary)] disabled:opacity-50 whitespace-nowrap gap-2"
           >
             {isSaving && (
               <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

@@ -26,7 +26,9 @@
         "usernameHint": "Visible in URLs and leaderboards. Min 6 chars (letters, numbers, <code>. - _</code>).",
         "saveChanges": "Save Profile Changes",
         "saving": "Saving...",
-        "setDailyGoal": "Set your daily step target."
+        "setDailyGoal": "Set your daily step target.",
+        "theme": "Theme",
+        "themeDescription": "Choose your app appearance."
     },
     "Dashboard": {
         "title": "UCFitness",

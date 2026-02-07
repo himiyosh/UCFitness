@@ -28,7 +28,7 @@ export default function LeaderboardTabs() {
                         className={`
                             px-4 py-2 text-sm font-medium rounded-md transition-all
                             ${isActive
-                                ? 'bg-white text-indigo-600 shadow-sm'
+                                ? 'bg-white text-[var(--theme-primary)] shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}
                         `}
                     >
