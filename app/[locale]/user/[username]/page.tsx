@@ -261,12 +261,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
                         {/* New Comparison Stats Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4">
                             {/* Daily */}
-                            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('today')}</p>
-                                <div className="mt-2">
-                                    <p className="text-3xl font-black text-gray-900">{targetStats.daily.toLocaleString()}</p>
+                            <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('today')}</p>
+                                <div className="mt-1 sm:mt-2">
+                                    <p className="text-xl sm:text-3xl font-black text-gray-900">{targetStats.daily.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                             {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
@@ -276,10 +276,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             </div>
 
                             {/* Weekly */}
-                            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisWeek')}</p>
-                                <div className="mt-2">
-                                    <p className="text-3xl font-black text-gray-900">{targetStats.weekly.toLocaleString()}</p>
+                            <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisWeek')}</p>
+                                <div className="mt-1 sm:mt-2">
+                                    <p className="text-xl sm:text-3xl font-black text-gray-900">{targetStats.weekly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                             {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
@@ -289,10 +289,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             </div>
 
                             {/* Monthly */}
-                            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisMonth')}</p>
-                                <div className="mt-2">
-                                    <p className="text-3xl font-black text-gray-900">{targetStats.monthly.toLocaleString()}</p>
+                            <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
+                                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisMonth')}</p>
+                                <div className="mt-1 sm:mt-2">
+                                    <p className="text-xl sm:text-3xl font-black text-gray-900">{targetStats.monthly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
                                         <p className={`text-xs font-bold mt-1 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                             {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
