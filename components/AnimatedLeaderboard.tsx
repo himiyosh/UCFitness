@@ -165,7 +165,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
                     <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 min-h-[400px] transition-all duration-300">
-                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+                        <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="text-base font-bold text-gray-900">
                                 {t('titleGlobal')}
                             </h3>
@@ -210,15 +210,15 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                             return (
                                                 <div className="flex flex-col h-full">
-                                                    <div className="flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
+                                                    <div className="flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 56}px` }}>
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
+                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-4 sm:px-6 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
 
                                                                     {/* Content Wrapper */}
-                                                                    <div className="relative z-10 flex items-center gap-4">
-                                                                        <span className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                                                    <div className="relative z-10 flex items-center gap-3">
+                                                                        <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
                                                                             style={entry.originalRank === 1 ? {
                                                                                 background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                                                 color: '#ffffff',
@@ -261,7 +261,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex items-center gap-2 relative z-10">
-                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg">
+                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-base">
                                                                             {entry.steps.toLocaleString()}
                                                                         </div>
                                                                         {(() => {
@@ -281,7 +281,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                     {/* Pagination Controls */}
                                                     {totalPages > 1 && (
-                                                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                                                        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
                                                             <button
                                                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                                                 disabled={page === 1}
@@ -327,7 +327,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                     {/* Group Competition Ranking */}
                     {groupCompetitionRankings && groupCompetitionRankings[period] && (
                         <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all duration-300">
-                            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+                            <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center">
                                 <h3 className="text-base font-bold text-gray-900">
                                     {t('titleGroup')}
                                 </h3>
