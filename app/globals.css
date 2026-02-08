@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* ==== SCROLLBAR STABILITY ==== */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* ==== THEME SYSTEM ==== */
 :root {
   --background: #ffffff;
