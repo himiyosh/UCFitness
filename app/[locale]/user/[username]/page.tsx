@@ -309,31 +309,31 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                             <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
                                         </div>
                                     </div>
-                                    {/* Viewer (You) Row */}
-                                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center border-t border-gray-200 bg-gray-50/60">
-                                        <div className="w-24 sm:w-32 px-2 sm:px-3 py-3 sm:py-4">
+                                    {/* Viewer (You) Row — subdued */}
+                                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center border-t border-gray-100 bg-gray-50/40">
+                                        <div className="w-24 sm:w-32 px-2 sm:px-3 py-2 sm:py-2.5">
                                             <div className="flex items-center gap-1.5 min-w-0">
                                                 {viewerUser?.image && (
-                                                    <img src={viewerUser.image} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0" />
+                                                    <img src={viewerUser.image} alt="" className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover flex-shrink-0 opacity-70" />
                                                 )}
-                                                <p className="text-[11px] sm:text-sm font-bold text-gray-500 leading-tight break-words min-w-0">{t('yourSteps')}</p>
+                                                <p className="text-[10px] sm:text-xs font-semibold text-gray-400 leading-tight break-words min-w-0">{t('yourSteps')}</p>
                                             </div>
                                         </div>
-                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className={`text-lg sm:text-2xl font-extrabold tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/80' : 'text-red-400/80'}`}>{viewerStats.daily.toLocaleString()}</p>
-                                            <p className={`text-[10px] sm:text-xs tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/60' : 'text-red-400/60'}`}>
+                                        <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
+                                            <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.daily.toLocaleString()}</p>
+                                            <p className={`text-[9px] sm:text-[10px] tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.daily - targetStats.daily >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.daily - targetStats.daily).toLocaleString()})
                                             </p>
                                         </div>
-                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className={`text-lg sm:text-2xl font-extrabold tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/80' : 'text-red-400/80'}`}>{viewerStats.weekly.toLocaleString()}</p>
-                                            <p className={`text-[10px] sm:text-xs tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/60' : 'text-red-400/60'}`}>
+                                        <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
+                                            <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.weekly.toLocaleString()}</p>
+                                            <p className={`text-[9px] sm:text-[10px] tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.weekly - targetStats.weekly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.weekly - targetStats.weekly).toLocaleString()})
                                             </p>
                                         </div>
-                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className={`text-lg sm:text-2xl font-extrabold tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/80' : 'text-red-400/80'}`}>{viewerStats.monthly.toLocaleString()}</p>
-                                            <p className={`text-[10px] sm:text-xs tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/60' : 'text-red-400/60'}`}>
+                                        <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
+                                            <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.monthly.toLocaleString()}</p>
+                                            <p className={`text-[9px] sm:text-[10px] tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.monthly - targetStats.monthly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.monthly - targetStats.monthly).toLocaleString()})
                                             </p>
                                         </div>
