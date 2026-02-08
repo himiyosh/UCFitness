@@ -226,32 +226,33 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                     <div
                                         ref={containerRef}
                                         className={`relative w-full overflow-hidden select-none ${file ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                                        style={{ height: `${getPreviewHeight()}px` }}
+                                        style={{ height: `${file ? getPreviewHeight() : getCropHeight()}px` }}
                                         onPointerDown={handlePointerDown}
                                         onPointerMove={handlePointerMove}
                                         onPointerUp={handlePointerUp}
                                         onPointerCancel={handlePointerUp}
                                         onWheel={handleWheel}
                                     >
-                                        {/* 画像 */}
-                                        <img
-                                            src={previewUrl}
-                                            alt="Preview"
-                                            className="absolute pointer-events-none"
-                                            style={{
-                                                left: 0,
-                                                top: 0,
-                                                width: '100%',
-                                                height: file && imageSize ? `${displayImageHeight()}px` : '100%',
-                                                objectFit: !file ? 'cover' : undefined,
-                                                transformOrigin: '0 0',
-                                                transform: file
-                                                    ? `translate(${offsetX}px, ${offsetY + getBleed()}px) scale(${scale})`
-                                                    : undefined,
-                                            }}
-                                            draggable={false}
-                                            onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/600x150?text=Banner')}
-                                        />
+                                        {/* 画像 — background-image でオーバーレイと同じ座標系に配置 */}
+                                        {file && imageSize ? (
+                                            <div
+                                                className="absolute inset-0 pointer-events-none"
+                                                style={{
+                                                    backgroundImage: `url(${previewUrl})`,
+                                                    backgroundSize: `${getContainerWidth() * scale}px auto`,
+                                                    backgroundPosition: `${offsetX}px ${offsetY + getBleed()}px`,
+                                                    backgroundRepeat: 'no-repeat',
+                                                }}
+                                            />
+                                        ) : (
+                                            <img
+                                                src={previewUrl}
+                                                alt="Preview"
+                                                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                                                draggable={false}
+                                                onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/600x150?text=Banner')}
+                                            />
+                                        )}
 
                                         {/* クロップ領域外オーバーレイ（上） */}
                                         {file && getBleed() > 0 && (
