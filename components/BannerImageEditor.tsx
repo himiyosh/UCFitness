@@ -11,8 +11,8 @@ interface BannerImageEditorProps {
     children?: React.ReactNode;
 }
 
-// バナーのアスペクト比（4:1）
-const BANNER_ASPECT = 4;
+// バナーのアスペクト比（2.5:1 — 設定画面・プロフィールカード(PC)に近い）
+const BANNER_ASPECT = 2.5;
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
 
