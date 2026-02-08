@@ -75,14 +75,6 @@ export default async function ShopPage() {
                     { label: t('title') },
                 ]} />
 
-                {/* タイトル */}
-                <div className="mb-6">
-                    <h1 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
-                        🛍️ {t('title')}
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
-                </div>
-
                 {/* ショップクライアント */}
                 <ShopClient
                     items={items}
