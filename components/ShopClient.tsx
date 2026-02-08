@@ -284,13 +284,11 @@ function ShopItemCard({
         }`}>
             {/* プレビュー領域 */}
             <div className="h-24 flex items-center justify-center relative" style={{
-                background: isComingSoon
-                    ? 'linear-gradient(135deg, #f3f4f6, #e5e7eb)'
-                    : item.category === 'THEME_COLOR'
-                        ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                        : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                background: item.category === 'THEME_COLOR'
+                    ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
+                    : 'linear-gradient(135deg, #fef3c7, #fde68a)',
             }}>
-                {!isComingSoon && item.category === 'ICON_FRAME' && (
+                {item.category === 'ICON_FRAME' && (
                     <div className={`w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl ${
                         item.preview_value.startsWith('ring-') ? '' : ''
                     }`} style={{
@@ -299,13 +297,13 @@ function ShopItemCard({
                         👤
                     </div>
                 )}
-                {!isComingSoon && item.category === 'TITLE' && (
+                {item.category === 'TITLE' && (
                     <div className="text-center">
                         <span className="text-3xl">{item.preview_value}</span>
                         <p className="text-sm font-bold mt-1 text-gray-700">{name}</p>
                     </div>
                 )}
-                {!isComingSoon && item.category === 'THEME_COLOR' && (
+                {item.category === 'THEME_COLOR' && (
                     <div className="flex items-center gap-2">
                         <div className="w-10 h-10 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
                         <span className="text-sm font-bold text-gray-700">{name}</span>
@@ -314,7 +312,7 @@ function ShopItemCard({
 
                 {/* Coming Soon バッジ */}
                 {isComingSoon && (
-                    <div className="absolute top-2 right-2 z-10 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <div className="absolute top-2 right-2 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
                         🚧 {t('comingSoon')}
                     </div>
                 )}
