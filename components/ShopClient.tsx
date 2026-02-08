@@ -282,51 +282,50 @@ function ShopItemCard({
         <div className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
             isComingSoon ? 'bg-gray-50 border-dashed border-gray-300' : !meetsRank ? 'bg-white opacity-60 border-gray-200' : isOwned ? 'bg-white border-green-200' : 'bg-white border-gray-100'
         }`}>
-            {/* プレビュー領域 */}
-            <div className="h-24 flex items-center justify-center relative" style={{
-                background: isComingSoon
-                    ? '#e5e7eb'
-                    : item.category === 'THEME_COLOR'
-                        ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                        : 'linear-gradient(135deg, #fef3c7, #fde68a)',
-            }}>
-                {item.category === 'ICON_FRAME' && (
-                    <div className={`w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl ${
-                        item.preview_value.startsWith('ring-') ? '' : ''
-                    }`} style={{
-                        borderColor: getFrameColor(item.preview_value),
-                    }}>
-                        👤
-                    </div>
-                )}
-                {item.category === 'TITLE' && (
-                    <div className="text-center">
-                        <span className="text-3xl">{item.preview_value}</span>
-                        <p className="text-sm font-bold mt-1 text-gray-700">{name}</p>
-                    </div>
-                )}
-                {item.category === 'THEME_COLOR' && (
-                    <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
-                        <span className="text-sm font-bold text-gray-700">{name}</span>
-                    </div>
-                )}
+            {/* プレビュー + バッジ ラッパー */}
+            <div className="relative">
+                {/* プレビュー領域（Coming Soon時はぼかし） */}
+                <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'saturate-0 blur-[2px] brightness-105' : ''}`} style={{
+                    background: isComingSoon
+                        ? '#e5e7eb'
+                        : item.category === 'THEME_COLOR'
+                            ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
+                            : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                }}>
+                    {item.category === 'ICON_FRAME' && (
+                        <div className={`w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl ${
+                            item.preview_value.startsWith('ring-') ? '' : ''
+                        }`} style={{
+                            borderColor: getFrameColor(item.preview_value),
+                        }}>
+                            👤
+                        </div>
+                    )}
+                    {item.category === 'TITLE' && (
+                        <div className="text-center">
+                            <span className="text-3xl">{item.preview_value}</span>
+                            <p className="text-sm font-bold mt-1 text-gray-700">{name}</p>
+                        </div>
+                    )}
+                    {item.category === 'THEME_COLOR' && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
+                            <span className="text-sm font-bold text-gray-700">{name}</span>
+                        </div>
+                    )}
+                </div>
 
-                {/* Coming Soon バッジ */}
+                {/* バッジ類（blur の影響外） */}
                 {isComingSoon && (
                     <div className="absolute top-2 right-2 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
                         🚧 {t('comingSoon')}
                     </div>
                 )}
-
-                {/* ランクロックバッジ */}
                 {!isComingSoon && !meetsRank && (
                     <div className="absolute top-2 right-2 bg-gray-800/80 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
                         🔒 {t('rankLocked', { rank: getRankShortLabel(item.rank_required) })}
                     </div>
                 )}
-
-                {/* 所持バッジ */}
                 {isOwned && (
                     <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
                         ✅ {isEquipped ? t('equipped') : t('owned')}
