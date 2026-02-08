@@ -232,22 +232,42 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                 </div>
             </section>
 
-            {/* Shop CTA Banner — 独立パネル */}
+            {/* Shop CTA Banner — 独立パネル（リッチ版） */}
             <Link href="/shop" className="block group">
-                <section className="relative overflow-hidden px-5 py-4 rounded-xl border border-[var(--theme-primary)]/20 bg-gradient-to-r from-[var(--theme-primary-light)] via-white to-[var(--theme-primary-light)] hover:shadow-lg transition-all">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--theme-primary)]/5 rounded-full -translate-y-10 translate-x-10"></div>
-                    <div className="absolute bottom-0 left-0 w-16 h-16 bg-[var(--theme-primary)]/5 rounded-full translate-y-6 -translate-x-6"></div>
-                    <div className="relative flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <span className="text-2xl">🛍️</span>
-                            <div>
-                                <h3 className="text-base font-bold text-gray-900">{t('shopCta')}</h3>
-                                <p className="text-xs text-gray-500">{t('shopCtaDescription')}</p>
-                            </div>
+                <section className="relative overflow-hidden rounded-2xl border-2 border-[var(--theme-primary)]/25 bg-gradient-to-br from-[var(--theme-primary)] via-[var(--theme-primary)]/80 to-purple-600 p-6 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300">
+                    {/* 背景装飾 */}
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+                    <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
+                    <div className="absolute top-1/2 right-1/4 w-20 h-20 bg-white/5 rounded-full"></div>
+
+                    <div className="relative">
+                        {/* アイコン行 */}
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="text-3xl drop-shadow-md">🛍️</span>
+                            <span className="text-2xl drop-shadow-md">✨</span>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white text-xs font-bold group-hover:gap-2.5 group-hover:shadow-md transition-all whitespace-nowrap">
+
+                        {/* テキスト */}
+                        <h3 className="text-xl font-extrabold text-white mb-1 drop-shadow-sm">{t('shopCta')}</h3>
+                        <p className="text-sm text-white/80 mb-4 leading-relaxed">{t('shopCtaDescription')}</p>
+
+                        {/* アイテムプレビュー */}
+                        <div className="flex items-center gap-3 mb-5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
+                                🏅 {t('titleLabel')}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
+                                🎨 {commonT('theme')}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
+                                💎 {t('frameLabel') || 'Frame'}
+                            </span>
+                        </div>
+
+                        {/* ボタン */}
+                        <span className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[var(--theme-primary)] text-sm font-extrabold shadow-lg group-hover:shadow-xl group-hover:gap-3 transition-all duration-300">
                             {t('shopCtaButton')}
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                            <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                         </span>
                     </div>
                 </section>
