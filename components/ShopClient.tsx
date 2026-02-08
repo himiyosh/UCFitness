@@ -193,75 +193,68 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="absolute bottom-1/3 right-10 w-24 h-24 bg-yellow-300/10 rounded-full" />
                 <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>
 
-                {/* 上部: ロゴ + 残高 */}
-                <div className="relative p-5 sm:p-6 flex items-center justify-between">
-                    {/* 左: UCShop ロゴ */}
-                    <div className="flex items-center gap-3">
-                        <span className="text-4xl sm:text-5xl drop-shadow-lg">🛍️</span>
-                        <div>
-                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">
-                                UC<span className="text-yellow-200">Shop</span>
-                            </h1>
-                        </div>
-                    </div>
-                    {/* 右: 残高 */}
-                    <div className="flex items-center gap-2.5 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
-                        <span className="text-xl">💰</span>
-                        <div className="text-right">
-                            <p className="text-[10px] text-white/60 font-bold uppercase tracking-wider leading-none">{t('balance')}</p>
-                            <p className="text-xl sm:text-2xl font-black text-white tabular-nums leading-tight">
+                {/* メイン: 左ロゴ+残高 / 右Featured */}
+                <div className="relative p-5 sm:p-6 flex gap-6">
+                    {/* 左: UCShop ロゴ + 残高 */}
+                    <div className="flex flex-col justify-center shrink-0">
+                        <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-lg leading-none">
+                            UC<span className="text-yellow-200">Shop</span>
+                        </h1>
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-base">💰</span>
+                            <p className="text-sm font-bold text-white/70">
                                 {currentBalance.toLocaleString()}
-                                <span className="text-xs font-bold text-white/50 ml-1">{t('uc')}</span>
+                                <span className="text-xs text-white/50 ml-1">{t('uc')}</span>
                             </p>
                         </div>
                     </div>
-                </div>
 
-                {/* おすすめ商品 */}
-                {featuredItems.length > 0 && (
-                    <div className="relative px-5 sm:px-6 pb-4">
-                        <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2.5">⭐ {t('featured')}</p>
-                        <div className="flex flex-wrap gap-2.5">
-                            {featuredItems.map(item => {
-                                const name = locale === 'ja' ? item.name_ja : item.name_en;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => setConfirmDialog({ item })}
-                                        className="group flex items-center gap-3 bg-white/15 hover:bg-white/25 active:scale-[0.97] backdrop-blur-sm rounded-xl p-3 border border-white/20 transition-all text-left min-w-[180px] flex-1 sm:flex-initial sm:min-w-[200px]"
-                                    >
-                                        {/* ミニプレビュー */}
-                                        <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{
-                                            background: item.category === 'THEME_COLOR'
-                                                ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
-                                                : 'rgba(255,255,255,0.15)',
-                                        }}>
-                                            {item.category === 'ICON_FRAME' && (
-                                                getFrameColor(item.preview_value) === 'rainbow' ? (
-                                                    <div className="w-7 h-7 rounded-full" style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
-                                                        <div className="w-full h-full rounded-full bg-white/30 flex items-center justify-center text-xs">👤</div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-7 h-7 rounded-full border-2 bg-white/30 flex items-center justify-center text-xs"
-                                                        style={{ borderColor: getFrameColor(item.preview_value) }}>👤</div>
-                                                )
-                                            )}
-                                            {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
-                                            {item.category === 'THEME_COLOR' && (
-                                                <div className="w-6 h-6 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
-                                            <p className="text-xs text-white/50 font-medium">{item.price.toLocaleString()} UC</p>
-                                        </div>
-                                        <span className="text-white/30 group-hover:text-white/60 group-hover:translate-x-0.5 transition-all text-sm">→</span>
-                                    </button>
-                                );
-                            })}
+                    {/* 右: Featured アイテム */}
+                    {featuredItems.length > 0 && (
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
+                            <div className="flex flex-col gap-1.5">
+                                {featuredItems.map(item => {
+                                    const name = locale === 'ja' ? item.name_ja : item.name_en;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setConfirmDialog({ item })}
+                                            className="group flex items-center gap-2.5 bg-white/10 hover:bg-white/20 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/15 transition-all text-left"
+                                        >
+                                            {/* ミニプレビュー */}
+                                            <div className="w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center" style={{
+                                                background: item.category === 'THEME_COLOR'
+                                                    ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
+                                                    : 'rgba(255,255,255,0.15)',
+                                            }}>
+                                                {item.category === 'ICON_FRAME' && (
+                                                    getFrameColor(item.preview_value) === 'rainbow' ? (
+                                                        <div className="w-6 h-6 rounded-full" style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
+                                                            <div className="w-full h-full rounded-full bg-white/30 flex items-center justify-center text-[10px]">👤</div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-6 h-6 rounded-full border-2 bg-white/30 flex items-center justify-center text-[10px]"
+                                                            style={{ borderColor: getFrameColor(item.preview_value) }}>👤</div>
+                                                    )
+                                                )}
+                                                {item.category === 'TITLE' && <span className="text-sm">{item.preview_value}</span>}
+                                                {item.category === 'THEME_COLOR' && (
+                                                    <div className="w-5 h-5 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
+                                                <p className="text-[10px] text-white/40 font-medium">{item.price.toLocaleString()} UC</p>
+                                            </div>
+                                            <span className="text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 transition-all text-xs">→</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* 下部: カテゴリ統計 */}
                 {(
