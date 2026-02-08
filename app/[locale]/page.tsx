@@ -6,8 +6,8 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
-import { getAllRankings, getAllGroupRankings, getBatchGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
-import { getGroupCompetitionRankings, getCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
+import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
+import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
 import { RankingEntry } from '@/lib/ranking-utils';
 import GoalProgressChart from '@/components/GoalProgressChart';
@@ -223,7 +223,7 @@ export default async function Home() {
     WEEKLY: compWeekly,
     MONTHLY: compMonthly,
     YEARLY: compYearly
-  } = await getCombinedGroupCompetitionRankings();
+  } = await getCachedCombinedGroupCompetitionRankings();
 
   const groupCompetitionRankings = {
     DAILY: compDaily,
