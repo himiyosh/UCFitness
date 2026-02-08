@@ -9,7 +9,7 @@ import { useTheme } from '@/components/ThemeProvider';
 type Props = {
     keyword: string;
     neighbors: any[];
-    userEmail?: string | null;
+    userId?: string | null;
     index: number;
     totalCount: number;
     groupId?: string;
@@ -40,7 +40,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
 
 import { useTranslations } from 'next-intl';
 
-export default function GroupRankingPanel({ keyword, neighbors, userEmail, index, totalCount, groupId }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId }: Props) {
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
     const t = useTranslations('Graph');
@@ -106,7 +106,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                 <div className={`px-6 pt-6 lg:col-span-5 lg:border-r flex flex-col justify-center h-full ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
                     <TopUsersChart
                         data={neighbors}
-                        userEmail={userEmail}
+                        userId={userId}
                         title={t('groupLeaders')}
                     />
                 </div>
@@ -116,7 +116,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userEmail, index
                             const maxSteps = Math.max(...neighbors.map((n: any) => n.steps)) || 1;
 
                             return neighbors.map((entry: any, i: number) => {
-                                const isMe = entry.users.email === userEmail;
+                                const isMe = entry.users.id === userId;
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
 
                                 return (

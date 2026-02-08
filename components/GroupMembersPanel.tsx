@@ -342,7 +342,7 @@ export default function GroupMembersPanel({
                                     <img src={member.users.image} alt={member.users.name || 'User'} className="h-full w-full object-cover" />
                                 ) : (
                                     <div className="h-full w-full flex items-center justify-center text-gray-500 font-bold">
-                                        {(member.users.name?.[0] || member.users.email?.[0] || '?').toUpperCase()}
+                                        {(member.users.name?.[0] || '?').toUpperCase()}
                                     </div>
                                 )}
                             </div>

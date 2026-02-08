@@ -24,7 +24,6 @@ export default async function MyGroupsPage() {
     }
 
     const userId = (session.user as any).id;
-    const userEmail = session.user.email;
 
     // Fetch User's Group Preference and Custom Image
     // Fetch User's Group Preference and Custom Image
@@ -67,7 +66,7 @@ export default async function MyGroupsPage() {
         // Ideally we cache this or use a lighter query, but for now we follow the plan.
         const rankings = await getAllGroupRankings(m.groups.id);
         const weeklyRankings = rankings['WEEKLY'];
-        const myRankIndex = weeklyRankings.findIndex((r: any) => r.users.email === userEmail);
+        const myRankIndex = weeklyRankings.findIndex((r: any) => r.users.id === userId);
 
         return {
             ...m,

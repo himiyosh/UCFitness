@@ -55,8 +55,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
 }
 
 interface AnimatedLeaderboardProps {
-    userEmail?: string | null;
-    userId?: string | null; // Added userId
+    userId?: string | null;
     allGlobalRankings: Record<Period, RankingEntry[]>;
     allGroupRankings: {
         keyword: string;
@@ -87,7 +86,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
     );
 }
 
-export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
+export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [page, setPage] = useState(1);
@@ -179,7 +178,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                 <div className="px-6 pt-6">
                                     <TopUsersChart
                                         data={currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 }))}
-                                        userEmail={userEmail}
+                                        userId={userId}
                                         title={t('titleTop10')}
                                     />
                                 </div>
@@ -250,12 +249,12 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 {entry.users.username ? (
                                                                                     <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
-                                                                                        {entry.users?.name || entry.users?.email}
+                                                                                        {entry.users?.name || 'Anonymous'}
                                                                                     </Link>
                                                                                 ) : (
-                                                                                    <span>{entry.users?.name || entry.users?.email}</span>
+                                                                                    <span>{entry.users?.name || 'Anonymous'}</span>
                                                                                 )}
-                                                                                {entry.users.email === userEmail && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
+                                                                                {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
                                                                             </p>
                                                                         </div>
                                                                     </div>
@@ -377,12 +376,11 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                             {(() => {
                                 const groupData = allGroupRankings[selectedGroupIndex];
                                 const currentGroupRankings = groupData.neighbors[period];
-                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userEmail, 5);
+                                const { displayRankings } = getDisplayRankings(currentGroupRankings, userId, 5);
 
-                                // Find user's rank in this group (Use ID first, then Email)
+                                // Find user's rank in this group
                                 const myRankIndex = currentGroupRankings.findIndex(r =>
-                                    (userId && r.users.id === userId) ||
-                                    (userEmail && r.users.email === userEmail)
+                                    userId && r.users.id === userId
                                 );
                                 const myRankEntry = myRankIndex !== -1 ? currentGroupRankings[myRankIndex] : undefined;
                                 const myRank = myRankIndex + 1;
@@ -474,7 +472,7 @@ export default function AnimatedLeaderboard({ userEmail, userId, allGlobalRankin
                                                 keyword={groupData.keyword}
                                                 groupId={groupData.groupId}
                                                 neighbors={displayRankings}
-                                                userEmail={userEmail}
+                                                userId={userId}
                                                 index={0}
                                                 totalCount={1}
                                             />

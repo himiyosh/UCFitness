@@ -24,13 +24,13 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 
 export default function GroupDetailLeaderboard({
     rankings,
-    userEmail,
+    userId,
     period,
     currentPage,
     onPageChange
 }: {
     rankings: Record<Period, RankingEntry[]>,
-    userEmail?: string | null,
+    userId?: string | null,
     period: Period,
     currentPage: number,
     onPageChange: (page: number) => void
@@ -74,7 +74,7 @@ export default function GroupDetailLeaderboard({
                                 displayData.map((entry, index) => {
                                     // Calculate rank dynamically based on list position since it's a full list for the group
                                     const rank = startIndex + index + 1;
-                                    const isCurrentUser = entry.users.email === userEmail;
+                                    const isCurrentUser = entry.users.id === userId;
 
                                     return (
                                         <li key={entry.users.id} className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)]' : ''}`}>
@@ -115,10 +115,10 @@ export default function GroupDetailLeaderboard({
                                                     <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
                                                         {entry.users.username ? (
                                                             <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline decoration-[var(--theme-primary)]/30">
-                                                                {entry.users?.name || entry.users?.email}
+                                                                {entry.users?.name || 'Anonymous'}
                                                             </Link>
                                                         ) : (
-                                                            <span>{entry.users?.name || entry.users?.email}</span>
+                                                            <span>{entry.users?.name || 'Anonymous'}</span>
                                                         )}
                                                         {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">YOU</span>}
                                                     </p>
