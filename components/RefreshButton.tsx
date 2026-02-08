@@ -10,7 +10,7 @@ export default function RefreshButton() {
     const handleRefresh = async () => {
         setLoading(true);
         try {
-            await fetch('/api/cron/update-steps');
+            await fetch('/api/steps/sync', { method: 'POST' });
             window.location.reload();
         } catch (error) {
             console.error('Failed to refresh steps', error);
