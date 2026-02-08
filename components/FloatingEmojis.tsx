@@ -37,7 +37,7 @@ export default function FloatingEmojis() {
   return (
     <div
       className="fixed inset-0 overflow-hidden pointer-events-none"
-      style={{ zIndex: 10 }}
+      style={{ zIndex: 0 }}
       aria-hidden="true"
     >
       {EMOJIS.map((item, i) => (
