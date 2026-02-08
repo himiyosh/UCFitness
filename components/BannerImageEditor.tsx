@@ -52,7 +52,13 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
     // プレビュー領域のサイズ計算
     const getContainerWidth = () => containerRef.current?.clientWidth || 360;
-    const getContainerHeight = () => getContainerWidth() / BANNER_ASPECT;
+    const getCropHeight = () => getContainerWidth() / BANNER_ASPECT;
+    // クロップ枠の上下に表示するブリード領域
+    const getBleed = () => {
+        if (!file || !imageSize) return 0;
+        return Math.round(getCropHeight() * 0.75);
+    };
+    const getPreviewHeight = () => getCropHeight() + getBleed() * 2;
 
     // 画像の表示高さ（幅はコンテナ幅に合わせ、比率維持）
     const displayImageHeight = useCallback(() => {
@@ -65,7 +71,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const clampOffsets = useCallback((ox: number, oy: number, s?: number) => {
         const currentScale = s ?? scale;
         const cw = getContainerWidth();
-        const ch = getContainerHeight();
+        const ch = getCropHeight();
         // transform 後の画像サイズ
         const dw = cw * currentScale;
         const baseH = imageSize ? (imageSize.h / imageSize.w) * cw : ch;
@@ -114,7 +120,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
         // ズーム中心をコンテナ中心に合わせてオフセット補正
         const cw = getContainerWidth();
-        const ch = getContainerHeight();
+        const ch = getCropHeight();
         const ratio = newScale / scale;
         const newOx = offsetX * ratio - (cw / 2) * (ratio - 1);
         const newOy = offsetY * ratio - (ch / 2) * (ratio - 1);
@@ -128,7 +134,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     // スライダーでズーム
     const handleScaleChange = (newScale: number) => {
         const cw = getContainerWidth();
-        const ch = getContainerHeight();
+        const ch = getCropHeight();
         const ratio = newScale / scale;
         const newOx = offsetX * ratio - (cw / 2) * (ratio - 1);
         const newOy = offsetY * ratio - (ch / 2) * (ratio - 1);
@@ -144,7 +150,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         if (!file || !imageSize) return;
         setIsLoading(true);
         try {
-            const croppedFile = await cropBanner(file, imageSize, offsetX, offsetY, scale, getContainerWidth(), getContainerHeight());
+            const croppedFile = await cropBanner(file, imageSize, offsetX, offsetY, scale, getContainerWidth(), getCropHeight());
             const compressedFile = await compressImage(croppedFile, 1200, 0.8);
 
             const formData = new FormData();
@@ -215,18 +221,19 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                             </div>
 
                             {/* クロップ可能なプレビュー領域 */}
-                            <div className="rounded-lg overflow-hidden bg-gray-50">
+                            <div className="rounded-lg overflow-hidden bg-gray-900">
                                 {previewUrl ? (
                                     <div
                                         ref={containerRef}
                                         className={`relative w-full overflow-hidden select-none ${file ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                                        style={{ height: `${getContainerHeight()}px` }}
+                                        style={{ height: `${getPreviewHeight()}px` }}
                                         onPointerDown={handlePointerDown}
                                         onPointerMove={handlePointerMove}
                                         onPointerUp={handlePointerUp}
                                         onPointerCancel={handlePointerUp}
                                         onWheel={handleWheel}
                                     >
+                                        {/* 画像 */}
                                         <img
                                             src={previewUrl}
                                             alt="Preview"
@@ -238,14 +245,49 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                 height: file && imageSize ? `${displayImageHeight()}px` : '100%',
                                                 objectFit: !file ? 'cover' : undefined,
                                                 transformOrigin: '0 0',
-                                                transform: file ? `translate(${offsetX}px, ${offsetY}px) scale(${scale})` : undefined,
+                                                transform: file
+                                                    ? `translate(${offsetX}px, ${offsetY + getBleed()}px) scale(${scale})`
+                                                    : undefined,
                                             }}
                                             draggable={false}
                                             onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/600x150?text=Banner')}
                                         />
+
+                                        {/* クロップ領域外オーバーレイ（上） */}
+                                        {file && getBleed() > 0 && (
+                                            <>
+                                                <div
+                                                    className="absolute top-0 left-0 right-0 bg-black/50 pointer-events-none z-10 flex items-center justify-center"
+                                                    style={{ height: `${getBleed()}px` }}
+                                                >
+                                                    <span className="text-white/60 text-[10px] font-medium tracking-wide">拡大で表示される領域</span>
+                                                </div>
+
+                                                {/* クロップ領域外オーバーレイ（下） */}
+                                                <div
+                                                    className="absolute bottom-0 left-0 right-0 bg-black/50 pointer-events-none z-10 flex items-center justify-center"
+                                                    style={{ height: `${getBleed()}px` }}
+                                                >
+                                                    <span className="text-white/60 text-[10px] font-medium tracking-wide">拡大で表示される領域</span>
+                                                </div>
+
+                                                {/* クロップ枠 */}
+                                                <div
+                                                    className="absolute left-0 right-0 pointer-events-none z-10"
+                                                    style={{ top: `${getBleed()}px`, height: `${getCropHeight()}px` }}
+                                                >
+                                                    <div className="absolute inset-0 border-2 border-dashed border-white/70 rounded-sm" />
+                                                    <span className="absolute top-1 left-2 text-white/80 text-[10px] font-bold drop-shadow bg-black/30 px-1.5 py-0.5 rounded">バナー表示領域</span>
+                                                </div>
+                                            </>
+                                        )}
+
                                         {/* ドラッグヒント */}
                                         {file && (
-                                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent py-2 text-center pointer-events-none">
+                                            <div
+                                                className="absolute left-0 right-0 bg-gradient-to-t from-black/50 to-transparent py-2 text-center pointer-events-none z-20"
+                                                style={{ top: `${getBleed() + getCropHeight() - 28}px`, height: '28px' }}
+                                            >
                                                 <span className="text-white text-xs font-medium drop-shadow flex items-center justify-center gap-1">
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                                                     ドラッグで位置を調整
@@ -254,7 +296,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="w-full flex items-center justify-center text-gray-400" style={{ height: `${getContainerHeight()}px` }}>
+                                    <div className="w-full flex items-center justify-center text-gray-400" style={{ height: `${getCropHeight()}px` }}>
                                         No Image Selected
                                     </div>
                                 )}
