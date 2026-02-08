@@ -28,7 +28,13 @@
         "saving": "保存しています...",
         "setDailyGoal": "1日の目標歩数を設定します。",
         "theme": "テーマ",
-        "themeDescription": "アプリの外観を選択してください。"
+        "themeDescription": "アプリの外観を選択してください。",
+        "titleLabel": "称号",
+        "titleDescription": "表示する称号を選択してください。",
+        "noTitles": "称号をまだ持っていません。",
+        "goToShop": "ショップで購入",
+        "noTitle": "なし",
+        "equipped": "装備中"
     },
     "Dashboard": {
         "title": "UCFitness",

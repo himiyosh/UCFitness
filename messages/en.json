@@ -28,7 +28,13 @@
         "saving": "Saving...",
         "setDailyGoal": "Set your daily step target.",
         "theme": "Theme",
-        "themeDescription": "Choose your app appearance."
+        "themeDescription": "Choose your app appearance.",
+        "titleLabel": "Title",
+        "titleDescription": "Choose a title to display on your profile.",
+        "noTitles": "You don't have any titles yet.",
+        "goToShop": "Get one in the Shop",
+        "noTitle": "None",
+        "equipped": "Equipped"
     },
     "Dashboard": {
         "title": "UCFitness",

@@ -44,6 +44,23 @@ export default async function SettingsPage() {
         .maybeSingle();
     const ownsMidnight = midnightItem !== null;
 
+    // 所持している称号アイテムを取得
+    const { data: ownedTitleItems } = await supabaseAdmin
+        .from('user_items')
+        .select('id, is_equipped, shop_items!inner(item_code, name_en, name_ja, preview_value, category)')
+        .eq('user_id', userId)
+        .eq('shop_items.category', 'TITLE')
+        .order('purchased_at', { ascending: true });
+
+    const ownedTitles = (ownedTitleItems || []).map((item: any) => ({
+        userItemId: item.id,
+        itemCode: item.shop_items.item_code,
+        nameEn: item.shop_items.name_en,
+        nameJa: item.shop_items.name_ja,
+        emoji: item.shop_items.preview_value,
+        isEquipped: item.is_equipped,
+    }));
+
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
             {/* Header (Consistent with Profile) */}
@@ -73,7 +90,7 @@ export default async function SettingsPage() {
                     <p className="text-gray-500">{t('description')}</p>
                 </div>
 
-                <SettingsForm user={user} ownsMidnight={ownsMidnight} />
+                <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} />
             </div>
         </main>
     );

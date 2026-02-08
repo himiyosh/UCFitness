@@ -10,6 +10,7 @@ import { useSession } from 'next-auth/react'; // Import useSession
 import { useTheme, Theme } from '@/components/ThemeProvider';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import UserAvatar from '@/components/UserAvatar';
+import TitleSelector, { type OwnedTitle } from '@/components/TitleSelector';
 import StepGoalForm from '@/components/StepGoalForm';
 
 
@@ -22,7 +23,7 @@ interface UserData {
     banner_url?: string | null;
 }
 
-export default function SettingsForm({ user, ownsMidnight = false }: { user: UserData; ownsMidnight?: boolean }) {
+export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[] }) {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -334,6 +335,9 @@ export default function SettingsForm({ user, ownsMidnight = false }: { user: Use
                         </button>
                     </div>
                 </section>
+
+                {/* Title Selector */}
+                <TitleSelector ownedTitles={ownedTitles} />
 
                 {/* Daily Goal */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
