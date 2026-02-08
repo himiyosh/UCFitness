@@ -46,7 +46,7 @@ export default function AppleIcon() {
                             borderRadius: '24px 24px 0 0',
                         }}
                     />
-                    <svg viewBox="0 0 24 24" width="68" height="68">
+                    <svg viewBox="0 0 24 24" width="56" height="56">
                         <path
                             d="M13.5 2.5L7 13h4.5L9 21.5l8.5-11h-4.5z"
                             fill="white"
