@@ -147,60 +147,29 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 
     return (
         <div>
-            {/* ヒーローバナー */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-400 to-pink-500 p-6 mb-6 shadow-lg">
-                {/* 背景装飾 */}
-                <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-20 translate-x-20" />
-                <div className="absolute bottom-0 left-0 w-36 h-36 bg-white/10 rounded-full translate-y-16 -translate-x-16" />
-                <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-white/5 rounded-full" />
-                <div className="absolute top-4 right-1/4 text-white/20 text-5xl select-none">✨</div>
-                <div className="absolute bottom-2 left-1/4 text-white/15 text-4xl select-none">🛍️</div>
-
-                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    {/* 左: タイトル + サブタイトル */}
+            {/* 残高バー */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl">👛</span>
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-black text-white drop-shadow-sm flex items-center gap-2">
-                            <span className="text-3xl sm:text-4xl">🏪</span>
-                            {t('title')}
-                        </h1>
-                        <p className="text-sm text-white/80 mt-1 font-medium">{t('subtitle')}</p>
+                        <p className="text-xs text-gray-500 font-medium">{t('balance')}</p>
+                        <p className="text-xl font-bold text-amber-600">{currentBalance.toLocaleString()} <span className="text-sm font-normal">{t('uc')}</span></p>
                     </div>
-
-                    {/* 右: 残高カード + ビュー切替 */}
-                    <div className="flex items-center gap-3">
-                        {/* 残高 */}
-                        <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2.5 border border-white/30">
-                            <p className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{t('balance')}</p>
-                            <p className="text-xl sm:text-2xl font-black text-white tabular-nums">
-                                {currentBalance.toLocaleString()}
-                                <span className="text-sm font-bold text-white/70 ml-1">{t('uc')}</span>
-                            </p>
-                        </div>
-
-                        {/* ショップ / インベントリ切り替え */}
-                        <div className="flex flex-col bg-white/20 backdrop-blur-sm rounded-lg p-0.5 border border-white/30">
-                            <button
-                                onClick={() => setViewMode('shop')}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
-                                    viewMode === 'shop'
-                                        ? 'bg-white text-amber-600 shadow-sm'
-                                        : 'text-white/80 hover:text-white hover:bg-white/10'
-                                }`}
-                            >
-                                🛍️ {t('shopTab')}
-                            </button>
-                            <button
-                                onClick={() => setViewMode('inventory')}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
-                                    viewMode === 'inventory'
-                                        ? 'bg-white text-amber-600 shadow-sm'
-                                        : 'text-white/80 hover:text-white hover:bg-white/10'
-                                }`}
-                            >
-                                📦 {t('inventoryTab')}
-                            </button>
-                        </div>
-                    </div>
+                </div>
+                {/* ショップ / インベントリ切り替え */}
+                <div className="flex bg-gray-100 rounded-lg p-0.5">
+                    <button
+                        onClick={() => setViewMode('shop')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'shop' ? 'bg-white shadow text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        🛍️ {t('shopTab')}
+                    </button>
+                    <button
+                        onClick={() => setViewMode('inventory')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'inventory' ? 'bg-white shadow text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        📦 {t('inventoryTab')}
+                    </button>
                 </div>
             </div>
 

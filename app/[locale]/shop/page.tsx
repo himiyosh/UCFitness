@@ -69,11 +69,21 @@ export default async function ShopPage() {
             </header>
 
             {/* コンテンツ */}
-            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
                 {/* パンくずリスト */}
-                <Breadcrumbs items={[
-                    { label: t('title') },
-                ]} />
+                <div className="mb-6">
+                    <Breadcrumbs items={[
+                        { label: t('title') },
+                    ]} />
+                </div>
+
+                {/* ページヘッダー */}
+                <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        🛍️ {t('title')}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
+                </div>
 
                 {/* ショップクライアント */}
                 <ShopClient
