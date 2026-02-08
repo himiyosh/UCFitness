@@ -25,6 +25,7 @@ type TabKey = 'ALL' | ShopCategory;
 const TABS: { key: TabKey; icon: string; labelKey: string }[] = [
     { key: 'ALL', icon: '🛍️', labelKey: 'allItems' },
     { key: 'ICON_FRAME', icon: '🖼️', labelKey: 'iconFrames' },
+    { key: 'TITLE', icon: '🏷️', labelKey: 'titles' },
     { key: 'THEME_COLOR', icon: '🎨', labelKey: 'themeColors' },
 ];
 

@@ -111,6 +111,9 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
             <p className="mt-2 text-xs text-gray-400 font-medium">
                 ✨ {t('titleAchievementHint')}
             </p>
+            <a href="/settings/../shop" onClick={(e) => { e.preventDefault(); router.push('/shop'); }} className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--theme-primary)] hover:underline cursor-pointer font-medium">
+                🛍️ {t('moreTitles')} →
+            </a>
         </div>
     );
 }

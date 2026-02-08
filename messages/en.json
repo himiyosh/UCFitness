@@ -37,15 +37,15 @@
         "moreFrames": "Browse more frames",
         "titleDescription": "Choose a title to display on your profile.",
         "noTitles": "You don't have any titles yet.",
-        "noTitlesAchievement": "Titles are unlocked by achieving milestones. Keep walking!",
-        "titleAchievementHint": "Titles are unlocked through steps, streaks & more",
+        "noTitlesAchievement": "Titles are unlocked by achievements or purchased in the Shop.",
+        "titleAchievementHint": "Some titles are unlocked by achievements. Unique titles can be purchased in the Shop",
         "goToShop": "Get one in the Shop",
         "noTitle": "None",
         "equipped": "Active",
         "moreTitles": "Browse more titles",
         "moreThemes": "Browse more themes",
         "shopCta": "UC Shop",
-        "shopCtaDescription": "Customize your profile with frames & themes!",
+        "shopCtaDescription": "Customize your profile with titles, frames & themes!",
         "shopCtaButton": "Visit Shop"
     },
     "Dashboard": {
@@ -254,7 +254,7 @@
         "coinLeaderboard": "UC Leaderboard",
         "noLeaderboard": "No data yet.",
         "shopCta": "UC Shop",
-        "shopCtaDesc": "Spend your UC on frames & themes!",
+        "shopCtaDesc": "Spend your UC on titles, frames & themes!",
         "shopCtaButton": "Go to Shop"
     },
     "Shop": {
