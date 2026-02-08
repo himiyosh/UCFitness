@@ -95,11 +95,18 @@ export default function UserAvatar({
     const initial = (name?.[0] || 'U').toUpperCase();
 
     // フレーム装備中: border色をframeColorに、ボックスシャドウで光彩効果
+    const rainbow = frameColor === 'rainbow';
     const frameStyle: React.CSSProperties = frameColor
-        ? {
-            borderColor: frameColor,
-            boxShadow: `0 0 8px ${frameColor}40, 0 0 2px ${frameColor}80`,
-        }
+        ? rainbow
+            ? {
+                border: 'none',
+                background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)',
+                padding: `${sizeConfig.frame}px`,
+            }
+            : {
+                borderColor: frameColor,
+                boxShadow: `0 0 8px ${frameColor}40, 0 0 2px ${frameColor}80`,
+            }
         : {};
 
     const borderWidth = frameColor ? `${sizeConfig.frame}px` : undefined;
@@ -107,29 +114,44 @@ export default function UserAvatar({
     return (
         <div className={`inline-flex flex-col items-center ${className}`}>
             {/* アバター本体 */}
-            <div
-                className={`${sizeConfig.container} rounded-full overflow-hidden flex-shrink-0 
-                    ${frameColor ? '' : `border-2 ${borderClass}`} 
-                    shadow-sm bg-white
-                    ${onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
-                style={{
-                    ...frameStyle,
-                    ...(borderWidth ? { borderWidth, borderStyle: 'solid' } : {}),
-                }}
-                onClick={onClick}
-            >
-                {src ? (
-                    <img
-                        className="w-full h-full object-cover"
-                        src={src}
-                        alt={alt}
-                    />
-                ) : (
-                    <div className={`w-full h-full rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center ${sizeConfig.text} font-bold text-[var(--theme-primary)]`}>
-                        {initial}
+            {rainbow ? (
+                <div
+                    className={`${sizeConfig.container} rounded-full flex-shrink-0 shadow-sm
+                        ${onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+                    style={frameStyle}
+                    onClick={onClick}
+                >
+                    <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                        {src ? (
+                            <img className="w-full h-full object-cover" src={src} alt={alt} />
+                        ) : (
+                            <div className={`w-full h-full rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center ${sizeConfig.text} font-bold text-[var(--theme-primary)]`}>
+                                {initial}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </div>
+            ) : (
+                <div
+                    className={`${sizeConfig.container} rounded-full overflow-hidden flex-shrink-0 
+                        ${frameColor ? '' : `border-2 ${borderClass}`} 
+                        shadow-sm bg-white
+                        ${onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+                    style={{
+                        ...frameStyle,
+                        ...(borderWidth ? { borderWidth, borderStyle: 'solid' } : {}),
+                    }}
+                    onClick={onClick}
+                >
+                    {src ? (
+                        <img className="w-full h-full object-cover" src={src} alt={alt} />
+                    ) : (
+                        <div className={`w-full h-full rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center ${sizeConfig.text} font-bold text-[var(--theme-primary)]`}>
+                            {initial}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* 称号表示 */}
             {showTitle && title && (
@@ -145,11 +167,28 @@ export default function UserAvatar({
 /** フレームのpreview_value (Tailwindクラス名) からCSSカラーに変換 */
 export function getFrameColor(previewValue: string): string {
     const colorMap: Record<string, string> = {
+        // 既存
         'ring-green-400': '#4ade80',
         'ring-blue-400': '#60a5fa',
         'ring-yellow-400': '#facc15',
         'ring-cyan-300': '#67e8f9',
         'ring-purple-500': '#a855f7',
+        // 新規
+        'ring-rose-400': '#fb7185',
+        'ring-orange-400': '#fb923c',
+        'ring-teal-400': '#2dd4bf',
+        'ring-red-500': '#ef4444',
+        'ring-indigo-500': '#6366f1',
+        'ring-emerald-500': '#10b981',
+        'ring-amber-500': '#f59e0b',
+        'ring-pink-500': '#ec4899',
+        'ring-sky-400': '#38bdf8',
+        'ring-rainbow': 'rainbow',
     };
     return colorMap[previewValue] || '#d1d5db';
+}
+
+/** レインボーフレームかどうか */
+export function isRainbowFrame(color: string): boolean {
+    return color === 'rainbow';
 }

@@ -297,13 +297,17 @@ function ShopItemCard({
                             : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        <div className={`w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl ${
-                            item.preview_value.startsWith('ring-') ? '' : ''
-                        }`} style={{
-                            borderColor: getFrameColor(item.preview_value),
-                        }}>
-                            👤
-                        </div>
+                        getFrameColor(item.preview_value) === 'rainbow' ? (
+                            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
+                                style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '3px' }}>
+                                <div className="w-full h-full rounded-full bg-white/80 flex items-center justify-center">👤</div>
+                            </div>
+                        ) : (
+                            <div className="w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl"
+                                style={{ borderColor: getFrameColor(item.preview_value) }}>
+                                👤
+                            </div>
+                        )
                     )}
                     {item.category === 'TITLE' && (
                         <div className="text-center">
@@ -445,10 +449,17 @@ function InventoryView({
                                                 : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                                         }}>
                                             {item.category === 'ICON_FRAME' && (
-                                                <div className="w-8 h-8 rounded-full border-2 bg-white/80 flex items-center justify-center text-sm"
-                                                    style={{ borderColor: getFrameColor(item.preview_value) }}>
-                                                    👤
-                                                </div>
+                                                getFrameColor(item.preview_value) === 'rainbow' ? (
+                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                                                        style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
+                                                        <div className="w-full h-full rounded-full bg-white/80 flex items-center justify-center">👤</div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded-full border-2 bg-white/80 flex items-center justify-center text-sm"
+                                                        style={{ borderColor: getFrameColor(item.preview_value) }}>
+                                                        👤
+                                                    </div>
+                                                )
                                             )}
                                             {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
@@ -539,11 +550,23 @@ function ConfirmDialog({
 /** Tailwindクラス名からCSSカラーに変換 */
 function getFrameColor(previewValue: string): string {
     const colorMap: Record<string, string> = {
+        // 既存
         'ring-green-400': '#4ade80',
         'ring-blue-400': '#60a5fa',
         'ring-yellow-400': '#facc15',
         'ring-cyan-300': '#67e8f9',
         'ring-purple-500': '#a855f7',
+        // 新規
+        'ring-rose-400': '#fb7185',
+        'ring-orange-400': '#fb923c',
+        'ring-teal-400': '#2dd4bf',
+        'ring-red-500': '#ef4444',
+        'ring-indigo-500': '#6366f1',
+        'ring-emerald-500': '#10b981',
+        'ring-amber-500': '#f59e0b',
+        'ring-pink-500': '#ec4899',
+        'ring-sky-400': '#38bdf8',
+        'ring-rainbow': 'rainbow',
     };
     return colorMap[previewValue] || '#d1d5db';
 }
