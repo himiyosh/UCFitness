@@ -292,7 +292,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     {/* Target User Row */}
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center">
                                         <div className="w-24 sm:w-32 px-2 sm:px-3 py-3 sm:py-4">
-                                            <p className="text-xs sm:text-sm font-bold text-gray-900">{user.name?.split(' ')[0] || user.username}</p>
+                                            <div className="flex items-center gap-1.5">
+                                                {user.image && (
+                                                    <img src={user.image} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0" />
+                                                )}
+                                                <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{user.name?.split(' ')[0] || user.username}</p>
+                                            </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
                                             <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
@@ -307,7 +312,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     {/* Viewer (You) Row */}
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center border-t border-gray-200 bg-gray-50/60">
                                         <div className="w-24 sm:w-32 px-2 sm:px-3 py-3 sm:py-4">
-                                            <p className="text-xs sm:text-sm font-bold text-gray-500">{t('yourSteps')}</p>
+                                            <div className="flex items-center gap-1.5">
+                                                {viewerUser?.image && (
+                                                    <img src={viewerUser.image} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0" />
+                                                )}
+                                                <p className="text-xs sm:text-sm font-bold text-gray-500 truncate">{t('yourSteps')}</p>
+                                            </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
                                             <p className={`text-lg sm:text-2xl font-extrabold tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/80' : 'text-red-400/80'}`}>{viewerStats.daily.toLocaleString()}</p>
