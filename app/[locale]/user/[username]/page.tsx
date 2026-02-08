@@ -13,6 +13,7 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
 import { getEquippedItems } from "@/lib/shop-service";
+import { getRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
 
 
@@ -75,11 +76,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     let totalSteps = 0;
     let bestDay = { date: '-', steps: 0 };
     let allHistoryData: any[] = [];
+    let lastSyncedAt: string | null = null;
 
     // Fetch All History for target user
     const { data: allHistory } = await supabase
         .from('daily_steps')
-        .select('steps, date')
+        .select('steps, date, updated_at')
         .eq("user_id", user.id)
         .order('date', { ascending: true });
 
@@ -91,6 +93,23 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             date: new Date(best.date).toLocaleDateString(),
             steps: best.steps
         };
+        // 最終同期日時: updated_at の最新値
+        const latestSync = allHistory.reduce((latest: string | null, curr: any) => {
+            if (!curr.updated_at) return latest;
+            if (!latest) return curr.updated_at;
+            return curr.updated_at > latest ? curr.updated_at : latest;
+        }, null as string | null);
+        lastSyncedAt = latestSync;
+    }
+
+    // ランキング順位を取得
+    let userWeeklyRank: number | null = null;
+    try {
+        const weeklyRankings = await getRankings('GLOBAL', 'WEEKLY');
+        const rankIndex = weeklyRankings.findIndex((r: any) => r.users?.id === user.id);
+        if (rankIndex >= 0) userWeeklyRank = rankIndex + 1;
+    } catch (e) {
+        // ランキング取得失敗時は表示しない
     }
 
     // --- Stats Calculation (Comparison) ---
@@ -128,6 +147,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     let viewerStats = { daily: 0, weekly: 0, monthly: 0 };
     let hasViewerStats = false;
     let viewerUser = session?.user; // Default to session user
+    let viewerHistoryData: any[] = []; // グラフ比較用
 
     if (session?.user && !isOwner) {
         const viewerId = (session.user as any).id;
@@ -149,17 +169,15 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             };
         }
 
-        // Optimization: Fetch from the earliest required date
-        // Likely monthlyStart or weeklyStart. If default view is just these 3, we need max range.
-        const minDate = weeklyStartStr < monthlyStartStr ? weeklyStartStr : monthlyStartStr;
-
+        // グラフ比較に必要なため、閲覧者の全履歴も取得
         const { data: vData } = await supabase
             .from('daily_steps')
             .select('steps, date')
             .eq('user_id', viewerId)
-            .gte('date', minDate);
+            .order('date', { ascending: true });
 
         if (vData) {
+            viewerHistoryData = vData;
             viewerStats.daily = vData.find(r => r.date === todayStr)?.steps || 0;
             viewerStats.weekly = vData.filter(r => r.date >= weeklyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
             viewerStats.monthly = vData.filter(r => r.date >= monthlyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
@@ -205,8 +223,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Column: Profile Card */}
                     <div className="md:col-span-1 space-y-6 order-last md:order-none">
-                        {/* Heading for alignment */}
-                        <div className="flex items-center justify-between h-8"> {/* Fixed height for alignment */}
+                        {/* Heading for alignment — hidden on mobile since profile card is self-explanatory */}
+                        <div className="hidden md:flex items-center justify-between h-8">
                             <h2 className="text-2xl font-bold text-gray-900 truncate">{t('profile')}</h2>
                         </div>
 
@@ -229,6 +247,27 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     {bestDay.date !== '-' && <span className="text-[10px] text-gray-400 ml-1.5">{bestDay.date}</span>}
                                 </div>
                             </div>
+                            {userWeeklyRank && (
+                                <div className="flex items-center justify-between px-4 py-2.5">
+                                    <span className="text-xs font-medium text-gray-500">{t('weeklyRank')}</span>
+                                    <span className="text-sm font-bold text-[var(--theme-primary)] tabular-nums">#{userWeeklyRank}</span>
+                                </div>
+                            )}
+                            {lastSyncedAt && (
+                                <div className="flex items-center justify-between px-4 py-2.5">
+                                    <span className="text-xs font-medium text-gray-500">{t('lastSynced')}</span>
+                                    <span className="text-[11px] text-gray-400">{(() => {
+                                        const diff = Date.now() - new Date(lastSyncedAt).getTime();
+                                        const mins = Math.floor(diff / 60000);
+                                        if (mins < 1) return 'Just now';
+                                        if (mins < 60) return `${mins}m ago`;
+                                        const hrs = Math.floor(mins / 60);
+                                        if (hrs < 24) return `${hrs}h ago`;
+                                        const days = Math.floor(hrs / 24);
+                                        return `${days}d ago`;
+                                    })()}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Owner: Settings Button */}
@@ -250,7 +289,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     {/* Right Column: Stats & Achievements */}
                     <div className="md:col-span-2 space-y-6 order-first md:order-none">
                         <div className="flex items-center justify-between h-8"> {/* Fixed height for alignment */}
-                            <h2 className="text-2xl font-bold text-gray-900">{t('activityTitle', { name: user.name })}</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">
+                                {isOwner ? t('activityTitle') : t('activityTitleOther', { name: user.name?.split(' ')[0] || user.username })}
+                            </h2>
                             {isOwner && <SyncHistoryButton />}
                         </div>
 
@@ -259,6 +300,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             {isOwner || !hasViewerStats ? (
                                 /* Owner view: simple centered 3-column */
+                                <>
                                 <div className="grid grid-cols-3 divide-x divide-gray-200">
                                     <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
@@ -273,6 +315,22 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                         <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
                                     </div>
                                 </div>
+                                {/* Goal Progress Bar */}
+                                {(user.step_goal || 10000) > 0 && (
+                                    <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/40">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('goalProgress', { goal: (user.step_goal || 10000).toLocaleString() })}</span>
+                                            <span className="text-[10px] font-bold text-gray-500 tabular-nums">{Math.min(100, Math.round((targetStats.daily / (user.step_goal || 10000)) * 100))}%</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${targetStats.daily >= (user.step_goal || 10000) ? 'bg-green-500' : 'bg-[var(--theme-primary)]'}`}
+                                                style={{ width: `${Math.min(100, (targetStats.daily / (user.step_goal || 10000)) * 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                </>
                             ) : (
                                 /* Comparison view: 2-row table with name labels */
                                 <>
@@ -346,6 +404,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         <ActivityGraph
                             data={allHistoryData}
                             stepGoal={user.step_goal || 10000}
+                            comparisonData={!isOwner && hasViewerStats ? viewerHistoryData : undefined}
+                            comparisonLabel={!isOwner && hasViewerStats ? (t('yourSteps') as string) : undefined}
                         />
                     </div>
                 </div>
