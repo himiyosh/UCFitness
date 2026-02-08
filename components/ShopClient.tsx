@@ -277,10 +277,14 @@ function ShopItemCard({
     const isComingSoon = !item.is_active;
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
+    const isLocked = !isOwned && !isComingSoon && (!meetsRank || !canAfford);
 
     return (
         <div className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
-            isComingSoon ? 'bg-gray-50 border-dashed border-gray-300' : !meetsRank ? 'bg-white opacity-60 border-gray-200' : isOwned ? 'bg-white border-green-200' : 'bg-white border-gray-100'
+            isComingSoon ? 'bg-gray-50 border-dashed border-gray-300'
+                : isLocked ? 'bg-gray-50 border-gray-200 opacity-50 grayscale'
+                : isOwned ? 'bg-white border-green-200'
+                : 'bg-white border-gray-100'
         }`}>
             {/* プレビュー + バッジ ラッパー */}
             <div className="relative">
