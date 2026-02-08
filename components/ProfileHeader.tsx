@@ -25,6 +25,7 @@ interface Badge {
 
 export default function ProfileHeader({ user, badges = [], readonly = false }: { user: UserData; badges?: Badge[]; readonly?: boolean }) {
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
 
     return (
         <div className="md:col-span-1">
@@ -36,12 +37,21 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                 alt={`${user.name}'s profile picture`}
             />
 
+            {/* Banner Image Modal */}
+            <ImageModal
+                isOpen={isBannerModalOpen}
+                onClose={() => setIsBannerModalOpen(false)}
+                src={user.banner_url || null}
+                alt={`${user.name}'s banner`}
+            />
+
             {/* Main Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8">
                 {/* Banner */}
                 <div
-                    className={`h-24 sm:h-32 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url && 'bg-[var(--theme-primary)]'}`}
+                    className={`h-24 sm:h-32 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url ? 'bg-[var(--theme-primary)]' : 'cursor-pointer hover:opacity-90 transition-opacity'}`}
                     style={user.banner_url ? { backgroundImage: `url(${user.banner_url})` } : {}}
+                    onClick={() => user.banner_url && setIsBannerModalOpen(true)}
                 >
                 </div>
 
