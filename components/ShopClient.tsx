@@ -248,14 +248,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                 return (
                                     <button
                                         key={item.id}
-                                        onClick={() => {
-                                            if (affordable) {
-                                                setConfirmDialog({ item });
-                                            } else {
-                                                setViewMode('shop');
-                                                setActiveTab(item.category as ShopCategory);
-                                            }
-                                        }}
+                                        onClick={() => setConfirmDialog({ item })}
                                         className="group flex items-center gap-3 bg-white/15 hover:bg-white/25 active:scale-[0.97] backdrop-blur-sm rounded-xl p-3 border border-white/20 transition-all text-left min-w-[180px] flex-1 sm:flex-initial sm:min-w-[200px]"
                                     >
                                         {/* ミニプレビュー */}
