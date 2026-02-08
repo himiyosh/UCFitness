@@ -240,59 +240,52 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
 
-                        {/* Comparison Stats Grid */}
-                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                                <p className="text-xs sm:text-sm font-medium text-gray-500">{t('totalStepsRecorded')}</p>
-                                <p className="mt-1 text-xl sm:text-3xl font-bold text-gray-900">{totalSteps.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                                <p className="text-xs sm:text-sm font-medium text-gray-500">{t('allTimeBestDay')}</p>
-                                <div className="mt-1">
-                                    <p className="text-xl sm:text-3xl font-bold text-green-600">{bestDay.steps.toLocaleString()}</p>
-                                    <p className="text-[10px] sm:text-xs font-medium mt-0.5 text-gray-500">
+                        {/* Stats Card - Unified */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            {/* Top: Total & Best Day */}
+                            <div className="grid grid-cols-2 divide-x divide-gray-100">
+                                <div className="p-4 sm:p-5 text-center">
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('totalStepsRecorded')}</p>
+                                    <p className="mt-1.5 text-2xl sm:text-3xl font-black text-gray-900 tabular-nums">{totalSteps.toLocaleString()}</p>
+                                </div>
+                                <div className="p-4 sm:p-5 text-center">
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('allTimeBestDay')}</p>
+                                    <p className="mt-1.5 text-2xl sm:text-3xl font-black text-green-600 tabular-nums">{bestDay.steps.toLocaleString()}</p>
+                                    <p className="text-[10px] sm:text-xs font-medium text-gray-400 mt-0.5">
                                         {bestDay.date !== '-' ? t('onDate', { date: bestDay.date }) : '-'}
                                     </p>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* New Comparison Stats Grid */}
-                        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                            {/* Daily */}
-                            <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('today')}</p>
-                                <div className="mt-1 sm:mt-2">
-                                    <p className="text-xl sm:text-3xl font-black text-gray-900">{targetStats.daily.toLocaleString()}</p>
+                            {/* Divider */}
+                            <div className="border-t border-gray-100" />
+
+                            {/* Bottom: Daily / Weekly / Monthly */}
+                            <div className="grid grid-cols-3 divide-x divide-gray-100">
+                                <div className="p-3 sm:p-4 text-center">
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
+                                    <p className="mt-1 text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-xs font-bold mt-1 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
+                                        <p className={`text-[10px] font-bold mt-0.5 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()}
                                         </p>
                                     )}
                                 </div>
-                            </div>
-
-                            {/* Weekly */}
-                            <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisWeek')}</p>
-                                <div className="mt-1 sm:mt-2">
-                                    <p className="text-xl sm:text-3xl font-black text-gray-900">{targetStats.weekly.toLocaleString()}</p>
+                                <div className="p-3 sm:p-4 text-center">
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
+                                    <p className="mt-1 text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-xs font-bold mt-1 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
+                                        <p className={`text-[10px] font-bold mt-0.5 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()}
                                         </p>
                                     )}
                                 </div>
-                            </div>
-
-                            {/* Monthly */}
-                            <div className="bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden group">
-                                <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">{t('thisMonth')}</p>
-                                <div className="mt-1 sm:mt-2">
-                                    <p className="text-xl sm:text-3xl font-black text-gray-900">{targetStats.monthly.toLocaleString()}</p>
+                                <div className="p-3 sm:p-4 text-center">
+                                    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
+                                    <p className="mt-1 text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-xs font-bold mt-1 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()} {t('vsUser', { name: user.name || user.username })}
+                                        <p className={`text-[10px] font-bold mt-0.5 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()}
                                         </p>
                                     )}
                                 </div>
