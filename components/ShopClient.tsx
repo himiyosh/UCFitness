@@ -409,12 +409,12 @@ function ShopItemCard({
     return (
         <div className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
             isComingSoon ? 'bg-gray-50 border-dashed border-gray-300'
-                : isLocked ? 'bg-gray-50 border-gray-200 opacity-50 grayscale'
+                : isLocked ? 'bg-gray-100 border-gray-200'
                 : isOwned ? 'bg-white border-green-200'
                 : 'bg-white border-gray-100'
         }`}>
             {/* プレビュー + バッジ ラッパー */}
-            <div className="relative">
+            <div className={`relative ${isLocked ? 'opacity-40 grayscale' : ''}`}>
                 {/* プレビュー領域（Coming Soon時はぼかし） */}
                 <div className={`h-16 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
@@ -465,7 +465,7 @@ function ShopItemCard({
             </div>
 
             {/* 情報 + アクション */}
-            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
+            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''} ${isLocked ? 'opacity-40 grayscale' : ''}`}>
                 <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
                 <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
