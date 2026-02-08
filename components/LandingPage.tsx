@@ -63,10 +63,14 @@ export default function LandingPage() {
                     {t('title')}
                 </h1>
 
-                <p className="text-xl sm:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto font-medium leading-relaxed sm:whitespace-nowrap">
+                <p className="text-xl sm:text-2xl text-gray-600 mb-6 max-w-3xl mx-auto font-medium leading-relaxed sm:whitespace-nowrap">
                     {t('subtitle')}
                     <br />
                     <span className="text-[var(--accent-coral)] font-bold">{t('compete')}</span>, <span className="text-[var(--accent-turquoise)] font-bold">{t('collectBadges')}</span>, {t.rich('stayActive', { span: (chunks) => <span className="text-[var(--accent-lime)] font-bold">{chunks}</span> })}
+                </p>
+
+                <p className="text-sm text-gray-400 mb-12 max-w-xl mx-auto leading-relaxed">
+                    💰 {t('conceptDesc')}
                 </p>
 
                 {/* Features Grid - Colorful cards */}
