@@ -291,6 +291,9 @@
         "myItems": "My Items",
         "shopTab": "Shop",
         "inventoryTab": "Inventory",
-        "rankLocked": "Requires {rank}"
+        "rankLocked": "Requires {rank}",
+        "featured": "Featured",
+        "itemCount": "{count} items",
+        "canAfford": "Affordable!"
     }
 }

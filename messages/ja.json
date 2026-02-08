@@ -291,6 +291,9 @@
         "myItems": "マイアイテム",
         "shopTab": "ショップ",
         "inventoryTab": "インベントリ",
-        "rankLocked": "{rank}が必要"
+        "rankLocked": "{rank}が必要",
+        "featured": "おすすめ",
+        "itemCount": "{count}個",
+        "canAfford": "購入可能！"
     }
 }
