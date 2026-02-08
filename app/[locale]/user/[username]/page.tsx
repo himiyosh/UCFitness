@@ -258,29 +258,29 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         {/* Stats Card */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="grid grid-cols-3 divide-x divide-gray-200">
-                                <div className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
-                                    <p className="mt-0.5 text-base sm:text-xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
+                                <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
+                                    <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-[10px] font-bold mt-0.5 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                        <p className={`text-xs font-bold mt-1 ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                             {viewerStats.daily - targetStats.daily >= 0 ? '+' : ''}{(viewerStats.daily - targetStats.daily).toLocaleString()}
                                         </p>
                                     )}
                                 </div>
-                                <div className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
-                                    <p className="mt-0.5 text-base sm:text-xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
+                                <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
+                                    <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-[10px] font-bold mt-0.5 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                        <p className={`text-xs font-bold mt-1 ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                             {viewerStats.weekly - targetStats.weekly >= 0 ? '+' : ''}{(viewerStats.weekly - targetStats.weekly).toLocaleString()}
                                         </p>
                                     )}
                                 </div>
-                                <div className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
-                                    <p className="mt-0.5 text-base sm:text-xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
+                                <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
+                                    <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
                                     {!isOwner && hasViewerStats && (
-                                        <p className={`text-[10px] font-bold mt-0.5 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                        <p className={`text-xs font-bold mt-1 ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                             {viewerStats.monthly - targetStats.monthly >= 0 ? '+' : ''}{(viewerStats.monthly - targetStats.monthly).toLocaleString()}
                                         </p>
                                     )}
