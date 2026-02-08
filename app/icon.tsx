@@ -25,13 +25,13 @@ export default function Icon() {
                 {/* 内側: グラデーション背景 + ガラス + 稲妻 */}
                 <div
                     style={{
-                        width: '26px',
-                        height: '26px',
+                        width: '22px',
+                        height: '22px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #7C3AED 100%)',
-                        borderRadius: '6px',
+                        borderRadius: '5px',
                         position: 'relative',
                     }}
                 >
@@ -40,13 +40,13 @@ export default function Icon() {
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                            width: '26px',
-                            height: '13px',
+                            width: '22px',
+                            height: '11px',
                             background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
-                            borderRadius: '6px 6px 0 0',
+                            borderRadius: '5px 5px 0 0',
                         }}
                     />
-                    <svg viewBox="0 0 24 24" width="14" height="14">
+                    <svg viewBox="0 0 24 24" width="12" height="12">
                         <path
                             d="M13.5 2.5L7 13h4.5L9 21.5l8.5-11h-4.5z"
                             fill="white"

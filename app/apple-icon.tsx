@@ -25,13 +25,13 @@ export default function AppleIcon() {
                 {/* 内側: グラデーション背景 + ガラス + 稲妻 */}
                 <div
                     style={{
-                        width: '150px',
-                        height: '150px',
+                        width: '132px',
+                        height: '132px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #7C3AED 100%)',
-                        borderRadius: '32px',
+                        borderRadius: '28px',
                         position: 'relative',
                     }}
                 >
@@ -40,13 +40,13 @@ export default function AppleIcon() {
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                            width: '150px',
-                            height: '75px',
+                            width: '132px',
+                            height: '66px',
                             background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
-                            borderRadius: '32px 32px 0 0',
+                            borderRadius: '28px 28px 0 0',
                         }}
                     />
-                    <svg viewBox="0 0 24 24" width="78" height="78">
+                    <svg viewBox="0 0 24 24" width="68" height="68">
                         <path
                             d="M13.5 2.5L7 13h4.5L9 21.5l8.5-11h-4.5z"
                             fill="white"

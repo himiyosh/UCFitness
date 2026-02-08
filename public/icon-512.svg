@@ -22,11 +22,11 @@
         </linearGradient>
     </defs>
     <!-- レインボーボーダー背景 -->
-    <rect x="8" y="8" width="496" height="496" rx="108" ry="108" fill="url(#rainbow)"/>
+    <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#rainbow)"/>
     <!-- グラデーション内側背景 -->
-    <rect x="32" y="32" width="448" height="448" rx="90" ry="90" fill="url(#bg-grad)"/>
+    <rect x="48" y="48" width="416" height="416" rx="76" ry="76" fill="url(#bg-grad)"/>
     <!-- ガラスオーバーレイ（上半分のツヤ） -->
-    <rect x="32" y="32" width="448" height="224" rx="90" ry="90" fill="url(#glass)"/>
+    <rect x="48" y="48" width="416" height="208" rx="76" ry="76" fill="url(#glass)"/>
     <!-- ⚡ 稲妻（塗りつぶし・Fサイズ） -->
     <path d="M277 80L165 270h82L210 435l150-205h-82z" fill="white" stroke="white" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>
