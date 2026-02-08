@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import ProfileImageEditor from "@/components/ProfileImageEditor";
 import BannerImageEditor from "@/components/BannerImageEditor";
+import ImageModal from "@/components/ImageModal";
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from '@/navigation';
 import { useSession } from 'next-auth/react'; // Import useSession
@@ -24,6 +25,8 @@ export default function SettingsForm({ user }: { user: UserData }) {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
     const [switchingLocale, setSwitchingLocale] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const router = useRouter(); // Use navigation router
@@ -93,6 +96,20 @@ export default function SettingsForm({ user }: { user: UserData }) {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* フルサイズプレビュー用モーダル */}
+            <ImageModal
+                isOpen={isImageModalOpen}
+                onClose={() => setIsImageModalOpen(false)}
+                src={user.image}
+                alt="Profile"
+            />
+            <ImageModal
+                isOpen={isBannerModalOpen}
+                onClose={() => setIsBannerModalOpen(false)}
+                src={user.banner_url || null}
+                alt="Banner"
+            />
+
             {/* Main Column: Profile Settings */}
             <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">{t('profileSettings')}</h2>
@@ -104,9 +121,10 @@ export default function SettingsForm({ user }: { user: UserData }) {
                         <div className="relative group w-full h-48 sm:h-64 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                             {user.banner_url ? (
                                 <img
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                     src={user.banner_url}
                                     alt="Banner"
+                                    onClick={() => setIsBannerModalOpen(true)}
                                 />
                             ) : (
                                 <div className="w-full h-full bg-[var(--theme-primary-light)] flex items-center justify-center text-xs text-[var(--theme-primary)]/70 font-medium">
@@ -133,9 +151,10 @@ export default function SettingsForm({ user }: { user: UserData }) {
                             <div className="relative group">
                                 {user.image ? (
                                     <img
-                                        className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white shadow-md bg-white object-cover"
+                                        className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white shadow-md bg-white object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                         src={user.image}
                                         alt=""
+                                        onClick={() => setIsImageModalOpen(true)}
                                     />
                                 ) : (
                                     <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white shadow-md bg-[var(--theme-primary-light)] flex items-center justify-center text-4xl font-bold text-[var(--theme-primary)]">
