@@ -34,7 +34,12 @@
         "noTitles": "You don't have any titles yet.",
         "goToShop": "Get one in the Shop",
         "noTitle": "None",
-        "equipped": "Equipped"
+        "equipped": "Equipped",
+        "moreTitles": "Browse more titles",
+        "moreThemes": "Browse more themes",
+        "shopCta": "UC Shop",
+        "shopCtaDescription": "Customize your profile with titles, themes, and icon frames!",
+        "shopCtaButton": "Visit Shop"
     },
     "Dashboard": {
         "title": "UCFitness",

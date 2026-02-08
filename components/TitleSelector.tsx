@@ -111,6 +111,9 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     )}
                 </div>
             </div>
+            <a href="/shop" className="mt-2 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
+                {t('moreTitles')} →
+            </a>
         </div>
     );
 }

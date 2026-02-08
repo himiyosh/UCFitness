@@ -233,6 +233,24 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             {/* Sidebar Column: Preferences */}
             <div className="space-y-8">
 
+                {/* Shop CTA Card */}
+                <Link href="/shop" className="block group">
+                    <section className="relative overflow-hidden p-5 rounded-xl border border-[var(--theme-primary)]/20 bg-gradient-to-br from-[var(--theme-primary-light)] via-white to-[var(--theme-primary-light)] hover:shadow-md transition-all h-fit">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--theme-primary)]/5 rounded-full -translate-y-8 translate-x-8"></div>
+                        <div className="relative">
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="text-2xl">🛍️</span>
+                                <h2 className="text-lg font-bold text-gray-900">{t('shopCta')}</h2>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">{t('shopCtaDescription')}</p>
+                            <span className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--theme-primary)] group-hover:gap-2.5 transition-all">
+                                {t('shopCtaButton')}
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                            </span>
+                        </div>
+                    </section>
+                </Link>
+
                 {/* Language Switcher */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -337,9 +355,10 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                             )}
                         </button>
                     </div>
+                    <Link href="/shop" className="mt-3 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
+                        {t('moreThemes')} →
+                    </Link>
                 </section>
-
-                {/* Daily Goal */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
                         <svg className="w-5 h-5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>

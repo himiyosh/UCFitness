@@ -34,7 +34,12 @@
         "noTitles": "称号をまだ持っていません。",
         "goToShop": "ショップで購入",
         "noTitle": "なし",
-        "equipped": "装備中"
+        "equipped": "装備中",
+        "moreTitles": "もっと称号を見る",
+        "moreThemes": "もっとテーマを見る",
+        "shopCta": "UCショップ",
+        "shopCtaDescription": "称号・テーマ・アイコンフレームでプロフィールをカスタマイズしよう！",
+        "shopCtaButton": "ショップを見る"
     },
     "Dashboard": {
         "title": "UCFitness",
