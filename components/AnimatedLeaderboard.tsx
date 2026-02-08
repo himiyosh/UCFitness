@@ -90,6 +90,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
+    const [leftTab, setLeftTab] = useState<'user' | 'group'>('user');
     const [page, setPage] = useState(1);
     const t = useTranslations('Leaderboard');
     const { theme } = useTheme();
@@ -165,15 +166,39 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
                     <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 min-h-[400px] transition-all duration-300">
-                        <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="text-base font-bold text-gray-900">
-                                {t('titleGlobal')}
-                            </h3>
-                            <span className="bg-[var(--theme-primary)] text-white py-1 px-2.5 rounded-full text-xs font-bold">
+                        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                            {/* Left Tab Switcher */}
+                            <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                                <button
+                                    onClick={() => { setLeftTab('user'); setPage(1); }}
+                                    className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                                        leftTab === 'user'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    👤 {t('titleGlobal')}
+                                </button>
+                                {groupCompetitionRankings && groupCompetitionRankings[period] && (
+                                    <button
+                                        onClick={() => setLeftTab('group')}
+                                        className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                                            leftTab === 'group'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                    >
+                                        🏆 {t('titleGroup')}
+                                    </button>
+                                )}
+                            </div>
+                            <span className="bg-[var(--theme-primary)] text-white py-1 px-2.5 rounded-full text-xs font-bold shrink-0">
                                 {t(TABS.find(t => t.key === period)?.labelKey || 'daily')}
                             </span>
                         </div>
 
+                        {/* User Ranking Content */}
+                        {leftTab === 'user' && (
                         <div className="bg-white px-0 relative overflow-hidden flex flex-col min-h-[460px]">
                             <FadeInWrapper key={period}>
                                 <div className="px-6 pt-6">
@@ -321,23 +346,20 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 </ul>
                             </FadeInWrapper>
                         </div>
+                        )}
+
+                        {/* Group Competition - shown when group tab is active */}
+                        {leftTab === 'group' && groupCompetitionRankings && groupCompetitionRankings[period] && (
+                            <FadeInWrapper key={`group-comp-${period}`}>
+                                <div className="px-4 py-3 border-t border-gray-100">
+                                    <p className="text-xs text-gray-500 mb-2 font-medium">{t('byAverage')}</p>
+                                </div>
+                                <GroupCompetitionList
+                                    initialRankings={groupCompetitionRankings[period]}
+                                />
+                            </FadeInWrapper>
+                        )}
                     </div>
-
-
-                    {/* Group Competition Ranking */}
-                    {groupCompetitionRankings && groupCompetitionRankings[period] && (
-                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all duration-300">
-                            <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center">
-                                <h3 className="text-base font-bold text-gray-900">
-                                    {t('titleGroup')}
-                                </h3>
-                                <p className="text-xs text-gray-500">{t('byAverage')}</p>
-                            </div>
-                            <GroupCompetitionList
-                                initialRankings={groupCompetitionRankings[period]}
-                            />
-                        </div>
-                    )}
                 </div>
 
                 {/* Right Column Stack */}
