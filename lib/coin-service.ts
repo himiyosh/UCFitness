@@ -100,11 +100,13 @@ export async function processCoins(userId: string, steps: number, date: string) 
         const idempotencyPrefix = `coins:${userId}:${date}`;
 
         // 既存のその日のトランザクションを削除（upsert相当）
+        // ※ PURCHASE / GIFT_SEND など手動取引は保持する
         await supabaseAdmin
             .from('coin_transactions')
             .delete()
             .eq('user_id', userId)
-            .eq('date', date);
+            .eq('date', date)
+            .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
 
         // トランザクション挿入
         const transactions = [
@@ -221,16 +223,20 @@ async function updateCoinBalance(userId: string, currentStreak: number) {
 
     let totalEarned = 0;
     let totalBonus = 0;
+    let totalDeductions = 0;
 
     for (const tx of totals) {
         if (tx.type === 'STEPS') {
             totalEarned += tx.amount;
+        } else if (tx.amount < 0) {
+            // PURCHASE, GIFT_SEND などマイナス取引
+            totalDeductions += tx.amount;
         } else {
             totalBonus += tx.amount;
         }
     }
 
-    const totalBalance = totalEarned + totalBonus;
+    const totalBalance = totalEarned + totalBonus + totalDeductions;
     const investorRank = getInvestorRank(totalBalance);
 
     // 既存レコード取得
@@ -419,11 +425,12 @@ export async function backfillCoinsForUser(userId: string) {
         return;
     }
 
-    // 既存トランザクションを削除
+    // 既存の歩数系トランザクションのみ削除（PURCHASE等は保持）
     await supabaseAdmin
         .from('coin_transactions')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
 
     // ストリークを追跡しながらコインを計算
     let streak = 0;
