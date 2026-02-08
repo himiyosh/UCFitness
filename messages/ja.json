@@ -246,7 +246,10 @@
             "TYCOON": "ヘルス・タイクーン"
         },
         "coinLeaderboard": "UC ランキング",
-        "noLeaderboard": "データがまだありません。"
+        "noLeaderboard": "データがまだありません。",
+        "shopCta": "UCショップ",
+        "shopCtaDesc": "貰めたUCで称号・フレーム・テーマをゲット！",
+        "shopCtaButton": "ショップへ"
     },
     "Shop": {
         "title": "ショップ",

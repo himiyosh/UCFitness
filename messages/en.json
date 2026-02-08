@@ -246,7 +246,10 @@
             "TYCOON": "Health Tycoon"
         },
         "coinLeaderboard": "UC Leaderboard",
-        "noLeaderboard": "No data yet."
+        "noLeaderboard": "No data yet.",
+        "shopCta": "UC Shop",
+        "shopCtaDesc": "Spend your UC on titles, frames & themes!",
+        "shopCtaButton": "Go to Shop"
     },
     "Shop": {
         "title": "Shop",
