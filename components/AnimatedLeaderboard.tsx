@@ -179,12 +179,12 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
                     <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 min-h-[400px] transition-all duration-300">
-                        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                        <div className="px-4 py-3 border-b border-gray-100">
                             {/* Left Tab Switcher */}
-                            <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                            <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-full">
                                 <button
                                     onClick={() => { setLeftTab('user'); setPage(1); }}
-                                    className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                                    className={`cursor-pointer flex-1 py-2 rounded-md text-xs font-bold transition-all text-center ${
                                         leftTab === 'user'
                                             ? 'bg-white text-gray-900 shadow-sm'
                                             : 'text-gray-500 hover:text-gray-700'
@@ -195,7 +195,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 {groupCompetitionRankings && (
                                     <button
                                         onClick={() => setLeftTab('group')}
-                                        className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                                        className={`cursor-pointer flex-1 py-2 rounded-md text-xs font-bold transition-all text-center ${
                                             leftTab === 'group'
                                                 ? 'bg-white text-gray-900 shadow-sm'
                                                 : 'text-gray-500 hover:text-gray-700'
@@ -205,9 +205,6 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                     </button>
                                 )}
                             </div>
-                            <span className="bg-[var(--theme-primary)] text-white py-1 px-2.5 rounded-full text-xs font-bold shrink-0">
-                                {t(TABS.find(t => t.key === period)?.labelKey || 'daily')}
-                            </span>
                         </div>
 
                         {/* User Ranking Content */}
