@@ -196,7 +196,7 @@
         "signOut": "ログアウト"
     },
     "Bank": {
-        "title": "UCウォレット",
+        "title": "ウォレット",
         "subtitle": "健康こそが最大の投資。",
         "totalBalance": "総資産",
         "uc": "UC",
@@ -237,7 +237,7 @@
         "noLeaderboard": "データがまだありません。"
     },
     "Shop": {
-        "title": "UCショップ",
+        "title": "ショップ",
         "subtitle": "UndouCoinでプロフィールをカスタマイズ！",
         "balance": "現在の残高",
         "uc": "UC",

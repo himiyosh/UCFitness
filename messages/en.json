@@ -196,7 +196,7 @@
         "signOut": "Sign out"
     },
     "Bank": {
-        "title": "UCWallet",
+        "title": "Wallet",
         "subtitle": "Health is the greatest investment.",
         "totalBalance": "Total Balance",
         "uc": "UC",
@@ -237,7 +237,7 @@
         "noLeaderboard": "No data yet."
     },
     "Shop": {
-        "title": "UC Shop",
+        "title": "Shop",
         "subtitle": "Customize your profile with UndouCoins!",
         "balance": "Your Balance",
         "uc": "UC",
