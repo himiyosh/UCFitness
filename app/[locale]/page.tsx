@@ -407,7 +407,7 @@ export default async function Home() {
                   </p>
 
                   <div className="mt-3 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
-                    <Link href="/profile" className="motivation-btn-primary px-3 py-1 sm:px-5 sm:py-2 bg-white text-[var(--theme-primary)] text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-[var(--theme-primary-light)] transition-colors inline-flex items-center gap-2">
+                    <Link href={username ? `/user/${username}` : '/profile'} className="motivation-btn-primary px-3 py-1 sm:px-5 sm:py-2 bg-white text-[var(--theme-primary)] text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-[var(--theme-primary-light)] transition-colors inline-flex items-center gap-2">
                       {t('profile')}
                     </Link>
                     <Link href="/groups" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-2">

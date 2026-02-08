@@ -128,12 +128,12 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`relative px-4 sm:px-6 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                         >
 
                                             {/* Content Wrapper */}
-                                            <div className="relative z-10 flex items-center gap-4">
-                                                <span className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                            <div className="relative z-10 flex items-center gap-3">
+                                                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
                                                     style={entry.originalRank === 1 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                         color: '#ffffff',
@@ -172,7 +172,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4 relative z-10">
-                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg">
+                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-base">
                                                     {entry.steps.toLocaleString()}
                                                 </div>
                                             </div>

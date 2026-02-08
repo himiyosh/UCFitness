@@ -48,7 +48,7 @@ export default function GroupDetailLeaderboard({
     return (
         <div className="space-y-6">
             <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col h-full">
-                <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
+                <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
                         Member Rankings
@@ -58,7 +58,7 @@ export default function GroupDetailLeaderboard({
                     </div>
                 </div>
 
-                <div className="bg-white px-0 relative flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
+                <div className="bg-white px-0 relative flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 56}px` }}>
                     {/* 5人 × 72px = 360px 固定高 */}
                     <FadeInWrapper key={`${period}-${currentPage}`}>
                         <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
@@ -78,9 +78,9 @@ export default function GroupDetailLeaderboard({
                                     const isCurrentUser = entry.users.id === userId;
 
                                     return (
-                                        <li key={entry.users.id} className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)]' : ''}`}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                        <li key={entry.users.id} className={`px-4 sm:px-6 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)]' : ''}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
                                                     style={rank === 1 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                         color: '#ffffff',
@@ -125,7 +125,7 @@ export default function GroupDetailLeaderboard({
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="font-mono font-bold text-[var(--theme-primary)] text-lg">
+                                                <div className="font-mono font-bold text-[var(--theme-primary)] text-base">
                                                     {entry.steps.toLocaleString()}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">steps</div>
@@ -140,7 +140,7 @@ export default function GroupDetailLeaderboard({
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
                         <button
                             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}

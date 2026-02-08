@@ -90,6 +90,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
+    const [leftTab, setLeftTab] = useState<'user' | 'group'>('user');
     const [page, setPage] = useState(1);
     const t = useTranslations('Leaderboard');
     const { theme } = useTheme();
@@ -132,6 +133,19 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     // Filter current view data
     const currentGlobal = allGlobalRankings[period];
 
+    // Pagination safety — must be at top level (not inside conditional JSX)
+    const ITEMS_PER_PAGE = 5;
+    const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
+    const safePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1);
+
+    useEffect(() => {
+        if (page !== safePage && totalPages > 0) {
+            setPage(safePage);
+        } else if (totalPages === 0 && page !== 1) {
+            setPage(1);
+        }
+    }, [currentGlobal.length, page, totalPages, safePage]);
+
     return (
         <div className="space-y-6">
             {/* TABS - Moved to top for alignment */}
@@ -165,15 +179,36 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
                     <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 min-h-[400px] transition-all duration-300">
-                        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="text-base font-bold text-gray-900">
-                                {t('titleGlobal')}
-                            </h3>
-                            <span className="bg-[var(--theme-primary)] text-white py-1 px-2.5 rounded-full text-xs font-bold">
-                                {t(TABS.find(t => t.key === period)?.labelKey || 'daily')}
-                            </span>
+                        <div className="px-4 py-3 border-b border-gray-100">
+                            {/* Left Tab Switcher */}
+                            <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-full">
+                                <button
+                                    onClick={() => { setLeftTab('user'); setPage(1); }}
+                                    className={`cursor-pointer flex-1 py-2 rounded-md text-xs font-bold transition-all text-center ${
+                                        leftTab === 'user'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    👤 {t('tabUser')}
+                                </button>
+                                {groupCompetitionRankings && (
+                                    <button
+                                        onClick={() => setLeftTab('group')}
+                                        className={`cursor-pointer flex-1 py-2 rounded-md text-xs font-bold transition-all text-center ${
+                                            leftTab === 'group'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                    >
+                                        🏆 {t('tabGroup')}
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
+                        {/* User Ranking Content */}
+                        {leftTab === 'user' && (
                         <div className="bg-white px-0 relative overflow-hidden flex flex-col min-h-[460px]">
                             <FadeInWrapper key={period}>
                                 <div className="px-6 pt-6">
@@ -189,20 +224,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                         <p className="text-gray-500 text-center py-8">{t('noData')}</p>
                                     ) : (
                                         (() => {
-                                            const ITEMS_PER_PAGE = 5;
-                                            const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
-                                            const SafePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1); // Ensure SafePage is at least 1 if totalPages is 0
-
-                                            // Ensure currentPage is valid if data changes
-                                            useEffect(() => {
-                                                if (page !== SafePage && totalPages > 0) {
-                                                    setPage(SafePage);
-                                                } else if (totalPages === 0 && page !== 1) { // If no data, reset to page 1
-                                                    setPage(1);
-                                                }
-                                            }, [currentGlobal.length, page, totalPages, SafePage]);
-
-                                            const startIndex = (SafePage - 1) * ITEMS_PER_PAGE;
+                                            const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
                                             const paginatedItems = currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
                                                 ...entry,
                                                 originalRank: startIndex + idx + 1
@@ -210,15 +232,15 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                             return (
                                                 <div className="flex flex-col h-full">
-                                                    <div className="flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
+                                                    <div className="shrink-0" style={{ height: `${ITEMS_PER_PAGE * 56}px` }}>
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
+                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-4 sm:px-6 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
 
                                                                     {/* Content Wrapper */}
-                                                                    <div className="relative z-10 flex items-center gap-4">
-                                                                        <span className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                                                    <div className="relative z-10 flex items-center gap-3">
+                                                                        <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
                                                                             style={entry.originalRank === 1 ? {
                                                                                 background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                                                 color: '#ffffff',
@@ -261,7 +283,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex items-center gap-2 relative z-10">
-                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg">
+                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-base">
                                                                             {entry.steps.toLocaleString()}
                                                                         </div>
                                                                         {(() => {
@@ -281,7 +303,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                     {/* Pagination Controls */}
                                                     {totalPages > 1 && (
-                                                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                                                        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
                                                             <button
                                                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                                                 disabled={page === 1}
@@ -321,23 +343,20 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 </ul>
                             </FadeInWrapper>
                         </div>
+                        )}
+
+                        {/* Group Competition - shown when group tab is active */}
+                        {leftTab === 'group' && groupCompetitionRankings && groupCompetitionRankings[period] && (
+                            <FadeInWrapper key={`group-comp-${period}`}>
+                                <div className="px-4 py-3 border-t border-gray-100">
+                                    <p className="text-xs text-gray-500 mb-2 font-medium">{t('byAverage')}</p>
+                                </div>
+                                <GroupCompetitionList
+                                    initialRankings={groupCompetitionRankings[period]}
+                                />
+                            </FadeInWrapper>
+                        )}
                     </div>
-
-
-                    {/* Group Competition Ranking */}
-                    {groupCompetitionRankings && groupCompetitionRankings[period] && (
-                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all duration-300">
-                            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-                                <h3 className="text-base font-bold text-gray-900">
-                                    {t('titleGroup')}
-                                </h3>
-                                <p className="text-xs text-gray-500">{t('byAverage')}</p>
-                            </div>
-                            <GroupCompetitionList
-                                initialRankings={groupCompetitionRankings[period]}
-                            />
-                        </div>
-                    )}
                 </div>
 
                 {/* Right Column Stack */}
