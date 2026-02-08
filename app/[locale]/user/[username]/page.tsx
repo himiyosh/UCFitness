@@ -241,9 +241,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
 
                         {/* Stats Card - Unified */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             {/* Top: Total & Best Day */}
-                            <div className="grid grid-cols-2 divide-x divide-gray-100">
+                            <div className="grid grid-cols-2 divide-x divide-gray-200">
                                 <div className="p-4 sm:p-5 text-center">
                                     <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('totalStepsRecorded')}</p>
                                     <p className="mt-1.5 text-2xl sm:text-3xl font-black text-gray-900 tabular-nums">{totalSteps.toLocaleString()}</p>
@@ -258,10 +258,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             </div>
 
                             {/* Divider */}
-                            <div className="border-t border-gray-100" />
+                            <div className="border-t border-gray-200" />
 
                             {/* Bottom: Daily / Weekly / Monthly */}
-                            <div className="grid grid-cols-3 divide-x divide-gray-100">
+                            <div className="grid grid-cols-3 divide-x divide-gray-200 bg-gray-50/50">
                                 <div className="p-3 sm:p-4 text-center">
                                     <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
                                     <p className="mt-1 text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
