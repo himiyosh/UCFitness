@@ -21,37 +21,43 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
     const t = useTranslations('Settings');
     const router = useRouter();
     const [titles, setTitles] = useState<OwnedTitle[]>(ownedTitles);
-    const [loading, setLoading] = useState<string | null>(null); // userItemId being processed
+    const [loading, setLoading] = useState(false);
 
     const equippedTitle = titles.find(t => t.isEquipped);
+    const currentValue = equippedTitle?.userItemId || 'none';
 
-    const handleEquip = async (userItemId: string) => {
+    const handleChange = async (value: string) => {
         if (loading) return;
-        setLoading(userItemId);
+
+        // 現在装備中のものを選択した場合は何もしない
+        if (value === currentValue) return;
+
+        setLoading(true);
         try {
-            const isCurrentlyEquipped = titles.find(t => t.userItemId === userItemId)?.isEquipped;
-            const action = isCurrentlyEquipped ? 'unequip' : 'equip';
-
-            const res = await fetch('/api/shop/equip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userItemId, action }),
-            });
-
-            if (!res.ok) {
-                throw new Error('Failed to update title');
+            // 現在装備中を解除
+            if (equippedTitle && value === 'none') {
+                const res = await fetch('/api/shop/equip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userItemId: equippedTitle.userItemId, action: 'unequip' }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                setTitles(prev => prev.map(t => ({ ...t, isEquipped: false })));
+            } else {
+                // 新しい称号を装備（equipItem が同カテゴリ自動解除する）
+                const res = await fetch('/api/shop/equip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userItemId: value, action: 'equip' }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                setTitles(prev => prev.map(t => ({ ...t, isEquipped: t.userItemId === value })));
             }
-
-            // ローカル state を更新
-            setTitles(prev => prev.map(t => ({
-                ...t,
-                isEquipped: t.userItemId === userItemId ? !isCurrentlyEquipped : false,
-            })));
             router.refresh();
         } catch (e) {
             console.error('Title equip error:', e);
         } finally {
-            setLoading(null);
+            setLoading(false);
         }
     };
 
@@ -59,13 +65,13 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
     if (titles.length === 0) {
         return (
             <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-bold text-gray-900 mb-1 flex items-center gap-2">
-                    <span>🏷️</span> {t('titleLabel')}
-                </h3>
-                <p className="text-xs text-gray-500 mb-3 font-medium">{t('titleDescription')}</p>
-                <div className="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                    <p className="text-sm text-gray-400">{t('noTitles')}</p>
-                    <a href="/shop" className="inline-block mt-1 text-xs text-[var(--theme-primary)] font-bold hover:underline">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                    🏷️ {t('titleLabel')}
+                </label>
+                <p className="text-xs text-gray-500 mb-2">{t('titleDescription')}</p>
+                <div className="px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-400 flex items-center justify-between">
+                    <span>{t('noTitles')}</span>
+                    <a href="/shop" className="text-xs text-[var(--theme-primary)] font-bold hover:underline">
                         {t('goToShop')} →
                     </a>
                 </div>
@@ -75,68 +81,35 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
 
     return (
         <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-sm font-bold text-gray-900 mb-1 flex items-center gap-2">
-                <span>🏷️</span> {t('titleLabel')}
-            </h3>
-            <p className="text-xs text-gray-500 mb-3 font-medium">{t('titleDescription')}</p>
-
-            {/* 現在の称号プレビュー */}
-            {equippedTitle && (
-                <div className="mb-3 px-3 py-2 rounded-lg bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20 flex items-center gap-2">
-                    <span className="text-base">{equippedTitle.emoji}</span>
-                    <span className="text-sm font-bold text-[var(--theme-primary)]">{equippedTitle.nameJa}</span>
-                    <span className="ml-auto text-[10px] text-[var(--theme-primary)] font-medium">{t('equipped')}</span>
-                </div>
-            )}
-
-            {/* 称号リスト */}
-            <div className="flex flex-col gap-1.5">
-                {/* 「なし」オプション */}
-                <button
-                    onClick={() => {
-                        if (equippedTitle) handleEquip(equippedTitle.userItemId);
-                    }}
-                    disabled={!equippedTitle || !!loading}
-                    className={`w-full px-3 py-2.5 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
-                        !equippedTitle
-                            ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
-                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
-                    }`}
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                🏷️ {t('titleLabel')}
+            </label>
+            <p className="text-xs text-gray-500 mb-2">{t('titleDescription')}</p>
+            <div className="relative">
+                <select
+                    value={currentValue}
+                    onChange={(e) => handleChange(e.target.value)}
+                    disabled={loading}
+                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm py-2.5 text-gray-900 appearance-none pl-3 pr-8 bg-white disabled:opacity-60 cursor-pointer"
                 >
-                    <span className="flex items-center gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">—</span>
-                        {t('noTitle')}
-                    </span>
-                    {!equippedTitle && <span className="text-[var(--theme-primary)]">✓</span>}
-                </button>
-
-                {/* 所持称号 */}
-                {titles.map(title => (
-                    <button
-                        key={title.userItemId}
-                        onClick={() => handleEquip(title.userItemId)}
-                        disabled={!!loading}
-                        className={`w-full px-3 py-2.5 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
-                            title.isEquipped
-                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
-                        }`}
-                    >
-                        <span className="flex items-center gap-2.5">
-                            <span className="text-base">{title.emoji}</span>
-                            <span>{title.nameJa}</span>
-                        </span>
-                        <span className="flex items-center gap-2">
-                            {loading === title.userItemId && (
-                                <svg className="animate-spin h-3.5 w-3.5 text-[var(--theme-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            )}
-                            {title.isEquipped && !loading && <span className="text-[var(--theme-primary)]">✓</span>}
-                        </span>
-                    </button>
-                ))}
+                    <option value="none">{t('noTitle')}</option>
+                    {titles.map(title => (
+                        <option key={title.userItemId} value={title.userItemId}>
+                            {title.emoji} {title.nameJa}
+                        </option>
+                    ))}
+                </select>
+                {/* カスタム矢印 */}
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                    {loading ? (
+                        <svg className="animate-spin h-4 w-4 text-[var(--theme-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    ) : (
+                        <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    )}
+                </div>
             </div>
         </div>
     );
