@@ -290,7 +290,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     <div className="md:col-span-2 space-y-6 order-first md:order-none">
                         <div className="flex items-center justify-between h-8"> {/* Fixed height for alignment */}
                             <h2 className="text-2xl font-bold text-gray-900">
-                                {isOwner ? t('activityTitle') : t('activityTitleOther', { name: user.name?.split(' ')[0] || user.username })}
+                                {isOwner ? t('activityTitle') : t('activityTitleOther', { name: user.name?.split(/[\s・·]/)[0] || user.username })}
                             </h2>
                             {isOwner && <SyncHistoryButton />}
                         </div>
@@ -354,7 +354,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                                 {user.image && (
                                                     <img src={user.image} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0" />
                                                 )}
-                                                <p className="text-[11px] sm:text-sm font-bold text-gray-900 leading-tight break-words min-w-0">{user.name || user.username}</p>
+                                                <p className="text-[11px] sm:text-sm font-bold text-gray-900 leading-tight break-words min-w-0">{user.name?.split(/[\s・·]/)[0] || user.username}</p>
                                             </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
