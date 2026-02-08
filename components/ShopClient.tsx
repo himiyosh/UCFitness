@@ -196,10 +196,10 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 {/* 上部: ロゴ + 残高 */}
                 <div className="relative p-5 sm:p-6 flex items-center justify-between">
                     {/* 左: UCShop ロゴ */}
-                    <div className="flex items-center gap-2.5">
-                        <span className="text-3xl sm:text-4xl drop-shadow-md">🛍️</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-4xl sm:text-5xl drop-shadow-lg">🛍️</span>
                         <div>
-                            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
+                            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight drop-shadow-md">
                                 UC<span className="text-yellow-200">Shop</span>
                             </h1>
                         </div>
