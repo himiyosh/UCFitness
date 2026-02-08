@@ -192,7 +192,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 >
                                     👤 {t('titleGlobal')}
                                 </button>
-                                {groupCompetitionRankings && groupCompetitionRankings[period] && (
+                                {groupCompetitionRankings && (
                                     <button
                                         onClick={() => setLeftTab('group')}
                                         className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
