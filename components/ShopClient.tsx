@@ -328,7 +328,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <p>{t('noItems')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                             {filteredItems.map(item => (
                                 <ShopItemCard
                                     key={item.id}
@@ -416,7 +416,7 @@ function ShopItemCard({
             {/* プレビュー + バッジ ラッパー */}
             <div className="relative">
                 {/* プレビュー領域（Coming Soon時はぼかし） */}
-                <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
+                <div className={`h-16 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
@@ -425,12 +425,12 @@ function ShopItemCard({
                 }}>
                     {item.category === 'ICON_FRAME' && (
                         getFrameColor(item.preview_value) === 'rainbow' ? (
-                            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
-                                style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '3px' }}>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-base"
+                                style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
                                 <div className="w-full h-full rounded-full bg-white/80 flex items-center justify-center">👤</div>
                             </div>
                         ) : (
-                            <div className="w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl"
+                            <div className="w-10 h-10 rounded-full border-3 bg-white/80 flex items-center justify-center text-base"
                                 style={{ borderColor: getFrameColor(item.preview_value) }}>
                                 👤
                             </div>
@@ -438,15 +438,11 @@ function ShopItemCard({
                     )}
                     {item.category === 'TITLE' && (
                         <div className="text-center">
-                            <span className="text-3xl">{item.preview_value}</span>
-                            <p className="text-sm font-bold mt-1 text-gray-700">{name}</p>
+                            <span className="text-xl">{item.preview_value}</span>
                         </div>
                     )}
                     {item.category === 'THEME_COLOR' && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
-                            <span className="text-sm font-bold text-gray-700">{name}</span>
-                        </div>
+                        <div className="w-7 h-7 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
                     )}
                 </div>
 
@@ -469,9 +465,9 @@ function ShopItemCard({
             </div>
 
             {/* 情報 + アクション */}
-            <div className={`p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
-                <h3 className={`font-bold text-sm mb-0.5 ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
-                <p className={`text-xs mb-3 line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
+            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
+                <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
+                <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                         <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-500'}`}>{item.price.toLocaleString()}</span>
@@ -558,7 +554,7 @@ function InventoryView({
                             {meta.label}
                             <span className="text-gray-400 font-normal">({items.length})</span>
                         </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                             {items.map(ui => {
                                 const item = ui.shop_items;
                                 if (!item) return null;
