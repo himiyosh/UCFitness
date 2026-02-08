@@ -277,23 +277,23 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             </div>
 
             {/* ショップ / インベントリ切り替え */}
-            <div className="flex bg-gray-100 rounded-2xl p-1.5 mb-4">
+            <div className="flex bg-gray-100/80 rounded-lg p-1 mb-4">
                 <button
                     onClick={() => setViewMode('shop')}
-                    className={`flex-1 px-4 py-3 text-base font-bold rounded-xl transition-all ${
+                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                         viewMode === 'shop'
-                            ? 'bg-white text-amber-600 shadow-md'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ? 'bg-white text-amber-600 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
                     🛍️ {t('shopTab')}
                 </button>
                 <button
                     onClick={() => setViewMode('inventory')}
-                    className={`flex-1 px-4 py-3 text-base font-bold rounded-xl transition-all ${
+                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                         viewMode === 'inventory'
-                            ? 'bg-white text-amber-600 shadow-md'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ? 'bg-white text-amber-600 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
                     📦 {t('inventoryTab')}
