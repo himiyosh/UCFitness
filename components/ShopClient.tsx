@@ -192,19 +192,26 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="absolute top-1/3 left-1/2 w-32 h-32 bg-white/5 rounded-full" />
                 <div className="absolute bottom-1/3 right-10 w-24 h-24 bg-yellow-300/10 rounded-full" />
                 <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>
-                <div className="absolute bottom-8 left-[15%] text-white/10 text-5xl select-none pointer-events-none">🛍️</div>
 
-                {/* 上部: 残高表示 */}
-                <div className="relative p-5 sm:p-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shadow-inner border border-white/30">
-                            💰
-                        </div>
+                {/* 上部: ロゴ + 残高 */}
+                <div className="relative p-5 sm:p-6 flex items-center justify-between">
+                    {/* 左: UCShop ロゴ */}
+                    <div className="flex items-center gap-2.5">
+                        <span className="text-3xl sm:text-4xl drop-shadow-md">🛍️</span>
                         <div>
-                            <p className="text-xs text-white/70 font-bold uppercase tracking-wider">{t('balance')}</p>
-                            <p className="text-3xl sm:text-4xl font-black text-white tabular-nums drop-shadow-sm">
+                            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
+                                UC<span className="text-yellow-200">Shop</span>
+                            </h1>
+                        </div>
+                    </div>
+                    {/* 右: 残高 */}
+                    <div className="flex items-center gap-2.5 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                        <span className="text-xl">💰</span>
+                        <div className="text-right">
+                            <p className="text-[10px] text-white/60 font-bold uppercase tracking-wider leading-none">{t('balance')}</p>
+                            <p className="text-xl sm:text-2xl font-black text-white tabular-nums leading-tight">
                                 {currentBalance.toLocaleString()}
-                                <span className="text-base font-bold text-white/60 ml-1.5">{t('uc')}</span>
+                                <span className="text-xs font-bold text-white/50 ml-1">{t('uc')}</span>
                             </p>
                         </div>
                     </div>
