@@ -194,21 +194,25 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>
                 <div className="absolute bottom-8 left-[15%] text-white/10 text-5xl select-none pointer-events-none">🛍️</div>
 
-                {/* 上部: 残高表示（中央） */}
-                <div className="relative pt-6 pb-3 flex flex-col items-center">
-                    <div className="flex items-center gap-3 mb-1">
-                        <span className="text-3xl drop-shadow">💰</span>
-                        <p className="text-xs text-white/60 font-bold uppercase tracking-widest">{t('balance')}</p>
+                {/* 上部: 残高表示 */}
+                <div className="relative p-5 sm:p-6 pb-3">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shadow-inner border border-white/30">
+                            💰
+                        </div>
+                        <div>
+                            <p className="text-xs text-white/70 font-bold uppercase tracking-wider">{t('balance')}</p>
+                            <p className="text-3xl sm:text-4xl font-black text-white tabular-nums drop-shadow-sm">
+                                {currentBalance.toLocaleString()}
+                                <span className="text-base font-bold text-white/60 ml-1.5">{t('uc')}</span>
+                            </p>
+                        </div>
                     </div>
-                    <p className="text-4xl sm:text-5xl font-black text-white tabular-nums drop-shadow-sm tracking-tight">
-                        {currentBalance.toLocaleString()}
-                        <span className="text-lg font-bold text-white/50 ml-1">{t('uc')}</span>
-                    </p>
                 </div>
 
-                {/* 中部: ショップ / インベントリ切り替え（大きめ・中央） */}
-                <div className="relative flex justify-center px-5 sm:px-6 pb-4">
-                    <div className="flex bg-white/15 backdrop-blur-sm rounded-2xl p-1.5 border border-white/20 w-full max-w-md">
+                {/* 中部: ショップ / インベントリ切り替え */}
+                <div className="relative px-5 sm:px-6 pb-4">
+                    <div className="flex bg-white/15 backdrop-blur-sm rounded-2xl p-1.5 border border-white/20">
                         <button
                             onClick={() => setViewMode('shop')}
                             className={`flex-1 px-4 py-3 text-base font-bold rounded-xl transition-all ${
