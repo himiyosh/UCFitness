@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeries } from './fitbit';
 import { checkAndAwardBadges } from './badge-allocator';
+import { processCoins } from './coin-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,6 +138,13 @@ async function processUserSteps(user: User) {
                 await checkAndAwardBadges(user.id);
             } catch (badgeError) {
                 console.error(`Error checking badges for user ${user.id}:`, badgeError);
+            }
+
+            // UndouCoin: 歩数をコインに変換して記録
+            try {
+                await processCoins(user.id, steps, today);
+            } catch (coinError) {
+                console.error(`Error processing coins for user ${user.id}:`, coinError);
             }
         }
     }

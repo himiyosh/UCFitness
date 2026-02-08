@@ -190,7 +190,44 @@
     "UserMenu": {
         "signedInAs": "ログイン中",
         "myGroups": "マイグループ",
+        "undouBank": "運動バンク",
         "settings": "設定",
         "signOut": "ログアウト"
+    },
+    "Bank": {
+        "title": "運動バンク",
+        "subtitle": "健康こそが最大の投資。",
+        "totalBalance": "総資産",
+        "uc": "UC",
+        "undouCoin": "UndouCoin",
+        "todayEarned": "今日の入金",
+        "totalEarned": "歩数獲得分",
+        "totalBonus": "ボーナス獲得分",
+        "currentStreak": "現在のストリーク",
+        "bestStreak": "最長ストリーク",
+        "days": "日",
+        "streakMultiplier": "ストリーク利率",
+        "investorRank": "投資家ランク",
+        "nextRank": "次のランク",
+        "remaining": "あと {amount} UC",
+        "assetGrowth": "資産推移",
+        "dailyCoins": "日次獲得",
+        "balance": "残高",
+        "transactionHistory": "取引履歴",
+        "noTransactions": "まだ取引がありません。歩いてUndouCoinを貯めましょう！",
+        "steps": "歩数入金",
+        "goalBonus": "目標達成ボーナス",
+        "streakBonus": "ストリークボーナス",
+        "rankBonus": "ランキングボーナス",
+        "last30days": "直近30日間",
+        "ranks": {
+            "BEGINNER": "新人投資家",
+            "BUSINESS": "ビジネスウォーカー",
+            "FUND_MANAGER": "ファンドマネージャー",
+            "DIAMOND": "ダイヤモンド投資家",
+            "TYCOON": "ヘルス・タイクーン"
+        },
+        "coinLeaderboard": "UC ランキング",
+        "noLeaderboard": "データがまだありません。"
     }
 }

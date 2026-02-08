@@ -190,7 +190,44 @@
     "UserMenu": {
         "signedInAs": "Signed in as",
         "myGroups": "My Groups",
+        "undouBank": "UndouBank",
         "settings": "Settings",
         "signOut": "Sign out"
+    },
+    "Bank": {
+        "title": "UndouBank",
+        "subtitle": "Health is the greatest investment.",
+        "totalBalance": "Total Balance",
+        "uc": "UC",
+        "undouCoin": "UndouCoin",
+        "todayEarned": "Today's Deposit",
+        "totalEarned": "Steps Earned",
+        "totalBonus": "Bonus Earned",
+        "currentStreak": "Current Streak",
+        "bestStreak": "Best Streak",
+        "days": "days",
+        "streakMultiplier": "Streak Rate",
+        "investorRank": "Investor Rank",
+        "nextRank": "Next Rank",
+        "remaining": "{amount} UC to go",
+        "assetGrowth": "Asset Growth",
+        "dailyCoins": "Daily Earnings",
+        "balance": "Balance",
+        "transactionHistory": "Transaction History",
+        "noTransactions": "No transactions yet. Start walking to earn UndouCoins!",
+        "steps": "Steps Deposit",
+        "goalBonus": "Goal Bonus",
+        "streakBonus": "Streak Bonus",
+        "rankBonus": "Ranking Bonus",
+        "last30days": "Last 30 Days",
+        "ranks": {
+            "BEGINNER": "Rookie Investor",
+            "BUSINESS": "Business Walker",
+            "FUND_MANAGER": "Fund Manager",
+            "DIAMOND": "Diamond Investor",
+            "TYCOON": "Health Tycoon"
+        },
+        "coinLeaderboard": "UC Leaderboard",
+        "noLeaderboard": "No data yet."
     }
 }
