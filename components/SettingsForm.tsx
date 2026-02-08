@@ -9,6 +9,7 @@ import { useRouter, usePathname, Link } from '@/navigation';
 import { useSession } from 'next-auth/react'; // Import useSession
 import { useTheme, Theme } from '@/components/ThemeProvider';
 import PushNotificationManager from '@/components/PushNotificationManager';
+import UserAvatar from '@/components/UserAvatar';
 import StepGoalForm from '@/components/StepGoalForm';
 
 
@@ -154,18 +155,13 @@ export default function SettingsForm({ user, ownsMidnight = false }: { user: Use
                         {/* Avatar Image (Overlapping) */}
                         <div className="absolute -bottom-12 left-6 sm:left-10">
                             <div className="relative group">
-                                {user.image ? (
-                                    <img
-                                        className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white shadow-md bg-white object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                        src={user.image}
-                                        alt=""
-                                        onClick={() => setIsImageModalOpen(true)}
-                                    />
-                                ) : (
-                                    <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white shadow-md bg-[var(--theme-primary-light)] flex items-center justify-center text-4xl font-bold text-[var(--theme-primary)]">
-                                        {(name?.[0] || 'U')}
-                                    </div>
-                                )}
+                                <UserAvatar
+                                    src={user.image}
+                                    name={name}
+                                    size="2xl"
+                                    borderClass="border-white"
+                                    onClick={user.image ? () => setIsImageModalOpen(true) : undefined}
+                                />
                                 <ProfileImageEditor initialImage={user.image} isCustom={user.is_custom_image || false} />
                             </div>
                         </div>

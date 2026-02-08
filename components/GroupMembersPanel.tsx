@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageModal from '@/components/ImageModal';
+import UserAvatar from '@/components/UserAvatar';
 import LeaveGroupButton from './LeaveGroupButton';
 
 type Member = {
@@ -293,15 +294,7 @@ export default function GroupMembersPanel({
                             {searchResults.map(user => (
                                 <div key={user.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-gray-200 overflow-hidden">
-                                            {user.image ? (
-                                                <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
-                                            ) : (
-                                                <div className="flex items-center justify-center h-full text-xs font-bold text-gray-500">
-                                                    {(user.name?.[0] || '?').toUpperCase()}
-                                                </div>
-                                            )}
-                                        </div>
+                                        <UserAvatar src={user.image} name={user.name || '?'} size="sm" borderClass="border-gray-200" />
                                         <div>
                                             <p className="text-sm font-bold text-gray-900">{user.name}</p>
                                             <p className="text-xs text-gray-500">@{user.username || user.id.substring(0, 8)}</p>
@@ -330,7 +323,7 @@ export default function GroupMembersPanel({
                         <div className="flex items-center gap-3 min-w-0">
                             {/* Avatar */}
                             <div
-                                className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                className="h-10 w-10 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={(e) => {
                                     e.preventDefault(); // Prevent Link navigation
                                     if (member.users.image) {
@@ -338,13 +331,7 @@ export default function GroupMembersPanel({
                                     }
                                 }}
                             >
-                                {member.users.image ? (
-                                    <img src={member.users.image} alt={member.users.name || 'User'} className="h-full w-full object-cover" />
-                                ) : (
-                                    <div className="h-full w-full flex items-center justify-center text-gray-500 font-bold">
-                                        {(member.users.name?.[0] || '?').toUpperCase()}
-                                    </div>
-                                )}
+                                <UserAvatar src={member.users.image} name={member.users.name || '?'} size="md" borderClass="border-gray-200" />
                             </div>
 
                             <div className="min-w-0">

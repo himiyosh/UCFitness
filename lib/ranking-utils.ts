@@ -1,3 +1,5 @@
+import { getEquippedItemsForUsers, type UserEquipSummary } from './shop-service';
+
 export type RankingEntry = {
     steps: number;
     users: {
@@ -5,9 +7,51 @@ export type RankingEntry = {
         name: string | null;
         image: string | null;
         username: string | null;
+        /** 装備中フレームカラー (hex) */
+        frameColor?: string | null;
+        /** 装備中称号名 */
+        titleName?: string | null;
+        /** 装備中称号絵文字 */
+        titleEmoji?: string | null;
     };
     originalRank: number;
 };
+
+/**
+ * ランキングデータに装備アイテム情報を注入する
+ * Record<Period, RankingEntry[]> 形式に対応
+ */
+export async function enrichRankingsWithEquip(
+    rankings: Record<string, RankingEntry[]>
+): Promise<Record<string, RankingEntry[]>> {
+    // 全ユーザーIDを収集
+    const userIdSet = new Set<string>();
+    for (const period of Object.keys(rankings)) {
+        for (const entry of rankings[period]) {
+            if (entry.users?.id) userIdSet.add(entry.users.id);
+        }
+    }
+
+    const userIds = Array.from(userIdSet);
+    if (userIds.length === 0) return rankings;
+
+    // バルク取得
+    const equipMap = await getEquippedItemsForUsers(userIds);
+
+    // 注入
+    for (const period of Object.keys(rankings)) {
+        for (const entry of rankings[period]) {
+            const equip = equipMap[entry.users.id];
+            if (equip) {
+                entry.users.frameColor = equip.frameColor;
+                entry.users.titleName = equip.titleName;
+                entry.users.titleEmoji = equip.titleEmoji;
+            }
+        }
+    }
+
+    return rankings;
+}
 
 export function getDisplayRankings(allRankings: any[], userId?: string | null, maxItems?: number): {
     displayRankings: RankingEntry[];

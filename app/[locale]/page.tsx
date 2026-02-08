@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth";
 import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
 import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
-import { RankingEntry } from '@/lib/ranking-utils';
+import { RankingEntry, enrichRankingsWithEquip } from '@/lib/ranking-utils';
 import GoalProgressChart from '@/components/GoalProgressChart';
 import RunnerAnimation from '@/components/RunnerAnimation';
 import AutoSync from '@/components/AutoSync';
@@ -126,7 +126,9 @@ export default async function Home() {
   }
 
   // Pre-load ALL rankings (Optimization: Single query per scope)
-  const allGlobalRankings = await getCachedGlobalRankings();
+  const rawGlobalRankings = await getCachedGlobalRankings();
+  // 装備アイテム情報を注入（フレーム・称号）
+  const allGlobalRankings = await enrichRankingsWithEquip(rawGlobalRankings) as Record<string, RankingEntry[]>;
 
   // Extract Stats for Current User
   const userId = (session?.user as any)?.id;
@@ -195,7 +197,8 @@ export default async function Home() {
                 username: username || '',
                 name: session.user?.name || '',
                 image: session.user?.image || '',
-              }
+              },
+              originalRank: 0
             };
 
             // Add and resort

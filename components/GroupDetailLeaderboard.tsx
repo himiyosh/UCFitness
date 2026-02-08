@@ -4,6 +4,7 @@ import { useState, useEffect, ReactNode } from 'react';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
+import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 
 function FadeInWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {
@@ -102,13 +103,7 @@ export default function GroupDetailLeaderboard({
                                                 </div>
 
                                                 <div className="relative">
-                                                    {entry.users?.image ? (
-                                                        <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm object-cover" src={entry.users.image} alt="" />
-                                                    ) : (
-                                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[var(--theme-primary)]/20 to-[var(--theme-primary)]/10 flex items-center justify-center text-[var(--theme-primary)] font-bold border-2 border-white shadow-sm">
-                                                            {(entry.users?.name || '?')[0].toUpperCase()}
-                                                        </div>
-                                                    )}
+                                                    <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                 </div>
 
                                                 <div>

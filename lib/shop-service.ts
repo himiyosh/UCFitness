@@ -163,6 +163,58 @@ export async function getEquippedItems(userId: string): Promise<EquippedItems> {
     return equipped;
 }
 
+/** 複数ユーザーの装備中アイテムをバルク取得（リーダーボード用） */
+export interface UserEquipSummary {
+    frameColor: string | null;
+    titleName: string | null;
+    titleEmoji: string | null;
+}
+
+export async function getEquippedItemsForUsers(userIds: string[]): Promise<Record<string, UserEquipSummary>> {
+    if (!userIds || userIds.length === 0) return {};
+
+    const { data, error } = await supabaseAdmin
+        .from('user_items')
+        .select('user_id, shop_items(category, preview_value, name_en, name_ja)')
+        .in('user_id', userIds)
+        .eq('is_equipped', true);
+
+    if (error) {
+        console.error('getEquippedItemsForUsers error:', error);
+        return {};
+    }
+
+    const result: Record<string, UserEquipSummary> = {};
+
+    // フレームカラー変換マップ
+    const frameColorMap: Record<string, string> = {
+        'ring-green-400': '#4ade80',
+        'ring-blue-400': '#60a5fa',
+        'ring-yellow-400': '#facc15',
+        'ring-cyan-300': '#67e8f9',
+        'ring-purple-500': '#a855f7',
+    };
+
+    for (const item of (data as any[])) {
+        const userId = item.user_id;
+        const shopItem = item.shop_items;
+        if (!shopItem) continue;
+
+        if (!result[userId]) {
+            result[userId] = { frameColor: null, titleName: null, titleEmoji: null };
+        }
+
+        if (shopItem.category === 'ICON_FRAME') {
+            result[userId].frameColor = frameColorMap[shopItem.preview_value] || '#d1d5db';
+        } else if (shopItem.category === 'TITLE') {
+            result[userId].titleEmoji = shopItem.preview_value || null;
+            result[userId].titleName = shopItem.name_ja || shopItem.name_en || null;
+        }
+    }
+
+    return result;
+}
+
 // ============================================
 // 購入処理
 // ============================================

@@ -11,6 +11,7 @@ import ProfileBadges from '@/components/ProfileBadges';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
+import { getEquippedItems } from "@/lib/shop-service";
 import { getTranslations } from "next-intl/server";
 
 
@@ -54,8 +55,16 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         }
     }
 
-    // Fetch Badges
+    // Fetch Badges & Equipped Items
     const userBadges = user ? await getUserBadges(user.id) : [];
+    const equippedItems = user ? await getEquippedItems(user.id) : { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
+    let frameColor = equippedItems.ICON_FRAME?.shop_items?.preview_value || null;
+    const titleName = equippedItems.TITLE?.shop_items?.name_ja || null;
+    const titleEmoji = equippedItems.TITLE?.shop_items?.preview_value || null;
+    if (frameColor) {
+        const colorMap: Record<string, string> = { 'ring-green-400': '#4ade80', 'ring-blue-400': '#60a5fa', 'ring-yellow-400': '#facc15', 'ring-cyan-300': '#67e8f9', 'ring-purple-500': '#a855f7' };
+        frameColor = colorMap[frameColor] || '#d1d5db';
+    }
 
     if (!user) {
         notFound();
@@ -200,7 +209,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <h2 className="text-2xl font-bold text-gray-900 truncate">{t('profile')}</h2>
                         </div>
 
-                        <ProfileHeader user={user} readonly={true} badges={userBadges} />
+                        <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji} />
 
                         <div className="mt-2">
                             <ProfileBadges badges={userBadges} />

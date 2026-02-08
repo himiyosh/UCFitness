@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopUsersChart from '@/components/TopUsersChart';
+import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 
 type Props = {
@@ -153,13 +154,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                 >
                                                     {entry.originalRank}
                                                 </span>
-                                                {entry.users?.image ? (
-                                                    <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm" src={entry.users.image} alt="" />
-                                                ) : (
-                                                    <div className="h-10 w-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold border-2 border-white shadow-sm">
-                                                        {(entry.users?.name || '?')[0]}
-                                                    </div>
-                                                )}
+                                                <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users?.frameColor} borderClass="border-white" />
                                                 <div className="flex flex-col min-w-0">
                                                     <p className={`text-sm font-bold truncate text-gray-900`}>
                                                         {entry.users.username ? (

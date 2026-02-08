@@ -12,6 +12,7 @@ import ProfileBadges from "@/components/ProfileBadges";
 import SyncHistoryButton from "@/components/SyncHistoryButton";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getUserBadges } from "@/lib/badge-service";
+import { getEquippedItems } from "@/lib/shop-service";
 import { getTranslations } from "next-intl/server";
 
 export const dynamic = 'force-dynamic';
@@ -41,10 +42,22 @@ export default async function ProfilePage() {
     let bestDay = { date: '-', steps: 0 };
     let allHistoryData: any[] = [];
     let userBadges: any[] = [];
+    let frameColor: string | null = null;
+    let titleName: string | null = null;
+    let titleEmoji: string | null = null;
 
     if (user) {
-        // Fetch Badges
+        // Fetch Badges & Equipped Items
         userBadges = await getUserBadges((session.user as any).id);
+        const equippedItems = await getEquippedItems((session.user as any).id);
+        frameColor = equippedItems.ICON_FRAME?.shop_items?.preview_value || null;
+        titleName = equippedItems.TITLE?.shop_items?.name_ja || null;
+        titleEmoji = equippedItems.TITLE?.shop_items?.preview_value || null;
+        // フレームカラー変換
+        if (frameColor) {
+            const colorMap: Record<string, string> = { 'ring-green-400': '#4ade80', 'ring-blue-400': '#60a5fa', 'ring-yellow-400': '#facc15', 'ring-cyan-300': '#67e8f9', 'ring-purple-500': '#a855f7' };
+            frameColor = colorMap[frameColor] || '#d1d5db';
+        }
 
         // Fetch All History
         const { data: allHistory } = await supabase
@@ -102,7 +115,7 @@ export default async function ProfilePage() {
                     <div className="md:col-span-1 space-y-6 order-last md:order-none">
                         <h2 className="text-2xl font-bold text-gray-900">{t('title')}</h2>
                         <div>
-                            <ProfileHeader user={user} badges={userBadges} />
+                            <ProfileHeader user={user} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji} />
 
                             <div className="mt-6">
                                 <ProfileBadges badges={userBadges} />

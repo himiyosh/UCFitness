@@ -10,6 +10,7 @@ import GroupHeaderActions from "@/components/GroupHeaderActions";
 import GroupSettingsLayout from "@/components/GroupSettingsLayout";
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/ranking-service";
+import { enrichRankingsWithEquip } from "@/lib/ranking-utils";
 import { getGroupCompetitionRankings } from "@/lib/group-ranking-service";
 import JoinGroupPreview from "@/components/JoinGroupPreview";
 import GroupAnalytics from "@/components/GroupAnalytics";
@@ -104,8 +105,9 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         );
     }
 
-    // 2. Fetch Rankings
-    const rankings = await getAllGroupRankings(groupId);
+    // 2. Fetch Rankings & enrich with equipped items
+    const rawRankings = await getAllGroupRankings(groupId);
+    const rankings = await enrichRankingsWithEquip(rawRankings);
 
     // 3. Fetch Group Competition Rankings
     const [compDaily, compWeekly, compMonthly, compYearly] = await Promise.all([

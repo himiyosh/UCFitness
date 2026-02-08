@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import { Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
+import UserAvatar from '@/components/UserAvatar';
 
 interface UserMenuProps {
     user: {
@@ -45,17 +46,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                     aria-haspopup="true"
                 >
                     <span className="sr-only">{t('signedInAs')}</span>
-                    {user.image ? (
-                        <img
-                            className="h-10 w-10 rounded-full border border-gray-200 object-cover"
-                            src={user.image}
-                            alt=""
-                        />
-                    ) : (
-                        <div className="h-10 w-10 rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center text-[var(--theme-primary)] font-bold text-sm border border-[var(--theme-primary)]/30">
-                            {user.name?.[0] || 'U'}
-                        </div>
-                    )}
+                    <UserAvatar src={user.image} name={user.name} size="md" borderClass="border-gray-200" />
                 </button>
             </div>
 
@@ -75,17 +66,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                     >
                         <div className="flex items-center gap-3">
                             <div className="flex-shrink-0">
-                                {user.image ? (
-                                    <img
-                                        className="h-10 w-10 rounded-full border border-gray-200 object-cover group-hover:border-[var(--theme-primary)]/50 transition-colors"
-                                        src={user.image}
-                                        alt=""
-                                    />
-                                ) : (
-                                    <div className="h-10 w-10 rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center text-[var(--theme-primary)] font-bold text-sm border border-[var(--theme-primary)]/30 group-hover:border-[var(--theme-primary)]/50 transition-colors">
-                                        {user.name?.[0] || 'U'}
-                                    </div>
-                                )}
+                                <UserAvatar src={user.image} name={user.name} size="md" borderClass="border-gray-200" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <span className="block text-xs text-gray-500 mb-0.5 font-medium">{t('signedInAs')}</span>

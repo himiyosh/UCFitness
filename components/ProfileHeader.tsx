@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ImageModal from '@/components/ImageModal';
+import UserAvatar from '@/components/UserAvatar';
 
 interface UserData {
     name: string | null;
@@ -23,7 +24,16 @@ interface Badge {
     };
 }
 
-export default function ProfileHeader({ user, badges = [], readonly = false }: { user: UserData; badges?: Badge[]; readonly?: boolean }) {
+interface ProfileHeaderProps {
+    user: UserData;
+    badges?: Badge[];
+    readonly?: boolean;
+    frameColor?: string | null;
+    titleName?: string | null;
+    titleEmoji?: string | null;
+}
+
+export default function ProfileHeader({ user, badges = [], readonly = false, frameColor, titleName, titleEmoji }: ProfileHeaderProps) {
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
 
@@ -56,23 +66,31 @@ export default function ProfileHeader({ user, badges = [], readonly = false }: {
                 </div>
 
                 <div className="px-4 pb-3 sm:pb-4 relative">
-                    {/* Profile Image */}
+                    {/* Profile Image with Frame */}
                     <div className="-mt-8 sm:-mt-12 mb-3 flex justify-center relative group/image">
-                        {user.image ? (
-                            <div
-                                onClick={() => setIsImageModalOpen(true)}
-                                className="cursor-pointer transition-transform hover:scale-105 active:scale-95"
-                            >
-                                <img className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-white object-cover" src={user.image} alt="" />
-                            </div>
-                        ) : (
-                            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-full border-4 border-white shadow-md bg-[var(--theme-primary-light)] flex items-center justify-center text-2xl sm:text-3xl font-bold text-[var(--theme-primary)]">
-                                {(user.name?.[0] || 'U')}
-                            </div>
-                        )}
+                        <div
+                            onClick={() => user.image && setIsImageModalOpen(true)}
+                            className={user.image ? 'cursor-pointer transition-transform hover:scale-105 active:scale-95' : ''}
+                        >
+                            <UserAvatar
+                                src={user.image}
+                                name={user.name}
+                                size="lg"
+                                frameColor={frameColor}
+                                borderClass="border-white"
+                                alt=""
+                            />
+                        </div>
                     </div>
 
                     <div className="text-center mb-4 sm:mb-6">
+                        {/* 称号表示 */}
+                        {titleName && (
+                            <p className="text-xs font-bold text-[var(--theme-primary)] mb-1">
+                                {titleEmoji && <span className="mr-1">{titleEmoji}</span>}
+                                {titleName}
+                            </p>
+                        )}
                         <h1 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h1>
                         <p className="text-xs sm:text-sm text-gray-500">@{user.username || 'user'}</p>
 

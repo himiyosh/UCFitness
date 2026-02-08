@@ -8,6 +8,7 @@ import GroupRankingPanel from '@/components/GroupRankingPanel';
 import GroupCompetitionList from '@/components/GroupCompetitionList';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';
 import TopUsersChart from '@/components/TopUsersChart';
+import UserAvatar from '@/components/UserAvatar';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -239,11 +240,9 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             {entry.originalRank}
                                                                         </span>
                                                                         {entry.users?.image ? (
-                                                                            <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm" src={entry.users.image} alt="" />
+                                                                            <UserAvatar src={entry.users.image} name={entry.users.name} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         ) : (
-                                                                            <div className="h-10 w-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold border-2 border-white shadow-sm">
-                                                                                {(entry.users?.name || '?')[0]}
-                                                                            </div>
+                                                                            <UserAvatar src={null} name={entry.users?.name || '?'} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         )}
                                                                         <div>
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { RankingEntry } from '@/lib/ranking-utils';
+import UserAvatar from '@/components/UserAvatar';
 import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -63,20 +64,13 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
 
                             {/* Avatar / Name */}
                             <div className="flex flex-col items-center gap-1 z-10">
-                                {entry.users.image ? (
-                                    <img
-                                        src={entry.users.image}
-                                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 ${isMe ? 'border-[var(--theme-primary)]' : 'border-white shadow-sm'}`}
-                                        alt={entry.users.name || ''}
-                                    />
-                                ) : (
-                                    <div className={`
-                                        w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2
-                                        ${isMe ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border-[var(--theme-primary)]' : isMidnight ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-gray-100 text-gray-500 border-gray-50'}
-                                    `}>
-                                        {(entry.users.name || '?')[0]}
-                                    </div>
-                                )}
+                                <UserAvatar
+                                    src={entry.users.image}
+                                    name={entry.users.name || '?'}
+                                    size="xs"
+                                    frameColor={entry.users.frameColor}
+                                    borderClass={isMe ? 'border-[var(--theme-primary)]' : 'border-white'}
+                                />
                             </div>
                         </div>
                     );
