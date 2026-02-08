@@ -117,6 +117,16 @@ export default function UserMenu({ user }: UserMenuProps) {
                     </Link>
 
                     <Link
+                        href="/shop"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                        tabIndex={-1}
+                        onClick={() => setIsOpen(false)}
+                    >
+                        🛍️ {t('ucShop')}
+                    </Link>
+
+                    <Link
                         href="/settings"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         role="menuitem"
