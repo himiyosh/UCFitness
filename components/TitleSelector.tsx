@@ -55,35 +55,34 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
         }
     };
 
+    // 称号を1つも持っていない場合
     if (titles.length === 0) {
         return (
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
-                <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                    <span className="text-lg">🏷️</span>
-                    {t('titleLabel')}
-                </h2>
-                <p className="text-xs text-gray-500 mb-4 font-medium">{t('titleDescription')}</p>
-                <div className="text-center py-6">
+            <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-sm font-bold text-gray-900 mb-1 flex items-center gap-2">
+                    <span>🏷️</span> {t('titleLabel')}
+                </h3>
+                <p className="text-xs text-gray-500 mb-3 font-medium">{t('titleDescription')}</p>
+                <div className="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                     <p className="text-sm text-gray-400">{t('noTitles')}</p>
-                    <a href="/shop" className="inline-block mt-2 text-xs text-[var(--theme-primary)] font-bold hover:underline">
+                    <a href="/shop" className="inline-block mt-1 text-xs text-[var(--theme-primary)] font-bold hover:underline">
                         {t('goToShop')} →
                     </a>
                 </div>
-            </section>
+            </div>
         );
     }
 
     return (
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
-            <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                <span className="text-lg">🏷️</span>
-                {t('titleLabel')}
-            </h2>
-            <p className="text-xs text-gray-500 mb-4 font-medium">{t('titleDescription')}</p>
+        <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-sm font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <span>🏷️</span> {t('titleLabel')}
+            </h3>
+            <p className="text-xs text-gray-500 mb-3 font-medium">{t('titleDescription')}</p>
 
             {/* 現在の称号プレビュー */}
             {equippedTitle && (
-                <div className="mb-4 px-3 py-2 rounded-lg bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20 flex items-center gap-2">
+                <div className="mb-3 px-3 py-2 rounded-lg bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20 flex items-center gap-2">
                     <span className="text-base">{equippedTitle.emoji}</span>
                     <span className="text-sm font-bold text-[var(--theme-primary)]">{equippedTitle.nameJa}</span>
                     <span className="ml-auto text-[10px] text-[var(--theme-primary)] font-medium">{t('equipped')}</span>
@@ -91,21 +90,21 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
             )}
 
             {/* 称号リスト */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
                 {/* 「なし」オプション */}
                 <button
                     onClick={() => {
                         if (equippedTitle) handleEquip(equippedTitle.userItemId);
                     }}
                     disabled={!equippedTitle || !!loading}
-                    className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                    className={`w-full px-3 py-2.5 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
                         !equippedTitle
                             ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
                             : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                     }`}
                 >
-                    <span className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">—</span>
+                    <span className="flex items-center gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]">—</span>
                         {t('noTitle')}
                     </span>
                     {!equippedTitle && <span className="text-[var(--theme-primary)]">✓</span>}
@@ -117,13 +116,13 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                         key={title.userItemId}
                         onClick={() => handleEquip(title.userItemId)}
                         disabled={!!loading}
-                        className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                        className={`w-full px-3 py-2.5 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
                             title.isEquipped
                                 ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                         }`}
                     >
-                        <span className="flex items-center gap-3">
+                        <span className="flex items-center gap-2.5">
                             <span className="text-base">{title.emoji}</span>
                             <span>{title.nameJa}</span>
                         </span>
@@ -139,6 +138,6 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     </button>
                 ))}
             </div>
-        </section>
+        </div>
     );
 }

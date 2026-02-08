@@ -44,22 +44,23 @@ export default async function SettingsPage() {
         .maybeSingle();
     const ownsMidnight = midnightItem !== null;
 
-    // 所持している称号アイテムを取得
+    // 所持している称号アイテムを取得（!inner を使わず JS でフィルタ）
     const { data: ownedTitleItems } = await supabaseAdmin
         .from('user_items')
-        .select('id, is_equipped, shop_items!inner(item_code, name_en, name_ja, preview_value, category)')
+        .select('id, is_equipped, shop_items(item_code, name_en, name_ja, preview_value, category)')
         .eq('user_id', userId)
-        .eq('shop_items.category', 'TITLE')
         .order('purchased_at', { ascending: true });
 
-    const ownedTitles = (ownedTitleItems || []).map((item: any) => ({
-        userItemId: item.id,
-        itemCode: item.shop_items.item_code,
-        nameEn: item.shop_items.name_en,
-        nameJa: item.shop_items.name_ja,
-        emoji: item.shop_items.preview_value,
-        isEquipped: item.is_equipped,
-    }));
+    const ownedTitles = (ownedTitleItems || [])
+        .filter((item: any) => item.shop_items?.category === 'TITLE')
+        .map((item: any) => ({
+            userItemId: item.id,
+            itemCode: item.shop_items.item_code,
+            nameEn: item.shop_items.name_en,
+            nameJa: item.shop_items.name_ja,
+            emoji: item.shop_items.preview_value,
+            isEquipped: item.is_equipped,
+        }));
 
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">

@@ -224,6 +224,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                             </button>
                         </div>
                     </div>
+
+                    {/* 称号セレクター（プロフィールセクション内） */}
+                    <TitleSelector ownedTitles={ownedTitles} />
                 </div>
             </section>
 
@@ -335,9 +338,6 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         </button>
                     </div>
                 </section>
-
-                {/* Title Selector */}
-                <TitleSelector ownedTitles={ownedTitles} />
 
                 {/* Daily Goal */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
