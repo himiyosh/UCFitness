@@ -125,9 +125,6 @@
     "Profile": {
         "title": "プロフィール",
         "profile": "プロフィール",
-        "quickLinks": "クイックリンク",
-        "manageGroups": "グループ管理",
-        "editProfile": "プロフィール編集",
         "activityTitle": "あなたのアクティビティ",
         "totalStepsRecorded": "累計歩数",
         "allTimeBestDay": "自己ベスト",

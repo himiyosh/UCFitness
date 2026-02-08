@@ -125,9 +125,6 @@
     "Profile": {
         "title": "Profile",
         "profile": "Profile",
-        "quickLinks": "Quick Links",
-        "manageGroups": "Manage My Groups",
-        "editProfile": "Edit Profile",
         "activityTitle": "Your Activity",
         "totalStepsRecorded": "Total Steps Recorded",
         "allTimeBestDay": "All-time Best Day",

@@ -60,7 +60,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                     tabIndex={-1}
                 >
                     <Link
-                        href="/profile"
+                        href={user.username ? `/user/${user.username}` : '/profile'}
                         className="block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors group"
                         onClick={() => setIsOpen(false)}
                     >
