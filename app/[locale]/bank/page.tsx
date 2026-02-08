@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import UserMenu from "@/components/UserMenu";
@@ -7,6 +7,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import CoinBalanceCard from "@/components/CoinBalanceCard";
 import CoinGrowthChart from "@/components/CoinGrowthChart";
 import TransactionHistory from "@/components/TransactionHistory";
+import InvestorRankPanel from "@/components/InvestorRankPanel";
 import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/coin-service";
 import { getTranslations } from "next-intl/server";
 
@@ -25,7 +26,7 @@ export default async function BankPage() {
     const userId = (session.user as any).id;
 
     // ユーザー情報取得
-    const { data: user } = await supabase
+    const { data: user } = await supabaseAdmin
         .from("users")
         .select("name, email, image, username, step_goal")
         .eq("id", userId)
@@ -82,7 +83,7 @@ export default async function BankPage() {
                 {/* ページヘッダー */}
                 <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        🏦 {t('title')}
+                        👛 {t('title')}
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
                 </div>
@@ -95,8 +96,15 @@ export default async function BankPage() {
                     {/* 資産推移チャート */}
                     <CoinGrowthChart data={balanceHistory} />
 
-                    {/* 取引履歴 */}
-                    <TransactionHistory transactions={transactions} />
+                    {/* 投資家ランクパネル + 取引履歴（横並び 1:4） */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-1">
+                            <InvestorRankPanel currentRank={balance.investor_rank} totalBalance={balance.total_balance} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <TransactionHistory transactions={transactions} />
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

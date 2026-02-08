@@ -100,21 +100,35 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             axisLine={{ stroke: '#e5e7eb' }}
                             interval="preserveStartEnd"
                         />
+                        {/* 左軸: 累積残高 */}
                         <YAxis
-                            tick={{ fontSize: 10, fill: '#9ca3af' }}
+                            yAxisId="balance"
+                            orientation="left"
+                            tick={{ fontSize: 10, fill: '#d97706' }}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={formatNumber}
+                        />
+                        {/* 右軸: 日次獲得コイン */}
+                        <YAxis
+                            yAxisId="daily"
+                            orientation="right"
+                            tick={{ fontSize: 10, fill: '#22c55e' }}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={formatNumber}
                         />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar
+                            yAxisId="daily"
                             dataKey="dailyCoins"
                             fill="#86efac"
-                            opacity={0.6}
+                            opacity={0.7}
                             radius={[2, 2, 0, 0]}
-                            barSize={8}
+                            barSize={10}
                         />
                         <Area
+                            yAxisId="balance"
                             type="monotone"
                             dataKey="balance"
                             stroke="#f59e0b"

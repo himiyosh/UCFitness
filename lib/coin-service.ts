@@ -1,5 +1,4 @@
 import { supabaseAdmin } from './supabase';
-import { supabase } from './supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +96,9 @@ export async function processCoins(userId: string, steps: number, date: string) 
         const multiplier = getStreakMultiplier(streak);
         const streakBonus = multiplier > 1.0 ? Math.floor(baseCoins * (multiplier - 1.0)) : 0;
 
+        // べき等性キー: userId + date で同日の再処理を検知
+        const idempotencyPrefix = `coins:${userId}:${date}`;
+
         // 既存のその日のトランザクションを削除（upsert相当）
         await supabaseAdmin
             .from('coin_transactions')
@@ -112,6 +114,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
                 type: 'STEPS',
                 amount: baseCoins,
                 description: `${steps} steps × ${BASE_RATE} UC`,
+                idempotency_key: `${idempotencyPrefix}:STEPS`,
             },
         ];
 
@@ -122,6 +125,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
                 type: 'GOAL_BONUS',
                 amount: goalBonus,
                 description: `Goal achieved bonus (+${Math.round(GOAL_BONUS_RATE * 100)}%)`,
+                idempotency_key: `${idempotencyPrefix}:GOAL_BONUS`,
             });
         }
 
@@ -132,6 +136,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
                 type: 'STREAK_BONUS',
                 amount: streakBonus,
                 description: `${streak}-day streak bonus (×${multiplier})`,
+                idempotency_key: `${idempotencyPrefix}:STREAK_BONUS`,
             });
         }
 
@@ -263,7 +268,7 @@ async function updateCoinBalance(userId: string, currentStreak: number) {
  * ユーザーのコイン残高を取得
  */
 export async function getCoinBalance(userId: string) {
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
         .from('coin_balances')
         .select('*')
         .eq('user_id', userId)
@@ -281,18 +286,28 @@ export async function getCoinBalance(userId: string) {
 }
 
 /**
- * 直近N日間の取引履歴を取得
+ * 直近N日間の取引履歴を取得（累積残高付き）
  */
 export async function getRecentTransactions(userId: string, limit: number = 30) {
-    const { data } = await supabase
+    // 全トランザクションを古い順に取得して累積残高を計算
+    const { data: allTx } = await supabaseAdmin
         .from('coin_transactions')
         .select('*')
         .eq('user_id', userId)
-        .order('date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .order('date', { ascending: true })
+        .order('created_at', { ascending: true });
 
-    return data || [];
+    if (!allTx || allTx.length === 0) return [];
+
+    // 累積残高を計算
+    let runningBalance = 0;
+    const withBalance = allTx.map(tx => {
+        runningBalance += tx.amount;
+        return { ...tx, balance: runningBalance };
+    });
+
+    // 最新のlimit件を返す（新しい順）
+    return withBalance.reverse().slice(0, limit);
 }
 
 /**
@@ -308,7 +323,7 @@ export async function getDailyBalanceHistory(userId: string, days: number = 30) 
     const startDate = startDateObj.toISOString().split('T')[0];
 
     // 日別の獲得コインを取得
-    const { data: transactions } = await supabase
+    const { data: transactions } = await supabaseAdmin
         .from('coin_transactions')
         .select('date, amount')
         .eq('user_id', userId)
@@ -327,7 +342,7 @@ export async function getDailyBalanceHistory(userId: string, days: number = 30) 
 
     // 累積残高を計算
     // まず開始日以前の総額を取得
-    const { data: priorTotals } = await supabase
+    const { data: priorTotals } = await supabaseAdmin
         .from('coin_transactions')
         .select('amount')
         .eq('user_id', userId)
@@ -355,7 +370,7 @@ export async function getDailyBalanceHistory(userId: string, days: number = 30) 
  * 全ユーザーのコイン残高ランキング
  */
 export async function getCoinLeaderboard(limit: number = 10) {
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
         .from('coin_balances')
         .select('user_id, total_balance, investor_rank')
         .order('total_balance', { ascending: false })
@@ -365,7 +380,7 @@ export async function getCoinLeaderboard(limit: number = 10) {
 
     // ユーザー情報を取得
     const userIds = data.map(d => d.user_id);
-    const { data: users } = await supabase
+    const { data: users } = await supabaseAdmin
         .from('users')
         .select('id, name, image, username')
         .in('id', userIds);
@@ -494,4 +509,81 @@ export async function backfillCoinsForUser(userId: string) {
     await updateCoinBalance(userId, streak);
 
     console.log(`Backfill complete for ${userId}: ${transactions.length} transactions`);
+}
+
+// ============================================
+// 安全な出金・入金（Phase 4 用）
+// PostgreSQL 関数を呼び出し、原子性・べき等性を保証
+// ============================================
+
+export interface DeductResult {
+    success: boolean;
+    already_processed?: boolean;
+    transaction_id?: string;
+    new_balance?: number;
+    error?: 'amount_must_be_positive' | 'invalid_debit_type' | 'user_not_found' | 'insufficient_balance';
+    current_balance?: number;
+    requested?: number;
+}
+
+/**
+ * 安全な残高減算（ショップ購入・ギフト送信用）
+ * DB関数で FOR UPDATE ロック + 残高チェック + べき等性を保証
+ */
+export async function deductBalance(
+    userId: string,
+    amount: number,
+    type: 'PURCHASE' | 'GIFT_SEND',
+    description: string,
+    idempotencyKey?: string,
+): Promise<DeductResult> {
+    const { data, error } = await supabaseAdmin.rpc('deduct_balance', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_type: type,
+        p_description: description,
+        p_idempotency_key: idempotencyKey || null,
+    });
+
+    if (error) {
+        console.error(`deduct_balance error for ${userId}:`, error);
+        return { success: false, error: 'insufficient_balance' };
+    }
+
+    return data as DeductResult;
+}
+
+export interface CreditResult {
+    success: boolean;
+    already_processed?: boolean;
+    transaction_id?: string;
+    new_balance?: number;
+    error?: 'amount_must_be_positive' | 'invalid_credit_type';
+}
+
+/**
+ * 安全な残高加算（ギフト受け取り・ランクボーナス用）
+ * DB関数でべき等性を保証
+ */
+export async function creditBalance(
+    userId: string,
+    amount: number,
+    type: 'GIFT_RECEIVE' | 'RANK_BONUS',
+    description: string,
+    idempotencyKey?: string,
+): Promise<CreditResult> {
+    const { data, error } = await supabaseAdmin.rpc('credit_balance', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_type: type,
+        p_description: description,
+        p_idempotency_key: idempotencyKey || null,
+    });
+
+    if (error) {
+        console.error(`credit_balance error for ${userId}:`, error);
+        return { success: false, error: 'amount_must_be_positive' };
+    }
+
+    return data as CreditResult;
 }

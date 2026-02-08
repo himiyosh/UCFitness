@@ -103,7 +103,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
                     >
-                        {t('myGroups')}
+                        👥 {t('myGroups')}
                     </Link>
 
                     <Link
@@ -113,7 +113,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
                     >
-                        🏦 {t('undouBank')}
+                        👛 {t('undouBank')}
                     </Link>
 
                     <Link
@@ -123,7 +123,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
                     >
-                        {commonT('settings')}
+                        ⚙️ {commonT('settings')}
                     </Link>
 
                     <button
@@ -132,7 +132,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                         role="menuitem"
                         tabIndex={-1}
                     >
-                        {commonT('logout')}
+                        🚪 {commonT('logout')}
                     </button>
                 </div>
             )}
