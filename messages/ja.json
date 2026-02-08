@@ -37,13 +37,15 @@
         "moreFrames": "もっとフレームを見る",
         "titleDescription": "表示する称号を選択してください。",
         "noTitles": "称号をまだ持っていません。",
+        "noTitlesAchievement": "称号は実績を達成すると解除されます。歩いてチャレンジしよう！",
+        "titleAchievementHint": "称号は歩数・ストリークなどの実績で解除されます",
         "goToShop": "ショップで購入",
         "noTitle": "なし",
         "equipped": "設定中",
         "moreTitles": "もっと称号を見る",
         "moreThemes": "もっとテーマを見る",
         "shopCta": "UCショップ",
-        "shopCtaDescription": "称号・テーマ・アイコンフレームでプロフィールをカスタマイズしよう！",
+        "shopCtaDescription": "フレーム・テーマでプロフィールをカスタマイズしよう！",
         "shopCtaButton": "ショップを見る"
     },
     "Dashboard": {
@@ -252,7 +254,7 @@
         "coinLeaderboard": "UC ランキング",
         "noLeaderboard": "データがまだありません。",
         "shopCta": "UCショップ",
-        "shopCtaDesc": "貰めたUCで称号・フレーム・テーマをゲット！",
+        "shopCtaDesc": "貯めたUCでフレーム・テーマをゲット！",
         "shopCtaButton": "ショップへ"
     },
     "Shop": {

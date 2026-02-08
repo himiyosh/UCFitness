@@ -74,6 +74,7 @@ export async function getShopItems(category?: ShopCategory): Promise<ShopItem[]>
     let query = supabaseAdmin
         .from('shop_items')
         .select('*')
+        .neq('category', 'TITLE')
         .order('is_active', { ascending: false })
         .order('price', { ascending: true })
         .order('sort_order', { ascending: true });

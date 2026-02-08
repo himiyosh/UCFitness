@@ -2,6 +2,7 @@ import { supabaseAdmin } from './supabase';
 import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeries } from './fitbit';
 import { checkAndAwardBadges } from './badge-allocator';
 import { processCoins } from './coin-service';
+import { checkAndAwardTitleAchievements } from './title-achievement-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,6 +139,13 @@ async function processUserSteps(user: User) {
                 await checkAndAwardBadges(user.id);
             } catch (badgeError) {
                 console.error(`Error checking badges for user ${user.id}:`, badgeError);
+            }
+
+            // 称号達成チェック & 自動付与
+            try {
+                await checkAndAwardTitleAchievements(user.id);
+            } catch (titleError) {
+                console.error(`Error checking title achievements for user ${user.id}:`, titleError);
             }
 
             // UndouCoin: 歩数をコインに変換して記録

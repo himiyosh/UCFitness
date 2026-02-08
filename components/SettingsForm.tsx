@@ -267,13 +267,10 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         {/* アイテムプレビュー */}
                         <div className="flex items-center gap-3 mb-5">
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
-                                🏅 {t('titleLabel')}
+                                💎 {t('frameLabel')}
                             </span>
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
                                 🎨 {t('theme')}
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
-                                💎 {t('frameLabel') || 'Frame'}
                             </span>
                         </div>
 

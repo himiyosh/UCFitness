@@ -69,11 +69,8 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     🏷️ {t('titleLabel')}
                 </label>
                 <p className="text-xs text-gray-500 mb-2">{t('titleDescription')}</p>
-                <div className="px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-400 flex items-center justify-between">
-                    <span>{t('noTitles')}</span>
-                    <a href="/shop" className="text-xs text-[var(--theme-primary)] font-bold hover:underline">
-                        {t('goToShop')} →
-                    </a>
+                <div className="px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-400">
+                    <span>{t('noTitlesAchievement')}</span>
                 </div>
             </div>
         );
@@ -111,9 +108,9 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     )}
                 </div>
             </div>
-            <a href="/shop" className="mt-2 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
-                {t('moreTitles')} →
-            </a>
+            <p className="mt-2 text-xs text-gray-400 font-medium">
+                ✨ {t('titleAchievementHint')}
+            </p>
         </div>
     );
 }
