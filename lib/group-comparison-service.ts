@@ -88,10 +88,10 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     // ⚡ Bolt Optimization: Fetch users separately to avoid payload bloat from Joins
     const { data: users } = await supabase
         .from('users')
-        .select('id, username, name, email')
+        .select('id, username, name')
         .in('id', memberIds);
 
-    const userMap = new Map<string, { username: string | null, name: string | null, email: string | null }>();
+    const userMap = new Map<string, { username: string | null, name: string | null }>();
     users?.forEach(u => userMap.set(u.id, u));
 
     // 3. Determine Top 10 Members - Fetching ALL steps with pagination
@@ -145,7 +145,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         // Robust name resolution
         // Optimization: Use in-memory map instead of row.users
         const u = userMap.get(uid);
-        const displayName = u?.username || u?.name || u?.email?.split('@')[0] || 'Unknown';
+        const displayName = u?.username || u?.name || 'Unknown';
         userIdToName.set(uid, displayName);
     });
 

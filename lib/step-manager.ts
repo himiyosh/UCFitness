@@ -32,7 +32,7 @@ async function ensureFitbitAccessToken(user: User) {
     const nowSeconds = Math.floor(Date.now() / 1000);
     // Refresh if expired or expiring in next 5 minutes
     if (user.refresh_token && user.token_expires_at && (user.token_expires_at - nowSeconds < 300)) {
-        console.log(`Token expiring soon for ${user.email}, refreshing...`);
+        console.log(`Token expiring soon for user ${user.id}, refreshing...`);
         return await performTokenRefresh(user);
     }
 
@@ -42,7 +42,7 @@ async function ensureFitbitAccessToken(user: User) {
 async function performTokenRefresh(user: User) {
     try {
         if (!user.refresh_token) {
-            console.error(`No refresh token available for ${user.email} (ID: ${user.id})`);
+            console.error(`No refresh token available for user ${user.id}`);
             return null;
         }
 
@@ -60,14 +60,14 @@ async function performTokenRefresh(user: User) {
             .eq('id', user.id);
 
         if (updateError) {
-            console.error(`Failed to update tokens for ${user.email}`, updateError);
+            console.error(`Failed to update tokens for user ${user.id}`, updateError);
             return null;
         } else {
-            console.log(`Tokens refreshed for ${user.email}`);
+            console.log(`Tokens refreshed for user ${user.id}`);
             return newTokens.access_token;
         }
     } catch (refreshError) {
-        console.error(`Failed to refresh token for ${user.email}`, refreshError);
+        console.error(`Failed to refresh token for user ${user.id}`, refreshError);
         return null; // Can't refresh
     }
 }
@@ -87,7 +87,7 @@ async function processUserSteps(user: User) {
 
     if (user.provider === 'fitbit') {
         if (!accessToken) {
-            console.error(`Could not obtain access token for ${user.email}`);
+            console.error(`Could not obtain access token for user ${user.id}`);
             return null;
         }
 
@@ -96,25 +96,25 @@ async function processUserSteps(user: User) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-                console.log(`Received 401 for ${user.email}, forcing refresh...`);
+                console.log(`Received 401 for user ${user.id}, forcing refresh...`);
                 // Force refresh
                 accessToken = await performTokenRefresh(user);
                 if (accessToken) {
                     try {
                         steps = await getFitbitSteps(accessToken, today);
                     } catch (retryError) {
-                        console.error(`Retry failed regarding steps for ${user.email}:`, retryError);
+                        console.error(`Retry failed regarding steps for user ${user.id}:`, retryError);
                     }
                 }
             } else {
-                console.error(`Error fetching steps for ${user.email}:`, error);
+                console.error(`Error fetching steps for user ${user.id}:`, error);
             }
         }
     }
 
     // Only update if steps were fetched successfully (steps >= 0)
     if (steps !== null && steps >= 0) {
-        console.log(`Updating steps for ${user.email} (${user.provider}): ${steps}`);
+        console.log(`Updating steps for user ${user.id} (${user.provider}): ${steps}`);
         const { error: upsertError } = await supabaseAdmin
             .from('daily_steps')
             .upsert(
@@ -128,7 +128,7 @@ async function processUserSteps(user: User) {
             );
 
         if (upsertError) {
-            console.error(`Failed to update steps for ${user.email}:`, upsertError);
+            console.error(`Failed to update steps for user ${user.id}:`, upsertError);
         } else {
             // Check for badges
             // Fire and forget to not block response? Or await to ensure consistency?
@@ -136,7 +136,7 @@ async function processUserSteps(user: User) {
             try {
                 await checkAndAwardBadges(user.id);
             } catch (badgeError) {
-                console.error(`Error checking badges for ${user.email}:`, badgeError);
+                console.error(`Error checking badges for user ${user.id}:`, badgeError);
             }
         }
     }
@@ -179,7 +179,7 @@ export async function backfillUserSteps(userId: string) {
 
     let accessToken = await ensureFitbitAccessToken(user);
     if (!accessToken) {
-        console.error(`Could not obtain access token for backfill ${user.email}`);
+        console.error(`Could not obtain access token for backfill user ${user.id}`);
         return;
     }
 
@@ -202,7 +202,7 @@ export async function backfillUserSteps(userId: string) {
         }
 
         if (timeSeries && Array.isArray(timeSeries)) {
-            console.log(`Fetched ${timeSeries.length} days of history for ${user.email}`);
+            console.log(`Fetched ${timeSeries.length} days of history for user ${user.id}`);
 
             // Prepare upsert operations
             // Supabase upsert can take an array
@@ -219,14 +219,14 @@ export async function backfillUserSteps(userId: string) {
                 .upsert(stepsData, { onConflict: 'user_id,date' });
 
             if (upsertError) {
-                console.error(`Failed to backfill steps for ${user.email}:`, upsertError);
+                console.error(`Failed to backfill steps for user ${user.id}:`, upsertError);
             } else {
-                console.log(`Successfully backfilled steps for ${user.email}`);
+                console.log(`Successfully backfilled steps for user ${user.id}`);
             }
         }
 
     } catch (error) {
-        console.error(`Error backfilling steps for ${user.email}:`, error);
+        console.error(`Error backfilling steps for user ${user.id}:`, error);
     }
 }
 

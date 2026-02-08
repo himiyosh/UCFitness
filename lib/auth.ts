@@ -40,7 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // debug: true, // Enable for debugging if needed
     callbacks: {
         async signIn({ user, account, profile }: any) {
-            console.log(`[Auth] SignIn Start: Email=${user.email}, Provider=${account?.provider}, ProviderID=${account?.providerAccountId}`);
+            console.log(`[Auth] SignIn Start: Provider=${account?.provider}, ProviderID=${account?.providerAccountId}`);
             if (!account) return false;
 
             // 1. Try to find user by Provider Account ID (Fitbit ID) first - This is stable
@@ -61,7 +61,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // 2. Fallback: Try by Email (legacy or first-time sync issue)
             // Only if not found by provider ID and user has an email
             if (!existingUser && user.email) {
-                console.log(`[Auth] Fallback lookup by Email: ${user.email}`);
+                console.log(`[Auth] Fallback lookup by email`);
                 const { data: userByEmail, error: emailError } = await supabaseAdmin
                     .from("users")
                     .select("id, is_custom_image, email, provider, provider_account_id")
@@ -101,7 +101,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 console.log(`[DEBUG_AUTH] is_custom_image: ${existingUser.is_custom_image} (Type: ${typeof existingUser.is_custom_image})`);
 
                 if (!existingUser.is_custom_image) {
-                    console.log(`[DEBUG_AUTH] Overwriting image with Fitbit: ${user.image}`);
+                    console.log(`[DEBUG_AUTH] Overwriting image with Fitbit provider image`);
                     updates.image = user.image;
                 } else {
                     console.log(`[DEBUG_AUTH] Keeping custom image.`); // Removed .image access to avoid type error if not selected
@@ -113,7 +113,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     .eq("id", existingUser.id); // Update by ID, not email (email might differ)
                 error = updateError;
             } else {
-                console.log(`[Auth] Creating new user: ${user.email}`);
+                console.log(`[Auth] Creating new user (ProviderID: ${account?.providerAccountId})`);
                 // New user: Insert everything including name
                 // Note: user.email might be the pending one here.
                 const { data: newUser, error: insertError } = await supabaseAdmin
@@ -245,7 +245,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }
 
                 if (data) {
-                    console.log(`[Auth] JWT Lookup Success: ${data.username} (${data.id})`);
+                    console.log(`[Auth] JWT Lookup Success: ID=${data.id}`);
                     token.id = data.id;
                     token.username = data.username;
                     token.email = data.email; // Real DB email

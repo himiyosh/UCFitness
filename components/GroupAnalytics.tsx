@@ -14,7 +14,7 @@ interface GroupAnalyticsProps {
     rankings: Record<Period, RankingEntry[]>;
     comparisonData: Record<Period, ChartData>;
     groupCompetitionRankings: Record<Period, GroupRankingEntry[]>;
-    userEmail?: string | null;
+    userId?: string | null;
     currentGroupId: string;
     currentUsername?: string;
     children?: React.ReactNode;
@@ -34,7 +34,7 @@ export default function GroupAnalytics({
     rankings,
     comparisonData,
     groupCompetitionRankings,
-    userEmail,
+    userId,
     currentGroupId,
     currentUsername,
     children,
@@ -57,7 +57,7 @@ export default function GroupAnalytics({
 
     // Logic extracted from Leaderboard for Header Stats
     // Check if user is in the full list
-    const userRank = userEmail ? allData.findIndex(r => r.users.email === userEmail) + 1 : 0;
+    const userRank = userId ? allData.findIndex(r => r.users.id === userId) + 1 : 0;
     const userEntry = userRank > 0 ? allData[userRank - 1] : null;
 
     // Calculate Average
@@ -156,7 +156,7 @@ export default function GroupAnalytics({
                 <div className="flex-1 min-w-0">
                     <GroupDetailLeaderboard
                         rankings={rankings}
-                        userEmail={userEmail}
+                        userId={userId}
                         period={period}
                         currentPage={currentPage}
                         onPageChange={setCurrentPage}

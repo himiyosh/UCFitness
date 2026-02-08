@@ -26,7 +26,6 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     }
 
     const userId = (session.user as any).id;
-    const userEmail = session.user.email;
     const { groupId } = params;
 
     // 0. Fetch Current User (to ensure fresh profile image/name)
@@ -135,7 +134,6 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         users (
             id,
             name,
-            email,
             image,
             username
         )
@@ -233,7 +231,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             rankings={rankings}
                             comparisonData={comparisonData}
                             groupCompetitionRankings={groupCompetitionRankings}
-                            userEmail={userEmail}
+                            userId={userId}
                             currentGroupId={groupId}
                             currentUsername={session.user.name || undefined}
                             isPublic={group.is_public}

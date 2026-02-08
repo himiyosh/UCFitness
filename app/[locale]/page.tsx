@@ -129,10 +129,11 @@ export default async function Home() {
   const allGlobalRankings = await getCachedGlobalRankings();
 
   // Extract Stats for Current User
-  const myWeeklyEntry = allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const userId = (session?.user as any)?.id;
+  const myWeeklyEntry = userId ? allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.id === userId) : undefined;
   const myWeeklySteps = myWeeklyEntry?.steps || 0;
 
-  const myMonthlyEntry = allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.email === userEmail);
+  const myMonthlyEntry = userId ? allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.id === userId) : undefined;
   const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
   // ⚡ Bolt Optimization: Bulk fetch group metadata to avoid N+1 queries
@@ -194,8 +195,6 @@ export default async function Home() {
                 username: username || '',
                 name: session.user?.name || '',
                 image: session.user?.image || '',
-                email: userEmail || '',
-                group_keyword: groupKeywords
               }
             };
 
@@ -419,7 +418,6 @@ export default async function Home() {
 
           {/* BOTTOM SECTION: Leaderboards */}
           <AnimatedLeaderboard
-            userEmail={userEmail}
             userId={(session?.user as any)?.id}
             allGlobalRankings={allGlobalRankings}
             allGroupRankings={allGroupRankings}

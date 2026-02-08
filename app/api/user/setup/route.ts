@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         // CRITICAL: Check this BEFORE username, because if we are merging accounts,
         // we don't care if the username is taken (since we are deleting the temp user anyway).
         if (updates.email && updates.email !== session.user.email) {
-            console.log(`[Setup] Checking email change: ${session.user.email} -> ${updates.email}`);
+            console.log(`[Setup] Checking email change for user ${(session.user as any).id}`);
 
             const { data: existingEmail } = await supabaseAdmin
                 .from('users')
