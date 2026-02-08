@@ -49,7 +49,7 @@
     },
     "Landing": {
         "title": "UCFitness",
-        "subtitle": "あなたの会社の究極のソーシャルフィットネスダッシュボード。",
+        "subtitle": "歩くことは、最高の健康投資。",
         "compete": "競争",
         "collectBadges": "バッジ収集",
         "stayActive": "活動継続",
@@ -57,7 +57,7 @@
         "features": {
             "leaderboards": {
                 "title": "リアルタイムランキング",
-                "desc": "順位をリアルタイムで追跡。日次、週次、月次で同僚と比較できます。"
+                "desc": "順位をリアルタイムで追跡。日次、週次、月次で仲間と比較できます。"
             },
             "battles": {
                 "title": "グループバトル",

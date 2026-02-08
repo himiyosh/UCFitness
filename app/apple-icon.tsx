@@ -7,7 +7,7 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-// Landing Pageアイコン再現（レインボーボーダー＋稲妻ストローク）
+// レインボーボーダー＋3色グラデ＋ガラス＋塗りつぶし稲妻
 export default function AppleIcon() {
     return new ImageResponse(
         (
@@ -18,46 +18,44 @@ export default function AppleIcon() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #4F46E5 75%, #FF85A2 100%)',
+                    borderRadius: '40px',
                 }}
             >
-                {/* レインボーボーダー背景 */}
+                {/* 内側: グラデーション背景 + ガラス + 稲妻 */}
                 <div
                     style={{
-                        width: '180px',
-                        height: '180px',
+                        width: '150px',
+                        height: '150px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #4F46E5 75%, #FF85A2 100%)',
-                        borderRadius: '40px',
+                        background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #7C3AED 100%)',
+                        borderRadius: '32px',
+                        position: 'relative',
                     }}
                 >
-                    {/* Indigo 内側背景 */}
                     <div
                         style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
                             width: '150px',
-                            height: '150px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: '#4F46E5',
-                            borderRadius: '32px',
+                            height: '75px',
+                            background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
+                            borderRadius: '32px 32px 0 0',
                         }}
-                    >
-                        {/* ⚡ 稲妻ボルト — ストロークスタイル */}
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="90"
-                            height="90"
-                            fill="none"
+                    />
+                    <svg viewBox="0 0 24 24" width="78" height="78">
+                        <path
+                            d="M13.5 2.5L7 13h4.5L9 21.5l8.5-11h-4.5z"
+                            fill="white"
                             stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
+                            strokeWidth="0.8"
                             strokeLinejoin="round"
-                        >
-                            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                    </div>
+                            strokeLinecap="round"
+                        />
+                    </svg>
                 </div>
             </div>
         ),

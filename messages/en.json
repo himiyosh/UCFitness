@@ -49,7 +49,7 @@
     },
     "Landing": {
         "title": "UCFitness",
-        "subtitle": "The ultimate social fitness dashboard for your company.",
+        "subtitle": "Walking is the best investment in your health.",
         "compete": "Compete",
         "collectBadges": "Collect Badges",
         "stayActive": "Stay Active",
@@ -57,7 +57,7 @@
         "features": {
             "leaderboards": {
                 "title": "Live Leaderboards",
-                "desc": "Track your ranking in real-time. See how you stack up against colleagues daily, weekly, and monthly."
+                "desc": "Track your ranking in real-time. See how you stack up against others daily, weekly, and monthly."
             },
             "battles": {
                 "title": "Group Battles",
@@ -65,7 +65,7 @@
             },
             "badges": {
                 "title": "Earn Badges",
-                "desc": "Unlock uniform badges for milestones, streaks, and impressive step counts. Show off your achievements."
+                "desc": "Unlock unique badges for milestones, streaks, and impressive step counts. Show off your achievements."
             }
         },
         "copyright": "Studio344"

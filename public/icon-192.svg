@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
     <defs>
+        <!-- レインボーボーダー -->
         <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#FFE66D"/>
             <stop offset="25%" style="stop-color:#95E500"/>
@@ -7,14 +8,25 @@
             <stop offset="75%" style="stop-color:#4F46E5"/>
             <stop offset="100%" style="stop-color:#FF85A2"/>
         </linearGradient>
+        <!-- 3色グラデーション背景 -->
+        <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#6366F1"/>
+            <stop offset="50%" style="stop-color:#4F46E5"/>
+            <stop offset="100%" style="stop-color:#7C3AED"/>
+        </linearGradient>
+        <!-- ガラス風ハイライト -->
+        <linearGradient id="glass" x1="50%" y1="0%" x2="50%" y2="100%">
+            <stop offset="0%" style="stop-color:white;stop-opacity:0.18"/>
+            <stop offset="50%" style="stop-color:white;stop-opacity:0.03"/>
+            <stop offset="100%" style="stop-color:white;stop-opacity:0"/>
+        </linearGradient>
     </defs>
-    <!-- 回転グループ -->
-    <g>
-        <!-- レインボーボーダー -->
-        <rect x="16" y="16" width="480" height="480" rx="100" ry="100" fill="url(#rainbow)"/>
-        <!-- Indigo 内側 -->
-        <rect x="48" y="48" width="416" height="416" rx="80" ry="80" fill="#4F46E5"/>
-        <!-- ⚡ 稲妻ボルト（ストローク） -->
-        <path d="M277 107L170 277h64l-53 128 121-160h-64z" fill="none" stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
+    <!-- レインボーボーダー背景 -->
+    <rect x="8" y="8" width="496" height="496" rx="108" ry="108" fill="url(#rainbow)"/>
+    <!-- グラデーション内側背景 -->
+    <rect x="32" y="32" width="448" height="448" rx="90" ry="90" fill="url(#bg-grad)"/>
+    <!-- ガラスオーバーレイ（上半分のツヤ） -->
+    <rect x="32" y="32" width="448" height="224" rx="90" ry="90" fill="url(#glass)"/>
+    <!-- ⚡ 稲妻（塗りつぶし・Fサイズ） -->
+    <path d="M277 80L165 270h82L210 435l150-205h-82z" fill="white" stroke="white" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>
