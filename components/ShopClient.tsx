@@ -279,14 +279,16 @@ function ShopItemCard({
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
 
     return (
-        <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
-            isComingSoon ? 'opacity-50 border-dashed border-gray-300 grayscale' : !meetsRank ? 'opacity-60 border-gray-200' : isOwned ? 'border-green-200' : 'border-gray-100'
+        <div className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
+            isComingSoon ? 'bg-gray-50 border-dashed border-gray-300' : !meetsRank ? 'bg-white opacity-60 border-gray-200' : isOwned ? 'bg-white border-green-200' : 'bg-white border-gray-100'
         }`}>
             {/* プレビュー領域 */}
             <div className="h-24 flex items-center justify-center relative" style={{
-                background: item.category === 'THEME_COLOR'
-                    ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                    : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                background: isComingSoon
+                    ? '#e5e7eb'
+                    : item.category === 'THEME_COLOR'
+                        ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
+                        : 'linear-gradient(135deg, #fef3c7, #fde68a)',
             }}>
                 {item.category === 'ICON_FRAME' && (
                     <div className={`w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl ${
@@ -333,12 +335,12 @@ function ShopItemCard({
             </div>
 
             {/* 情報 + アクション */}
-            <div className="p-3">
-                <h3 className="font-bold text-sm text-gray-900 mb-0.5">{name}</h3>
-                <p className="text-xs text-gray-500 mb-3 line-clamp-2">{desc}</p>
+            <div className={`p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
+                <h3 className={`font-bold text-sm mb-0.5 ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
+                <p className={`text-xs mb-3 line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                        <span className="text-amber-500 text-sm font-bold">{item.price.toLocaleString()}</span>
+                        <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-500'}`}>{item.price.toLocaleString()}</span>
                         <span className="text-xs text-gray-400">{t('uc')}</span>
                     </div>
                     {!isOwned && !isComingSoon && meetsRank && (
