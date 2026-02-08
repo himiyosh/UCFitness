@@ -270,7 +270,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                 🏅 {t('titleLabel')}
                             </span>
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
-                                🎨 {commonT('theme')}
+                                🎨 {t('theme')}
                             </span>
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
                                 💎 {t('frameLabel') || 'Frame'}
