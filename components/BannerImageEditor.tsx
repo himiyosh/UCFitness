@@ -13,6 +13,8 @@ interface BannerImageEditorProps {
 
 // バナーのアスペクト比（4:1）
 const BANNER_ASPECT = 4;
+const MIN_SCALE = 1;
+const MAX_SCALE = 3;
 
 export default function BannerImageEditor({ currentBanner, children }: BannerImageEditorProps) {
     const [isOpen, setIsOpen] = useState(false);
@@ -23,9 +25,11 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
     // クロップ用 state
     const [imageSize, setImageSize] = useState<{ w: number; h: number } | null>(null);
-    const [offsetY, setOffsetY] = useState(0); // 表示領域に対する画像の Y オフセット (px, ≤0)
+    const [offsetX, setOffsetX] = useState(0);
+    const [offsetY, setOffsetY] = useState(0);
+    const [scale, setScale] = useState(1);
     const [isDragging, setIsDragging] = useState(false);
-    const dragStartRef = useRef<{ y: number; startOffset: number }>({ y: 0, startOffset: 0 });
+    const dragStartRef = useRef<{ x: number; y: number; startOffsetX: number; startOffsetY: number }>({ x: 0, y: 0, startOffsetX: 0, startOffsetY: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,11 +39,12 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             const url = URL.createObjectURL(selectedFile);
             setPreviewUrl(url);
 
-            // 画像サイズを取得してオフセットをリセット
             const img = new Image();
             img.onload = () => {
                 setImageSize({ w: img.width, h: img.height });
+                setOffsetX(0);
                 setOffsetY(0);
+                setScale(1);
             };
             img.src = url;
         }
@@ -47,36 +52,54 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
     // プレビュー領域のサイズ計算
     const getContainerWidth = () => containerRef.current?.clientWidth || 360;
-    const containerHeight = () => getContainerWidth() / BANNER_ASPECT;
+    const getContainerHeight = () => getContainerWidth() / BANNER_ASPECT;
 
-    // 画像の表示サイズ（幅をコンテナに合わせ、高さは比率維持）
+    // 拡大後の画像表示サイズ
+    const displayImageWidth = useCallback(() => {
+        return getContainerWidth() * scale;
+    }, [scale]);
+
     const displayImageHeight = useCallback(() => {
         if (!imageSize) return 0;
         const cw = getContainerWidth();
-        return (imageSize.h / imageSize.w) * cw;
-    }, [imageSize]);
+        return (imageSize.h / imageSize.w) * cw * scale;
+    }, [imageSize, scale]);
 
-    // Y オフセットの許容範囲
-    const minOffsetY = useCallback(() => {
-        const dh = displayImageHeight();
-        const ch = containerHeight();
-        return Math.min(0, ch - dh); // 画像が短い場合は 0
-    }, [displayImageHeight, containerHeight]);
+    // オフセット範囲を制限
+    const clampOffsets = useCallback((ox: number, oy: number, s?: number) => {
+        const currentScale = s ?? scale;
+        const cw = getContainerWidth();
+        const ch = getContainerHeight();
+        const dw = cw * currentScale;
+        const dh = imageSize ? (imageSize.h / imageSize.w) * cw * currentScale : ch;
+
+        const minX = Math.min(0, cw - dw);
+        const minY = Math.min(0, ch - dh);
+        return {
+            x: Math.max(minX, Math.min(0, ox)),
+            y: Math.max(minY, Math.min(0, oy)),
+        };
+    }, [scale, imageSize]);
 
     // ドラッグ開始
     const handlePointerDown = (e: React.PointerEvent) => {
         if (!file) return;
         setIsDragging(true);
-        dragStartRef.current = { y: e.clientY, startOffset: offsetY };
+        dragStartRef.current = { x: e.clientX, y: e.clientY, startOffsetX: offsetX, startOffsetY: offsetY };
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
 
     // ドラッグ中
     const handlePointerMove = (e: React.PointerEvent) => {
         if (!isDragging) return;
+        const dx = e.clientX - dragStartRef.current.x;
         const dy = e.clientY - dragStartRef.current.y;
-        const newOffset = dragStartRef.current.startOffset + dy;
-        setOffsetY(Math.max(minOffsetY(), Math.min(0, newOffset)));
+        const clamped = clampOffsets(
+            dragStartRef.current.startOffsetX + dx,
+            dragStartRef.current.startOffsetY + dy,
+        );
+        setOffsetX(clamped.x);
+        setOffsetY(clamped.y);
     };
 
     // ドラッグ終了
@@ -84,13 +107,46 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         setIsDragging(false);
     };
 
+    // ホイールでズーム
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        if (!file) return;
+        e.preventDefault();
+        const delta = -e.deltaY * 0.002;
+        const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale + delta));
+
+        // ズーム中心をコンテナ中心に合わせてオフセット補正
+        const cw = getContainerWidth();
+        const ch = getContainerHeight();
+        const ratio = newScale / scale;
+        const newOx = offsetX * ratio - (cw / 2) * (ratio - 1);
+        const newOy = offsetY * ratio - (ch / 2) * (ratio - 1);
+        const clamped = clampOffsets(newOx, newOy, newScale);
+
+        setScale(newScale);
+        setOffsetX(clamped.x);
+        setOffsetY(clamped.y);
+    }, [file, scale, offsetX, offsetY, clampOffsets]);
+
+    // スライダーでズーム
+    const handleScaleChange = (newScale: number) => {
+        const cw = getContainerWidth();
+        const ch = getContainerHeight();
+        const ratio = newScale / scale;
+        const newOx = offsetX * ratio - (cw / 2) * (ratio - 1);
+        const newOy = offsetY * ratio - (ch / 2) * (ratio - 1);
+        const clamped = clampOffsets(newOx, newOy, newScale);
+
+        setScale(newScale);
+        setOffsetX(clamped.x);
+        setOffsetY(clamped.y);
+    };
+
     // クロップしてから保存
     const handleSave = async () => {
         if (!file || !imageSize) return;
         setIsLoading(true);
         try {
-            const croppedFile = await cropBanner(file, imageSize, offsetY, getContainerWidth(), containerHeight());
-            // 圧縮
+            const croppedFile = await cropBanner(file, imageSize, offsetX, offsetY, scale, getContainerWidth(), getContainerHeight());
             const compressedFile = await compressImage(croppedFile, 1200, 0.8);
 
             const formData = new FormData();
@@ -166,19 +222,21 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                     <div
                                         ref={containerRef}
                                         className={`relative w-full overflow-hidden select-none ${file ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                                        style={{ height: `${containerHeight()}px` }}
+                                        style={{ height: `${getContainerHeight()}px` }}
                                         onPointerDown={handlePointerDown}
                                         onPointerMove={handlePointerMove}
                                         onPointerUp={handlePointerUp}
                                         onPointerCancel={handlePointerUp}
+                                        onWheel={handleWheel}
                                     >
                                         <img
                                             src={previewUrl}
                                             alt="Preview"
-                                            className="absolute left-0 pointer-events-none"
+                                            className="absolute pointer-events-none"
                                             style={{
+                                                left: `${file ? offsetX : 0}px`,
                                                 top: `${file ? offsetY : 0}px`,
-                                                width: '100%',
+                                                width: file ? `${displayImageWidth()}px` : '100%',
                                                 height: file && imageSize ? `${displayImageHeight()}px` : '100%',
                                                 objectFit: !file ? 'cover' : undefined,
                                             }}
@@ -186,7 +244,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                             onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/600x150?text=Banner')}
                                         />
                                         {/* ドラッグヒント */}
-                                        {file && displayImageHeight() > containerHeight() && (
+                                        {file && (
                                             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent py-2 text-center pointer-events-none">
                                                 <span className="text-white text-xs font-medium drop-shadow flex items-center justify-center gap-1">
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
@@ -196,13 +254,35 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="w-full flex items-center justify-center text-gray-400" style={{ height: `${containerHeight()}px` }}>
+                                    <div className="w-full flex items-center justify-center text-gray-400" style={{ height: `${getContainerHeight()}px` }}>
                                         No Image Selected
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex gap-3 pt-4 justify-end">
+                            {/* ズームスライダー */}
+                            {file && (
+                                <div className="flex items-center gap-3 px-1">
+                                    <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                                    </svg>
+                                    <input
+                                        type="range"
+                                        min={MIN_SCALE}
+                                        max={MAX_SCALE}
+                                        step={0.01}
+                                        value={scale}
+                                        onChange={(e) => handleScaleChange(Number(e.target.value))}
+                                        className="flex-1 h-1.5 accent-[var(--theme-primary)] cursor-pointer"
+                                    />
+                                    <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                                    </svg>
+                                    <span className="text-xs text-gray-500 w-10 text-right tabular-nums">{Math.round(scale * 100)}%</span>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-2 justify-end">
                                 <button
                                     onClick={() => { setIsOpen(false); setFile(null); }}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
@@ -227,12 +307,14 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 }
 
 /**
- * クロップ処理 — 表示オフセットから実際の画像ピクセルを切り出す
+ * クロップ処理 — 表示オフセット＋スケールから実際の画像ピクセルを切り出す
  */
 function cropBanner(
     file: File,
     imageSize: { w: number; h: number },
+    offsetX: number,
     offsetY: number,
+    scale: number,
     containerWidth: number,
     containerHeight: number,
 ): Promise<File> {
@@ -243,15 +325,15 @@ function cropBanner(
             const img = new Image();
             img.src = event.target?.result as string;
             img.onload = () => {
-                // 表示スケール: 画像幅 → コンテナ幅
-                const scale = img.width / containerWidth;
-                // 切り出し矩形（元画像ピクセル）
-                const sx = 0;
-                const sy = Math.round(-offsetY * scale);
-                const sw = img.width;
-                const sh = Math.round(containerHeight * scale);
+                // 表示上の画像幅 = containerWidth * scale だから
+                // 表示1px = img.width / (containerWidth * scale) 元画像ピクセル
+                const pxPerDisplayPx = img.width / (containerWidth * scale);
 
-                // キャンバスに描画
+                const sx = Math.round(-offsetX * pxPerDisplayPx);
+                const sy = Math.round(-offsetY * pxPerDisplayPx);
+                const sw = Math.round(containerWidth * pxPerDisplayPx);
+                const sh = Math.round(containerHeight * pxPerDisplayPx);
+
                 const canvas = document.createElement('canvas');
                 canvas.width = sw;
                 canvas.height = sh;
