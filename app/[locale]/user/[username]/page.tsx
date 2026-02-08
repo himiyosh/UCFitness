@@ -278,7 +278,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 <>
                                     {/* Column Headers */}
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] border-b border-gray-200 bg-gray-50/60">
-                                        <div className="w-20 sm:w-24" />
+                                        <div className="w-24 sm:w-32" />
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
                                         </div>
@@ -291,8 +291,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     </div>
                                     {/* Target User Row */}
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center">
-                                        <div className="w-20 sm:w-24 px-2 sm:px-3 py-3 sm:py-4">
-                                            <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{user.name?.split(' ')[0] || user.username}</p>
+                                        <div className="w-24 sm:w-32 px-2 sm:px-3 py-3 sm:py-4">
+                                            <p className="text-xs sm:text-sm font-bold text-gray-900">{user.name?.split(' ')[0] || user.username}</p>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
                                             <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
@@ -306,17 +306,17 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     </div>
                                     {/* Viewer (You) Row */}
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center border-t border-gray-200 bg-gray-50/60">
-                                        <div className="w-20 sm:w-24 px-2 sm:px-3 py-3 sm:py-4">
-                                            <p className="text-xs sm:text-sm font-bold text-[var(--theme-primary)] truncate">{t('yourSteps')}</p>
+                                        <div className="w-24 sm:w-32 px-2 sm:px-3 py-3 sm:py-4">
+                                            <p className="text-xs sm:text-sm font-bold text-gray-500">{t('yourSteps')}</p>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className={`text-lg sm:text-2xl font-black tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-600' : 'text-red-500'}`}>{viewerStats.daily.toLocaleString()}</p>
+                                            <p className={`text-lg sm:text-2xl font-extrabold tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/80' : 'text-red-400/80'}`}>{viewerStats.daily.toLocaleString()}</p>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className={`text-lg sm:text-2xl font-black tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-600' : 'text-red-500'}`}>{viewerStats.weekly.toLocaleString()}</p>
+                                            <p className={`text-lg sm:text-2xl font-extrabold tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/80' : 'text-red-400/80'}`}>{viewerStats.weekly.toLocaleString()}</p>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className={`text-lg sm:text-2xl font-black tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-600' : 'text-red-500'}`}>{viewerStats.monthly.toLocaleString()}</p>
+                                            <p className={`text-lg sm:text-2xl font-extrabold tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/80' : 'text-red-400/80'}`}>{viewerStats.monthly.toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </>
