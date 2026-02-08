@@ -59,15 +59,15 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8">
                 {/* Banner */}
                 <div
-                    className={`h-24 sm:h-32 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url ? 'bg-[var(--theme-primary)]' : 'cursor-pointer hover:opacity-90 transition-opacity'}`}
+                    className={`h-32 sm:h-36 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url ? 'bg-[var(--theme-primary)]' : 'cursor-pointer hover:opacity-90 transition-opacity'}`}
                     style={user.banner_url ? { backgroundImage: `url(${user.banner_url})` } : {}}
                     onClick={() => user.banner_url && setIsBannerModalOpen(true)}
                 >
                 </div>
 
-                <div className="px-4 pb-3 sm:pb-4 relative">
+                <div className="px-4 pb-2 sm:pb-3 relative">
                     {/* Profile Image with Frame */}
-                    <div className="-mt-8 sm:-mt-12 mb-3 flex justify-center relative group/image">
+                    <div className="-mt-8 sm:-mt-12 mb-2 flex justify-center relative group/image">
                         <div
                             onClick={() => user.image && setIsImageModalOpen(true)}
                             className={user.image ? 'cursor-pointer transition-transform hover:scale-105 active:scale-95' : ''}
@@ -83,7 +83,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
                         </div>
                     </div>
 
-                    <div className="text-center mb-4 sm:mb-6">
+                    <div className="text-center mb-2 sm:mb-4">
                         {/* 称号表示 */}
                         {titleName && (
                             <p className="text-xs font-bold text-[var(--theme-primary)] mb-1">
