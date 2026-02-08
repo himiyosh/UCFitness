@@ -147,29 +147,51 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 
     return (
         <div>
-            {/* 残高バー */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl">👛</span>
-                    <div>
-                        <p className="text-xs text-gray-500 font-medium">{t('balance')}</p>
-                        <p className="text-xl font-bold text-amber-600">{currentBalance.toLocaleString()} <span className="text-sm font-normal">{t('uc')}</span></p>
+            {/* 残高パネル */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 p-5 sm:p-6 mb-6 shadow-lg">
+                {/* 背景装飾 */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-14 -translate-x-14" />
+                <div className="absolute top-1/2 right-1/3 w-20 h-20 bg-white/5 rounded-full" />
+
+                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    {/* 残高表示 */}
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shadow-inner border border-white/30">
+                            💰
+                        </div>
+                        <div>
+                            <p className="text-xs text-white/70 font-bold uppercase tracking-wider">{t('balance')}</p>
+                            <p className="text-3xl sm:text-4xl font-black text-white tabular-nums drop-shadow-sm">
+                                {currentBalance.toLocaleString()}
+                                <span className="text-base font-bold text-white/60 ml-1.5">{t('uc')}</span>
+                            </p>
+                        </div>
                     </div>
-                </div>
-                {/* ショップ / インベントリ切り替え */}
-                <div className="flex bg-gray-100 rounded-lg p-0.5">
-                    <button
-                        onClick={() => setViewMode('shop')}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'shop' ? 'bg-white shadow text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        🛍️ {t('shopTab')}
-                    </button>
-                    <button
-                        onClick={() => setViewMode('inventory')}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'inventory' ? 'bg-white shadow text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        📦 {t('inventoryTab')}
-                    </button>
+
+                    {/* ショップ / インベントリ切り替え */}
+                    <div className="flex bg-white/15 backdrop-blur-sm rounded-xl p-1 border border-white/20">
+                        <button
+                            onClick={() => setViewMode('shop')}
+                            className={`px-5 py-2.5 text-sm font-bold rounded-lg transition-all ${
+                                viewMode === 'shop'
+                                    ? 'bg-white text-amber-600 shadow-md'
+                                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                            }`}
+                        >
+                            🛍️ {t('shopTab')}
+                        </button>
+                        <button
+                            onClick={() => setViewMode('inventory')}
+                            className={`px-5 py-2.5 text-sm font-bold rounded-lg transition-all ${
+                                viewMode === 'inventory'
+                                    ? 'bg-white text-amber-600 shadow-md'
+                                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                            }`}
+                        >
+                            📦 {t('inventoryTab')}
+                        </button>
+                    </div>
                 </div>
             </div>
 
