@@ -37,3 +37,8 @@
 **Vulnerability:** `app/api/user/search/route.ts` returned the `email` field for all users found in search results. This allowed any authenticated user to harvest email addresses by searching for usernames (or partial usernames).
 **Learning:** `SELECT *` or overly broad field selection in API responses is a common source of PII leaks. APIs should only return the minimum data necessary for the UI (Principle of Least Privilege/Data Minimization).
 **Prevention:** Explicitly select only public fields (id, name, username, image) in Supabase queries destined for public or semi-public responses. Never include email, tokens, or PII unless strictly required and authorized.
+
+## 2026-02-15 - Missing Input Validation on Group Metadata Update
+**Vulnerability:** `app/api/user/group/route.ts` allowed updating group metadata (name, image URLs) with arbitrary strings, including malicious scripts or invalid URLs, bypassing creation-time validation.
+**Learning:** Validating data at creation (POST) is insufficient if update endpoints (PUT/PATCH) accept unvalidated input. Inconsistent validation across lifecycle stages creates security gaps.
+**Prevention:** Apply the same or stricter validation rules on update operations as on creation. Centralize validation logic (e.g. Zod schemas) to ensure consistency across all endpoints.

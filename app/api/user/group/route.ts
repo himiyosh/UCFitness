@@ -228,6 +228,37 @@ export async function POST(request: Request) {
     } else if (action === 'update_metadata') {
       const { name, image_url, header_image_url } = body;
 
+      // 🛡️ Sentinel: Input Validation
+      if (name !== undefined) {
+        if (typeof name !== 'string' || name.trim().length < 3 || name.length > 50) {
+          return NextResponse.json({ error: "Group name must be between 3 and 50 characters" }, { status: 400 });
+        }
+      }
+
+      const validateUrl = (url: unknown) => {
+        if (url === null || url === '') return true; // Allow clearing
+        if (typeof url !== 'string') return false;
+        if (url.length > 500) return false;
+        try {
+          const parsed = new URL(url);
+          return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      };
+
+      if (image_url !== undefined && !validateUrl(image_url)) {
+        return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
+      }
+
+      if (header_image_url !== undefined && !validateUrl(header_image_url)) {
+        return NextResponse.json({ error: "Invalid header image URL" }, { status: 400 });
+      }
+
+      if (body.is_public !== undefined && typeof body.is_public !== 'boolean') {
+        return NextResponse.json({ error: "Invalid is_public value" }, { status: 400 });
+      }
+
       // Find group
       const { data: group } = await supabaseAdmin
         .from('groups')
