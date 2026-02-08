@@ -257,44 +257,69 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         {/* Stats Card */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="grid grid-cols-3 divide-x divide-gray-200">
-                                <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
-                                    <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
-                                </div>
-                                <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
-                                    <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
-                                </div>
-                                <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
-                                    <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
-                                </div>
-                            </div>
-                            {!isOwner && hasViewerStats && (
-                                <div className="border-t border-gray-200 bg-gray-50/80 px-3 py-2.5 sm:px-5 sm:py-3">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">📊 {t('yourSteps')}</p>
-                                    <div className="grid grid-cols-3 divide-x divide-gray-200">
-                                        <div className="text-center">
-                                            <p className="text-sm sm:text-base font-bold text-gray-600 tabular-nums">{viewerStats.daily.toLocaleString()}</p>
-                                            <p className={`text-[10px] font-bold ${viewerStats.daily - targetStats.daily >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                                {viewerStats.daily - targetStats.daily >= 0 ? '▲' : '▼'} {Math.abs(viewerStats.daily - targetStats.daily).toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm sm:text-base font-bold text-gray-600 tabular-nums">{viewerStats.weekly.toLocaleString()}</p>
-                                            <p className={`text-[10px] font-bold ${viewerStats.weekly - targetStats.weekly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                                {viewerStats.weekly - targetStats.weekly >= 0 ? '▲' : '▼'} {Math.abs(viewerStats.weekly - targetStats.weekly).toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm sm:text-base font-bold text-gray-600 tabular-nums">{viewerStats.monthly.toLocaleString()}</p>
-                                            <p className={`text-[10px] font-bold ${viewerStats.monthly - targetStats.monthly >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                                {viewerStats.monthly - targetStats.monthly >= 0 ? '▲' : '▼'} {Math.abs(viewerStats.monthly - targetStats.monthly).toLocaleString()}
-                                            </p>
-                                        </div>
+                            {isOwner || !hasViewerStats ? (
+                                /* Owner view: simple centered 3-column */
+                                <div className="grid grid-cols-3 divide-x divide-gray-200">
+                                    <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
+                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
+                                    </div>
+                                    <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
+                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
+                                    </div>
+                                    <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
+                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
                                     </div>
                                 </div>
+                            ) : (
+                                /* Comparison view: 2-row table with name labels */
+                                <>
+                                    {/* Column Headers */}
+                                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] border-b border-gray-200 bg-gray-50/60">
+                                        <div className="w-20 sm:w-24" />
+                                        <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
+                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
+                                        </div>
+                                        <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
+                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
+                                        </div>
+                                        <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
+                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
+                                        </div>
+                                    </div>
+                                    {/* Target User Row */}
+                                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center">
+                                        <div className="w-20 sm:w-24 px-2 sm:px-3 py-3 sm:py-4">
+                                            <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{user.name?.split(' ')[0] || user.username}</p>
+                                        </div>
+                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
+                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
+                                        </div>
+                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
+                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
+                                        </div>
+                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
+                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    {/* Viewer (You) Row */}
+                                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center border-t border-gray-200 bg-gray-50/60">
+                                        <div className="w-20 sm:w-24 px-2 sm:px-3 py-3 sm:py-4">
+                                            <p className="text-xs sm:text-sm font-bold text-[var(--theme-primary)] truncate">{t('yourSteps')}</p>
+                                        </div>
+                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
+                                            <p className={`text-lg sm:text-2xl font-black tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-600' : 'text-red-500'}`}>{viewerStats.daily.toLocaleString()}</p>
+                                        </div>
+                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
+                                            <p className={`text-lg sm:text-2xl font-black tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-600' : 'text-red-500'}`}>{viewerStats.weekly.toLocaleString()}</p>
+                                        </div>
+                                        <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
+                                            <p className={`text-lg sm:text-2xl font-black tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-600' : 'text-red-500'}`}>{viewerStats.monthly.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
 
