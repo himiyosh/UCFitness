@@ -190,8 +190,8 @@
     "UserMenu": {
         "signedInAs": "ログイン中",
         "myGroups": "マイグループ",
-        "undouBank": "UCウォレット",
-        "ucShop": "UCショップ",
+        "undouBank": "ウォレット",
+        "ucShop": "ショップ",
         "settings": "設定",
         "signOut": "ログアウト"
     },
@@ -224,6 +224,7 @@
         "goalBonus": "目標達成ボーナス",
         "streakBonus": "ストリークボーナス",
         "rankBonus": "ランキングボーナス",
+        "purchase": "ショップ購入",
         "last30days": "直近30日間",
         "ranks": {
             "BEGINNER": "新人投資家",
@@ -265,6 +266,7 @@
         "errorItemNotFound": "アイテムが見つかりません。",
         "errorGeneric": "エラーが発生しました。もう一度お試しください。",
         "noItems": "このカテゴリにアイテムがありません。",
+        "comingSoon": "Coming Soon",
         "myItems": "マイアイテム",
         "shopTab": "ショップ",
         "inventoryTab": "インベントリ",

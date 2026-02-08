@@ -2,7 +2,13 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
+
+/** item_code → アプリテーマのマッピング */
+const THEME_MAP: Record<string, Theme> = {
+    theme_midnight: 'midnight',
+};
 
 // --- 型定義 ---
 interface ShopClientProps {
@@ -34,6 +40,7 @@ const RANK_ORDER: Record<string, number> = {
 // --- メインコンポーネント ---
 export default function ShopClient({ items, userItems, equipped, balance, userRank, locale }: ShopClientProps) {
     const t = useTranslations('Shop');
+    const { setTheme } = useTheme();
     const [activeTab, setActiveTab] = useState<TabKey>('ALL');
     const [currentBalance, setCurrentBalance] = useState(balance);
     const [ownedItemIds, setOwnedItemIds] = useState<Set<string>>(
@@ -111,12 +118,21 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     }
                     return ui;
                 }));
+                // テーマカラー装備時はアプリテーマも切り替え
+                if (category === 'THEME_COLOR') {
+                    const mappedTheme = THEME_MAP[userItem.shop_items?.item_code ?? ''];
+                    if (mappedTheme) setTheme(mappedTheme);
+                }
                 showToast(t('equipSuccess'), 'success');
             } else {
                 setEquippedState(prev => ({ ...prev, [category]: null }));
                 setUserItemsState(prev => prev.map(ui =>
                     ui.id === userItem.id ? { ...ui, is_equipped: false } : ui
                 ));
+                // テーマカラー解除時は classic に戻す
+                if (category === 'THEME_COLOR') {
+                    setTheme('classic');
+                }
                 showToast(t('unequipSuccess'), 'success');
             }
         } catch {
@@ -258,12 +274,13 @@ function ShopItemCard({
     onBuy: () => void;
     t: any;
 }) {
+    const isComingSoon = !item.is_active;
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
 
     return (
         <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
-            !meetsRank ? 'opacity-60 border-gray-200' : isOwned ? 'border-green-200' : 'border-gray-100'
+            isComingSoon ? 'opacity-50 border-dashed border-gray-300 grayscale' : !meetsRank ? 'opacity-60 border-gray-200' : isOwned ? 'border-green-200' : 'border-gray-100'
         }`}>
             {/* プレビュー領域 */}
             <div className="h-24 flex items-center justify-center relative" style={{
@@ -293,8 +310,15 @@ function ShopItemCard({
                     </div>
                 )}
 
+                {/* Coming Soon バッジ */}
+                {isComingSoon && (
+                    <div className="absolute top-2 right-2 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                        🚧 {t('comingSoon')}
+                    </div>
+                )}
+
                 {/* ランクロックバッジ */}
-                {!meetsRank && (
+                {!isComingSoon && !meetsRank && (
                     <div className="absolute top-2 right-2 bg-gray-800/80 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
                         🔒 {t('rankLocked', { rank: getRankShortLabel(item.rank_required) })}
                     </div>
@@ -317,7 +341,7 @@ function ShopItemCard({
                         <span className="text-amber-500 text-sm font-bold">{item.price.toLocaleString()}</span>
                         <span className="text-xs text-gray-400">{t('uc')}</span>
                     </div>
-                    {!isOwned && meetsRank && (
+                    {!isOwned && !isComingSoon && meetsRank && (
                         <button
                             onClick={onBuy}
                             disabled={!canAfford || isLoading}
@@ -335,6 +359,9 @@ function ShopItemCard({
                                 `🛒 ${t('buy')}`
                             )}
                         </button>
+                    )}
+                    {isComingSoon && !isOwned && (
+                        <span className="text-xs text-gray-400 font-medium">🚧 {t('comingSoon')}</span>
                     )}
                     {isOwned && !isEquipped && (
                         <span className="text-xs text-green-600 font-medium">✓ {t('owned')}</span>

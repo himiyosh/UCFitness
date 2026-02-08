@@ -143,8 +143,8 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <p className="text-xs text-gray-500 font-medium mb-1">{t('todayEarned')}</p>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold text-green-600 tabular-nums">
-                            +{animatedToday.toLocaleString()}
+                        <span className={`text-xl font-bold tabular-nums ${animatedToday >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {animatedToday >= 0 ? '+' : ''}{animatedToday.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-400">{t('uc')}</span>
                     </div>

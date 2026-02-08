@@ -190,8 +190,8 @@
     "UserMenu": {
         "signedInAs": "Signed in as",
         "myGroups": "My Groups",
-        "undouBank": "UCWallet",
-        "ucShop": "UC Shop",
+        "undouBank": "Wallet",
+        "ucShop": "Shop",
         "settings": "Settings",
         "signOut": "Sign out"
     },
@@ -224,6 +224,7 @@
         "goalBonus": "Goal Bonus",
         "streakBonus": "Streak Bonus",
         "rankBonus": "Ranking Bonus",
+        "purchase": "Shop Purchase",
         "last30days": "Last 30 Days",
         "ranks": {
             "BEGINNER": "Rookie Investor",
@@ -265,6 +266,7 @@
         "errorItemNotFound": "Item not found.",
         "errorGeneric": "Something went wrong. Please try again.",
         "noItems": "No items available in this category.",
+        "comingSoon": "Coming Soon",
         "myItems": "My Items",
         "shopTab": "Shop",
         "inventoryTab": "Inventory",

@@ -10,6 +10,8 @@ import {
     ResponsiveContainer,
     Bar,
     ComposedChart,
+    Cell,
+    ReferenceLine,
 } from 'recharts';
 
 interface BalanceHistoryEntry {
@@ -44,23 +46,29 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
 
     // 数値フォーマット
     const formatNumber = (num: number) => {
-        if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-        if (num >= 1_000) return `${(num / 1_000).toFixed(0)}K`;
+        if (Math.abs(num) >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+        if (Math.abs(num) >= 1_000) return `${(num / 1_000).toFixed(0)}K`;
         return num.toString();
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
+            const daily = payload.find((p: any) => p.dataKey === 'dailyCoins');
+            const bal = payload.find((p: any) => p.dataKey === 'balance');
+            const dailyVal = daily?.value ?? 0;
+            const isExpense = dailyVal < 0;
             return (
                 <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg p-3 shadow-lg">
                     <p className="text-xs text-gray-500 mb-1">{label}</p>
-                    <p className="text-sm font-bold text-amber-600">
-                        {t('balance')}: {payload[0]?.value?.toLocaleString()} UC
-                    </p>
-                    {payload[1] && (
-                        <p className="text-xs text-green-600 font-medium">
-                            +{payload[1]?.value?.toLocaleString()} UC
+                    {bal && (
+                        <p className="text-sm font-bold text-amber-600">
+                            {t('balance')}: {bal.value?.toLocaleString()} UC
+                        </p>
+                    )}
+                    {daily && dailyVal !== 0 && (
+                        <p className={`text-xs font-medium ${isExpense ? 'text-red-500' : 'text-green-600'}`}>
+                            {isExpense ? '' : '+'}{dailyVal.toLocaleString()} UC
                         </p>
                     )}
                 </div>
@@ -73,6 +81,9 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
         ...d,
         dateLabel: formatDate(d.date),
     }));
+
+    // バーにマイナスがある場合、0 ラインを表示するかどうか
+    const hasNegative = chartData.some(d => d.dailyCoins < 0);
 
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -100,35 +111,31 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             axisLine={{ stroke: '#e5e7eb' }}
                             interval="preserveStartEnd"
                         />
-                        {/* 左軸: 累積残高 */}
+                        {/* Y軸1本: 累積残高スケール */}
                         <YAxis
-                            yAxisId="balance"
-                            orientation="left"
                             tick={{ fontSize: 10, fill: '#d97706' }}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={formatNumber}
                         />
-                        {/* 右軸: 日次獲得コイン */}
-                        <YAxis
-                            yAxisId="daily"
-                            orientation="right"
-                            tick={{ fontSize: 10, fill: '#22c55e' }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={formatNumber}
-                        />
                         <Tooltip content={<CustomTooltip />} />
+                        {hasNegative && (
+                            <ReferenceLine y={0} stroke="#d1d5db" strokeDasharray="3 3" />
+                        )}
                         <Bar
-                            yAxisId="daily"
                             dataKey="dailyCoins"
-                            fill="#86efac"
-                            opacity={0.7}
+                            opacity={0.8}
                             radius={[2, 2, 0, 0]}
                             barSize={10}
-                        />
+                        >
+                            {chartData.map((entry, index) => (
+                                <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.dailyCoins < 0 ? '#ef4444' : '#86efac'}
+                                />
+                            ))}
+                        </Bar>
                         <Area
-                            yAxisId="balance"
                             type="monotone"
                             dataKey="balance"
                             stroke="#f59e0b"

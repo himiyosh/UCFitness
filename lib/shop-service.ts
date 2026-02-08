@@ -69,12 +69,12 @@ function meetsRankRequirement(userRank: string, requiredRank: string): boolean {
 // ショップアイテム取得
 // ============================================
 
-/** 全アクティブアイテムを取得（カテゴリフィルタ可） */
+/** 全アイテムを取得（カテゴリフィルタ可、is_active=false は Coming Soon 表示用） */
 export async function getShopItems(category?: ShopCategory): Promise<ShopItem[]> {
     let query = supabaseAdmin
         .from('shop_items')
         .select('*')
-        .eq('is_active', true)
+        .order('is_active', { ascending: false })
         .order('sort_order', { ascending: true });
 
     if (category) {
@@ -199,7 +199,7 @@ export async function purchaseItem(userId: string, itemId: string): Promise<Purc
         userId,
         item.price,
         'PURCHASE',
-        `Shop: ${item.name_en}`,
+        `Shop: ${item.name_en} / ${item.name_ja}`,
         idempotencyKey,
     );
 

@@ -324,17 +324,17 @@ export default function SettingsForm({ user, ownsMidnight = false }: { user: Use
                                 }`}
                             disabled={!ownsMidnight}
                         >
-                            <span className="flex items-center gap-3 whitespace-nowrap">
+                            <span className="flex items-center gap-3 min-w-0">
                                 <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-600 via-slate-900 to-slate-950 border border-indigo-400/50 shadow-[0_0_6px_rgba(99,102,241,0.4)] shrink-0"></span>
-                                Midnight (Dark) 🌙
-                                {ownsMidnight ? (
-                                    <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200 ml-1 shrink-0">Premium</span>
-                                ) : (
-                                    <span className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded border border-gray-200 ml-1 shrink-0">🔒 30,000 UC</span>
-                                )}
+                                <span className="truncate">Midnight 🌙</span>
                             </span>
-                            {theme === 'midnight' && ownsMidnight && <span className="text-indigo-400">✓</span>}
-                            {!ownsMidnight && <Link href="/shop" className="text-amber-600 text-xs font-bold hover:underline z-10">🛍️ Shop</Link>}
+                            {theme === 'midnight' && ownsMidnight && <span className="text-indigo-400 shrink-0">✓</span>}
+                            {ownsMidnight && theme !== 'midnight' && <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200 shrink-0">Premium</span>}
+                            {!ownsMidnight && (
+                                <Link href="/shop" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-200 hover:bg-amber-100 transition-colors shrink-0">
+                                    🔒 30,000 UC
+                                </Link>
+                            )}
                         </button>
                     </div>
                 </section>
