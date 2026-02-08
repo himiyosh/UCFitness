@@ -117,8 +117,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                 alt="Banner"
             />
 
-            {/* Main Column: Profile Settings */}
-            <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+            {/* Main Column */}
+            <div className="lg:col-span-2 space-y-6">
+            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">{t('profileSettings')}</h2>
 
                 <div className="flex flex-col gap-8">
@@ -228,28 +229,30 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     {/* 称号セレクター（プロフィールセクション内） */}
                     <TitleSelector ownedTitles={ownedTitles} />
 
-                    {/* Shop CTA Banner — プロフィールセクション内 */}
-                    <Link href="/shop" className="block group">
-                        <div className="relative overflow-hidden px-5 py-4 rounded-xl border border-[var(--theme-primary)]/20 bg-gradient-to-r from-[var(--theme-primary-light)] via-white to-[var(--theme-primary-light)] hover:shadow-lg transition-all">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--theme-primary)]/5 rounded-full -translate-y-10 translate-x-10"></div>
-                            <div className="absolute bottom-0 left-0 w-16 h-16 bg-[var(--theme-primary)]/5 rounded-full translate-y-6 -translate-x-6"></div>
-                            <div className="relative flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-2xl">🛍️</span>
-                                    <div>
-                                        <h3 className="text-base font-bold text-gray-900">{t('shopCta')}</h3>
-                                        <p className="text-xs text-gray-500">{t('shopCtaDescription')}</p>
-                                    </div>
-                                </div>
-                                <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white text-xs font-bold group-hover:gap-2.5 group-hover:shadow-md transition-all whitespace-nowrap">
-                                    {t('shopCtaButton')}
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                                </span>
-                            </div>
-                        </div>
-                    </Link>
                 </div>
             </section>
+
+            {/* Shop CTA Banner — 独立パネル */}
+            <Link href="/shop" className="block group">
+                <section className="relative overflow-hidden px-5 py-4 rounded-xl border border-[var(--theme-primary)]/20 bg-gradient-to-r from-[var(--theme-primary-light)] via-white to-[var(--theme-primary-light)] hover:shadow-lg transition-all">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--theme-primary)]/5 rounded-full -translate-y-10 translate-x-10"></div>
+                    <div className="absolute bottom-0 left-0 w-16 h-16 bg-[var(--theme-primary)]/5 rounded-full translate-y-6 -translate-x-6"></div>
+                    <div className="relative flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">🛍️</span>
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900">{t('shopCta')}</h3>
+                                <p className="text-xs text-gray-500">{t('shopCtaDescription')}</p>
+                            </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white text-xs font-bold group-hover:gap-2.5 group-hover:shadow-md transition-all whitespace-nowrap">
+                            {t('shopCtaButton')}
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                        </span>
+                    </div>
+                </section>
+            </Link>
+            </div>
 
             {/* Sidebar Column: Preferences */}
             <div className="space-y-8">
