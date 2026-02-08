@@ -52,16 +52,18 @@ export default async function ShopPage() {
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <span className="text-2xl" role="img" aria-label="logo">🏃</span>
-                            <span className="text-lg font-bold text-[var(--theme-primary)] hidden sm:inline group-hover:opacity-80 transition-opacity">
+                            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity">
                                 {dashboardT('title')}
+                            </h1>
+                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
+                                {dashboardT('beta')}
                             </span>
                         </Link>
                     </div>
                     <UserMenu user={{
                         ...session.user,
-                        username: user.username,
-                        id: userId,
+                        name: user?.name || session.user.name,
+                        image: user?.image || session.user.image,
                     }} />
                 </div>
             </header>
