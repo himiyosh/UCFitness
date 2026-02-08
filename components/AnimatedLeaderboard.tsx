@@ -255,6 +255,9 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 )}
                                                                                 {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
                                                                             </p>
+                                                                            {entry.users.titleEmoji && entry.users.titleName && (
+                                                                                <p className="text-[10px] text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {entry.users.titleName}</p>
+                                                                            )}
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex items-center gap-2 relative z-10">

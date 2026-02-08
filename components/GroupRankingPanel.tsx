@@ -165,6 +165,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                             <span>{entry.users.name || 'Anonymous'}</span>
                                                         )}
                                                     </p>
+                                                    {entry.users?.titleEmoji && entry.users?.titleName && (
+                                                        <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleName}</span>
+                                                    )}
                                                     {isMe && <span className="w-fit px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">YOU</span>}
                                                 </div>
                                             </div>

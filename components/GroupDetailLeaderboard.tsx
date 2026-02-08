@@ -117,9 +117,11 @@ export default function GroupDetailLeaderboard({
                                                         )}
                                                         {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">YOU</span>}
                                                     </p>
-                                                    <p className="text-xs text-gray-400">
-                                                        Rank #{rank}
-                                                    </p>
+                                                    {entry.users.titleEmoji && entry.users.titleName ? (
+                                                        <p className="text-[10px] text-gray-400 font-medium">{entry.users.titleEmoji} {entry.users.titleName}</p>
+                                                    ) : (
+                                                        <p className="text-xs text-gray-400">Rank #{rank}</p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right">
