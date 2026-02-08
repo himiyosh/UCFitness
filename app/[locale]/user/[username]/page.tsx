@@ -354,7 +354,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                                 {user.image && (
                                                     <img src={user.image} alt="" className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover flex-shrink-0" />
                                                 )}
-                                                <p className="text-[10px] sm:text-xs font-bold text-gray-900 leading-tight truncate min-w-0">{t('thisUser')}</p>
+                                                <p className="text-[10px] sm:text-xs font-bold text-gray-900 leading-tight break-all min-w-0">{t('thisUser')}</p>
                                             </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
@@ -374,7 +374,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                                 {viewerUser?.image && (
                                                     <img src={viewerUser.image} alt="" className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full object-cover flex-shrink-0 opacity-70" />
                                                 )}
-                                                <p className="text-[9px] sm:text-xs font-semibold text-gray-400 leading-tight truncate min-w-0">{t('yourSteps')}</p>
+                                                <p className="text-[9px] sm:text-xs font-semibold text-gray-400 leading-tight break-all min-w-0">{t('yourSteps')}</p>
                                             </div>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
