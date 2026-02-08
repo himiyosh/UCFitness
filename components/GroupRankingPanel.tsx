@@ -156,19 +156,19 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                 </span>
                                                 <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users?.frameColor} borderClass="border-white" />
                                                 <div className="flex flex-col min-w-0">
-                                                    <p className={`text-sm font-bold truncate text-gray-900`}>
+                                                    <p className={`text-sm font-bold truncate text-gray-900 flex items-center gap-1.5`}>
                                                         {entry.users.username ? (
-                                                            <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
+                                                            <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline truncate">
                                                                 {entry.users.name || 'Anonymous'}
                                                             </Link>
                                                         ) : (
-                                                            <span>{entry.users.name || 'Anonymous'}</span>
+                                                            <span className="truncate">{entry.users.name || 'Anonymous'}</span>
                                                         )}
+                                                        {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">YOU</span>}
                                                     </p>
                                                     {entry.users?.titleEmoji && entry.users?.titleName && (
                                                         <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleName}</span>
                                                     )}
-                                                    {isMe && <span className="w-fit px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">YOU</span>}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4 relative z-10">
