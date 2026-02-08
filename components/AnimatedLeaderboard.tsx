@@ -158,7 +158,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                             <button
                                 key={tab.key}
                                 onClick={() => handleSwitch(tab.key)}
-                                className={`relative z-10 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 cursor-pointer ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
+                                className={`relative z-10 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all duration-200 cursor-pointer ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
                                 style={isMidnight ? {
                                     backgroundColor: isActive ? '#6366f1' : 'transparent',
                                     color: '#ffffff',
