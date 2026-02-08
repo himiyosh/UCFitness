@@ -244,7 +244,6 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                         <div className="flex flex-wrap gap-2.5">
                             {featuredItems.map(item => {
                                 const name = locale === 'ja' ? item.name_ja : item.name_en;
-                                const affordable = currentBalance >= item.price;
                                 return (
                                     <button
                                         key={item.id}
@@ -274,14 +273,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-xs text-white/50 font-medium">{item.price.toLocaleString()} UC</span>
-                                                {affordable && (
-                                                    <span className="text-[10px] font-bold text-emerald-200 bg-emerald-500/30 rounded px-1 py-0.5">
-                                                        {t('canAfford')}
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <p className="text-xs text-white/50 font-medium">{item.price.toLocaleString()} UC</p>
                                         </div>
                                         <span className="text-white/30 group-hover:text-white/60 group-hover:translate-x-0.5 transition-all text-sm">→</span>
                                     </button>
