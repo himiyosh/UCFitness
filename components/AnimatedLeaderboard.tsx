@@ -232,7 +232,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                             return (
                                                 <div className="flex flex-col h-full">
-                                                    <div className="flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 56}px` }}>
+                                                    <div className="flex-1" style={{ height: `${ITEMS_PER_PAGE * 56}px` }}>
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
