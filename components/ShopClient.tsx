@@ -237,8 +237,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     </div>
                 </div>
 
-                {/* 中部: おすすめ商品 */}
-                {featuredItems.length > 0 && (
+                {/* 中部: おすすめ商品（ショップビュー時のみ） */}
+                {viewMode === 'shop' && featuredItems.length > 0 && (
                     <div className="relative px-5 sm:px-6 pb-4">
                         <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2.5">⭐ {t('featured')}</p>
                         <div className="flex flex-wrap gap-2.5">
@@ -291,7 +291,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     </div>
                 )}
 
-                {/* 下部: カテゴリ統計 */}
+                {/* 下部: カテゴリ統計（ショップビュー時のみ） */}
+                {viewMode === 'shop' && (
                 <div className="relative border-t border-white/15 px-5 sm:px-6 py-3 flex items-center justify-center gap-4 sm:gap-8">
                     {[
                         { icon: '🖼️', label: t('iconFrames'), count: categoryStats.ICON_FRAME },
@@ -307,6 +308,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                         </div>
                     ))}
                 </div>
+                )}
             </div>
 
             {/* --- ショップビュー --- */}
