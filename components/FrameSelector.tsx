@@ -16,9 +16,10 @@ export interface OwnedFrame {
 
 interface FrameSelectorProps {
     ownedFrames: OwnedFrame[];
+    onFrameChange?: (color: string | null) => void;
 }
 
-export default function FrameSelector({ ownedFrames }: FrameSelectorProps) {
+export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelectorProps) {
     const t = useTranslations('Settings');
     const router = useRouter();
     const [frames, setFrames] = useState<OwnedFrame[]>(ownedFrames);
@@ -42,6 +43,7 @@ export default function FrameSelector({ ownedFrames }: FrameSelectorProps) {
                 });
                 if (!res.ok) throw new Error('Failed');
                 setFrames(prev => prev.map(f => ({ ...f, isEquipped: false })));
+                onFrameChange?.(null);
             } else {
                 // 新しいフレームを設定（同カテゴリ自動解除）
                 const res = await fetch('/api/shop/equip', {
@@ -51,6 +53,8 @@ export default function FrameSelector({ ownedFrames }: FrameSelectorProps) {
                 });
                 if (!res.ok) throw new Error('Failed');
                 setFrames(prev => prev.map(f => ({ ...f, isEquipped: f.userItemId === value })));
+                const selectedFrame = ownedFrames.find(f => f.userItemId === value);
+                onFrameChange?.(selectedFrame ? getFrameColor(selectedFrame.previewValue) : null);
             }
             router.refresh();
         } catch (e) {

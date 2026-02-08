@@ -10,6 +10,7 @@ import { useSession } from 'next-auth/react'; // Import useSession
 import { useTheme, Theme } from '@/components/ThemeProvider';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import UserAvatar from '@/components/UserAvatar';
+import { getFrameColor } from '@/components/UserAvatar';
 import TitleSelector, { type OwnedTitle } from '@/components/TitleSelector';
 import FrameSelector, { type OwnedFrame } from '@/components/FrameSelector';
 import StepGoalForm from '@/components/StepGoalForm';
@@ -32,6 +33,13 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
     const [switchingLocale, setSwitchingLocale] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // フレームカラーのリアクティブ状態
+    const initialFrameColor = (() => {
+        const equipped = ownedFrames.find(f => f.isEquipped);
+        return equipped ? getFrameColor(equipped.previewValue) : null;
+    })();
+    const [activeFrameColor, setActiveFrameColor] = useState<string | null>(initialFrameColor);
     const router = useRouter(); // Use navigation router
     const pathname = usePathname();
     const locale = useLocale();
@@ -163,6 +171,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     name={name}
                                     size="2xl"
                                     borderClass="border-white"
+                                    frameColor={activeFrameColor}
                                     onClick={user.image ? () => setIsImageModalOpen(true) : undefined}
                                 />
                                 <ProfileImageEditor initialImage={user.image} isCustom={user.is_custom_image || false} />
@@ -231,7 +240,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     <TitleSelector ownedTitles={ownedTitles} />
 
                     {/* フレームセレクター（プロフィールセクション内） */}
-                    <FrameSelector ownedFrames={ownedFrames} />
+                    <FrameSelector ownedFrames={ownedFrames} onFrameChange={setActiveFrameColor} />
 
                 </div>
             </section>
