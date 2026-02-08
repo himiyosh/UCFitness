@@ -120,7 +120,7 @@ RLS 有効化に伴い、読み取り系関数で使っていた `supabase`（an
 | `getRecentTransactions()` | `lib/coin-service.ts` |
 | `getDailyBalanceHistory()`（2箇所） | `lib/coin-service.ts` |
 | `getCoinLeaderboard()`（2箇所） | `lib/coin-service.ts` |
-| ユーザー情報クエリ | `app/[locale]/bank/page.tsx` |
+| ユーザー情報クエリ | `app/[locale]/wallet/page.tsx` |
 
 ### なぜ安全か
 認証は NextAuth の `auth()` がサーバーサイドで処理し、
@@ -455,4 +455,4 @@ MySQL では同じアーキテクチャが成り立たない。
 |---------|----------|
 | `migrations/011_security_hardening.sql` | 新規作成（RLS, CHECK, べき等性, DB関数） |
 | `lib/coin-service.ts` | anon→admin統一, べき等性キー追加, deductBalance/creditBalance追加 |
-| `app/[locale]/bank/page.tsx` | anon→admin統一 |
+| `app/[locale]/wallet/page.tsx` | anon→admin統一 |
