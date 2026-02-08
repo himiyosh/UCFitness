@@ -75,6 +75,7 @@ export async function getShopItems(category?: ShopCategory): Promise<ShopItem[]>
         .from('shop_items')
         .select('*')
         .order('is_active', { ascending: false })
+        .order('price', { ascending: true })
         .order('sort_order', { ascending: true });
 
     if (category) {
