@@ -145,24 +145,25 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     // ランクチェック
     const meetsRank = (requiredRank: string) => (RANK_ORDER[userRank] ?? 0) >= (RANK_ORDER[requiredRank] ?? 0);
 
-    // おすすめ商品（未所持 & アクティブ & 購入可能な商品から最大3つ）
+    // おすすめ商品（未所持 & アクティブな商品から最大3つ、カテゴリ分散）
     const featuredItems = useMemo(() => {
         const candidates = items.filter(i =>
-            i.is_active && !ownedItemIds.has(i.id) && currentBalance >= i.price
+            i.is_active && !ownedItemIds.has(i.id) && meetsRank(i.rank_required)
         );
-        // カテゴリが偏らないようシャッフルして最大3つ
-        const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+        // カテゴリが偏らないよう安定ソート（価格安い順）して分散選出
+        const sorted = [...candidates].sort((a, b) => a.price - b.price);
         const picked: ShopItem[] = [];
         const usedCategories = new Set<string>();
-        for (const item of shuffled) {
+        // 1周目: 各カテゴリから1つずつ
+        for (const item of sorted) {
             if (picked.length >= 3) break;
             if (!usedCategories.has(item.category)) {
                 picked.push(item);
                 usedCategories.add(item.category);
             }
         }
-        // 3つ埋まらなかった場合は残りから追加
-        for (const item of shuffled) {
+        // 2周目: 埋まらなければ残りから追加
+        for (const item of sorted) {
             if (picked.length >= 3) break;
             if (!picked.includes(item)) picked.push(item);
         }
@@ -240,17 +241,22 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 {featuredItems.length > 0 && (
                     <div className="relative px-5 sm:px-6 pb-4">
                         <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2.5">⭐ {t('featured')}</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div className="flex flex-wrap gap-2.5">
                             {featuredItems.map(item => {
                                 const name = locale === 'ja' ? item.name_ja : item.name_en;
+                                const affordable = currentBalance >= item.price;
                                 return (
                                     <button
                                         key={item.id}
                                         onClick={() => {
-                                            setViewMode('shop');
-                                            setActiveTab(item.category as ShopCategory);
+                                            if (affordable) {
+                                                setConfirmDialog({ item });
+                                            } else {
+                                                setViewMode('shop');
+                                                setActiveTab(item.category as ShopCategory);
+                                            }
                                         }}
-                                        className="group flex items-center gap-3 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl p-3 border border-white/20 transition-all text-left"
+                                        className="group flex items-center gap-3 bg-white/15 hover:bg-white/25 active:scale-[0.97] backdrop-blur-sm rounded-xl p-3 border border-white/20 transition-all text-left min-w-[180px] flex-1 sm:flex-initial sm:min-w-[200px]"
                                     >
                                         {/* ミニプレビュー */}
                                         <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{
@@ -275,9 +281,16 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
-                                            <p className="text-xs text-white/50 font-medium">{item.price.toLocaleString()} UC</p>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs text-white/50 font-medium">{item.price.toLocaleString()} UC</span>
+                                                {affordable && (
+                                                    <span className="text-[10px] font-bold text-emerald-200 bg-emerald-500/30 rounded px-1 py-0.5">
+                                                        {t('canAfford')}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <span className="text-white/30 group-hover:text-white/60 transition-colors text-sm">→</span>
+                                        <span className="text-white/30 group-hover:text-white/60 group-hover:translate-x-0.5 transition-all text-sm">→</span>
                                     </button>
                                 );
                             })}
