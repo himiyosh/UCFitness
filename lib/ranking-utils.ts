@@ -6,7 +6,7 @@ export type RankingEntry = {
         image: string | null;
         username: string | null;
     };
-    originalRank: number;
+    originalRank?: number;
 };
 
 export function getDisplayRankings(allRankings: any[], userId?: string | null, maxItems?: number): {
@@ -54,7 +54,7 @@ export function getDisplayRankings(allRankings: any[], userId?: string | null, m
     });
 
     // Sort by rank again to be sure
-    combined.sort((a, b) => a.originalRank - b.originalRank);
+    combined.sort((a, b) => (a.originalRank || 0) - (b.originalRank || 0));
 
     // Apply strict limit if requested
     if (maxItems && combined.length > maxItems) {
@@ -64,7 +64,7 @@ export function getDisplayRankings(allRankings: any[], userId?: string | null, m
         if (userEntry) {
             // Take top (N-1) + User
             const others = combined.filter(r => r.users.id !== userId).slice(0, maxItems - 1);
-            combined = [...others, userEntry].sort((a, b) => a.originalRank - b.originalRank);
+            combined = [...others, userEntry].sort((a, b) => (a.originalRank || 0) - (b.originalRank || 0));
         } else {
             // Should not happen as we added neighbors including user, but fallback
             combined = combined.slice(0, maxItems);

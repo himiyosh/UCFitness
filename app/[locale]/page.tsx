@@ -231,6 +231,43 @@ export default async function Home() {
     YEARLY: compYearly
   };
 
+  // ⚡ Bolt Optimization: Slice global rankings to reduce payload size
+  // Send Top 50 + Current User (if outside top 50)
+  const displayGlobalRankings: Record<Period, RankingEntry[]> = {
+    DAILY: [],
+    WEEKLY: [],
+    MONTHLY: [],
+    YEARLY: []
+  };
+
+  (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
+    const fullList = allGlobalRankings[period];
+    if (!fullList) return;
+
+    // Assign original ranks (implicit in sorted order)
+    const rankedList = fullList.map((entry, index) => ({
+      ...entry,
+      originalRank: index + 1
+    }));
+
+    // Slice Top 50
+    const top50 = rankedList.slice(0, 50);
+
+    // Check for current user
+    const myId = (session?.user as any)?.id;
+    const isUserInTop50 = myId && top50.some(r => r.users.id === myId);
+
+    if (myId && !isUserInTop50) {
+      // Find user in full list
+      const userEntry = rankedList.find(r => r.users.id === myId);
+      if (userEntry) {
+        top50.push(userEntry);
+      }
+    }
+
+    displayGlobalRankings[period] = top50;
+  });
+
   // Determine Banner Image (Priority: User Banner -> First group's header image -> Default Gradient)
   const userDataBanner = bannerUrl;
   const primaryGroupBanner = userDataBanner || (allGroupRankings.length > 0 ? allGroupRankings[0].header_image_url : null);
@@ -419,7 +456,7 @@ export default async function Home() {
           {/* BOTTOM SECTION: Leaderboards */}
           <AnimatedLeaderboard
             userId={(session?.user as any)?.id}
-            allGlobalRankings={allGlobalRankings}
+            allGlobalRankings={displayGlobalRankings}
             allGroupRankings={allGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}
           />

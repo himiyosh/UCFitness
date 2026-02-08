@@ -27,8 +27,8 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
     // We want to show a consistent 7 bars, even if data is missing for some days
     // But since `history` from backend contains sparse data (only days with steps), we need to fill gaps OR just show what we have.
     // For simplicity, let's just show the last N entries we have, or up to 7, sorted by date.
-    // 
-    // Ideally: 
+    //
+    // Ideally:
     // 1. Get today
     // 2. Generate last 7 dates
     // 3. Map to steps (0 if missing)
@@ -110,9 +110,10 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 changes[p] = {};
                 allGlobalRankings[p]?.forEach((entry, i) => {
                     const uid = entry.users.id;
-                    current[p][uid] = i + 1;
+                    const rank = entry.originalRank ?? (i + 1);
+                    current[p][uid] = rank;
                     if (prev[p] && prev[p][uid] !== undefined) {
-                        changes[p][uid] = prev[p][uid] - (i + 1); // positive = moved up
+                        changes[p][uid] = prev[p][uid] - rank; // positive = moved up
                     }
                 });
             }
@@ -130,6 +131,26 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
     // Filter current view data
     const currentGlobal = allGlobalRankings[period];
+
+    // Pagination Logic
+    const ITEMS_PER_PAGE = 5;
+    const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
+    const SafePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1);
+
+    // Ensure currentPage is valid if data changes
+    useEffect(() => {
+        if (page !== SafePage && totalPages > 0) {
+            setPage(SafePage);
+        } else if (totalPages === 0 && page !== 1) { // If no data, reset to page 1
+            setPage(1);
+        }
+    }, [page, totalPages, SafePage]);
+
+    const startIndex = (SafePage - 1) * ITEMS_PER_PAGE;
+    const paginatedItems = currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
+        ...entry,
+        originalRank: entry.originalRank ?? (startIndex + idx + 1)
+    }));
 
     return (
         <div className="space-y-6">
@@ -177,7 +198,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                             <FadeInWrapper key={period}>
                                 <div className="px-6 pt-6">
                                     <TopUsersChart
-                                        data={currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 }))}
+                                        data={currentGlobal.map((r, i) => ({ ...r, originalRank: r.originalRank ?? (i + 1) }))}
                                         userId={userId}
                                         title={t('titleTop10')}
                                     />
@@ -187,134 +208,111 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                     {currentGlobal.length === 0 ? (
                                         <p className="text-gray-500 text-center py-8">{t('noData')}</p>
                                     ) : (
-                                        (() => {
-                                            const ITEMS_PER_PAGE = 5;
-                                            const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
-                                            const SafePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1); // Ensure SafePage is at least 1 if totalPages is 0
+                                        <div className="flex flex-col h-full">
+                                            <div className="flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
+                                                {paginatedItems.map((entry) => {
 
-                                            // Ensure currentPage is valid if data changes
-                                            useEffect(() => {
-                                                if (page !== SafePage && totalPages > 0) {
-                                                    setPage(SafePage);
-                                                } else if (totalPages === 0 && page !== 1) { // If no data, reset to page 1
-                                                    setPage(1);
-                                                }
-                                            }, [currentGlobal.length, page, totalPages, SafePage]);
+                                                    return (
+                                                        <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
 
-                                            const startIndex = (SafePage - 1) * ITEMS_PER_PAGE;
-                                            const paginatedItems = currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
-                                                ...entry,
-                                                originalRank: startIndex + idx + 1
-                                            }));
-
-                                            return (
-                                                <div className="flex flex-col h-full">
-                                                    <div className="flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 72}px` }}>
-                                                        {paginatedItems.map((entry) => {
-
-                                                            return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
-
-                                                                    {/* Content Wrapper */}
-                                                                    <div className="relative z-10 flex items-center gap-4">
-                                                                        <span className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
-                                                                            style={entry.originalRank === 1 ? {
-                                                                                background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
-                                                                                color: '#ffffff',
-                                                                                boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
-                                                                            } : entry.originalRank === 2 ? {
-                                                                                background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
-                                                                                color: '#ffffff',
-                                                                                boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35),'
-                                                                            } : entry.originalRank === 3 ? {
-                                                                                background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
-                                                                                color: '#ffffff',
-                                                                                boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
-                                                                            } : {
-                                                                                background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
-                                                                                color: isMidnight ? '#64748b' : '#94a3b8',
-                                                                                border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
-                                                                            }}
-                                                                        >
-                                                                            {entry.originalRank}
-                                                                        </span>
-                                                                        {entry.users?.image ? (
-                                                                            <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm" src={entry.users.image} alt="" />
+                                                            {/* Content Wrapper */}
+                                                            <div className="relative z-10 flex items-center gap-4">
+                                                                <span className="flex items-center justify-center w-8 h-8 rounded-full text-[13px] font-bold"
+                                                                    style={entry.originalRank === 1 ? {
+                                                                        background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
+                                                                        color: '#ffffff',
+                                                                        boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
+                                                                    } : entry.originalRank === 2 ? {
+                                                                        background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
+                                                                        color: '#ffffff',
+                                                                        boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35),'
+                                                                    } : entry.originalRank === 3 ? {
+                                                                        background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
+                                                                        color: '#ffffff',
+                                                                        boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
+                                                                    } : {
+                                                                        background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
+                                                                        color: isMidnight ? '#64748b' : '#94a3b8',
+                                                                        border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
+                                                                    }}
+                                                                >
+                                                                    {entry.originalRank}
+                                                                </span>
+                                                                {entry.users?.image ? (
+                                                                    <img className="h-10 w-10 rounded-full border-2 border-white shadow-sm" src={entry.users.image} alt="" />
+                                                                ) : (
+                                                                    <div className="h-10 w-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold border-2 border-white shadow-sm">
+                                                                        {(entry.users?.name || '?')[0]}
+                                                                    </div>
+                                                                )}
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                                                        {entry.users.username ? (
+                                                                            <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
+                                                                                {entry.users?.name || 'Anonymous'}
+                                                                            </Link>
                                                                         ) : (
-                                                                            <div className="h-10 w-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold border-2 border-white shadow-sm">
-                                                                                {(entry.users?.name || '?')[0]}
-                                                                            </div>
+                                                                            <span>{entry.users?.name || 'Anonymous'}</span>
                                                                         )}
-                                                                        <div>
-                                                                            <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                                                                                {entry.users.username ? (
-                                                                                    <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
-                                                                                        {entry.users?.name || 'Anonymous'}
-                                                                                    </Link>
-                                                                                ) : (
-                                                                                    <span>{entry.users?.name || 'Anonymous'}</span>
-                                                                                )}
-                                                                                {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2 relative z-10">
-                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg">
-                                                                            {entry.steps.toLocaleString()}
-                                                                        </div>
-                                                                        {(() => {
-                                                                            const change = rankChanges[period]?.[entry.users.id];
-                                                                            if (!change || change === 0) return null;
-                                                                            return (
-                                                                                <span className={`text-[10px] font-bold flex items-center gap-0.5 ${change > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                                                                                    {change > 0 ? '▲' : '▼'}{Math.abs(change)}
-                                                                                </span>
-                                                                            );
-                                                                        })()}
-                                                                    </div>
-                                                                </li>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                                        {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 relative z-10">
+                                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg">
+                                                                    {entry.steps.toLocaleString()}
+                                                                </div>
+                                                                {(() => {
+                                                                    const change = rankChanges[period]?.[entry.users.id];
+                                                                    if (!change || change === 0) return null;
+                                                                    return (
+                                                                        <span className={`text-[10px] font-bold flex items-center gap-0.5 ${change > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                                            {change > 0 ? '▲' : '▼'}{Math.abs(change)}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </div>
 
-                                                    {/* Pagination Controls */}
-                                                    {totalPages > 1 && (
-                                                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                                                            <button
-                                                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                                                disabled={page === 1}
-                                                                className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${!isMidnight ? 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200' : ''}`}
-                                                                style={isMidnight ? {
-                                                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
-                                                                    color: '#c7d2fe',
-                                                                    border: '1px solid rgba(165,180,252,0.3)',
-                                                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                                                                } : undefined}
-                                                            >
-                                                                {t('prev')}
-                                                            </button>
-                                                            <span className="text-xs font-medium text-gray-500">
-                                                                {t('pageInfo', { current: page, total: totalPages })}
-                                                            </span>
-                                                            <button
-                                                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                                                disabled={page === totalPages}
-                                                                className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${isMidnight ? 'midnight-vivid-btn' : 'bg-[var(--theme-primary)] text-white hover:opacity-80'}`}
-                                                                style={isMidnight ? {
-                                                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                                                    color: '#ffffff',
-                                                                    border: '1px solid rgba(165,180,252,0.3)',
-                                                                    boxShadow: '0 2px 10px -2px rgba(99,102,241,0.4)',
-                                                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                                                                } : undefined}
-                                                            >
-                                                                {t('next')}
-                                                            </button>
-                                                        </div>
-                                                    )}
+                                            {/* Pagination Controls */}
+                                            {totalPages > 1 && (
+                                                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                                                    <button
+                                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                        disabled={page === 1}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${!isMidnight ? 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200' : ''}`}
+                                                        style={isMidnight ? {
+                                                            background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
+                                                            color: '#c7d2fe',
+                                                            border: '1px solid rgba(165,180,252,0.3)',
+                                                            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                                        } : undefined}
+                                                    >
+                                                        {t('prev')}
+                                                    </button>
+                                                    <span className="text-xs font-medium text-gray-500">
+                                                        {t('pageInfo', { current: page, total: totalPages })}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                        disabled={page === totalPages}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${isMidnight ? 'midnight-vivid-btn' : 'bg-[var(--theme-primary)] text-white hover:opacity-80'}`}
+                                                        style={isMidnight ? {
+                                                            background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                                            color: '#ffffff',
+                                                            border: '1px solid rgba(165,180,252,0.3)',
+                                                            boxShadow: '0 2px 10px -2px rgba(99,102,241,0.4)',
+                                                            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                                        } : undefined}
+                                                    >
+                                                        {t('next')}
+                                                    </button>
                                                 </div>
-                                            );
-                                        })()
+                                            )}
+                                        </div>
                                     )}
                                 </ul>
                             </FadeInWrapper>
