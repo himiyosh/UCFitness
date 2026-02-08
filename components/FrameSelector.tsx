@@ -1,0 +1,135 @@
+'use client';
+
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/navigation';
+import { getFrameColor } from '@/components/UserAvatar';
+
+export interface OwnedFrame {
+    userItemId: string;    // user_items.id
+    itemCode: string;      // shop_items.item_code
+    nameEn: string;        // shop_items.name_en
+    nameJa: string;        // shop_items.name_ja
+    previewValue: string;  // shop_items.preview_value (Tailwind ring class)
+    isEquipped: boolean;   // user_items.is_equipped
+}
+
+interface FrameSelectorProps {
+    ownedFrames: OwnedFrame[];
+}
+
+export default function FrameSelector({ ownedFrames }: FrameSelectorProps) {
+    const t = useTranslations('Settings');
+    const router = useRouter();
+    const [frames, setFrames] = useState<OwnedFrame[]>(ownedFrames);
+    const [loading, setLoading] = useState(false);
+
+    const equippedFrame = frames.find(f => f.isEquipped);
+    const currentValue = equippedFrame?.userItemId || 'none';
+
+    const handleChange = async (value: string) => {
+        if (loading) return;
+        if (value === currentValue) return;
+
+        setLoading(true);
+        try {
+            if (equippedFrame && value === 'none') {
+                // 解除
+                const res = await fetch('/api/shop/equip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userItemId: equippedFrame.userItemId, action: 'unequip' }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                setFrames(prev => prev.map(f => ({ ...f, isEquipped: false })));
+            } else {
+                // 新しいフレームを設定（同カテゴリ自動解除）
+                const res = await fetch('/api/shop/equip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userItemId: value, action: 'equip' }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                setFrames(prev => prev.map(f => ({ ...f, isEquipped: f.userItemId === value })));
+            }
+            router.refresh();
+        } catch (e) {
+            console.error('Frame equip error:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // フレームを1つも持っていない場合
+    if (frames.length === 0) {
+        return (
+            <div className="border-t border-gray-200 pt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                    🖼️ {t('frameLabel')}
+                </label>
+                <p className="text-xs text-gray-500 mb-2">{t('frameDescription')}</p>
+                <div className="px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-400 flex items-center justify-between">
+                    <span>{t('noFrames')}</span>
+                    <a href="/shop" className="text-xs text-[var(--theme-primary)] font-bold hover:underline">
+                        {t('goToShop')} →
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
+    // 選択中のフレームカラーをプレビュー
+    const selectedFrame = frames.find(f => f.userItemId === currentValue);
+    const previewColor = selectedFrame ? getFrameColor(selectedFrame.previewValue) : null;
+
+    return (
+        <div className="border-t border-gray-200 pt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                🖼️ {t('frameLabel')}
+            </label>
+            <p className="text-xs text-gray-500 mb-2">{t('frameDescription')}</p>
+
+            <div className="flex items-center gap-3">
+                {/* カラープレビュー */}
+                <div
+                    className="w-10 h-10 rounded-full border-[3px] bg-gray-100 flex-shrink-0 transition-all duration-300"
+                    style={previewColor
+                        ? { borderColor: previewColor, boxShadow: `0 0 8px ${previewColor}40` }
+                        : { borderColor: '#d1d5db' }
+                    }
+                />
+
+                {/* セレクト */}
+                <div className="relative flex-1">
+                    <select
+                        value={currentValue}
+                        onChange={(e) => handleChange(e.target.value)}
+                        disabled={loading}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm py-2.5 text-gray-900 appearance-none pl-3 pr-8 bg-white disabled:opacity-60 cursor-pointer"
+                    >
+                        <option value="none">{t('noFrame')}</option>
+                        {frames.map(frame => (
+                            <option key={frame.userItemId} value={frame.userItemId}>
+                                {frame.nameJa}
+                            </option>
+                        ))}
+                    </select>
+                    {/* カスタム矢印 */}
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                        {loading ? (
+                            <svg className="animate-spin h-4 w-4 text-[var(--theme-primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        ) : (
+                            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <a href="/shop" className="mt-2 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
+                {t('moreFrames')} →
+            </a>
+        </div>
+    );
+}

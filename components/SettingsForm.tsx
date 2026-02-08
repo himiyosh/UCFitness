@@ -11,6 +11,7 @@ import { useTheme, Theme } from '@/components/ThemeProvider';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import UserAvatar from '@/components/UserAvatar';
 import TitleSelector, { type OwnedTitle } from '@/components/TitleSelector';
+import FrameSelector, { type OwnedFrame } from '@/components/FrameSelector';
 import StepGoalForm from '@/components/StepGoalForm';
 
 
@@ -23,7 +24,7 @@ interface UserData {
     banner_url?: string | null;
 }
 
-export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[] }) {
+export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [], ownedFrames = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[]; ownedFrames?: OwnedFrame[] }) {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -228,6 +229,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
                     {/* 称号セレクター（プロフィールセクション内） */}
                     <TitleSelector ownedTitles={ownedTitles} />
+
+                    {/* フレームセレクター（プロフィールセクション内） */}
+                    <FrameSelector ownedFrames={ownedFrames} />
 
                 </div>
             </section>

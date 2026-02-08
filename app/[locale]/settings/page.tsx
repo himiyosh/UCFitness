@@ -62,6 +62,18 @@ export default async function SettingsPage() {
             isEquipped: item.is_equipped,
         }));
 
+    // 所持しているフレームアイテムを取得
+    const ownedFrames = (ownedTitleItems || [])
+        .filter((item: any) => item.shop_items?.category === 'ICON_FRAME')
+        .map((item: any) => ({
+            userItemId: item.id,
+            itemCode: item.shop_items.item_code,
+            nameEn: item.shop_items.name_en,
+            nameJa: item.shop_items.name_ja,
+            previewValue: item.shop_items.preview_value,
+            isEquipped: item.is_equipped,
+        }));
+
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
             {/* Header (Consistent with Profile) */}
@@ -91,7 +103,7 @@ export default async function SettingsPage() {
                     <p className="text-gray-500">{t('description')}</p>
                 </div>
 
-                <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} />
+                <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} />
             </div>
         </main>
     );
