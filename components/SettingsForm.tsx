@@ -5,7 +5,7 @@ import ProfileImageEditor from "@/components/ProfileImageEditor";
 import BannerImageEditor from "@/components/BannerImageEditor";
 import ImageModal from "@/components/ImageModal";
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter, usePathname } from '@/navigation';
+import { useRouter, usePathname, Link } from '@/navigation';
 import { useSession } from 'next-auth/react'; // Import useSession
 import { useTheme, Theme } from '@/components/ThemeProvider';
 import PushNotificationManager from '@/components/PushNotificationManager';
@@ -21,7 +21,7 @@ interface UserData {
     banner_url?: string | null;
 }
 
-export default function SettingsForm({ user }: { user: UserData }) {
+export default function SettingsForm({ user, ownsMidnight = false }: { user: UserData; ownsMidnight?: boolean }) {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -36,6 +36,11 @@ export default function SettingsForm({ user }: { user: UserData }) {
     const commonT = useTranslations('Common');
     const { update } = useSession(); // Get update function
     const { theme, setTheme } = useTheme(); // Theme hook
+
+    // Midnight を所有していないのに適用中の場合、classic にリセット
+    if (theme === 'midnight' && !ownsMidnight) {
+        setTheme('classic');
+    }
 
     const handleLanguageChange = async (newLocale: string) => {
         if (switchingLocale) return;
@@ -312,18 +317,24 @@ export default function SettingsForm({ user }: { user: UserData }) {
                             {theme === 'pop' && <span className="text-pink-600">✓</span>}
                         </button>
                         <button
-                            onClick={() => setTheme('midnight')}
-                            className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${theme === 'midnight'
+                            onClick={() => ownsMidnight && setTheme('midnight')}
+                            className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors ${ownsMidnight ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'} ${theme === 'midnight'
                                 ? 'bg-slate-900 border-slate-700 text-indigo-400 midnight-option-selected'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}
+                            disabled={!ownsMidnight}
                         >
                             <span className="flex items-center gap-3 whitespace-nowrap">
                                 <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-600 via-slate-900 to-slate-950 border border-indigo-400/50 shadow-[0_0_6px_rgba(99,102,241,0.4)] shrink-0"></span>
                                 Midnight (Dark) 🌙
-                                <span className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded border border-slate-200 ml-1 shrink-0">Beta</span>
+                                {ownsMidnight ? (
+                                    <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200 ml-1 shrink-0">Premium</span>
+                                ) : (
+                                    <span className="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded border border-gray-200 ml-1 shrink-0">🔒 30,000 UC</span>
+                                )}
                             </span>
-                            {theme === 'midnight' && <span className="text-indigo-400">✓</span>}
+                            {theme === 'midnight' && ownsMidnight && <span className="text-indigo-400">✓</span>}
+                            {!ownsMidnight && <Link href="/shop" className="text-amber-600 text-xs font-bold hover:underline z-10">🛍️ Shop</Link>}
                         </button>
                     </div>
                 </section>

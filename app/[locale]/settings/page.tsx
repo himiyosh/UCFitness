@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation"; // Standard redirect works fine for root
 import UserMenu from "@/components/UserMenu";
 import { Link } from "@/navigation"; // Localized Link
@@ -33,6 +34,16 @@ export default async function SettingsPage() {
         return <div>User not found</div>;
     }
 
+    // Midnight テーマの所有チェック（shop_items → user_items）
+    const userId = (session.user as any).id;
+    const { data: midnightItem } = await supabaseAdmin
+        .from('user_items')
+        .select('id, shop_items!inner(item_code)')
+        .eq('user_id', userId)
+        .eq('shop_items.item_code', 'theme_midnight')
+        .maybeSingle();
+    const ownsMidnight = midnightItem !== null;
+
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
             {/* Header (Consistent with Profile) */}
@@ -62,7 +73,7 @@ export default async function SettingsPage() {
                     <p className="text-gray-500">{t('description')}</p>
                 </div>
 
-                <SettingsForm user={user} />
+                <SettingsForm user={user} ownsMidnight={ownsMidnight} />
             </div>
         </main>
     );
