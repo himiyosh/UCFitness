@@ -1,13 +1,39 @@
 'use client';
 
+import { useState } from 'react';
 import AuthButtons from './AuthButtons';
 import { useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
+import { useRouter, usePathname } from '@/navigation';
 
 export default function LandingPage() {
     const t = useTranslations('Landing');
+    const locale = useLocale();
+    const router = useRouter();
+    const pathname = usePathname();
+    const [switching, setSwitching] = useState(false);
+
+    const toggleLocale = () => {
+        if (switching) return;
+        const next = locale === 'ja' ? 'en' : 'ja';
+        setSwitching(true);
+        router.replace(pathname, { locale: next });
+    };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col items-center relative overflow-x-hidden">
+            {/* 言語切替ボタン — 右上固定 */}
+            <button
+                onClick={toggleLocale}
+                disabled={switching}
+                className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:bg-white transition-all text-sm font-medium text-gray-700 cursor-pointer disabled:opacity-50"
+            >
+                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+                {locale === 'ja' ? 'English' : '日本語'}
+            </button>
+
             {/* Background Decorations - More colorful! */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute -top-1/2 -left-1/2 w-[1000px] h-[1000px] bg-gradient-to-r from-[var(--accent-coral)]/20 to-[var(--accent-pink)]/20 rounded-full blur-3xl animate-pulse"></div>
@@ -23,7 +49,7 @@ export default function LandingPage() {
                 <div className="absolute top-1/4 right-[25%] text-2xl animate-float-delayed opacity-50">⚡</div>
             </div>
 
-            <div className="relative z-10 w-full max-w-4xl px-6 text-center">
+            <div className="relative z-10 w-full max-w-4xl px-6 text-center flex-1 flex flex-col justify-center py-20 sm:py-8">
                 {/* Logo / Icon - Rainbow border */}
                 <div className="mx-auto mb-8 w-24 h-24 p-1 rounded-3xl animate-rainbow transform rotate-12 hover:rotate-0 transition-transform duration-500 shadow-xl">
                     <div className="w-full h-full bg-[var(--theme-primary)] rounded-[20px] flex items-center justify-center">
@@ -37,7 +63,7 @@ export default function LandingPage() {
                     {t('title')}
                 </h1>
 
-                <p className="text-xl sm:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto font-medium leading-relaxed whitespace-nowrap">
+                <p className="text-xl sm:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto font-medium leading-relaxed sm:whitespace-nowrap">
                     {t('subtitle')}
                     <br />
                     <span className="text-[var(--accent-coral)] font-bold">{t('compete')}</span>, <span className="text-[var(--accent-turquoise)] font-bold">{t('collectBadges')}</span>, {t.rich('stayActive', { span: (chunks) => <span className="text-[var(--accent-lime)] font-bold">{chunks}</span> })}
@@ -82,7 +108,7 @@ export default function LandingPage() {
                 </div>
             </div>
 
-            <footer className="absolute bottom-4 text-center text-xs text-gray-400">
+            <footer className="relative z-10 shrink-0 pb-4 text-center text-xs text-gray-400">
                 &copy; {new Date().getFullYear()} Studio344
             </footer>
         </div>

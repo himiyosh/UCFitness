@@ -50,9 +50,9 @@
     "Landing": {
         "title": "UCFitness",
         "subtitle": "歩くことは、最高の健康投資。",
-        "compete": "競争",
-        "collectBadges": "バッジ収集",
-        "stayActive": "活動継続",
+        "compete": "仲間と競い合い",
+        "collectBadges": "バッジを集めて",
+        "stayActive": "<span>毎日をアクティブに</span>",
         "connectFitbit": "Fitbit アカウントを接続してすぐに始めましょう。",
         "features": {
             "leaderboards": {

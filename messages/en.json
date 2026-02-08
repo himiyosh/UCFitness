@@ -52,7 +52,7 @@
         "subtitle": "Walking is the best investment in your health.",
         "compete": "Compete",
         "collectBadges": "Collect Badges",
-        "stayActive": "Stay Active",
+        "stayActive": "<span>Stay Active</span>",
         "connectFitbit": "Connect your Fitbit account to get started instantly.",
         "features": {
             "leaderboards": {
