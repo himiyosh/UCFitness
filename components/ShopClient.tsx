@@ -285,7 +285,7 @@ function ShopItemCard({
             {/* プレビュー + バッジ ラッパー */}
             <div className="relative">
                 {/* プレビュー領域（Coming Soon時はぼかし） */}
-                <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'saturate-0 blur-[2px] brightness-105' : ''}`} style={{
+                <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
