@@ -54,24 +54,22 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const getContainerWidth = () => containerRef.current?.clientWidth || 360;
     const getContainerHeight = () => getContainerWidth() / BANNER_ASPECT;
 
-    // 拡大後の画像表示サイズ
-    const displayImageWidth = useCallback(() => {
-        return getContainerWidth() * scale;
-    }, [scale]);
-
+    // 画像の表示高さ（幅はコンテナ幅に合わせ、比率維持）
     const displayImageHeight = useCallback(() => {
         if (!imageSize) return 0;
         const cw = getContainerWidth();
-        return (imageSize.h / imageSize.w) * cw * scale;
-    }, [imageSize, scale]);
+        return (imageSize.h / imageSize.w) * cw;
+    }, [imageSize]);
 
-    // オフセット範囲を制限
+    // オフセット範囲を制限（transform 基準: 画像はコンテナ幅で描画 → scale で拡大）
     const clampOffsets = useCallback((ox: number, oy: number, s?: number) => {
         const currentScale = s ?? scale;
         const cw = getContainerWidth();
         const ch = getContainerHeight();
+        // transform 後の画像サイズ
         const dw = cw * currentScale;
-        const dh = imageSize ? (imageSize.h / imageSize.w) * cw * currentScale : ch;
+        const baseH = imageSize ? (imageSize.h / imageSize.w) * cw : ch;
+        const dh = baseH * currentScale;
 
         const minX = Math.min(0, cw - dw);
         const minY = Math.min(0, ch - dh);
@@ -187,7 +185,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
             {isOpen && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 relative">
                         <button
                             onClick={() => { setIsOpen(false); setFile(null); }}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -234,11 +232,13 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                             alt="Preview"
                                             className="absolute pointer-events-none"
                                             style={{
-                                                left: `${file ? offsetX : 0}px`,
-                                                top: `${file ? offsetY : 0}px`,
-                                                width: file ? `${displayImageWidth()}px` : '100%',
+                                                left: 0,
+                                                top: 0,
+                                                width: '100%',
                                                 height: file && imageSize ? `${displayImageHeight()}px` : '100%',
                                                 objectFit: !file ? 'cover' : undefined,
+                                                transformOrigin: '0 0',
+                                                transform: file ? `translate(${offsetX}px, ${offsetY}px) scale(${scale})` : undefined,
                                             }}
                                             draggable={false}
                                             onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/600x150?text=Banner')}
