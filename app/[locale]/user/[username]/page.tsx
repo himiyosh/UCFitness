@@ -216,6 +216,21 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <ProfileBadges badges={userBadges} />
                         </div>
 
+                        {/* Lifetime Stats */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-200">
+                            <div className="flex items-center justify-between px-4 py-2.5">
+                                <span className="text-xs font-medium text-gray-500">{t('totalStepsRecorded')}</span>
+                                <span className="text-sm font-bold text-gray-900 tabular-nums">{totalSteps.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center justify-between px-4 py-2.5">
+                                <span className="text-xs font-medium text-gray-500">{t('allTimeBestDay')}</span>
+                                <div className="text-right">
+                                    <span className="text-sm font-bold text-green-600 tabular-nums">{bestDay.steps.toLocaleString()}</span>
+                                    {bestDay.date !== '-' && <span className="text-[10px] text-gray-400 ml-1.5">{bestDay.date}</span>}
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Owner: Settings Button */}
                         {isOwner && (
                             <div className="mt-4">
