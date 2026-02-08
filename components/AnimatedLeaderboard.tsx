@@ -133,6 +133,19 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     // Filter current view data
     const currentGlobal = allGlobalRankings[period];
 
+    // Pagination safety — must be at top level (not inside conditional JSX)
+    const ITEMS_PER_PAGE = 5;
+    const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
+    const safePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1);
+
+    useEffect(() => {
+        if (page !== safePage && totalPages > 0) {
+            setPage(safePage);
+        } else if (totalPages === 0 && page !== 1) {
+            setPage(1);
+        }
+    }, [currentGlobal.length, page, totalPages, safePage]);
+
     return (
         <div className="space-y-6">
             {/* TABS - Moved to top for alignment */}
@@ -214,20 +227,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                         <p className="text-gray-500 text-center py-8">{t('noData')}</p>
                                     ) : (
                                         (() => {
-                                            const ITEMS_PER_PAGE = 5;
-                                            const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
-                                            const SafePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1); // Ensure SafePage is at least 1 if totalPages is 0
-
-                                            // Ensure currentPage is valid if data changes
-                                            useEffect(() => {
-                                                if (page !== SafePage && totalPages > 0) {
-                                                    setPage(SafePage);
-                                                } else if (totalPages === 0 && page !== 1) { // If no data, reset to page 1
-                                                    setPage(1);
-                                                }
-                                            }, [currentGlobal.length, page, totalPages, SafePage]);
-
-                                            const startIndex = (SafePage - 1) * ITEMS_PER_PAGE;
+                                            const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
                                             const paginatedItems = currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
                                                 ...entry,
                                                 originalRank: startIndex + idx + 1
