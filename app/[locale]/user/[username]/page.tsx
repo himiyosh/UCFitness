@@ -292,11 +292,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     {/* Target User Row */}
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center">
                                         <div className="w-24 sm:w-32 px-2 sm:px-3 py-3 sm:py-4">
-                                            <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5 min-w-0">
                                                 {user.image && (
                                                     <img src={user.image} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0" />
                                                 )}
-                                                <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{user.name?.split(' ')[0] || user.username}</p>
+                                                <p className="text-[11px] sm:text-sm font-bold text-gray-900 leading-tight break-words min-w-0">{user.name || user.username}</p>
                                             </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
@@ -312,11 +312,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     {/* Viewer (You) Row */}
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center border-t border-gray-200 bg-gray-50/60">
                                         <div className="w-24 sm:w-32 px-2 sm:px-3 py-3 sm:py-4">
-                                            <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5 min-w-0">
                                                 {viewerUser?.image && (
                                                     <img src={viewerUser.image} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0" />
                                                 )}
-                                                <p className="text-xs sm:text-sm font-bold text-gray-500 truncate">{t('yourSteps')}</p>
+                                                <p className="text-[11px] sm:text-sm font-bold text-gray-500 leading-tight break-words min-w-0">{t('yourSteps')}</p>
                                             </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
