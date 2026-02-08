@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
