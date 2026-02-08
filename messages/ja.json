@@ -90,9 +90,11 @@
     },
     "Leaderboard": {
         "titleGlobal": "グローバルランキング",
+        "tabUser": "ユーザー (全体)",
         "titleTop10": "トップ10",
         "noData": "データがまだありません。",
         "titleGroup": "グループランキング",
+        "tabGroup": "グループ",
         "byAverage": "平均歩数順",
         "yourRank": "あなたの順位",
         "inGroup": "{group} 内",

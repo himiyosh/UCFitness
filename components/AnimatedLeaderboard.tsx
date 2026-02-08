@@ -190,7 +190,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                             : 'text-gray-500 hover:text-gray-700'
                                     }`}
                                 >
-                                    👤 {t('titleGlobal')}
+                                    👤 {t('tabUser')}
                                 </button>
                                 {groupCompetitionRankings && (
                                     <button
@@ -201,7 +201,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                 : 'text-gray-500 hover:text-gray-700'
                                         }`}
                                     >
-                                        🏆 {t('titleGroup')}
+                                        🏆 {t('tabGroup')}
                                     </button>
                                 )}
                             </div>

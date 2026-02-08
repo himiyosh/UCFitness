@@ -90,9 +90,11 @@
     },
     "Leaderboard": {
         "titleGlobal": "Global Leaderboard",
+        "tabUser": "User (Global)",
         "titleTop10": "Top 10 Leaders",
         "noData": "No data available yet.",
         "titleGroup": "Group Leaderboard",
+        "tabGroup": "Group",
         "byAverage": "By Average Steps",
         "yourRank": "Your Rank",
         "inGroup": "in {group}",
