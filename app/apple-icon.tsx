@@ -18,20 +18,20 @@ export default function AppleIcon() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #4F46E5 75%, #FF85A2 100%)',
+                    background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #EC4899 75%, #FF85A2 100%)',
                     borderRadius: '40px',
                 }}
             >
                 {/* 内側: グラデーション背景 + ガラス + 稲妻 */}
                 <div
                     style={{
-                        width: '132px',
-                        height: '132px',
+                        width: '116px',
+                        height: '116px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #7C3AED 100%)',
-                        borderRadius: '28px',
+                        borderRadius: '24px',
                         position: 'relative',
                     }}
                 >
@@ -40,10 +40,10 @@ export default function AppleIcon() {
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                            width: '132px',
-                            height: '66px',
+                            width: '116px',
+                            height: '58px',
                             background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
-                            borderRadius: '28px 28px 0 0',
+                            borderRadius: '24px 24px 0 0',
                         }}
                     />
                     <svg viewBox="0 0 24 24" width="68" height="68">

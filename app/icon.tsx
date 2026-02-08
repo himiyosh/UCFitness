@@ -18,20 +18,20 @@ export default function Icon() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #4F46E5 75%, #FF85A2 100%)',
+                    background: 'linear-gradient(135deg, #FFE66D 0%, #95E500 25%, #4ECDC4 50%, #EC4899 75%, #FF85A2 100%)',
                     borderRadius: '8px',
                 }}
             >
                 {/* 内側: グラデーション背景 + ガラス + 稲妻 */}
                 <div
                     style={{
-                        width: '22px',
-                        height: '22px',
+                        width: '18px',
+                        height: '18px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #7C3AED 100%)',
-                        borderRadius: '5px',
+                        borderRadius: '4px',
                         position: 'relative',
                     }}
                 >
@@ -40,10 +40,10 @@ export default function Icon() {
                             position: 'absolute',
                             top: 0,
                             left: 0,
-                            width: '22px',
-                            height: '11px',
+                            width: '18px',
+                            height: '9px',
                             background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
-                            borderRadius: '5px 5px 0 0',
+                            borderRadius: '4px 4px 0 0',
                         }}
                     />
                     <svg viewBox="0 0 24 24" width="12" height="12">
