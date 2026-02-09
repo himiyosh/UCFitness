@@ -33,3 +33,7 @@
 ## 2025-05-28 - N+1 in Daily Badge Assignment
 **Learning:** The `assignPersonalBadges` function was iterating through all active users and performing 3 separate queries for each user (Streak, Milestone, Title), resulting in O(N) database load. This scales poorly as the user base grows.
 **Action:** Implemented batch processing (size 10) where user goals and full step history are fetched in bulk (2 queries per batch). The logic for badges was refactored to use this in-memory data, reducing DB calls from ~3N to ~0.3N.
+
+## 2025-06-01 - Payload Size Optimization via Truncation
+**Learning:** Passing the full global leaderboard (thousands of users) to the client component bloated the HTML payload significantly, causing slow hydration. However, simpler truncating broke rank logic and downstream components that relied on full lists (e.g., finding group members or calculating ranks).
+**Action:** Truncate the list to a "Top N + User" view for client consumption to reduce payload, but ensure `originalRank` is explicitly preserved on the server before truncation. Also, be careful to use the *full* list for server-side derivations (like Group Rankings) while sending only the *optimized* list to the client.
