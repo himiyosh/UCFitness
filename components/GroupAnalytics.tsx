@@ -134,7 +134,7 @@ export default function GroupAnalytics({
                     <div className="flex items-baseline gap-2 flex-wrap">
                         {groupRank ? (
                             <>
-                                <span className="text-2xl sm:text-3xl font-black text-[var(--theme-primary)] tracking-tight leading-none leaderboard-steps">#{groupRank}</span>
+                                <span className="text-2xl sm:text-3xl font-black text-[var(--theme-primary)] tracking-tight leading-none group-rank-number">#{groupRank}</span>
                                 <span className="text-sm sm:text-base font-bold text-gray-400">/ {totalGroups}</span>
                             </>
                         ) : (

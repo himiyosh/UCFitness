@@ -500,6 +500,10 @@ html {
   text-shadow: 0 0 4px rgba(165, 180, 252, 0.3);
   font-weight: 900;
 }
+[data-theme="midnight"] .group-rank-number {
+  color: #c7d2fe !important;
+  text-shadow: 0 0 4px rgba(165, 180, 252, 0.3);
+}
 /* Delta up/down colors — works in all themes */
 .delta-up {
   color: #22c55e;
