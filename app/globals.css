@@ -580,27 +580,27 @@ html {
 }
 
 /* --- 11g. CoinBalanceCard: ゴールドカード midnight テキスト視認性改善 --- */
-/* 背景グラデーションはそのまま維持。文字に強めのシャドウで視認性UP */
+/* 背景グラデーションはそのまま維持。ソフトなウォームシャドウで自然に浮かせる */
 [data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .text-amber-100 {
   color: #ffffff !important;
-  text-shadow: 0 1px 4px rgba(120, 53, 15, 0.9), 0 0 8px rgba(120, 53, 15, 0.5) !important;
+  text-shadow: 0 1px 6px rgba(146, 64, 14, 0.5), 0 0 12px rgba(180, 83, 9, 0.25) !important;
 }
 [data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .text-amber-200 {
-  color: #ffffff !important;
-  text-shadow: 0 1px 4px rgba(120, 53, 15, 0.9), 0 0 8px rgba(120, 53, 15, 0.5) !important;
+  color: #fffbeb !important;
+  text-shadow: 0 1px 6px rgba(146, 64, 14, 0.5), 0 0 12px rgba(180, 83, 9, 0.25) !important;
 }
 [data-theme="midnight"] .bg-gradient-to-br.from-amber-500 span[class*="text-4xl"],
 [data-theme="midnight"] .bg-gradient-to-br.from-amber-500 span[class*="text-5xl"] {
-  text-shadow: 0 2px 6px rgba(120, 53, 15, 0.95), 0 0 16px rgba(120, 53, 15, 0.6) !important;
+  text-shadow: 0 2px 8px rgba(146, 64, 14, 0.55), 0 0 20px rgba(180, 83, 9, 0.2) !important;
 }
 [data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .text-xs.text-amber-100 {
   color: #ffffff !important;
-  text-shadow: 0 1px 3px rgba(120, 53, 15, 0.85) !important;
+  text-shadow: 0 1px 5px rgba(146, 64, 14, 0.45) !important;
 }
 [data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .bg-white\/20 {
-  background-color: rgba(120, 53, 15, 0.35) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  text-shadow: 0 1px 3px rgba(120, 53, 15, 0.9) !important;
+  background-color: rgba(146, 64, 14, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  text-shadow: 0 1px 5px rgba(146, 64, 14, 0.45) !important;
 }
 
 /* --- 12. Chart bars (gray gradient bars for non-top-3) --- */
