@@ -501,12 +501,14 @@ html {
   font-weight: 900;
 }
 [data-theme="midnight"] .text-emerald-500 {
-  color: #86efac !important;
-  text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+  color: #4ade80 !important;
+  filter: brightness(1.4);
+  text-shadow: none;
 }
 [data-theme="midnight"] .text-red-400 {
-  color: #fecaca !important;
-  text-shadow: 0 0 8px rgba(252, 165, 165, 0.5);
+  color: #fb7185 !important;
+  filter: brightness(1.4);
+  text-shadow: none;
 }
 
 [data-theme="midnight"] .bg-white {
