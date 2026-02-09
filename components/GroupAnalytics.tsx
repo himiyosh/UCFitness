@@ -134,8 +134,8 @@ export default function GroupAnalytics({
                     <div className="flex items-baseline gap-2 flex-wrap">
                         {groupRank ? (
                             <>
-                                <span className="text-2xl sm:text-3xl font-black text-[var(--theme-primary)] tracking-tight leading-none">#{groupRank}</span>
-                                <span className="text-xs sm:text-sm font-bold text-gray-400">/ {totalGroups}</span>
+                                <span className="text-2xl sm:text-3xl font-black text-[var(--theme-primary)] tracking-tight leading-none leaderboard-steps">#{groupRank}</span>
+                                <span className="text-sm sm:text-base font-bold text-gray-400">/ {totalGroups}</span>
                             </>
                         ) : (
                             <span className="text-xl font-bold text-gray-400">N/A</span>
@@ -143,8 +143,8 @@ export default function GroupAnalytics({
                     </div>
                     <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
                         <div className="flex flex-col min-w-0">
-                            <span className="text-[10px] uppercase text-gray-400 font-bold truncate">Average</span>
-                            <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">steps</span></span>
+                            <span className="text-[11px] uppercase text-gray-400 font-bold truncate">Average</span>
+                            <span className="text-sm sm:text-base font-bold text-gray-700 truncate leaderboard-steps">{averageSteps.toLocaleString()} <span className="text-[11px] font-normal text-gray-400">steps</span></span>
                         </div>
                     </div>
                 </div>

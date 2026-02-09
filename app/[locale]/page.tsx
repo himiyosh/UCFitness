@@ -332,12 +332,12 @@ export default async function Home() {
                         {t('thisWeek')}
                       </p>
                       <div className="flex flex-col">
-                        <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
+                        <span className="text-xl font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
                           {myWeeklySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`text-[10px] font-bold ${myWeeklySteps >= lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
-                            {myWeeklySteps >= lastWeekSteps ? '↑' : '↓'} {Math.abs(myWeeklySteps - lastWeekSteps).toLocaleString()}
+                          <span className={`text-[11px] font-bold ${myWeeklySteps >= lastWeekSteps ? 'text-emerald-500' : 'text-red-400'}`}>
+                            {myWeeklySteps >= lastWeekSteps ? '▲' : '▼'} {Math.abs(myWeeklySteps - lastWeekSteps).toLocaleString()}
                           </span>
                           <span className="text-[10px] text-gray-400">{t('vsLastWeek')}</span>
                         </div>
@@ -354,12 +354,12 @@ export default async function Home() {
                         {t('thisMonth')}
                       </p>
                       <div className="flex flex-col">
-                        <span className="text-lg font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors">
+                        <span className="text-xl font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
                           {myMonthlySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`text-[10px] font-bold ${myMonthlySteps >= lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
-                            {myMonthlySteps >= lastMonthSteps ? '↑' : '↓'} {Math.abs(myMonthlySteps - lastMonthSteps).toLocaleString()}
+                          <span className={`text-[11px] font-bold ${myMonthlySteps >= lastMonthSteps ? 'text-emerald-500' : 'text-red-400'}`}>
+                            {myMonthlySteps >= lastMonthSteps ? '▲' : '▼'} {Math.abs(myMonthlySteps - lastMonthSteps).toLocaleString()}
                           </span>
                           <span className="text-[10px] text-gray-400">{t('vsLastMonth')}</span>
                         </div>
