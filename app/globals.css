@@ -222,7 +222,7 @@ html {
 }
 
 [data-theme="midnight"] .text-gray-700 {
-  color: #f1f5f9 !important;  /* slate-100 */
+  color: #f8fafc !important;  /* slate-50 */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
@@ -237,12 +237,12 @@ html {
 }
 
 [data-theme="midnight"] .text-gray-400 {
-  color: #94a3b8 !important;  /* slate-400 */
+  color: #a8b8cc !important;  /* brighter slate-400 */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
 [data-theme="midnight"] .text-gray-300 {
-  color: #94a3b8 !important;  /* slate-400 */
+  color: #b0bdd0 !important;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
@@ -328,17 +328,18 @@ html {
 /* --- 8. Semantic Color Badges: Success (green) --- */
 [data-theme="midnight"] .bg-green-50,
 [data-theme="midnight"] .bg-green-100 {
-  background-color: rgba(16, 185, 129, 0.2) !important;
+  background-color: rgba(16, 185, 129, 0.25) !important;
   color: #6ee7b7 !important;
 }
 [data-theme="midnight"] .text-green-700,
 [data-theme="midnight"] .text-green-600,
 [data-theme="midnight"] .text-green-500 {
-  color: #6ee7b7 !important;
+  color: #4ade80 !important;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.3) !important;
 }
 [data-theme="midnight"] .border-green-200,
 [data-theme="midnight"] .border-green-100 {
-  border-color: rgba(16, 185, 129, 0.3) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
 }
 
 /* --- 8b. Blue/Indigo text in dark mode --- */
@@ -349,21 +350,22 @@ html {
 /* --- 9. Semantic Color Badges: Error (red) --- */
 [data-theme="midnight"] .bg-red-50,
 [data-theme="midnight"] [class*="bg-red-50\/"] {
-  background-color: rgba(239, 68, 68, 0.15) !important;
+  background-color: rgba(239, 68, 68, 0.18) !important;
   color: #fca5a5 !important;
 }
 [data-theme="midnight"] .bg-red-100 {
-  background-color: rgba(239, 68, 68, 0.25) !important;
+  background-color: rgba(239, 68, 68, 0.28) !important;
   color: #fca5a5 !important;
 }
 [data-theme="midnight"] .text-red-600,
 [data-theme="midnight"] .text-red-500,
 [data-theme="midnight"] .text-red-700 {
-  color: #fca5a5 !important;
+  color: #f87171 !important;
+  text-shadow: 0 0 8px rgba(248, 113, 113, 0.3) !important;
 }
 [data-theme="midnight"] .border-red-100,
 [data-theme="midnight"] .border-red-200 {
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
 }
 
 /* --- 10. Semantic Color Badges: Medal/Rank (yellow/orange/amber) --- */
@@ -392,6 +394,71 @@ html {
 [data-theme="midnight"] .bg-amber-100 {
   background-color: rgba(245, 158, 11, 0.2) !important;
   color: #fcd34d !important;
+}
+
+/* --- 10b. Investor Rank panel colors (vivid in dark mode) --- */
+[data-theme="midnight"] .text-amber-700 {
+  color: #fbbf24 !important;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.35) !important;
+}
+[data-theme="midnight"] .text-blue-700 {
+  color: #60a5fa !important;
+  text-shadow: 0 0 10px rgba(96, 165, 250, 0.35) !important;
+}
+[data-theme="midnight"] .text-purple-700 {
+  color: #c084fc !important;
+  text-shadow: 0 0 10px rgba(192, 132, 252, 0.35) !important;
+}
+[data-theme="midnight"] .text-green-700 {
+  color: #4ade80 !important;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.35) !important;
+}
+[data-theme="midnight"] .text-orange-500,
+[data-theme="midnight"] .text-orange-600 {
+  color: #fb923c !important;
+  text-shadow: 0 0 8px rgba(251, 146, 60, 0.3) !important;
+}
+[data-theme="midnight"] .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+[data-theme="midnight"] .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+[data-theme="midnight"] .bg-purple-50 {
+  background-color: rgba(168, 85, 247, 0.15) !important;
+}
+[data-theme="midnight"] .bg-green-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+[data-theme="midnight"] .border-amber-400 {
+  border-color: rgba(251, 191, 36, 0.45) !important;
+}
+[data-theme="midnight"] .border-blue-400 {
+  border-color: rgba(96, 165, 250, 0.45) !important;
+}
+[data-theme="midnight"] .border-purple-400 {
+  border-color: rgba(192, 132, 252, 0.45) !important;
+}
+[data-theme="midnight"] .border-green-400 {
+  border-color: rgba(74, 222, 128, 0.45) !important;
+}
+/* Rank panel: shadow glow for achieved ranks */
+[data-theme="midnight"] .shadow-amber-200 {
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.25) !important;
+}
+[data-theme="midnight"] .shadow-blue-200 {
+  box-shadow: 0 0 16px rgba(96, 165, 250, 0.25) !important;
+}
+[data-theme="midnight"] .shadow-purple-200 {
+  box-shadow: 0 0 16px rgba(192, 132, 252, 0.25) !important;
+}
+[data-theme="midnight"] .shadow-green-200 {
+  box-shadow: 0 0 16px rgba(74, 222, 128, 0.25) !important;
+}
+/* Stat card value colors */
+[data-theme="midnight"] .text-purple-600 {
+  color: #c084fc !important;
+  text-shadow: 0 0 8px rgba(192, 132, 252, 0.3) !important;
 }
 
 /* --- 11. Rank number badges (now styled via inline styles in component) --- */
@@ -451,19 +518,19 @@ html {
   background-color: rgba(51, 65, 85, 0.42) !important;
 }
 [data-theme="midnight"] .text-gray-900 {
-  color: #e2e8f0 !important;
+  color: #f1f5f9 !important;
 }
 [data-theme="midnight"] .text-gray-700 {
-  color: #cbd5e1 !important;
+  color: #e2e8f0 !important;
 }
 [data-theme="midnight"] .text-gray-600 {
-  color: #94a3b8 !important;
+  color: #b0bdd0 !important;
 }
 [data-theme="midnight"] .text-gray-500 {
-  color: #94a3b8 !important;
+  color: #a8b8cc !important;
 }
 [data-theme="midnight"] .text-gray-400 {
-  color: #7c8da4 !important;
+  color: #8fa0b8 !important;
 }
 [data-theme="midnight"] .hover\:bg-gray-50:hover {
   background-color: rgba(51, 65, 85, 0.5) !important;
@@ -474,19 +541,19 @@ html {
 
 /* --- 11e. Your Activity panel midnight --- */
 [data-theme="midnight"] .bg-green-100 {
-  background-color: rgba(16, 185, 129, 0.15) !important;
+  background-color: rgba(16, 185, 129, 0.18) !important;
 }
 [data-theme="midnight"] .text-green-700 {
-  color: #34d399 !important;
+  color: #4ade80 !important;
 }
 [data-theme="midnight"] .border-green-200 {
-  border-color: rgba(16, 185, 129, 0.3) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
 }
 [data-theme="midnight"] .text-green-600 {
-  color: #34d399 !important;
+  color: #4ade80 !important;
 }
 [data-theme="midnight"] .bg-red-50 {
-  background-color: rgba(239, 68, 68, 0.15) !important;
+  background-color: rgba(239, 68, 68, 0.18) !important;
 }
 [data-theme="midnight"] .text-red-600 {
   color: #f87171 !important;
