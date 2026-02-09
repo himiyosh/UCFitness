@@ -125,8 +125,19 @@ export default function GroupDetailLeaderboard({
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="font-mono font-bold text-[var(--theme-primary)] text-base">
-                                                    {entry.steps.toLocaleString()}
+                                                <div className="flex flex-col items-end">
+                                                    <div className="font-mono font-bold text-[var(--theme-primary)] text-base leaderboard-steps">
+                                                        {entry.steps.toLocaleString()}
+                                                    </div>
+                                                    {entry.prevSteps !== undefined && (() => {
+                                                        const delta = entry.steps - entry.prevSteps!;
+                                                        if (delta === 0) return null;
+                                                        return (
+                                                            <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                                {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">steps</div>
                                             </div>

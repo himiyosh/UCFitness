@@ -493,6 +493,22 @@ html {
 }
 
 /* --- 11d. Leaderboard card midnight override --- */
+
+/* Step count brightness boost for midnight */
+[data-theme="midnight"] .leaderboard-steps {
+  color: #a5b4fc !important;
+  text-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+  font-weight: 900;
+}
+[data-theme="midnight"] .text-emerald-500 {
+  color: #6ee7b7 !important;
+  text-shadow: 0 0 6px rgba(52, 211, 153, 0.35);
+}
+[data-theme="midnight"] .text-red-400 {
+  color: #fca5a5 !important;
+  text-shadow: 0 0 6px rgba(248, 113, 113, 0.35);
+}
+
 [data-theme="midnight"] .bg-white {
   background-color: rgba(30, 41, 59, 0.65) !important;
 }

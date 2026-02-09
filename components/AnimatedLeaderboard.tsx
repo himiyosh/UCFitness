@@ -178,7 +178,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 {/* Global Leaderboard */}
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
-                    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 min-h-[400px] transition-all duration-300">
+                    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 transition-all duration-300">
                         <div className="px-4 py-3 border-b border-gray-100">
                             {/* Left Tab Switcher */}
                             <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-full">
@@ -209,7 +209,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                         {/* User Ranking Content */}
                         {leftTab === 'user' && (
-                        <div className="bg-white px-0 relative overflow-hidden flex flex-col min-h-[460px]">
+                        <div className="bg-white px-0 relative overflow-hidden flex flex-col">
                             <FadeInWrapper key={period}>
                                 <div className="px-6 pt-6">
                                     <TopUsersChart
@@ -232,7 +232,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                             return (
                                                 <div className="flex flex-col h-full">
-                                                    <div className="shrink-0" style={{ height: `${ITEMS_PER_PAGE * 64}px` }}>
+                                                    <div className="shrink-0">
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
@@ -282,10 +282,20 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 relative z-10">
-                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-base">
+                                                                    <div className="flex flex-col items-end relative z-10">
+                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-base leaderboard-steps">
                                                                             {entry.steps.toLocaleString()}
                                                                         </div>
+                                                                        {/* Delta vs previous period */}
+                                                                        {entry.prevSteps !== undefined && (() => {
+                                                                            const delta = entry.steps - entry.prevSteps!;
+                                                                            if (delta === 0) return null;
+                                                                            return (
+                                                                                <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                                                    {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
                                                                         {(() => {
                                                                             const change = rankChanges[period]?.[entry.users.id];
                                                                             if (!change || change === 0) return null;

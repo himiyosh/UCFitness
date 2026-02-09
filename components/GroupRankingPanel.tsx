@@ -171,10 +171,19 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4 relative z-10">
-                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-base">
+                                            <div className="flex flex-col items-end relative z-10">
+                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-base leaderboard-steps">
                                                     {entry.steps.toLocaleString()}
                                                 </div>
+                                                {entry.prevSteps !== undefined && (() => {
+                                                    const delta = entry.steps - entry.prevSteps!;
+                                                    if (delta === 0) return null;
+                                                    return (
+                                                        <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                            {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </div>

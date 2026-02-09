@@ -139,8 +139,19 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="font-mono font-semibold text-[var(--theme-primary)]">
-                                                    {entry.steps.toLocaleString()}
+                                                <div className="flex flex-col items-end">
+                                                    <div className="font-mono font-semibold text-[var(--theme-primary)] leaderboard-steps">
+                                                        {entry.steps.toLocaleString()}
+                                                    </div>
+                                                    {entry.prevSteps !== undefined && (() => {
+                                                        const delta = entry.steps - entry.prevSteps!;
+                                                        if (delta === 0) return null;
+                                                        return (
+                                                            <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                                {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </li>
                                         </div>
