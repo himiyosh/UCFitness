@@ -506,8 +506,8 @@ html {
   text-shadow: none;
 }
 [data-theme="midnight"] .text-red-400 {
-  color: #fb7185 !important;
-  filter: brightness(1.4);
+  color: #f87171 !important;
+  filter: brightness(1.6);
   text-shadow: none;
 }
 
