@@ -211,7 +211,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 
                     {/* 右: Featured アイテム */}
                     {featuredItems.length > 0 && (
-                        <div className="flex-1 min-w-0">
+                        <div className="shrink-0 w-fit">
                             <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
                             <div className="flex flex-col gap-1.5">
                                 {featuredItems.map(item => {
