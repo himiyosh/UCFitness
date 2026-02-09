@@ -237,7 +237,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                                     const fc = getFrameColor(item.preview_value);
                                                     const isRainbow = fc === 'rainbow';
                                                     return (
-                                                        <div className="rounded-full p-[2px]" style={{
+                                                        <div className="rounded-full p-[3px]" style={{
                                                             background: isRainbow
                                                                 ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
                                                                 : fc,
@@ -468,7 +468,7 @@ function ShopItemCard({
                         const fc = getFrameColor(item.preview_value);
                         const isRainbow = fc === 'rainbow';
                         return (
-                            <div className="rounded-full p-[3px]" style={{
+                            <div className="rounded-full p-[4px]" style={{
                                 background: isRainbow
                                     ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
                                     : fc,
@@ -618,7 +618,7 @@ function InventoryView({
                                                 const fc = getFrameColor(item.preview_value);
                                                 const isRainbow = fc === 'rainbow';
                                                 return (
-                                                    <div className="rounded-full p-[2px]" style={{
+                                                    <div className="rounded-full p-[3px]" style={{
                                                         background: isRainbow
                                                             ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
                                                             : fc,
@@ -708,7 +708,7 @@ function ItemPreviewDialog({
                         const fc = getFrameColor(item.preview_value);
                         const isRainbow = fc === 'rainbow';
                         return (
-                            <div className="rounded-full p-[5px]" style={{
+                            <div className="rounded-full p-[4px]" style={{
                                 background: isRainbow
                                     ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
                                     : fc,
