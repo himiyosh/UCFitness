@@ -822,8 +822,10 @@ function ConfirmDialog({
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const dialogRef = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+    const [ready, setReady] = useState(!anchorRect); // anchorRect なしなら即 ready
 
-    useEffect(() => {
+    /** 位置計算ロジック */
+    const calcPosition = useCallback(() => {
         if (!anchorRect || !dialogRef.current) return;
         const dialog = dialogRef.current;
         const dw = dialog.offsetWidth;
@@ -845,22 +847,49 @@ function ConfirmDialog({
         left = Math.max(margin, Math.min(left, vw - dw - margin));
 
         setPos({ top, left });
+        setReady(true);
     }, [anchorRect]);
 
-    // anchorRect がない場合のフォールバック（従来の中央配置）
+    // 初回位置計算
+    useEffect(() => {
+        calcPosition();
+    }, [calcPosition]);
+
+    // #3: ウィンドウリサイズ時に位置を再計算
+    useEffect(() => {
+        if (!anchorRect) return;
+        const handleResize = () => calcPosition();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [anchorRect, calcPosition]);
+
+    // #5: ESC キーで閉じる
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onCancel();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onCancel]);
+
+    // #4: anchorRect がある場合は fixed + 座標、ない場合はフォールバック
     const positionStyle: React.CSSProperties = pos
-        ? { position: 'fixed', top: pos.top, left: pos.left }
-        : { position: 'relative' };
+        ? { position: 'fixed', top: pos.top, left: pos.left, width: 'min(24rem, calc(100vw - 2rem))' }
+        : {};
 
     return (
         <div
-            className={`fixed inset-0 z-50 bg-black/40 overflow-y-auto ${!pos && !anchorRect ? 'flex items-start justify-center pt-[20vh]' : ''}`}
+            className={`fixed inset-0 z-50 bg-black/40 ${!anchorRect ? 'flex items-start justify-center pt-[20vh] overflow-y-auto' : ''}`}
             onClick={onCancel}
         >
             <div
                 ref={dialogRef}
-                style={positionStyle}
-                className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-[calc(100%-2rem)] mx-auto mb-8 animate-scale-in"
+                style={{
+                    ...positionStyle,
+                    // #1: anchorRect 指定時は位置計算完了まで非表示にしてチラつき防止
+                    ...(anchorRect && !ready ? { visibility: 'hidden' as const } : {}),
+                }}
+                className={`bg-white rounded-xl shadow-xl p-6 max-w-sm ${anchorRect ? '' : 'w-full mx-4 mb-8'} animate-scale-in`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
