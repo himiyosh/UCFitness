@@ -111,19 +111,30 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             axisLine={{ stroke: '#e5e7eb' }}
                             interval="preserveStartEnd"
                         />
-                        {/* Y軸1本: 累積残高スケール */}
+                        {/* 左Y軸: 累積残高スケール（オレンジ線） */}
                         <YAxis
+                            yAxisId="balance"
                             tick={{ fontSize: 10, fill: '#d97706' }}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={formatNumber}
+                        />
+                        {/* 右Y軸: 日次変動スケール（バー） */}
+                        <YAxis
+                            yAxisId="daily"
+                            orientation="right"
+                            tick={{ fontSize: 10, fill: '#6b7280' }}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={formatNumber}
                         />
                         <Tooltip content={<CustomTooltip />} />
                         {hasNegative && (
-                            <ReferenceLine y={0} stroke="#d1d5db" strokeDasharray="3 3" />
+                            <ReferenceLine yAxisId="daily" y={0} stroke="#d1d5db" strokeDasharray="3 3" />
                         )}
                         <Bar
                             dataKey="dailyCoins"
+                            yAxisId="daily"
                             opacity={0.8}
                             radius={[2, 2, 0, 0]}
                             barSize={10}
@@ -138,6 +149,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                         <Area
                             type="monotone"
                             dataKey="balance"
+                            yAxisId="balance"
                             stroke="#f59e0b"
                             strokeWidth={2.5}
                             fill="url(#balanceGradient)"
