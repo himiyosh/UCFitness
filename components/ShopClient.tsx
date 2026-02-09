@@ -194,7 +194,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>
 
                 {/* メイン: 左ロゴ+残高 / 右Featured */}
-                <div className="relative p-5 sm:p-6 flex gap-6">
+                <div className="relative p-5 sm:p-6 flex gap-6 justify-between">
                     {/* 左: UCShop ロゴ + 残高 */}
                     <div className="flex flex-col justify-center shrink-0">
                         <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-lg leading-none">
