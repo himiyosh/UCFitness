@@ -102,17 +102,17 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     ];
 
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                     📈 {t('assetGrowth')}
                 </h3>
                 <span className="text-xs text-gray-400">{t('last30days')}</span>
             </div>
 
-            <div className="h-64">
+            <div className="h-72 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                    <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
                         <defs>
                             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
