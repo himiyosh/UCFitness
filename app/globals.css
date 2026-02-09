@@ -132,21 +132,21 @@ html {
 [data-theme="midnight"] .bg-white\/90,
 [data-theme="midnight"] .bg-white\/95 {
   background:
-    linear-gradient(170deg, rgba(51, 65, 85, 0.25) 0%, rgba(30, 41, 59, 0) 40%),
-    linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.88) 50%, rgba(22, 30, 50, 0.92) 100%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(150%) brightness(1.05) !important;
-  backdrop-filter: blur(20px) saturate(150%) brightness(1.05) !important;
+    linear-gradient(170deg, rgba(71, 85, 105, 0.32) 0%, rgba(51, 65, 85, 0.06) 50%),
+    linear-gradient(135deg, rgba(51, 65, 85, 0.82) 0%, rgba(30, 41, 59, 0.78) 50%, rgba(34, 44, 64, 0.82) 100%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) brightness(1.12) !important;
+  backdrop-filter: blur(20px) saturate(160%) brightness(1.12) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(148, 163, 184, 0.14) !important;
-  border-top: 1px solid rgba(165, 180, 252, 0.25) !important;
-  border-left: 1px solid rgba(165, 180, 252, 0.16) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  border-top: 1px solid rgba(165, 180, 252, 0.32) !important;
+  border-left: 1px solid rgba(165, 180, 252, 0.22) !important;
   box-shadow:
-    0 10px 40px -5px rgba(0, 0, 0, 0.5),
-    0 4px 16px -2px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(148, 163, 184, 0.07),
-    0 0 60px -20px rgba(99, 102, 241, 0.06),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
-    inset 0 0 40px 0 rgba(99, 102, 241, 0.02) !important;
+    0 10px 40px -5px rgba(0, 0, 0, 0.45),
+    0 4px 16px -2px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(148, 163, 184, 0.10),
+    0 0 60px -20px rgba(99, 102, 241, 0.10),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 40px 0 rgba(99, 102, 241, 0.05) !important;
   transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease !important;
 }
 
@@ -155,16 +155,16 @@ html {
 [data-theme="midnight"] .bg-white\/80:hover,
 [data-theme="midnight"] .bg-white\/90:hover,
 [data-theme="midnight"] .bg-white\/95:hover {
-  border-top-color: rgba(165, 180, 252, 0.35) !important;
-  border-left-color: rgba(165, 180, 252, 0.22) !important;
+  border-top-color: rgba(165, 180, 252, 0.45) !important;
+  border-left-color: rgba(165, 180, 252, 0.30) !important;
   transform: translateY(-1px) !important;
   box-shadow:
-    0 16px 56px -8px rgba(0, 0, 0, 0.55),
-    0 6px 20px -4px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(165, 180, 252, 0.12),
-    0 0 50px -10px rgba(99, 102, 241, 0.15),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 60px 0 rgba(99, 102, 241, 0.04) !important;
+    0 16px 56px -8px rgba(0, 0, 0, 0.50),
+    0 6px 20px -4px rgba(0, 0, 0, 0.30),
+    0 0 0 1px rgba(165, 180, 252, 0.16),
+    0 0 50px -10px rgba(99, 102, 241, 0.20),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 60px 0 rgba(99, 102, 241, 0.06) !important;
 }
 
 /* --- 2. Inset/Secondary areas (bg-gray-50/100 + opacity variants) --- */
@@ -175,24 +175,24 @@ html {
 [data-theme="midnight"] .bg-gray-50\/80,
 [data-theme="midnight"] .bg-gray-100\/80 {
   background:
-    linear-gradient(170deg, rgba(51, 65, 85, 0.12) 0%, rgba(15, 23, 42, 0) 50%),
-    linear-gradient(160deg, rgba(15, 23, 42, 0.6) 0%, rgba(10, 15, 30, 0.55) 100%) !important;
+    linear-gradient(170deg, rgba(71, 85, 105, 0.15) 0%, rgba(30, 41, 59, 0) 50%),
+    linear-gradient(160deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.52) 100%) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(148, 163, 184, 0.08) !important;
-  border-top: 1px solid rgba(148, 163, 184, 0.1) !important;
+  border: 1px solid rgba(148, 163, 184, 0.10) !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
   box-shadow:
-    inset 0 2px 4px 0 rgba(0, 0, 0, 0.35),
-    inset 0 0 20px 0 rgba(0, 0, 0, 0.1) !important;
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.28),
+    inset 0 0 20px 0 rgba(0, 0, 0, 0.08) !important;
 }
 
 [data-theme="midnight"] .bg-gray-200,
 [data-theme="midnight"] .bg-gray-200\/50 {
   background:
-    linear-gradient(170deg, rgba(51, 65, 85, 0.15) 0%, rgba(15, 23, 42, 0) 50%),
-    linear-gradient(160deg, rgba(15, 23, 42, 0.78) 0%, rgba(10, 15, 30, 0.72) 100%) !important;
+    linear-gradient(170deg, rgba(71, 85, 105, 0.18) 0%, rgba(30, 41, 59, 0) 50%),
+    linear-gradient(160deg, rgba(30, 41, 59, 0.72) 0%, rgba(15, 23, 42, 0.65) 100%) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(148, 163, 184, 0.06) !important;
-  box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(148, 163, 184, 0.08) !important;
+  box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.20) !important;
 }
 
 /* --- 2b. Option button states (Language/Theme選択ボタン) --- */
@@ -251,7 +251,7 @@ html {
 [data-theme="midnight"] .border-gray-100,
 [data-theme="midnight"] .border-gray-200,
 [data-theme="midnight"] .border-gray-300 {
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
 }
 
 [data-theme="midnight"] [class*="border-white"],
@@ -266,10 +266,11 @@ html {
 /* --- 5. Shadows (layered depth) --- */
 [data-theme="midnight"] .shadow-sm {
   box-shadow:
-    0 2px 8px -2px rgba(0, 0, 0, 0.45),
-    0 1px 3px -1px rgba(0, 0, 0, 0.25),
-    0 0 0 1px rgba(148, 163, 184, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+    0 2px 8px -2px rgba(0, 0, 0, 0.40),
+    0 1px 3px -1px rgba(0, 0, 0, 0.20),
+    0 0 0 1px rgba(148, 163, 184, 0.10),
+    0 0 20px -8px rgba(99, 102, 241, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
 }
 [data-theme="midnight"] .shadow-md {
   box-shadow:
@@ -426,28 +427,28 @@ html {
 
 /* --- 11d. Leaderboard card midnight override --- */
 [data-theme="midnight"] .bg-white {
-  background-color: rgba(15, 23, 42, 0.6) !important;
+  background-color: rgba(30, 41, 59, 0.65) !important;
 }
 [data-theme="midnight"] .bg-white\/80 {
-  background-color: rgba(15, 23, 42, 0.7) !important;
+  background-color: rgba(30, 41, 59, 0.72) !important;
 }
 [data-theme="midnight"] .border-gray-100 {
-  border-color: rgba(100, 116, 139, 0.2) !important;
+  border-color: rgba(100, 116, 139, 0.25) !important;
 }
 [data-theme="midnight"] .border-gray-200 {
-  border-color: rgba(100, 116, 139, 0.3) !important;
+  border-color: rgba(100, 116, 139, 0.35) !important;
 }
 [data-theme="midnight"] .bg-gray-50 {
-  background-color: rgba(30, 41, 59, 0.5) !important;
+  background-color: rgba(51, 65, 85, 0.45) !important;
 }
 [data-theme="midnight"] .bg-gray-50\/80 {
-  background-color: rgba(30, 41, 59, 0.4) !important;
+  background-color: rgba(51, 65, 85, 0.38) !important;
 }
 [data-theme="midnight"] .bg-gray-50\/30 {
-  background-color: rgba(30, 41, 59, 0.3) !important;
+  background-color: rgba(51, 65, 85, 0.28) !important;
 }
 [data-theme="midnight"] .bg-gray-50\/50 {
-  background-color: rgba(30, 41, 59, 0.5) !important;
+  background-color: rgba(51, 65, 85, 0.42) !important;
 }
 [data-theme="midnight"] .text-gray-900 {
   color: #e2e8f0 !important;
@@ -462,10 +463,10 @@ html {
   color: #94a3b8 !important;
 }
 [data-theme="midnight"] .text-gray-400 {
-  color: #64748b !important;
+  color: #7c8da4 !important;
 }
 [data-theme="midnight"] .hover\:bg-gray-50:hover {
-  background-color: rgba(30, 41, 59, 0.5) !important;
+  background-color: rgba(51, 65, 85, 0.5) !important;
 }
 [data-theme="midnight"] .hover\:bg-gray-100:hover {
   background-color: rgba(51, 65, 85, 0.5) !important;
