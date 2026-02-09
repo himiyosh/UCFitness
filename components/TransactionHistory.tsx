@@ -60,13 +60,13 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
     };
 
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-full">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 h-full overflow-hidden">
             <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                 📒 {t('transactionHistory')}
             </h3>
 
             {/* テーブルヘッダー */}
-            <div className="grid grid-cols-[44px_1fr_72px_72px] sm:grid-cols-[56px_1fr_100px_110px] gap-1 sm:gap-2 px-2 pb-2 border-b border-gray-200 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+            <div className="grid grid-cols-[44px_1fr_72px_80px] sm:grid-cols-[56px_1fr_100px_120px] gap-1 sm:gap-2 px-2 pr-4 pb-2 border-b border-gray-200 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                 <span>{t('date')}</span>
                 <span>{t('detail')}</span>
                 <span className="text-right">{t('deposit')}</span>
@@ -74,7 +74,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
             </div>
 
             {/* トランザクション行 */}
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[400px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                 {transactions.filter(tx => tx.amount !== 0).map((tx, i, filtered) => {
                     const config = TYPE_CONFIG[tx.type] || TYPE_CONFIG.STEPS;
                     const isPositive = tx.amount >= 0;
@@ -84,7 +84,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                     return (
                         <div
                             key={tx.id}
-                            className={`grid grid-cols-[44px_1fr_72px_72px] sm:grid-cols-[56px_1fr_100px_110px] gap-1 sm:gap-2 items-center px-2 py-1.5 text-xs
+                            className={`grid grid-cols-[44px_1fr_72px_80px] sm:grid-cols-[56px_1fr_100px_120px] gap-1 sm:gap-2 items-center px-2 pr-4 py-1.5 text-xs
                                 ${showDate ? 'border-t border-gray-100' : ''}
                                 hover:bg-gray-50 transition-colors`}
                         >
