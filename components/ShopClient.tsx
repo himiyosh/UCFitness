@@ -658,7 +658,7 @@ function ConfirmDialog({
                         onClick={onConfirm}
                         className="flex-1 px-4 py-2 text-sm font-bold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors active:scale-95"
                     >
-                        {t('confirm')} ({item.price.toLocaleString()} UC)
+                        {t('confirm')}<br />({item.price.toLocaleString()} UC)
                     </button>
                 </div>
             </div>
