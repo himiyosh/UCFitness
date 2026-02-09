@@ -97,20 +97,39 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     });
     const todayStr = formatter.format(now); // YYYY-MM-DD (JST)
 
-    // Weekly Start
-    const currentDate = new Date(`${todayStr}T00:00:00Z`);
-    const utcDay = currentDate.getUTCDay();
+    // Yesterday
+    const todayDate = new Date(`${todayStr}T00:00:00Z`);
+    const yesterdayDate = new Date(todayDate);
+    yesterdayDate.setUTCDate(todayDate.getUTCDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+    // Weekly Start (This Week Monday)
+    const utcDay = todayDate.getUTCDay();
     const daysToSubtract = (utcDay + 6) % 7;
-    const monday = new Date(currentDate);
-    monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+    const monday = new Date(todayDate);
+    monday.setUTCDate(todayDate.getUTCDate() - daysToSubtract);
     const weeklyStartStr = monday.toISOString().split('T')[0];
+
+    // Last Week Start (Monday - 7)
+    const lastWeekMonday = new Date(monday);
+    lastWeekMonday.setUTCDate(monday.getUTCDate() - 7);
+    const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
 
     // Monthly Start
     const [y, m] = todayStr.split('-');
     const monthlyStartStr = `${y}-${m}-01`;
 
+    // Last Month Start
+    const thisMonthDate = new Date(`${monthlyStartStr}T00:00:00Z`);
+    const lastMonthDate = new Date(thisMonthDate);
+    lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
+    const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
+
     // Yearly Start
     const yearlyStartStr = `${y}-01-01`;
+
+    // クエリ開始日: 先月1日 or 年初の早い方（1月の場合は先月=昨年12月）
+    const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
     // ⚡ Bolt Optimization: Split user and step fetching to avoid heavy joins
     let userIds: string[] | null = null;
@@ -133,7 +152,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         .from('daily_steps')
         .select('steps, date, user_id') // No join
         // Performance: This range query relies on idx_daily_steps_date
-        .gte('date', yearlyStartStr);
+        .gte('date', queryStartStr);
 
     if (userIds) {
         query = query.in('user_id', userIds);
@@ -176,15 +195,20 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
                 DAILY: 0,
                 WEEKLY: 0,
                 MONTHLY: 0,
-                YEARLY: 0
+                YEARLY: 0,
+                PREV_DAILY: 0,
+                PREV_WEEKLY: 0,
+                PREV_MONTHLY: 0
             });
         }
         const entry = aggMap.get(userId);
         const steps = Number(row.steps);
         const date = row.date;
 
-        // Yearly (always since we filtered by year start)
-        entry.YEARLY += steps;
+        // Yearly (date >= yearlyStartStr always true since queryStartStr <= yearlyStartStr)
+        if (date >= yearlyStartStr) {
+            entry.YEARLY += steps;
+        }
 
         // Monthly
         if (date >= monthlyStartStr) {
@@ -200,6 +224,22 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         if (date === todayStr) {
             entry.DAILY += steps;
         }
+
+        // Previous period aggregation
+        // PREV_DAILY: yesterday only
+        if (date === yesterdayStr) {
+            entry.PREV_DAILY += steps;
+        }
+
+        // PREV_WEEKLY: last week (lastWeekStartStr <= date < weeklyStartStr)
+        if (date >= lastWeekStartStr && date < weeklyStartStr) {
+            entry.PREV_WEEKLY += steps;
+        }
+
+        // PREV_MONTHLY: last month (lastMonthStartStr <= date < monthlyStartStr)
+        if (date >= lastMonthStartStr && date < monthlyStartStr) {
+            entry.PREV_MONTHLY += steps;
+        }
     });
 
     // Transform to separated arrays and sort
@@ -212,12 +252,21 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
 
     const allEntries = Array.from(aggMap.values());
 
+    const prevKeyMap: Record<string, string | null> = {
+        DAILY: 'PREV_DAILY',
+        WEEKLY: 'PREV_WEEKLY',
+        MONTHLY: 'PREV_MONTHLY',
+        YEARLY: null
+    };
+
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+        const prevKey = prevKeyMap[key];
         // Create ranking entries for this key
         const list = allEntries.map(e => {
             return {
                 steps: e[key],
-                users: e.users
+                users: e.users,
+                ...(prevKey ? { prevSteps: e[prevKey] } : {})
             };
         })
             // .filter(e => e.steps > 0 || key === 'DAILY') // Removed: Show all users even with 0 steps
@@ -332,12 +381,31 @@ export const getAllGroupRankings = async (groupId: string) => {
     monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
     const weeklyStartStr = monday.toISOString().split('T')[0];
 
+    // Yesterday
+    const yesterdayDate = new Date(currentDate);
+    yesterdayDate.setUTCDate(currentDate.getUTCDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+    // Last Week Start
+    const lastWeekMonday = new Date(monday);
+    lastWeekMonday.setUTCDate(monday.getUTCDate() - 7);
+    const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
+
     // Monthly Start
     const [y, m] = todayStr.split('-');
     const monthlyStartStr = `${y}-${m}-01`;
 
+    // Last Month Start
+    const thisMonthDate = new Date(`${monthlyStartStr}T00:00:00Z`);
+    const lastMonthDate = new Date(thisMonthDate);
+    lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
+    const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
+
     // Yearly Start
     const yearlyStartStr = `${y}-01-01`;
+
+    // Query start: earlier of last month or year start
+    const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
     // Fetch Members
     const { data: groupMembers } = await supabase
@@ -353,7 +421,7 @@ export const getAllGroupRankings = async (groupId: string) => {
         .from('daily_steps')
         .select('steps, date, user_id') // No join
         .in('user_id', userIds)
-        .gte('date', yearlyStartStr);
+        .gte('date', queryStartStr);
 
     if (error) {
         console.error('Error fetching all group rankings:', error);
@@ -378,7 +446,10 @@ export const getAllGroupRankings = async (groupId: string) => {
             DAILY: 0,
             WEEKLY: 0,
             MONTHLY: 0,
-            YEARLY: 0
+            YEARLY: 0,
+            PREV_DAILY: 0,
+            PREV_WEEKLY: 0,
+            PREV_MONTHLY: 0
         });
     });
 
@@ -391,19 +462,33 @@ export const getAllGroupRankings = async (groupId: string) => {
         const steps = Number(row.steps);
         const date = row.date;
 
-        entry.YEARLY += steps;
+        if (date >= yearlyStartStr) entry.YEARLY += steps;
         if (date >= monthlyStartStr) entry.MONTHLY += steps;
         if (date >= weeklyStartStr) entry.WEEKLY += steps;
         if (date === todayStr) entry.DAILY += steps;
+
+        // Previous periods
+        if (date === yesterdayStr) entry.PREV_DAILY += steps;
+        if (date >= lastWeekStartStr && date < weeklyStartStr) entry.PREV_WEEKLY += steps;
+        if (date >= lastMonthStartStr && date < monthlyStartStr) entry.PREV_MONTHLY += steps;
     });
 
     const result: Record<string, any[]> = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     const allEntries = Array.from(aggMap.values());
 
+    const prevKeyMap: Record<string, string | null> = {
+        DAILY: 'PREV_DAILY',
+        WEEKLY: 'PREV_WEEKLY',
+        MONTHLY: 'PREV_MONTHLY',
+        YEARLY: null
+    };
+
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+        const prevKey = prevKeyMap[key];
         result[key] = allEntries.map(e => ({
             steps: e[key],
-            users: e.users
+            users: e.users,
+            ...(prevKey ? { prevSteps: e[prevKey] } : {})
         }))
             // .filter(e => e.steps > 0 || key === 'DAILY')
             .sort((a, b) => b.steps - a.steps);
@@ -433,12 +518,31 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
     const weeklyStartStr = monday.toISOString().split('T')[0];
 
+    // Yesterday
+    const yesterdayDate = new Date(currentDate);
+    yesterdayDate.setUTCDate(currentDate.getUTCDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+    // Last Week Start
+    const lastWeekMonday = new Date(monday);
+    lastWeekMonday.setUTCDate(monday.getUTCDate() - 7);
+    const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
+
     // Monthly Start
     const [y, m] = todayStr.split('-');
     const monthlyStartStr = `${y}-${m}-01`;
 
+    // Last Month Start
+    const thisMonthDate = new Date(`${monthlyStartStr}T00:00:00Z`);
+    const lastMonthDate = new Date(thisMonthDate);
+    lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
+    const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
+
     // Yearly Start
     const yearlyStartStr = `${y}-01-01`;
+
+    // Query start: earlier of last month or year start
+    const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
     // 1. Fetch Members for ALL groups
     const { data: groupMembers } = await supabase
@@ -456,7 +560,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
         .from('daily_steps')
         .select('steps, date, user_id')
         .in('user_id', uniqueUserIds)
-        .gte('date', yearlyStartStr);
+        .gte('date', queryStartStr);
 
     if (error) {
         console.error('Error fetching batch group rankings:', error);
@@ -482,7 +586,10 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
             DAILY: 0,
             WEEKLY: 0,
             MONTHLY: 0,
-            YEARLY: 0
+            YEARLY: 0,
+            PREV_DAILY: 0,
+            PREV_WEEKLY: 0,
+            PREV_MONTHLY: 0
         });
     });
 
@@ -495,10 +602,15 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
         const steps = Number(row.steps);
         const date = row.date;
 
-        entry.YEARLY += steps;
+        if (date >= yearlyStartStr) entry.YEARLY += steps;
         if (date >= monthlyStartStr) entry.MONTHLY += steps;
         if (date >= weeklyStartStr) entry.WEEKLY += steps;
         if (date === todayStr) entry.DAILY += steps;
+
+        // Previous periods
+        if (date === yesterdayStr) entry.PREV_DAILY += steps;
+        if (date >= lastWeekStartStr && date < weeklyStartStr) entry.PREV_WEEKLY += steps;
+        if (date >= lastMonthStartStr && date < monthlyStartStr) entry.PREV_MONTHLY += steps;
     });
 
     // 5. Distribute to Groups
@@ -519,6 +631,13 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     });
 
     // Build rankings for each group
+    const prevKeyMap: Record<string, string | null> = {
+        DAILY: 'PREV_DAILY',
+        WEEKLY: 'PREV_WEEKLY',
+        MONTHLY: 'PREV_MONTHLY',
+        YEARLY: null
+    };
+
     groupIds.forEach(gid => {
         const memberIds = groupUsersMap.get(gid) || [];
         const groupEntries: any[] = [];
@@ -532,9 +651,11 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 
         // Split into periods and sort
         (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+            const prevKey = prevKeyMap[key];
             result[gid][key] = groupEntries.map(e => ({
                 steps: e[key],
-                users: e.users
+                users: e.users,
+                ...(prevKey ? { prevSteps: e[prevKey] } : {})
             }))
                 // .filter(e => e.steps > 0 || key === 'DAILY')
                 .sort((a, b) => b.steps - a.steps);
@@ -560,8 +681,14 @@ export const deriveBatchGroupRankings = async (
     if (!groupMembers || groupMembers.length === 0) return {};
 
     // 2. Build User Stats Map from Global Rankings (In-Memory pivot)
-    // Map<UserId, { user: User, DAILY: number, WEEKLY: number, ... }>
+    // Map<UserId, { user: User, DAILY: number, WEEKLY: number, ..., PREV_DAILY: number, ... }>
     const userStats = new Map<string, any>();
+
+    const prevFieldMap: Record<string, string> = {
+        DAILY: 'PREV_DAILY',
+        WEEKLY: 'PREV_WEEKLY',
+        MONTHLY: 'PREV_MONTHLY'
+    };
 
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
         const list = globalRankings[period];
@@ -571,10 +698,16 @@ export const deriveBatchGroupRankings = async (
                 if (!userStats.has(userId)) {
                     userStats.set(userId, {
                         users: entry.users,
-                        DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0
+                        DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
+                        PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
                     });
                 }
                 userStats.get(userId)[period] = entry.steps;
+                // Carry prevSteps from global rankings
+                const prevField = prevFieldMap[period];
+                if (prevField && entry.prevSteps !== undefined) {
+                    userStats.get(userId)[prevField] = entry.prevSteps;
+                }
             });
         }
     });
@@ -599,7 +732,8 @@ export const deriveBatchGroupRankings = async (
         users?.forEach(u => {
             userStats.set(u.id, {
                 users: u,
-                DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0
+                DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
+                PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
             });
         });
     }
@@ -618,6 +752,13 @@ export const deriveBatchGroupRankings = async (
         groupUsersMap.get(m.group_id)?.push(m.user_id);
     });
 
+    const prevKeyMap: Record<string, string | null> = {
+        DAILY: 'PREV_DAILY',
+        WEEKLY: 'PREV_WEEKLY',
+        MONTHLY: 'PREV_MONTHLY',
+        YEARLY: null
+    };
+
     groupIds.forEach(gid => {
         const memberIds = groupUsersMap.get(gid) || [];
         const groupEntries: any[] = [];
@@ -630,9 +771,11 @@ export const deriveBatchGroupRankings = async (
         });
 
         (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+            const prevKey = prevKeyMap[key];
             result[gid][key] = groupEntries.map(e => ({
                 steps: e[key],
-                users: e.users
+                users: e.users,
+                ...(prevKey ? { prevSteps: e[prevKey] } : {})
             })).sort((a, b) => b.steps - a.steps);
         });
     });

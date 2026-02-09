@@ -2,6 +2,8 @@ import { getEquippedItemsForUsers, type UserEquipSummary } from './shop-service'
 
 export type RankingEntry = {
     steps: number;
+    /** 前期間の歩数（DAILY=昨日, WEEKLY=先週, MONTHLY=先月） */
+    prevSteps?: number;
     users: {
         id: string;
         name: string | null;
