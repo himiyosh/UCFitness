@@ -94,6 +94,8 @@ export default async function ShopPage() {
                     balance={balance?.total_balance ?? 0}
                     userRank={userRank.rank}
                     locale={locale}
+                    userImage={user?.image ?? null}
+                    userName={user?.name ?? null}
                 />
             </div>
         </main>

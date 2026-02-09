@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
+import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 
 /** item_code → アプリテーマのマッピング */
 const THEME_MAP: Record<string, Theme> = {
@@ -18,6 +19,8 @@ interface ShopClientProps {
     balance: number;
     userRank: string;
     locale: string;
+    userImage: string | null;
+    userName: string | null;
 }
 
 type TabKey = 'ALL' | ShopCategory;
@@ -38,7 +41,7 @@ const RANK_ORDER: Record<string, number> = {
 };
 
 // --- メインコンポーネント ---
-export default function ShopClient({ items, userItems, equipped, balance, userRank, locale }: ShopClientProps) {
+export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName }: ShopClientProps) {
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
     const [activeTab, setActiveTab] = useState<TabKey>('ALL');
@@ -51,6 +54,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
+    const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
     const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
 
     // フィルタされたアイテム
@@ -65,6 +69,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     // 購入処理
     const handlePurchase = useCallback(async (item: ShopItem) => {
         setConfirmDialog(null);
+        setPreviewItem(null);
         setIsLoading(item.id);
         try {
             const res = await fetch('/api/shop/purchase', {
@@ -202,9 +207,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                         </h1>
                         <div className="flex items-center gap-2 mt-2">
                             <span className="text-base">💰</span>
-                            <p className="text-sm font-bold text-white/70">
+                            <p className="text-sm font-bold text-white">
                                 {currentBalance.toLocaleString()}
-                                <span className="text-xs text-white/50 ml-1">{t('uc')}</span>
+                                <span className="text-xs text-white/80 ml-1">{t('uc')}</span>
                             </p>
                         </div>
                     </div>
@@ -212,7 +217,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     {/* 右: Featured アイテム */}
                     {featuredItems.length > 0 && (
                         <div className="w-1/2 min-w-0">
-                            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
+                            <p className="text-[10px] font-bold text-white/90 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
                             <div className="flex flex-col gap-1.5">
                                 {featuredItems.map(item => {
                                     const name = locale === 'ja' ? item.name_ja : item.name_en;
@@ -220,34 +225,27 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                         <button
                                             key={item.id}
                                             onClick={() => setConfirmDialog({ item })}
-                                            className="group flex items-center gap-2.5 bg-white/10 hover:bg-white/20 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/15 transition-all text-left"
+                                            className="group flex items-center gap-2.5 bg-white/20 hover:bg-white/30 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30 transition-all text-left"
                                         >
                                             {/* ミニプレビュー */}
-                                            <div className="w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center" style={{
+                                            <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{
                                                 background: item.category === 'THEME_COLOR'
                                                     ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
-                                                    : 'rgba(255,255,255,0.15)',
+                                                    : 'rgba(255,255,255,0.2)',
                                             }}>
                                                 {item.category === 'ICON_FRAME' && (
-                                                    getFrameColor(item.preview_value) === 'rainbow' ? (
-                                                        <div className="w-6 h-6 rounded-full" style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
-                                                            <div className="w-full h-full rounded-full bg-white/30 flex items-center justify-center text-[10px]">👤</div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="w-6 h-6 rounded-full border-2 bg-white/30 flex items-center justify-center text-[10px]"
-                                                            style={{ borderColor: getFrameColor(item.preview_value) }}>👤</div>
-                                                    )
+                                                    <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                                                 )}
-                                                {item.category === 'TITLE' && <span className="text-sm">{item.preview_value}</span>}
+                                                {item.category === 'TITLE' && <span className="text-base">{item.preview_value}</span>}
                                                 {item.category === 'THEME_COLOR' && (
-                                                    <div className="w-5 h-5 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
+                                                    <div className="w-7 h-7 rounded-full shadow-inner border border-white/30" style={{ backgroundColor: item.preview_value }} />
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
-                                                <p className="text-[10px] text-white/40 font-medium">{item.price.toLocaleString()} UC</p>
+                                                <p className="text-[10px] text-white/80 font-medium">{item.price.toLocaleString()} UC</p>
                                             </div>
-                                            <span className="text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 transition-all text-xs">→</span>
+                                            <span className="text-white/60 group-hover:text-white/90 group-hover:translate-x-0.5 transition-all text-xs">→</span>
                                         </button>
                                     );
                                 })}
@@ -258,16 +256,16 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 
                 {/* 下部: カテゴリ統計 */}
                 {(
-                <div className="relative border-t border-white/15 px-5 sm:px-6 py-3 flex items-center justify-center gap-4 sm:gap-8">
+                <div className="relative border-t border-white/25 px-5 sm:px-6 py-3 flex items-center justify-center gap-4 sm:gap-8">
                     {[
                         { icon: '🖼️', label: t('iconFrames'), count: categoryStats.ICON_FRAME },
                         { icon: '🏷️', label: t('titles'), count: categoryStats.TITLE },
                         { icon: '🎨', label: t('themeColors'), count: categoryStats.THEME_COLOR },
                     ].map(cat => (
-                        <div key={cat.label} className="flex items-center gap-1.5 text-white/60">
+                        <div key={cat.label} className="flex items-center gap-1.5 text-white/90">
                             <span className="text-sm">{cat.icon}</span>
                             <span className="text-xs font-medium hidden sm:inline">{cat.label}</span>
-                            <span className="text-xs font-bold text-white/80 bg-white/10 rounded-full px-2 py-0.5">
+                            <span className="text-xs font-bold text-white bg-white/25 rounded-full px-2 py-0.5">
                                 {t('itemCount', { count: cat.count })}
                             </span>
                         </div>
@@ -342,6 +340,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     canAfford={currentBalance >= item.price}
                                     isLoading={isLoading === item.id}
                                     onBuy={() => setConfirmDialog({ item })}
+                                    onPreview={() => setPreviewItem(item)}
+                                    userImage={userImage}
+                                    userName={userName}
                                     t={t}
                                 />
                             ))}
@@ -358,6 +359,28 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     locale={locale}
                     isLoading={isLoading}
                     onEquip={handleEquip}
+                    userImage={userImage}
+                    userName={userName}
+                    t={t}
+                />
+            )}
+
+            {/* アイテムプレビューダイアログ */}
+            {previewItem && (
+                <ItemPreviewDialog
+                    item={previewItem}
+                    locale={locale}
+                    isOwned={ownedItemIds.has(previewItem.id)}
+                    isEquipped={
+                        equippedState[previewItem.category as ShopCategory]?.shop_items?.id === previewItem.id
+                    }
+                    meetsRank={meetsRank(previewItem.rank_required)}
+                    canAfford={currentBalance >= previewItem.price}
+                    isLoading={isLoading === previewItem.id}
+                    onBuy={() => handlePurchase(previewItem)}
+                    onClose={() => setPreviewItem(null)}
+                    userImage={userImage}
+                    userName={userName}
                     t={t}
                 />
             )}
@@ -369,6 +392,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     locale={locale}
                     onConfirm={() => handlePurchase(confirmDialog.item)}
                     onCancel={() => setConfirmDialog(null)}
+                    userImage={userImage}
+                    userName={userName}
                     t={t}
                 />
             )}
@@ -389,7 +414,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 // サブコンポーネント: ショップアイテムカード
 // ============================================
 function ShopItemCard({
-    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, t,
+    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onPreview, userImage, userName, t,
 }: {
     item: ShopItem;
     locale: string;
@@ -399,6 +424,9 @@ function ShopItemCard({
     canAfford: boolean;
     isLoading: boolean;
     onBuy: () => void;
+    onPreview: () => void;
+    userImage: string | null;
+    userName: string | null;
     t: any;
 }) {
     const isComingSoon = !item.is_active;
@@ -407,16 +435,19 @@ function ShopItemCard({
     const isLocked = !isOwned && !isComingSoon && (!meetsRank || !canAfford);
 
     return (
-        <div className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
-            isComingSoon ? 'bg-gray-50 border-dashed border-gray-300'
-                : isLocked ? 'bg-gray-100 border-gray-200'
-                : isOwned ? 'bg-white border-green-200'
-                : 'bg-white border-gray-100'
-        }`}>
+        <div
+            className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md cursor-pointer ${
+                isComingSoon ? 'bg-gray-50 border-dashed border-gray-300'
+                    : isLocked ? 'bg-gray-100 border-gray-200'
+                    : isOwned ? 'bg-white border-green-200'
+                    : 'bg-white border-gray-100'
+            }`}
+            onClick={onPreview}
+        >
             {/* プレビュー + バッジ ラッパー */}
             <div className={`relative ${isLocked ? 'opacity-40 grayscale' : ''}`}>
                 {/* プレビュー領域（Coming Soon時はぼかし） */}
-                <div className={`h-16 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
+                <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
@@ -424,25 +455,15 @@ function ShopItemCard({
                             : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        getFrameColor(item.preview_value) === 'rainbow' ? (
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-base"
-                                style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
-                                <div className="w-full h-full rounded-full bg-white/80 flex items-center justify-center">👤</div>
-                            </div>
-                        ) : (
-                            <div className="w-10 h-10 rounded-full border-3 bg-white/80 flex items-center justify-center text-base"
-                                style={{ borderColor: getFrameColor(item.preview_value) }}>
-                                👤
-                            </div>
-                        )
+                        <UserAvatar size="lg" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <div className="text-center">
-                            <span className="text-xl">{item.preview_value}</span>
+                            <span className="text-3xl">{item.preview_value}</span>
                         </div>
                     )}
                     {item.category === 'THEME_COLOR' && (
-                        <div className="w-7 h-7 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
+                        <div className="w-12 h-12 rounded-full shadow-lg border-2 border-white/40" style={{ backgroundColor: item.preview_value }} />
                     )}
                 </div>
 
@@ -467,20 +488,20 @@ function ShopItemCard({
             {/* 情報 + アクション */}
             <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''} ${isLocked ? 'opacity-40 grayscale' : ''}`}>
                 <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
-                <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
+                <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-600'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                        <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-500'}`}>{item.price.toLocaleString()}</span>
-                        <span className="text-xs text-gray-400">{t('uc')}</span>
+                        <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-700'}`}>{item.price.toLocaleString()}</span>
+                        <span className="text-xs text-gray-500">{t('uc')}</span>
                     </div>
                     {!isOwned && !isComingSoon && meetsRank && (
                         <button
-                            onClick={onBuy}
+                            onClick={(e) => { e.stopPropagation(); onBuy(); }}
                             disabled={!canAfford || isLoading}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 canAfford
-                                    ? 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-95'
+                                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             }`}
                         >
                             {isLoading ? (
@@ -511,13 +532,15 @@ function ShopItemCard({
 // サブコンポーネント: インベントリ
 // ============================================
 function InventoryView({
-    userItems, equipped, locale, isLoading, onEquip, t,
+    userItems, equipped, locale, isLoading, onEquip, userImage, userName, t,
 }: {
     userItems: UserItem[];
     equipped: EquippedItems;
     locale: string;
     isLoading: string | null;
     onEquip: (ui: UserItem, action: 'equip' | 'unequip') => void;
+    userImage: string | null;
+    userName: string | null;
     t: any;
 }) {
     if (userItems.length === 0) {
@@ -572,17 +595,7 @@ function InventoryView({
                                                 : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                                         }}>
                                             {item.category === 'ICON_FRAME' && (
-                                                getFrameColor(item.preview_value) === 'rainbow' ? (
-                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-                                                        style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
-                                                        <div className="w-full h-full rounded-full bg-white/80 flex items-center justify-center">👤</div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-8 h-8 rounded-full border-2 bg-white/80 flex items-center justify-center text-sm"
-                                                        style={{ borderColor: getFrameColor(item.preview_value) }}>
-                                                        👤
-                                                    </div>
-                                                )
+                                                <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                                             )}
                                             {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
@@ -620,15 +633,129 @@ function InventoryView({
 }
 
 // ============================================
+// サブコンポーネント: アイテムプレビューダイアログ
+// ============================================
+function ItemPreviewDialog({
+    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onClose, userImage, userName, t,
+}: {
+    item: ShopItem;
+    locale: string;
+    isOwned: boolean;
+    isEquipped: boolean;
+    meetsRank: boolean;
+    canAfford: boolean;
+    isLoading: boolean;
+    onBuy: () => void;
+    onClose: () => void;
+    userImage: string | null;
+    userName: string | null;
+    t: any;
+}) {
+    const name = locale === 'ja' ? item.name_ja : item.name_en;
+    const desc = locale === 'ja' ? item.description_ja : item.description_en;
+    const isComingSoon = !item.is_active;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 overflow-y-auto" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 mb-8 animate-scale-in overflow-hidden" onClick={e => e.stopPropagation()}>
+                {/* プレビュー領域（大） */}
+                <div className="relative h-48 flex items-center justify-center" style={{
+                    background: item.category === 'THEME_COLOR'
+                        ? `linear-gradient(135deg, ${item.preview_value}44, ${item.preview_value}88)`
+                        : 'linear-gradient(135deg, #fef3c7, #fbbf24, #fde68a)',
+                }}>
+                    {/* 閉じるボタン */}
+                    <button
+                        onClick={onClose}
+                        className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/30 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    {item.category === 'ICON_FRAME' && (
+                        <UserAvatar size="2xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
+                    )}
+                    {item.category === 'TITLE' && (
+                        <span className="text-7xl drop-shadow-lg">{item.preview_value}</span>
+                    )}
+                    {item.category === 'THEME_COLOR' && (
+                        <div className="w-24 h-24 rounded-full shadow-xl border-4 border-white/50" style={{ backgroundColor: item.preview_value }} />
+                    )}
+                </div>
+
+                {/* アイテム情報 */}
+                <div className="p-5">
+                    {/* カテゴリラベル */}
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
+                        {item.category === 'ICON_FRAME' && `🖼️ ${t('iconFrames')}`}
+                        {item.category === 'TITLE' && `🏷️ ${t('titles')}`}
+                        {item.category === 'THEME_COLOR' && `🎨 ${t('themeColors')}`}
+                    </p>
+
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{name}</h3>
+                    <p className="text-sm text-gray-600 mb-4 leading-relaxed">{desc}</p>
+
+                    {/* 価格 */}
+                    <div className="flex items-center gap-2 mb-5 py-3 px-4 bg-amber-50 rounded-xl border border-amber-100">
+                        <span className="text-lg">💰</span>
+                        <span className="text-2xl font-black text-amber-700">{item.price.toLocaleString()}</span>
+                        <span className="text-sm text-amber-600 font-medium">{t('uc')}</span>
+                    </div>
+
+                    {/* ステータス / アクション */}
+                    {isComingSoon ? (
+                        <div className="text-center py-3 rounded-xl bg-gray-100 text-gray-400 font-bold text-sm">
+                            🚧 {t('comingSoon')}
+                        </div>
+                    ) : isOwned ? (
+                        <div className="text-center py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold text-sm">
+                            ✅ {isEquipped ? t('equipped') : t('owned')}
+                        </div>
+                    ) : !meetsRank ? (
+                        <div className="text-center py-3 rounded-xl bg-gray-100 text-gray-500 font-medium text-sm">
+                            🔒 {t('rankLocked', { rank: getRankShortLabel(item.rank_required) })}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={onBuy}
+                            disabled={!canAfford || isLoading}
+                            className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all ${
+                                canAfford
+                                    ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-[0.98] shadow-md'
+                                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                </span>
+                            ) : canAfford ? (
+                                <>🛒 {t('buy')} — {item.price.toLocaleString()} {t('uc')}</>
+                            ) : (
+                                <>{t('errorInsufficientBalance')}</>
+                            )}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
 // サブコンポーネント: 確認ダイアログ
 // ============================================
 function ConfirmDialog({
-    item, locale, onConfirm, onCancel, t,
+    item, locale, onConfirm, onCancel, userImage, userName, t,
 }: {
     item: ShopItem;
     locale: string;
     onConfirm: () => void;
     onCancel: () => void;
+    userImage: string | null;
+    userName: string | null;
     t: any;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
@@ -637,15 +764,24 @@ function ConfirmDialog({
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/40 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 mb-8 animate-scale-in">
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
                 </p>
-                <div className="flex items-center justify-center gap-2 mb-4 py-3 bg-amber-50 rounded-lg">
-                    <span className="text-2xl">
-                        {item.category === 'TITLE' ? item.preview_value :
-                            item.category === 'THEME_COLOR' ? '🎨' : '🖼️'}
-                    </span>
-                    <span className="font-bold text-gray-800">{name}</span>
+                <div className="flex flex-col items-center gap-3 mb-4 py-4 rounded-lg" style={{
+                    background: item.category === 'THEME_COLOR'
+                        ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}44)`
+                        : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                }}>
+                    {item.category === 'ICON_FRAME' && (
+                        <UserAvatar size="xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
+                    )}
+                    {item.category === 'TITLE' && (
+                        <span className="text-3xl">{item.preview_value}</span>
+                    )}
+                    {item.category === 'THEME_COLOR' && (
+                        <div className="w-14 h-14 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: item.preview_value }} />
+                    )}
+                    <span className="font-bold text-gray-900 text-sm bg-white/60 rounded-full px-3 py-0.5">{name}</span>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -656,7 +792,7 @@ function ConfirmDialog({
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="flex-1 px-4 py-2 text-sm font-bold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors active:scale-95"
+                        className="flex-1 px-4 py-2 text-sm font-bold text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors active:scale-95"
                     >
                         {t('confirm')}<br />({item.price.toLocaleString()} UC)
                     </button>
@@ -669,30 +805,6 @@ function ConfirmDialog({
 // ============================================
 // ユーティリティ
 // ============================================
-
-/** Tailwindクラス名からCSSカラーに変換 */
-function getFrameColor(previewValue: string): string {
-    const colorMap: Record<string, string> = {
-        // 既存
-        'ring-green-400': '#4ade80',
-        'ring-blue-400': '#60a5fa',
-        'ring-yellow-400': '#facc15',
-        'ring-cyan-300': '#67e8f9',
-        'ring-purple-500': '#a855f7',
-        // 新規
-        'ring-rose-400': '#fb7185',
-        'ring-orange-400': '#fb923c',
-        'ring-teal-400': '#2dd4bf',
-        'ring-red-500': '#ef4444',
-        'ring-indigo-500': '#6366f1',
-        'ring-emerald-500': '#10b981',
-        'ring-amber-500': '#f59e0b',
-        'ring-pink-500': '#ec4899',
-        'ring-sky-400': '#38bdf8',
-        'ring-rainbow': 'rainbow',
-    };
-    return colorMap[previewValue] || '#d1d5db';
-}
 
 /** ランク短縮ラベル */
 function getRankShortLabel(rank: string): string {
