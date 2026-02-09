@@ -231,17 +231,10 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                             <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{
                                                 background: item.category === 'THEME_COLOR'
                                                     ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
-                                                    : item.category === 'ICON_FRAME'
-                                                        ? `linear-gradient(135deg, ${getFrameColor(item.preview_value)}30, ${getFrameColor(item.preview_value)}60)`
-                                                        : 'rgba(255,255,255,0.2)',
+                                                    : 'rgba(255,255,255,0.2)',
                                             }}>
                                                 {item.category === 'ICON_FRAME' && (
-                                                    <div className="relative flex items-center justify-center">
-                                                        <div className="absolute inset-0 m-auto w-[34px] h-[34px] rounded-full" style={{
-                                                            boxShadow: `0 0 6px 2px ${getFrameColor(item.preview_value)}70`,
-                                                        }} />
-                                                        <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                                                    </div>
+                                                    <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                                                 )}
                                                 {item.category === 'TITLE' && <span className="text-base">{item.preview_value}</span>}
                                                 {item.category === 'THEME_COLOR' && (
@@ -459,17 +452,10 @@ function ShopItemCard({
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
                             ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                            : item.category === 'ICON_FRAME'
-                                ? `linear-gradient(135deg, ${getFrameColor(item.preview_value)}18, ${getFrameColor(item.preview_value)}40)`
-                                : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                            : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        <div className="relative flex items-center justify-center">
-                            <div className="absolute inset-0 m-auto w-[72px] h-[72px] sm:w-[88px] sm:h-[88px] rounded-full" style={{
-                                boxShadow: `0 0 16px 4px ${getFrameColor(item.preview_value)}60, 0 0 30px 8px ${getFrameColor(item.preview_value)}25`,
-                            }} />
-                            <UserAvatar size="lg" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                        </div>
+                        <UserAvatar size="lg" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <div className="text-center">
@@ -606,17 +592,10 @@ function InventoryView({
                                         <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{
                                             background: item.category === 'THEME_COLOR'
                                                 ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                                                : item.category === 'ICON_FRAME'
-                                                    ? `linear-gradient(135deg, ${getFrameColor(item.preview_value)}20, ${getFrameColor(item.preview_value)}50)`
-                                                    : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                                                : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                                         }}>
                                             {item.category === 'ICON_FRAME' && (
-                                                <div className="relative flex items-center justify-center">
-                                                    <div className="absolute inset-0 m-auto w-[36px] h-[36px] rounded-full" style={{
-                                                        boxShadow: `0 0 8px 2px ${getFrameColor(item.preview_value)}60`,
-                                                    }} />
-                                                    <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                                                </div>
+                                                <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                                             )}
                                             {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
@@ -683,9 +662,7 @@ function ItemPreviewDialog({
                 <div className="relative h-48 flex items-center justify-center" style={{
                     background: item.category === 'THEME_COLOR'
                         ? `linear-gradient(135deg, ${item.preview_value}44, ${item.preview_value}88)`
-                        : item.category === 'ICON_FRAME'
-                            ? `linear-gradient(135deg, ${getFrameColor(item.preview_value)}15, ${getFrameColor(item.preview_value)}40, ${getFrameColor(item.preview_value)}15)`
-                            : 'linear-gradient(135deg, #fef3c7, #fbbf24, #fde68a)',
+                        : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)',
                 }}>
                     {/* 閉じるボタン */}
                     <button
@@ -698,12 +675,7 @@ function ItemPreviewDialog({
                     </button>
 
                     {item.category === 'ICON_FRAME' && (
-                        <div className="relative flex items-center justify-center">
-                            <div className="absolute inset-0 m-auto w-[140px] h-[140px] rounded-full" style={{
-                                boxShadow: `0 0 24px 8px ${getFrameColor(item.preview_value)}50, 0 0 48px 16px ${getFrameColor(item.preview_value)}20`,
-                            }} />
-                            <UserAvatar size="2xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                        </div>
+                        <UserAvatar size="2xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-7xl drop-shadow-lg">{item.preview_value}</span>
@@ -798,17 +770,10 @@ function ConfirmDialog({
                 <div className="flex flex-col items-center gap-3 mb-4 py-4 rounded-lg" style={{
                     background: item.category === 'THEME_COLOR'
                         ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}44)`
-                        : item.category === 'ICON_FRAME'
-                            ? `linear-gradient(135deg, ${getFrameColor(item.preview_value)}15, ${getFrameColor(item.preview_value)}35)`
-                            : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                        : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        <div className="relative flex items-center justify-center">
-                            <div className="absolute inset-0 m-auto w-[104px] h-[104px] rounded-full" style={{
-                                boxShadow: `0 0 20px 6px ${getFrameColor(item.preview_value)}50, 0 0 40px 12px ${getFrameColor(item.preview_value)}20`,
-                            }} />
-                            <UserAvatar size="xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                        </div>
+                        <UserAvatar size="xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-3xl">{item.preview_value}</span>
