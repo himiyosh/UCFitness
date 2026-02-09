@@ -64,7 +64,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
 
                 <div className="relative">
                     <div className="flex items-center justify-between mb-1">
-                        <p className="text-amber-100 text-sm font-medium">{t('totalBalance')}</p>
+                        <p className="text-amber-100 text-base font-medium">{t('totalBalance')}</p>
                         <span className="text-2xl">{rankIcon}</span>
                     </div>
                     <div className="flex items-baseline gap-2" aria-live="polite">
@@ -112,7 +112,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* 今日の入金 */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <p className="text-xs text-gray-500 font-medium mb-1">{t('todayEarned')}</p>
+                    <p className="text-sm text-gray-500 font-medium mb-1">{t('todayEarned')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className={`text-xl font-bold tabular-nums ${animatedToday >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                             {animatedToday >= 0 ? '+' : ''}{animatedToday.toLocaleString()}
@@ -123,7 +123,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
 
                 {/* ストリーク */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <p className="text-xs text-gray-500 font-medium mb-1">{t('currentStreak')}</p>
+                    <p className="text-sm text-gray-500 font-medium mb-1">{t('currentStreak')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className="text-xl font-bold text-orange-500 tabular-nums">
                             {balance.current_streak}
@@ -135,7 +135,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
 
                 {/* 歩数獲得分 */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <p className="text-xs text-gray-500 font-medium mb-1">{t('totalEarned')}</p>
+                    <p className="text-sm text-gray-500 font-medium mb-1">{t('totalEarned')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className="text-xl font-bold text-gray-900 tabular-nums">
                             {balance.total_earned.toLocaleString()}
@@ -146,7 +146,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
 
                 {/* ボーナス獲得分 */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <p className="text-xs text-gray-500 font-medium mb-1">{t('totalBonus')}</p>
+                    <p className="text-sm text-gray-500 font-medium mb-1">{t('totalBonus')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className="text-xl font-bold text-purple-600 tabular-nums">
                             {balance.total_bonus.toLocaleString()}

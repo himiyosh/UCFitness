@@ -27,7 +27,7 @@ export default function InvestorRankPanel({ currentRank, totalBalance }: Investo
 
     return (
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 h-full">
-            <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 🏅 {t('investorRank')}
             </h3>
 
@@ -77,16 +77,16 @@ export default function InvestorRankPanel({ currentRank, totalBalance }: Investo
                                 {/* ランク情報 */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                        <span className={`text-xs font-bold leading-tight ${isCurrentRank ? rank.text : isAchieved ? 'text-gray-700' : 'text-gray-400'}`}>
+                                        <span className={`text-sm font-bold leading-tight ${isCurrentRank ? rank.text : isAchieved ? 'text-gray-700' : 'text-gray-400'}`}>
                                             {t(`ranks.${rank.rank}`)}
                                         </span>
                                         {isCurrentRank && (
-                                            <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold ${rank.text} ${rank.bg} border ${rank.border}`}>
+                                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${rank.text} ${rank.bg} border ${rank.border}`}>
                                                 {t('currentLabel')}
                                             </span>
                                         )}
                                     </div>
-                                    <span className="text-[10px] text-gray-400 leading-tight">
+                                    <span className="text-xs text-gray-400 leading-tight">
                                         {rank.minBalance === 0
                                             ? '0 UC'
                                             : `${(rank.minBalance / 1000).toLocaleString()}K UC`
@@ -102,7 +102,7 @@ export default function InvestorRankPanel({ currentRank, totalBalance }: Investo
                                                     style={{ width: `${progressPercent}%` }}
                                                 />
                                             </div>
-                                            <span className="text-[9px] text-gray-400">{Math.round(progressPercent)}%</span>
+                                            <span className="text-[10px] text-gray-400">{Math.round(progressPercent)}%</span>
                                         </div>
                                     )}
                                 </div>

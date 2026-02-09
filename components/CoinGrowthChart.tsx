@@ -30,7 +30,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     if (!data || data.length === 0) {
         return (
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">{t('assetGrowth')}</h3>
+                <h3 className="text-base font-bold text-gray-900 mb-4">{t('assetGrowth')}</h3>
                 <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
                     {t('noTransactions')}
                 </div>
@@ -104,7 +104,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     return (
         <div className="bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                     📈 {t('assetGrowth')}
                 </h3>
                 <span className="text-xs text-gray-400">{t('last30days')}</span>

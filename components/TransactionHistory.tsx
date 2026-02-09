@@ -42,7 +42,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
     if (!transactions || transactions.length === 0) {
         return (
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-full">
-                <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                     📒 {t('transactionHistory')}
                 </h3>
                 <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
@@ -61,12 +61,12 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
 
     return (
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 h-full overflow-hidden">
-            <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
                 📒 {t('transactionHistory')}
             </h3>
 
             {/* テーブルヘッダー */}
-            <div className="grid grid-cols-[44px_1fr_72px_80px] sm:grid-cols-[56px_1fr_100px_120px] gap-1 sm:gap-2 px-2 pr-4 pb-2 border-b border-gray-200 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+            <div className="grid grid-cols-[44px_1fr_72px_80px] sm:grid-cols-[56px_1fr_100px_120px] gap-1 sm:gap-2 px-2 pr-4 pb-2 border-b border-gray-200 text-xs text-gray-400 font-semibold uppercase tracking-wider">
                 <span>{t('date')}</span>
                 <span>{t('detail')}</span>
                 <span className="text-right">{t('deposit')}</span>
