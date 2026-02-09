@@ -512,8 +512,8 @@ html {
   filter: brightness(1.4);
 }
 [data-theme="midnight"] .delta-down {
-  color: #ff4d4d !important;
-  filter: brightness(1.8);
+  color: #ff2d2d !important;
+  filter: brightness(2.0);
 }
 
 [data-theme="midnight"] .bg-white {
