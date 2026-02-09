@@ -336,7 +336,7 @@ export default async function Home() {
                           {myWeeklySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`text-[11px] font-bold ${myWeeklySteps >= lastWeekSteps ? 'text-emerald-500' : 'text-red-400'}`}>
+                          <span className={`text-[11px] font-bold ${myWeeklySteps >= lastWeekSteps ? 'delta-up' : 'delta-down'}`}>
                             {myWeeklySteps >= lastWeekSteps ? '▲' : '▼'} {Math.abs(myWeeklySteps - lastWeekSteps).toLocaleString()}
                           </span>
                           <span className="text-[10px] text-gray-400">{t('vsLastWeek')}</span>
@@ -358,7 +358,7 @@ export default async function Home() {
                           {myMonthlySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`text-[11px] font-bold ${myMonthlySteps >= lastMonthSteps ? 'text-emerald-500' : 'text-red-400'}`}>
+                          <span className={`text-[11px] font-bold ${myMonthlySteps >= lastMonthSteps ? 'delta-up' : 'delta-down'}`}>
                             {myMonthlySteps >= lastMonthSteps ? '▲' : '▼'} {Math.abs(myMonthlySteps - lastMonthSteps).toLocaleString()}
                           </span>
                           <span className="text-[10px] text-gray-400">{t('vsLastMonth')}</span>

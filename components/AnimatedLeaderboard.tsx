@@ -291,7 +291,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             const delta = entry.steps - entry.prevSteps!;
                                                                             if (delta === 0) return null;
                                                                             return (
-                                                                                <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                                                <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                                     {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
                                                                                 </span>
                                                                             );
@@ -300,7 +300,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             const change = rankChanges[period]?.[entry.users.id];
                                                                             if (!change || change === 0) return null;
                                                                             return (
-                                                                                <span className={`text-[10px] font-bold flex items-center gap-0.5 ${change > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                                                <span className={`text-[10px] font-bold flex items-center gap-0.5 ${change > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                                     {change > 0 ? '▲' : '▼'}{Math.abs(change)}
                                                                                 </span>
                                                                             );

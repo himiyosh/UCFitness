@@ -147,7 +147,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                         const delta = entry.steps - entry.prevSteps!;
                                                         if (delta === 0) return null;
                                                         return (
-                                                            <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                            <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                 {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
                                                             </span>
                                                         );
