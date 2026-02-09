@@ -227,22 +227,22 @@ html {
 }
 
 [data-theme="midnight"] .text-gray-600 {
-  color: #e2e8f0 !important;  /* slate-200 */
+  color: #f1f5f9 !important;  /* slate-100 */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
 }
 
 [data-theme="midnight"] .text-gray-500 {
-  color: #cbd5e1 !important;  /* slate-300 */
+  color: #e2e8f0 !important;  /* slate-200 */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
 }
 
 [data-theme="midnight"] .text-gray-400 {
-  color: #a8b8cc !important;  /* brighter slate-400 */
+  color: #cbd5e1 !important;  /* slate-300 */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
 [data-theme="midnight"] .text-gray-300 {
-  color: #b0bdd0 !important;
+  color: #cbd5e1 !important;  /* slate-300 */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
@@ -518,19 +518,19 @@ html {
   background-color: rgba(51, 65, 85, 0.42) !important;
 }
 [data-theme="midnight"] .text-gray-900 {
-  color: #f1f5f9 !important;
+  color: #ffffff !important;
 }
 [data-theme="midnight"] .text-gray-700 {
-  color: #e2e8f0 !important;
+  color: #f1f5f9 !important;
 }
 [data-theme="midnight"] .text-gray-600 {
-  color: #b0bdd0 !important;
+  color: #e2e8f0 !important;
 }
 [data-theme="midnight"] .text-gray-500 {
-  color: #a8b8cc !important;
+  color: #cbd5e1 !important;
 }
 [data-theme="midnight"] .text-gray-400 {
-  color: #8fa0b8 !important;
+  color: #b0bdd0 !important;
 }
 [data-theme="midnight"] .hover\:bg-gray-50:hover {
   background-color: rgba(51, 65, 85, 0.5) !important;
