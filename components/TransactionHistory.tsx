@@ -74,7 +74,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
             </div>
 
             {/* トランザクション行 */}
-            <div className="max-h-[400px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="max-h-[400px] overflow-y-auto styled-scrollbar">
                 {transactions.filter(tx => tx.amount !== 0).map((tx, i, filtered) => {
                     const config = TYPE_CONFIG[tx.type] || TYPE_CONFIG.STEPS;
                     const isPositive = tx.amount >= 0;
