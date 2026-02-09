@@ -579,6 +579,38 @@ html {
   color: rgba(100, 116, 139, 0.3) !important;
 }
 
+/* --- 11g. CoinBalanceCard: ゴールドカード midnight override --- */
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 {
+  background: linear-gradient(to bottom right, #b45309, #92400e, #78350f) !important;
+  border: 1px solid rgba(251, 191, 36, 0.35) !important;
+  box-shadow:
+    0 8px 32px -4px rgba(0, 0, 0, 0.6),
+    0 0 40px -8px rgba(245, 158, 11, 0.2),
+    inset 0 1px 0 rgba(251, 191, 36, 0.25) !important;
+}
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .text-amber-100 {
+  color: #fde68a !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important;
+}
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .text-amber-200 {
+  color: #fcd34d !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important;
+}
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 span[class*="text-4xl"],
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 span[class*="text-5xl"] {
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7), 0 0 20px rgba(251, 191, 36, 0.3) !important;
+}
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .bg-white\/20 {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(251, 191, 36, 0.2) !important;
+}
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .bg-white\/10 {
+  background-color: rgba(251, 191, 36, 0.08) !important;
+}
+[data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .bg-white\/70 {
+  background-color: rgba(251, 191, 36, 0.7) !important;
+}
+
 /* --- 12. Chart bars (gray gradient bars for non-top-3) --- */
 [data-theme="midnight"] .bg-emerald-400,
 [data-theme="midnight"] .bg-green-400 {
