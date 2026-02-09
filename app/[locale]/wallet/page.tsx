@@ -83,12 +83,12 @@ export default async function BankPage() {
                 </div>
 
                 {/* ページヘッダー */}
-                <div className="mb-6">
+                <div className="mb-6 space-y-2">
                     <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         👛 {t('title')}
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
-                    <p className="text-xs text-gray-400 mt-1">💰 {t('conceptDesc')}</p>
+                    <p className="text-sm text-gray-500">{t('subtitle')}</p>
+                    <p className="text-xs text-gray-400 leading-relaxed">💰 {t('conceptDesc')}</p>
                 </div>
 
                 {/* コンテンツ */}
