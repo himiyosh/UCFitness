@@ -85,6 +85,22 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     // バーにマイナスがある場合、0 ラインを表示するかどうか
     const hasNegative = chartData.some(d => d.dailyCoins < 0);
 
+    // Y軸の上限に余白を持たせる
+    const maxBalance = Math.max(...chartData.map(d => d.balance));
+    const minBalance = Math.min(...chartData.map(d => d.balance));
+    const balancePadding = Math.ceil((maxBalance - minBalance) * 0.15) || 1000;
+    const balanceDomain: [number, number] = [
+        Math.min(0, minBalance - balancePadding),
+        maxBalance + balancePadding,
+    ];
+
+    const maxDaily = Math.max(...chartData.map(d => Math.abs(d.dailyCoins)));
+    const dailyPadding = Math.ceil(maxDaily * 0.2) || 500;
+    const dailyDomain: [number, number] = [
+        hasNegative ? -(maxDaily + dailyPadding) : 0,
+        maxDaily + dailyPadding,
+    ];
+
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
@@ -114,6 +130,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                         {/* 左Y軸: 累積残高スケール（オレンジ線） */}
                         <YAxis
                             yAxisId="balance"
+                            domain={balanceDomain}
                             tick={{ fontSize: 10, fill: '#d97706' }}
                             tickLine={false}
                             axisLine={false}
@@ -123,6 +140,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                         <YAxis
                             yAxisId="daily"
                             orientation="right"
+                            domain={dailyDomain}
                             tick={{ fontSize: 10, fill: '#6b7280' }}
                             tickLine={false}
                             axisLine={false}
