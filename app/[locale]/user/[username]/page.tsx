@@ -186,10 +186,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     } else if (isOwner && user) {
         // If owner, we already have fresh user data
         viewerUser = {
-            ...session?.user,
+            ...session!.user,
             name: user.name,
             image: user.image,
-            // @ts-ignore
             username: user.username
         };
     }

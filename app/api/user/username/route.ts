@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
     const session = await auth();
 
-    if (!session || !session.user || !(session.user as any).id) {
+    if (!session || !session.user || !session.user.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -31,12 +31,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "User ID can only contain letters, numbers, underscores, hyphens, and dots." }, { status: 400 });
         }
 
+        // 🛡️ Sentinel: Reject reserved usernames
+        const RESERVED_USERNAMES = ['admin', 'system', 'support', 'help', 'api', 'root', 'null', 'undefined', 'moderator', 'mod', 'official', 'ucfitness', 'undoucoin'];
+        if (RESERVED_USERNAMES.includes(username.toLowerCase())) {
+            return NextResponse.json({ error: "This User ID is reserved." }, { status: 400 });
+        }
+
         // Check uniqueness
         const { data: existingUser } = await supabaseAdmin
             .from("users")
             .select("id")
             .eq("username", username)
-            .neq("id", (session.user as any).id) // Exclude self
+            .neq("id", session.user.id) // Exclude self
             .single();
 
         if (existingUser) {
@@ -47,7 +53,7 @@ export async function POST(request: Request) {
         const { error } = await supabaseAdmin
             .from("users")
             .update({ username: username.trim() })
-            .eq("id", (session.user as any).id);
+            .eq("id", session.user.id);
 
         if (error) {
             // Catch unique constraint error if race condition occurs

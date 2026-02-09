@@ -51,6 +51,7 @@
     "Dashboard": {
         "title": "UCFitness",
         "beta": "Beta",
+        "conceptBanner": "Walk \u2192 Earn UC (UndouCoin) \u2192 Invest in your health! Every step becomes a coin.",
         "yourActivity": "Your Activity",
         "stepsToday": "steps today",
         "vsYesterday": "vs yesterday",
@@ -68,6 +69,7 @@
     "Landing": {
         "title": "UCFitness",
         "subtitle": "Walking is the best investment in your health.",
+        "conceptDesc": "UCFitness turns your daily steps into UndouCoin (UC). Walk, earn, compete, and invest in your health!",
         "compete": "Compete",
         "collectBadges": "Collect Badges",
         "stayActive": "<span>Stay Active</span>",
@@ -221,6 +223,7 @@
     "Bank": {
         "title": "Wallet",
         "subtitle": "Health is the greatest investment.",
+        "conceptDesc": "Your steps are automatically converted into UC. Keep walking to grow your balance, climb ranks, and unlock rewards!",
         "totalBalance": "Total Balance",
         "uc": "UC",
         "undouCoin": "UndouCoin",
@@ -265,6 +268,7 @@
     "Shop": {
         "title": "Shop",
         "subtitle": "Customize your profile with UndouCoins!",
+        "conceptDesc": "Spend the UC you\u2019ve earned from walking on profile frames, titles, and themes!",
         "balance": "Your Balance",
         "uc": "UC",
         "allItems": "All",

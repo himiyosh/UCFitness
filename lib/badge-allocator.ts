@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase';
+import { getJSTDateString } from './date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,9 +46,7 @@ export async function checkAndAwardBadges(userId: string) {
     // We need: Today's steps, All-time total steps, Streak (calculated)
 
     // Fetch today's steps for "Daily" badges
-    const now = new Date();
-    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const today = jstDate.toISOString().split('T')[0];
+    const today = getJSTDateString();
 
     const { data: dailyRecord } = await supabaseAdmin
         .from('daily_steps')

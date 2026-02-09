@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase';
+import { getJSTDateString, getJSTHour } from './date-utils';
 
 /**
  * 称号達成チェック & 自動付与サービス
@@ -104,10 +105,8 @@ export async function checkAndAwardTitleAchievements(userId: string): Promise<st
  * 判定に必要なコンテキスト情報をビルド
  */
 async function buildContext(userId: string): Promise<AchievementContext> {
-    const now = new Date();
-    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const today = jstDate.toISOString().split('T')[0];
-    const syncHourJST = jstDate.getHours();
+    const today = getJSTDateString();
+    const syncHourJST = getJSTHour();
 
     // 並列取得
     const [

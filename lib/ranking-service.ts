@@ -1,40 +1,19 @@
 import { supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
 import { unstable_cache } from 'next/cache';
+import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
 
 export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, groupKeyword?: string) => {
-    // JST Calculation (Robust)
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Tokyo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-    const jstDateStr = formatter.format(now); // YYYY-MM-DD in JST
+    const jstDateStr = getJSTDateString();
 
     let startDate = jstDateStr;
 
     if (period === 'WEEKLY') {
-        const currentDate = new Date(`${jstDateStr}T00:00:00Z`);
-        const utcDay = currentDate.getUTCDay(); // 0(Sun) - 6(Sat)
-        // Monday start logic:
-        // Mon(1) -> subtract 0
-        // Sun(0) -> subtract 6
-        // Tue(2) -> subtract 1
-        const daysToSubtract = (utcDay + 6) % 7;
-
-        const monday = new Date(currentDate);
-        monday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
-        startDate = monday.toISOString().split('T')[0];
+        startDate = getWeekStartDate(jstDateStr);
     } else if (period === 'MONTHLY') {
-        // This Month (1st)
-        const [y, m] = jstDateStr.split('-');
-        startDate = `${y}-${m}-01`;
+        startDate = getMonthStartDate(jstDateStr);
     } else if (period === 'YEARLY') {
-        // This Year (Jan 1st)
-        const y = jstDateStr.split('-')[0];
-        startDate = `${y}-01-01`;
+        startDate = getYearStartDate(jstDateStr);
     }
 
     // ⚡ Bolt Optimization: Split user and step fetching to avoid heavy joins

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase';
-import { deductBalance, getInvestorRank, getCoinBalance, INVESTOR_RANKS, type InvestorRank } from './coin-service';
+import { INVESTOR_RANKS, type InvestorRank } from './coin-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,21 +48,6 @@ export interface PurchaseResult {
     error?: 'already_owned' | 'insufficient_balance' | 'rank_too_low' | 'item_not_found' | 'item_inactive' | 'unknown';
     userItem?: UserItem;
     newBalance?: number;
-}
-
-// --- ランク比較ユーティリティ ---
-
-const RANK_ORDER: Record<string, number> = {
-    BEGINNER: 0,
-    BUSINESS: 1,
-    FUND_MANAGER: 2,
-    DIAMOND: 3,
-    TYCOON: 4,
-};
-
-/** ユーザーのランクがアイテム要求ランク以上かチェック */
-function meetsRankRequirement(userRank: string, requiredRank: string): boolean {
-    return (RANK_ORDER[userRank] ?? 0) >= (RANK_ORDER[requiredRank] ?? 0);
 }
 
 // ============================================
@@ -220,76 +205,58 @@ export async function getEquippedItemsForUsers(userIds: string[]): Promise<Recor
 // 購入処理
 // ============================================
 
-/** アイテムを購入する */
+/** アイテムを購入する（アトミック: DB側で残高減算+アイテム付与を1トランザクション実行） */
 export async function purchaseItem(userId: string, itemId: string): Promise<PurchaseResult> {
-    // 1. アイテム存在チェック
-    const item = await getShopItem(itemId);
-    if (!item) {
-        return { success: false, error: 'item_not_found' };
-    }
-    if (!item.is_active) {
-        return { success: false, error: 'item_inactive' };
+    const idempotencyKey = `purchase_${userId}_${itemId}`;
+
+    const { data, error } = await supabaseAdmin.rpc('purchase_item', {
+        p_user_id: userId,
+        p_item_id: itemId,
+        p_idempotency_key: idempotencyKey,
+    });
+
+    if (error) {
+        console.error('purchaseItem RPC error:', error);
+        return { success: false, error: 'unknown' };
     }
 
-    // 2. 重複購入チェック
-    const alreadyOwned = await userOwnsItem(userId, itemId);
-    if (alreadyOwned) {
+    const result = data as {
+        success: boolean;
+        already_processed?: boolean;
+        error?: string;
+        transaction_id?: string;
+        new_balance?: number;
+        item_name?: string;
+    };
+
+    if (!result.success) {
+        const errorMap: Record<string, PurchaseResult['error']> = {
+            item_not_found: 'item_not_found',
+            item_inactive: 'item_inactive',
+            already_owned: 'already_owned',
+            rank_too_low: 'rank_too_low',
+            insufficient_balance: 'insufficient_balance',
+            user_not_found: 'insufficient_balance',
+        };
+        return { success: false, error: errorMap[result.error || ''] || 'unknown' };
+    }
+
+    if (result.already_processed) {
         return { success: false, error: 'already_owned' };
     }
 
-    // 3. ランクチェック
-    const balance = await getCoinBalance(userId);
-    if (!balance) {
-        return { success: false, error: 'insufficient_balance' };
-    }
-    const userRank = getInvestorRank(balance.total_balance);
-    if (!meetsRankRequirement(userRank.rank, item.rank_required)) {
-        return { success: false, error: 'rank_too_low' };
-    }
-
-    // 4. UC 引き落とし（べき等キー: purchase_{userId}_{itemId}）
-    const idempotencyKey = `purchase_${userId}_${itemId}`;
-    const deductResult = await deductBalance(
-        userId,
-        item.price,
-        'PURCHASE',
-        `Shop: ${item.name_en} / ${item.name_ja}`,
-        idempotencyKey,
-    );
-
-    if (!deductResult.success) {
-        if (deductResult.already_processed) {
-            // べき等: 既に処理済み → 所有チェックを再実行
-            const owns = await userOwnsItem(userId, itemId);
-            if (owns) {
-                return { success: false, error: 'already_owned' };
-            }
-        }
-        return { success: false, error: 'insufficient_balance' };
-    }
-
-    // 5. user_items に追加
-    const { data: userItem, error: insertError } = await supabaseAdmin
+    // 購入成功: user_item を取得して返す（DB側で既に挿入済み）
+    const { data: userItem } = await supabaseAdmin
         .from('user_items')
-        .insert({
-            user_id: userId,
-            item_id: itemId,
-            is_equipped: false,
-        })
         .select('*, shop_items(*)')
+        .eq('user_id', userId)
+        .eq('item_id', itemId)
         .single();
-
-    if (insertError) {
-        console.error('purchaseItem insert error:', insertError);
-        // 引き落とし済みだが挿入失敗 → ログに残す（手動対応が必要）
-        console.error(`CRITICAL: UC deducted but user_item insert failed. userId=${userId}, itemId=${itemId}, amount=${item.price}`);
-        return { success: false, error: 'unknown' };
-    }
 
     return {
         success: true,
         userItem: userItem as UserItem,
-        newBalance: deductResult.new_balance,
+        newBalance: result.new_balance,
     };
 }
 

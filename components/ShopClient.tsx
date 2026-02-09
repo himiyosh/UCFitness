@@ -192,72 +192,72 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="absolute top-1/3 left-1/2 w-32 h-32 bg-white/5 rounded-full" />
                 <div className="absolute bottom-1/3 right-10 w-24 h-24 bg-yellow-300/10 rounded-full" />
                 <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>
-                <div className="absolute bottom-8 left-[15%] text-white/10 text-5xl select-none pointer-events-none">🛍️</div>
 
-                {/* 上部: 残高表示 */}
-                <div className="relative p-5 sm:p-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl shadow-inner border border-white/30">
-                            💰
-                        </div>
-                        <div>
-                            <p className="text-xs text-white/70 font-bold uppercase tracking-wider">{t('balance')}</p>
-                            <p className="text-3xl sm:text-4xl font-black text-white tabular-nums drop-shadow-sm">
+                {/* メイン: 左ロゴ+残高 / 右Featured */}
+                <div className="relative p-5 sm:p-6 flex gap-6 justify-between">
+                    {/* 左: UCShop ロゴ + 残高 */}
+                    <div className="flex flex-col justify-center shrink-0">
+                        <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-lg leading-none">
+                            UC<span className="text-yellow-200">Shop</span>
+                        </h1>
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-base">💰</span>
+                            <p className="text-sm font-bold text-white/70">
                                 {currentBalance.toLocaleString()}
-                                <span className="text-base font-bold text-white/60 ml-1.5">{t('uc')}</span>
+                                <span className="text-xs text-white/50 ml-1">{t('uc')}</span>
                             </p>
                         </div>
                     </div>
+
+                    {/* 右: Featured アイテム */}
+                    {featuredItems.length > 0 && (
+                        <div className="w-1/2 min-w-0">
+                            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
+                            <div className="flex flex-col gap-1.5">
+                                {featuredItems.map(item => {
+                                    const name = locale === 'ja' ? item.name_ja : item.name_en;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setConfirmDialog({ item })}
+                                            className="group flex items-center gap-2.5 bg-white/10 hover:bg-white/20 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/15 transition-all text-left"
+                                        >
+                                            {/* ミニプレビュー */}
+                                            <div className="w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center" style={{
+                                                background: item.category === 'THEME_COLOR'
+                                                    ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
+                                                    : 'rgba(255,255,255,0.15)',
+                                            }}>
+                                                {item.category === 'ICON_FRAME' && (
+                                                    getFrameColor(item.preview_value) === 'rainbow' ? (
+                                                        <div className="w-6 h-6 rounded-full" style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
+                                                            <div className="w-full h-full rounded-full bg-white/30 flex items-center justify-center text-[10px]">👤</div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-6 h-6 rounded-full border-2 bg-white/30 flex items-center justify-center text-[10px]"
+                                                            style={{ borderColor: getFrameColor(item.preview_value) }}>👤</div>
+                                                    )
+                                                )}
+                                                {item.category === 'TITLE' && <span className="text-sm">{item.preview_value}</span>}
+                                                {item.category === 'THEME_COLOR' && (
+                                                    <div className="w-5 h-5 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
+                                                <p className="text-[10px] text-white/40 font-medium">{item.price.toLocaleString()} UC</p>
+                                            </div>
+                                            <span className="text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 transition-all text-xs">→</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* おすすめ商品（ショップビュー時のみ） */}
-                {viewMode === 'shop' && featuredItems.length > 0 && (
-                    <div className="relative px-5 sm:px-6 pb-4">
-                        <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2.5">⭐ {t('featured')}</p>
-                        <div className="flex flex-wrap gap-2.5">
-                            {featuredItems.map(item => {
-                                const name = locale === 'ja' ? item.name_ja : item.name_en;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => setConfirmDialog({ item })}
-                                        className="group flex items-center gap-3 bg-white/15 hover:bg-white/25 active:scale-[0.97] backdrop-blur-sm rounded-xl p-3 border border-white/20 transition-all text-left min-w-[180px] flex-1 sm:flex-initial sm:min-w-[200px]"
-                                    >
-                                        {/* ミニプレビュー */}
-                                        <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{
-                                            background: item.category === 'THEME_COLOR'
-                                                ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
-                                                : 'rgba(255,255,255,0.15)',
-                                        }}>
-                                            {item.category === 'ICON_FRAME' && (
-                                                getFrameColor(item.preview_value) === 'rainbow' ? (
-                                                    <div className="w-7 h-7 rounded-full" style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
-                                                        <div className="w-full h-full rounded-full bg-white/30 flex items-center justify-center text-xs">👤</div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-7 h-7 rounded-full border-2 bg-white/30 flex items-center justify-center text-xs"
-                                                        style={{ borderColor: getFrameColor(item.preview_value) }}>👤</div>
-                                                )
-                                            )}
-                                            {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
-                                            {item.category === 'THEME_COLOR' && (
-                                                <div className="w-6 h-6 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
-                                            <p className="text-xs text-white/50 font-medium">{item.price.toLocaleString()} UC</p>
-                                        </div>
-                                        <span className="text-white/30 group-hover:text-white/60 group-hover:translate-x-0.5 transition-all text-sm">→</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* 下部: カテゴリ統計（ショップビュー時のみ） */}
-                {viewMode === 'shop' && (
+                {/* 下部: カテゴリ統計 */}
+                {(
                 <div className="relative border-t border-white/15 px-5 sm:px-6 py-3 flex items-center justify-center gap-4 sm:gap-8">
                     {[
                         { icon: '🖼️', label: t('iconFrames'), count: categoryStats.ICON_FRAME },
@@ -277,23 +277,23 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             </div>
 
             {/* ショップ / インベントリ切り替え */}
-            <div className="flex bg-gray-100 rounded-2xl p-1.5 mb-4">
+            <div className="flex bg-gray-100/80 rounded-lg p-1 mb-4">
                 <button
                     onClick={() => setViewMode('shop')}
-                    className={`flex-1 px-4 py-3 text-base font-bold rounded-xl transition-all ${
+                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                         viewMode === 'shop'
-                            ? 'bg-white text-amber-600 shadow-md'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ? 'bg-white text-amber-600 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
                     🛍️ {t('shopTab')}
                 </button>
                 <button
                     onClick={() => setViewMode('inventory')}
-                    className={`flex-1 px-4 py-3 text-base font-bold rounded-xl transition-all ${
+                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                         viewMode === 'inventory'
-                            ? 'bg-white text-amber-600 shadow-md'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ? 'bg-white text-amber-600 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
                     📦 {t('inventoryTab')}
@@ -328,7 +328,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <p>{t('noItems')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                             {filteredItems.map(item => (
                                 <ShopItemCard
                                     key={item.id}
@@ -409,14 +409,14 @@ function ShopItemCard({
     return (
         <div className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
             isComingSoon ? 'bg-gray-50 border-dashed border-gray-300'
-                : isLocked ? 'bg-gray-50 border-gray-200 opacity-50 grayscale'
+                : isLocked ? 'bg-gray-100 border-gray-200'
                 : isOwned ? 'bg-white border-green-200'
                 : 'bg-white border-gray-100'
         }`}>
             {/* プレビュー + バッジ ラッパー */}
-            <div className="relative">
+            <div className={`relative ${isLocked ? 'opacity-40 grayscale' : ''}`}>
                 {/* プレビュー領域（Coming Soon時はぼかし） */}
-                <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
+                <div className={`h-16 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
@@ -425,12 +425,12 @@ function ShopItemCard({
                 }}>
                     {item.category === 'ICON_FRAME' && (
                         getFrameColor(item.preview_value) === 'rainbow' ? (
-                            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
-                                style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '3px' }}>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-base"
+                                style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '2px' }}>
                                 <div className="w-full h-full rounded-full bg-white/80 flex items-center justify-center">👤</div>
                             </div>
                         ) : (
-                            <div className="w-16 h-16 rounded-full border-4 bg-white/80 flex items-center justify-center text-2xl"
+                            <div className="w-10 h-10 rounded-full border-3 bg-white/80 flex items-center justify-center text-base"
                                 style={{ borderColor: getFrameColor(item.preview_value) }}>
                                 👤
                             </div>
@@ -438,15 +438,11 @@ function ShopItemCard({
                     )}
                     {item.category === 'TITLE' && (
                         <div className="text-center">
-                            <span className="text-3xl">{item.preview_value}</span>
-                            <p className="text-sm font-bold mt-1 text-gray-700">{name}</p>
+                            <span className="text-xl">{item.preview_value}</span>
                         </div>
                     )}
                     {item.category === 'THEME_COLOR' && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
-                            <span className="text-sm font-bold text-gray-700">{name}</span>
-                        </div>
+                        <div className="w-7 h-7 rounded-full shadow-inner" style={{ backgroundColor: item.preview_value }} />
                     )}
                 </div>
 
@@ -469,9 +465,9 @@ function ShopItemCard({
             </div>
 
             {/* 情報 + アクション */}
-            <div className={`p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
-                <h3 className={`font-bold text-sm mb-0.5 ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
-                <p className={`text-xs mb-3 line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
+            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''} ${isLocked ? 'opacity-40 grayscale' : ''}`}>
+                <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
+                <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                         <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-500'}`}>{item.price.toLocaleString()}</span>
@@ -558,7 +554,7 @@ function InventoryView({
                             {meta.label}
                             <span className="text-gray-400 font-normal">({items.length})</span>
                         </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                             {items.map(ui => {
                                 const item = ui.shop_items;
                                 if (!item) return null;
@@ -662,7 +658,7 @@ function ConfirmDialog({
                         onClick={onConfirm}
                         className="flex-1 px-4 py-2 text-sm font-bold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors active:scale-95"
                     >
-                        {t('confirm')} ({item.price.toLocaleString()} UC)
+                        {t('confirm')}<br />({item.price.toLocaleString()} UC)
                     </button>
                 </div>
             </div>

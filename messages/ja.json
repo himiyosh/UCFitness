@@ -51,6 +51,7 @@
     "Dashboard": {
         "title": "UCFitness",
         "beta": "ベータ",
+        "conceptBanner": "歩く → UC（運動コイン）を貯める → 健康に投資！毎日の一歩がコインになる。",
         "yourActivity": "アクティビティ",
         "stepsToday": "今日の歩数",
         "vsYesterday": "昨日比",
@@ -68,6 +69,7 @@
     "Landing": {
         "title": "UCFitness",
         "subtitle": "歩くことは、最高の健康投資。",
+        "conceptDesc": "UCFitnessは毎日の歩数をUndouCoin（UC）に変換。歩いて貯めて、競い合って、健康に投資しよう！",
         "compete": "仲間と競い合い",
         "collectBadges": "バッジを集めて",
         "stayActive": "<span>毎日をアクティブに</span>",
@@ -221,6 +223,7 @@
     "Bank": {
         "title": "ウォレット",
         "subtitle": "健康こそが最大の投資。",
+        "conceptDesc": "歩数は自動でUCに変換されます。歩いて資産を増やし、ランクを上げて、報酬をアンロックしよう！",
         "totalBalance": "総資産",
         "uc": "UC",
         "undouCoin": "UndouCoin",
@@ -265,6 +268,7 @@
     "Shop": {
         "title": "ショップ",
         "subtitle": "UndouCoinでプロフィールをカスタマイズ！",
+        "conceptDesc": "歩いて貯めたUCで、フレーム・称号・テーマをゲットしよう！",
         "balance": "現在の残高",
         "uc": "UC",
         "allItems": "すべて",
