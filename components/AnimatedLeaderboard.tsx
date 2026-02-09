@@ -283,7 +283,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex flex-col items-end relative z-10">
-                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-base leaderboard-steps">
+                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg leaderboard-steps">
                                                                             {entry.steps.toLocaleString()}
                                                                         </div>
                                                                         {/* Delta vs previous period */}

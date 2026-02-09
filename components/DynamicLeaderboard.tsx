@@ -140,7 +140,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end">
-                                                    <div className="font-mono font-semibold text-[var(--theme-primary)] leaderboard-steps">
+                                                    <div className="font-mono font-semibold text-[var(--theme-primary)] text-lg leaderboard-steps">
                                                         {entry.steps.toLocaleString()}
                                                     </div>
                                                     {entry.prevSteps !== undefined && (() => {

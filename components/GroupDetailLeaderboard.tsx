@@ -126,7 +126,7 @@ export default function GroupDetailLeaderboard({
                                             </div>
                                             <div className="text-right">
                                                 <div className="flex flex-col items-end">
-                                                    <div className="font-mono font-bold text-[var(--theme-primary)] text-base leaderboard-steps">
+                                                    <div className="font-mono font-bold text-[var(--theme-primary)] text-lg leaderboard-steps">
                                                         {entry.steps.toLocaleString()}
                                                     </div>
                                                     {entry.prevSteps !== undefined && (() => {
