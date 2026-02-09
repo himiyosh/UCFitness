@@ -8,7 +8,8 @@ export async function sendTeamsNotification(rankings: any[]) {
 
     const topRankings = rankings.slice(0, 10);
     const facts = topRankings.map((r, i) => ({
-        title: `#${i + 1} ${r.users?.name || r.users?.email}`,
+        // 🛡️ Sentinel: Prefer name or username, fallback to 'Anonymous' (avoid email)
+        title: `#${i + 1} ${r.users?.name || r.users?.username || 'Anonymous'}`,
         value: `${r.steps.toLocaleString()} steps`,
     }));
 

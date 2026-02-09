@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { sendTeamsNotification } from '@/lib/teams';
 
 export const dynamic = 'force-dynamic';
@@ -18,13 +18,15 @@ export async function GET(request: Request) {
         const today = new Date().toISOString().split('T')[0];
 
         // Fetch rankings
-        const { data: rankings, error } = await supabase
+        // 🛡️ Sentinel: Use supabaseAdmin to bypass RLS for cron job
+        const { data: rankings, error } = await supabaseAdmin
             .from('daily_steps')
             .select(`
         steps,
         users (
           name,
-          email
+          email,
+          username
         )
       `)
             .eq('date', today)
