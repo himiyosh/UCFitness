@@ -101,18 +101,18 @@ export default async function BankPage() {
 
                     {/* ショップ導線 */}
                     <Link href="/shop" className="block group">
-                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--theme-primary)] via-[var(--theme-primary)]/85 to-purple-600 p-5 shadow-md hover:shadow-xl hover:scale-[1.005] transition-all duration-300">
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--theme-primary)] via-[var(--theme-primary)]/85 to-purple-600 p-4 sm:p-5 shadow-md hover:shadow-xl hover:scale-[1.005] transition-all duration-300">
                             <div className="absolute top-0 right-0 w-36 h-36 bg-white/10 rounded-full -translate-y-14 translate-x-14"></div>
                             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-10 -translate-x-10"></div>
-                            <div className="relative flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-3xl drop-shadow-md">🛍️</span>
+                            <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                                <div className="flex items-center gap-3 sm:gap-4">
+                                    <span className="text-2xl sm:text-3xl drop-shadow-md">🛍️</span>
                                     <div>
-                                        <h3 className="text-lg font-extrabold text-white drop-shadow-sm">{t('shopCta')}</h3>
-                                        <p className="text-sm text-white/80">{t('shopCtaDesc')}</p>
+                                        <h3 className="text-base sm:text-lg font-extrabold text-white drop-shadow-sm">{t('shopCta')}</h3>
+                                        <p className="text-xs sm:text-sm text-white/80">{t('shopCtaDesc')}</p>
                                     </div>
                                 </div>
-                                <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-[var(--theme-primary)] text-sm font-extrabold shadow-lg group-hover:shadow-xl group-hover:gap-3 transition-all duration-300 whitespace-nowrap">
+                                <span className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-white text-[var(--theme-primary)] text-sm font-extrabold shadow-lg group-hover:shadow-xl group-hover:gap-3 transition-all duration-300 whitespace-nowrap self-stretch sm:self-auto">
                                     {t('shopCtaButton')}
                                     <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                                 </span>
