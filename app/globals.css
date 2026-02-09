@@ -497,7 +497,7 @@ html {
 /* Step count brightness boost for midnight */
 [data-theme="midnight"] .leaderboard-steps {
   color: #e0e7ff !important;
-  text-shadow: 0 0 10px rgba(165, 180, 252, 0.6), 0 0 24px rgba(129, 140, 248, 0.3);
+  text-shadow: 0 0 4px rgba(165, 180, 252, 0.3);
   font-weight: 900;
 }
 /* Delta up/down colors — works in all themes */
