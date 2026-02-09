@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
@@ -112,7 +112,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [userItemsState, setUserItemsState] = useState(userItems);
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
+    const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem; anchorRect?: DOMRect } | null>(null);
     const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
     const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
 
@@ -283,7 +283,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     return (
                                         <button
                                             key={item.id}
-                                            onClick={() => setConfirmDialog({ item })}
+                                            onClick={(e) => setConfirmDialog({ item, anchorRect: (e.currentTarget as HTMLElement).getBoundingClientRect() })}
                                             className="group flex items-center gap-2.5 bg-white/20 hover:bg-white/30 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30 transition-all text-left"
                                         >
                                             {/* ミニプレビュー */}
@@ -398,7 +398,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     meetsRank={meetsRank(item.rank_required)}
                                     canAfford={currentBalance >= item.price}
                                     isLoading={isLoading === item.id}
-                                    onBuy={() => setConfirmDialog({ item })}
+                                    onBuy={(rect: DOMRect) => setConfirmDialog({ item, anchorRect: rect })}
                                     onPreview={() => setPreviewItem(item)}
                                     userImage={userImage}
                                     userName={userName}
@@ -453,6 +453,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     onCancel={() => setConfirmDialog(null)}
                     userImage={userImage}
                     userName={userName}
+                    anchorRect={confirmDialog.anchorRect}
                     t={t}
                 />
             )}
@@ -482,7 +483,7 @@ function ShopItemCard({
     meetsRank: boolean;
     canAfford: boolean;
     isLoading: boolean;
-    onBuy: () => void;
+    onBuy: (rect: DOMRect) => void;
     onPreview: () => void;
     userImage: string | null;
     userName: string | null;
@@ -555,7 +556,7 @@ function ShopItemCard({
                     </div>
                     {!isOwned && !isComingSoon && meetsRank && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); onBuy(); }}
+                            onClick={(e) => { e.stopPropagation(); onBuy((e.currentTarget as HTMLElement).getBoundingClientRect()); }}
                             disabled={!canAfford || isLoading}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 canAfford
@@ -807,7 +808,7 @@ function ItemPreviewDialog({
 // サブコンポーネント: 確認ダイアログ
 // ============================================
 function ConfirmDialog({
-    item, locale, onConfirm, onCancel, userImage, userName, t,
+    item, locale, onConfirm, onCancel, userImage, userName, anchorRect, t,
 }: {
     item: ShopItem;
     locale: string;
@@ -815,13 +816,53 @@ function ConfirmDialog({
     onCancel: () => void;
     userImage: string | null;
     userName: string | null;
+    anchorRect?: DOMRect;
     t: any;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+    useEffect(() => {
+        if (!anchorRect || !dialogRef.current) return;
+        const dialog = dialogRef.current;
+        const dw = dialog.offsetWidth;
+        const dh = dialog.offsetHeight;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const margin = 12;
+
+        // ダイアログをアンカーの下に配置（スペースがなければ上に）
+        let top = anchorRect.bottom + margin;
+        if (top + dh > vh - margin) {
+            top = anchorRect.top - dh - margin;
+        }
+        // 画面外に出る場合はビューポート内にクランプ
+        top = Math.max(margin, Math.min(top, vh - dh - margin));
+
+        // 水平方向: アンカーの中央に揃える
+        let left = anchorRect.left + anchorRect.width / 2 - dw / 2;
+        left = Math.max(margin, Math.min(left, vw - dw - margin));
+
+        setPos({ top, left });
+    }, [anchorRect]);
+
+    // anchorRect がない場合のフォールバック（従来の中央配置）
+    const positionStyle: React.CSSProperties = pos
+        ? { position: 'fixed', top: pos.top, left: pos.left }
+        : { position: 'relative' };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/40 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 mb-8 animate-scale-in">
+        <div
+            className={`fixed inset-0 z-50 bg-black/40 overflow-y-auto ${!pos && !anchorRect ? 'flex items-start justify-center pt-[20vh]' : ''}`}
+            onClick={onCancel}
+        >
+            <div
+                ref={dialogRef}
+                style={positionStyle}
+                className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-[calc(100%-2rem)] mx-auto mb-8 animate-scale-in"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
