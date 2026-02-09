@@ -6,6 +6,65 @@ import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 
+/**
+ * ショップ用フレームプレビュー — アバターの周囲にフレーム色の太いリングを表示
+ * UserAvatar の border (3-4px) では細すぎて見えないため、
+ * 固定サイズの外枠 + padding でリングを描画し、中に画像を配置する。
+ * 外枠サイズ = UserAvatar の SIZE_MAP と同一 → オーバーフローなし。
+ */
+function FramePreview({ previewValue, size, userImage, userName }: {
+    previewValue: string;
+    size: 'sm' | 'lg' | 'xl' | '2xl';
+    userImage: string | null;
+    userName: string | null;
+}) {
+    const fc = getFrameColor(previewValue);
+    if (!fc) return <UserAvatar size={size} src={userImage} name={userName} />;
+
+    const isRainbow = fc === 'rainbow';
+    const bg = isRainbow
+        ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
+        : fc;
+
+    // SIZE_MAP と一致させる（Tailwind の box-border でパディング内包）
+    const sizeClass: Record<string, string> = {
+        sm: 'w-8 h-8',
+        lg: 'w-16 h-16 sm:w-24 sm:h-24',
+        xl: 'w-24 h-24',
+        '2xl': 'w-24 h-24 sm:w-32 sm:h-32',
+    };
+    const padClass: Record<string, string> = {
+        sm: 'p-[3px]',
+        lg: 'p-[4px]',
+        xl: 'p-[4px]',
+        '2xl': 'p-[5px]',
+    };
+    const textClass: Record<string, string> = {
+        sm: 'text-[10px]',
+        lg: 'text-2xl sm:text-3xl',
+        xl: 'text-3xl',
+        '2xl': 'text-4xl',
+    };
+    const initial = (userName?.[0] || 'U').toUpperCase();
+
+    return (
+        <div
+            className={`${sizeClass[size]} ${padClass[size]} rounded-full flex-shrink-0`}
+            style={{ background: bg }}
+        >
+            <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                {userImage ? (
+                    <img className="w-full h-full object-cover" src={userImage} alt={userName || ''} />
+                ) : (
+                    <div className={`w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-bold ${textClass[size]}`}>
+                        {initial}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 /** item_code → アプリテーマのマッピング */
 const THEME_MAP: Record<string, Theme> = {
     theme_midnight: 'midnight',
@@ -234,7 +293,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                                     : 'rgba(255,255,255,0.2)',
                                             }}>
                                                 {item.category === 'ICON_FRAME' && (
-                                                    <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
+                                                    <FramePreview previewValue={item.preview_value} size="sm" userImage={userImage} userName={userName} />
                                                 )}
                                                 {item.category === 'TITLE' && <span className="text-base">{item.preview_value}</span>}
                                                 {item.category === 'THEME_COLOR' && (
@@ -455,7 +514,7 @@ function ShopItemCard({
                             : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="lg" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
+                        <FramePreview previewValue={item.preview_value} size="lg" userImage={userImage} userName={userName} />
                     )}
                     {item.category === 'TITLE' && (
                         <div className="text-center">
@@ -595,7 +654,7 @@ function InventoryView({
                                                 : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                                         }}>
                                             {item.category === 'ICON_FRAME' && (
-                                                <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
+                                                <FramePreview previewValue={item.preview_value} size="sm" userImage={userImage} userName={userName} />
                                             )}
                                             {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
@@ -675,7 +734,7 @@ function ItemPreviewDialog({
                     </button>
 
                     {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="2xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
+                        <FramePreview previewValue={item.preview_value} size="2xl" userImage={userImage} userName={userName} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-7xl drop-shadow-lg">{item.preview_value}</span>
@@ -773,7 +832,7 @@ function ConfirmDialog({
                         : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
+                        <FramePreview previewValue={item.preview_value} size="xl" userImage={userImage} userName={userName} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-3xl">{item.preview_value}</span>
