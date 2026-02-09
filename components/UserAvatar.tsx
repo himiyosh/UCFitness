@@ -105,7 +105,7 @@ export default function UserAvatar({
             }
             : {
                 borderColor: frameColor,
-                boxShadow: `0 0 8px ${frameColor}40, 0 0 2px ${frameColor}80`,
+                boxShadow: `0 0 10px ${frameColor}, 0 0 4px ${frameColor}`,
             }
         : {};
 
@@ -116,8 +116,8 @@ export default function UserAvatar({
             {/* アバター本体 */}
             {rainbow ? (
                 <div
-                    className={`${sizeConfig.container} rounded-full flex-shrink-0 shadow-sm
-                        ${onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+                    className={`${sizeConfig.container} rounded-full flex-shrink-0
+                        ${onClick ? 'cursor-pointer' : ''}`}
                     style={frameStyle}
                     onClick={onClick}
                 >
@@ -135,8 +135,8 @@ export default function UserAvatar({
                 <div
                     className={`${sizeConfig.container} rounded-full overflow-hidden flex-shrink-0 
                         ${frameColor ? '' : `border-2 ${borderClass}`} 
-                        shadow-sm bg-white
-                        ${onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+                        ${frameColor ? '' : 'shadow-sm'} bg-white
+                        ${onClick ? 'cursor-pointer' : ''}`}
                     style={{
                         ...frameStyle,
                         ...(borderWidth ? { borderWidth, borderStyle: 'solid' } : {}),
