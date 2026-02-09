@@ -92,6 +92,7 @@ html {
   --theme-gradient-from: #818cf8;
   --theme-gradient-to: #c084fc;
 
+  --frame-preview-bg: #1e293b;
   --theme-badge-bg: rgba(255, 255, 255, 0.2);
   --theme-badge-text: #ffffff;
 
@@ -717,12 +718,21 @@ html {
 
 /* --- 15. Input fields --- */
 [data-theme="midnight"] input,
-[data-theme="midnight"] select,
 [data-theme="midnight"] textarea {
   background: linear-gradient(180deg, rgba(10, 15, 30, 0.7) 0%, rgba(15, 23, 42, 0.6) 100%) !important;
   color: #ffffff !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="midnight"] select {
+  background: rgba(30, 41, 59, 0.85) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+[data-theme="midnight"] select option {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
 }
 [data-theme="midnight"] input:focus,
 [data-theme="midnight"] select:focus,

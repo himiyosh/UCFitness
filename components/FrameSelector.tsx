@@ -100,14 +100,14 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
                         className="w-10 h-10 rounded-full flex-shrink-0 transition-all duration-300"
                         style={{ background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)', padding: '3px' }}
                     >
-                        <div className="w-full h-full rounded-full bg-gray-100" />
+                        <div className="w-full h-full rounded-full" style={{ background: 'var(--frame-preview-bg, #f3f4f6)' }} />
                     </div>
                 ) : (
                     <div
-                        className="w-10 h-10 rounded-full border-[3px] bg-gray-100 flex-shrink-0 transition-all duration-300"
+                        className="w-10 h-10 rounded-full border-[3px] flex-shrink-0 transition-all duration-300"
                         style={previewColor
-                            ? { borderColor: previewColor, boxShadow: `0 0 8px ${previewColor}40` }
-                            : { borderColor: '#d1d5db' }
+                            ? { borderColor: previewColor, boxShadow: `0 0 8px ${previewColor}40`, background: 'var(--frame-preview-bg, #f3f4f6)' }
+                            : { borderColor: '#d1d5db', background: 'var(--frame-preview-bg, #f3f4f6)' }
                         }
                     />
                 )}
