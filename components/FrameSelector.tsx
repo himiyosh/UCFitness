@@ -68,7 +68,7 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
     if (frames.length === 0) {
         return (
             <div className="border-t border-gray-200 pt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5">
                     🖼️ {t('frameLabel')}
                 </label>
                 <p className="text-xs text-gray-500 mb-2">{t('frameDescription')}</p>
@@ -88,7 +88,7 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
 
     return (
         <div className="border-t border-gray-200 pt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5">
                 🖼️ {t('frameLabel')}
             </label>
             <p className="text-xs text-gray-500 mb-2">{t('frameDescription')}</p>

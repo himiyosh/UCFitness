@@ -182,7 +182,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     {/* Inputs */}
                     <div className="space-y-6 w-full max-w-xl">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('displayName')}</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">{t('displayName')}</label>
                             <input
                                 type="text"
                                 value={name}
@@ -192,7 +192,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('userId')} {t('unique')}</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">{t('userId')} {t('unique')}</label>
                             <div className="relative rounded-md shadow-sm">
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 sm:text-sm">@</span>
                                 <input
