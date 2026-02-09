@@ -24,6 +24,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Username can only contain letters, numbers, and underscores" }, { status: 400 });
         }
 
+        if (username.length > 30) {
+            return NextResponse.json({ error: "Username must be 30 characters or less" }, { status: 400 });
+        }
+
+        // 🛡️ Sentinel: Reject reserved usernames
+        const RESERVED_USERNAMES = ['admin', 'system', 'support', 'help', 'api', 'root', 'null', 'undefined', 'moderator', 'mod', 'official', 'ucfitness', 'undoucoin'];
+        if (RESERVED_USERNAMES.includes(username.toLowerCase())) {
+            return NextResponse.json({ error: "This username is reserved" }, { status: 400 });
+        }
+
         // Email validation if provided (it should be provided if we are here)
         // If the user already has a valid email, they might not send it, or send same.
         // But logic says we ask for email if it's pending.
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
         // CRITICAL: Check this BEFORE username, because if we are merging accounts,
         // we don't care if the username is taken (since we are deleting the temp user anyway).
         if (updates.email && updates.email !== session.user.email) {
-            console.log(`[Setup] Checking email change for user ${(session.user as any).id}`);
+            console.log(`[Setup] Checking email change for user ${session.user.id}`);
 
             const { data: existingEmail } = await supabaseAdmin
                 .from('users')

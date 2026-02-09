@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useRef } from 'react';
+import { getStreakMultiplier, getNextRankInfo, getRankIcon } from '@/lib/constants';
 
 // --- 残高カウントアップアニメーション用フック ---
 function useCountUp(target: number, duration: number = 1500) {
@@ -26,40 +27,6 @@ function useCountUp(target: number, duration: number = 1500) {
     }, [target, duration]);
 
     return count;
-}
-
-// --- 投資家ランク定義（coin-service.ts と同期） ---
-const INVESTOR_RANKS = [
-    { minBalance: 5_000_000, rank: 'TYCOON', icon: '👑' },
-    { minBalance: 1_000_000, rank: 'DIAMOND', icon: '💎' },
-    { minBalance: 500_000, rank: 'FUND_MANAGER', icon: '📊' },
-    { minBalance: 100_000, rank: 'BUSINESS', icon: '💼' },
-    { minBalance: 0, rank: 'BEGINNER', icon: '🌱' },
-];
-
-function getRankIcon(rank: string) {
-    return INVESTOR_RANKS.find(r => r.rank === rank)?.icon || '🌱';
-}
-
-function getNextRankInfo(totalBalance: number) {
-    const currentIndex = INVESTOR_RANKS.findIndex(r => totalBalance >= r.minBalance);
-    if (currentIndex <= 0) return null;
-    const next = INVESTOR_RANKS[currentIndex - 1];
-    return {
-        rank: next.rank,
-        icon: next.icon,
-        remaining: next.minBalance - totalBalance,
-        progress: totalBalance / next.minBalance,
-    };
-}
-
-// --- ストリーク倍率（coin-service.ts と同期） ---
-function getStreakMultiplier(streak: number) {
-    if (streak >= 30) return 1.5;
-    if (streak >= 14) return 1.3;
-    if (streak >= 7) return 1.2;
-    if (streak >= 3) return 1.1;
-    return 1.0;
 }
 
 // ==============================================
@@ -100,7 +67,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                         <p className="text-amber-100 text-sm font-medium">{t('totalBalance')}</p>
                         <span className="text-2xl">{rankIcon}</span>
                     </div>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2" aria-live="polite">
                         <span className="text-4xl sm:text-5xl font-black tracking-tight tabular-nums">
                             {animatedBalance.toLocaleString()}
                         </span>
@@ -129,6 +96,10 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                             <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-white/70 rounded-full transition-all duration-1000 ease-out"
+                                    role="progressbar"
+                                    aria-valuenow={Math.round(nextRank.progress * 100)}
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
                                     style={{ width: `${Math.min(100, nextRank.progress * 100)}%` }}
                                 />
                             </div>

@@ -19,9 +19,11 @@ export default function LeaderboardTabs() {
     ];
 
     return (
+        <nav aria-label="Ranking period">
         <div
             className={`flex p-1 space-x-1 rounded-lg mb-6 w-fit ${theme !== 'midnight' ? 'bg-white border border-gray-200' : ''}`}
             style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}
+            role="tablist"
         >
             {tabs.map((tab) => {
                 const isActive = currentPeriod === tab.key;
@@ -30,6 +32,8 @@ export default function LeaderboardTabs() {
                         key={tab.key}
                         href={`/?period=${tab.key}`}
                         scroll={false}
+                        role="tab"
+                        aria-selected={isActive}
                         className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
                         style={theme === 'midnight' ? {
                             backgroundColor: isActive ? 'var(--theme-primary)' : 'transparent',
@@ -42,5 +46,6 @@ export default function LeaderboardTabs() {
                 );
             })}
         </div>
+        </nav>
     );
 }

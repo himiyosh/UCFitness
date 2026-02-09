@@ -31,7 +31,7 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     providers: [
-        // @ts-ignore
+        // @ts-expect-error FitbitProvider type mismatch with NextAuth v5 beta
         FitbitProvider({
             clientId: process.env.FITBIT_CLIENT_ID || "",
             clientSecret: process.env.FITBIT_CLIENT_SECRET || "",
@@ -160,10 +160,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 // Optimization: Populate from Token if available to avoid DB hits in Middleware
                 if (token.id && token.username && token.email) {
                     session.user.id = token.id;
-                    (session.user as any).username = token.username;
+                    session.user.username = token.username;
                     session.user.email = token.email;
                     session.user.image = token.picture || token.image || session.user.image;
-                    (session.user as any).language = token.language || 'ja';
+                    session.user.language = token.language || 'ja';
                     return session;
                 }
 
@@ -217,8 +217,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     session.user.name = data.name;
                     session.user.image = data.image;
                     session.user.email = data.email;
-                    (session.user as any).username = data.username;
-                    (session.user as any).language = (data as any).language || 'ja';
+                    session.user.username = data.username;
+                    session.user.language = data.language || 'ja';
                 } else {
                     session.user.id = token.sub;
                 }
@@ -250,7 +250,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     token.username = data.username;
                     token.email = data.email; // Real DB email
                     token.image = data.image;
-                    token.language = (data as any).language;
+                    token.language = data.language;
                 } else {
                     console.log(`[Auth] JWT Lookup Failed: No user found for ${account.providerAccountId}`);
                 }
@@ -276,7 +276,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (!data && token.provider_account_id) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id") // language removed
+                            .select("id, username, email, image, provider_account_id, language") // language removed
                             .eq("provider_account_id", token.provider_account_id)
                             .single();
                         data = res.data;
@@ -286,7 +286,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (!data && token.sub) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id") // language removed
+                            .select("id, username, email, image, provider_account_id, language") // language removed
                             .eq("provider_account_id", token.sub)
                             .single();
                         data = res.data;
@@ -299,7 +299,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         token.email = data.email;
                         token.image = data.image;
                         token.provider_account_id = data.provider_account_id;
-                        token.language = (data as any).language;
+                        token.language = data.language;
                     }
                 }
             }

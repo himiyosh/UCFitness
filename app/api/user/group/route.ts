@@ -5,14 +5,14 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   const session = await auth();
 
-  if (!session || !session.user || !(session.user as any).id) {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await request.json();
     const { action, keyword } = body;
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     if (!action) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         .select('groups(keyword)')
         .eq('user_id', targetUserId);
 
-      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
 
       await supabaseAdmin
@@ -252,7 +252,7 @@ export async function POST(request: Request) {
       // Update Group
       // Filter out undefined values to avoid overwriting with null if client doesn't send them
       // But typical patterns send full or partial. Let's assume passed values are what to update.
-      const updates: any = {};
+      const updates: Record<string, string | boolean> = {};
       if (name !== undefined) updates.name = name;
       if (image_url !== undefined) updates.image_url = image_url;
       if (header_image_url !== undefined) updates.header_image_url = header_image_url;
@@ -320,7 +320,7 @@ export async function POST(request: Request) {
         .select('groups(keyword)')
         .eq('user_id', targetUserId);
 
-      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
 
       await supabaseAdmin
@@ -344,7 +344,7 @@ export async function POST(request: Request) {
         .select('groups(keyword)')
         .eq('user_id', userId);
 
-      // @ts-ignore
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const currentKeywords = memberships?.map((m: any) => {
         const groupData = Array.isArray(m.groups) ? m.groups[0] : m.groups;
         return groupData?.keyword;
@@ -425,7 +425,7 @@ export async function POST(request: Request) {
       .select('groups(keyword)')
       .eq('user_id', userId);
 
-    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
 
     await supabaseAdmin

@@ -1,4 +1,15 @@
 import { supabaseAdmin } from './supabase';
+import { reportError } from './errors';
+import {
+    BASE_RATE,
+    GOAL_BONUS_RATE,
+    INVESTOR_RANKS,
+    type InvestorRank,
+    getStreakMultiplier,
+    getInvestorRank,
+    getNextRankInfo,
+} from './constants';
+import { getJSTDateString } from './date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,62 +18,8 @@ export const dynamic = 'force-dynamic';
 // コンセプト: 健康こそが最大の投資
 // ============================================
 
-// --- 変換レートとボーナス定義 ---
-
-/** 基本レート: 1歩 = 1 UC */
-const BASE_RATE = 1;
-
-/** 目標達成ボーナス: +20% */
-const GOAL_BONUS_RATE = 0.2;
-
-/** ストリーク倍率マップ（連続日数 → 倍率） */
-const STREAK_MULTIPLIERS: { minDays: number; multiplier: number }[] = [
-    { minDays: 30, multiplier: 1.5 },
-    { minDays: 14, multiplier: 1.3 },
-    { minDays: 7, multiplier: 1.2 },
-    { minDays: 3, multiplier: 1.1 },
-    { minDays: 1, multiplier: 1.0 },
-];
-
-/** 投資家ランク定義 */
-export const INVESTOR_RANKS = [
-    { minBalance: 5_000_000, rank: 'TYCOON', label: 'Health Tycoon', labelJa: 'ヘルス・タイクーン', icon: '👑' },
-    { minBalance: 1_000_000, rank: 'DIAMOND', label: 'Diamond Investor', labelJa: 'ダイヤモンド投資家', icon: '💎' },
-    { minBalance: 500_000, rank: 'FUND_MANAGER', label: 'Fund Manager', labelJa: 'ファンドマネージャー', icon: '📊' },
-    { minBalance: 100_000, rank: 'BUSINESS', label: 'Business Walker', labelJa: 'ビジネスウォーカー', icon: '💼' },
-    { minBalance: 0, rank: 'BEGINNER', label: 'Rookie Investor', labelJa: '新人投資家', icon: '🌱' },
-] as const;
-
-export type InvestorRank = typeof INVESTOR_RANKS[number]['rank'];
-
-// --- ストリーク倍率の取得 ---
-export function getStreakMultiplier(streakDays: number): number {
-    for (const { minDays, multiplier } of STREAK_MULTIPLIERS) {
-        if (streakDays >= minDays) return multiplier;
-    }
-    return 1.0;
-}
-
-// --- 投資家ランクの判定 ---
-export function getInvestorRank(totalBalance: number) {
-    for (const rank of INVESTOR_RANKS) {
-        if (totalBalance >= rank.minBalance) return rank;
-    }
-    return INVESTOR_RANKS[INVESTOR_RANKS.length - 1];
-}
-
-// --- 次のランクまでの情報 ---
-export function getNextRankInfo(totalBalance: number) {
-    const currentRank = getInvestorRank(totalBalance);
-    const currentIndex = INVESTOR_RANKS.findIndex(r => r.rank === currentRank.rank);
-    if (currentIndex <= 0) return null; // すでに最高ランク
-    const nextRank = INVESTOR_RANKS[currentIndex - 1];
-    return {
-        ...nextRank,
-        remaining: nextRank.minBalance - totalBalance,
-        progress: totalBalance / nextRank.minBalance,
-    };
-}
+// --- 後方互換のための re-export ---
+export { INVESTOR_RANKS, type InvestorRank, getStreakMultiplier, getInvestorRank, getNextRankInfo };
 
 // ============================================
 // コイン計算と記録
@@ -147,8 +104,8 @@ export async function processCoins(userId: string, steps: number, date: string) 
             .insert(transactions);
 
         if (txError) {
-            console.error(`Failed to insert coin transactions for user ${userId}:`, txError);
-            return;
+            reportError('processCoins:insertTransactions', txError, { userId, date });
+            throw new Error(`Failed to insert coin transactions for user ${userId}`);
         }
 
         // 残高を再計算して更新
@@ -157,7 +114,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
         console.log(`UndouCoin: ${userId} earned ${baseCoins} + ${goalBonus} goal + ${streakBonus} streak = ${baseCoins + goalBonus + streakBonus} UC (streak: ${streak})`);
 
     } catch (error) {
-        console.error(`Error processing coins for user ${userId}:`, error);
+        reportError('processCoins', error, { userId, steps, date });
     }
 }
 
@@ -262,7 +219,7 @@ async function updateCoinBalance(userId: string, currentStreak: number) {
         }, { onConflict: 'user_id' });
 
     if (error) {
-        console.error(`Failed to update coin balance for user ${userId}:`, error);
+        reportError('updateCoinBalance:upsert', error, { userId });
     }
 }
 
@@ -292,28 +249,39 @@ export async function getCoinBalance(userId: string) {
 }
 
 /**
- * 直近N日間の取引履歴を取得（累積残高付き）
+ * 直近N件の取引履歴を取得（累積残高付き）
+ * 最適化: 全件取得せず、現在残高から逆算で累積残高を計算
  */
 export async function getRecentTransactions(userId: string, limit: number = 30) {
-    // 全トランザクションを古い順に取得して累積残高を計算
-    const { data: allTx } = await supabaseAdmin
+    // 現在の総残高を取得（逆算の起点）
+    const { data: balanceData } = await supabaseAdmin
+        .from('coin_balances')
+        .select('total_balance')
+        .eq('user_id', userId)
+        .single();
+
+    const currentBalance = balanceData?.total_balance || 0;
+
+    // 最新N件のみ取得（新しい順）
+    const { data: recentTx } = await supabaseAdmin
         .from('coin_transactions')
         .select('*')
         .eq('user_id', userId)
-        .order('date', { ascending: true })
-        .order('created_at', { ascending: true });
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-    if (!allTx || allTx.length === 0) return [];
+    if (!recentTx || recentTx.length === 0) return [];
 
-    // 累積残高を計算
-    let runningBalance = 0;
-    const withBalance = allTx.map(tx => {
-        runningBalance += tx.amount;
-        return { ...tx, balance: runningBalance };
+    // 現在残高から逆算して各取引時点の残高を付与
+    let balance = currentBalance;
+    const withBalance = recentTx.map(tx => {
+        const entry = { ...tx, balance };
+        balance -= tx.amount;
+        return entry;
     });
 
-    // 最新のlimit件を返す（新しい順）
-    return withBalance.reverse().slice(0, limit);
+    return withBalance;
 }
 
 /**
@@ -321,11 +289,10 @@ export async function getRecentTransactions(userId: string, limit: number = 30) 
  * daily_steps と coin_transactions から集計
  */
 export async function getDailyBalanceHistory(userId: string, days: number = 30) {
-    const now = new Date();
-    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const endDate = jstDate.toISOString().split('T')[0];
+    const endDate = getJSTDateString();
 
-    const startDateObj = new Date(jstDate.getTime() - days * 24 * 60 * 60 * 1000);
+    const endDateObj = new Date(`${endDate}T00:00:00Z`);
+    const startDateObj = new Date(endDateObj.getTime() - days * 24 * 60 * 60 * 1000);
     const startDate = startDateObj.toISOString().split('T')[0];
 
     // 日別の獲得コインを取得

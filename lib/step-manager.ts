@@ -3,6 +3,8 @@ import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeries } from 
 import { checkAndAwardBadges } from './badge-allocator';
 import { processCoins } from './coin-service';
 import { checkAndAwardTitleAchievements } from './title-achievement-service';
+import { reportError } from './errors';
+import { getJSTDateString } from './date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,9 +82,7 @@ async function performTokenRefresh(user: User) {
  */
 async function processUserSteps(user: User) {
     // Use JST (UTC+9) for date calculation
-    const now = new Date();
-    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const today = jstDate.toISOString().split('T')[0];
+    const today = getJSTDateString();
 
     let steps: number | null = null;
     let accessToken = await ensureFitbitAccessToken(user);
@@ -130,7 +130,7 @@ async function processUserSteps(user: User) {
             );
 
         if (upsertError) {
-            console.error(`Failed to update steps for user ${user.id}:`, upsertError);
+            reportError('processUserSteps:upsert', upsertError, { userId: user.id, steps, date: today });
         } else {
             // Check for badges
             // Fire and forget to not block response? Or await to ensure consistency?
@@ -138,21 +138,21 @@ async function processUserSteps(user: User) {
             try {
                 await checkAndAwardBadges(user.id);
             } catch (badgeError) {
-                console.error(`Error checking badges for user ${user.id}:`, badgeError);
+                reportError('processUserSteps:badges', badgeError, { userId: user.id });
             }
 
             // 称号達成チェック & 自動付与
             try {
                 await checkAndAwardTitleAchievements(user.id);
             } catch (titleError) {
-                console.error(`Error checking title achievements for user ${user.id}:`, titleError);
+                reportError('processUserSteps:titles', titleError, { userId: user.id });
             }
 
             // UndouCoin: 歩数をコインに変換して記録
             try {
                 await processCoins(user.id, steps, today);
             } catch (coinError) {
-                console.error(`Error processing coins for user ${user.id}:`, coinError);
+                reportError('processUserSteps:coins', coinError, { userId: user.id, steps, date: today });
             }
         }
     }
@@ -235,14 +235,14 @@ export async function backfillUserSteps(userId: string) {
                 .upsert(stepsData, { onConflict: 'user_id,date' });
 
             if (upsertError) {
-                console.error(`Failed to backfill steps for user ${user.id}:`, upsertError);
+                reportError('backfillUserSteps:upsert', upsertError, { userId: user.id, recordCount: stepsData.length });
             } else {
                 console.log(`Successfully backfilled steps for user ${user.id}`);
             }
         }
 
     } catch (error) {
-        console.error(`Error backfilling steps for user ${user.id}:`, error);
+        reportError('backfillUserSteps', error, { userId: user.id });
     }
 }
 
