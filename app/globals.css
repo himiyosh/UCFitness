@@ -496,17 +496,17 @@ html {
 
 /* Step count brightness boost for midnight */
 [data-theme="midnight"] .leaderboard-steps {
-  color: #a5b4fc !important;
-  text-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+  color: #e0e7ff !important;
+  text-shadow: 0 0 10px rgba(165, 180, 252, 0.6), 0 0 24px rgba(129, 140, 248, 0.3);
   font-weight: 900;
 }
 [data-theme="midnight"] .text-emerald-500 {
-  color: #6ee7b7 !important;
-  text-shadow: 0 0 6px rgba(52, 211, 153, 0.35);
+  color: #86efac !important;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
 }
 [data-theme="midnight"] .text-red-400 {
-  color: #fca5a5 !important;
-  text-shadow: 0 0 6px rgba(248, 113, 113, 0.35);
+  color: #fecaca !important;
+  text-shadow: 0 0 8px rgba(252, 165, 165, 0.5);
 }
 
 [data-theme="midnight"] .bg-white {
