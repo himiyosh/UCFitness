@@ -233,9 +233,19 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                                     ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
                                                     : 'rgba(255,255,255,0.2)',
                                             }}>
-                                                {item.category === 'ICON_FRAME' && (
-                                                    <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                                                )}
+                                                {item.category === 'ICON_FRAME' && (() => {
+                                                    const fc = getFrameColor(item.preview_value);
+                                                    const isRainbow = fc === 'rainbow';
+                                                    return (
+                                                        <div className="rounded-full p-[2px]" style={{
+                                                            background: isRainbow
+                                                                ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
+                                                                : fc,
+                                                        }}>
+                                                            <UserAvatar size="sm" src={userImage} name={userName} />
+                                                        </div>
+                                                    );
+                                                })()}
                                                 {item.category === 'TITLE' && <span className="text-base">{item.preview_value}</span>}
                                                 {item.category === 'THEME_COLOR' && (
                                                     <div className="w-7 h-7 rounded-full shadow-inner border border-white/30" style={{ backgroundColor: item.preview_value }} />
@@ -454,9 +464,19 @@ function ShopItemCard({
                             ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
                             : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                 }}>
-                    {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="lg" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                    )}
+                    {item.category === 'ICON_FRAME' && (() => {
+                        const fc = getFrameColor(item.preview_value);
+                        const isRainbow = fc === 'rainbow';
+                        return (
+                            <div className="rounded-full p-[3px]" style={{
+                                background: isRainbow
+                                    ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
+                                    : fc,
+                            }}>
+                                <UserAvatar size="lg" src={userImage} name={userName} />
+                            </div>
+                        );
+                    })()}
                     {item.category === 'TITLE' && (
                         <div className="text-center">
                             <span className="text-3xl">{item.preview_value}</span>
@@ -594,9 +614,19 @@ function InventoryView({
                                                 ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
                                                 : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                                         }}>
-                                            {item.category === 'ICON_FRAME' && (
-                                                <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                                            )}
+                                            {item.category === 'ICON_FRAME' && (() => {
+                                                const fc = getFrameColor(item.preview_value);
+                                                const isRainbow = fc === 'rainbow';
+                                                return (
+                                                    <div className="rounded-full p-[2px]" style={{
+                                                        background: isRainbow
+                                                            ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
+                                                            : fc,
+                                                    }}>
+                                                        <UserAvatar size="sm" src={userImage} name={userName} />
+                                                    </div>
+                                                );
+                                            })()}
                                             {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
                                                 <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.preview_value }} />
@@ -674,9 +704,19 @@ function ItemPreviewDialog({
                         </svg>
                     </button>
 
-                    {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="2xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                    )}
+                    {item.category === 'ICON_FRAME' && (() => {
+                        const fc = getFrameColor(item.preview_value);
+                        const isRainbow = fc === 'rainbow';
+                        return (
+                            <div className="rounded-full p-[5px]" style={{
+                                background: isRainbow
+                                    ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
+                                    : fc,
+                            }}>
+                                <UserAvatar size="2xl" src={userImage} name={userName} />
+                            </div>
+                        );
+                    })()}
                     {item.category === 'TITLE' && (
                         <span className="text-7xl drop-shadow-lg">{item.preview_value}</span>
                     )}
@@ -772,9 +812,19 @@ function ConfirmDialog({
                         ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}44)`
                         : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
                 }}>
-                    {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
-                    )}
+                    {item.category === 'ICON_FRAME' && (() => {
+                        const fc = getFrameColor(item.preview_value);
+                        const isRainbow = fc === 'rainbow';
+                        return (
+                            <div className="rounded-full p-[4px]" style={{
+                                background: isRainbow
+                                    ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
+                                    : fc,
+                            }}>
+                                <UserAvatar size="xl" src={userImage} name={userName} />
+                            </div>
+                        );
+                    })()}
                     {item.category === 'TITLE' && (
                         <span className="text-3xl">{item.preview_value}</span>
                     )}
