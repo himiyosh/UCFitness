@@ -180,8 +180,8 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 {/* Global Leaderboard */}
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
-                    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 transition-all duration-300">
-                        <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-indigo-200 border-l-[3px] border-l-indigo-500 transition-all duration-300">
+                        <div className="px-4 py-3 border-b border-indigo-100 bg-indigo-50/40">
                             {/* Left Tab Switcher */}
                             <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-full">
                                 <button
