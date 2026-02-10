@@ -204,16 +204,16 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 
                 {/* メイン: ロゴ+残高 / Featured（モバイル縦並び / デスクトップ横並び） */}
                 <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 sm:justify-between">
-                    {/* UCShop ロゴ + 残高 */}
-                    <div className="flex flex-col justify-center shrink-0">
-                        <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-lg leading-none">
-                            UC<span className="text-yellow-200">Shop</span>
+                    {/* UCShop ロゴ + 残高（モバイル中央寄せ） */}
+                    <div className="flex flex-col items-center sm:items-start justify-center shrink-0">
+                        <h1 className="text-6xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] leading-none">
+                            UC<span className="text-yellow-200 drop-shadow-[0_0_20px_rgba(253,224,71,0.4)]">Shop</span>
                         </h1>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-1.5 border border-white/20">
                             <span className="text-base">💰</span>
-                            <p className="text-sm font-bold text-white">
+                            <p className="text-lg font-black text-white tabular-nums">
                                 {currentBalance.toLocaleString()}
-                                <span className="text-xs text-white/80 ml-1">{t('uc')}</span>
+                                <span className="text-xs text-white/80 ml-1 font-bold">{t('uc')}</span>
                             </p>
                         </div>
                     </div>
