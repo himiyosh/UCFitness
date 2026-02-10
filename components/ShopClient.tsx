@@ -728,11 +728,11 @@ function ItemPreviewDialog({
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden"
+                className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
             >
                 {/* プレビュー領域（大） */}
