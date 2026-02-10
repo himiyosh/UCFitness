@@ -113,7 +113,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem; anchorRect?: DOMRect } | null>(null);
-    const [previewItem, setPreviewItem] = useState<{ item: ShopItem; anchorRect?: DOMRect } | null>(null);
+    const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
     const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
 
     // フィルタされたアイテム
@@ -283,7 +283,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     return (
                                         <button
                                             key={item.id}
-                                            onClick={(e) => setPreviewItem({ item, anchorRect: (e.currentTarget as HTMLElement).getBoundingClientRect() })}
+                                            onClick={() => setPreviewItem(item)}
                                             className="group flex items-center gap-2.5 bg-white/20 hover:bg-white/30 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30 transition-all text-left"
                                         >
                                             {/* ミニプレビュー */}
@@ -399,7 +399,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     canAfford={currentBalance >= item.price}
                                     isLoading={isLoading === item.id}
                                     onBuy={(rect: DOMRect) => setConfirmDialog({ item, anchorRect: rect })}
-                                    onPreview={(rect: DOMRect) => setPreviewItem({ item, anchorRect: rect })}
+                                    onPreview={() => setPreviewItem(item)}
                                     userImage={userImage}
                                     userName={userName}
                                     t={t}
@@ -427,20 +427,19 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             {/* アイテムプレビューダイアログ */}
             {previewItem && (
                 <ItemPreviewDialog
-                    item={previewItem.item}
+                    item={previewItem}
                     locale={locale}
-                    isOwned={ownedItemIds.has(previewItem.item.id)}
+                    isOwned={ownedItemIds.has(previewItem.id)}
                     isEquipped={
-                        equippedState[previewItem.item.category as ShopCategory]?.shop_items?.id === previewItem.item.id
+                        equippedState[previewItem.category as ShopCategory]?.shop_items?.id === previewItem.id
                     }
-                    meetsRank={meetsRank(previewItem.item.rank_required)}
-                    canAfford={currentBalance >= previewItem.item.price}
-                    isLoading={isLoading === previewItem.item.id}
-                    onBuy={() => handlePurchase(previewItem.item)}
+                    meetsRank={meetsRank(previewItem.rank_required)}
+                    canAfford={currentBalance >= previewItem.price}
+                    isLoading={isLoading === previewItem.id}
+                    onBuy={() => handlePurchase(previewItem)}
                     onClose={() => setPreviewItem(null)}
                     userImage={userImage}
                     userName={userName}
-                    anchorRect={previewItem.anchorRect}
                     t={t}
                 />
             )}
@@ -485,7 +484,7 @@ function ShopItemCard({
     canAfford: boolean;
     isLoading: boolean;
     onBuy: (rect: DOMRect) => void;
-    onPreview: (rect: DOMRect) => void;
+    onPreview: () => void;
     userImage: string | null;
     userName: string | null;
     t: any;
@@ -503,7 +502,7 @@ function ShopItemCard({
                     : isOwned ? 'bg-white border-green-200'
                     : 'bg-white border-gray-100'
             }`}
-            onClick={(e) => onPreview((e.currentTarget as HTMLElement).getBoundingClientRect())}
+            onClick={() => onPreview()}
         >
             {/* プレビュー + バッジ ラッパー */}
             <div className={`relative ${isLocked ? 'opacity-40 grayscale' : ''}`}>
@@ -701,7 +700,7 @@ function InventoryView({
 // サブコンポーネント: アイテムプレビューダイアログ
 // ============================================
 function ItemPreviewDialog({
-    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onClose, userImage, userName, anchorRect, t,
+    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onClose, userImage, userName, t,
 }: {
     item: ShopItem;
     locale: string;
@@ -714,48 +713,11 @@ function ItemPreviewDialog({
     onClose: () => void;
     userImage: string | null;
     userName: string | null;
-    anchorRect?: DOMRect;
     t: any;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
     const isComingSoon = !item.is_active;
-    const dialogRef = useRef<HTMLDivElement>(null);
-    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-    const [ready, setReady] = useState(!anchorRect);
-
-    const calcPosition = useCallback(() => {
-        if (!anchorRect || !dialogRef.current) return;
-        const dialog = dialogRef.current;
-        const dw = dialog.offsetWidth;
-        const dh = dialog.offsetHeight;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const margin = 8;
-
-        // ダイアログをアンカーの下に配置（スペースがなければ上に）
-        let top = anchorRect.bottom + margin;
-        if (top + dh > vh - margin) {
-            top = anchorRect.top - dh - margin;
-        }
-        // まだ画面外なら、ビューポート中央付近にクランプ
-        top = Math.max(margin, Math.min(top, vh - dh - margin));
-
-        // 水平方向: アンカーの中央に揃える
-        let left = anchorRect.left + anchorRect.width / 2 - dw / 2;
-        left = Math.max(margin, Math.min(left, vw - dw - margin));
-
-        setPos({ top, left });
-        setReady(true);
-    }, [anchorRect]);
-
-    useEffect(() => { calcPosition(); }, [calcPosition]);
-    useEffect(() => {
-        if (!anchorRect) return;
-        const h = () => calcPosition();
-        window.addEventListener('resize', h);
-        return () => window.removeEventListener('resize', h);
-    }, [anchorRect, calcPosition]);
 
     // ESC で閉じる
     useEffect(() => {
@@ -764,22 +726,13 @@ function ItemPreviewDialog({
         return () => window.removeEventListener('keydown', h);
     }, [onClose]);
 
-    const positionStyle: React.CSSProperties = pos
-        ? { position: 'fixed', top: pos.top, left: pos.left, width: 'min(24rem, calc(100vw - 1rem))' }
-        : {};
-
     return (
         <div
-            className={`fixed inset-0 z-50 bg-black/50 ${!anchorRect ? 'flex items-start justify-center pt-[15vh] overflow-y-auto' : 'overflow-y-auto'}`}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto"
             onClick={onClose}
         >
             <div
-                ref={dialogRef}
-                style={{
-                    ...positionStyle,
-                    ...(anchorRect && !ready ? { visibility: 'hidden' as const } : {}),
-                }}
-                className={`bg-white rounded-2xl shadow-2xl ${anchorRect ? '' : 'max-w-sm w-full mx-4 mb-8'} animate-scale-in overflow-hidden`}
+                className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
                 {/* プレビュー領域（大） */}
