@@ -84,11 +84,16 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             // 成功
             setOwnedItemIds(prev => new Set([...prev, item.id]));
             setCurrentBalance(data.newBalance ?? currentBalance - item.price);
-            // ユーザーアイテムリスト更新（再fetch不要のローカル更新）
-            setUserItemsState(prev => [
-                { id: crypto.randomUUID(), user_id: '', item_id: item.id, purchased_at: new Date().toISOString(), is_equipped: false, shop_items: item },
-                ...prev,
-            ]);
+            // ユーザーアイテムリスト更新（サーバーから返された実IDを使用）
+            if (data.userItem) {
+                setUserItemsState(prev => [data.userItem, ...prev]);
+            } else {
+                // フォールバック: サーバーがuserItemを返さなかった場合
+                setUserItemsState(prev => [
+                    { id: crypto.randomUUID(), user_id: '', item_id: item.id, purchased_at: new Date().toISOString(), is_equipped: false, shop_items: item },
+                    ...prev,
+                ]);
+            }
             const itemName = locale === 'ja' ? item.name_ja : item.name_en;
             showToast(t('purchaseSuccessDesc', { item: itemName }), 'success');
         } catch {
@@ -143,7 +148,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
         } finally {
             setIsLoading(null);
         }
-    }, [showToast, t]);
+    }, [showToast, setTheme, t]);
 
     // ランクチェック
     const meetsRank = (requiredRank: string) => (RANK_ORDER[userRank] ?? 0) >= (RANK_ORDER[requiredRank] ?? 0);

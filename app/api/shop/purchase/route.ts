@@ -36,6 +36,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             success: true,
             newBalance: result.newBalance,
+            userItem: result.userItem,
         });
     } catch (error) {
         console.error('Shop purchase error:', error);
