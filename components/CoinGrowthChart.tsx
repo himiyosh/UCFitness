@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
     Area,
@@ -27,15 +26,6 @@ interface CoinGrowthChartProps {
 
 export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     const t = useTranslations('Bank');
-
-    // モバイル判定（SSR安全: デフォルト false）
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < 640);
-        check();
-        window.addEventListener('resize', check);
-        return () => window.removeEventListener('resize', check);
-    }, []);
 
     if (!data || data.length === 0) {
         return (
@@ -112,17 +102,17 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     ];
 
     return (
-        <div className="chart-container bg-white rounded-xl p-2 sm:p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-3 sm:mb-4 px-1 sm:px-0">
-                <h3 className="text-sm sm:text-base font-bold text-gray-900 flex items-center gap-2">
+        <div className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                     📈 {t('assetGrowth')}
                 </h3>
-                <span className="text-[10px] sm:text-xs text-gray-400">{t('last30days')}</span>
+                <span className="text-xs text-gray-400">{t('last30days')}</span>
             </div>
 
-            <div className="h-72 sm:h-64 -mx-1 sm:mx-0">
+            <div className="h-72 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={isMobile ? { top: 5, right: 4, left: -10, bottom: 5 } : { top: 5, right: 0, left: -20, bottom: 5 }}>
+                    <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
                         <defs>
                             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
@@ -132,32 +122,29 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                         <XAxis
                             dataKey="dateLabel"
-                            tick={{ fontSize: isMobile ? 9 : 10, fill: '#9ca3af' }}
+                            tick={{ fontSize: 10, fill: '#9ca3af' }}
                             tickLine={false}
                             axisLine={{ stroke: '#e5e7eb' }}
-                            interval={isMobile ? Math.max(1, Math.floor(chartData.length / 6)) : 'preserveStartEnd'}
+                            interval="preserveStartEnd"
                         />
                         {/* 左Y軸: 累積残高スケール（オレンジ線） */}
                         <YAxis
                             yAxisId="balance"
                             domain={balanceDomain}
-                            tick={{ fontSize: isMobile ? 9 : 10, fill: '#d97706' }}
+                            tick={{ fontSize: 10, fill: '#d97706' }}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={formatNumber}
-                            width={isMobile ? 38 : undefined}
                         />
                         {/* 右Y軸: 日次変動スケール（バー） */}
                         <YAxis
                             yAxisId="daily"
                             orientation="right"
                             domain={dailyDomain}
-                            tick={{ fontSize: isMobile ? 9 : 10, fill: '#6b7280' }}
+                            tick={{ fontSize: 10, fill: '#6b7280' }}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={formatNumber}
-                            width={isMobile ? 35 : undefined}
-                            hide={isMobile}
                         />
                         <Tooltip content={<CustomTooltip />} />
                         {hasNegative && (
