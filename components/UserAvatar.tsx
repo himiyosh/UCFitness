@@ -121,7 +121,7 @@ export default function UserAvatar({
                     style={frameStyle}
                     onClick={onClick}
                 >
-                    <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                    <div className="w-full h-full rounded-full overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
                         {src ? (
                             <img className="w-full h-full object-cover" src={src} alt={alt} />
                         ) : (
@@ -135,11 +135,13 @@ export default function UserAvatar({
                 <div
                     className={`${sizeConfig.container} rounded-full overflow-hidden flex-shrink-0 
                         ${frameColor ? '' : `border-2 ${borderClass}`} 
-                        ${frameColor ? '' : 'shadow-sm'} bg-white
+                        ${frameColor ? '' : 'shadow-sm'}
+                        ${frameColor ? '' : 'bg-white'}
                         ${onClick ? 'cursor-pointer' : ''}`}
                     style={{
                         ...frameStyle,
                         ...(borderWidth ? { borderWidth, borderStyle: 'solid' } : {}),
+                        ...(frameColor ? { backgroundColor: '#ffffff' } : {}),
                     }}
                     onClick={onClick}
                 >

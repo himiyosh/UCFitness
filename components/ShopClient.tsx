@@ -435,7 +435,7 @@ function ShopItemCard({
             {/* プレビュー + バッジ ラッパー */}
             <div className="relative">
                 {/* プレビュー領域（Coming Soon時はぼかし / 背景は常に表示） */}
-                <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
+                <div className={`h-24 flex items-center justify-center midnight-preserve-bg ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
@@ -649,7 +649,7 @@ function ItemPreviewDialog({
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 overflow-y-auto" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 mb-8 animate-scale-in overflow-hidden" onClick={e => e.stopPropagation()}>
                 {/* プレビュー領域（大） */}
-                <div className="relative h-48 flex items-center justify-center" style={{
+                <div className="relative h-48 flex items-center justify-center midnight-preserve-bg" style={{
                     background: item.category === 'THEME_COLOR'
                         ? `linear-gradient(135deg, ${item.preview_value}44, ${item.preview_value}88)`
                         : 'linear-gradient(135deg, #fef3c7, #fbbf24, #fde68a)',
@@ -755,7 +755,7 @@ function ConfirmDialog({
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
                 </p>
-                <div className="flex flex-col items-center gap-3 mb-4 py-4 rounded-lg" style={{
+                <div className="flex flex-col items-center gap-3 mb-4 py-4 rounded-lg midnight-preserve-bg" style={{
                     background: item.category === 'THEME_COLOR'
                         ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}44)`
                         : 'linear-gradient(135deg, #fef3c7, #fde68a)',
