@@ -85,18 +85,20 @@ export default async function BankPage() {
                             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
                         </div>
                         <div>
-                            <h1 className="text-3xl font-extrabold text-gray-900">{t('title')}</h1>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-3xl font-extrabold text-gray-900">{t('title')}</h1>
+                                {/* UC Tips バルーン */}
+                                <div className="relative group/tip">
+                                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] text-[10px] font-bold cursor-help hover:bg-[var(--theme-primary)]/20 transition-colors">?</span>
+                                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-xl bg-white shadow-lg border border-gray-200 px-4 py-3 opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50">
+                                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                                        <p className="text-xs font-semibold text-gray-800">{t('ucExplainLabel')}</p>
+                                        <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">{t('ucExplainLine1')}</p>
+                                        <p className="text-[11px] text-gray-600 leading-relaxed">{t('ucExplainLine2')}</p>
+                                    </div>
+                                </div>
+                            </div>
                             <p className="text-gray-500 text-sm">{t('subtitle')}</p>
-                        </div>
-                    </div>
-
-                    {/* UC（UndouCoin）説明バナー */}
-                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--theme-primary)]/15 bg-[var(--theme-primary)]/5 px-4 py-3">
-                        <span className="mt-0.5 flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] text-xs font-bold">?</span>
-                        <div className="min-w-0">
-                            <p className="text-xs font-semibold text-gray-800">{t('ucExplainLabel')}</p>
-                            <p className="text-xs text-gray-600 mt-0.5">{t('ucExplainLine1')}</p>
-                            <p className="text-xs text-gray-600">{t('ucExplainLine2')}</p>
                         </div>
                     </div>
                 </div>
