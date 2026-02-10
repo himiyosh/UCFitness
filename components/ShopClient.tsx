@@ -645,42 +645,46 @@ function InventoryView({
                                 const isEquipped = ui.is_equipped;
 
                                 return (
-                                    <div key={ui.id} className={`bg-white rounded-lg border p-3 flex flex-col items-center gap-2 transition-all text-center ${
-                                        isEquipped ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 hover:border-gray-300'
+                                    <div key={ui.id} className={`rounded-xl border overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                                        isEquipped ? 'border-amber-300 ring-1 ring-amber-200/50' : 'border-gray-200 hover:border-gray-300'
                                     }`}>
-                                        {/* プレビュー */}
-                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{
-                                            background: item.category === 'THEME_COLOR'
-                                                ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                                                : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+                                        {/* プレビュー背景エリア */}
+                                        <div className="h-20 flex items-center justify-center relative" style={{
+                                            background: item.category === 'ICON_FRAME'
+                                                ? `linear-gradient(135deg, ${(() => { const c = getFrameColor(item.preview_value); return `${c}22, ${c}44`; })()})`
+                                                : item.category === 'THEME_COLOR'
+                                                    ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}55)`
+                                                    : 'linear-gradient(135deg, #f0f4ff, #e8ecf4)',
                                         }}>
-                                            {item.category === 'ICON_FRAME' && (
-                                                <FramePreview previewValue={item.preview_value} size="sm" userImage={userImage} userName={userName} />
-                                            )}
-                                            {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
-                                            {item.category === 'THEME_COLOR' && (
-                                                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.preview_value }} />
-                                            )}
-                                        </div>
-
-                                        <div className="w-full min-w-0">
-                                            <p className="text-xs font-bold text-gray-900 leading-tight line-clamp-2">{name}</p>
                                             {isEquipped && (
-                                                <p className="text-[10px] text-amber-600 font-medium mt-0.5">⭐ {t('equipped')}</p>
+                                                <div className="absolute top-1.5 right-1.5 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                                    ⭐ {t('equipped')}
+                                                </div>
+                                            )}
+                                            {item.category === 'ICON_FRAME' && (
+                                                <FramePreview previewValue={item.preview_value} size="lg" userImage={userImage} userName={userName} />
+                                            )}
+                                            {item.category === 'TITLE' && <span className="text-3xl drop-shadow-sm">{item.preview_value}</span>}
+                                            {item.category === 'THEME_COLOR' && (
+                                                <div className="w-10 h-10 rounded-full shadow-md border-2 border-white/60" style={{ backgroundColor: item.preview_value }} />
                                             )}
                                         </div>
 
-                                        <button
-                                            onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
-                                            disabled={isLoading === ui.id}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
-                                                isEquipped
-                                                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                    : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
-                                            }`}
-                                        >
-                                            {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
-                                        </button>
+                                        {/* 下部: 名前 + ボタン */}
+                                        <div className={`p-2.5 text-center space-y-2 ${isEquipped ? 'bg-amber-50/50' : 'bg-white'}`}>
+                                            <p className="text-xs font-bold text-gray-900 leading-tight line-clamp-2">{name}</p>
+                                            <button
+                                                onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
+                                                disabled={isLoading === ui.id}
+                                                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                    isEquipped
+                                                        ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                        : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
+                                                }`}
+                                            >
+                                                {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
