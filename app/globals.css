@@ -28,6 +28,14 @@ html {
   background: rgba(156, 163, 175, 0.6);
 }
 
+/* ==== RECHARTS TAP OUTLINE FIX ==== */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-surface {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ==== THEME SYSTEM ==== */
 :root {
   --background: #ffffff;
