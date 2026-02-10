@@ -1,70 +1,10 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
-
-/**
- * ショップ用フレームプレビュー — アバターの周囲にフレーム色の太いリングを表示
- * UserAvatar の border (3-4px) では細すぎて見えないため、
- * 固定サイズの外枠 + padding でリングを描画し、中に画像を配置する。
- * 外枠サイズ = UserAvatar の SIZE_MAP と同一 → オーバーフローなし。
- */
-function FramePreview({ previewValue, size, userImage, userName }: {
-    previewValue: string;
-    size: 'sm' | 'lg' | 'xl' | '2xl';
-    userImage: string | null;
-    userName: string | null;
-}) {
-    const fc = getFrameColor(previewValue);
-    if (!fc) return <UserAvatar size={size} src={userImage} name={userName} />;
-
-    const isRainbow = fc === 'rainbow';
-    const bg = isRainbow
-        ? 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)'
-        : fc;
-
-    // SIZE_MAP と一致させる（Tailwind の box-border でパディング内包）
-    const sizeClass: Record<string, string> = {
-        sm: 'w-8 h-8',
-        lg: 'w-16 h-16 sm:w-24 sm:h-24',
-        xl: 'w-24 h-24',
-        '2xl': 'w-24 h-24 sm:w-32 sm:h-32',
-    };
-    const padClass: Record<string, string> = {
-        sm: 'p-[3px]',
-        lg: 'p-[4px]',
-        xl: 'p-[4px]',
-        '2xl': 'p-[5px]',
-    };
-    const textClass: Record<string, string> = {
-        sm: 'text-[10px]',
-        lg: 'text-2xl sm:text-3xl',
-        xl: 'text-3xl',
-        '2xl': 'text-4xl',
-    };
-    const initial = (userName?.[0] || 'U').toUpperCase();
-
-    return (
-        <div
-            className={`${sizeClass[size]} ${padClass[size]} rounded-full flex-shrink-0`}
-            style={{ background: bg }}
-        >
-            <div className="w-full h-full rounded-full overflow-hidden bg-white">
-                {userImage ? (
-                    <img className="w-full h-full object-cover" src={userImage} alt={userName || ''} />
-                ) : (
-                    <div className={`w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 font-bold ${textClass[size]}`}>
-                        {initial}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
 
 /** item_code → アプリテーマのマッピング */
 const THEME_MAP: Record<string, Theme> = {
@@ -79,8 +19,6 @@ interface ShopClientProps {
     balance: number;
     userRank: string;
     locale: string;
-    userImage: string | null;
-    userName: string | null;
 }
 
 type TabKey = 'ALL' | ShopCategory;
@@ -101,7 +39,7 @@ const RANK_ORDER: Record<string, number> = {
 };
 
 // --- メインコンポーネント ---
-export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName }: ShopClientProps) {
+export default function ShopClient({ items, userItems, equipped, balance, userRank, locale }: ShopClientProps) {
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
     const [activeTab, setActiveTab] = useState<TabKey>('ALL');
@@ -113,7 +51,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [userItemsState, setUserItemsState] = useState(userItems);
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem; anchorRect?: DOMRect } | null>(null);
+    const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
     const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
     const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
 
@@ -284,7 +222,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     return (
                                         <button
                                             key={item.id}
-                                            onClick={() => setPreviewItem(item)}
+                                            onClick={() => setConfirmDialog({ item })}
                                             className="group flex items-center gap-2.5 bg-white/20 hover:bg-white/30 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30 transition-all text-left"
                                         >
                                             {/* ミニプレビュー */}
@@ -294,7 +232,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                                     : 'rgba(255,255,255,0.2)',
                                             }}>
                                                 {item.category === 'ICON_FRAME' && (
-                                                    <FramePreview previewValue={item.preview_value} size="sm" userImage={userImage} userName={userName} />
+                                                    <UserAvatar size="sm" frameColor={getFrameColor(item.preview_value)} />
                                                 )}
                                                 {item.category === 'TITLE' && <span className="text-base">{item.preview_value}</span>}
                                                 {item.category === 'THEME_COLOR' && (
@@ -399,10 +337,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     meetsRank={meetsRank(item.rank_required)}
                                     canAfford={currentBalance >= item.price}
                                     isLoading={isLoading === item.id}
-                                    onBuy={(rect: DOMRect) => setConfirmDialog({ item, anchorRect: rect })}
+                                    onBuy={() => setConfirmDialog({ item })}
                                     onPreview={() => setPreviewItem(item)}
-                                    userImage={userImage}
-                                    userName={userName}
                                     t={t}
                                 />
                             ))}
@@ -419,14 +355,12 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     locale={locale}
                     isLoading={isLoading}
                     onEquip={handleEquip}
-                    userImage={userImage}
-                    userName={userName}
                     t={t}
                 />
             )}
 
             {/* アイテムプレビューダイアログ */}
-            {previewItem && createPortal(
+            {previewItem && (
                 <ItemPreviewDialog
                     item={previewItem}
                     locale={locale}
@@ -439,26 +373,19 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     isLoading={isLoading === previewItem.id}
                     onBuy={() => handlePurchase(previewItem)}
                     onClose={() => setPreviewItem(null)}
-                    userImage={userImage}
-                    userName={userName}
                     t={t}
-                />,
-                document.body
+                />
             )}
 
             {/* 購入確認ダイアログ */}
-            {confirmDialog && createPortal(
+            {confirmDialog && (
                 <ConfirmDialog
                     item={confirmDialog.item}
                     locale={locale}
                     onConfirm={() => handlePurchase(confirmDialog.item)}
                     onCancel={() => setConfirmDialog(null)}
-                    userImage={userImage}
-                    userName={userName}
-                    anchorRect={confirmDialog.anchorRect}
                     t={t}
-                />,
-                document.body
+                />
             )}
 
             {/* トースト */}
@@ -477,7 +404,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 // サブコンポーネント: ショップアイテムカード
 // ============================================
 function ShopItemCard({
-    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onPreview, userImage, userName, t,
+    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onPreview, t,
 }: {
     item: ShopItem;
     locale: string;
@@ -486,10 +413,8 @@ function ShopItemCard({
     meetsRank: boolean;
     canAfford: boolean;
     isLoading: boolean;
-    onBuy: (rect: DOMRect) => void;
+    onBuy: () => void;
     onPreview: () => void;
-    userImage: string | null;
-    userName: string | null;
     t: any;
 }) {
     const isComingSoon = !item.is_active;
@@ -505,32 +430,38 @@ function ShopItemCard({
                     : isOwned ? 'bg-white border-green-200'
                     : 'bg-white border-gray-100'
             }`}
-            onClick={() => onPreview()}
+            onClick={onPreview}
         >
             {/* プレビュー + バッジ ラッパー */}
-            <div className={`relative ${isLocked ? 'opacity-40 grayscale' : ''}`}>
-                {/* プレビュー領域（Coming Soon時はぼかし） */}
+            <div className="relative">
+                {/* プレビュー領域（Coming Soon時はぼかし / 背景は常に表示） */}
                 <div className={`h-24 flex items-center justify-center ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
                             ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                            : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+                            : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                 }}>
-                    {item.category === 'ICON_FRAME' && (
-                        <FramePreview previewValue={item.preview_value} size="lg" userImage={userImage} userName={userName} />
-                    )}
-                    {item.category === 'TITLE' && (
-                        <div className="text-center">
-                            <span className="text-3xl">{item.preview_value}</span>
-                        </div>
-                    )}
-                    {item.category === 'THEME_COLOR' && (
-                        <div className="w-12 h-12 rounded-full shadow-lg border-2 border-white/40" style={{ backgroundColor: item.preview_value }} />
-                    )}
+                    {/* プレビューコンテンツ（ロック時はコンテンツのみ減衰、背景は維持） */}
+                    <div className={isLocked ? 'opacity-50 grayscale' : ''}>
+                        {item.category === 'ICON_FRAME' && (
+                            <UserAvatar size="lg" frameColor={getFrameColor(item.preview_value)} />
+                        )}
+                        {item.category === 'TITLE' && (
+                            <div className="text-center">
+                                <span className="text-3xl">{item.preview_value}</span>
+                            </div>
+                        )}
+                        {item.category === 'THEME_COLOR' && (
+                            <div className="w-12 h-12 rounded-full shadow-lg border-2 border-white/40" style={{ backgroundColor: item.preview_value }} />
+                        )}
+                    </div>
                 </div>
 
-                {/* バッジ類（blur の影響外） */}
+                {/* ロック時オーバーレイ（midnight でも背景が見える程度の薄い被せ） */}
+                {isLocked && <div className="absolute inset-0 bg-black/15 pointer-events-none" />}
+
+                {/* バッジ類 */}
                 {isComingSoon && (
                     <div className="absolute top-2 right-2 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
                         🚧 {t('comingSoon')}
@@ -549,7 +480,7 @@ function ShopItemCard({
             </div>
 
             {/* 情報 + アクション */}
-            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''} ${isLocked ? 'opacity-40 grayscale' : ''}`}>
+            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''} ${isLocked ? 'opacity-50' : ''}`}>
                 <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
                 <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-600'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
@@ -559,7 +490,7 @@ function ShopItemCard({
                     </div>
                     {!isOwned && !isComingSoon && meetsRank && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); onBuy((e.currentTarget as HTMLElement).getBoundingClientRect()); }}
+                            onClick={(e) => { e.stopPropagation(); onBuy(); }}
                             disabled={!canAfford || isLoading}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 canAfford
@@ -595,15 +526,13 @@ function ShopItemCard({
 // サブコンポーネント: インベントリ
 // ============================================
 function InventoryView({
-    userItems, equipped, locale, isLoading, onEquip, userImage, userName, t,
+    userItems, equipped, locale, isLoading, onEquip, t,
 }: {
     userItems: UserItem[];
     equipped: EquippedItems;
     locale: string;
     isLoading: string | null;
     onEquip: (ui: UserItem, action: 'equip' | 'unequip') => void;
-    userImage: string | null;
-    userName: string | null;
     t: any;
 }) {
     if (userItems.length === 0) {
@@ -648,46 +577,42 @@ function InventoryView({
                                 const isEquipped = ui.is_equipped;
 
                                 return (
-                                    <div key={ui.id} className={`rounded-xl border overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 ${
-                                        isEquipped ? 'border-amber-300 ring-1 ring-amber-200/50' : 'border-gray-200 hover:border-gray-300'
+                                    <div key={ui.id} className={`bg-white rounded-lg border p-3 flex items-center gap-3 transition-all ${
+                                        isEquipped ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 hover:border-gray-300'
                                     }`}>
-                                        {/* プレビュー背景エリア */}
-                                        <div className="h-28 flex items-center justify-center relative overflow-hidden" style={{
-                                            background: item.category === 'ICON_FRAME'
-                                                ? `linear-gradient(135deg, ${(() => { const c = getFrameColor(item.preview_value); return `${c}22, ${c}44`; })()})`
-                                                : item.category === 'THEME_COLOR'
-                                                    ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}55)`
-                                                    : 'linear-gradient(135deg, #f0f4ff, #e8ecf4)',
+                                        {/* プレビュー（小） */}
+                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{
+                                            background: item.category === 'THEME_COLOR'
+                                                ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
+                                                : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                                         }}>
-                                            {isEquipped && (
-                                                <div className="absolute top-1.5 right-1.5 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                                                    ⭐ {t('equipped')}
-                                                </div>
-                                            )}
                                             {item.category === 'ICON_FRAME' && (
-                                                <FramePreview previewValue={item.preview_value} size="lg" userImage={userImage} userName={userName} />
+                                                <UserAvatar size="sm" frameColor={getFrameColor(item.preview_value)} />
                                             )}
-                                            {item.category === 'TITLE' && <span className="text-3xl drop-shadow-sm">{item.preview_value}</span>}
+                                            {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
-                                                <div className="w-10 h-10 rounded-full shadow-md border-2 border-white/60" style={{ backgroundColor: item.preview_value }} />
+                                                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.preview_value }} />
                                             )}
                                         </div>
 
-                                        {/* 下部: 名前 + ボタン */}
-                                        <div className={`p-2.5 text-center space-y-2 ${isEquipped ? 'bg-amber-50/50' : 'bg-white'}`}>
-                                            <p className="text-xs font-bold text-gray-900 leading-tight line-clamp-2">{name}</p>
-                                            <button
-                                                onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
-                                                disabled={isLoading === ui.id}
-                                                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                                    isEquipped
-                                                        ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                        : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
-                                                }`}
-                                            >
-                                                {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
-                                            </button>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900 truncate">{name}</p>
+                                            {isEquipped && (
+                                                <p className="text-xs text-amber-600 font-medium">⭐ {t('equipped')}</p>
+                                            )}
                                         </div>
+
+                                        <button
+                                            onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
+                                            disabled={isLoading === ui.id}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
+                                                isEquipped
+                                                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                    : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
+                                            }`}
+                                        >
+                                            {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
+                                        </button>
                                     </div>
                                 );
                             })}
@@ -703,7 +628,7 @@ function InventoryView({
 // サブコンポーネント: アイテムプレビューダイアログ
 // ============================================
 function ItemPreviewDialog({
-    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onClose, userImage, userName, t,
+    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onClose, t,
 }: {
     item: ShopItem;
     locale: string;
@@ -714,35 +639,20 @@ function ItemPreviewDialog({
     isLoading: boolean;
     onBuy: () => void;
     onClose: () => void;
-    userImage: string | null;
-    userName: string | null;
     t: any;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
     const isComingSoon = !item.is_active;
 
-    // ESC で閉じる
-    useEffect(() => {
-        const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', h);
-        return () => window.removeEventListener('keydown', h);
-    }, [onClose]);
-
     return (
-        <div
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-            onClick={onClose}
-        >
-            <div
-                className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto"
-                onClick={e => e.stopPropagation()}
-            >
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/50 overflow-y-auto" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 mb-8 animate-scale-in overflow-hidden" onClick={e => e.stopPropagation()}>
                 {/* プレビュー領域（大） */}
                 <div className="relative h-48 flex items-center justify-center" style={{
                     background: item.category === 'THEME_COLOR'
                         ? `linear-gradient(135deg, ${item.preview_value}44, ${item.preview_value}88)`
-                        : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)',
+                        : 'linear-gradient(135deg, #fef3c7, #fbbf24, #fde68a)',
                 }}>
                     {/* 閉じるボタン */}
                     <button
@@ -755,7 +665,7 @@ function ItemPreviewDialog({
                     </button>
 
                     {item.category === 'ICON_FRAME' && (
-                        <FramePreview previewValue={item.preview_value} size="2xl" userImage={userImage} userName={userName} />
+                        <UserAvatar size="2xl" frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-7xl drop-shadow-lg">{item.preview_value}</span>
@@ -828,90 +738,19 @@ function ItemPreviewDialog({
 // サブコンポーネント: 確認ダイアログ
 // ============================================
 function ConfirmDialog({
-    item, locale, onConfirm, onCancel, userImage, userName, anchorRect, t,
+    item, locale, onConfirm, onCancel, t,
 }: {
     item: ShopItem;
     locale: string;
     onConfirm: () => void;
     onCancel: () => void;
-    userImage: string | null;
-    userName: string | null;
-    anchorRect?: DOMRect;
     t: any;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
-    const dialogRef = useRef<HTMLDivElement>(null);
-    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-    const [ready, setReady] = useState(!anchorRect); // anchorRect なしなら即 ready
-
-    /** 位置計算ロジック */
-    const calcPosition = useCallback(() => {
-        if (!anchorRect || !dialogRef.current) return;
-        const dialog = dialogRef.current;
-        const dw = dialog.offsetWidth;
-        const dh = dialog.offsetHeight;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const margin = 12;
-
-        // ダイアログをアンカーの下に配置（スペースがなければ上に）
-        let top = anchorRect.bottom + margin;
-        if (top + dh > vh - margin) {
-            top = anchorRect.top - dh - margin;
-        }
-        // 画面外に出る場合はビューポート内にクランプ
-        top = Math.max(margin, Math.min(top, vh - dh - margin));
-
-        // 水平方向: アンカーの中央に揃える
-        let left = anchorRect.left + anchorRect.width / 2 - dw / 2;
-        left = Math.max(margin, Math.min(left, vw - dw - margin));
-
-        setPos({ top, left });
-        setReady(true);
-    }, [anchorRect]);
-
-    // 初回位置計算
-    useEffect(() => {
-        calcPosition();
-    }, [calcPosition]);
-
-    // #3: ウィンドウリサイズ時に位置を再計算
-    useEffect(() => {
-        if (!anchorRect) return;
-        const handleResize = () => calcPosition();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [anchorRect, calcPosition]);
-
-    // #5: ESC キーで閉じる
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onCancel();
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onCancel]);
-
-    // #4: anchorRect がある場合は fixed + 座標、ない場合はフォールバック
-    const positionStyle: React.CSSProperties = pos
-        ? { position: 'fixed', top: pos.top, left: pos.left, width: 'min(24rem, calc(100vw - 2rem))' }
-        : {};
 
     return (
-        <div
-            className={`fixed inset-0 z-50 bg-black/40 ${!anchorRect ? 'flex items-start justify-center pt-[20vh] overflow-y-auto' : ''}`}
-            onClick={onCancel}
-        >
-            <div
-                ref={dialogRef}
-                style={{
-                    ...positionStyle,
-                    // #1: anchorRect 指定時は位置計算完了まで非表示にしてチラつき防止
-                    ...(anchorRect && !ready ? { visibility: 'hidden' as const } : {}),
-                }}
-                className={`bg-white rounded-xl shadow-xl p-6 max-w-sm ${anchorRect ? '' : 'w-full mx-4 mb-8'} animate-scale-in`}
-                onClick={(e) => e.stopPropagation()}
-            >
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/40 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 mb-8 animate-scale-in">
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
@@ -919,10 +758,10 @@ function ConfirmDialog({
                 <div className="flex flex-col items-center gap-3 mb-4 py-4 rounded-lg" style={{
                     background: item.category === 'THEME_COLOR'
                         ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}44)`
-                        : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+                        : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        <FramePreview previewValue={item.preview_value} size="xl" userImage={userImage} userName={userName} />
+                        <UserAvatar size="xl" frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-3xl">{item.preview_value}</span>
