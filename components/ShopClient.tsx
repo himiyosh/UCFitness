@@ -654,7 +654,7 @@ function ItemPreviewDialog({
     return createPortal(
         <div className="fixed inset-0 z-50">
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-            <div className="relative flex items-center justify-center h-full p-4">
+            <div className="relative flex items-center justify-center h-full p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 {/* プレビュー領域（大） */}
                 <div className="relative h-48 flex items-center justify-center midnight-preserve-bg" style={{
@@ -761,8 +761,8 @@ function ConfirmDialog({
     return createPortal(
         <div className="fixed inset-0 z-50">
             <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
-            <div className="relative flex items-center justify-center h-full p-4">
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in max-h-[90vh] overflow-y-auto">
+            <div className="relative flex items-center justify-center h-full p-4" onClick={onCancel}>
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
