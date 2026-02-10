@@ -20,6 +20,8 @@ interface ShopClientProps {
     balance: number;
     userRank: string;
     locale: string;
+    userImage: string | null;
+    userName: string | null;
 }
 
 type TabKey = 'ALL' | ShopCategory;
@@ -40,7 +42,7 @@ const RANK_ORDER: Record<string, number> = {
 };
 
 // --- メインコンポーネント ---
-export default function ShopClient({ items, userItems, equipped, balance, userRank, locale }: ShopClientProps) {
+export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName }: ShopClientProps) {
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
     const [activeTab, setActiveTab] = useState<TabKey>('ALL');
@@ -238,7 +240,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                                     : 'rgba(255,255,255,0.2)',
                                             }}>
                                                 {item.category === 'ICON_FRAME' && (
-                                                    <UserAvatar size="sm" frameColor={getFrameColor(item.preview_value)} />
+                                                    <UserAvatar size="sm" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                                                 )}
                                                 {item.category === 'TITLE' && <span className="text-base">{item.preview_value}</span>}
                                                 {item.category === 'THEME_COLOR' && (
@@ -346,6 +348,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     onBuy={() => setConfirmDialog({ item })}
                                     onPreview={() => setPreviewItem(item)}
                                     t={t}
+                                    userImage={userImage}
+                                    userName={userName}
                                 />
                             ))}
                         </div>
@@ -380,6 +384,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     onBuy={() => handlePurchase(previewItem)}
                     onClose={() => setPreviewItem(null)}
                     t={t}
+                    userImage={userImage}
+                    userName={userName}
                 />
             )}
 
@@ -391,6 +397,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     onConfirm={() => handlePurchase(confirmDialog.item)}
                     onCancel={() => setConfirmDialog(null)}
                     t={t}
+                    userImage={userImage}
+                    userName={userName}
                 />
             )}
 
@@ -410,7 +418,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 // サブコンポーネント: ショップアイテムカード
 // ============================================
 function ShopItemCard({
-    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onPreview, t,
+    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onPreview, t, userImage, userName,
 }: {
     item: ShopItem;
     locale: string;
@@ -422,6 +430,8 @@ function ShopItemCard({
     onBuy: () => void;
     onPreview: () => void;
     t: any;
+    userImage: string | null;
+    userName: string | null;
 }) {
     const isComingSoon = !item.is_active;
     const name = locale === 'ja' ? item.name_ja : item.name_en;
@@ -451,7 +461,7 @@ function ShopItemCard({
                     {/* プレビューコンテンツ（ロック時はコンテンツのみ減衰、背景は維持） */}
                     <div className={isLocked ? 'opacity-50 grayscale' : ''}>
                         {item.category === 'ICON_FRAME' && (
-                            <UserAvatar size="lg" frameColor={getFrameColor(item.preview_value)} />
+                            <UserAvatar size="lg" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                         )}
                         {item.category === 'TITLE' && (
                             <div className="text-center">
@@ -634,7 +644,7 @@ function InventoryView({
 // サブコンポーネント: アイテムプレビューダイアログ
 // ============================================
 function ItemPreviewDialog({
-    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onClose, t,
+    item, locale, isOwned, isEquipped, meetsRank, canAfford, isLoading, onBuy, onClose, t, userImage, userName,
 }: {
     item: ShopItem;
     locale: string;
@@ -646,6 +656,8 @@ function ItemPreviewDialog({
     onBuy: () => void;
     onClose: () => void;
     t: any;
+    userImage: string | null;
+    userName: string | null;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
@@ -673,7 +685,7 @@ function ItemPreviewDialog({
                     </button>
 
                     {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="2xl" frameColor={getFrameColor(item.preview_value)} />
+                        <UserAvatar size="2xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-7xl drop-shadow-lg">{item.preview_value}</span>
@@ -748,13 +760,15 @@ function ItemPreviewDialog({
 // サブコンポーネント: 確認ダイアログ
 // ============================================
 function ConfirmDialog({
-    item, locale, onConfirm, onCancel, t,
+    item, locale, onConfirm, onCancel, t, userImage, userName,
 }: {
     item: ShopItem;
     locale: string;
     onConfirm: () => void;
     onCancel: () => void;
     t: any;
+    userImage: string | null;
+    userName: string | null;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
 
@@ -773,7 +787,7 @@ function ConfirmDialog({
                         : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                 }}>
                     {item.category === 'ICON_FRAME' && (
-                        <UserAvatar size="xl" frameColor={getFrameColor(item.preview_value)} />
+                        <UserAvatar size="xl" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                     )}
                     {item.category === 'TITLE' && (
                         <span className="text-3xl">{item.preview_value}</span>
