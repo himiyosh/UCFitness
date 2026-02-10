@@ -7,6 +7,7 @@ import { Link } from "@/navigation"; // Localized Link
 import Breadcrumbs from "@/components/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
 import { getTranslations } from 'next-intl/server';
+import { getCoinBalance } from '@/lib/coin-service';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -26,7 +27,7 @@ export default async function SettingsPage() {
     // Fetch current user data
     const { data: user } = await supabase
         .from("users")
-        .select("name, image, username, is_custom_image, step_goal, banner_url")
+        .select("name, image, username, is_custom_image, step_goal, banner_url, created_at")
         .eq("id", (session.user as any).id)
         .single();
 
@@ -36,6 +37,10 @@ export default async function SettingsPage() {
 
     // Midnight テーマの所有チェック（shop_items → user_items）
     const userId = (session.user as any).id;
+
+    // UC残高・ランク取得
+    const coinBalance = await getCoinBalance(userId);
+
     const { data: midnightItem } = await supabaseAdmin
         .from('user_items')
         .select('id, shop_items!inner(item_code)')
@@ -97,13 +102,35 @@ export default async function SettingsPage() {
             </header>
 
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-6">
+                {/* ① グラデーション付きページヘッダー */}
+                <div className="relative mb-8 p-6 rounded-2xl bg-gradient-to-br from-[var(--theme-primary-light)] via-white to-[var(--theme-primary-light)]/50 border border-[var(--theme-primary)]/10 overflow-hidden">
+                    {/* 装飾オーブ */}
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-[var(--theme-primary)]/5 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-purple-400/5 rounded-full blur-2xl"></div>
+
                     <Breadcrumbs items={[{ label: t('title') }]} />
-                    <h1 className="text-3xl font-bold text-gray-900 mt-2">{t('title')}</h1>
-                    <p className="text-gray-500">{t('description')}</p>
+                    <div className="flex items-center gap-3 mt-2">
+                        <div className="settings-gear p-2 rounded-xl bg-[var(--theme-primary)]/10 text-[var(--theme-primary)]">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-gray-900">{t('title')}</h1>
+                            <p className="text-gray-500 text-sm">{t('description')}</p>
+                        </div>
+                    </div>
                 </div>
 
-                <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} />
+                <SettingsForm
+                    user={user}
+                    ownsMidnight={ownsMidnight}
+                    ownedTitles={ownedTitles}
+                    ownedFrames={ownedFrames}
+                    accountData={{
+                        createdAt: user.created_at || null,
+                        ucBalance: coinBalance?.total_balance ?? 0,
+                        investorRank: coinBalance?.investor_rank ?? 'BEGINNER',
+                    }}
+                />
             </div>
         </main>
     );

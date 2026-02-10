@@ -1270,3 +1270,90 @@ body {
 .animate-celebrate {
   animation: celebratePulse 1.5s infinite;
 }
+
+/* ============================================
+   Settings ページ強化: カード & スタガーアニメーション
+   ============================================ */
+
+/* スタガー登場アニメーション */
+@keyframes settingsFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-stagger {
+  opacity: 0;
+  animation: settingsFadeInUp 0.5s ease-out forwards;
+}
+
+.settings-stagger-1 { animation-delay: 0.05s; }
+.settings-stagger-2 { animation-delay: 0.12s; }
+.settings-stagger-3 { animation-delay: 0.19s; }
+.settings-stagger-4 { animation-delay: 0.26s; }
+.settings-stagger-5 { animation-delay: 0.33s; }
+.settings-stagger-6 { animation-delay: 0.40s; }
+.settings-stagger-7 { animation-delay: 0.47s; }
+
+/* カードホバーエフェクト */
+.settings-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
+/* Midnight テーマ対応 */
+[data-theme="midnight"] .settings-card:hover {
+  box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.15), 0 4px 10px -6px rgba(99, 102, 241, 0.08);
+}
+
+/* プロフィール完成度リング */
+@keyframes completenessRingSpin {
+  from { transform: rotate(-90deg); }
+  to { transform: rotate(-90deg); }
+}
+
+/* セクション間デコセパレーター */
+.settings-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.settings-separator-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--theme-primary);
+  opacity: 0.25;
+}
+
+.settings-separator-dot:nth-child(2) {
+  opacity: 0.5;
+  width: 6px;
+  height: 6px;
+}
+
+.settings-separator-dot:nth-child(3) {
+  opacity: 0.25;
+}
+
+/* ギアアイコン回転 */
+@keyframes gearSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.settings-gear:hover {
+  animation: gearSpin 2s linear infinite;
+}

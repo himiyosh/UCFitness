@@ -25,7 +25,13 @@ interface UserData {
     banner_url?: string | null;
 }
 
-export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [], ownedFrames = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[]; ownedFrames?: OwnedFrame[] }) {
+interface AccountData {
+    createdAt: string | null;
+    ucBalance: number;
+    investorRank: string;
+}
+
+export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [], ownedFrames = [], accountData }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[]; ownedFrames?: OwnedFrame[]; accountData?: AccountData }) {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -52,6 +58,39 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     if (theme === 'midnight' && !ownsMidnight) {
         setTheme('classic');
     }
+
+    // ② プロフィール完成度の算出
+    const completenessChecks = [
+        { key: 'checkBanner', done: !!user.banner_url },
+        { key: 'checkAvatar', done: !!user.is_custom_image },
+        { key: 'checkName', done: !!user.name && user.name.trim().length > 0 },
+        { key: 'checkUsername', done: !!user.username && user.username.trim().length >= 6 },
+        { key: 'checkTitle', done: ownedTitles.some(t => t.isEquipped) },
+        { key: 'checkFrame', done: ownedFrames.some(f => f.isEquipped) },
+    ];
+    const completedCount = completenessChecks.filter(c => c.done).length;
+    const completenessPercent = Math.round((completedCount / completenessChecks.length) * 100);
+
+    // ⑤ 投資家ランク表示
+    const rankMap: Record<string, { emoji: string; key: string; color: string }> = {
+        BEGINNER: { emoji: '🌱', key: 'rankBeginner', color: 'text-green-600' },
+        BRONZE: { emoji: '🥉', key: 'rankBronze', color: 'text-amber-700' },
+        SILVER: { emoji: '🥈', key: 'rankSilver', color: 'text-gray-500' },
+        GOLD: { emoji: '🥇', key: 'rankGold', color: 'text-yellow-500' },
+        PLATINUM: { emoji: '💎', key: 'rankPlatinum', color: 'text-cyan-500' },
+        DIAMOND: { emoji: '👑', key: 'rankDiamond', color: 'text-purple-500' },
+        LEGEND: { emoji: '🏆', key: 'rankLegend', color: 'text-red-500' },
+    };
+    const currentRank = rankMap[accountData?.investorRank ?? 'BEGINNER'] || rankMap.BEGINNER;
+
+    // ⑥ セクション間デコセパレーター
+    const SectionSeparator = () => (
+        <div className="settings-separator" aria-hidden="true">
+            <span className="settings-separator-dot"></span>
+            <span className="settings-separator-dot"></span>
+            <span className="settings-separator-dot"></span>
+        </div>
+    );
 
     const handleLanguageChange = async (newLocale: string) => {
         if (switchingLocale) return;
@@ -128,7 +167,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
             {/* Main Column */}
             <div className="lg:col-span-2 space-y-6">
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+            <section className="settings-card settings-stagger settings-stagger-1 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                {/* ③ カラーアクセントライン */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--theme-primary)] to-purple-400"></div>
                 <h2 className="text-xl font-bold text-gray-900 mb-6">{t('profileSettings')}</h2>
 
                 <div className="flex flex-col gap-8">
@@ -246,7 +287,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             </section>
 
             {/* Shop CTA Banner — 独立パネル（リッチ版） */}
-            <Link href="/shop" className="block group">
+            <Link href="/shop" className="block group settings-stagger settings-stagger-2">
                 <section className="relative overflow-hidden rounded-2xl border-2 border-[var(--theme-primary)]/25 bg-gradient-to-br from-[var(--theme-primary)] via-[var(--theme-primary)]/80 to-purple-600 p-6 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300">
                     {/* 背景装飾 */}
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
@@ -288,10 +329,110 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             </div>
 
             {/* Sidebar Column: Preferences */}
-            <div className="space-y-8">
+            <div className="space-y-2">
+
+                {/* ② プロフィール完成度インジケーター */}
+                <section className="settings-card settings-stagger settings-stagger-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="text-lg">📊</span>
+                        {t('profileCompleteness')}
+                    </h2>
+
+                    {/* SVGリング + パーセント表示 */}
+                    <div className="flex items-center gap-5 mb-4">
+                        <div className="relative w-20 h-20 shrink-0">
+                            <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                                <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" strokeWidth="6" className="text-gray-100" />
+                                <circle
+                                    cx="40" cy="40" r="34" fill="none"
+                                    stroke="url(#completeness-gradient)"
+                                    strokeWidth="6"
+                                    strokeLinecap="round"
+                                    strokeDasharray={`${2 * Math.PI * 34}`}
+                                    strokeDashoffset={`${2 * Math.PI * 34 * (1 - completenessPercent / 100)}`}
+                                    className="transition-all duration-700 ease-out"
+                                />
+                                <defs>
+                                    <linearGradient id="completeness-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="var(--theme-primary)" />
+                                        <stop offset="100%" stopColor="#a855f7" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-lg font-extrabold text-gray-900">{completenessPercent}%</span>
+                            </div>
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-900">{t('profileComplete', { percent: completenessPercent })}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                {completenessPercent === 100 ? t('profileComplete100') : t('profileCompleteTip')}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* チェックリスト */}
+                    <div className="space-y-1.5">
+                        {completenessChecks.map((check) => (
+                            <div key={check.key} className="flex items-center gap-2 text-xs">
+                                {check.done ? (
+                                    <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                    </span>
+                                ) : (
+                                    <span className="w-4 h-4 rounded-full border-2 border-gray-200 shrink-0"></span>
+                                )}
+                                <span className={check.done ? 'text-gray-500 line-through' : 'text-gray-700 font-medium'}>{t(check.key as any)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                <SectionSeparator />
+
+                {/* ⑤ アカウントサマリーカード */}
+                {accountData && (
+                    <>
+                    <section className="settings-card settings-stagger settings-stagger-3 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <span className="text-lg">👤</span>
+                            {t('accountSummary')}
+                        </h2>
+                        <div className="space-y-3">
+                            {/* 登録日 */}
+                            {accountData.createdAt && (
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-gray-500">{t('memberSince')}</span>
+                                    <span className="text-sm font-bold text-gray-900 tabular-nums">
+                                        {new Date(accountData.createdAt).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    </span>
+                                </div>
+                            )}
+                            {/* UC残高 */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-gray-500">{t('ucBalance')}</span>
+                                <span className="text-sm font-bold text-[var(--theme-primary)] tabular-nums flex items-center gap-1">
+                                    🪙 {accountData.ucBalance.toLocaleString()}
+                                </span>
+                            </div>
+                            {/* 投資家ランク */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-gray-500">{t('investorRank')}</span>
+                                <span className={`text-sm font-bold ${currentRank.color} flex items-center gap-1`}>
+                                    {currentRank.emoji} {t(currentRank.key as any)}
+                                </span>
+                            </div>
+                        </div>
+                    </section>
+                    <SectionSeparator />
+                    </>
+                )}
 
                 {/* Language Switcher */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                <section className="settings-card settings-stagger settings-stagger-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-500"></div>
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
                         <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
                         {commonT('language')}
@@ -339,8 +480,11 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     </div>
                 </section>
 
+                <SectionSeparator />
+
                 {/* Theme Switcher */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                <section className="settings-card settings-stagger settings-stagger-5 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-400 to-rose-500"></div>
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
                         <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
                         {t('theme')}
@@ -398,7 +542,12 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         {t('moreThemes')} →
                     </Link>
                 </section>
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+
+                <SectionSeparator />
+
+                {/* Daily Goal */}
+                <section className="settings-card settings-stagger settings-stagger-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--theme-primary)] to-indigo-500"></div>
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
                         <svg className="w-5 h-5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                         {t('dailyGoal')}
@@ -409,8 +558,11 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     </div>
                 </section>
 
+                <SectionSeparator />
+
                 {/* Notifications */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                <section className="settings-card settings-stagger settings-stagger-7 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-violet-500"></div>
                     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                         {t('notifications')}
