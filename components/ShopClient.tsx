@@ -651,8 +651,10 @@ function ItemPreviewDialog({
     const isComingSoon = !item.is_active;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+            <div className="relative flex items-center justify-center h-full p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 {/* プレビュー領域（大） */}
                 <div className="relative h-48 flex items-center justify-center midnight-preserve-bg" style={{
                     background: item.category === 'THEME_COLOR'
@@ -735,6 +737,7 @@ function ItemPreviewDialog({
                     )}
                 </div>
             </div>
+            </div>
         </div>
     );
 }
@@ -754,8 +757,10 @@ function ConfirmDialog({
     const name = locale === 'ja' ? item.name_ja : item.name_en;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in">
+        <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+            <div className="relative flex items-center justify-center h-full p-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in max-h-[90vh] overflow-y-auto">
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
@@ -791,6 +796,7 @@ function ConfirmDialog({
                     </button>
                 </div>
             </div>
+        </div>
         </div>
     );
 }
