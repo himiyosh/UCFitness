@@ -83,15 +83,17 @@ export default async function BankPage() {
                 </div>
 
                 {/* ページヘッダー */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] p-5 sm:p-6 mb-6 shadow-md">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
-                    <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/10 rounded-full translate-y-12 -translate-x-12" />
-                    <div className="relative">
-                        <h2 className="text-2xl sm:text-3xl font-black text-white drop-shadow-sm flex items-center gap-2">
-                            👛 {t('title')}
-                        </h2>
-                        <p className="text-sm sm:text-base text-white/85 mt-1.5 font-medium">{t('headerDesc')}</p>
+                <div className="mb-6">
+                    <div className="flex items-start gap-3">
+                        <div className="w-1.5 self-stretch rounded-full bg-gradient-to-b from-[var(--theme-primary)] to-[var(--theme-gradient-to)] shrink-0" />
+                        <div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-foreground flex items-center gap-2">
+                                👛 {t('title')}
+                            </h2>
+                            <p className="text-sm text-muted-foreground mt-1">{t('headerDesc')}</p>
+                        </div>
                     </div>
+                    <div className="mt-3 h-px bg-gradient-to-r from-[var(--theme-primary)]/30 via-[var(--theme-gradient-to)]/20 to-transparent" />
                 </div>
 
                 {/* コンテンツ */}
