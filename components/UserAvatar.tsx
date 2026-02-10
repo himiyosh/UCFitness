@@ -105,7 +105,7 @@ export default function UserAvatar({
             }
             : {
                 borderColor: frameColor,
-                boxShadow: `0 0 10px ${frameColor}, 0 0 4px ${frameColor}`,
+                boxShadow: `0 0 6px ${frameColor}80, 0 0 2px ${frameColor}60`,
             }
         : {};
 
