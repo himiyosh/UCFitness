@@ -110,7 +110,7 @@ export default async function SettingsPage() {
                         </div>
                         <div>
                             <h1 className="text-3xl font-extrabold text-gray-900">{t('title')}</h1>
-                            <p className="text-gray-500 text-sm">{t('description')}</p>
+                            <p className="text-gray-400 text-xs">{t('description')}</p>
                         </div>
                     </div>
                 </div>
