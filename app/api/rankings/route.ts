@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRankings } from '@/lib/ranking-service';
+import { enrichRankingsWithEquip } from '@/lib/ranking-utils';
 import { Period } from '@/components/LeaderboardTabs';
 
 export async function GET(request: Request) {
@@ -14,7 +15,13 @@ export async function GET(request: Request) {
 
     try {
         const rankings = await getRankings(scope, period, keyword);
-        return NextResponse.json(rankings);
+
+        // enrichRankingsWithEquip は Record<string, RankingEntry[]> を期待するため
+        // 単一期間の配列をラップして渡し、結果をアンラップする
+        const wrapped = { [period]: rankings };
+        const enriched = await enrichRankingsWithEquip(wrapped);
+
+        return NextResponse.json(enriched[period]);
     } catch (error) {
         console.error('API Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -5,6 +5,7 @@ import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/GroupRankingPanel';
 import GroupSettings from '@/components/GroupSettings';
+import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 
 // Helper to tabs
@@ -125,18 +126,15 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                     `}>
                                                         {entry.originalRank}
                                                     </span>
-                                                    {entry.users?.image ? (
-                                                        <img className="h-10 w-10 rounded-full border border-gray-100" src={entry.users.image} alt="" />
-                                                    ) : (
-                                                        <div className="h-10 w-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold">
-                                                            {(entry.users?.name || '?')[0]}
-                                                        </div>
-                                                    )}
+                                                    <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users?.frameColor} borderClass="border-gray-100" />
                                                     <div>
                                                         <p className="text-sm font-medium text-gray-900">
                                                             {entry.users?.name || 'Anonymous'}
                                                             {entry.users.id === userId && <span className="ml-2 text-xs text-[var(--theme-primary)] font-bold">(YOU)</span>}
                                                         </p>
+                                                        {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
+                                                            <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleNameEn}</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end">
