@@ -645,10 +645,10 @@ function InventoryView({
                                 const isEquipped = ui.is_equipped;
 
                                 return (
-                                    <div key={ui.id} className={`bg-white rounded-lg border p-3 flex items-center gap-3 transition-all ${
+                                    <div key={ui.id} className={`bg-white rounded-lg border p-3 flex flex-col items-center gap-2 transition-all text-center ${
                                         isEquipped ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 hover:border-gray-300'
                                     }`}>
-                                        {/* プレビュー（小） */}
+                                        {/* プレビュー */}
                                         <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{
                                             background: item.category === 'THEME_COLOR'
                                                 ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
@@ -663,10 +663,10 @@ function InventoryView({
                                             )}
                                         </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 truncate">{name}</p>
+                                        <div className="w-full min-w-0">
+                                            <p className="text-xs font-bold text-gray-900 leading-tight line-clamp-2">{name}</p>
                                             {isEquipped && (
-                                                <p className="text-xs text-amber-600 font-medium">⭐ {t('equipped')}</p>
+                                                <p className="text-[10px] text-amber-600 font-medium mt-0.5">⭐ {t('equipped')}</p>
                                             )}
                                         </div>
 
