@@ -87,7 +87,7 @@ export default async function ShopPage() {
                             {t('title')}
                         </span>
                     </h2>
-                    <p className="text-sm sm:text-base text-foreground/70 mt-1.5 leading-relaxed">{t('headerDesc')}</p>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1.5 leading-relaxed tracking-wide font-medium">{t('headerDesc')}</p>
                     <div className="mt-3 h-0.5 w-24 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)]" />
                 </div>
 
