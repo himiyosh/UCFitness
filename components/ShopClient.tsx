@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
@@ -425,7 +426,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             )}
 
             {/* アイテムプレビューダイアログ */}
-            {previewItem && (
+            {previewItem && createPortal(
                 <ItemPreviewDialog
                     item={previewItem}
                     locale={locale}
@@ -441,11 +442,12 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     userImage={userImage}
                     userName={userName}
                     t={t}
-                />
+                />,
+                document.body
             )}
 
             {/* 購入確認ダイアログ */}
-            {confirmDialog && (
+            {confirmDialog && createPortal(
                 <ConfirmDialog
                     item={confirmDialog.item}
                     locale={locale}
@@ -455,7 +457,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     userName={userName}
                     anchorRect={confirmDialog.anchorRect}
                     t={t}
-                />
+                />,
+                document.body
             )}
 
             {/* トースト */}
