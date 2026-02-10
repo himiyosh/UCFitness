@@ -202,9 +202,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="absolute bottom-1/3 right-10 w-24 h-24 bg-yellow-300/10 rounded-full" />
                 <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>
 
-                {/* メイン: 左ロゴ+残高 / 右Featured */}
-                <div className="relative p-5 sm:p-6 flex gap-6 justify-between">
-                    {/* 左: UCShop ロゴ + 残高 */}
+                {/* メイン: ロゴ+残高 / Featured（モバイル縦並び / デスクトップ横並び） */}
+                <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 sm:justify-between">
+                    {/* UCShop ロゴ + 残高 */}
                     <div className="flex flex-col justify-center shrink-0">
                         <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-lg leading-none">
                             UC<span className="text-yellow-200">Shop</span>
@@ -218,9 +218,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                         </div>
                     </div>
 
-                    {/* 右: Featured アイテム */}
+                    {/* Featured アイテム */}
                     {featuredItems.length > 0 && (
-                        <div className="w-1/2 min-w-0">
+                        <div className="w-full sm:w-1/2 min-w-0">
                             <p className="text-[10px] font-bold text-white/90 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
                             <div className="flex flex-col gap-1.5">
                                 {featuredItems.map(item => {
