@@ -105,15 +105,15 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                     </button>
                 )}
             </div>
-            <div className="bg-white px-0">
-                <div className={`px-6 pt-6 ${isMidnight ? '' : ''}`}>
+            <div className="bg-white px-0 lg:grid lg:grid-cols-12 lg:items-start">
+                <div className={`px-6 pt-6 lg:col-span-5 lg:border-r flex flex-col justify-center h-full ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
                     <TopUsersChart
                         data={neighbors}
                         userId={userId}
                         title={t('groupLeaders')}
                     />
                 </div>
-                <div role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
+                <div role="list" className={`divide-y lg:border-t-0 lg:col-span-7 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                     {neighbors.length > 0 ? (
                         (() => {
                             const maxSteps = Math.max(...neighbors.map((n: any) => n.steps)) || 1;
