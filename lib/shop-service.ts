@@ -173,13 +173,25 @@ export async function getEquippedItemsForUsers(userIds: string[]): Promise<Recor
 
     const result: Record<string, UserEquipSummary> = {};
 
-    // フレームカラー変換マップ
+    // フレームカラー変換マップ（UserAvatar.getFrameColor と同期）
     const frameColorMap: Record<string, string> = {
+        // 既存
         'ring-green-400': '#4ade80',
         'ring-blue-400': '#60a5fa',
         'ring-yellow-400': '#facc15',
         'ring-cyan-300': '#67e8f9',
         'ring-purple-500': '#a855f7',
+        // 新規
+        'ring-rose-400': '#fb7185',
+        'ring-orange-400': '#fb923c',
+        'ring-teal-400': '#2dd4bf',
+        'ring-red-500': '#ef4444',
+        'ring-indigo-500': '#6366f1',
+        'ring-emerald-500': '#10b981',
+        'ring-amber-500': '#f59e0b',
+        'ring-pink-500': '#ec4899',
+        'ring-sky-400': '#38bdf8',
+        'ring-rainbow': 'rainbow',
     };
 
     for (const item of (data as any[])) {
