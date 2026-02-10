@@ -188,6 +188,7 @@
     },
     "Groups": {
         "title": "My Groups",
+        "headerDesc": "Join groups and compete with everyone on step counts!",
         "joinOrCreate": "Join or Create",
         "yourGroups": "Your Groups",
         "noGroups": "You haven't joined any groups yet.",
@@ -223,6 +224,7 @@
     "Bank": {
         "title": "Wallet",
         "subtitle": "Health is the greatest investment.",
+        "headerDesc": "Your steps auto-convert to UC (UndouCoin). Walk more to grow your balance and rank up!",
         "conceptDesc": "Your steps are automatically converted into UC. Keep walking to grow your balance, climb ranks, and unlock rewards!",
         "totalBalance": "Total Balance",
         "uc": "UC",
@@ -268,6 +270,7 @@
     "Shop": {
         "title": "Shop",
         "subtitle": "Customize your profile with UndouCoins!",
+        "headerDesc": "Spend UC (UndouCoin) earned from walking on frames, titles, and themes!",
         "conceptDesc": "Spend the UC you\u2019ve earned from walking on profile frames, titles, and themes!",
         "balance": "Your Balance",
         "uc": "UC",

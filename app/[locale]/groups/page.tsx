@@ -130,7 +130,16 @@ export default async function MyGroupsPage() {
                 {/* Page Title & Back Nav */}
                 <div className="space-y-4">
                     <Breadcrumbs items={[{ label: t('title') }]} />
-                    <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] p-5 sm:p-6 shadow-md">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                        <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/10 rounded-full translate-y-12 -translate-x-12" />
+                        <div className="relative">
+                            <h1 className="text-2xl sm:text-3xl font-black text-white drop-shadow-sm flex items-center gap-2">
+                                👥 {t('title')}
+                            </h1>
+                            <p className="text-sm sm:text-base text-white/85 mt-1.5 font-medium">{t('headerDesc')}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8 items-start">

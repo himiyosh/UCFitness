@@ -188,6 +188,7 @@
     },
     "Groups": {
         "title": "マイグループ",
+        "headerDesc": "グループに参加して、みんなと一緒に歩数を競い合おう！",
         "joinOrCreate": "参加 / 作成",
         "yourGroups": "あなたのグループ",
         "noGroups": "まだグループに参加していません。",
@@ -223,6 +224,7 @@
     "Bank": {
         "title": "ウォレット",
         "subtitle": "健康こそが最大の投資。",
+        "headerDesc": "歩数がUC（UndouCoin）に自動変換。歩いて資産を増やし、ランクを上げよう！",
         "conceptDesc": "歩数は自動でUCに変換されます。歩いて資産を増やし、ランクを上げて、報酬をアンロックしよう！",
         "totalBalance": "総資産",
         "uc": "UC",
@@ -268,6 +270,7 @@
     "Shop": {
         "title": "ショップ",
         "subtitle": "UndouCoinでプロフィールをカスタマイズ！",
+        "headerDesc": "歩いて貯めたUC（UndouCoin）で、フレーム・称号・テーマをゲット！",
         "conceptDesc": "歩いて貯めたUCで、フレーム・称号・テーマをゲットしよう！",
         "balance": "現在の残高",
         "uc": "UC",
