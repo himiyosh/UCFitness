@@ -89,8 +89,9 @@ export default async function ShopPage() {
                     <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--theme-primary)]/15 bg-[var(--theme-primary)]/5 px-4 py-3">
                         <span className="mt-0.5 flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] text-xs font-bold">?</span>
                         <div className="min-w-0">
-                            <p className="text-xs text-gray-700"><span className="font-semibold">{t('ucExplainLabel')}</span>{' '}{t('ucExplainLine1')}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{t('ucExplainLine2')}</p>
+                            <p className="text-xs font-semibold text-gray-800">{t('ucExplainLabel')}</p>
+                            <p className="text-xs text-gray-600 mt-0.5">{t('ucExplainLine1')}</p>
+                            <p className="text-xs text-gray-600">{t('ucExplainLine2')}</p>
                         </div>
                     </div>
                 </div>
