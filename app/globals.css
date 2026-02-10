@@ -1274,8 +1274,6 @@ body {
 /* ============================================
    Settings ページ強化: カード & スタガーアニメーション
    ============================================ */
-
-/* スタガー登場アニメーション */
 @keyframes settingsFadeInUp {
   from {
     opacity: 0;
@@ -1346,14 +1344,4 @@ body {
 
 .settings-separator-dot:nth-child(3) {
   opacity: 0.25;
-}
-
-/* ギアアイコン回転 */
-@keyframes gearSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.settings-gear:hover {
-  animation: gearSpin 2s linear infinite;
 }
