@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sanitizeSearchQuery } from "@/lib/security-utils";
 import { NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic';
@@ -35,9 +36,16 @@ export async function GET(request: Request) {
         if (isUuid) {
             queryBuilder = queryBuilder.eq('id', cleanQuery);
         } else {
+            // 🛡️ Sentinel: Sanitize input to prevent filter injection
+            const safeQuery = sanitizeSearchQuery(cleanQuery);
+
+            if (!safeQuery) {
+                return NextResponse.json({ users: [] });
+            }
+
             // ILIKE for username or email
             // We use 'or' to search both
-            queryBuilder = queryBuilder.or(`username.ilike.%${cleanQuery}%,email.eq.${cleanQuery}`);
+            queryBuilder = queryBuilder.or(`username.ilike.%${safeQuery}%,email.eq.${safeQuery}`);
         }
 
         const { data: users, error } = await queryBuilder;
