@@ -131,14 +131,13 @@ export default async function MyGroupsPage() {
                 <div className="space-y-4">
                     <Breadcrumbs items={[{ label: t('title') }]} />
                     <div>
-                        <h1 className="text-3xl sm:text-4xl font-black flex items-center gap-2.5">
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
                             <span>👥</span>
                             <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
                                 {t('title')}
                             </span>
                         </h1>
-                        <p className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--theme-primary)]/10 to-[var(--theme-gradient-to)]/10 px-4 py-1.5 text-sm font-semibold text-gray-800 dark:text-gray-100">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)]" />
+                        <p className="mt-2.5 inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-4 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200">
                             {t('headerDesc')}
                         </p>
                         <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
