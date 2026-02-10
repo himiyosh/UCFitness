@@ -649,7 +649,7 @@ function InventoryView({
                                         isEquipped ? 'border-amber-300 ring-1 ring-amber-200/50' : 'border-gray-200 hover:border-gray-300'
                                     }`}>
                                         {/* プレビュー背景エリア */}
-                                        <div className="h-20 flex items-center justify-center relative" style={{
+                                        <div className="h-28 flex items-center justify-center relative overflow-hidden" style={{
                                             background: item.category === 'ICON_FRAME'
                                                 ? `linear-gradient(135deg, ${(() => { const c = getFrameColor(item.preview_value); return `${c}22, ${c}44`; })()})`
                                                 : item.category === 'THEME_COLOR'
