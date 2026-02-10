@@ -77,7 +77,7 @@ export default async function BankPage() {
             </header>
 
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-                {/* パンくず + ページヘッダー（Settings統一スタイル） */}
+                {/* ページヘッダー（統一スタイル） */}
                 <div className="mb-8">
                     <Breadcrumbs items={[{ label: t('title') }]} />
                     <div className="flex items-center gap-3 mt-2">
@@ -89,7 +89,6 @@ export default async function BankPage() {
                             <p className="text-gray-500 text-sm">{t('subtitle')}</p>
                         </div>
                     </div>
-                    <p className="text-sm text-gray-400 leading-relaxed mt-2 ml-[52px]">💰 {t('conceptDesc')}</p>
                 </div>
 
                 {/* コンテンツ */}

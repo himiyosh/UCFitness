@@ -72,19 +72,19 @@ export default async function ShopPage() {
 
             {/* コンテンツ */}
             <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-                {/* パンくずリスト */}
-                <div className="mb-6">
-                    <Breadcrumbs items={[
-                        { label: t('title') },
-                    ]} />
+                {/* ページヘッダー（統一スタイル） */}
+                <div className="mb-8">
+                    <Breadcrumbs items={[{ label: t('title') }]} />
+                    <div className="flex items-center gap-3 mt-2">
+                        <div className="p-2 rounded-xl bg-[var(--theme-primary)]/10 text-[var(--theme-primary)]">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-gray-900">{t('title')}</h1>
+                            <p className="text-gray-500 text-sm">{t('subtitle')}</p>
+                        </div>
+                    </div>
                 </div>
-
-                {/* ページヘッダー */}
-                <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        🛍️ {t('title')}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>                    <p className="text-xs text-gray-400 mt-1">💰 {t('conceptDesc')}</p>                </div>
 
                 {/* ショップクライアント */}
                 <ShopClient
