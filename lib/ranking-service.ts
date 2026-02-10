@@ -684,6 +684,9 @@ export const deriveBatchGroupRankings = async (
     // Map<UserId, { user: User, DAILY: number, WEEKLY: number, ..., PREV_DAILY: number, ... }>
     const userStats = new Map<string, any>();
 
+    // Optimization: Filter for target users immediately
+    const targetUserIds = new Set(groupMembers.map(m => m.user_id));
+
     const prevFieldMap: Record<string, string> = {
         DAILY: 'PREV_DAILY',
         WEEKLY: 'PREV_WEEKLY',
@@ -695,6 +698,10 @@ export const deriveBatchGroupRankings = async (
         if (list) {
             list.forEach((entry: any) => {
                 const userId = entry.users.id;
+
+                // ⚡ Bolt Optimization: Only process users relevant to the requested groups
+                if (!targetUserIds.has(userId)) return;
+
                 if (!userStats.has(userId)) {
                     userStats.set(userId, {
                         users: entry.users,
@@ -713,10 +720,9 @@ export const deriveBatchGroupRankings = async (
     });
 
     // 3. Identify Missing Users (who have 0 steps across all periods, so not in global rankings)
-    const uniqueMemberIds = new Set(groupMembers.map(m => m.user_id));
     const missingUserIds: string[] = [];
 
-    uniqueMemberIds.forEach(uid => {
+    targetUserIds.forEach(uid => {
         if (!userStats.has(uid)) {
             missingUserIds.push(uid);
         }
