@@ -244,6 +244,8 @@
     "Bank": {
         "title": "ウォレット",
         "subtitle": "健康こそが最大の投資。",
+        "ucExplainLabel": "UCとは？",
+        "ucExplainText": "UC（UndouCoin / 運動コイン）は、毎日の歩数に応じて自動で貯まるアプリ内通貨です。歩いて貯めたUCでアイテムを購入したり、ランクを上げることができます。",
         "conceptDesc": "歩数は自動でUCに変換されます。歩いて資産を増やし、ランクを上げて、報酬をアンロックしよう！",
         "totalBalance": "総資産",
         "uc": "UC",
@@ -289,6 +291,8 @@
     "Shop": {
         "title": "ショップ",
         "subtitle": "UndouCoinでプロフィールをカスタマイズ！",
+        "ucExplainLabel": "UCとは？",
+        "ucExplainText": "UC（UndouCoin / 運動コイン）は歩数で貯まるアプリ内通貨。ウォレットで残高を確認し、ここでアイテムと交換できます。",
         "conceptDesc": "歩いて貯めたUCで、フレーム・称号・テーマをゲットしよう！",
         "balance": "現在の残高",
         "uc": "UC",

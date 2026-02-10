@@ -89,6 +89,15 @@ export default async function BankPage() {
                             <p className="text-gray-500 text-sm">{t('subtitle')}</p>
                         </div>
                     </div>
+
+                    {/* UC（UndouCoin）説明バナー */}
+                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--theme-primary)]/15 bg-[var(--theme-primary)]/5 px-4 py-3">
+                        <span className="mt-0.5 flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] text-xs font-bold">?</span>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800">{t('ucExplainLabel')}</p>
+                            <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{t('ucExplainText')}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* コンテンツ */}
