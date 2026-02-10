@@ -77,12 +77,30 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
     );
 
     return (
-        <div className={`overflow-hidden rounded-xl bg-white shadow-sm border border-emerald-200 border-l-[3px] border-l-emerald-500 relative group/panel ${isMoving ? 'opacity-50' : ''}`}>
+        <div
+            className={`overflow-hidden rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
+            style={isMidnight
+                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
+                : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
+            }
+        >
             {/* Header */}
-            <div className="px-4 py-2.5 border-b border-emerald-100 bg-emerald-50/40 flex items-center gap-2">
-                <span className="text-emerald-600 text-sm">👥</span>
-                <span className="text-xs font-bold text-emerald-700 tracking-wide">Group Ranking</span>
-                <span className="ml-auto truncate bg-emerald-100 text-emerald-700 py-0.5 px-2 rounded-full text-[10px] font-bold border border-emerald-200">{keyword}</span>
+            <div
+                className="px-4 py-2.5 flex items-center gap-2"
+                style={isMidnight
+                    ? { borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(16,185,129,0.08)' }
+                    : { borderBottom: '1px solid #d1fae5', background: 'rgba(236,253,245,0.5)' }
+                }
+            >
+                <span className={`text-sm ${isMidnight ? 'opacity-90' : ''}`}>👥</span>
+                <span className={`text-xs font-bold tracking-wide ${isMidnight ? 'text-emerald-300' : 'text-emerald-700'}`}>Group Ranking</span>
+                <span
+                    className="ml-auto truncate py-0.5 px-2 rounded-full text-[10px] font-bold"
+                    style={isMidnight
+                        ? { background: 'rgba(52,211,153,0.15)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.3)' }
+                        : { background: '#d1fae5', color: '#047857', border: '1px solid #a7f3d0' }
+                    }
+                >{keyword}</span>
             </div>
             <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
                 {!isFirst && (
