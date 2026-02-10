@@ -109,7 +109,7 @@ export default function GroupDetailLeaderboard({
                                                 </div>
 
                                                 <div>
-                                                    <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                                    <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                         {entry.users.username ? (
                                                             <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline decoration-[var(--theme-primary)]/30">
                                                                 {entry.users?.name || 'Anonymous'}
@@ -128,7 +128,7 @@ export default function GroupDetailLeaderboard({
                                             </div>
                                             <div className="text-right">
                                                 <div className="flex flex-col items-end">
-                                                    <div className="font-mono font-bold text-[var(--theme-primary)] text-lg leaderboard-steps">
+                                                    <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg leaderboard-steps">
                                                         {entry.steps.toLocaleString()}
                                                     </div>
                                                     {entry.prevSteps !== undefined && (() => {
@@ -141,7 +141,6 @@ export default function GroupDetailLeaderboard({
                                                         );
                                                     })()}
                                                 </div>
-                                                <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">steps</div>
                                             </div>
                                         </li>
                                     );
