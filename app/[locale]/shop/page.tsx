@@ -81,16 +81,14 @@ export default async function ShopPage() {
 
                 {/* ページヘッダー */}
                 <div className="mb-6">
-                    <div className="flex items-start gap-3">
-                        <div className="w-1.5 self-stretch rounded-full bg-gradient-to-b from-[var(--theme-primary)] to-[var(--theme-gradient-to)] shrink-0" />
-                        <div>
-                            <h2 className="text-2xl sm:text-3xl font-black text-foreground flex items-center gap-2">
-                                🛍️ {t('title')}
-                            </h2>
-                            <p className="text-sm text-muted-foreground mt-1">{t('headerDesc')}</p>
-                        </div>
-                    </div>
-                    <div className="mt-3 h-px bg-gradient-to-r from-[var(--theme-primary)]/30 via-[var(--theme-gradient-to)]/20 to-transparent" />
+                    <h2 className="text-2xl sm:text-3xl font-black flex items-center gap-2">
+                        <span>🛍️</span>
+                        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+                            {t('title')}
+                        </span>
+                    </h2>
+                    <p className="text-sm sm:text-base text-foreground/70 mt-1.5 leading-relaxed">{t('headerDesc')}</p>
+                    <div className="mt-3 h-0.5 w-24 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)]" />
                 </div>
 
                 {/* ショップクライアント */}
