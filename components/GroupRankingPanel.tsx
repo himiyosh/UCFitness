@@ -80,16 +80,16 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
         <div
             className={`overflow-hidden rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
             style={isMidnight
-                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
-                : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
+                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.35)', borderLeft: '4px solid #34d399' }
+                : { background: '#fff', border: '1px solid #6ee7b7', borderLeft: '4px solid #059669' }
             }
         >
             {/* Header */}
             <div
                 className="px-4 py-2.5 flex items-center gap-2"
                 style={isMidnight
-                    ? { borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(16,185,129,0.08)' }
-                    : { borderBottom: '1px solid #d1fae5', background: 'rgba(236,253,245,0.5)' }
+                    ? { borderBottom: '1px solid rgba(52,211,153,0.2)', background: 'rgba(16,185,129,0.12)' }
+                    : { borderBottom: '1px solid #a7f3d0', background: 'rgba(209,250,229,0.6)' }
                 }
             >
                 <span className={`text-sm ${isMidnight ? 'opacity-90' : ''}`}>👥</span>
