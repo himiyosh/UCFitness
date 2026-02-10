@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopUsersChart from '@/components/TopUsersChart';
@@ -42,6 +43,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
 import { useTranslations } from 'next-intl';
 
 export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId }: Props) {
+    const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
     const t = useTranslations('Graph');
@@ -75,9 +77,32 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
     );
 
     return (
-        <div className={`overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 relative group/panel ${isMoving ? 'opacity-50' : ''}`}>
-            {/* Header Removed as requested */}
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
+        <div
+            className={`overflow-hidden rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
+            style={isMidnight
+                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
+                : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
+            }
+        >
+            {/* Header */}
+            <div
+                className="px-4 py-2.5 flex items-center gap-2"
+                style={isMidnight
+                    ? { borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(16,185,129,0.08)' }
+                    : { borderBottom: '1px solid #d1fae5', background: 'rgba(236,253,245,0.5)' }
+                }
+            >
+                <span className={`text-sm ${isMidnight ? 'opacity-90' : ''}`}>👥</span>
+                <span className={`text-xs font-bold tracking-wide ${isMidnight ? 'text-emerald-300' : 'text-emerald-700'}`}>Group Ranking</span>
+                <span
+                    className="ml-auto truncate py-0.5 px-2 rounded-full text-[10px] font-bold"
+                    style={isMidnight
+                        ? { background: 'rgba(52,211,153,0.15)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.3)' }
+                        : { background: '#d1fae5', color: '#047857', border: '1px solid #a7f3d0' }
+                    }
+                >{keyword}</span>
+            </div>
+            <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
                 {!isFirst && (
                     <button
                         onClick={() => handleMove('up')}
@@ -166,8 +191,8 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                         )}
                                                         {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">YOU</span>}
                                                     </p>
-                                                    {entry.users?.titleEmoji && entry.users?.titleName && (
-                                                        <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleName}</span>
+                                                    {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
+                                                        <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
                                                     )}
                                                 </div>
                                             </div>

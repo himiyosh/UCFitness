@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
+import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -36,6 +37,7 @@ export default function GroupDetailLeaderboard({
     currentPage: number,
     onPageChange: (page: number) => void
 }) {
+    const locale = useLocale();
     const allData = rankings[period];
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
@@ -117,8 +119,8 @@ export default function GroupDetailLeaderboard({
                                                         )}
                                                         {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">YOU</span>}
                                                     </p>
-                                                    {entry.users.titleEmoji && entry.users.titleName ? (
-                                                        <p className="text-[10px] text-gray-400 font-medium">{entry.users.titleEmoji} {entry.users.titleName}</p>
+                                                    {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) ? (
+                                                        <p className="text-[10px] text-gray-400 font-medium">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                     ) : (
                                                         <p className="text-xs text-gray-400">Rank #{rank}</p>
                                                     )}

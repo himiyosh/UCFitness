@@ -11,8 +11,10 @@ export type RankingEntry = {
         username: string | null;
         /** 装備中フレームカラー (hex) */
         frameColor?: string | null;
-        /** 装備中称号名 */
-        titleName?: string | null;
+        /** 装備中称号名（日本語） */
+        titleNameJa?: string | null;
+        /** 装備中称号名（英語） */
+        titleNameEn?: string | null;
         /** 装備中称号絵文字 */
         titleEmoji?: string | null;
     };
@@ -46,7 +48,8 @@ export async function enrichRankingsWithEquip(
             const equip = equipMap[entry.users.id];
             if (equip) {
                 entry.users.frameColor = equip.frameColor;
-                entry.users.titleName = equip.titleName;
+                entry.users.titleNameJa = equip.titleNameJa;
+                entry.users.titleNameEn = equip.titleNameEn;
                 entry.users.titleEmoji = equip.titleEmoji;
             }
         }

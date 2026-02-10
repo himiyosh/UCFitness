@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
@@ -112,7 +112,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [userItemsState, setUserItemsState] = useState(userItems);
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
+    const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem; anchorRect?: DOMRect } | null>(null);
     const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
     const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
 
@@ -283,7 +283,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     return (
                                         <button
                                             key={item.id}
-                                            onClick={() => setConfirmDialog({ item })}
+                                            onClick={(e) => setConfirmDialog({ item, anchorRect: (e.currentTarget as HTMLElement).getBoundingClientRect() })}
                                             className="group flex items-center gap-2.5 bg-white/20 hover:bg-white/30 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30 transition-all text-left"
                                         >
                                             {/* ミニプレビュー */}
@@ -398,7 +398,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                     meetsRank={meetsRank(item.rank_required)}
                                     canAfford={currentBalance >= item.price}
                                     isLoading={isLoading === item.id}
-                                    onBuy={() => setConfirmDialog({ item })}
+                                    onBuy={(rect: DOMRect) => setConfirmDialog({ item, anchorRect: rect })}
                                     onPreview={() => setPreviewItem(item)}
                                     userImage={userImage}
                                     userName={userName}
@@ -453,6 +453,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     onCancel={() => setConfirmDialog(null)}
                     userImage={userImage}
                     userName={userName}
+                    anchorRect={confirmDialog.anchorRect}
                     t={t}
                 />
             )}
@@ -482,7 +483,7 @@ function ShopItemCard({
     meetsRank: boolean;
     canAfford: boolean;
     isLoading: boolean;
-    onBuy: () => void;
+    onBuy: (rect: DOMRect) => void;
     onPreview: () => void;
     userImage: string | null;
     userName: string | null;
@@ -555,7 +556,7 @@ function ShopItemCard({
                     </div>
                     {!isOwned && !isComingSoon && meetsRank && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); onBuy(); }}
+                            onClick={(e) => { e.stopPropagation(); onBuy((e.currentTarget as HTMLElement).getBoundingClientRect()); }}
                             disabled={!canAfford || isLoading}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 canAfford
@@ -644,42 +645,46 @@ function InventoryView({
                                 const isEquipped = ui.is_equipped;
 
                                 return (
-                                    <div key={ui.id} className={`bg-white rounded-lg border p-3 flex items-center gap-3 transition-all ${
-                                        isEquipped ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 hover:border-gray-300'
+                                    <div key={ui.id} className={`rounded-xl border overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                                        isEquipped ? 'border-amber-300 ring-1 ring-amber-200/50' : 'border-gray-200 hover:border-gray-300'
                                     }`}>
-                                        {/* プレビュー（小） */}
-                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{
-                                            background: item.category === 'THEME_COLOR'
-                                                ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
-                                                : 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+                                        {/* プレビュー背景エリア */}
+                                        <div className="h-28 flex items-center justify-center relative overflow-hidden" style={{
+                                            background: item.category === 'ICON_FRAME'
+                                                ? `linear-gradient(135deg, ${(() => { const c = getFrameColor(item.preview_value); return `${c}22, ${c}44`; })()})`
+                                                : item.category === 'THEME_COLOR'
+                                                    ? `linear-gradient(135deg, ${item.preview_value}22, ${item.preview_value}55)`
+                                                    : 'linear-gradient(135deg, #f0f4ff, #e8ecf4)',
                                         }}>
-                                            {item.category === 'ICON_FRAME' && (
-                                                <FramePreview previewValue={item.preview_value} size="sm" userImage={userImage} userName={userName} />
-                                            )}
-                                            {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
-                                            {item.category === 'THEME_COLOR' && (
-                                                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.preview_value }} />
-                                            )}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 truncate">{name}</p>
                                             {isEquipped && (
-                                                <p className="text-xs text-amber-600 font-medium">⭐ {t('equipped')}</p>
+                                                <div className="absolute top-1.5 right-1.5 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                                    ⭐ {t('equipped')}
+                                                </div>
+                                            )}
+                                            {item.category === 'ICON_FRAME' && (
+                                                <FramePreview previewValue={item.preview_value} size="lg" userImage={userImage} userName={userName} />
+                                            )}
+                                            {item.category === 'TITLE' && <span className="text-3xl drop-shadow-sm">{item.preview_value}</span>}
+                                            {item.category === 'THEME_COLOR' && (
+                                                <div className="w-10 h-10 rounded-full shadow-md border-2 border-white/60" style={{ backgroundColor: item.preview_value }} />
                                             )}
                                         </div>
 
-                                        <button
-                                            onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
-                                            disabled={isLoading === ui.id}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
-                                                isEquipped
-                                                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                    : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
-                                            }`}
-                                        >
-                                            {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
-                                        </button>
+                                        {/* 下部: 名前 + ボタン */}
+                                        <div className={`p-2.5 text-center space-y-2 ${isEquipped ? 'bg-amber-50/50' : 'bg-white'}`}>
+                                            <p className="text-xs font-bold text-gray-900 leading-tight line-clamp-2">{name}</p>
+                                            <button
+                                                onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
+                                                disabled={isLoading === ui.id}
+                                                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                    isEquipped
+                                                        ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                        : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
+                                                }`}
+                                            >
+                                                {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -807,7 +812,7 @@ function ItemPreviewDialog({
 // サブコンポーネント: 確認ダイアログ
 // ============================================
 function ConfirmDialog({
-    item, locale, onConfirm, onCancel, userImage, userName, t,
+    item, locale, onConfirm, onCancel, userImage, userName, anchorRect, t,
 }: {
     item: ShopItem;
     locale: string;
@@ -815,13 +820,82 @@ function ConfirmDialog({
     onCancel: () => void;
     userImage: string | null;
     userName: string | null;
+    anchorRect?: DOMRect;
     t: any;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+    const [ready, setReady] = useState(!anchorRect); // anchorRect なしなら即 ready
+
+    /** 位置計算ロジック */
+    const calcPosition = useCallback(() => {
+        if (!anchorRect || !dialogRef.current) return;
+        const dialog = dialogRef.current;
+        const dw = dialog.offsetWidth;
+        const dh = dialog.offsetHeight;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const margin = 12;
+
+        // ダイアログをアンカーの下に配置（スペースがなければ上に）
+        let top = anchorRect.bottom + margin;
+        if (top + dh > vh - margin) {
+            top = anchorRect.top - dh - margin;
+        }
+        // 画面外に出る場合はビューポート内にクランプ
+        top = Math.max(margin, Math.min(top, vh - dh - margin));
+
+        // 水平方向: アンカーの中央に揃える
+        let left = anchorRect.left + anchorRect.width / 2 - dw / 2;
+        left = Math.max(margin, Math.min(left, vw - dw - margin));
+
+        setPos({ top, left });
+        setReady(true);
+    }, [anchorRect]);
+
+    // 初回位置計算
+    useEffect(() => {
+        calcPosition();
+    }, [calcPosition]);
+
+    // #3: ウィンドウリサイズ時に位置を再計算
+    useEffect(() => {
+        if (!anchorRect) return;
+        const handleResize = () => calcPosition();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [anchorRect, calcPosition]);
+
+    // #5: ESC キーで閉じる
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onCancel();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onCancel]);
+
+    // #4: anchorRect がある場合は fixed + 座標、ない場合はフォールバック
+    const positionStyle: React.CSSProperties = pos
+        ? { position: 'fixed', top: pos.top, left: pos.left, width: 'min(24rem, calc(100vw - 2rem))' }
+        : {};
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/40 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 mb-8 animate-scale-in">
+        <div
+            className={`fixed inset-0 z-50 bg-black/40 ${!anchorRect ? 'flex items-start justify-center pt-[20vh] overflow-y-auto' : ''}`}
+            onClick={onCancel}
+        >
+            <div
+                ref={dialogRef}
+                style={{
+                    ...positionStyle,
+                    // #1: anchorRect 指定時は位置計算完了まで非表示にしてチラつき防止
+                    ...(anchorRect && !ready ? { visibility: 'hidden' as const } : {}),
+                }}
+                className={`bg-white rounded-xl shadow-xl p-6 max-w-sm ${anchorRect ? '' : 'w-full mx-4 mb-8'} animate-scale-in`}
+                onClick={(e) => e.stopPropagation()}
+            >
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}

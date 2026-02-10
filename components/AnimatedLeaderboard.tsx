@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
+import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
@@ -88,6 +89,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 }
 
 export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
+    const locale = useLocale();
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [leftTab, setLeftTab] = useState<'user' | 'group'>('user');
@@ -178,8 +180,20 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 {/* Global Leaderboard */}
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
-                    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-[var(--theme-primary)]/10 transition-all duration-300">
-                        <div className="px-4 py-3 border-b border-gray-100">
+                    <div
+                        className="overflow-hidden rounded-xl shadow-sm transition-all duration-300"
+                        style={isMidnight
+                            ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(129,140,248,0.25)', borderLeft: '3px solid #818cf8' }
+                            : { background: '#fff', border: '1px solid #c7d2fe', borderLeft: '3px solid #6366f1' }
+                        }
+                    >
+                        <div
+                            className="px-4 py-3"
+                            style={isMidnight
+                                ? { borderBottom: '1px solid rgba(129,140,248,0.15)', background: 'rgba(99,102,241,0.08)' }
+                                : { borderBottom: '1px solid #e0e7ff', background: 'rgba(238,242,255,0.5)' }
+                            }
+                        >
                             {/* Left Tab Switcher */}
                             <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-full">
                                 <button
@@ -240,27 +254,39 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                                     {/* Content Wrapper */}
                                                                     <div className="relative z-10 flex items-center gap-3">
-                                                                        <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
-                                                                            style={entry.originalRank === 1 ? {
-                                                                                background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
-                                                                                color: '#ffffff',
-                                                                                boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
-                                                                            } : entry.originalRank === 2 ? {
-                                                                                background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
-                                                                                color: '#ffffff',
-                                                                                boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35),'
-                                                                            } : entry.originalRank === 3 ? {
-                                                                                background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
-                                                                                color: '#ffffff',
-                                                                                boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
-                                                                            } : {
-                                                                                background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
-                                                                                color: isMidnight ? '#64748b' : '#94a3b8',
-                                                                                border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
-                                                                            }}
-                                                                        >
-                                                                            {entry.originalRank}
-                                                                        </span>
+                                                                        <div className="flex flex-col items-center gap-0.5">
+                                                                            <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
+                                                                                style={entry.originalRank === 1 ? {
+                                                                                    background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
+                                                                                    color: '#ffffff',
+                                                                                    boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
+                                                                                } : entry.originalRank === 2 ? {
+                                                                                    background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
+                                                                                    color: '#ffffff',
+                                                                                    boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35),'
+                                                                                } : entry.originalRank === 3 ? {
+                                                                                    background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
+                                                                                    color: '#ffffff',
+                                                                                    boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
+                                                                                } : {
+                                                                                    background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
+                                                                                    color: isMidnight ? '#64748b' : '#94a3b8',
+                                                                                    border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
+                                                                                }}
+                                                                            >
+                                                                                {entry.originalRank}
+                                                                            </span>
+                                                                            {/* 順位の進退 */}
+                                                                            {(() => {
+                                                                                const change = rankChanges[period]?.[entry.users.id];
+                                                                                if (!change || change === 0) return null;
+                                                                                return (
+                                                                                    <span className={`text-[9px] font-bold leading-none ${change > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                                                        {change > 0 ? '▲' : '▼'}{Math.abs(change)}
+                                                                                    </span>
+                                                                                );
+                                                                            })()}
+                                                                        </div>
                                                                         {entry.users?.image ? (
                                                                             <UserAvatar src={entry.users.image} name={entry.users.name} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         ) : (
@@ -277,8 +303,8 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 )}
                                                                                 {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
                                                                             </p>
-                                                                            {entry.users.titleEmoji && entry.users.titleName && (
-                                                                                <p className="text-[10px] text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {entry.users.titleName}</p>
+                                                                            {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
+                                                                                <p className="text-[10px] text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                                             )}
                                                                         </div>
                                                                     </div>
@@ -293,15 +319,6 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             return (
                                                                                 <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                                     {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
-                                                                                </span>
-                                                                            );
-                                                                        })()}
-                                                                        {(() => {
-                                                                            const change = rankChanges[period]?.[entry.users.id];
-                                                                            if (!change || change === 0) return null;
-                                                                            return (
-                                                                                <span className={`text-[10px] font-bold flex items-center gap-0.5 ${change > 0 ? 'delta-up' : 'delta-down'}`}>
-                                                                                    {change > 0 ? '▲' : '▼'}{Math.abs(change)}
                                                                                 </span>
                                                                             );
                                                                         })()}

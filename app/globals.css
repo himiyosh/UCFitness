@@ -28,6 +28,26 @@ html {
   background: rgba(156, 163, 175, 0.6);
 }
 
+/* ==== RECHARTS TAP OUTLINE FIX ==== */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-surface,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+/* チャートカード全体のタップハイライト除去 */
+.chart-container,
+.chart-container * {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none;
+}
+.chart-container:focus,
+.chart-container *:focus {
+  outline: none !important;
+}
+
 /* ==== THEME SYSTEM ==== */
 :root {
   --background: #ffffff;

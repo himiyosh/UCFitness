@@ -152,7 +152,8 @@ export async function getEquippedItems(userId: string): Promise<EquippedItems> {
 /** 複数ユーザーの装備中アイテムをバルク取得（リーダーボード用） */
 export interface UserEquipSummary {
     frameColor: string | null;
-    titleName: string | null;
+    titleNameJa: string | null;
+    titleNameEn: string | null;
     titleEmoji: string | null;
 }
 
@@ -187,14 +188,15 @@ export async function getEquippedItemsForUsers(userIds: string[]): Promise<Recor
         if (!shopItem) continue;
 
         if (!result[userId]) {
-            result[userId] = { frameColor: null, titleName: null, titleEmoji: null };
+            result[userId] = { frameColor: null, titleNameJa: null, titleNameEn: null, titleEmoji: null };
         }
 
         if (shopItem.category === 'ICON_FRAME') {
             result[userId].frameColor = frameColorMap[shopItem.preview_value] || '#d1d5db';
         } else if (shopItem.category === 'TITLE') {
             result[userId].titleEmoji = shopItem.preview_value || null;
-            result[userId].titleName = shopItem.name_ja || shopItem.name_en || null;
+            result[userId].titleNameJa = shopItem.name_ja || null;
+            result[userId].titleNameEn = shopItem.name_en || null;
         }
     }
 

@@ -21,10 +21,10 @@ import { getTranslations } from "next-intl/server";
 
 export const dynamic = 'force-dynamic';
 
-export default async function PublicProfilePage(props: { params: Promise<{ username: string }> }) {
+export default async function PublicProfilePage(props: { params: Promise<{ username: string; locale: string }> }) {
     const params = await props.params;
     const session = await auth();
-    const { username } = params;
+    const { username, locale } = params;
     const t = await getTranslations('Profile');
     const commonT = await getTranslations('Common');
     const dashboardT = await getTranslations('Dashboard');
@@ -61,7 +61,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const userBadges = user ? await getUserBadges(user.id) : [];
     const equippedItems = user ? await getEquippedItems(user.id) : { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
     let frameColor = equippedItems.ICON_FRAME?.shop_items?.preview_value || null;
-    const titleName = equippedItems.TITLE?.shop_items?.name_ja || null;
+    const titleName = (locale === 'ja'
+        ? equippedItems.TITLE?.shop_items?.name_ja
+        : equippedItems.TITLE?.shop_items?.name_en) || null;
     const titleEmoji = equippedItems.TITLE?.shop_items?.preview_value || null;
     if (frameColor) {
         const colorMap: Record<string, string> = { 'ring-green-400': '#4ade80', 'ring-blue-400': '#60a5fa', 'ring-yellow-400': '#facc15', 'ring-cyan-300': '#67e8f9', 'ring-purple-500': '#a855f7' };
