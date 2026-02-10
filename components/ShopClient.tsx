@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
@@ -650,7 +651,7 @@ function ItemPreviewDialog({
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
     const isComingSoon = !item.is_active;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50">
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <div className="relative flex items-center justify-center h-full p-4">
@@ -738,7 +739,8 @@ function ItemPreviewDialog({
                 </div>
             </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
@@ -756,7 +758,7 @@ function ConfirmDialog({
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50">
             <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
             <div className="relative flex items-center justify-center h-full p-4">
@@ -797,7 +799,8 @@ function ConfirmDialog({
                 </div>
             </div>
         </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
