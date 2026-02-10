@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 
 export interface OwnedTitle {
@@ -19,6 +19,7 @@ interface TitleSelectorProps {
 
 export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
     const t = useTranslations('Settings');
+    const locale = useLocale();
     const router = useRouter();
     const [titles, setTitles] = useState<OwnedTitle[]>(ownedTitles);
     const [loading, setLoading] = useState(false);
@@ -92,7 +93,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     <option value="none">{t('noTitle')}</option>
                     {titles.map(title => (
                         <option key={title.userItemId} value={title.userItemId}>
-                            {title.emoji} {title.nameJa}
+                            {title.emoji} {locale === 'ja' ? title.nameJa : title.nameEn}
                         </option>
                     ))}
                 </select>

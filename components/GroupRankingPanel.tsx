@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopUsersChart from '@/components/TopUsersChart';
@@ -42,6 +43,7 @@ function Sparkline({ history, className = "" }: { history: { date: string; steps
 import { useTranslations } from 'next-intl';
 
 export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId }: Props) {
+    const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
     const t = useTranslations('Graph');
@@ -166,8 +168,8 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                         )}
                                                         {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">YOU</span>}
                                                     </p>
-                                                    {entry.users?.titleEmoji && entry.users?.titleName && (
-                                                        <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleName}</span>
+                                                    {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
+                                                        <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
                                                     )}
                                                 </div>
                                             </div>

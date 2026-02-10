@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
+import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
@@ -88,6 +89,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 }
 
 export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
+    const locale = useLocale();
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [leftTab, setLeftTab] = useState<'user' | 'group'>('user');
@@ -277,8 +279,8 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 )}
                                                                                 {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
                                                                             </p>
-                                                                            {entry.users.titleEmoji && entry.users.titleName && (
-                                                                                <p className="text-[10px] text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {entry.users.titleName}</p>
+                                                                            {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
+                                                                                <p className="text-[10px] text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                                             )}
                                                                         </div>
                                                                     </div>
