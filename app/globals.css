@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* ==== Noto Sans JP フォント統合 ==== */
+@theme inline {
+  --font-sans: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+}
+
 /* ==== SCROLLBAR STABILITY ==== */
 html {
   scrollbar-gutter: stable;
