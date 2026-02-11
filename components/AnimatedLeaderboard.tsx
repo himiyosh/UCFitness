@@ -183,7 +183,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                     <div
                         className="overflow-hidden rounded-xl shadow-sm transition-all duration-300"
                         style={isMidnight
-                            ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(129,140,248,0.25)', borderLeft: '3px solid #818cf8' }
+                            ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(99,102,241,0.35)', borderLeft: '3px solid #6366f1' }
                             : { background: '#fff', border: '1px solid #c7d2fe', borderLeft: '3px solid #6366f1' }
                         }
                     >

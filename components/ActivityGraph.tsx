@@ -656,7 +656,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                             className={`w-full rounded-t-lg ${isGoal ? 'shadow-[0_0_20px_rgba(74,222,128,0.5)]' : 'shadow-[0_0_20px_rgba(129,140,248,0.4)]'}`}
                                             style={{
                                                 height: `${height}%`,
-                                                backgroundColor: isGoal ? '#4ade80' : '#818cf8', // Tailwind green-400 : indigo-400
+                                                backgroundColor: isGoal ? '#4ade80' : '#6366f1', // Tailwind green-400 : indigo-500
                                                 minWidth: '20px' // Ensure bar has width
                                             }}
                                         ></div>

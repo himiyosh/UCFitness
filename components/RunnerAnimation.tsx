@@ -2,7 +2,7 @@
 
 export default function RunnerAnimation({ userImage }: { userImage?: string | null }) {
     return (
-        <div className="relative w-24 h-24 flex items-center justify-center overflow-hidden rounded-full">
+        <div className="relative w-32 h-32 flex items-center justify-center overflow-hidden rounded-full">
             {/* Speed Lines Background */}
             <div className="absolute inset-0 opacity-40">
                 {/* Randomly positioned lines moving fast */}
@@ -24,7 +24,7 @@ export default function RunnerAnimation({ userImage }: { userImage?: string | nu
             {/* Runner (User Image or Chevrons) */}
             <div className="relative z-10">
                 {userImage ? (
-                    <div className="w-16 h-16 rounded-full border-2 border-white shadow-lg overflow-hidden animate-running">
+                    <div className="w-24 h-24 rounded-full border-2 border-white shadow-lg overflow-hidden animate-running">
                         <img src={userImage} alt="Runner" className="w-full h-full object-cover" />
                     </div>
                 ) : (
@@ -60,8 +60,8 @@ export default function RunnerAnimation({ userImage }: { userImage?: string | nu
                 }
 
                 @keyframes running-bob {
-                    0%, 100% { transform: translateY(0) rotate(5deg); }
-                    50% { transform: translateY(-4px) rotate(8deg); }
+                    0%, 100% { transform: translateY(0) rotate(-5deg); }
+                    50% { transform: translateY(-4px) rotate(-8deg); }
                 }
                 .animate-running {
                     animation: running-bob 0.4s ease-in-out infinite alternate;

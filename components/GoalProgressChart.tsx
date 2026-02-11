@@ -32,11 +32,11 @@ export default function GoalProgressChart({ current, goal, size = 80, strokeWidt
     // Celebration colors
     const ringColor = isAchieved
         ? 'text-[var(--accent-lime)]'
-        : 'text-[var(--theme-primary)]';
+        : 'text-[var(--theme-ring-color,var(--theme-primary))]';
 
     const percentColor = isAchieved
         ? 'text-[var(--accent-lime)]'
-        : 'text-[var(--theme-primary)]';
+        : 'text-[var(--theme-ring-color,var(--theme-primary))]';
 
     return (
         <>
@@ -85,7 +85,7 @@ export default function GoalProgressChart({ current, goal, size = 80, strokeWidt
                     {isAchieved ? (
                         <span className="text-lg">🎉</span>
                     ) : (
-                        <span className={`text-[10px] font-bold ${percentColor}`}>
+                        <span className={`text-sm font-bold ${percentColor}`}>
                             {Math.round(percentage)}%
                         </span>
                     )}

@@ -106,13 +106,15 @@ html {
   --background: linear-gradient(135deg, #64748b 0%, #475569 50%, #334155 100%);
   --foreground: #ffffff;
 
-  --theme-primary: #818cf8;
+  --theme-primary: #6366f1;
   --theme-primary-light: rgba(255, 255, 255, 0.15);
-  --theme-secondary: #c084fc;
+  --theme-secondary: #a855f7;
   --theme-accent: #38bdf8;
 
-  --theme-gradient-from: #818cf8;
-  --theme-gradient-to: #c084fc;
+  --theme-gradient-from: #6366f1;
+  --theme-gradient-to: #a855f7;
+
+  --theme-ring-color: #a78bfa;
 
   --frame-preview-bg: #1e293b;
   --theme-badge-bg: rgba(255, 255, 255, 0.2);
@@ -345,7 +347,7 @@ html {
 
 /* Group-hover states */
 [data-theme="midnight"] .group-hover\/item\:text-indigo-600 {
-  color: #a5b4fc !important;
+  color: #818cf8 !important;
 }
 
 /* --- 8. Semantic Color Badges: Success (green) --- */
@@ -367,7 +369,7 @@ html {
 
 /* --- 8b. Blue/Indigo text in dark mode --- */
 [data-theme="midnight"] .text-indigo-600 {
-  color: #a5b4fc !important;
+  color: #818cf8 !important;
 }
 
 /* --- 9. Semantic Color Badges: Error (red) --- */
@@ -519,13 +521,11 @@ html {
 
 /* Step count brightness boost for midnight */
 [data-theme="midnight"] .leaderboard-steps {
-  color: #e0e7ff !important;
-  text-shadow: 0 0 4px rgba(165, 180, 252, 0.3);
+  color: #c7d2fe !important;
   font-weight: 900;
 }
 [data-theme="midnight"] .group-rank-number {
   color: #c7d2fe !important;
-  text-shadow: 0 0 4px rgba(165, 180, 252, 0.3);
 }
 /* Delta up/down colors — works in all themes */
 .delta-up {
@@ -627,6 +627,12 @@ html {
   color: rgba(100, 116, 139, 0.3) !important;
 }
 
+/* --- 11g. Gradient text vivid for midnight (main step count etc.) --- */
+[data-theme="midnight"] .text-transparent.bg-clip-text {
+  --theme-gradient-from: #818cf8;
+  --theme-gradient-to: #c084fc;
+}
+
 /* --- 11g. CoinBalanceCard: ゴールドカード midnight テキスト視認性改善 --- */
 /* 背景グラデーションはそのまま維持。ソフトなウォームシャドウで自然に浮かせる */
 [data-theme="midnight"] .bg-gradient-to-br.from-amber-500 .text-amber-100 {
@@ -659,8 +665,9 @@ html {
 
 /* --- 13. Progress ring track --- */
 [data-theme="midnight"] .text-gray-100 {
-  color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.2) !important;
 }
+/* Progress ring vivid — handled via --theme-ring-color variable */
 
 /* --- 14. Buttons --- */
 [data-theme="midnight"] button {

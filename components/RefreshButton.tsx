@@ -25,7 +25,7 @@ export default function RefreshButton() {
         <button
             onClick={handleRefresh}
             disabled={loading}
-            className={`midnight-vivid-btn cursor-pointer rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 transition-all`}
+            className={`midnight-vivid-btn cursor-pointer rounded-xl bg-[var(--theme-primary)] px-5 py-2 text-base font-bold text-white shadow-md hover:brightness-110 disabled:opacity-50 transition-all`}
         >
             {loading ? t('refreshing') : t('refreshSteps')}
         </button>

@@ -19,7 +19,7 @@ export interface UserAvatarProps {
     /** フォールバック用の名前（先頭1文字を表示） */
     name?: string | null;
     /** サイズプリセット */
-    size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+    size?: 'xs' | 'sm' | 'md' | 'md-lg' | 'lg' | 'xl' | '2xl';
     /** 装備中フレームの色（hex, e.g. '#4ade80'） */
     frameColor?: string | null;
     /** 装備中称号テキスト */
@@ -53,8 +53,14 @@ const SIZE_MAP = {
         titleText: 'text-[9px]',
     },
     md: {
-        container: 'w-10 h-10',
+        container: 'w-11 h-11',
         text: 'text-sm',
+        frame: 3,
+        titleText: 'text-[10px]',
+    },
+    'md-lg': {
+        container: 'w-12 h-12',
+        text: 'text-base',
         frame: 3,
         titleText: 'text-[10px]',
     },

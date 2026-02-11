@@ -68,7 +68,7 @@ export async function checkAndAwardBadges(userId: string) {
     const totalSteps = allHistory?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
 
     // 4. Evaluate Badges
-    const newBadges: { user_id: string; badge_code: string; awarded_at: string }[] = [];
+    const newBadges: { user_id: string; badge_code: string; awarded_at: string; period_date: string }[] = [];
 
     for (const badge of allBadges) {
         if (earnedBadgeIds.has(badge.code)) continue; // Already earned
@@ -114,7 +114,8 @@ export async function checkAndAwardBadges(userId: string) {
             newBadges.push({
                 user_id: userId,
                 badge_code: badge.code,
-                awarded_at: new Date().toISOString()
+                awarded_at: new Date().toISOString(),
+                period_date: today,
             });
         }
     }

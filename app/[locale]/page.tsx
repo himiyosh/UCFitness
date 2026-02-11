@@ -265,7 +265,7 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 group">
-              <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
+              <h1 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
                 {t('title', { defaultMessage: 'UCFitness' })}
               </h1>
               <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
@@ -307,7 +307,7 @@ export default async function Home() {
                   </div>
 
                   {/* Today's Main Stat */}
-                  <div className="mb-6 flex items-center justify-between">
+                  <div className="mb-6 flex items-start justify-between relative">
                     <div>
                       <div className="flex items-baseline gap-1">
                         <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] drop-shadow-sm" style={{ fontFamily: '"Inter", sans-serif' }}>
@@ -334,8 +334,8 @@ export default async function Home() {
                     </div>
 
                     {/* Goal Progress Chart */}
-                    <div className="flex-shrink-0 animate-in fade-in zoom-in duration-500 delay-150">
-                      <GoalProgressChart current={mySteps} goal={stepGoal} size={84} />
+                    <div className="absolute right-4 -top-7 animate-in fade-in zoom-in duration-500 delay-150">
+                      <GoalProgressChart current={mySteps} goal={stepGoal} size={100} />
                     </div>
                   </div>
 
@@ -421,8 +421,10 @@ export default async function Home() {
                     <h4 className="font-black text-lg sm:text-2xl mb-0 sm:mb-2 tracking-tight">{t('keepStepping')}</h4>
                   </div>
 
-                  <p className="opacity-90 text-[10px] sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50 mt-1 sm:mt-0 whitespace-pre-line">
-                    {t('joinGroups')}
+                  <p className="opacity-90 text-[10px] sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50 mt-1 sm:mt-0">
+                    {t('joinGroups').split('\n').map((line, i, arr) => (
+                      <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+                    ))}
                   </p>
 
                   <div className="mt-3 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">

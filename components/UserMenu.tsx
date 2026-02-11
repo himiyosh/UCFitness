@@ -53,7 +53,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                     aria-haspopup="true"
                 >
                     <span className="sr-only">{t('signedInAs')}</span>
-                    <UserAvatar src={user.image} name={user.name} size="md" borderClass="border-gray-200" />
+                    <UserAvatar src={user.image} name={user.name} size="md-lg" borderClass="border-gray-200" />
                 </button>
             </div>
 
