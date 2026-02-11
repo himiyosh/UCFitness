@@ -13,10 +13,10 @@ const RANKS = [
 
 interface InvestorRankPanelProps {
     currentRank: string;
-    totalBalance: number;
+    lifetimeEarnings: number;
 }
 
-export default function InvestorRankPanel({ currentRank, totalBalance }: InvestorRankPanelProps) {
+export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: InvestorRankPanelProps) {
     const t = useTranslations('Bank');
 
     // 現在のランクのインデックス（RANKS は降順なので index が小さい = ランクが高い）
@@ -46,7 +46,7 @@ export default function InvestorRankPanel({ currentRank, totalBalance }: Investo
                         if (isNext) {
                             const prevRankMin = RANKS[currentIndex]?.minBalance || 0;
                             progressPercent = Math.min(100, Math.max(0,
-                                ((totalBalance - prevRankMin) / (rank.minBalance - prevRankMin)) * 100
+                                ((lifetimeEarnings - prevRankMin) / (rank.minBalance - prevRankMin)) * 100
                             ));
                         }
 

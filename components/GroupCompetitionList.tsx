@@ -43,7 +43,7 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                     <tr
                                         key={group.groupId}
                                         className={`
-                                                transition-colors hover:bg-gray-50
+                                                leaderboard-row transition-colors cursor-pointer
                                                 ${isCurrent ? 'bg-[var(--theme-primary-light)] border-l-4 border-[var(--theme-primary)]' : 'border-l-4 border-transparent'}
                                             `}
                                     >

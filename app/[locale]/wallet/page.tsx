@@ -91,7 +91,7 @@ export default async function BankPage() {
                             {t('title')}
                         </span>
                     </h2>
-                    <p className="mt-2.5 text-base" style={{ color: '#64748b' }}>
+                    <p className="mt-2.5 text-base text-gray-500">
                         {t('headerDesc')} <UCHintBalloon />
                     </p>
                     <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
@@ -129,7 +129,7 @@ export default async function BankPage() {
                     {/* 投資家ランクパネル + 取引履歴（横並び 1:4） */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-1">
-                            <InvestorRankPanel currentRank={balance.investor_rank} totalBalance={balance.total_balance} />
+                            <InvestorRankPanel currentRank={balance.investor_rank} lifetimeEarnings={balance.total_earned + balance.total_bonus} />
                         </div>
                         <div className="md:col-span-2">
                             <TransactionHistory transactions={transactions} />

@@ -46,7 +46,8 @@ export default async function ShopPage() {
         getCoinBalance(userId),
     ]);
 
-    const userRank = balance ? getInvestorRank(balance.total_balance) : { rank: 'BEGINNER' };
+    const lifetimeEarnings = balance ? (balance.total_earned + balance.total_bonus) : 0;
+    const userRank = balance ? getInvestorRank(lifetimeEarnings) : { rank: 'BEGINNER' };
 
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
@@ -88,7 +89,7 @@ export default async function ShopPage() {
                             {t('title')}
                         </span>
                     </h2>
-                    <p className="mt-2.5 text-base" style={{ color: '#64748b' }}>
+                    <p className="mt-2.5 text-base text-gray-500">
                         {t('headerDesc')} <UCHintBalloon />
                     </p>
                     <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />

@@ -145,7 +145,7 @@ export default async function MyGroupsPage() {
                                 {t('title')}
                             </span>
                         </h1>
-                        <p className="mt-2.5 text-base" style={{ color: '#64748b' }}>
+                        <p className="mt-2.5 text-base text-gray-500">
                             {t('headerDesc')}
                         </p>
                         <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
@@ -157,15 +157,15 @@ export default async function MyGroupsPage() {
                     <section className="flex-1 w-full">
                         {/* G8: ハイライトバナー */}
                         {bestRank && bestRankGroup && bestRank <= 3 && (
-                            <div className={`mb-4 p-4 rounded-xl border flex items-center gap-3 ${
+                            <div className={`highlight-banner mb-4 p-4 rounded-xl border flex items-center gap-3 ${
                                 bestRank === 1 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' :
                                 bestRank === 2 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200' :
                                 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'
                             }`}>
                                 <span className="text-3xl">{bestRank === 1 ? '🥇' : bestRank === 2 ? '🥈' : '🥉'}</span>
                                 <div>
-                                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
-                                    <div className="text-sm font-bold text-gray-900">
+                                    <div className="highlight-label text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
+                                    <div className="highlight-text text-sm font-bold text-gray-900">
                                         {t('topRankedIn', { rank: bestRank, group: bestRankGroup.groups.name })}
                                     </div>
                                 </div>
@@ -189,7 +189,7 @@ export default async function MyGroupsPage() {
                     <aside className="w-full lg:w-80 flex-shrink-0 sticky top-24 space-y-4">
                         {/* G1: グループサマリー */}
                         {sortedMemberships.length > 0 && (
-                            <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <div className="bg-white midnight-solid-panel rounded-xl p-5 border border-gray-100 shadow-sm">
                                 <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                                     <span className="text-lg">📊</span>
                                     {t('groupSummary')}
@@ -218,7 +218,7 @@ export default async function MyGroupsPage() {
                             <div className="flex items-center mb-4">
                                 <h2 className="text-lg font-bold text-gray-900">{t('joinOrCreate')}</h2>
                             </div>
-                            <div className="bg-[var(--theme-primary-light)] rounded-xl p-6 border border-[var(--theme-primary)]/20">
+                            <div className="bg-[var(--theme-primary-light)] midnight-solid-panel rounded-xl p-6 border border-[var(--theme-primary)]/20">
                                 {/* G4: イラスト風装飾 */}
                                 <div className="flex justify-center mb-4">
                                     <div className="flex items-end gap-1">

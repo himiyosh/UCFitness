@@ -161,7 +161,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     // おすすめ商品（未所持 & アクティブな商品から最大3つ、カテゴリ分散）
     const featuredItems = useMemo(() => {
         const candidates = items.filter(i =>
-            i.is_active && !ownedItemIds.has(i.id) && meetsRank(i.rank_required)
+            i.is_active && !ownedItemIds.has(i.id)
         );
         // カテゴリが偏らないよう安定ソート（価格安い順）して分散選出
         const sorted = [...candidates].sort((a, b) => a.price - b.price);
@@ -429,13 +429,11 @@ function ShopItemCard({
     const isComingSoon = !item.is_active;
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
-    const isLocked = !isOwned && !isComingSoon && (!meetsRank || !canAfford);
 
     return (
         <div
             className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md cursor-pointer ${
                 isComingSoon ? 'bg-gray-50 border-dashed border-gray-300'
-                    : isLocked ? 'bg-gray-100 border-gray-200'
                     : isOwned ? 'bg-white border-green-200'
                     : 'bg-white border-gray-100'
             }`}
@@ -452,7 +450,7 @@ function ShopItemCard({
                             : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                 }}>
                     {/* プレビューコンテンツ（ロック時はコンテンツのみ減衰、背景は維持） */}
-                    <div className={isLocked ? 'opacity-50 grayscale' : ''}>
+                    <div className={isComingSoon ? 'opacity-40' : ''}>
                         {item.category === 'ICON_FRAME' && (
                             <UserAvatar size="lg" src={userImage} name={userName} frameColor={getFrameColor(item.preview_value)} />
                         )}
@@ -467,18 +465,10 @@ function ShopItemCard({
                     </div>
                 </div>
 
-                {/* ロック時オーバーレイ（midnight でも背景が見える程度の薄い被せ） */}
-                {isLocked && <div className="absolute inset-0 bg-black/15 pointer-events-none" />}
-
                 {/* バッジ類 */}
                 {isComingSoon && (
                     <div className="absolute top-2 right-2 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
                         🚧 {t('comingSoon')}
-                    </div>
-                )}
-                {!isComingSoon && !meetsRank && (
-                    <div className="absolute top-2 right-2 bg-gray-800/80 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
-                        🔒 {t('rankLocked', { rank: getRankShortLabel(item.rank_required) })}
                     </div>
                 )}
                 {isOwned && (
@@ -489,7 +479,7 @@ function ShopItemCard({
             </div>
 
             {/* 情報 + アクション */}
-            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''} ${isLocked ? 'opacity-50' : ''}`}>
+            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
                 <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
                 <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-600'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
@@ -497,7 +487,7 @@ function ShopItemCard({
                         <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-700'}`}>{item.price.toLocaleString()}</span>
                         <span className="text-xs text-gray-500">{t('uc')}</span>
                     </div>
-                    {!isOwned && !isComingSoon && meetsRank && (
+                    {!isOwned && !isComingSoon && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onBuy(); }}
                             disabled={!canAfford || isLoading}
@@ -746,10 +736,6 @@ function ItemPreviewDialog({
                     ) : isOwned ? (
                         <div className="text-center py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold text-sm">
                             ✅ {isEquipped ? t('equipped') : t('owned')}
-                        </div>
-                    ) : !meetsRank ? (
-                        <div className="text-center py-3 rounded-xl bg-gray-100 text-gray-500 font-medium text-sm">
-                            🔒 {t('rankLocked', { rank: getRankShortLabel(item.rank_required) })}
                         </div>
                     ) : (
                         <button

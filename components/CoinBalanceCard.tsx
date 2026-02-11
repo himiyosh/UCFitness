@@ -51,7 +51,8 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
     const animatedToday = useCountUp(todayEarned, 1000);
 
     const rankIcon = getRankIcon(balance.investor_rank);
-    const nextRank = getNextRankInfo(balance.total_balance);
+    const lifetimeEarnings = balance.total_earned + balance.total_bonus;
+    const nextRank = getNextRankInfo(lifetimeEarnings);
     const multiplier = getStreakMultiplier(balance.current_streak);
 
     return (
@@ -109,7 +110,18 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
             </div>
 
             {/* 📊 統計カード群 */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {/* 通算獲得 */}
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <p className="text-sm text-gray-500 font-medium mb-1">{t('lifetimeEarnings')}</p>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-bold text-amber-600 tabular-nums">
+                            {lifetimeEarnings.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-gray-400">{t('uc')}</span>
+                    </div>
+                </div>
+
                 {/* 今日の入金 */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <p className="text-sm text-gray-500 font-medium mb-1">{t('todayEarned')}</p>
