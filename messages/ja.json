@@ -207,7 +207,7 @@
         "noGroups": "まだグループに参加していません。",
         "joinGroup": "グループに参加",
         "enterGroupName": "ランキングを表示するグループ名を入力してください。",
-        "placeholder": "group-name",
+        "placeholder": "GroupId",
         "join": "参加",
         "joining": "参加中...",
         "success": "参加しました: {keyword}",

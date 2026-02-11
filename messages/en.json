@@ -207,7 +207,7 @@
         "noGroups": "You haven't joined any groups yet.",
         "joinGroup": "Join a Group",
         "enterGroupName": "Enter a group name to see its ranking.",
-        "placeholder": "group-name",
+        "placeholder": "GroupId",
         "join": "Join",
         "joining": "Joining...",
         "success": "Joined group: {keyword}",
