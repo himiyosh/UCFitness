@@ -575,7 +575,7 @@ function InventoryView({
                             {meta.label}
                             <span className="text-gray-400 font-normal">({items.length})</span>
                         </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {items.map(ui => {
                                 const item = ui.shop_items;
                                 if (!item) return null;
@@ -602,7 +602,7 @@ function InventoryView({
                                         </div>
 
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 truncate">{name}</p>
+                                            <p className="text-sm font-bold text-gray-900 break-words" title={name}>{name}</p>
                                             {isEquipped && (
                                                 <p className="text-xs text-amber-600 font-medium">⭐ {t('equipped')}</p>
                                             )}
