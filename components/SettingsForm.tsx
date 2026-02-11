@@ -49,6 +49,16 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     const { update } = useSession(); // Get update function
     const { theme, setTheme } = useTheme(); // Theme hook
 
+    // S3: プロフィール完成度の計算
+    const completionItems = [
+        { key: 'name', label: t('displayName'), done: !!user.name && user.name.trim().length > 0 },
+        { key: 'username', label: t('userId'), done: !!user.username && user.username.trim().length > 0 },
+        { key: 'banner', label: t('banner'), done: !!user.banner_url },
+        { key: 'image', label: t('profilePhoto'), done: !!user.is_custom_image },
+        { key: 'goal', label: t('dailyGoal'), done: user.step_goal !== null && user.step_goal !== 10000 },
+    ];
+    const completionPercent = Math.round((completionItems.filter(i => i.done).length / completionItems.length) * 100);
+
     // Midnight を所有していないのに適用中の場合、classic にリセット
     if (theme === 'midnight' && !ownsMidnight) {
         setTheme('classic');
@@ -129,8 +139,48 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
             {/* Main Column */}
             <div className="lg:col-span-2 space-y-6">
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">{t('profileSettings')}</h2>
+
+            {/* S3: プロフィール完成度メーター */}
+            {completionPercent < 100 ? (
+                <div className="bg-gradient-to-r from-[var(--theme-primary-light)] to-white p-5 rounded-xl shadow-sm border border-[var(--theme-primary)]/15">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                            📊 {t('profileCompletion')}
+                        </span>
+                        <span className="text-sm font-extrabold text-[var(--theme-primary)]">{completionPercent}%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-white/80 rounded-full overflow-hidden shadow-inner">
+                        <div
+                            className="h-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] rounded-full transition-all duration-700 ease-out"
+                            style={{ width: `${completionPercent}%` }}
+                        />
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                        {completionItems.map(item => (
+                            <span key={item.key} className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                                item.done
+                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                    : 'bg-white text-gray-400 border border-gray-200'
+                            }`}>
+                                {item.done ? '✅' : '⬜'} {item.label}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl shadow-sm border border-green-200 flex items-center gap-3">
+                    <span className="text-2xl">🎉</span>
+                    <span className="text-sm font-bold text-green-700">{t('profileComplete')}</span>
+                </div>
+            )}
+
+            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                {/* S8: 装飾的な背景グラデーション */}
+                <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[var(--theme-primary)]/5 to-transparent rounded-full -translate-y-20 translate-x-20 pointer-events-none" />
+                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <span className="text-2xl">👤</span>
+                    {t('profileSettings')}
+                </h2>
 
                 <div className="flex flex-col gap-8">
                     {/* Profile Visuals (Banner + Avatar) */}
@@ -289,9 +339,10 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             <div className="space-y-8">
 
                 {/* Language Switcher */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full -translate-y-14 translate-x-14 pointer-events-none" />
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                        <span className="text-xl">🌐</span>
                         {commonT('language')}
                     </h2>
                     <p className="text-xs text-gray-500 mb-6 font-medium">{t('languageDescription')}</p>
@@ -331,68 +382,128 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     </div>
                 </section>
 
-                {/* Theme Switcher */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                {/* S2/S9: テーマカードスタイルスイッチャー */}
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-pink-500/5 to-transparent rounded-full translate-y-20 -translate-x-16 pointer-events-none" />
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                        <span className="text-xl">🎨</span>
                         {t('theme')}
                     </h2>
-                    <p className="text-xs text-gray-500 mb-6 font-medium">{t('themeDescription')}</p>
-                    <div className="flex flex-col gap-2">
+                    <p className="text-xs text-gray-500 mb-4 font-medium">{t('themeDescription')}</p>
+                    <div className="flex flex-col gap-3">
+                        {/* Classic */}
                         <button
                             onClick={() => setTheme('classic')}
-                            className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${theme === 'classic'
-                                ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
-                                }`}
+                            className={`relative overflow-hidden rounded-xl border-2 p-4 transition-all cursor-pointer text-left group ${
+                                theme === 'classic'
+                                    ? 'border-indigo-500 shadow-lg ring-2 ring-indigo-200'
+                                    : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
+                            }`}
                         >
-                            <span className="flex items-center gap-3">
-                                <span className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></span>
-                                Classic
-                            </span>
-                            {theme === 'classic' && <span className="text-[var(--theme-primary)]">✓</span>}
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/8 via-purple-500/5 to-transparent pointer-events-none" />
+                            <div className="relative flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-md flex items-center justify-center text-white shrink-0">
+                                    <span className="text-lg">💎</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="font-bold text-sm text-gray-900">Classic</div>
+                                    <div className="text-xs text-gray-500">{t('classicDesc')}</div>
+                                </div>
+                                {theme === 'classic' && (
+                                    <span className="ml-auto shrink-0 w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold">✓</span>
+                                )}
+                            </div>
+                            {/* ミニプレビューバー */}
+                            <div className="mt-3 flex gap-1.5">
+                                <div className="h-1.5 flex-1 rounded-full bg-indigo-500/30" />
+                                <div className="h-1.5 w-8 rounded-full bg-purple-500/30" />
+                                <div className="h-1.5 w-6 rounded-full bg-indigo-300/30" />
+                            </div>
                         </button>
+
+                        {/* Pop & Fun */}
                         <button
                             onClick={() => setTheme('pop')}
-                            className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${theme === 'pop'
-                                ? 'bg-pink-50 border-pink-200 text-pink-700 midnight-option-selected'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
-                                }`}
+                            className={`relative overflow-hidden rounded-xl border-2 p-4 transition-all cursor-pointer text-left group ${
+                                theme === 'pop'
+                                    ? 'border-pink-500 shadow-lg ring-2 ring-pink-200'
+                                    : 'border-gray-200 hover:border-pink-300 hover:shadow-md'
+                            }`}
                         >
-                            <span className="flex items-center gap-3">
-                                <span className="w-6 h-6 rounded-full bg-gradient-to-r from-[var(--accent-coral)] via-[var(--accent-pink)] to-[var(--accent-purple)]"></span>
-                                Pop & Fun 🎨
-                            </span>
-                            {theme === 'pop' && <span className="text-pink-600">✓</span>}
+                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-coral)]/8 via-[var(--accent-pink)]/5 to-transparent pointer-events-none" />
+                            <div className="relative flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--accent-coral)] via-[var(--accent-pink)] to-[var(--accent-purple)] shadow-md flex items-center justify-center text-white shrink-0">
+                                    <span className="text-lg">🎨</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="font-bold text-sm text-gray-900">Pop & Fun</div>
+                                    <div className="text-xs text-gray-500">{t('popDesc')}</div>
+                                </div>
+                                {theme === 'pop' && (
+                                    <span className="ml-auto shrink-0 w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-bold">✓</span>
+                                )}
+                            </div>
+                            <div className="mt-3 flex gap-1.5">
+                                <div className="h-1.5 flex-1 rounded-full bg-pink-400/30" />
+                                <div className="h-1.5 w-8 rounded-full bg-orange-400/30" />
+                                <div className="h-1.5 w-6 rounded-full bg-purple-400/30" />
+                            </div>
                         </button>
+
+                        {/* Midnight */}
                         <button
                             onClick={() => ownsMidnight && setTheme('midnight')}
-                            className={`w-full px-4 py-3 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors ${ownsMidnight ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'} ${theme === 'midnight'
-                                ? 'bg-slate-900 border-slate-700 text-indigo-400 midnight-option-selected'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
-                                }`}
                             disabled={!ownsMidnight}
+                            className={`relative overflow-hidden rounded-xl border-2 p-4 transition-all text-left group ${
+                                ownsMidnight ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+                            } ${
+                                theme === 'midnight'
+                                    ? 'border-indigo-400 shadow-lg ring-2 ring-indigo-300/50 bg-slate-900'
+                                    : 'border-gray-200 hover:border-slate-400 hover:shadow-md'
+                            }`}
                         >
-                            <span className="flex items-center gap-3 min-w-0">
-                                <span className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-600 via-slate-900 to-slate-950 border border-indigo-400/50 shadow-[0_0_6px_rgba(99,102,241,0.4)] shrink-0"></span>
-                                <span className="truncate">Midnight 🌙</span>
-                            </span>
-                            {theme === 'midnight' && ownsMidnight && <span className="text-indigo-400 shrink-0">✓</span>}
-                            {ownsMidnight && theme !== 'midnight' && <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200 shrink-0">Premium</span>}
-                            {!ownsMidnight && (
-                                <Link href="/shop" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-200 hover:bg-amber-100 transition-colors shrink-0">
-                                    🔒 30,000 UC
-                                </Link>
-                            )}
+                            <div className={`absolute inset-0 pointer-events-none ${
+                                theme === 'midnight'
+                                    ? 'bg-gradient-to-br from-indigo-600/20 via-slate-900/50 to-slate-950/80'
+                                    : 'bg-gradient-to-br from-slate-800/8 via-indigo-900/5 to-transparent'
+                            }`} />
+                            <div className="relative flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 via-slate-900 to-slate-950 shadow-md border border-indigo-400/30 flex items-center justify-center text-white shrink-0">
+                                    <span className="text-lg">🌙</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <div className={`font-bold text-sm ${theme === 'midnight' ? 'text-indigo-300' : 'text-gray-900'}`}>Midnight</div>
+                                    <div className={`text-xs ${theme === 'midnight' ? 'text-indigo-400/70' : 'text-gray-500'}`}>{t('midnightDesc')}</div>
+                                </div>
+                                <div className="ml-auto shrink-0 flex items-center gap-2">
+                                    {theme === 'midnight' && ownsMidnight && (
+                                        <span className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-[0_0_8px_rgba(99,102,241,0.5)]">✓</span>
+                                    )}
+                                    {ownsMidnight && theme !== 'midnight' && (
+                                        <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200">Premium</span>
+                                    )}
+                                    {!ownsMidnight && (
+                                        <Link href="/shop" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-200 hover:bg-amber-100 transition-colors">
+                                            🔒 30,000 UC
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-3 flex gap-1.5">
+                                <div className={`h-1.5 flex-1 rounded-full ${theme === 'midnight' ? 'bg-indigo-500/40' : 'bg-slate-700/20'}`} />
+                                <div className={`h-1.5 w-8 rounded-full ${theme === 'midnight' ? 'bg-indigo-400/30' : 'bg-slate-600/15'}`} />
+                                <div className={`h-1.5 w-6 rounded-full ${theme === 'midnight' ? 'bg-slate-500/30' : 'bg-slate-500/10'}`} />
+                            </div>
                         </button>
                     </div>
                     <Link href="/shop" className="mt-3 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
                         {t('moreThemes')} →
                     </Link>
                 </section>
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-[var(--theme-primary)]/5 to-transparent rounded-full translate-y-14 translate-x-14 pointer-events-none" />
                     <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        <span className="text-xl">⚡</span>
                         {t('dailyGoal')}
                     </h2>
                     <p className="text-xs text-gray-500 mb-6 font-medium">{t('setDailyGoal')}</p>
@@ -401,10 +512,35 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     </div>
                 </section>
 
-                {/* Notifications */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                {/* S5: アカウント統計 */}
+                <section className="bg-gradient-to-br from-[var(--theme-primary-light)] to-white p-6 rounded-xl shadow-sm border border-[var(--theme-primary)]/15 h-fit">
                     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                        <span className="text-xl">📈</span>
+                        {t('accountStats')}
+                    </h2>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white/80 rounded-lg p-3 text-center border border-gray-100">
+                            <div className="text-2xl font-black text-[var(--theme-primary)]">{ownedTitles.length}</div>
+                            <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('titlesOwned')}</div>
+                        </div>
+                        <div className="bg-white/80 rounded-lg p-3 text-center border border-gray-100">
+                            <div className="text-2xl font-black text-[var(--theme-primary)]">{ownedFrames.length}</div>
+                            <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('framesOwned')}</div>
+                        </div>
+                        <div className="col-span-2 bg-white/80 rounded-lg p-3 text-center border border-gray-100">
+                            <div className="text-sm font-bold text-gray-700 flex items-center justify-center gap-2">
+                                <span className="text-lg">{theme === 'classic' ? '💎' : theme === 'pop' ? '🎨' : '🌙'}</span>
+                                {t('currentTheme')}: <span className="text-[var(--theme-primary)] capitalize">{theme}</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Notifications */}
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-purple-500/5 to-transparent rounded-full -translate-y-14 -translate-x-14 pointer-events-none" />
+                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span className="text-xl">🔔</span>
                         {t('notifications')}
                     </h2>
                     <PushNotificationManager />

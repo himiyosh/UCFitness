@@ -23,6 +23,7 @@ interface GroupMembership {
 export default function GroupList({ initialMemberships }: { initialMemberships: GroupMembership[] }) {
     const [memberships, setMemberships] = useState(initialMemberships);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const router = useRouter();
     const t = useTranslations('Groups');
 
@@ -109,6 +110,26 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
         }
     };
 
+    // G7: 招待リンクをコピー
+    const handleShareInvite = async (keyword: string, groupId: string) => {
+        const url = `${window.location.origin}/group/join?keyword=${encodeURIComponent(keyword)}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopiedId(groupId);
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch {
+            // フォールバック
+            const textarea = document.createElement('textarea');
+            textarea.value = url;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            setCopiedId(groupId);
+            setTimeout(() => setCopiedId(null), 2000);
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {memberships.map((m, index) => (
@@ -176,9 +197,58 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                         #{m.groups.keyword}
                                     </span>
                                 </div>
+
+                                {/* G10: メンバー数 + G2: ランクバー */}
+                                <div className="mt-2 flex items-center gap-3 flex-wrap">
+                                    {m.totalMembers && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 font-medium">
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            {t('members', { count: m.totalMembers })}
+                                        </span>
+                                    )}
+                                    {m.rank && m.totalMembers && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-[var(--theme-primary)] font-bold">
+                                            🏆 {t('rankOf', { rank: m.rank, total: m.totalMembers })}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* G2: ミニランクプログレスバー */}
+                                {m.rank && m.totalMembers && m.totalMembers > 1 && (
+                                    <div className="mt-2 hidden sm:block">
+                                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                                    m.rank === 1 ? 'bg-yellow-400' :
+                                                    m.rank === 2 ? 'bg-gray-400' :
+                                                    m.rank === 3 ? 'bg-orange-400' : 'bg-[var(--theme-primary)]/60'
+                                                }`}
+                                                style={{ width: `${Math.max(10, ((m.totalMembers - m.rank + 1) / m.totalMembers) * 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </Link>
+
+                    {/* G7: 招待共有ボタン */}
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleShareInvite(m.groups.keyword, m.groups.id);
+                        }}
+                        className="absolute bottom-2 right-2 sm:bottom-3 sm:right-14 z-20 p-1.5 rounded-full bg-white/90 shadow-sm border border-gray-200 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all cursor-pointer"
+                        title={t('shareInvite')}
+                        aria-label={t('shareInvite')}
+                    >
+                        {copiedId === m.groups.id ? (
+                            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        )}
+                    </button>
 
                     {/* Actions Column */}
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 sm:top-4 sm:right-4 sm:translate-y-0 flex flex-col gap-2 z-20">
