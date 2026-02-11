@@ -58,7 +58,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                 <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-md bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--theme-primary)] disabled:opacity-50 whitespace-nowrap"
+                    className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 whitespace-nowrap transition-all"
                 >
                     Save
                 </button>

@@ -30,7 +30,9 @@ export default async function Breadcrumbs({ items = [], className = "" }: Breadc
 
                 {items.map((item, index) => (
                     <li key={index} className="flex items-center space-x-2">
-                        <span className="text-gray-300">/</span>
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                         {item.href ? (
                             <Link href={item.href} className="hover:text-[var(--theme-primary)] transition-colors">
                                 {item.label}

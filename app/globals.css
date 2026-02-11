@@ -871,17 +871,25 @@ html {
   --color-yellow: var(--accent-yellow);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* OSのdark modeはアプリのdata-themeシステムで管理するため無効化 */
+/* @media (prefers-color-scheme: dark) {} */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans, 'Inter', system-ui, -apple-system, sans-serif);
+}
+
+/* モーション軽減設定 (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ページ背景色をbodyに設定（mainはtransparentにしたため）

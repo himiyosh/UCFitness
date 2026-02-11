@@ -4,8 +4,10 @@ import { useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
+import { useToast } from '@/components/Toast';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
+import Spinner from '@/components/ui/Spinner';
 
 /** item_code → アプリテーマのマッピング */
 const THEME_MAP: Record<string, Theme> = {
@@ -45,6 +47,7 @@ const RANK_ORDER: Record<string, number> = {
 export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName }: ShopClientProps) {
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
+    const { success: toastSuccess, error: toastError } = useToast();
     const [activeTab, setActiveTab] = useState<TabKey>('ALL');
     const [currentBalance, setCurrentBalance] = useState(balance);
     const [ownedItemIds, setOwnedItemIds] = useState<Set<string>>(
@@ -53,7 +56,6 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [equippedState, setEquippedState] = useState<EquippedItems>(equipped);
     const [userItemsState, setUserItemsState] = useState(userItems);
     const [isLoading, setIsLoading] = useState<string | null>(null);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
     const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
     const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
@@ -61,11 +63,11 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     // フィルタされたアイテム
     const filteredItems = activeTab === 'ALL' ? items : items.filter(i => i.category === activeTab);
 
-    // トースト表示
+    // トースト表示（グローバルToastProvider経由）
     const showToast = useCallback((message: string, type: 'success' | 'error') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    }, []);
+        if (type === 'success') toastSuccess(message);
+        else toastError(message);
+    }, [toastSuccess, toastError]);
 
     // 購入処理
     const handlePurchase = useCallback(async (item: ShopItem) => {
@@ -208,7 +210,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 sm:justify-between">
                     {/* UCShop ロゴ + 残高（モバイル中央寄せ） */}
                     <div className="flex flex-col items-center sm:items-start justify-center shrink-0">
-                        <h1 className="text-6xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] leading-none">
+                        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] leading-none">
                             UC<span className="text-yellow-200 drop-shadow-[0_0_20px_rgba(253,224,71,0.4)]">Shop</span>
                         </h1>
                         <div className="flex items-center gap-2 mt-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-1.5 border border-white/20">
@@ -332,7 +334,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <p>{t('noItems')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                             {filteredItems.map(item => (
                                 <ShopItemCard
                                     key={item.id}
@@ -400,15 +402,6 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     userImage={userImage}
                     userName={userName}
                 />
-            )}
-
-            {/* トースト */}
-            {toast && (
-                <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium animate-slide-up ${
-                    toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-                }`}>
-                    {toast.message}
-                </div>
             )}
         </div>
     );
@@ -516,7 +509,7 @@ function ShopItemCard({
                         >
                             {isLoading ? (
                                 <span className="flex items-center gap-1">
-                                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                    <Spinner size="xs" />
                                 </span>
                             ) : (
                                 `🛒 ${t('buy')}`
@@ -582,7 +575,7 @@ function InventoryView({
                             {meta.label}
                             <span className="text-gray-400 font-normal">({items.length})</span>
                         </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                             {items.map(ui => {
                                 const item = ui.shop_items;
                                 if (!item) return null;
@@ -736,7 +729,7 @@ function ItemPreviewDialog({
                         >
                             {isLoading ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                    <Spinner size="sm" />
                                 </span>
                             ) : canAfford ? (
                                 <>🛒 {t('buy')} — {item.price.toLocaleString()} {t('uc')}</>

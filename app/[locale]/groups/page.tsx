@@ -90,7 +90,6 @@ export default async function MyGroupsPage() {
 
         // If neither, sort by join date (newest first)
         return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
-        return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
     });
 
     const t = await getTranslations('Groups');

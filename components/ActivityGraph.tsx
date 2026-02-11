@@ -321,7 +321,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
             <div className="flex flex-col gap-6 mb-6">
                 {/* Main Header Row */}
                 <div className="relative flex items-center justify-center py-2">
-                    <h3 className="absolute left-0 text-lg font-bold text-gray-900 whitespace-nowrap hidden sm:block">{t('activityHistory')}</h3>
+                    <h3 className="absolute left-0 text-sm sm:text-lg font-bold text-gray-900 whitespace-nowrap">{t('activityHistory')}</h3>
                     <div className="flex bg-gray-100 p-1 rounded-lg">
                         {(['WEEKLY', 'MONTHLY', 'ALL'] as ViewMode[]).map((m) => (
                             <button

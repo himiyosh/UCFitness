@@ -61,6 +61,10 @@ export default async function LocaleLayout({
           <AuthProvider>
             <ToastProvider>
               <ThemeProvider>
+                {/* スキップナビゲーションリンク (WCAG 2.4.1) */}
+                <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-[var(--theme-primary)] focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg">
+                  Skip to content
+                </a>
                 <SplashScreen />
                 <Suspense fallback={null}>
                   <GlobalLoader />
@@ -68,7 +72,7 @@ export default async function LocaleLayout({
 
                 <LanguageSyncer user={session?.user as any} />
                 {session && <FloatingEmojis />}
-                <div className="relative" style={{ zIndex: 20 }}>
+                <div id="main-content" className="relative" style={{ zIndex: 20 }}>
                   {children}
                 </div>
               </ThemeProvider>

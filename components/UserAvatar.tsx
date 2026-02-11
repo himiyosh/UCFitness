@@ -42,9 +42,9 @@ export interface UserAvatarProps {
 const SIZE_MAP = {
     xs: {
         container: 'w-6 h-6',
-        text: 'text-[8px]',
+        text: 'text-[9px]',
         frame: 3,      // border width px
-        titleText: 'text-[8px]',
+        titleText: 'text-[9px]',
     },
     sm: {
         container: 'w-8 h-8',
