@@ -232,26 +232,26 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                         </div>
                     </Link>
 
-                    {/* G7: 招待共有ボタン */}
-                    <button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleShareInvite(m.groups.keyword, m.groups.id);
-                        }}
-                        className="absolute bottom-2 right-2 sm:bottom-3 sm:right-14 z-20 p-1.5 rounded-full bg-white/90 shadow-sm border border-gray-200 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all cursor-pointer"
-                        title={t('shareInvite')}
-                        aria-label={t('shareInvite')}
-                    >
-                        {copiedId === m.groups.id ? (
-                            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                        )}
-                    </button>
-
                     {/* Actions Column */}
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 sm:top-4 sm:right-4 sm:translate-y-0 flex flex-col gap-2 z-20">
+                        {/* G7: 招待共有ボタン */}
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleShareInvite(m.groups.keyword, m.groups.id);
+                            }}
+                            className="cursor-pointer p-1.5 rounded-full bg-white shadow-sm border border-gray-200 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] hover:border-[var(--theme-primary)]/20 transition-all flex items-center justify-center"
+                            title={copiedId === m.groups.id ? t('copiedLink') : t('shareInvite')}
+                            aria-label={t('shareInvite')}
+                        >
+                            {copiedId === m.groups.id ? (
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            ) : (
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                            )}
+                        </button>
+
                         {/* Primary Action (Pin) */}
                         <button
                             onClick={(e) => {
