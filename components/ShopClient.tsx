@@ -575,7 +575,7 @@ function InventoryView({
                             {meta.label}
                             <span className="text-gray-400 font-normal">({items.length})</span>
                         </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                             {items.map(ui => {
                                 const item = ui.shop_items;
                                 if (!item) return null;
@@ -583,42 +583,45 @@ function InventoryView({
                                 const isEquipped = ui.is_equipped;
 
                                 return (
-                                    <div key={ui.id} className={`bg-white rounded-lg border p-3 flex items-center gap-3 transition-all ${
-                                        isEquipped ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 hover:border-gray-300'
+                                    <div key={ui.id} className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
+                                        isEquipped ? 'border-amber-300 bg-amber-50/50' : 'bg-white border-gray-200 hover:border-gray-300'
                                     }`}>
-                                        {/* プレビュー（小） */}
-                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{
+                                        {/* プレビュー領域（販売アイテムと同サイズ） */}
+                                        <div className="h-24 flex items-center justify-center midnight-preserve-bg" style={{
                                             background: item.category === 'THEME_COLOR'
                                                 ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
                                                 : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                                         }}>
                                             {item.category === 'ICON_FRAME' && (
-                                                <UserAvatar size="sm" frameColor={getFrameColor(item.preview_value)} />
+                                                <UserAvatar size="lg" frameColor={getFrameColor(item.preview_value)} />
                                             )}
-                                            {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
+                                            {item.category === 'TITLE' && <span className="text-3xl">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
-                                                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.preview_value }} />
+                                                <div className="w-12 h-12 rounded-full shadow-lg border-2 border-white/40" style={{ backgroundColor: item.preview_value }} />
                                             )}
                                         </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 break-words" title={name}>{name}</p>
-                                            {isEquipped && (
-                                                <p className="text-xs text-amber-600 font-medium">⭐ {t('equipped')}</p>
-                                            )}
-                                        </div>
+                                        {isEquipped && (
+                                            <div className="bg-green-500 text-white text-xs text-center py-0.5 font-bold">
+                                                ⭐ {t('equipped')}
+                                            </div>
+                                        )}
 
-                                        <button
-                                            onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
-                                            disabled={isLoading === ui.id}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
-                                                isEquipped
-                                                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                    : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
-                                            }`}
-                                        >
-                                            {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
-                                        </button>
+                                        {/* 情報 + アクション */}
+                                        <div className="p-2 sm:p-3">
+                                            <p className="font-bold text-xs sm:text-sm text-gray-900 mb-2 line-clamp-2" title={name}>{name}</p>
+                                            <button
+                                                onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
+                                                disabled={isLoading === ui.id}
+                                                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                    isEquipped
+                                                        ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                        : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
+                                                }`}
+                                            >
+                                                {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
