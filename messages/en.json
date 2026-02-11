@@ -136,15 +136,16 @@
     },
     "Notifications": {
         "title": "Notifications",
-        "description": "Enable push notifications to get updates when you earn a badge!",
-        "active": "Active",
-        "disable": "Disable",
-        "enable": "Enable Notifications",
-        "enabling": "Enabling...",
-        "notSupported": "Push notifications are not supported in this browser.",
+        "description": "✨ Don't miss out on your victories!\nGet notified when you unlock new badges! 🏆",
+        "active": "Notifications Active",
+        "disable": "Disable Notifications (Reset)",
+        "enable": "🔔 Enable Notifications",
+        "enabling": "Setting up... 🚀",
+        "notSupported": "Push notifications are not supported on this browser.",
         "missingKey": "VAPID Public Key is missing!",
         "success": "Notifications enabled!",
-        "error": "Failed to subscribe to notifications."
+        "error": "Failed to enable notifications.",
+        "disabled": "Notifications disabled."
     },
     "Profile": {
         "title": "Profile",

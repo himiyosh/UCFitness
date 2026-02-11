@@ -136,15 +136,16 @@
     },
     "Notifications": {
         "title": "通知設定",
-        "description": "バッジ獲得時にプッシュ通知を受け取る設定です。",
-        "active": "有効",
-        "disable": "無効にする",
-        "enable": "通知を有効にする",
-        "enabling": "有効化中...",
+        "description": "✨ あなたの成果を見逃さないで！\nバッジ獲得時に通知を受け取ろう！🏆",
+        "active": "通知は有効です",
+        "disable": "通知を無効にする（リセット）",
+        "enable": "🔔 通知を有効にする",
+        "enabling": "設定中... 🚀",
         "notSupported": "このブラウザはプッシュ通知に対応していません。",
         "missingKey": "VAPIDキーが見つかりません。",
         "success": "通知を有効にしました！",
-        "error": "通知の登録に失敗しました。"
+        "error": "通知の登録に失敗しました。",
+        "disabled": "通知を無効にしました。"
     },
     "Profile": {
         "title": "プロフィール",

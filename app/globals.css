@@ -157,6 +157,14 @@ html {
   backdrop-filter: blur(28px) saturate(160%) brightness(0.95) !important;
 }
 
+/* --- 0.5 Account Stats 数字色 --- */
+.account-stat-number {
+  color: var(--theme-primary);
+}
+[data-theme="midnight"] .account-stat-number {
+  color: #a5b4fc !important; /* indigo-300 — ダーク背景で視認性UP */
+}
+
 /* --- 1. Frosted Glass Cards (bg-white + high-opacity variants) --- */
 [data-theme="midnight"] .bg-white,
 [data-theme="midnight"] .bg-white\/50,
