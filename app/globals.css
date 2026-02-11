@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ==== FONT FAMILY ==== */
-@theme {
-  --font-sans: var(--font-noto-sans-jp), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+body {
+  font-family: var(--font-noto-sans-jp), var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 /* ==== SCROLLBAR STABILITY ==== */
