@@ -479,17 +479,17 @@ function ShopItemCard({
 
                 {/* バッジ類 */}
                 {isComingSoon && (
-                    <div className="absolute top-2 right-2 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <div className="absolute top-2 right-2 bg-gray-600/90 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
                         🚧 {t('comingSoon')}
                     </div>
                 )}
                 {!isComingSoon && !meetsRank && (
-                    <div className="absolute top-2 right-2 bg-gray-800/80 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <div className="absolute top-2 right-2 bg-gray-800/80 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
                         🔒 {t('rankLocked', { rank: getRankShortLabel(item.rank_required) })}
                     </div>
                 )}
                 {isOwned && (
-                    <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
                         ✅ {isEquipped ? t('equipped') : t('owned')}
                     </div>
                 )}
@@ -522,9 +522,6 @@ function ShopItemCard({
                                 `🛒 ${t('buy')}`
                             )}
                         </button>
-                    )}
-                    {isComingSoon && !isOwned && (
-                        <span className="text-xs text-gray-400 font-medium">🚧 {t('comingSoon')}</span>
                     )}
                     {isOwned && !isEquipped && (
                         <span className="text-xs text-green-600 font-medium">✓ {t('owned')}</span>
@@ -716,7 +713,7 @@ function ItemPreviewDialog({
 
                     {/* ステータス / アクション */}
                     {isComingSoon ? (
-                        <div className="text-center py-3 rounded-xl bg-gray-100 text-gray-400 font-bold text-sm">
+                        <div className="text-center py-3 rounded-xl bg-gray-100 text-gray-400 font-bold text-sm whitespace-nowrap">
                             🚧 {t('comingSoon')}
                         </div>
                     ) : isOwned ? (

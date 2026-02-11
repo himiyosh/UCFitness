@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import UserMenu from "@/components/UserMenu";
+import UCHintBalloon from "@/components/UCHintBalloon";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import ShopClient from "@/components/ShopClient";
 import { getShopItems, getUserItems, getEquippedItems } from "@/lib/shop-service";
@@ -87,8 +88,8 @@ export default async function ShopPage() {
                             {t('title')}
                         </span>
                     </h2>
-                    <p className="mt-2.5 inline-flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.08] px-4 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
-                        {t('headerDesc')}
+                    <p className="mt-2.5 text-base" style={{ color: '#64748b' }}>
+                        {t('headerDesc')} <UCHintBalloon />
                     </p>
                     <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
                 </div>

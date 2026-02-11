@@ -6,7 +6,8 @@
         "logout": "ログアウト",
         "language": "言語",
         "save": "保存",
-        "cancel": "キャンセル"
+        "cancel": "キャンセル",
+        "ucHint": "UndouCoin（運動コイン）― 毎日の歩数から獲得できるコイン。たくさん歩いて貯めよう！"
     },
     "Settings": {
         "title": "設定",

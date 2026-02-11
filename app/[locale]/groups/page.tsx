@@ -137,7 +137,7 @@ export default async function MyGroupsPage() {
                                 {t('title')}
                             </span>
                         </h1>
-                        <p className="mt-2.5 inline-flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.08] px-4 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
+                        <p className="mt-2.5 text-base" style={{ color: '#64748b' }}>
                             {t('headerDesc')}
                         </p>
                         <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
