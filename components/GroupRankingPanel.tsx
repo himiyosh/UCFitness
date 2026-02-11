@@ -136,7 +136,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                         title={t('groupLeaders')}
                     />
                 </div>
-                <div role="list" className={`divide-y lg:border-t-0 lg:col-span-7 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
+                <div role="list" className={`divide-y lg:border-t-0 lg:col-span-7 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`} style={{ height: '300px', overflow: 'hidden' }}>
                     {neighbors.length > 0 ? (
                         (() => {
                             const maxSteps = Math.max(...neighbors.map((n: any) => n.steps)) || 1;
