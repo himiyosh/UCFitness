@@ -518,7 +518,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                             )}
 
                                             {/* Group Average Display */}
-                                            <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-3 sm:p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75">
+                                            <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-3 sm:p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 min-h-[120px]">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <div className="p-1.5 bg-[var(--theme-primary)]/10 rounded-full text-[var(--theme-primary)] shrink-0">
                                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -534,7 +534,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                             <span className="text-xs sm:text-sm font-bold text-gray-400">/ {totalGroups}</span>
                                                         </>
                                                     ) : (
-                                                        <span className="text-xl font-bold text-gray-400">N/A</span>
+                                                        <span className="text-2xl sm:text-3xl font-black text-gray-400 tracking-tight leading-none">N/A</span>
                                                     )}
                                                 </div>
                                                 <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
