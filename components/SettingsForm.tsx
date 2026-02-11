@@ -266,14 +266,14 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
             {/* S3: プロフィール完成度メーター */}
             {completionPercent < 100 ? (
-                <div className="bg-gradient-to-r from-[var(--theme-primary-light)] to-white p-5 rounded-xl shadow-sm border border-[var(--theme-primary)]/15">
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-[var(--theme-primary)]/15">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
                             📊 {t('profileCompletion')}
                         </span>
                         <span className="text-sm font-extrabold text-[var(--theme-primary)]">{completionPercent}%</span>
                     </div>
-                    <div className="w-full h-2.5 bg-white/80 rounded-full overflow-hidden shadow-inner">
+                    <div className="w-full h-2.5 bg-[var(--theme-primary-light)] rounded-full overflow-hidden shadow-inner">
                         <div
                             className="h-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] rounded-full transition-all duration-700 ease-out"
                             style={{ width: `${completionPercent}%` }}
@@ -292,7 +292,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     </div>
                 </div>
             ) : (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl shadow-sm border border-green-200 flex items-center gap-3">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-green-200 flex items-center gap-3">
                     <span className="text-2xl">🎉</span>
                     <span className="text-sm font-bold text-green-700">{t('profileComplete')}</span>
                 </div>
@@ -319,13 +319,13 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
                         {/* アイテムプレビュー */}
                         <div className="flex items-center gap-3 mb-5">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/30 backdrop-blur-sm text-white text-xs font-semibold border border-white/30">
                                 🏷️ {t('titleLabel')}
                             </span>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/30 backdrop-blur-sm text-white text-xs font-semibold border border-white/30">
                                 💎 {t('frameLabel')}
                             </span>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 text-xs font-medium">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/30 backdrop-blur-sm text-white text-xs font-semibold border border-white/30">
                                 🎨 {t('theme')}
                             </span>
                         </div>
@@ -518,24 +518,24 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                 </section>
 
                 {/* S5: アカウント統計 */}
-                <section className="bg-gradient-to-br from-[var(--theme-primary-light)] to-white p-6 rounded-xl shadow-sm border border-[var(--theme-primary)]/15 h-fit">
+                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
                     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span className="text-xl">📈</span>
                         {t('accountStats')}
                     </h2>
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white/80 rounded-lg p-3 text-center border border-gray-100">
-                            <div className="text-2xl font-black text-[var(--theme-primary)]">{ownedTitles.length}</div>
+                        <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                            <div className="text-2xl font-black account-stat-number">{ownedTitles.length}</div>
                             <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('titlesOwned')}</div>
                         </div>
-                        <div className="bg-white/80 rounded-lg p-3 text-center border border-gray-100">
-                            <div className="text-2xl font-black text-[var(--theme-primary)]">{ownedFrames.length}</div>
+                        <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                            <div className="text-2xl font-black account-stat-number">{ownedFrames.length}</div>
                             <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('framesOwned')}</div>
                         </div>
-                        <div className="col-span-2 bg-white/80 rounded-lg p-3 text-center border border-gray-100">
+                        <div className="col-span-2 bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-sm font-bold text-gray-700 flex items-center justify-center gap-2">
                                 <span className="text-lg">{theme === 'classic' ? '💎' : theme === 'pop' ? '🎨' : '🌙'}</span>
-                                {t('currentTheme')}: <span className="text-[var(--theme-primary)] capitalize">{theme}</span>
+                                {t('currentTheme')}: <span className="account-stat-number capitalize">{theme}</span>
                             </div>
                         </div>
                     </div>
