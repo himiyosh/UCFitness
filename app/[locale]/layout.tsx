@@ -57,7 +57,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body className={`${notoSansJP.variable} ${inter.variable} font-sans`}>
+      <body className={`${notoSansJP.variable} ${inter.variable}`}>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <ToastProvider>
