@@ -152,22 +152,27 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
         <div className="space-y-6">
             {/* TABS - Moved to top for alignment */}
             <div className="flex justify-center sm:justify-start">
-                <div className={`flex p-1 space-x-1 rounded-lg shadow-sm w-fit overflow-hidden relative ${isMidnight ? '' : 'bg-white border border-gray-200'}`}
-                     style={isMidnight ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}>
+                <div className={`flex p-1 rounded-lg shadow-sm w-fit overflow-hidden relative gap-2 ${isMidnight ? '' : 'bg-white border border-gray-200'}`}>
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;
                         return (
                             <button
                                 key={tab.key}
                                 onClick={() => handleSwitch(tab.key)}
-                                className={`relative z-10 px-4 py-0.5 text-sm font-semibold rounded-md transition-all duration-200 cursor-pointer sm:max-w-[5.75rem] text-center ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
-                                style={isMidnight ? {
-                                    backgroundColor: isActive ? '#6366f1' : 'transparent',
+                                className={`relative z-10 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer text-center ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
+                                style={isMidnight ? (isActive ? {
+                                    background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
                                     color: '#ffffff',
-                                    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-                                    boxShadow: isActive ? '0 4px 16px -3px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.15)' : 'none',
-                                    transform: isActive ? 'scale(1.05)' : 'scale(1)'
-                                } : undefined}
+                                    boxShadow: '0 4px 20px -3px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                    border: '1px solid rgba(165,180,252,0.3)',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                } : {
+                                    background: 'rgba(30, 41, 59, 0.7)',
+                                    color: '#94a3b8',
+                                    border: '1px solid rgba(148,163,184,0.2)',
+                                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                }) : undefined}
                             >
                                 {t(tab.labelKey)}
                             </button>
@@ -195,25 +200,51 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                             }
                         >
                             {/* Left Tab Switcher */}
-                            <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5 w-full">
+                            <div className={`flex rounded-lg p-0.5 gap-2 w-full ${!isMidnight ? 'bg-gray-100' : ''}`}>
                                 <button
                                     onClick={() => { setLeftTab('user'); setPage(1); }}
-                                    className={`cursor-pointer flex-1 py-2 rounded-md text-xs font-bold transition-all text-center ${
+                                    className={`cursor-pointer flex-1 py-2 rounded-full text-xs font-bold transition-all text-center ${!isMidnight ? (
                                         leftTab === 'user'
                                             ? 'bg-white text-gray-900 shadow-sm'
                                             : 'text-gray-500 hover:text-gray-700'
-                                    }`}
+                                    ) : ''}`}
+                                    style={isMidnight ? (leftTab === 'user' ? {
+                                        background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
+                                        color: '#ffffff',
+                                        boxShadow: '0 4px 20px -3px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                        border: '1px solid rgba(165,180,252,0.3)',
+                                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                    } : {
+                                        background: 'rgba(30, 41, 59, 0.7)',
+                                        color: '#94a3b8',
+                                        border: '1px solid rgba(148,163,184,0.2)',
+                                        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
+                                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                    }) : undefined}
                                 >
                                     👤 {t('tabUser')}
                                 </button>
                                 {groupCompetitionRankings && (
                                     <button
                                         onClick={() => setLeftTab('group')}
-                                        className={`cursor-pointer flex-1 py-2 rounded-md text-xs font-bold transition-all text-center ${
+                                        className={`cursor-pointer flex-1 py-2 rounded-full text-xs font-bold transition-all text-center ${!isMidnight ? (
                                             leftTab === 'group'
                                                 ? 'bg-white text-gray-900 shadow-sm'
                                                 : 'text-gray-500 hover:text-gray-700'
-                                        }`}
+                                        ) : ''}`}
+                                        style={isMidnight ? (leftTab === 'group' ? {
+                                            background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
+                                            color: '#ffffff',
+                                            boxShadow: '0 4px 20px -3px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                            border: '1px solid rgba(165,180,252,0.3)',
+                                            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                        } : {
+                                            background: 'rgba(30, 41, 59, 0.7)',
+                                            color: '#94a3b8',
+                                            border: '1px solid rgba(148,163,184,0.2)',
+                                            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)',
+                                            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                        }) : undefined}
                                     >
                                         🏆 {t('tabGroup')}
                                     </button>
