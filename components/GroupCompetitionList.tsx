@@ -17,7 +17,7 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
 
     return (
         <div className="w-full">
-            <div className="overflow-auto max-h-[480px] styled-scrollbar">
+            <div className="overflow-auto styled-scrollbar" style={{ height: '300px' }}>
                 <table className="w-full text-left text-sm relative">
                     <thead className="bg-gray-50 text-gray-500 font-medium sticky top-0 z-10 shadow-sm">
                         <tr>
