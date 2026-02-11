@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_JP } from "next/font/google";
 import "../globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
@@ -13,7 +13,8 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { auth } from "@/lib/auth";
 import LanguageSyncer from "@/components/LanguageSyncer";import FloatingEmojis from '@/components/FloatingEmojis';
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const notoSansJP = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "500", "700", "800", "900"], variable: "--font-noto-sans-jp" });
 
 export const metadata: Metadata = {
   title: "UCFitness",
@@ -56,7 +57,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body className={inter.className}>
+      <body className={`${notoSansJP.variable} ${inter.variable} font-sans`}>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <ToastProvider>

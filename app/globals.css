@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* ==== FONT FAMILY ==== */
+@theme {
+  --font-sans: var(--font-noto-sans-jp), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 /* ==== SCROLLBAR STABILITY ==== */
 html {
   scrollbar-gutter: stable;
