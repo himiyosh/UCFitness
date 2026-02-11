@@ -41,7 +41,7 @@ export default function GroupSettings() {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100">
+    <div id="join-group" className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 scroll-mt-24">
       <div className="px-6 py-5">
         <h3 className="text-base font-bold text-gray-900">{t('joinGroup')}</h3>
         <p className="mt-1 text-xs text-gray-500">

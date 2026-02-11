@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Noto_Sans_JP } from "next/font/google";
 import "../globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
@@ -14,13 +13,6 @@ import { notFound } from 'next/navigation';
 import { auth } from "@/lib/auth";
 import LanguageSyncer from "@/components/LanguageSyncer";
 import FloatingEmojis from '@/components/FloatingEmojis';
-
-const notoSansJP = Noto_Sans_JP({
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "800", "900"],
-  variable: "--font-noto-sans-jp",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "UCFitness",
@@ -63,7 +55,12 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body className={notoSansJP.variable}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&family=Inter:wght@700;800;900&display=swap" rel="stylesheet" />
+      </head>
+      <body>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <ToastProvider>

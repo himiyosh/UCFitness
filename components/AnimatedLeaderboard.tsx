@@ -448,7 +448,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                         <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                             {/* My Rank Display */}
                                             {myRankEntry && (
-                                                <Link href={`/group/${groupData.groupId}`} className="relative rounded-xl overflow-hidden shadow-lg animate-in fade-in zoom-in duration-300 group block hover:ring-2 hover:ring-offset-2 hover:ring-[var(--theme-primary)] transition-all">
+                                                <Link href={`/groups/${groupData.groupId}`} className="relative rounded-xl overflow-hidden shadow-lg animate-in fade-in zoom-in duration-300 group block hover:ring-2 hover:ring-offset-2 hover:ring-[var(--theme-primary)] transition-all">
                                                     {/* Background Image or Gradient */}
                                                     <div className="absolute inset-0 z-0">
                                                         {groupData.header_image_url ? (

@@ -237,8 +237,8 @@ export default async function MyGroupsPage() {
 
                         {/* G5: グループ作成CTA */}
                         <Link
-                            href="/group/create"
-                            className="block w-full p-4 rounded-xl bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] text-white text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group"
+                            href="/groups/create"
+                            className="block w-full p-4 rounded-xl bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] text-white text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group cursor-pointer"
                         >
                             <div className="text-2xl mb-1">🏃‍♂️</div>
                             <div className="font-bold text-sm">{t('createGroup')}</div>

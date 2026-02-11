@@ -112,7 +112,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
 
     // G7: 招待リンクをコピー
     const handleShareInvite = async (keyword: string, groupId: string) => {
-        const url = `${window.location.origin}/group/join?keyword=${encodeURIComponent(keyword)}`;
+        const url = `${window.location.origin}/groups/join?keyword=${encodeURIComponent(keyword)}`;
         try {
             await navigator.clipboard.writeText(url);
             setCopiedId(groupId);
@@ -137,7 +137,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                     key={m.groups.id}
                     className="relative bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden"
                 >
-                    <Link href={`/group/${m.groups.id}`} className="block relative h-full flex flex-row sm:flex-col min-h-[110px] sm:min-h-0">
+                    <Link href={`/groups/${m.groups.id}`} className="block relative h-full flex flex-row sm:flex-col min-h-[110px] sm:min-h-0">
                         {/* Banner Section */}
                         <div className="w-20 sm:w-full h-auto sm:h-24 bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-r sm:border-r-0 border-gray-100">
                             {/* Rank Badge */}

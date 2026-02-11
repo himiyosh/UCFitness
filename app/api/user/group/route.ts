@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { action, keyword } = body;
+    const { action, keyword, name } = body;
     const userId = session.user.id;
 
     if (!action) {
@@ -48,9 +48,10 @@ export async function POST(request: Request) {
         }
 
         // Create New Group
+        const groupDisplayName = (name && name.trim()) ? name.trim() : target;
         const { data: newGroup, error: createError } = await supabaseAdmin
           .from('groups')
-          .insert({ name: target, keyword: target, owner_id: userId })
+          .insert({ name: groupDisplayName, keyword: target, owner_id: userId })
           .select('id')
           .single();
 

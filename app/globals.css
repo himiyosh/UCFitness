@@ -1,9 +1,6 @@
 @import "tailwindcss";
 
-/* ==== Noto Sans JP フォント統合 ==== */
-@theme inline {
-  --font-sans: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-}
+/* ==== Noto Sans JP フォント読み込み ==== */
 
 /* ==== SCROLLBAR STABILITY ==== */
 html {
@@ -866,7 +863,7 @@ html {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   --font-mono: var(--font-geist-mono);
   /* Accent Colors for Tailwind */
   --color-coral: var(--accent-coral);
@@ -882,7 +879,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans, 'Inter', system-ui, -apple-system, sans-serif);
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
 }
 
 /* 全ボタン要素にポインターカーソルをデフォルト適用 */

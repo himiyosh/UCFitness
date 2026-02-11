@@ -291,7 +291,7 @@ export default async function Home() {
                   <div className="mb-6 flex items-center justify-between">
                     <div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] drop-shadow-sm">
+                        <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] drop-shadow-sm" style={{ fontFamily: '"Inter", sans-serif' }}>
                           {mySteps.toLocaleString()}
                         </span>
                         <span className="text-sm font-semibold text-gray-400">{t('stepsToday')}</span>
@@ -402,7 +402,7 @@ export default async function Home() {
                     <h4 className="font-black text-lg sm:text-2xl mb-0 sm:mb-2 tracking-tight">{t('keepStepping')}</h4>
                   </div>
 
-                  <p className="opacity-90 text-[10px] sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50 mt-1 sm:mt-0">
+                  <p className="opacity-90 text-[10px] sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50 mt-1 sm:mt-0 whitespace-pre-line">
                     {t('joinGroups')}
                   </p>
 
