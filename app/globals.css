@@ -521,7 +521,7 @@ html {
 
 /* Step count brightness boost for midnight */
 [data-theme="midnight"] .leaderboard-steps {
-  color: #c7d2fe !important;
+  color: #a78bfa !important;
   font-weight: 900;
 }
 [data-theme="midnight"] .group-rank-number {
