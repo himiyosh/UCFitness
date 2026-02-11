@@ -530,7 +530,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                 <div className="flex items-baseline gap-2 flex-wrap">
                                                     {groupRank ? (
                                                         <>
-                                                            <span className="text-2xl sm:text-3xl font-black text-[var(--theme-primary)] tracking-tight leading-none">#{groupRank}</span>
+                                                            <span className="text-2xl sm:text-3xl font-black tracking-tight leading-none" style={{ color: 'var(--theme-ring-color, var(--theme-primary))' }}>#{groupRank}</span>
                                                             <span className="text-xs sm:text-sm font-bold text-gray-400">/ {totalGroups}</span>
                                                         </>
                                                     ) : (
