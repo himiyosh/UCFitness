@@ -351,7 +351,7 @@ export default async function Home() {
                         {t('thisWeek')}
                       </p>
                       <div className="flex flex-col">
-                        <span className="text-xl font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
+                        <span className="text-2xl font-black text-gray-800 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
                           {myWeeklySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
@@ -373,7 +373,7 @@ export default async function Home() {
                         {t('thisMonth')}
                       </p>
                       <div className="flex flex-col">
-                        <span className="text-xl font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
+                        <span className="text-2xl font-black text-gray-800 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
                           {myMonthlySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
