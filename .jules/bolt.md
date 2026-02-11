@@ -29,3 +29,7 @@
 ## 2025-05-27 - Uncached Global Aggregation in Dynamic Page
 **Learning:** `getCombinedGroupCompetitionRankings` was performing a heavy aggregation of all daily steps for all users for the entire year on every request because `page.tsx` is `force-dynamic`. This duplicated the cost of `getAllRankings` but for a different view (Group Competition).
 **Action:** Wrapped the function in `unstable_cache` with a 60-second revalidation. This allows the expensive aggregation to be shared across all users and requests, reducing database load from O(Requests) to O(1) per minute.
+
+## 2025-05-28 - O(N) Loop in Group Ranking Derivation
+**Learning:** `deriveBatchGroupRankings` was iterating over the entire `globalRankings` list (containing all users) to build an in-memory map, even when only a small subset of users (group members) were needed. This created unnecessary CPU overhead and memory allocation proportional to the total user base size on every request.
+**Action:** Pre-calculate a `Set` of target user IDs from the group membership list and use it to filter the global rankings loop. This reduces the operation from processing N_global users to effectively only processing relevant users, significantly speeding up the derivation.

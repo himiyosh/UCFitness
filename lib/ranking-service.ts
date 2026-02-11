@@ -680,6 +680,10 @@ export const deriveBatchGroupRankings = async (
 
     if (!groupMembers || groupMembers.length === 0) return {};
 
+    // ⚡ Bolt Optimization: Pre-calculate target user IDs to filter global rankings loop
+    // This reduces memory allocation and Map insertions by only processing users we care about
+    const targetUserIds = new Set(groupMembers.map(m => m.user_id));
+
     // 2. Build User Stats Map from Global Rankings (In-Memory pivot)
     // Map<UserId, { user: User, DAILY: number, WEEKLY: number, ..., PREV_DAILY: number, ... }>
     const userStats = new Map<string, any>();
@@ -695,6 +699,10 @@ export const deriveBatchGroupRankings = async (
         if (list) {
             list.forEach((entry: any) => {
                 const userId = entry.users.id;
+
+                // Optimization: Skip users not in our target groups
+                if (!targetUserIds.has(userId)) return;
+
                 if (!userStats.has(userId)) {
                     userStats.set(userId, {
                         users: entry.users,
@@ -713,7 +721,7 @@ export const deriveBatchGroupRankings = async (
     });
 
     // 3. Identify Missing Users (who have 0 steps across all periods, so not in global rankings)
-    const uniqueMemberIds = new Set(groupMembers.map(m => m.user_id));
+    const uniqueMemberIds = targetUserIds;
     const missingUserIds: string[] = [];
 
     uniqueMemberIds.forEach(uid => {
