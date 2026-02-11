@@ -409,7 +409,7 @@ export default async function Home() {
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
 
                 {/* Animation */}
-                <div className="absolute top-1/2 right-4 sm:right-12 transform -translate-y-1/2 opacity-100 pointer-events-none">
+                <div className="absolute top-1/2 -right-4 sm:right-2 transform -translate-y-1/2 opacity-100 pointer-events-none">
                   <RunnerAnimation userImage={userImage} />
                 </div>
 
@@ -433,6 +433,12 @@ export default async function Home() {
                     </Link>
                     <Link href="/groups" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-2">
                       {t('groups')}
+                    </Link>
+                    <Link href="/wallet" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
+                      <span className="text-xs sm:text-sm">💰</span>{t('wallet')}
+                    </Link>
+                    <Link href="/shop" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
+                      <span className="text-xs sm:text-sm">🛍️</span>{t('shop')}
                     </Link>
                   </div>
                 </div>
