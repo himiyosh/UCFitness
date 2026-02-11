@@ -196,7 +196,9 @@ html {
 [data-theme="midnight"] .bg-gray-50,
 [data-theme="midnight"] .bg-gray-100,
 [data-theme="midnight"] .bg-gray-50\/30,
+[data-theme="midnight"] .bg-gray-50\/40,
 [data-theme="midnight"] .bg-gray-50\/50,
+[data-theme="midnight"] .bg-gray-50\/60,
 [data-theme="midnight"] .bg-gray-50\/80,
 [data-theme="midnight"] .bg-gray-100\/80 {
   background:
@@ -326,7 +328,8 @@ html {
 
 /* --- 6. Dividers --- */
 [data-theme="midnight"] .divide-gray-50 > :not(:first-child),
-[data-theme="midnight"] .divide-gray-100 > :not(:first-child) {
+[data-theme="midnight"] .divide-gray-100 > :not(:first-child),
+[data-theme="midnight"] .divide-gray-200 > :not(:first-child) {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
@@ -568,6 +571,12 @@ html {
 }
 [data-theme="midnight"] .bg-gray-50\/50 {
   background-color: rgba(51, 65, 85, 0.42) !important;
+}
+[data-theme="midnight"] .bg-gray-50\/40 {
+  background-color: rgba(51, 65, 85, 0.35) !important;
+}
+[data-theme="midnight"] .bg-gray-50\/60 {
+  background-color: rgba(51, 65, 85, 0.48) !important;
 }
 [data-theme="midnight"] .text-gray-900 {
   color: #ffffff !important;
@@ -913,7 +922,7 @@ button:not(:disabled) {
 /* ページ背景色をbodyに設定（mainはtransparentにしたため）
    ↑の body { background: var(--background) } より後に書いて確実に上書き */
 :root body {
-  background-color: #FAFAFF;
+  background-color: #F5F5FF;
 }
 [data-theme="pop"] body {
   background-color: #FFFAFA;

@@ -81,6 +81,8 @@
         "joinGroups": "毎日の積み重ねが大切です。\nグループに参加して、仲間と競い合いましょう！",
         "profile": "プロフィール",
         "groups": "グループ",
+        "wallet": "ウォレット",
+        "shop": "ショップ",
         "refreshSteps": "今すぐ同期",
         "refreshing": "同期中..."
     },
@@ -162,7 +164,7 @@
         "monthly": "今月",
         "vsUser": "{name}比",
         "yourSteps": "あなた",
-        "thisUser": "この人",
+        "thisUser": "このユーザー",
         "vsYest": "昨日比",
         "vsLWk": "先週比",
         "vsLMo": "先月比",
