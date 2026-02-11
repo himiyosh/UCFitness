@@ -140,40 +140,6 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             {/* Main Column */}
             <div className="lg:col-span-2 space-y-6">
 
-            {/* S3: プロフィール完成度メーター */}
-            {completionPercent < 100 ? (
-                <div className="bg-gradient-to-r from-[var(--theme-primary-light)] to-white p-5 rounded-xl shadow-sm border border-[var(--theme-primary)]/15">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                            📊 {t('profileCompletion')}
-                        </span>
-                        <span className="text-sm font-extrabold text-[var(--theme-primary)]">{completionPercent}%</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-white/80 rounded-full overflow-hidden shadow-inner">
-                        <div
-                            className="h-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] rounded-full transition-all duration-700 ease-out"
-                            style={{ width: `${completionPercent}%` }}
-                        />
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                        {completionItems.map(item => (
-                            <span key={item.key} className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
-                                item.done
-                                    ? 'bg-green-50 text-green-700 border border-green-200'
-                                    : 'bg-white text-gray-400 border border-gray-200'
-                            }`}>
-                                {item.done ? '✅' : '⬜'} {item.label}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl shadow-sm border border-green-200 flex items-center gap-3">
-                    <span className="text-2xl">🎉</span>
-                    <span className="text-sm font-bold text-green-700">{t('profileComplete')}</span>
-                </div>
-            )}
-
             <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
                 {/* S8: 装飾的な背景グラデーション */}
                 <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[var(--theme-primary)]/5 to-transparent rounded-full -translate-y-20 translate-x-20 pointer-events-none" />
@@ -292,6 +258,40 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
                 </div>
             </section>
+
+            {/* S3: プロフィール完成度メーター */}
+            {completionPercent < 100 ? (
+                <div className="bg-gradient-to-r from-[var(--theme-primary-light)] to-white p-5 rounded-xl shadow-sm border border-[var(--theme-primary)]/15">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                            📊 {t('profileCompletion')}
+                        </span>
+                        <span className="text-sm font-extrabold text-[var(--theme-primary)]">{completionPercent}%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-white/80 rounded-full overflow-hidden shadow-inner">
+                        <div
+                            className="h-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] rounded-full transition-all duration-700 ease-out"
+                            style={{ width: `${completionPercent}%` }}
+                        />
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                        {completionItems.map(item => (
+                            <span key={item.key} className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                                item.done
+                                    ? 'bg-green-50 text-green-700 border border-green-200'
+                                    : 'bg-white text-gray-400 border border-gray-200'
+                            }`}>
+                                {item.done ? '✅' : '⬜'} {item.label}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl shadow-sm border border-green-200 flex items-center gap-3">
+                    <span className="text-2xl">🎉</span>
+                    <span className="text-sm font-bold text-green-700">{t('profileComplete')}</span>
+                </div>
+            )}
 
             {/* Shop CTA Banner — 独立パネル（リッチ版） */}
             <Link href="/shop" className="block group">
