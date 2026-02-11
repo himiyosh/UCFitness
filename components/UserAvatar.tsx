@@ -111,6 +111,20 @@ export default function UserAvatar({
 
     const borderWidth = frameColor ? `${sizeConfig.frame}px` : undefined;
 
+    // キーボードアクセシビリティ: onClickがある場合はEnter/Spaceでも発火
+    const handleKeyDown = onClick ? (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+        }
+    } : undefined;
+    const interactiveProps = onClick ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onKeyDown: handleKeyDown,
+        'aria-label': alt || name || 'Avatar',
+    } : {};
+
     return (
         <div className={`inline-flex flex-col items-center ${className}`}>
             {/* アバター本体 */}
@@ -120,6 +134,7 @@ export default function UserAvatar({
                         ${onClick ? 'cursor-pointer' : ''}`}
                     style={frameStyle}
                     onClick={onClick}
+                    {...interactiveProps}
                 >
                     <div className="w-full h-full rounded-full overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
                         {src ? (
@@ -144,6 +159,7 @@ export default function UserAvatar({
                         ...(frameColor ? { backgroundColor: '#ffffff' } : {}),
                     }}
                     onClick={onClick}
+                    {...interactiveProps}
                 >
                     {src ? (
                         <img className="w-full h-full object-cover" src={src} alt={alt} />

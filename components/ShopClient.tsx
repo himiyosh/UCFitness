@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
@@ -652,12 +652,43 @@ function ItemPreviewDialog({
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
     const isComingSoon = !item.is_active;
+    const dialogId = `preview-dialog-title-${item.id}`;
+
+    // Escape キーでダイアログを閉じる
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    // フォーカストラップ: ダイアログにフォーカスを閉じ込める
+    const dialogRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length > 0) focusable[0].focus();
+
+        const handleTab = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab' || !dialog) return;
+            const items = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (items.length === 0) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown', handleTab);
+        return () => document.removeEventListener('keydown', handleTab);
+    }, []);
 
     return createPortal(
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby={dialogId}>
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <div className="relative flex items-center justify-center h-full p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div ref={dialogRef} className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 {/* プレビュー領域（大） */}
                 <div className="relative h-48 flex items-center justify-center midnight-preserve-bg" style={{
                     background: item.category === 'THEME_COLOR'
@@ -694,7 +725,7 @@ function ItemPreviewDialog({
                         {item.category === 'THEME_COLOR' && `🎨 ${t('themeColors')}`}
                     </p>
 
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{name}</h3>
+                    <h3 id={dialogId} className="text-xl font-bold text-gray-900 mb-2">{name}</h3>
                     <p className="text-sm text-gray-600 mb-4 leading-relaxed">{desc}</p>
 
                     {/* 価格 */}
@@ -761,13 +792,44 @@ function ConfirmDialog({
     userName: string | null;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
+    const confirmDialogId = `confirm-dialog-title-${item.id}`;
+
+    // Escape キーでダイアログを閉じる
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onCancel();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onCancel]);
+
+    // フォーカストラップ
+    const confirmRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        const dialog = confirmRef.current;
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length > 0) focusable[0].focus();
+
+        const handleTab = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab' || !dialog) return;
+            const items = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (items.length === 0) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown', handleTab);
+        return () => document.removeEventListener('keydown', handleTab);
+    }, []);
 
     return createPortal(
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby={confirmDialogId}>
             <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
             <div className="relative flex items-center justify-center h-full p-4" onClick={onCancel}>
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
+            <div ref={confirmRef} className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <h3 id={confirmDialogId} className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
                 </p>

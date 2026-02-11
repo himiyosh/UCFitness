@@ -8,6 +8,11 @@
         "save": "Save",
         "cancel": "Cancel",
         "back": "Back",
+        "close": "Close",
+        "loading": "Loading",
+        "updated": "Updated!",
+        "saveFailed": "Failed to save.",
+        "displayName": "Display Name",
         "skipToContent": "Skip to content",
         "signInWithFitbit": "Sign in with Fitbit",
         "ucHint": "UndouCoin (\u904b\u52d5\u30b3\u30a4\u30f3) \u2014 Coins earned from your daily steps. Walk more to earn more!"
@@ -262,7 +267,11 @@
         "shareTip": "You can also share an invite link",
         "shareTipBody": "After creating your group, copy the invite link from the group page to share with friends.",
         "tipTitle": "About Group ID",
-        "tipBody": "The Group ID cannot be changed later. Choose something memorable!"
+        "tipBody": "The Group ID cannot be changed later. Choose something memorable!",
+        "owner": "Owner",
+        "reorderFailed": "Failed to save order. Reverting.",
+        "moveUp": "Move Up",
+        "moveDown": "Move Down"
     },
     "Graph": {
         "activityHistory": "Activity History",
@@ -369,5 +378,10 @@
         "featured": "Featured",
         "itemCount": "{count} items",
         "canAfford": "Affordable!"
+    },
+    "Splash": {
+        "loading": "Loading Steps...",
+        "subtitle": "Let's crush those steps",
+        "skipHint": "Tap or press any key to skip"
     }
 }

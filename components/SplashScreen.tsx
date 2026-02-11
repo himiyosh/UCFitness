@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 
 // 浮遊する絵文字パーティクル設定
 const PARTICLES = [
@@ -20,6 +21,23 @@ export default function SplashScreen() {
     const [isVisible, setIsVisible] = useState(true);
     const [shouldRender, setShouldRender] = useState(true);
     const [progress, setProgress] = useState(0);
+    const t = useTranslations('Splash');
+
+    // スキップ機能: クリックまたはキー押下で即座にスキップ
+    const skipSplash = useCallback(() => {
+        setIsVisible(false);
+        setTimeout(() => setShouldRender(false), 500);
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+                skipSplash();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [skipSplash]);
 
     useEffect(() => {
         // セッション内でスプラッシュ済みならスキップ
@@ -71,6 +89,9 @@ export default function SplashScreen() {
                 backgroundSize: '400% 400%',
                 animation: 'splashGradientShift 3s ease infinite',
             }}
+            onClick={skipSplash}
+            role="status"
+            aria-label={t('loading')}
         >
             {/* キラキラパーティクル背景 */}
             <div className="absolute inset-0 overflow-hidden">
@@ -130,16 +151,16 @@ export default function SplashScreen() {
 
                 {/* サブテキスト */}
                 <p className="text-white/70 text-sm font-medium mt-2 tracking-widest uppercase splash-fade-up" style={{ animationDelay: '1s' }}>
-                    Let&apos;s crush those steps 🎉
+                    {t('subtitle')} 🎉
                 </p>
 
                 {/* プログレスバー */}
-                <div className="mt-8 w-56 splash-fade-up" style={{ animationDelay: '0.8s' }}>
+                <div className="mt-8 w-56 sm:w-64 splash-fade-up" style={{ animationDelay: '0.8s' }}>
                     <div className="flex justify-between text-xs font-bold text-white/60 mb-2 uppercase tracking-wider">
-                        <span>Loading Steps...</span>
+                        <span>{t('loading')}</span>
                         <span className="tabular-nums">{progress}%</span>
                     </div>
-                    <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm shadow-inner">
+                    <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm shadow-inner" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={t('loading')}>
                         <div
                             className="h-full rounded-full transition-all duration-75 ease-out shadow-lg"
                             style={{
@@ -151,6 +172,11 @@ export default function SplashScreen() {
                         />
                     </div>
                 </div>
+
+                {/* スキップヒント */}
+                <p className="mt-6 text-white/40 text-xs font-medium splash-fade-up" style={{ animationDelay: '1.5s' }}>
+                    {t('skipHint')}
+                </p>
             </div>
         </div>
     );
