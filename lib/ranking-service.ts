@@ -21,15 +21,25 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
     const usersMap = new Map<string, any>();
 
     if (scope === 'GROUP' && groupKeyword) {
-        const { data: users } = await supabase
-            .from('users')
-            .select('id, name, image, username, group_keyword')
-            .contains('group_keyword', [groupKeyword]);
+        // group_members テーブルからメンバーを取得 (レガシー group_keyword 配列に依存しない)
+        const { data: groupData } = await supabase
+            .from('groups')
+            .select('id')
+            .eq('keyword', groupKeyword)
+            .single();
 
-        if (!users || users.length === 0) return [];
+        if (!groupData) return [];
 
-        userIds = users.map(u => u.id);
-        users.forEach(u => usersMap.set(u.id, u));
+        const { data: members } = await supabase
+            .from('group_members')
+            .select('user_id, users(id, name, image, username)')
+            .eq('group_id', groupData.id);
+
+        if (!members || members.length === 0) return [];
+
+        userIds = members.map(m => m.user_id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        members.forEach((m: any) => { if (m.users) usersMap.set(m.users.id, m.users); });
     }
 
     let query = supabase

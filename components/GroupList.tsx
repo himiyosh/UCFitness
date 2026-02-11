@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/Spinner';
+import { useToast } from '@/components/Toast';
 
 interface GroupMembership {
     role: string;
@@ -26,6 +27,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const router = useRouter();
     const t = useTranslations('Groups');
+    const { error: toastError } = useToast();
 
     const handleMakePrimary = async (targetId: string) => {
         if (isUpdating) return;
@@ -63,7 +65,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
             router.refresh(); // Refresh server data to ensure consistency
         } catch (error) {
             console.error(error);
-            alert("Failed to save order. Reverting.");
+            toastError(t('reorderFailed'));
             setMemberships(initialMemberships); // Revert
         } finally {
             setIsUpdating(false);
@@ -103,7 +105,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert("Failed to save order. Reverting.");
+            toastError(t('reorderFailed'));
             setMemberships(initialMemberships);
         } finally {
             setIsUpdating(false);
@@ -190,7 +192,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                 <div className="flex items-center gap-2 mt-1">
                                     {m.role === 'OWNER' && (
                                         <span className="shrink-0 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wide rounded">
-                                            Owner
+                                            {t('owner')}
                                         </span>
                                     )}
                                     <span className="text-xs text-gray-500 truncate">
@@ -292,7 +294,8 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                 }}
                                 disabled={isUpdating || index === 0}
                                 className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] hover:border-[var(--theme-primary)]/30 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
-                                title="Move Up"
+                                title={t('moveUp')}
+                                aria-label={t('moveUp')}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" /></svg>
                             </button>
@@ -304,7 +307,8 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                 }}
                                 disabled={isUpdating || index === memberships.length - 1}
                                 className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] hover:border-[var(--theme-primary)]/30 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
-                                title="Move Down"
+                                title={t('moveDown')}
+                                aria-label={t('moveDown')}  
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
                             </button>

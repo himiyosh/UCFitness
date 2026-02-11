@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -48,7 +49,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ toast: addToast, success, error }}>
             {children}
-            <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+            <div className="fixed bottom-16 sm:bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full sm:w-auto">
                 {toasts.map((toast) => (
                     <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
                 ))}
@@ -58,6 +59,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+    const t = useTranslations('Common');
     const isSuccess = toast.type === 'success';
     const isError = toast.type === 'error';
 
@@ -95,7 +97,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
           ${!isSuccess && !isError ? 'text-gray-400 hover:text-gray-900 hover:bg-gray-100' : ''}
         `}
             >
-                <span className="sr-only">Close</span>
+                <span className="sr-only">{t('close')}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>

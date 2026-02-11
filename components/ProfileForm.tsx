@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface ProfileFormProps {
     initialName: string;
@@ -11,7 +11,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
     const [name, setName] = useState(initialName);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-    const router = useRouter();
+    const t = useTranslations('Common');
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,11 +31,11 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                 throw new Error('Failed to update profile');
             }
 
-            setMessage({ text: 'Updated!', type: 'success' });
-            router.refresh();
+            setMessage({ text: t('updated'), type: 'success' });
+            window.location.reload();
         } catch (error) {
             console.error(error);
-            setMessage({ text: 'Failed to save.', type: 'error' });
+            setMessage({ text: t('saveFailed'), type: 'error' });
         } finally {
             setIsSaving(false);
         }
@@ -43,24 +43,26 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
 
     return (
         <form onSubmit={handleSave} className="w-full">
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap">
+                <label htmlFor="profile-name" className="sr-only">{t('displayName')}</label>
                 <input
                     type="text"
                     name="name"
-                    id="name"
+                    id="profile-name"
                     required
                     maxLength={50}
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Display Name"
+                    placeholder={t('displayName')}
+                    aria-label={t('displayName')}
                 />
                 <button
                     type="submit"
                     disabled={isSaving}
                     className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 whitespace-nowrap transition-all"
                 >
-                    Save
+                    {t('save')}
                 </button>
             </div>
             {message && (

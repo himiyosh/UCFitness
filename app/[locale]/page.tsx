@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
@@ -39,17 +40,33 @@ export default async function Home() {
 
   if (session?.user && (session.user as any).id) {
     const userId = (session.user as any).id;
-    // Fetch current user's group keywords AND fresh image
+    // Fetch current user's profile
     const { data: userData } = await supabase
       .from('users')
-      .select('group_keyword, username, step_goal, banner_url, image, name') // Added image, name
+      .select('username, step_goal, banner_url, image, name')
       .eq('id', userId)
       .single();
 
     stepGoal = userData?.step_goal || 10000;
-    groupKeywords = userData?.group_keyword || [];
     username = userData?.username;
     bannerUrl = userData?.banner_url;
+
+    // グループ所属は group_members テーブル (正規化データ) から取得
+    // users.group_keyword (レガシー非正規配列) に依存しない
+    const { data: memberships } = await supabase
+      .from('group_members')
+      .select('groups(keyword)')
+      .eq('user_id', userId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    groupKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+
+    // レガシー users.group_keyword をサイレント同期 (他機能の整合性維持)
+    supabaseAdmin
+      .from('users')
+      .update({ group_keyword: groupKeywords })
+      .eq('id', userId)
+      .then(() => {/* fire-and-forget */});
 
 
     // Override session image with fresh DB image if available
@@ -158,8 +175,10 @@ export default async function Home() {
   // ⚡ Bolt Optimization: Use cached global rankings to derive group rankings (Avoids heavy DB query)
   const batchGroupRankings = await deriveBatchGroupRankings(validGroupIds, allGlobalRankings);
 
-  const allGroupRankings = await Promise.all(
-    groupKeywords.map(async (keyword) => {
+  const allGroupRankings = (await Promise.all(
+    groupKeywords
+      .filter(keyword => groupMetadataMap.has(keyword)) // 存在するグループのみ
+      .map(async (keyword) => {
       // Lookup groupId & images from memory
       const grp = groupMetadataMap.get(keyword);
       const groupId = grp?.id;
@@ -216,7 +235,7 @@ export default async function Home() {
         neighbors: neighbors
       };
     })
-  );
+  ));
 
   // Fetch Group Competition Rankings
   // ⚡ Bolt Optimization: Combined call to reduce DB queries (12 -> 3)
@@ -246,7 +265,7 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 group">
-              <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity">
+              <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
                 {t('title', { defaultMessage: 'UCFitness' })}
               </h1>
               <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
@@ -332,7 +351,7 @@ export default async function Home() {
                         {t('thisWeek')}
                       </p>
                       <div className="flex flex-col">
-                        <span className="text-xl font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
+                        <span className="text-2xl font-black text-gray-800 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
                           {myWeeklySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
@@ -354,7 +373,7 @@ export default async function Home() {
                         {t('thisMonth')}
                       </p>
                       <div className="flex flex-col">
-                        <span className="text-xl font-extrabold text-gray-700 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
+                        <span className="text-2xl font-black text-gray-800 group-hover/item:text-indigo-600 transition-colors leaderboard-steps">
                           {myMonthlySteps.toLocaleString()}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">

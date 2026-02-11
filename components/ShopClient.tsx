@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
@@ -583,42 +583,45 @@ function InventoryView({
                                 const isEquipped = ui.is_equipped;
 
                                 return (
-                                    <div key={ui.id} className={`bg-white rounded-lg border p-3 flex items-center gap-3 transition-all ${
-                                        isEquipped ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 hover:border-gray-300'
+                                    <div key={ui.id} className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${
+                                        isEquipped ? 'border-amber-300 bg-amber-50/50' : 'bg-white border-gray-200 hover:border-gray-300'
                                     }`}>
-                                        {/* プレビュー（小） */}
-                                        <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{
+                                        {/* プレビュー領域（販売アイテムと同サイズ） */}
+                                        <div className="h-24 flex items-center justify-center midnight-preserve-bg" style={{
                                             background: item.category === 'THEME_COLOR'
                                                 ? `linear-gradient(135deg, ${item.preview_value}33, ${item.preview_value}66)`
                                                 : 'linear-gradient(135deg, #fef3c7, #fde68a)',
                                         }}>
                                             {item.category === 'ICON_FRAME' && (
-                                                <UserAvatar size="sm" frameColor={getFrameColor(item.preview_value)} />
+                                                <UserAvatar size="lg" frameColor={getFrameColor(item.preview_value)} />
                                             )}
-                                            {item.category === 'TITLE' && <span className="text-lg">{item.preview_value}</span>}
+                                            {item.category === 'TITLE' && <span className="text-3xl">{item.preview_value}</span>}
                                             {item.category === 'THEME_COLOR' && (
-                                                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.preview_value }} />
+                                                <div className="w-12 h-12 rounded-full shadow-lg border-2 border-white/40" style={{ backgroundColor: item.preview_value }} />
                                             )}
                                         </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 truncate">{name}</p>
-                                            {isEquipped && (
-                                                <p className="text-xs text-amber-600 font-medium">⭐ {t('equipped')}</p>
-                                            )}
-                                        </div>
+                                        {isEquipped && (
+                                            <div className="bg-green-500 text-white text-xs text-center py-0.5 font-bold">
+                                                ⭐ {t('equipped')}
+                                            </div>
+                                        )}
 
-                                        <button
-                                            onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
-                                            disabled={isLoading === ui.id}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 ${
-                                                isEquipped
-                                                    ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                    : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
-                                            }`}
-                                        >
-                                            {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
-                                        </button>
+                                        {/* 情報 + アクション */}
+                                        <div className="p-2 sm:p-3">
+                                            <p className="font-bold text-xs sm:text-sm text-gray-900 mb-2 line-clamp-2" title={name}>{name}</p>
+                                            <button
+                                                onClick={() => onEquip(ui, isEquipped ? 'unequip' : 'equip')}
+                                                disabled={isLoading === ui.id}
+                                                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                    isEquipped
+                                                        ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                        : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
+                                                }`}
+                                            >
+                                                {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -652,12 +655,43 @@ function ItemPreviewDialog({
     const name = locale === 'ja' ? item.name_ja : item.name_en;
     const desc = locale === 'ja' ? item.description_ja : item.description_en;
     const isComingSoon = !item.is_active;
+    const dialogId = `preview-dialog-title-${item.id}`;
+
+    // Escape キーでダイアログを閉じる
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    // フォーカストラップ: ダイアログにフォーカスを閉じ込める
+    const dialogRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length > 0) focusable[0].focus();
+
+        const handleTab = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab' || !dialog) return;
+            const items = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (items.length === 0) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown', handleTab);
+        return () => document.removeEventListener('keydown', handleTab);
+    }, []);
 
     return createPortal(
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby={dialogId}>
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <div className="relative flex items-center justify-center h-full p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div ref={dialogRef} className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 {/* プレビュー領域（大） */}
                 <div className="relative h-48 flex items-center justify-center midnight-preserve-bg" style={{
                     background: item.category === 'THEME_COLOR'
@@ -694,7 +728,7 @@ function ItemPreviewDialog({
                         {item.category === 'THEME_COLOR' && `🎨 ${t('themeColors')}`}
                     </p>
 
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{name}</h3>
+                    <h3 id={dialogId} className="text-xl font-bold text-gray-900 mb-2">{name}</h3>
                     <p className="text-sm text-gray-600 mb-4 leading-relaxed">{desc}</p>
 
                     {/* 価格 */}
@@ -761,13 +795,44 @@ function ConfirmDialog({
     userName: string | null;
 }) {
     const name = locale === 'ja' ? item.name_ja : item.name_en;
+    const confirmDialogId = `confirm-dialog-title-${item.id}`;
+
+    // Escape キーでダイアログを閉じる
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onCancel();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onCancel]);
+
+    // フォーカストラップ
+    const confirmRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        const dialog = confirmRef.current;
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length > 0) focusable[0].focus();
+
+        const handleTab = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab' || !dialog) return;
+            const items = dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (items.length === 0) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown', handleTab);
+        return () => document.removeEventListener('keydown', handleTab);
+    }, []);
 
     return createPortal(
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby={confirmDialogId}>
             <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
             <div className="relative flex items-center justify-center h-full p-4" onClick={onCancel}>
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
+            <div ref={confirmRef} className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <h3 id={confirmDialogId} className="text-lg font-bold text-gray-900 mb-2">{t('confirmPurchase')}</h3>
                 <p className="text-sm text-gray-700 mb-4">
                     {t('confirmPurchaseDesc', { item: name, price: item.price.toLocaleString() })}
                 </p>

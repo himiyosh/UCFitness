@@ -380,10 +380,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
 
     } else if (action === 'delete_group') {
-      // Find group
+      // Find group (画像URLも取得してストレージクリーンアップに使用)
       const { data: group } = await supabaseAdmin
         .from('groups')
-        .select('id')
+        .select('id, image_url, header_image_url')
         .eq('keyword', target)
         .single();
 
@@ -401,11 +401,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Forbidden: Only owner can delete the group" }, { status: 403 });
       }
 
-      // Delete Group (Cascade should handle members, but let's delete members first to be clean/safe if no cascade)
-      // Actually Supabase standard 'references' usually don't cascade on delete unless specified.
-      // Let's delete members first just to be sure.
-      await supabaseAdmin.from('group_members').delete().eq('group_id', group.id);
+      // 削除前に全メンバーのuser_idを取得（レガシー配列同期用）
+      const { data: members } = await supabaseAdmin
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', group.id);
 
+      const memberUserIds = members?.map(m => m.user_id) || [];
+
+      // グループ削除（ON DELETE CASCADEでgroup_membersも自動削除される）
       const { error: deleteError } = await supabaseAdmin
         .from('groups')
         .delete()
@@ -414,6 +418,40 @@ export async function POST(request: Request) {
       if (deleteError) {
         console.error("Delete Group Error", deleteError);
         return NextResponse.json({ error: "Failed to delete group" }, { status: 500 });
+      }
+
+      // 全メンバーのレガシー group_keyword 配列を同期
+      for (const memberId of memberUserIds) {
+        const { data: memberships } = await supabaseAdmin
+          .from('group_members')
+          .select('groups(keyword)')
+          .eq('user_id', memberId);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+
+        await supabaseAdmin
+          .from('users')
+          .update({ group_keyword: newKeywords })
+          .eq('id', memberId);
+      }
+
+      // ストレージのグループ画像をクリーンアップ
+      const imagesToDelete: string[] = [];
+      for (const url of [group.image_url, group.header_image_url]) {
+        if (url && url.includes('group-assets/')) {
+          const path = url.split('group-assets/').pop();
+          if (path) imagesToDelete.push(path);
+        }
+      }
+      if (imagesToDelete.length > 0) {
+        const { error: storageError } = await supabaseAdmin.storage
+          .from('group-assets')
+          .remove(imagesToDelete);
+        if (storageError) {
+          console.warn("Failed to cleanup group images:", storageError);
+          // 画像削除失敗はグループ削除自体の成功には影響させない
+        }
       }
 
       return NextResponse.json({ success: true });
