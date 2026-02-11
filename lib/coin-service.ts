@@ -194,7 +194,8 @@ async function updateCoinBalance(userId: string, currentStreak: number) {
     }
 
     const totalBalance = totalEarned + totalBonus + totalDeductions;
-    const investorRank = getInvestorRank(totalBalance);
+    const lifetimeEarnings = totalEarned + totalBonus;
+    const investorRank = getInvestorRank(lifetimeEarnings);
 
     // 既存レコード取得
     const { data: existing } = await supabaseAdmin

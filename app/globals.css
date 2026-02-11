@@ -148,6 +148,15 @@ html {
    Midnight Theme — Frosted Glass Dark Mode
    ============================================ */
 
+/* --- 0. Solid Panels (より不透明なパネル用) --- */
+[data-theme="midnight"] .midnight-solid-panel {
+  background:
+    linear-gradient(170deg, rgba(71, 85, 105, 0.30) 0%, rgba(51, 65, 85, 0.10) 50%),
+    linear-gradient(135deg, rgba(41, 55, 75, 0.88) 0%, rgba(25, 35, 52, 0.85) 50%, rgba(30, 40, 58, 0.88) 100%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) brightness(0.95) !important;
+  backdrop-filter: blur(28px) saturate(160%) brightness(0.95) !important;
+}
+
 /* --- 1. Frosted Glass Cards (bg-white + high-opacity variants) --- */
 [data-theme="midnight"] .bg-white,
 [data-theme="midnight"] .bg-white\/50,
@@ -1317,4 +1326,37 @@ button:not(:disabled) {
 
 .animate-celebrate {
   animation: celebratePulse 1.5s infinite;
+}
+
+/* リーダーボード行ホバー */
+.leaderboard-row:hover {
+  background-color: var(--theme-primary-light);
+}
+.leaderboard-row.rank-row-1:hover,
+.leaderboard-row.rank-row-2:hover,
+.leaderboard-row.rank-row-3:hover {
+  background-color: var(--theme-primary-light) !important;
+  background-image: none !important;
+}
+[data-theme="midnight"] .leaderboard-row:hover {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+[data-theme="midnight"] .leaderboard-row.rank-row-1:hover,
+[data-theme="midnight"] .leaderboard-row.rank-row-2:hover,
+[data-theme="midnight"] .leaderboard-row.rank-row-3:hover {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+  background-image: none !important;
+}
+
+/* ハイライトバナー Midnight対応 */
+[data-theme="midnight"] .highlight-banner {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%) !important;
+  border-color: rgba(129, 140, 248, 0.3) !important;
+  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+[data-theme="midnight"] .highlight-banner .highlight-label {
+  color: #a5b4fc !important;
+}
+[data-theme="midnight"] .highlight-banner .highlight-text {
+  color: #f1f5f9 !important;
 }

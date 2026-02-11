@@ -264,7 +264,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                     />
                                 </div>
 
-                                <ul role="list" className={`divide-y flex-1 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
+                                <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                                     {currentGlobal.length === 0 ? (
                                         <p className="text-gray-500 text-center py-8">{t('noData')}</p>
                                     ) : (
@@ -276,12 +276,12 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                             }));
 
                                             return (
-                                                <div className="flex flex-col h-full">
-                                                    <div className="shrink-0" style={{ height: `${ITEMS_PER_PAGE * 68}px` }}>
+                                                <div className="flex flex-col">
+                                                    <div>
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`relative px-4 sm:px-6 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
+                                                                <li key={`${entry.users.id}-${period}`} className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors cursor-pointer overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
 
                                                                     {/* Content Wrapper */}
                                                                     <div className="relative z-10 flex items-center gap-3">
@@ -357,6 +357,23 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                 </li>
                                                             );
                                                         })}
+                                                        {/* 行数を常にITEMS_PER_PAGEに揃えるプレースホルダー */}
+                                                        {paginatedItems.length < ITEMS_PER_PAGE && Array.from({ length: ITEMS_PER_PAGE - paginatedItems.length }).map((_, i) => (
+                                                            <li key={`placeholder-${i}`} className="px-4 sm:px-6 py-2.5 flex items-center justify-between overflow-hidden" aria-hidden="true">
+                                                                <div className="relative z-10 flex items-center gap-3 invisible">
+                                                                    <div className="flex flex-col items-center gap-0.5">
+                                                                        <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold">&nbsp;</span>
+                                                                    </div>
+                                                                    <div className="w-11 h-11 rounded-full border-2 shrink-0" />
+                                                                    <div>
+                                                                        <p className="text-sm font-bold">&nbsp;</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col items-end invisible">
+                                                                    <div className="tabular-nums font-black text-lg">&nbsp;</div>
+                                                                </div>
+                                                            </li>
+                                                        ))}
                                                     </div>
 
                                                     {/* Pagination Controls */}

@@ -153,7 +153,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`relative px-4 sm:px-6 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors overflow-hidden cursor-pointer ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                         >
 
                                             {/* Content Wrapper */}
