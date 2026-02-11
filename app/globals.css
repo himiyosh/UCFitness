@@ -880,6 +880,11 @@ body {
   font-family: var(--font-geist-sans, 'Inter', system-ui, -apple-system, sans-serif);
 }
 
+/* 全ボタン要素にポインターカーソルをデフォルト適用 */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 /* モーション軽減設定 (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
   *,
