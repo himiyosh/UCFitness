@@ -55,7 +55,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
         { key: 'username', label: t('userId'), done: !!user.username && user.username.trim().length > 0 },
         { key: 'banner', label: t('banner'), done: !!user.banner_url },
         { key: 'image', label: t('profilePhoto'), done: !!user.is_custom_image },
-        { key: 'goal', label: t('dailyGoal'), done: user.step_goal !== null && user.step_goal !== 10000 },
+        { key: 'goal', label: t('dailyGoal'), done: !!user.step_goal && user.step_goal > 0 },
     ];
     const completionPercent = Math.round((completionItems.filter(i => i.done).length / completionItems.length) * 100);
 
