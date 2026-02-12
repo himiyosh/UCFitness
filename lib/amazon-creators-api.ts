@@ -438,47 +438,47 @@ export async function searchProductCandidates(
 
     const html = await response.text();
 
-    // data-asin 属性から ASIN を抽出（広告/空ASINを除外）
+    // data-asin 属性の位置を全て収集
     const candidates: SearchCandidate[] = [];
     const seen = new Set<string>();
+    const asinPositions: { asin: string; index: number }[] = [];
+    const asinPosRegex = /data-asin="([A-Z0-9]{10})"/g;
+    let posMatch;
+    while ((posMatch = asinPosRegex.exec(html)) !== null) {
+        asinPositions.push({ asin: posMatch[1], index: posMatch.index });
+    }
 
-    // パターン1: data-asin + 画像URL + タイトルを一括抽出
-    // 検索結果のカード構造: <div data-asin="BXXXXXXXXX" ...>
-    const cardRegex = /data-asin="([A-Z0-9]{10})"[^]*?<img[^>]*(?:src|srcset)="(https:\/\/m\.media-amazon\.com\/images\/I\/[^"]+)"[^>]*(?:alt="([^"]*)")?/g;
-    let match;
-
-    while ((match = cardRegex.exec(html)) !== null && candidates.length < 10) {
-        const asin = match[1];
+    // 各 ASIN のチャンク内で商品画像・タイトルを抽出
+    for (let i = 0; i < asinPositions.length && candidates.length < 10; i++) {
+        const asin = asinPositions[i].asin;
         if (seen.has(asin)) continue;
         seen.add(asin);
 
-        // 画像URLを適切なサイズに変換（_AC_UL320_ = 320px）
-        const rawImageUrl = match[2];
-        const imageUrl = rawImageUrl.replace(/_[A-Z]{2}_[A-Z0-9_]+_\./, '_AC_UL320_.');
-        const title = match[3] || '';
+        // チャンク範囲: 現在の ASIN ～ 次の ASIN（最大5000文字）
+        const start = asinPositions[i].index;
+        const end = i + 1 < asinPositions.length
+            ? asinPositions[i + 1].index
+            : start + 5000;
+        const chunk = html.substring(start, Math.min(end, start + 5000));
+
+        // チャンク内で商品画像 (<img src="https://m.media-amazon.com/images/I/...">)
+        const imgMatch = chunk.match(
+            /<img[^>]*\ssrc="(https:\/\/m\.media-amazon\.com\/images\/I\/[^"]+)"[^>]*/
+        );
+        if (!imgMatch) continue; // 画像がないカード（ヘッダー等）はスキップ
+
+        // alt 属性からタイトル取得
+        const altMatch = imgMatch[0].match(/alt="([^"]*)"/);
+        let title = altMatch ? decodeHtmlEntities(altMatch[1]) : '';
+        // 「スポンサー広告 - 」プレフィックスを除去
+        title = title.replace(/^スポンサー広告\s*-\s*/, '');
 
         candidates.push({
             asin,
-            title: decodeHtmlEntities(title),
-            imageUrl,
+            title,
+            imageUrl: imgMatch[1],
             affiliateLink: `https://www.amazon.co.jp/dp/${asin}?tag=${partnerTag}`,
         });
-    }
-
-    // パターン1 で見つからなかった場合: data-asin のみ抽出してフォールバック
-    if (candidates.length === 0) {
-        const asinRegex = /data-asin="([A-Z0-9]{10})"/g;
-        while ((match = asinRegex.exec(html)) !== null && candidates.length < 10) {
-            const asin = match[1];
-            if (seen.has(asin)) continue;
-            seen.add(asin);
-            candidates.push({
-                asin,
-                title: '',
-                imageUrl: getProductImageUrl(asin, partnerTag),
-                affiliateLink: `https://www.amazon.co.jp/dp/${asin}?tag=${partnerTag}`,
-            });
-        }
     }
 
     console.log(`[Amazon Search] ${candidates.length}件の候補を取得`);
