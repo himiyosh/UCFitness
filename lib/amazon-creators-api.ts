@@ -304,6 +304,14 @@ const SEARCH_INDEX_URL_MAP: Record<string, string> = {
 /** リンクの種類 */
 export type AffiliateLinkType = 'product' | 'search' | 'tagged-url';
 
+/** 検索で見つかった商品候補 */
+export interface SearchCandidate {
+    asin: string;
+    title: string;
+    imageUrl: string;
+    affiliateLink: string;
+}
+
 export interface GenerateResult {
     affiliateLink: string;
     type: AffiliateLinkType;
@@ -311,6 +319,7 @@ export interface GenerateResult {
     asin?: string;
     keyword?: string;
     category?: string;
+    candidates?: SearchCandidate[];  // キーワード検索時の商品候補リスト
 }
 
 /**
@@ -389,4 +398,101 @@ export function generateAffiliateLink(input: string, category?: string): Generat
         keyword: input,
         category: category || 'All',
     };
+}
+
+// ============================================
+// キーワード検索 → 商品候補抽出（API不要）
+// ============================================
+
+/**
+ * Amazon 検索ページから商品候補（ASIN + タイトル + 画像）を取得
+ * Creators API 不要 — 検索結果HTMLから商品情報を抽出
+ */
+export async function searchProductCandidates(
+    keyword: string,
+    category?: string,
+): Promise<SearchCandidate[]> {
+    const partnerTag = env.AMAZON_PARTNER_TAG;
+
+    // 検索 URL 構築
+    const params = new URLSearchParams({ k: keyword });
+    if (category && category !== 'All' && SEARCH_INDEX_URL_MAP[category]) {
+        params.set('i', SEARCH_INDEX_URL_MAP[category]);
+    }
+    const searchUrl = `https://www.amazon.co.jp/s?${params.toString()}`;
+
+    console.log('[Amazon Search] 検索中:', searchUrl);
+
+    const response = await fetch(searchUrl, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'ja-JP,ja;q=0.9,en;q=0.8',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+    });
+
+    if (!response.ok) {
+        console.error('[Amazon Search] エラー:', response.status);
+        return [];
+    }
+
+    const html = await response.text();
+
+    // data-asin 属性から ASIN を抽出（広告/空ASINを除外）
+    const candidates: SearchCandidate[] = [];
+    const seen = new Set<string>();
+
+    // パターン1: data-asin + 画像URL + タイトルを一括抽出
+    // 検索結果のカード構造: <div data-asin="BXXXXXXXXX" ...>
+    const cardRegex = /data-asin="([A-Z0-9]{10})"[^]*?<img[^>]*(?:src|srcset)="(https:\/\/m\.media-amazon\.com\/images\/I\/[^"]+)"[^>]*(?:alt="([^"]*)")?/g;
+    let match;
+
+    while ((match = cardRegex.exec(html)) !== null && candidates.length < 10) {
+        const asin = match[1];
+        if (seen.has(asin)) continue;
+        seen.add(asin);
+
+        // 画像URLを適切なサイズに変換（_AC_UL320_ = 320px）
+        const rawImageUrl = match[2];
+        const imageUrl = rawImageUrl.replace(/_[A-Z]{2}_[A-Z0-9_]+_\./, '_AC_UL320_.');
+        const title = match[3] || '';
+
+        candidates.push({
+            asin,
+            title: decodeHtmlEntities(title),
+            imageUrl,
+            affiliateLink: `https://www.amazon.co.jp/dp/${asin}?tag=${partnerTag}`,
+        });
+    }
+
+    // パターン1 で見つからなかった場合: data-asin のみ抽出してフォールバック
+    if (candidates.length === 0) {
+        const asinRegex = /data-asin="([A-Z0-9]{10})"/g;
+        while ((match = asinRegex.exec(html)) !== null && candidates.length < 10) {
+            const asin = match[1];
+            if (seen.has(asin)) continue;
+            seen.add(asin);
+            candidates.push({
+                asin,
+                title: '',
+                imageUrl: getProductImageUrl(asin, partnerTag),
+                affiliateLink: `https://www.amazon.co.jp/dp/${asin}?tag=${partnerTag}`,
+            });
+        }
+    }
+
+    console.log(`[Amazon Search] ${candidates.length}件の候補を取得`);
+    return candidates;
+}
+
+/** HTML エンティティのデコード */
+function decodeHtmlEntities(text: string): string {
+    return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec)));
 }

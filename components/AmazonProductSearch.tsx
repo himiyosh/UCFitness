@@ -8,11 +8,19 @@ import Spinner from '@/components/ui/Spinner';
 // ============================================
 // Amazon アフィリエイトリンク生成ツール
 // API不要 — キーワード/ASIN/URLからリンクを即時生成
+// キーワード検索時は商品候補画像を表示（次/前で切替可能）
 // ============================================
 
 // --- 型定義 ---
 
 type AffiliateLinkType = 'product' | 'search' | 'tagged-url';
+
+interface SearchCandidate {
+    asin: string;
+    title: string;
+    imageUrl: string;
+    affiliateLink: string;
+}
 
 interface GenerateResult {
     affiliateLink: string;
@@ -21,6 +29,7 @@ interface GenerateResult {
     asin?: string;
     keyword?: string;
     category?: string;
+    candidates?: SearchCandidate[];
 }
 
 interface LinkHistoryItem extends GenerateResult {
@@ -101,6 +110,7 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
     const [latestResult, setLatestResult] = useState<GenerateResult | null>(null);
     const [history, setHistory] = useState<LinkHistoryItem[]>([]);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [candidateIndex, setCandidateIndex] = useState(0);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -115,14 +125,17 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
 
         setIsGenerating(true);
         setLatestResult(null);
+        setCandidateIndex(0);
 
         try {
+            const isKeyword = inputInfo.type === 'search';
             const res = await fetch('/api/amazon/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     input: input.trim(),
-                    category: inputInfo.type === 'search' ? category : undefined,
+                    category: isKeyword ? category : undefined,
+                    withCandidates: isKeyword,
                 }),
             });
 
@@ -179,7 +192,22 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
     const reuseHistoryItem = useCallback((item: LinkHistoryItem) => {
         setInput(item.input);
         setLatestResult(item);
+        setCandidateIndex(0);
         inputRef.current?.focus();
+    }, []);
+
+    // --- 選択中の商品候補 ---
+    const candidates = latestResult?.candidates || [];
+    const selectedCandidate = candidates.length > 0 ? candidates[candidateIndex] : null;
+    // 候補がある場合は選択中の候補のリンクを優先表示
+    const displayLink = selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || '';
+
+    // --- 候補ナビゲーション ---
+    const goNextCandidate = useCallback(() => {
+        setCandidateIndex(prev => Math.min(prev + 1, candidates.length - 1));
+    }, [candidates.length]);
+    const goPrevCandidate = useCallback(() => {
+        setCandidateIndex(prev => Math.max(prev - 1, 0));
     }, []);
 
     return (
@@ -298,8 +326,75 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                         </div>
                     )}
 
-                    {/* キーワード検索の場合: Amazon検索ブランドカード */}
-                    {latestResult.type === 'search' && (
+                    {/* キーワード検索の場合: 商品候補カルーセル or ブランドカード */}
+                    {latestResult.type === 'search' && selectedCandidate && (
+                        <div className="space-y-3">
+                            {/* 商品画像 + ナビゲーション */}
+                            <div className="flex items-center gap-3">
+                                {/* ← 前へ */}
+                                <button
+                                    onClick={goPrevCandidate}
+                                    disabled={candidateIndex === 0}
+                                    className="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-green-200 flex items-center justify-center text-lg hover:bg-green-50 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                    title={locale === 'ja' ? '前の商品' : 'Previous product'}
+                                >
+                                    ◀
+                                </button>
+
+                                {/* 商品プレビュー */}
+                                <a
+                                    href={selectedCandidate.affiliateLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 flex flex-col items-center gap-2 bg-white rounded-xl border border-green-100 p-4 hover:shadow-md transition-shadow group"
+                                >
+                                    <div className="w-36 h-36 flex items-center justify-center">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={selectedCandidate.imageUrl}
+                                            alt={selectedCandidate.title || selectedCandidate.asin}
+                                            className="max-w-full max-h-full object-contain"
+                                            loading="lazy"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${selectedCandidate.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=${encodeURIComponent('hiroyukimiyos-22')}`;
+                                            }}
+                                        />
+                                    </div>
+                                    {selectedCandidate.title && (
+                                        <p className="text-sm text-gray-700 text-center line-clamp-2 group-hover:text-orange-600 transition-colors">
+                                            {selectedCandidate.title}
+                                        </p>
+                                    )}
+                                    <span className="font-mono text-xs bg-green-100 px-2 py-0.5 rounded border border-green-200 text-green-700">
+                                        ASIN: {selectedCandidate.asin}
+                                    </span>
+                                </a>
+
+                                {/* → 次へ */}
+                                <button
+                                    onClick={goNextCandidate}
+                                    disabled={candidateIndex >= candidates.length - 1}
+                                    className="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-green-200 flex items-center justify-center text-lg hover:bg-green-50 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                    title={locale === 'ja' ? '次の商品' : 'Next product'}
+                                >
+                                    ▶
+                                </button>
+                            </div>
+
+                            {/* インジケーター */}
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-xs font-bold text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                                    {candidateIndex + 1} / {candidates.length}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                    {locale === 'ja' ? '← → で商品を切り替え' : '← → to browse products'}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* キーワード検索で候補なしの場合: Amazon検索ブランドカード */}
+                    {latestResult.type === 'search' && !selectedCandidate && (
                         <a
                             href={latestResult.affiliateLink}
                             target="_blank"
@@ -327,13 +422,13 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
 
                     {/* 生成されたリンク */}
                     <div className="bg-white rounded-xl p-4 border border-green-100 break-all text-sm text-gray-700 font-mono leading-relaxed">
-                        {latestResult.affiliateLink}
+                        {displayLink}
                     </div>
 
                     {/* アクションボタン */}
                     <div className="flex gap-3">
                         <button
-                            onClick={() => copyToClipboard(latestResult.affiliateLink, 'latest')}
+                            onClick={() => copyToClipboard(displayLink, 'latest')}
                             className={`flex-1 px-4 py-3 font-bold rounded-xl transition-all ${
                                 copiedId === 'latest'
                                     ? 'bg-green-200 text-green-800 border border-green-300'
@@ -343,7 +438,7 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                             {copiedId === 'latest' ? '✅' : '📋'} {t(copiedId === 'latest' ? 'copied' : 'copyLink')}
                         </button>
                         <a
-                            href={latestResult.affiliateLink}
+                            href={displayLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all text-center"
