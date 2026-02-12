@@ -34,4 +34,9 @@ export const env = {
     get FITBIT_CLIENT_SECRET() { return requireServerEnv('FITBIT_CLIENT_SECRET'); },
     get VAPID_PRIVATE_KEY() { return process.env.VAPID_PRIVATE_KEY || ''; },
     get VAPID_SUBJECT() { return process.env.VAPID_SUBJECT || 'mailto:admin@example.com'; },
+
+    // Amazon PA-API v5
+    get AMAZON_ACCESS_KEY() { return requireServerEnv('AMAZON_ACCESS_KEY'); },
+    get AMAZON_SECRET_KEY() { return requireServerEnv('AMAZON_SECRET_KEY'); },
+    get AMAZON_PARTNER_TAG() { return requireServerEnv('AMAZON_PARTNER_TAG'); },
 };
