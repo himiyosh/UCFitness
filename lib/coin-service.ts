@@ -101,7 +101,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
 
         const { error: txError } = await supabaseAdmin
             .from('coin_transactions')
-            .insert(transactions);
+            .upsert(transactions, { onConflict: 'idempotency_key', ignoreDuplicates: false });
 
         if (txError) {
             reportError('processCoins:insertTransactions', txError, { userId, date });

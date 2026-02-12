@@ -218,68 +218,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
             <div id="weekly-graph" className="absolute -top-32 invisible pointer-events-none" />
             <div id="monthly-graph" className="absolute -top-32 invisible pointer-events-none" />
 
-            {/* Share Button (moved to Top Right of Container) */}
-            <button
-                onClick={async () => {
-                    if (isSharing) return;
-                    setIsSharing(true);
-                    setCopySuccess(false);
-
-                    try {
-                        const { toBlob } = await import('html-to-image');
-                        if (!shareCardRef.current) return;
-
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
-                        if (!blob) return;
-
-                        // 1. Copy to Clipboard
-                        try {
-                            await navigator.clipboard.write([
-                                new ClipboardItem({
-                                    [blob.type]: blob
-                                })
-                            ]);
-                            setCopySuccess(true);
-                            setTimeout(() => setCopySuccess(false), 3000);
-                        } catch (clipboardErr) {
-                            console.warn('Clipboard write failed', clipboardErr);
-                        }
-
-                        // 2. Share
-                        const file = new File([blob], 'activity.png', { type: 'image/png' });
-
-                        if (navigator.share) {
-                            try { await navigator.share({ title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] }); }
-                            catch (shareError) { console.log('Share canceled or failed', shareError); }
-                        } else {
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url; a.download = 'activity.png';
-                            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                        }
-                    } catch (err) {
-                        console.error('Failed to generate image', err);
-                    } finally {
-                        setIsSharing(false);
-                    }
-                }}
-                disabled={isSharing}
-                className={`absolute top-4 right-4 p-2 rounded-full transition-all z-20 ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-gray-50'}`}
-                title="Share Statistics"
-            >
-                {isSharing ? (
-                    <div className="w-5 h-5 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin"></div>
-                ) : copySuccess ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-500 animate-in zoom-in spin-in-180 duration-300">
-                        <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-                    </svg>
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                        <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
-                    </svg>
-                )}
-            </button>
+            {/* Share Button - rendered inline in header row below */}
 
             {/* Tooltip Portal - Absolute Positioning relative to Container */}
             {tooltip && (() => {
@@ -318,16 +257,17 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 );
             })()}
 
-            <div className="flex flex-col gap-6 mb-6">
+            <div className="flex flex-col gap-4 mb-6">
                 {/* Main Header Row */}
-                <div className="relative flex items-center justify-center py-2">
-                    <h3 className="absolute left-0 text-sm sm:text-lg font-bold text-gray-900 whitespace-nowrap">{t('activityHistory')}</h3>
+                <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm sm:text-lg font-bold text-gray-900 whitespace-nowrap">{t('activityHistory')}</h3>
+                    <div className="flex items-center gap-1 flex-shrink-0">
                     <div className="flex bg-gray-100 p-1 rounded-lg">
                         {(['WEEKLY', 'MONTHLY', 'ALL'] as ViewMode[]).map((m) => (
                             <button
                                 key={m}
                                 onClick={() => setViewMode(m)}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${viewMode === m
+                                className={`px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-medium rounded-md transition-colors ${viewMode === m
                                     ? 'bg-white text-gray-900 shadow-sm'
                                     : 'text-gray-500 hover:text-gray-900'
                                     }`}
@@ -335,6 +275,52 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                 {m === 'WEEKLY' ? t('weekly') : m === 'MONTHLY' ? t('monthly') : t('total')}
                             </button>
                         ))}
+                    </div>
+                    <button
+                        onClick={async () => {
+                            if (isSharing) return;
+                            setIsSharing(true);
+                            setCopySuccess(false);
+                            try {
+                                const { toBlob } = await import('html-to-image');
+                                if (!shareCardRef.current) return;
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
+                                if (!blob) return;
+                                try {
+                                    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                                    setCopySuccess(true);
+                                    setTimeout(() => setCopySuccess(false), 3000);
+                                } catch (clipboardErr) { console.warn('Clipboard write failed', clipboardErr); }
+                                const file = new File([blob], 'activity.png', { type: 'image/png' });
+                                if (navigator.share) {
+                                    try { await navigator.share({ title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] }); }
+                                    catch (shareError) { console.log('Share canceled or failed', shareError); }
+                                } else {
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url; a.download = 'activity.png';
+                                    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                                }
+                            } catch (err) { console.error('Failed to generate image', err); }
+                            finally { setIsSharing(false); }
+                        }}
+                        disabled={isSharing}
+                        className={`p-1.5 rounded-full transition-all flex-shrink-0 ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-gray-50'}`}
+                        title="Share Statistics"
+                    >
+                        {isSharing ? (
+                            <div className="w-4 h-4 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin"></div>
+                        ) : copySuccess ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-green-500">
+                                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M15.75 4.5a3 3 0 11.825 2.066l-8.421 4.679a3.002 3.002 0 010 1.51l8.421 4.679a3 3 0 11-.729 1.31l-8.421-4.678a3 3 0 110-4.132l8.421-4.679a3 3 0 01-.096-.755z" clipRule="evenodd" />
+                            </svg>
+                        )}
+                    </button>
                     </div>
 
 

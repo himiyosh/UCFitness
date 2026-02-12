@@ -192,11 +192,12 @@ html {
   transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease !important;
 }
 
-/* Hover glow for interactive cards */
-[data-theme="midnight"] .bg-white:hover,
-[data-theme="midnight"] .bg-white\/80:hover,
-[data-theme="midnight"] .bg-white\/90:hover,
-[data-theme="midnight"] .bg-white\/95:hover {
+/* Hover glow for interactive cards (links & buttons only) */
+[data-theme="midnight"] a.bg-white:hover,
+[data-theme="midnight"] button.bg-white:hover,
+[data-theme="midnight"] a.bg-white\/80:hover,
+[data-theme="midnight"] a.bg-white\/90:hover,
+[data-theme="midnight"] a.bg-white\/95:hover {
   border-top-color: rgba(165, 180, 252, 0.35) !important;
   border-left-color: rgba(165, 180, 252, 0.22) !important;
   transform: translateY(-1px) !important;
@@ -1367,4 +1368,18 @@ button:not(:disabled) {
 }
 [data-theme="midnight"] .highlight-banner .highlight-text {
   color: #f1f5f9 !important;
+}
+
+/* ===== 愛用アイテム カード ホバーアニメーション ===== */
+.recommended-card {
+  transition: transform 0.3s ease-out, border-color 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+.recommended-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--theme-primary) 35%, transparent);
+  box-shadow: 0 6px 24px -6px color-mix(in srgb, var(--theme-primary) 25%, transparent);
+}
+[data-theme="midnight"] .recommended-card:hover {
+  border-color: rgba(165, 180, 252, 0.4) !important;
+  box-shadow: 0 6px 24px -6px rgba(99, 102, 241, 0.35) !important;
 }

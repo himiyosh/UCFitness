@@ -149,6 +149,50 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
     );
 }
 
+// ローカライズ済みバッジ説明を生成するヘルパー
+function getEarnedDescription(slot: any, t: any): string {
+    const badge = slot.badge!.badges;
+    const type = badge.type;
+    const category = badge.category;
+    const rank = badge.rank;
+
+    // ランキング系 (GLOBAL / GROUP)
+    if (type === 'GLOBAL' || type === 'GROUP') {
+        const label = t(`badges.${slot.label}`);
+        if (rank === 1) return t('earnedDesc.rank1', { label });
+        if (rank === 2) return t('earnedDesc.rank2', { label });
+        return t('earnedDesc.rank3', { label });
+    }
+
+    // ストリーク
+    if (category === 'STREAK') {
+        if (rank === 1) return t('earnedDesc.streak3');
+        if (rank === 2) return t('earnedDesc.streak7');
+        return t('earnedDesc.streak30');
+    }
+
+    // マイルストーン
+    if (category === 'MILESTONE') {
+        if (rank === 1) return t('earnedDesc.milestone100k');
+        if (rank === 2) return t('earnedDesc.milestone500k');
+        return t('earnedDesc.milestone1m');
+    }
+
+    // ライフスタイル
+    if (category === 'LIFESTYLE') {
+        return t('earnedDesc.lifestyle');
+    }
+
+    // タイトル
+    if (category === 'TITLE') {
+        const valMap: Record<number, string> = { 1: '6k', 2: '8k', 3: '10k', 4: '15k', 5: '20k' };
+        return t('earnedDesc.title', { val: valMap[rank] || '?' });
+    }
+
+    // フォールバック
+    return t(`badges.${slot.label}`);
+}
+
 // Extracted Component for consistency
 function BadgeSlot({ slot, t }: { slot: any, t: any }) {
     const [hovered, setHovered] = useState(false);
@@ -196,7 +240,7 @@ function BadgeSlot({ slot, t }: { slot: any, t: any }) {
             {hovered && (
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 px-3 py-2 bg-gray-900/95 text-white text-[10px] rounded-md transition-opacity pointer-events-none z-[100] text-center shadow-xl border border-white/10 animate-in fade-in zoom-in-95 duration-200">
                     {hasBadge ? (
-                        <p className="font-semibold leading-tight">{slot.badge!.badges.description || t(`badges.${slot.label}`)}</p>
+                        <p className="font-semibold leading-tight">{getEarnedDescription(slot, t)}</p>
                     ) : (
                         <div className="space-y-1">
                             <p className="font-bold text-gray-300 uppercase tracking-wider text-[9px] border-b border-gray-700 pb-1 mb-1">{t('howToUnlock')}</p>

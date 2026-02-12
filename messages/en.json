@@ -205,6 +205,19 @@
             "Athlete (15k)": "Athlete (15k)",
             "Champion (20k)": "Champion (20k)"
         },
+        "earnedDesc": {
+            "rank1": "Ranked #1 in {label}!",
+            "rank2": "Ranked #2 in {label}!",
+            "rank3": "Ranked #3 in {label}!",
+            "streak3": "Achieved step goal for 3 consecutive days",
+            "streak7": "Achieved step goal for 7 consecutive days",
+            "streak30": "Achieved step goal for 30 consecutive days",
+            "milestone100k": "Reached 100,000 total steps",
+            "milestone500k": "Reached 500,000 total steps",
+            "milestone1m": "Reached 1,000,000 total steps",
+            "lifestyle": "Walked 20,000+ steps on a weekend",
+            "title": "Maintained a daily average of {val} steps"
+        },
         "onDate": "{date}"
     },
     "Groups": {
@@ -393,7 +406,7 @@
         "heroTitle": "Link Generator",
         "heroDescription": "Easily generate Amazon affiliate links. Supports keywords, ASINs, and URLs.",
         "searchTitle": "Generate Links",
-        "searchDescription": "Enter an Amazon product URL, ASIN, or keyword to generate tagged affiliate links.",
+        "searchDescription": "Enter a keyword, ASIN, or URL to generate tagged affiliate links.",
         "categoryAll": "All",
         "categorySports": "Sports",
         "categoryHealth": "Health",
@@ -402,14 +415,11 @@
         "categoryElectronics": "Electronics",
         "categoryBooks": "Books",
         "viewOnAmazon": "Open on Amazon",
-        "directDescription": "Enter an Amazon product URL, ASIN (10-character code), or keyword.",
-        "directPlaceholder": "URL / ASIN / Keyword",
+        "directDescription": "Enter a keyword, Amazon URL, or ASIN code.",
+        "directPlaceholder": "Keyword / URL / ASIN",
         "generateButton": "Generate",
-        "linkReady": "Link generated!",
-        "linkGenerated": "Affiliate link generated.",
-        "generateError": "Failed to generate link.",
-        "copyLink": "Copy Link",
-        "copied": "Copied!",
-        "copyFailed": "Failed to copy."
+        "linkReady": "Product found!",
+        "linkGenerated": "Product found.",
+        "generateError": "Failed to generate link."
     }
 }

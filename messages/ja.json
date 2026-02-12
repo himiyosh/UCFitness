@@ -205,6 +205,19 @@
             "Athlete (15k)": "アスリート (15k)",
             "Champion (20k)": "チャンピオン (20k)"
         },
+        "earnedDesc": {
+            "rank1": "{label} で1位を獲得！",
+            "rank2": "{label} で2位を獲得！",
+            "rank3": "{label} で3位を獲得！",
+            "streak3": "目標歩数を3日連続達成",
+            "streak7": "目標歩数を7日連続達成",
+            "streak30": "目標歩数を30日連続達成",
+            "milestone100k": "累計10万歩を達成",
+            "milestone500k": "累計50万歩を達成",
+            "milestone1m": "累計100万歩を達成",
+            "lifestyle": "週末に2万歩以上を達成",
+            "title": "1日平均 {val} 歩を維持"
+        },
         "onDate": "{date}"
     },
     "Groups": {
@@ -393,7 +406,7 @@
         "heroTitle": "リンク生成ツール",
         "heroDescription": "Amazon商品のアフィリエイトリンクを簡単に生成。キーワード・ASIN・URLに対応。",
         "searchTitle": "リンクを生成",
-        "searchDescription": "Amazon商品URL・ASIN・キーワードを入力して、アフィリエイトタグ付きリンクを生成できます。",
+        "searchDescription": "キーワード・ASIN・URLを入力して、アフィリエイトタグ付きリンクを生成できます。",
         "categoryAll": "すべて",
         "categorySports": "スポーツ",
         "categoryHealth": "健康",
@@ -402,14 +415,11 @@
         "categoryElectronics": "家電",
         "categoryBooks": "書籍",
         "viewOnAmazon": "Amazonで開く",
-        "directDescription": "Amazon商品のURL、ASIN（10桁コード）、またはキーワードを入力してください。",
-        "directPlaceholder": "URL / ASIN / キーワード",
+        "directDescription": "キーワード、Amazon URL、または ASIN コードを入力してください。",
+        "directPlaceholder": "キーワード / URL / ASIN",
         "generateButton": "生成",
-        "linkReady": "リンクが生成されました！",
-        "linkGenerated": "アフィリエイトリンクを生成しました。",
-        "generateError": "リンク生成に失敗しました。",
-        "copyLink": "リンクをコピー",
-        "copied": "コピーしました！",
-        "copyFailed": "コピーに失敗しました。"
+        "linkReady": "商品が見つかりました！",
+        "linkGenerated": "商品が見つかりました。",
+        "generateError": "リンク生成に失敗しました。"
     }
 }

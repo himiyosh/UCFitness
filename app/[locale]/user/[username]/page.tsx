@@ -72,7 +72,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     }
 
     // Fetch recommended items
-    const { data: recommendedItems } = user
+    const { data: rawRecommendedItems } = user
         ? await supabase
             .from('recommended_items')
             .select('id, asin, title, image_url, affiliate_link, display_order')
@@ -80,6 +80,14 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             .order('display_order', { ascending: true })
             .limit(6)
         : { data: null };
+
+    // アフィリエイトリンクのパートナータグを常に最新に置換
+    const currentTag = process.env.AMAZON_PARTNER_TAG || 'studio344-22';
+    const recommendedItems = rawRecommendedItems?.map(item => ({
+        ...item,
+        affiliate_link: item.affiliate_link.replace(/tag=[^&]+/, `tag=${currentTag}`),
+        image_url: item.image_url.replace(/tag=[^&]+/, `tag=${currentTag}`),
+    })) ?? null;
 
     if (!user) {
         notFound();
@@ -210,10 +218,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
             {/* ... Header and Nav ... */}
             <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
+                            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
                                 {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
@@ -309,8 +317,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                     {/* Right Column: Stats & Achievements */}
                     <div className="md:col-span-2 space-y-6 order-first md:order-none">
-                        <div className="flex items-center justify-between h-8"> {/* Fixed height for alignment */}
-                            <h2 className="text-2xl font-bold text-gray-900">
+                        <div className="flex items-center justify-between gap-2"> {/* gap for spacing */}
+                            <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                                 {isOwner ? t('activityTitle') : t('activityTitleOther')}
                             </h2>
                             {isOwner && <SyncHistoryButton />}

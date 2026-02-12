@@ -49,6 +49,8 @@ type SearchCategory =
 
 interface AmazonProductSearchProps {
     locale: string;
+    /** モーダルから追加した際にアイテムリストを更新するコールバック */
+    onItemAdded?: (item: { id: string; asin: string; title: string; image_url: string; affiliate_link: string; display_order: number }) => void;
 }
 
 // --- カテゴリ定義 ---
@@ -100,7 +102,7 @@ function linkTypeIcon(type: AffiliateLinkType): string {
 // メインコンポーネント
 // ============================================
 
-export default function AmazonProductSearch({ locale }: AmazonProductSearchProps) {
+export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProductSearchProps) {
     const t = useTranslations('Recommendations');
     const { success: toastSuccess, error: toastError } = useToast();
 
@@ -109,17 +111,14 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
     const [isGenerating, setIsGenerating] = useState(false);
     const [latestResult, setLatestResult] = useState<GenerateResult | null>(null);
     const [history, setHistory] = useState<LinkHistoryItem[]>([]);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
     const [candidateIndex, setCandidateIndex] = useState(0);
     const [isSavingRecommended, setIsSavingRecommended] = useState(false);
     const [savedAsins, setSavedAsins] = useState<Set<string>>(new Set());
 
     const inputRef = useRef<HTMLInputElement>(null);
-    const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // --- 入力タイプのリアルタイム検知 ---
     const inputInfo = detectInputType(input);
-    const showCategorySelector = inputInfo.type === 'search' && input.trim().length > 0;
 
     // --- リンク生成 ---
     const handleGenerate = useCallback(async () => {
@@ -166,21 +165,6 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
             setIsGenerating(false);
         }
     }, [input, category, inputInfo.type, t, toastSuccess, toastError]);
-
-    // --- クリップボードにコピー ---
-    const copyToClipboard = useCallback(async (text: string, id?: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            toastSuccess(t('copied'));
-            if (id) {
-                setCopiedId(id);
-                if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-                copyTimeoutRef.current = setTimeout(() => setCopiedId(null), 2000);
-            }
-        } catch {
-            toastError(t('copyFailed'));
-        }
-    }, [t, toastSuccess, toastError]);
 
     // --- Enter キーで生成 ---
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -246,14 +230,20 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                 return;
             }
 
+            const result = await res.json();
             setSavedAsins(prev => new Set(prev).add(target.asin));
             toastSuccess(locale === 'ja' ? 'おすすめに追加しました！' : 'Added to recommended!');
+
+            // コールバックで親コンポーネントに通知
+            if (onItemAdded && result?.item) {
+                onItemAdded(result.item);
+            }
         } catch {
             toastError(locale === 'ja' ? '保存に失敗しました' : 'Failed to save');
         } finally {
             setIsSavingRecommended(false);
         }
-    }, [selectedCandidate, latestResult, locale, toastSuccess, toastError]);
+    }, [selectedCandidate, latestResult, locale, toastSuccess, toastError, onItemAdded]);
 
     // 現在の商品が追加可能かどうか
     const currentAsin = selectedCandidate?.asin || latestResult?.asin;
@@ -297,13 +287,11 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                     </div>
                 </div>
 
-                {/* カテゴリ選択（キーワード検索時のみ表示） */}
-                {showCategorySelector && (
-                    <div className="space-y-2">
-                        <label className="text-xs font-medium text-gray-500">
-                            {locale === 'ja' ? '📂 カテゴリで絞り込み（任意）' : '📂 Filter by category (optional)'}
-                        </label>
-                        <div className="flex gap-2 overflow-x-auto pb-1">
+                {/* カテゴリ選択（常に表示） */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                        {locale === 'ja' ? '📂 カテゴリ' : '📂 Category'}
+                    </span>
                             {CATEGORIES.map(cat => (
                                 <button
                                     key={cat.key}
@@ -319,9 +307,7 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                                     {t(cat.labelKey as any)}
                                 </button>
                             ))}
-                        </div>
                     </div>
-                )}
             </div>
 
             {/* ========== 生成結果 ========== */}
@@ -406,7 +392,7 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                                             className="max-w-full max-h-full object-contain"
                                             loading="lazy"
                                             onError={(e) => {
-                                                (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${selectedCandidate.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=${encodeURIComponent('hiroyukimiyos-22')}`;
+                                                (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${selectedCandidate.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=${encodeURIComponent('studio344-22')}`;
                                             }}
                                         />
                                     </div>
@@ -470,11 +456,6 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                         </a>
                     )}
 
-                    {/* 生成されたリンク */}
-                    <div className="bg-white rounded-xl p-4 border border-green-100 break-all text-sm text-gray-700 font-mono leading-relaxed">
-                        {displayLink}
-                    </div>
-
                     {/* アクションボタン */}
                     <div className="flex flex-col gap-3">
                         {/* おすすめに追加ボタン（ASIN付き商品のみ） */}
@@ -495,21 +476,11 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                             </div>
                         )}
                         <div className="flex gap-3">
-                            <button
-                                onClick={() => copyToClipboard(displayLink, 'latest')}
-                                className={`flex-1 px-4 py-3 font-bold rounded-xl transition-all ${
-                                    copiedId === 'latest'
-                                        ? 'bg-green-200 text-green-800 border border-green-300'
-                                        : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
-                                }`}
-                            >
-                                {copiedId === 'latest' ? '✅' : '📋'} {t(copiedId === 'latest' ? 'copied' : 'copyLink')}
-                            </button>
                             <a
                                 href={displayLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all text-center"
+                                className="flex-1 px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all text-center"
                             >
                                 🛒 {t('viewOnAmazon')}
                             </a>
@@ -526,22 +497,22 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                     </h4>
                     <div className="grid gap-3 sm:grid-cols-3">
                         <HintCard
-                            icon="📦"
-                            title={locale === 'ja' ? 'ASIN で指定' : 'By ASIN'}
-                            example="B0DGJCRNY3"
-                            desc={locale === 'ja' ? '10桁の商品コードを入力' : 'Enter 10-char product code'}
+                            icon={"🔍"}
+                            title={locale === 'ja' ? 'キーワード' : 'Keyword'}
+                            example={locale === 'ja' ? 'ランニングシューズ' : 'running shoes'}
+                            desc={locale === 'ja' ? '商品名やキーワードで検索リンク生成' : 'Generate search link by keyword'}
                         />
                         <HintCard
-                            icon="🔗"
-                            title={locale === 'ja' ? 'URL をコピペ' : 'Paste URL'}
+                            icon={"🔗"}
+                            title={locale === 'ja' ? 'URLを貼付' : 'Paste URL'}
                             example="amazon.co.jp/dp/B0DG..."
                             desc={locale === 'ja' ? 'Amazon商品ページのURLを貼付' : 'Paste Amazon product URL'}
                         />
                         <HintCard
-                            icon="🔍"
-                            title={locale === 'ja' ? 'キーワード検索' : 'By Keyword'}
-                            example={locale === 'ja' ? 'ランニングシューズ' : 'running shoes'}
-                            desc={locale === 'ja' ? '商品名やキーワードで検索リンク生成' : 'Generate search link'}
+                            icon={"📦"}
+                            title="ASIN"
+                            example="B0DGJCRNY3"
+                            desc={locale === 'ja' ? '10桁の商品コードを入力' : 'Enter 10-char product code'}
                         />
                     </div>
                 </div>
@@ -587,23 +558,9 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                                     <div className="text-sm font-medium text-gray-900 truncate">
                                         {item.input}
                                     </div>
-                                    <div className="text-xs text-gray-400 truncate font-mono">
-                                        {item.affiliateLink}
-                                    </div>
                                 </div>
 
                                 <div className="flex gap-1.5 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() => copyToClipboard(item.affiliateLink, item.id)}
-                                        className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                            copiedId === item.id
-                                                ? 'bg-green-100 text-green-700 border border-green-300'
-                                                : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-                                        }`}
-                                        title={copiedId === item.id ? t('copied') : t('copyLink')}
-                                    >
-                                        {copiedId === item.id ? '✅' : '📋'}
-                                    </button>
                                     <button
                                         onClick={() => reuseHistoryItem(item)}
                                         className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 transition-all"
