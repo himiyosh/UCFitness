@@ -35,8 +35,10 @@ export const env = {
     get VAPID_PRIVATE_KEY() { return process.env.VAPID_PRIVATE_KEY || ''; },
     get VAPID_SUBJECT() { return process.env.VAPID_SUBJECT || 'mailto:admin@example.com'; },
 
-    // Amazon PA-API v5
-    get AMAZON_ACCESS_KEY() { return requireServerEnv('AMAZON_ACCESS_KEY'); },
-    get AMAZON_SECRET_KEY() { return requireServerEnv('AMAZON_SECRET_KEY'); },
+    // Amazon Creators API (PA-API v5 後継)
+    get AMAZON_CREDENTIAL_ID() { return requireServerEnv('AMAZON_CREDENTIAL_ID'); },
+    get AMAZON_CREDENTIAL_SECRET() { return requireServerEnv('AMAZON_CREDENTIAL_SECRET'); },
     get AMAZON_PARTNER_TAG() { return requireServerEnv('AMAZON_PARTNER_TAG'); },
+    get AMAZON_CREDENTIAL_VERSION() { return process.env.AMAZON_CREDENTIAL_VERSION || '2.3'; },
+    get AMAZON_MARKETPLACE() { return process.env.AMAZON_MARKETPLACE || 'www.amazon.co.jp'; },
 };

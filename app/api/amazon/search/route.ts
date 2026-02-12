@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { searchProducts, generateAffiliateLink, type SearchCategory } from '@/lib/amazon-paapi';
+import { searchProducts, generateAffiliateLink, type SearchCategory } from '@/lib/amazon-creators-api';
 
 export const dynamic = 'force-dynamic';
 
