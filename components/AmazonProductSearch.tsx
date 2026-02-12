@@ -111,6 +111,8 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
     const [history, setHistory] = useState<LinkHistoryItem[]>([]);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [candidateIndex, setCandidateIndex] = useState(0);
+    const [isSavingRecommended, setIsSavingRecommended] = useState(false);
+    const [savedAsins, setSavedAsins] = useState<Set<string>>(new Set());
 
     const inputRef = useRef<HTMLInputElement>(null);
     const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -209,6 +211,54 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
     const goPrevCandidate = useCallback(() => {
         setCandidateIndex(prev => Math.max(prev - 1, 0));
     }, []);
+
+    // --- おすすめアイテムに追加 ---
+    const handleAddRecommended = useCallback(async () => {
+        // ASIN付き商品を決定
+        const target = selectedCandidate || (latestResult?.asin ? {
+            asin: latestResult.asin,
+            title: '',
+            imageUrl: latestResult.imageUrl || '',
+            affiliateLink: latestResult.affiliateLink,
+        } : null);
+        if (!target) return;
+
+        setIsSavingRecommended(true);
+        try {
+            const res = await fetch('/api/amazon/recommended', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    asin: target.asin,
+                    title: target.title,
+                    imageUrl: target.imageUrl,
+                    affiliateLink: target.affiliateLink,
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                if (err.code === 'MAX_ITEMS') {
+                    toastError(locale === 'ja' ? 'おすすめは最大6件です' : 'Maximum 6 items allowed');
+                } else {
+                    throw new Error(err.error);
+                }
+                return;
+            }
+
+            setSavedAsins(prev => new Set(prev).add(target.asin));
+            toastSuccess(locale === 'ja' ? 'おすすめに追加しました！' : 'Added to recommended!');
+        } catch {
+            toastError(locale === 'ja' ? '保存に失敗しました' : 'Failed to save');
+        } finally {
+            setIsSavingRecommended(false);
+        }
+    }, [selectedCandidate, latestResult, locale, toastSuccess, toastError]);
+
+    // 現在の商品が追加可能かどうか
+    const currentAsin = selectedCandidate?.asin || latestResult?.asin;
+    const isAlreadySaved = currentAsin ? savedAsins.has(currentAsin) : false;
+    const canAddRecommended = !!currentAsin && !isAlreadySaved;
 
     return (
         <div className="space-y-6">
@@ -426,25 +476,44 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                     </div>
 
                     {/* アクションボタン */}
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => copyToClipboard(displayLink, 'latest')}
-                            className={`flex-1 px-4 py-3 font-bold rounded-xl transition-all ${
-                                copiedId === 'latest'
-                                    ? 'bg-green-200 text-green-800 border border-green-300'
-                                    : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
-                            }`}
-                        >
-                            {copiedId === 'latest' ? '✅' : '📋'} {t(copiedId === 'latest' ? 'copied' : 'copyLink')}
-                        </button>
-                        <a
-                            href={displayLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all text-center"
-                        >
-                            🛒 {t('viewOnAmazon')}
-                        </a>
+                    <div className="flex flex-col gap-3">
+                        {/* おすすめに追加ボタン（ASIN付き商品のみ） */}
+                        {canAddRecommended && (
+                            <button
+                                onClick={handleAddRecommended}
+                                disabled={isSavingRecommended}
+                                className="w-full px-4 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
+                            >
+                                {isSavingRecommended
+                                    ? (locale === 'ja' ? '⏳ 保存中...' : '⏳ Saving...')
+                                    : (locale === 'ja' ? '✅ この商品に決定 — プロフィールに掲載' : '✅ Confirm — Add to Profile')}
+                            </button>
+                        )}
+                        {isAlreadySaved && (
+                            <div className="w-full px-4 py-3 bg-green-100 text-green-700 font-bold rounded-xl text-center border border-green-200">
+                                ✅ {locale === 'ja' ? 'プロフィールに掲載済み' : 'Already on your profile'}
+                            </div>
+                        )}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => copyToClipboard(displayLink, 'latest')}
+                                className={`flex-1 px-4 py-3 font-bold rounded-xl transition-all ${
+                                    copiedId === 'latest'
+                                        ? 'bg-green-200 text-green-800 border border-green-300'
+                                        : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
+                                }`}
+                            >
+                                {copiedId === 'latest' ? '✅' : '📋'} {t(copiedId === 'latest' ? 'copied' : 'copyLink')}
+                            </button>
+                            <a
+                                href={displayLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all text-center"
+                            >
+                                🛒 {t('viewOnAmazon')}
+                            </a>
+                        </div>
                     </div>
                 </div>
             )}

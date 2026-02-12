@@ -15,6 +15,7 @@ import { getUserBadges } from "@/lib/badge-service";
 import { getEquippedItems } from "@/lib/shop-service";
 import { getRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
+import RecommendedItems from '@/components/RecommendedItems';
 
 
 
@@ -69,6 +70,16 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         const colorMap: Record<string, string> = { 'ring-green-400': '#4ade80', 'ring-blue-400': '#60a5fa', 'ring-yellow-400': '#facc15', 'ring-cyan-300': '#67e8f9', 'ring-purple-500': '#a855f7' };
         frameColor = colorMap[frameColor] || '#d1d5db';
     }
+
+    // Fetch recommended items
+    const { data: recommendedItems } = user
+        ? await supabase
+            .from('recommended_items')
+            .select('id, asin, title, image_url, affiliate_link, display_order')
+            .eq('user_id', user.id)
+            .order('display_order', { ascending: true })
+            .limit(6)
+        : { data: null };
 
     if (!user) {
         notFound();
@@ -234,6 +245,15 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         <div className="mt-2">
                             <ProfileBadges badges={userBadges} />
                         </div>
+
+                        {/* Recommended Items */}
+                        {recommendedItems && recommendedItems.length > 0 && (
+                            <RecommendedItems
+                                items={recommendedItems}
+                                isOwner={isOwner}
+                                locale={locale}
+                            />
+                        )}
 
                         {/* Lifetime Stats */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-200">
