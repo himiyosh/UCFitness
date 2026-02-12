@@ -40,32 +40,63 @@ const assignPersonalBadges = async (dateStr: string) => {
         .select('user_id, steps')
         .eq('date', dateStr);
 
-    if (!activeUsers) return;
+    if (!activeUsers || activeUsers.length === 0) return;
 
-    for (const user of activeUsers) {
-        if (user.steps < 1000) continue;
+    // Process in batches of 10 to avoid N+1 queries
+    const BATCH_SIZE = 10;
 
-        await assignStreakBadges(user.user_id, dateStr);
-        await assignMilestoneBadges(user.user_id);
-        await assignTitleBadges(user.user_id, dateStr);
-        await assignLifestyleBadges(user.user_id, dateStr, user.steps);
+    for (let i = 0; i < activeUsers.length; i += BATCH_SIZE) {
+        const batch = activeUsers.slice(i, i + BATCH_SIZE);
+        const userIds = batch.map(u => u.user_id);
+
+        // 1. Fetch step goals for batch
+        const { data: usersData } = await supabaseAdmin
+            .from('users')
+            .select('id, step_goal')
+            .in('id', userIds);
+
+        const goalMap = new Map(usersData?.map(u => [u.id, u.step_goal]) || []);
+
+        // 2. Fetch full history for batch
+        // We fetch all history to support both Streak (last 30 days) and Milestone (total) badges
+        // This trades memory for DB calls.
+        const { data: historyData } = await supabaseAdmin
+            .from('daily_steps')
+            .select('user_id, date, steps')
+            .in('user_id', userIds);
+
+        const historyMap = new Map<string, { date: string, steps: number }[]>();
+        historyData?.forEach(row => {
+            if (!historyMap.has(row.user_id)) {
+                historyMap.set(row.user_id, []);
+            }
+            historyMap.get(row.user_id)?.push(row);
+        });
+
+        // Process batch in parallel
+        await Promise.all(batch.map(async (user) => {
+            if (user.steps < 1000) return;
+
+            const history = historyMap.get(user.user_id) || [];
+            const goal = goalMap.get(user.user_id) || 10000;
+
+            await assignStreakBadges(user.user_id, dateStr, history, goal);
+            await assignMilestoneBadges(user.user_id, history);
+            await assignTitleBadges(user.user_id, dateStr, history);
+            await assignLifestyleBadges(user.user_id, dateStr, user.steps);
+        }));
     }
 }
 
-const assignStreakBadges = async (userId: string, dateStr: string) => {
+const assignStreakBadges = async (userId: string, dateStr: string, history: { date: string, steps: number }[], goal: number) => {
     // Check 30 days back
-    const { data: steps } = await supabaseAdmin
-        .from('daily_steps')
-        .select('date, steps')
-        .eq('user_id', userId)
-        .lte('date', dateStr)
-        .order('date', { ascending: false })
-        .limit(30);
+    // Filter and sort in memory instead of DB query
+    const steps = history
+        .filter(h => h.date <= dateStr)
+        .sort((a, b) => b.date.localeCompare(a.date)) // Descending date
+        .slice(0, 30);
 
     if (!steps || steps.length < 3) return;
-
-    const { data: user } = await supabaseAdmin.from('users').select('step_goal').eq('id', userId).single();
-    const goal = user?.step_goal || 10000;
 
     let streak = 0;
     const today = new Date(dateStr);
@@ -91,13 +122,9 @@ const assignStreakBadges = async (userId: string, dateStr: string) => {
     if (streak >= 3) await awardBadge(userId, 'STREAK_3', dateStr, null);
 }
 
-const assignMilestoneBadges = async (userId: string) => {
-    const { data: allSteps } = await supabaseAdmin
-        .from('daily_steps')
-        .select('steps')
-        .eq('user_id', userId);
-
-    const total = allSteps?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
+const assignMilestoneBadges = async (userId: string, history: { date: string, steps: number }[]) => {
+    // Calculate total in memory
+    const total = history.reduce((acc, curr) => acc + curr.steps, 0);
     const dateStr = new Date().toISOString().split('T')[0];
 
     if (total >= 1000000) await awardBadge(userId, 'MILESTONE_1M', dateStr, null);
@@ -105,18 +132,11 @@ const assignMilestoneBadges = async (userId: string) => {
     if (total >= 100000) await awardBadge(userId, 'MILESTONE_100K', dateStr, null);
 }
 
+const assignTitleBadges = async (userId: string, dateStr: string, history: { date: string, steps: number }[]) => {
+    if (!history || history.length === 0) return;
 
-
-const assignTitleBadges = async (userId: string, dateStr: string) => {
-    const { data: stepRecords } = await supabaseAdmin
-        .from('daily_steps')
-        .select('steps')
-        .eq('user_id', userId);
-
-    if (!stepRecords || stepRecords.length === 0) return;
-
-    const totalSteps = stepRecords.reduce((acc, curr) => acc + curr.steps, 0);
-    const totalDays = stepRecords.length;
+    const totalSteps = history.reduce((acc, curr) => acc + curr.steps, 0);
+    const totalDays = history.length;
 
     const average = totalDays > 0 ? totalSteps / totalDays : 0;
 
@@ -141,7 +161,7 @@ const assignLifestyleBadges = async (userId: string, dateStr: string, steps: num
 
 const assignGlobalBadges = async (period: Period, dateStr: string) => {
     // Determine Range
-    let startDate = dateStr;
+    const startDate = dateStr;
     let endDate = dateStr;
 
     if (period === 'WEEKLY') {
@@ -218,7 +238,7 @@ const assignGroupBadges = async (period: Period, dateStr: string) => {
     if (!groups) return;
 
     // Determine Range (Same as Global)
-    let startDate = dateStr;
+    const startDate = dateStr;
     let endDate = dateStr;
     if (period === 'WEEKLY') {
         const d = new Date(dateStr);

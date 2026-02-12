@@ -29,3 +29,7 @@
 ## 2025-05-27 - Uncached Global Aggregation in Dynamic Page
 **Learning:** `getCombinedGroupCompetitionRankings` was performing a heavy aggregation of all daily steps for all users for the entire year on every request because `page.tsx` is `force-dynamic`. This duplicated the cost of `getAllRankings` but for a different view (Group Competition).
 **Action:** Wrapped the function in `unstable_cache` with a 60-second revalidation. This allows the expensive aggregation to be shared across all users and requests, reducing database load from O(Requests) to O(1) per minute.
+
+## 2025-05-28 - N+1 in Daily Badge Assignment
+**Learning:** The `assignPersonalBadges` function was iterating through all active users and performing 3 separate queries for each user (Streak, Milestone, Title), resulting in O(N) database load. This scales poorly as the user base grows.
+**Action:** Implemented batch processing (size 10) where user goals and full step history are fetched in bulk (2 queries per batch). The logic for badges was refactored to use this in-memory data, reducing DB calls from ~3N to ~0.3N.
