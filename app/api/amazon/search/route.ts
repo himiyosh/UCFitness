@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { searchProducts, generateAffiliateLink, type SearchCategory } from '@/lib/amazon-creators-api';
+import { generateAffiliateLink } from '@/lib/amazon-creators-api';
 
 export const dynamic = 'force-dynamic';
 
 // ============================================
-// Amazon 商品検索 API Route
+// Amazon アフィリエイトリンク生成 API Route
 // POST /api/amazon/search
+// ※ Creators API の利用資格（30日以内に10件の売上）を
+//   満たしていないため、現在はリンク生成のみ。
+//   資格取得後に商品検索機能を有効化可能。
 // ============================================
 
-interface SearchRequest {
-    keywords?: string;
-    category?: SearchCategory;
-    asinOrUrl?: string;  // 直接リンク生成用
-    itemCount?: number;
+interface GenerateRequest {
+    input: string;        // キーワード / ASIN / Amazon URL
+    category?: string;    // 検索カテゴリ（キーワード検索時のみ有効）
 }
 
 export async function POST(request: Request) {
@@ -24,34 +25,22 @@ export async function POST(request: Request) {
     }
 
     try {
-        const body: SearchRequest = await request.json();
+        const body: GenerateRequest = await request.json();
 
-        // --- モード1: ASIN/URL から直接アフィリエイトリンク生成 ---
-        if (body.asinOrUrl) {
-            const affiliateLink = generateAffiliateLink(body.asinOrUrl);
-            return NextResponse.json({ affiliateLink });
-        }
-
-        // --- モード2: キーワード検索 ---
-        if (!body.keywords || body.keywords.trim().length === 0) {
+        if (!body.input || body.input.trim().length === 0) {
             return NextResponse.json(
-                { error: 'keywords または asinOrUrl が必要です' },
+                { error: 'input が必要です' },
                 { status: 400 }
             );
         }
 
-        const result = await searchProducts(
-            body.keywords.trim(),
-            body.category || 'All',
-            body.itemCount || 10
-        );
-
+        const result = generateAffiliateLink(body.input.trim(), body.category);
         return NextResponse.json(result);
     } catch (error) {
-        console.error('[API] Amazon 検索エラー:', error);
+        console.error('[API] アフィリエイトリンク生成エラー:', error);
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: `商品検索に失敗しました: ${message}` },
+            { error: `リンク生成に失敗しました: ${message}` },
             { status: 500 }
         );
     }

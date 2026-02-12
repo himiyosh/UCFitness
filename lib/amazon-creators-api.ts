@@ -291,23 +291,66 @@ function extractErrorMessage(body: string): string {
     }
 }
 
+// --- Amazon検索インデックス URL パラメータ ---
+const SEARCH_INDEX_URL_MAP: Record<string, string> = {
+    SportingGoods: 'sporting',
+    HealthPersonalCare: 'hpc',
+    Shoes: 'shoes',
+    Apparel: 'fashion',
+    Electronics: 'electronics',
+    Books: 'stripbooks',
+};
+
+/** リンクの種類 */
+export type AffiliateLinkType = 'product' | 'search' | 'tagged-url';
+
+export interface GenerateResult {
+    affiliateLink: string;
+    type: AffiliateLinkType;
+    asin?: string;
+    keyword?: string;
+    category?: string;
+}
+
 /**
- * 簡易アフィリエイトリンク生成（API不要）
+ * 入力テキストのリンクタイプを判定
+ */
+export function detectInputType(input: string): AffiliateLinkType {
+    if (/^[A-Z0-9]{10}$/i.test(input)) return 'product';
+    if (/(?:dp|product|ASIN)\/([A-Z0-9]{10})/i.test(input)) return 'product';
+    try {
+        const url = new URL(input);
+        if (url.hostname.includes('amazon')) return 'tagged-url';
+    } catch { /* not a URL */ }
+    return 'search';
+}
+
+/**
+ * アフィリエイトリンク生成（API不要）
  * Amazon商品URLまたはASINから、タグ付きリンクを生成
  */
-export function generateAffiliateLink(input: string): string {
+export function generateAffiliateLink(input: string, category?: string): GenerateResult {
     const partnerTag = env.AMAZON_PARTNER_TAG;
 
     // ASIN 形式（10文字の英数字）チェック
-    const asinMatch = input.match(/^[A-Z0-9]{10}$/);
+    const asinMatch = input.match(/^[A-Z0-9]{10}$/i);
     if (asinMatch) {
-        return `https://www.amazon.co.jp/dp/${input}?tag=${partnerTag}`;
+        return {
+            affiliateLink: `https://www.amazon.co.jp/dp/${input.toUpperCase()}?tag=${partnerTag}`,
+            type: 'product',
+            asin: input.toUpperCase(),
+        };
     }
 
     // Amazon URL からASIN抽出
     const urlAsinMatch = input.match(/(?:dp|product|ASIN)\/([A-Z0-9]{10})/i);
     if (urlAsinMatch) {
-        return `https://www.amazon.co.jp/dp/${urlAsinMatch[1]}?tag=${partnerTag}`;
+        const asin = urlAsinMatch[1].toUpperCase();
+        return {
+            affiliateLink: `https://www.amazon.co.jp/dp/${asin}?tag=${partnerTag}`,
+            type: 'product',
+            asin,
+        };
     }
 
     // URL にタグを付加
@@ -315,12 +358,23 @@ export function generateAffiliateLink(input: string): string {
         const url = new URL(input);
         if (url.hostname.includes('amazon')) {
             url.searchParams.set('tag', partnerTag);
-            return url.toString();
+            return {
+                affiliateLink: url.toString(),
+                type: 'tagged-url',
+            };
         }
     } catch {
         // URLでない場合は検索リンクにする
     }
 
-    // キーワード → 検索リンク
-    return `https://www.amazon.co.jp/s?k=${encodeURIComponent(input)}&tag=${partnerTag}`;
+    // キーワード → 検索リンク（カテゴリ対応）
+    const categoryParam = category && category !== 'All' && SEARCH_INDEX_URL_MAP[category]
+        ? `&i=${SEARCH_INDEX_URL_MAP[category]}`
+        : '';
+    return {
+        affiliateLink: `https://www.amazon.co.jp/s?k=${encodeURIComponent(input)}&tag=${partnerTag}${categoryParam}`,
+        type: 'search',
+        keyword: input,
+        category: category || 'All',
+    };
 }

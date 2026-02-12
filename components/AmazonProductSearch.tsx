@@ -6,27 +6,26 @@ import { useToast } from '@/components/Toast';
 import Spinner from '@/components/ui/Spinner';
 
 // ============================================
-// Amazon 商品検索 & アフィリエイトリンク生成コンポーネント
+// Amazon アフィリエイトリンク生成ツール
+// API不要 — キーワード/ASIN/URLからリンクを即時生成
 // ============================================
 
 // --- 型定義 ---
 
-interface AmazonProduct {
-    asin: string;
-    title: string;
-    url: string;
-    imageUrl: string | null;
-    price: string | null;
-    rating: number | null;
-    totalReviews: number | null;
-    brand: string | null;
-    category: string | null;
+type AffiliateLinkType = 'product' | 'search' | 'tagged-url';
+
+interface GenerateResult {
+    affiliateLink: string;
+    type: AffiliateLinkType;
+    asin?: string;
+    keyword?: string;
+    category?: string;
 }
 
-interface SearchResult {
-    products: AmazonProduct[];
-    totalResults: number;
-    searchUrl: string;
+interface LinkHistoryItem extends GenerateResult {
+    id: string;
+    input: string;
+    createdAt: Date;
 }
 
 type SearchCategory =
@@ -53,6 +52,40 @@ const CATEGORIES: { key: SearchCategory; icon: string; labelKey: string }[] = [
     { key: 'Books', icon: '📚', labelKey: 'categoryBooks' },
 ];
 
+// --- 入力タイプ判定（クライアント側プレビュー用） ---
+function detectInputType(input: string): { type: AffiliateLinkType; label: string; icon: string } {
+    if (!input.trim()) return { type: 'search', label: '', icon: '' };
+
+    if (/^[A-Z0-9]{10}$/i.test(input.trim())) {
+        return { type: 'product', label: 'ASIN', icon: '📦' };
+    }
+    if (/(?:dp|product|ASIN)\/([A-Z0-9]{10})/i.test(input)) {
+        return { type: 'product', label: 'Amazon商品URL', icon: '🔗' };
+    }
+    try {
+        const url = new URL(input);
+        if (url.hostname.includes('amazon')) {
+            return { type: 'tagged-url', label: 'Amazon URL', icon: '🔗' };
+        }
+    } catch { /* not a URL */ }
+
+    return { type: 'search', label: 'キーワード検索', icon: '🔍' };
+}
+
+// --- リンクタイプのラベル ---
+function linkTypeLabel(type: AffiliateLinkType, locale: string): string {
+    const labels: Record<AffiliateLinkType, Record<string, string>> = {
+        product: { ja: '商品ページリンク', en: 'Product Page Link' },
+        search: { ja: '検索ページリンク', en: 'Search Page Link' },
+        'tagged-url': { ja: 'タグ付きURL', en: 'Tagged URL' },
+    };
+    return labels[type]?.[locale] || labels[type]?.en || type;
+}
+
+function linkTypeIcon(type: AffiliateLinkType): string {
+    return { product: '📦', search: '🔍', 'tagged-url': '🔗' }[type] || '🔗';
+}
+
 // ============================================
 // メインコンポーネント
 // ============================================
@@ -61,63 +94,35 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
     const t = useTranslations('Recommendations');
     const { success: toastSuccess, error: toastError } = useToast();
 
-    const [keywords, setKeywords] = useState('');
-    const [directInput, setDirectInput] = useState('');
+    const [input, setInput] = useState('');
     const [category, setCategory] = useState<SearchCategory>('All');
-    const [results, setResults] = useState<SearchResult | null>(null);
-    const [isSearching, setIsSearching] = useState(false);
-    const [generatedLink, setGeneratedLink] = useState<string | null>(null);
-    const [activeMode, setActiveMode] = useState<'search' | 'direct'>('search');
-    const [copiedAsin, setCopiedAsin] = useState<string | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [latestResult, setLatestResult] = useState<GenerateResult | null>(null);
+    const [history, setHistory] = useState<LinkHistoryItem[]>([]);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // --- 商品キーワード検索 ---
-    const handleSearch = useCallback(async () => {
-        if (!keywords.trim()) return;
+    // --- 入力タイプのリアルタイム検知 ---
+    const inputInfo = detectInputType(input);
+    const showCategorySelector = inputInfo.type === 'search' && input.trim().length > 0;
 
-        setIsSearching(true);
-        setResults(null);
-        setGeneratedLink(null);
+    // --- リンク生成 ---
+    const handleGenerate = useCallback(async () => {
+        if (!input.trim()) return;
 
-        try {
-            const res = await fetch('/api/amazon/search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ keywords: keywords.trim(), category }),
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Search failed');
-            }
-
-            const data: SearchResult = await res.json();
-            setResults(data);
-
-            if (data.products.length === 0) {
-                toastError(t('noResults'));
-            }
-        } catch (error) {
-            console.error('検索エラー:', error);
-            toastError(t('searchError'));
-        } finally {
-            setIsSearching(false);
-        }
-    }, [keywords, category, t, toastError]);
-
-    // --- 直接リンク生成 ---
-    const handleDirectGenerate = useCallback(async () => {
-        if (!directInput.trim()) return;
-
-        setIsSearching(true);
-        setGeneratedLink(null);
+        setIsGenerating(true);
+        setLatestResult(null);
 
         try {
             const res = await fetch('/api/amazon/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ asinOrUrl: directInput.trim() }),
+                body: JSON.stringify({
+                    input: input.trim(),
+                    category: inputInfo.type === 'search' ? category : undefined,
+                }),
             });
 
             if (!res.ok) {
@@ -125,194 +130,259 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                 throw new Error(err.error || 'Generation failed');
             }
 
-            const data = await res.json();
-            setGeneratedLink(data.affiliateLink);
+            const result: GenerateResult = await res.json();
+            setLatestResult(result);
+
+            // 履歴に追加
+            const historyItem: LinkHistoryItem = {
+                ...result,
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                input: input.trim(),
+                createdAt: new Date(),
+            };
+            setHistory(prev => [historyItem, ...prev].slice(0, 20)); // 最大20件
+
             toastSuccess(t('linkGenerated'));
         } catch (error) {
             console.error('リンク生成エラー:', error);
             toastError(t('generateError'));
         } finally {
-            setIsSearching(false);
+            setIsGenerating(false);
         }
-    }, [directInput, t, toastSuccess, toastError]);
+    }, [input, category, inputInfo.type, t, toastSuccess, toastError]);
 
     // --- クリップボードにコピー ---
-    const copyToClipboard = useCallback(async (text: string, asin?: string) => {
+    const copyToClipboard = useCallback(async (text: string, id?: string) => {
         try {
             await navigator.clipboard.writeText(text);
             toastSuccess(t('copied'));
-            if (asin) {
-                setCopiedAsin(asin);
-                if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-                searchTimeoutRef.current = setTimeout(() => setCopiedAsin(null), 2000);
+            if (id) {
+                setCopiedId(id);
+                if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+                copyTimeoutRef.current = setTimeout(() => setCopiedId(null), 2000);
             }
         } catch {
             toastError(t('copyFailed'));
         }
     }, [t, toastSuccess, toastError]);
 
-    // --- Enter キーで検索 ---
+    // --- Enter キーで生成 ---
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (activeMode === 'search') handleSearch();
-            else handleDirectGenerate();
+            handleGenerate();
         }
-    }, [activeMode, handleSearch, handleDirectGenerate]);
+    }, [handleGenerate]);
 
-    // --- 星評価表示 ---
-    const renderStars = (rating: number | null) => {
-        if (rating === null) return null;
-        const full = Math.floor(rating);
-        const half = rating - full >= 0.5;
-        return (
-            <span className="text-yellow-400 text-sm" title={`${rating}/5`}>
-                {'★'.repeat(full)}{half ? '☆' : ''}{'·'.repeat(5 - full - (half ? 1 : 0))}
-            </span>
-        );
-    };
+    // --- 履歴アイテムを再利用 ---
+    const reuseHistoryItem = useCallback((item: LinkHistoryItem) => {
+        setInput(item.input);
+        setLatestResult(item);
+        inputRef.current?.focus();
+    }, []);
 
     return (
         <div className="space-y-6">
-            {/* --- モード切り替え --- */}
-            <div className="flex bg-gray-100/80 rounded-lg p-1">
-                <button
-                    onClick={() => setActiveMode('search')}
-                    className={`flex-1 px-4 py-2 text-sm font-semibold rounded-md transition-all ${
-                        activeMode === 'search'
-                            ? 'bg-white text-orange-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                >
-                    🔍 {t('searchMode')}
-                </button>
-                <button
-                    onClick={() => setActiveMode('direct')}
-                    className={`flex-1 px-4 py-2 text-sm font-semibold rounded-md transition-all ${
-                        activeMode === 'direct'
-                            ? 'bg-white text-orange-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                >
-                    🔗 {t('directMode')}
-                </button>
-            </div>
-
-            {/* ========== 検索モード ========== */}
-            {activeMode === 'search' && (
-                <div className="space-y-4">
-                    {/* カテゴリ選択 */}
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                        {CATEGORIES.map(cat => (
-                            <button
-                                key={cat.key}
-                                onClick={() => setCategory(cat.key)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                                    category === cat.key
-                                        ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                }`}
-                            >
-                                <span>{cat.icon}</span>
-                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                {t(cat.labelKey as any)}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* 検索入力 */}
+            {/* ========== 入力エリア ========== */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+                {/* 入力フィールド */}
+                <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                        {t('directDescription')}
+                    </label>
                     <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={keywords}
-                            onChange={e => setKeywords(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder={t('searchPlaceholder')}
-                            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-                        />
+                        <div className="flex-1 relative">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={t('directPlaceholder')}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent pr-24"
+                            />
+                            {/* 入力タイプバッジ */}
+                            {input.trim() && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+                                    {inputInfo.icon} {inputInfo.label}
+                                </span>
+                            )}
+                        </div>
                         <button
-                            onClick={handleSearch}
-                            disabled={isSearching || !keywords.trim()}
-                            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={handleGenerate}
+                            disabled={isGenerating || !input.trim()}
+                            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                         >
-                            {isSearching ? <Spinner /> : t('searchButton')}
+                            {isGenerating ? <Spinner /> : t('generateButton')}
                         </button>
                     </div>
+                </div>
 
-                    {/* 検索結果 */}
-                    {results && (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm text-gray-500">
-                                <span>{t('resultsCount', { count: results.totalResults })}</span>
-                                <a
-                                    href={results.searchUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-orange-600 hover:text-orange-700 font-medium"
+                {/* カテゴリ選択（キーワード検索時のみ表示） */}
+                {showCategorySelector && (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-500">
+                            {locale === 'ja' ? '📂 カテゴリで絞り込み（任意）' : '📂 Filter by category (optional)'}
+                        </label>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                            {CATEGORIES.map(cat => (
+                                <button
+                                    key={cat.key}
+                                    onClick={() => setCategory(cat.key)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                                        category === cat.key
+                                            ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                    }`}
                                 >
-                                    {t('viewOnAmazon')} →
-                                </a>
-                            </div>
+                                    <span>{cat.icon}</span>
+                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                    {t(cat.labelKey as any)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
 
-                            <div className="grid gap-3">
-                                {results.products.map(product => (
-                                    <ProductCard
-                                        key={product.asin}
-                                        product={product}
-                                        locale={locale}
-                                        isCopied={copiedAsin === product.asin}
-                                        onCopy={() => copyToClipboard(product.url, product.asin)}
-                                        renderStars={renderStars}
-                                        t={t}
-                                    />
-                                ))}
-                            </div>
+            {/* ========== 生成結果 ========== */}
+            {latestResult && (
+                <div className="bg-green-50 border border-green-200 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-green-600 text-xl">✅</span>
+                        <span className="font-bold text-green-800">{t('linkReady')}</span>
+                        <span className="ml-auto text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                            {linkTypeIcon(latestResult.type)} {linkTypeLabel(latestResult.type, locale)}
+                        </span>
+                    </div>
+
+                    {/* ASIN 表示 */}
+                    {latestResult.asin && (
+                        <div className="flex items-center gap-2 text-sm text-green-700">
+                            <span className="font-mono bg-green-100 px-2 py-0.5 rounded border border-green-200">
+                                ASIN: {latestResult.asin}
+                            </span>
                         </div>
                     )}
+
+                    {/* 生成されたリンク */}
+                    <div className="bg-white rounded-xl p-4 border border-green-100 break-all text-sm text-gray-700 font-mono leading-relaxed">
+                        {latestResult.affiliateLink}
+                    </div>
+
+                    {/* アクションボタン */}
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => copyToClipboard(latestResult.affiliateLink, 'latest')}
+                            className={`flex-1 px-4 py-3 font-bold rounded-xl transition-all ${
+                                copiedId === 'latest'
+                                    ? 'bg-green-200 text-green-800 border border-green-300'
+                                    : 'bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]'
+                            }`}
+                        >
+                            {copiedId === 'latest' ? '✅' : '📋'} {t(copiedId === 'latest' ? 'copied' : 'copyLink')}
+                        </button>
+                        <a
+                            href={latestResult.affiliateLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all text-center"
+                        >
+                            🛒 {t('viewOnAmazon')}
+                        </a>
+                    </div>
                 </div>
             )}
 
-            {/* ========== 直接リンク生成モード ========== */}
-            {activeMode === 'direct' && (
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-500">{t('directDescription')}</p>
-
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={directInput}
-                            onChange={e => setDirectInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder={t('directPlaceholder')}
-                            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+            {/* ========== 使い方ヒント ========== */}
+            {!latestResult && history.length === 0 && (
+                <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-5">
+                    <h4 className="font-bold text-amber-800 mb-3">
+                        {locale === 'ja' ? '💡 使い方' : '💡 How to use'}
+                    </h4>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <HintCard
+                            icon="📦"
+                            title={locale === 'ja' ? 'ASIN で指定' : 'By ASIN'}
+                            example="B0DGJCRNY3"
+                            desc={locale === 'ja' ? '10桁の商品コードを入力' : 'Enter 10-char product code'}
                         />
-                        <button
-                            onClick={handleDirectGenerate}
-                            disabled={isSearching || !directInput.trim()}
-                            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isSearching ? <Spinner /> : t('generateButton')}
-                        </button>
+                        <HintCard
+                            icon="🔗"
+                            title={locale === 'ja' ? 'URL をコピペ' : 'Paste URL'}
+                            example="amazon.co.jp/dp/B0DG..."
+                            desc={locale === 'ja' ? 'Amazon商品ページのURLを貼付' : 'Paste Amazon product URL'}
+                        />
+                        <HintCard
+                            icon="🔍"
+                            title={locale === 'ja' ? 'キーワード検索' : 'By Keyword'}
+                            example={locale === 'ja' ? 'ランニングシューズ' : 'running shoes'}
+                            desc={locale === 'ja' ? '商品名やキーワードで検索リンク生成' : 'Generate search link'}
+                        />
                     </div>
+                </div>
+            )}
 
-                    {/* 生成されたリンク */}
-                    {generatedLink && (
-                        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
-                            <div className="flex items-center gap-2">
-                                <span className="text-green-600 text-lg">✅</span>
-                                <span className="font-semibold text-green-800">{t('linkReady')}</span>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 border border-green-100 break-all text-sm text-gray-700 font-mono">
-                                {generatedLink}
-                            </div>
-                            <button
-                                onClick={() => copyToClipboard(generatedLink)}
-                                className="w-full px-4 py-2.5 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-[0.98] transition-all"
+            {/* ========== 生成履歴 ========== */}
+            {history.length > 0 && (
+                <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-500 flex items-center gap-2">
+                        <span>📝</span>
+                        {locale === 'ja' ? '生成履歴' : 'History'}
+                        <span className="text-xs font-normal text-gray-400">
+                            ({history.length})
+                        </span>
+                    </h4>
+
+                    <div className="space-y-2">
+                        {history.map(item => (
+                            <div
+                                key={item.id}
+                                className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 hover:shadow-sm transition-shadow group"
                             >
-                                📋 {t('copyLink')}
-                            </button>
-                        </div>
-                    )}
+                                <span className="text-lg flex-shrink-0">{linkTypeIcon(item.type)}</span>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                        {item.input}
+                                    </div>
+                                    <div className="text-xs text-gray-400 truncate font-mono">
+                                        {item.affiliateLink}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-1.5 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => copyToClipboard(item.affiliateLink, item.id)}
+                                        className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                            copiedId === item.id
+                                                ? 'bg-green-100 text-green-700 border border-green-300'
+                                                : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                                        }`}
+                                        title={copiedId === item.id ? t('copied') : t('copyLink')}
+                                    >
+                                        {copiedId === item.id ? '✅' : '📋'}
+                                    </button>
+                                    <button
+                                        onClick={() => reuseHistoryItem(item)}
+                                        className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 transition-all"
+                                        title={locale === 'ja' ? '再利用' : 'Reuse'}
+                                    >
+                                        ↩️
+                                    </button>
+                                    <a
+                                        href={item.affiliateLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-orange-100 text-orange-600 border border-orange-200 hover:bg-orange-200 transition-all"
+                                        title={t('viewOnAmazon')}
+                                    >
+                                        🛒
+                                    </a>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
@@ -320,89 +390,20 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
 }
 
 // ============================================
-// 商品カード サブコンポーネント
+// ヒントカード サブコンポーネント
 // ============================================
 
-interface ProductCardProps {
-    product: AmazonProduct;
-    locale: string;
-    isCopied: boolean;
-    onCopy: () => void;
-    renderStars: (rating: number | null) => React.ReactNode;
-    t: ReturnType<typeof useTranslations<'Recommendations'>>;
-}
-
-function ProductCard({ product, locale, isCopied, onCopy, renderStars, t }: ProductCardProps) {
+function HintCard({ icon, title, example, desc }: { icon: string; title: string; example: string; desc: string }) {
     return (
-        <div className="flex gap-3 bg-white rounded-xl border border-gray-200 p-3 hover:shadow-md transition-shadow">
-            {/* 商品画像 */}
-            {product.imageUrl && (
-                <a
-                    href={product.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-50"
-                >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src={product.imageUrl}
-                        alt={product.title}
-                        className="w-full h-full object-contain"
-                        loading="lazy"
-                    />
-                </a>
-            )}
-
-            {/* 商品情報 */}
-            <div className="flex-1 min-w-0 space-y-1">
-                <a
-                    href={product.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-semibold text-gray-900 hover:text-orange-600 line-clamp-2 transition-colors"
-                >
-                    {product.title}
-                </a>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    {product.brand && <span className="font-medium">{product.brand}</span>}
-                    {product.category && (
-                        <span className="bg-gray-100 px-2 py-0.5 rounded-full">{product.category}</span>
-                    )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {product.price && (
-                        <span className="text-lg font-black text-red-600">{product.price}</span>
-                    )}
-                    {renderStars(product.rating)}
-                    {product.totalReviews !== null && (
-                        <span className="text-xs text-gray-400">({product.totalReviews})</span>
-                    )}
-                </div>
-
-                {/* アクションボタン */}
-                <div className="flex gap-2 pt-1">
-                    <a
-                        href={product.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:shadow-md active:scale-[0.98] transition-all"
-                    >
-                        🛒 Amazon{locale === 'ja' ? 'で見る' : ''}
-                    </a>
-                    <button
-                        onClick={onCopy}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                            isCopied
-                                ? 'bg-green-100 text-green-700 border border-green-300'
-                                : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-                        }`}
-                    >
-                        {isCopied ? '✅' : '📋'} {t(isCopied ? 'copied' : 'copyLink')}
-                    </button>
-                </div>
+        <div className="bg-white rounded-xl border border-amber-100 p-3 space-y-1">
+            <div className="flex items-center gap-1.5">
+                <span className="text-lg">{icon}</span>
+                <span className="text-sm font-bold text-gray-800">{title}</span>
             </div>
+            <div className="text-xs font-mono text-amber-700 bg-amber-50 px-2 py-1 rounded truncate">
+                {example}
+            </div>
+            <div className="text-xs text-gray-500">{desc}</div>
         </div>
     );
 }
