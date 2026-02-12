@@ -49,6 +49,12 @@ export async function POST(request: Request) {
 
         // Create New Group
         const groupDisplayName = (name && name.trim()) ? name.trim() : target;
+
+        // 🛡️ Sentinel: Validate Group Name
+        if (groupDisplayName.length > 50) {
+          return NextResponse.json({ error: "Group name is too long (max 50 chars)" }, { status: 400 });
+        }
+
         const { data: newGroup, error: createError } = await supabaseAdmin
           .from('groups')
           .insert({ name: groupDisplayName, keyword: target, owner_id: userId })
@@ -254,9 +260,36 @@ export async function POST(request: Request) {
       // Filter out undefined values to avoid overwriting with null if client doesn't send them
       // But typical patterns send full or partial. Let's assume passed values are what to update.
       const updates: Record<string, string | boolean> = {};
-      if (name !== undefined) updates.name = name;
-      if (image_url !== undefined) updates.image_url = image_url;
-      if (header_image_url !== undefined) updates.header_image_url = header_image_url;
+
+      // 🛡️ Sentinel: Validate Inputs
+      if (name !== undefined) {
+        const trimmedName = name.trim();
+        if (trimmedName.length > 50) {
+          return NextResponse.json({ error: "Group name is too long (max 50 chars)" }, { status: 400 });
+        }
+        updates.name = trimmedName;
+      }
+
+      const isValidUrl = (url: string) => {
+        if (!url) return true;
+        // Allow http, https, or relative paths starting with /
+        return /^https?:\/\//.test(url) || url.startsWith('/');
+      };
+
+      if (image_url !== undefined) {
+        if (!isValidUrl(image_url)) {
+          return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
+        }
+        updates.image_url = image_url;
+      }
+
+      if (header_image_url !== undefined) {
+        if (!isValidUrl(header_image_url)) {
+          return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
+        }
+        updates.header_image_url = header_image_url;
+      }
+
       if (body.is_public !== undefined) updates.is_public = body.is_public;
 
       updates.updated_at = new Date().toISOString();

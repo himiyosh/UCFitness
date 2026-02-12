@@ -42,3 +42,8 @@
 **Vulnerability:** `app/api/user/search/route.ts` directly interpolated user input into a Supabase `.or()` clause without sanitization, allowing potential filter injection by using characters like `,`, `(`, and `)`.
 **Learning:** PostgREST (and Supabase) filter strings use specific characters for logic delimiters. Interpolating raw strings into complex filters like `.or()` is risky even if `select` limits columns, as it can alter the query logic.
 **Prevention:** Always sanitize user input intended for PostgREST filter strings by removing control characters (`,`, `(`, `)`) or using parameterized queries/RPCs where possible (though Supabase JS client handles basic values, complex filter strings are raw text).
+
+## 2026-02-14 - Missing Group Metadata Validation
+**Vulnerability:** `app/api/user/group/route.ts` validated unique group keywords but failed to validate group names (length) and image URLs (protocol). This allowed creation of groups with excessively long names (DoS/UI break) or potentially malicious image URLs.
+**Learning:** Partial validation is dangerous. Validating the "key" (keyword) but not the "value" (name, metadata) leaves the application exposed. All user inputs, especially those stored and displayed to other users, must be validated.
+**Prevention:** Implement comprehensive input validation for all fields in a request payload, not just the unique identifiers. Use strict length limits and protocol allowlists for URLs.
