@@ -279,8 +279,10 @@ function parseItem(item: any, partnerTag: string): AmazonProduct {
 function extractErrorMessage(body: string): string {
     try {
         const parsed = JSON.parse(body);
-        return parsed.errors?.[0]?.message
+        return parsed.message           // Creators API 標準エラー形式
+            || parsed.errors?.[0]?.message
             || parsed.Errors?.[0]?.Message
+            || parsed.reason
             || parsed.__type
             || parsed.error
             || 'Unknown error';
