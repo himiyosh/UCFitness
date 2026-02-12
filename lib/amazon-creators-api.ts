@@ -307,9 +307,18 @@ export type AffiliateLinkType = 'product' | 'search' | 'tagged-url';
 export interface GenerateResult {
     affiliateLink: string;
     type: AffiliateLinkType;
+    imageUrl?: string;    // ASIN特定時の商品画像 URL
     asin?: string;
     keyword?: string;
     category?: string;
+}
+
+/**
+ * ASIN から Amazon 商品画像 URL を生成
+ * Amazon Associates 公式のアソシエイト画像ウィジェットを使用
+ */
+function getProductImageUrl(asin: string, partnerTag: string): string {
+    return `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${asin}&Format=_SL250_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=${partnerTag}`;
 }
 
 /**
@@ -335,10 +344,12 @@ export function generateAffiliateLink(input: string, category?: string): Generat
     // ASIN 形式（10文字の英数字）チェック
     const asinMatch = input.match(/^[A-Z0-9]{10}$/i);
     if (asinMatch) {
+        const asin = input.toUpperCase();
         return {
-            affiliateLink: `https://www.amazon.co.jp/dp/${input.toUpperCase()}?tag=${partnerTag}`,
+            affiliateLink: `https://www.amazon.co.jp/dp/${asin}?tag=${partnerTag}`,
             type: 'product',
-            asin: input.toUpperCase(),
+            asin,
+            imageUrl: getProductImageUrl(asin, partnerTag),
         };
     }
 
@@ -350,6 +361,7 @@ export function generateAffiliateLink(input: string, category?: string): Generat
             affiliateLink: `https://www.amazon.co.jp/dp/${asin}?tag=${partnerTag}`,
             type: 'product',
             asin,
+            imageUrl: getProductImageUrl(asin, partnerTag),
         };
     }
 

@@ -17,6 +17,7 @@ type AffiliateLinkType = 'product' | 'search' | 'tagged-url';
 interface GenerateResult {
     affiliateLink: string;
     type: AffiliateLinkType;
+    imageUrl?: string;
     asin?: string;
     keyword?: string;
     category?: string;
@@ -256,13 +257,72 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                         </span>
                     </div>
 
-                    {/* ASIN 表示 */}
-                    {latestResult.asin && (
+                    {/* 商品プレビュー（ASINがある場合） */}
+                    {latestResult.imageUrl && (
+                        <div className="flex gap-4 items-start">
+                            <a
+                                href={latestResult.affiliateLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden bg-white border border-green-100 flex items-center justify-center hover:shadow-md transition-shadow"
+                            >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={latestResult.imageUrl}
+                                    alt={latestResult.asin || 'Product'}
+                                    className="max-w-full max-h-full object-contain"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        // 画像が読み込めない場合は非表示
+                                        (e.target as HTMLElement).closest('.flex-shrink-0')?.classList.add('hidden');
+                                    }}
+                                />
+                            </a>
+                            <div className="flex-1 space-y-1.5">
+                                <span className="font-mono text-sm bg-green-100 px-2 py-0.5 rounded border border-green-200 text-green-700">
+                                    ASIN: {latestResult.asin}
+                                </span>
+                                <p className="text-xs text-gray-500">
+                                    {locale === 'ja' ? 'クリックで Amazon で確認' : 'Click to view on Amazon'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ASIN のみ表示（画像なし） */}
+                    {latestResult.asin && !latestResult.imageUrl && (
                         <div className="flex items-center gap-2 text-sm text-green-700">
                             <span className="font-mono bg-green-100 px-2 py-0.5 rounded border border-green-200">
                                 ASIN: {latestResult.asin}
                             </span>
                         </div>
+                    )}
+
+                    {/* キーワード検索の場合: Amazon検索ブランドカード */}
+                    {latestResult.type === 'search' && (
+                        <a
+                            href={latestResult.affiliateLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 bg-white rounded-xl border border-green-100 p-3 hover:shadow-md transition-shadow group"
+                        >
+                            <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br from-orange-400 to-amber-300 flex items-center justify-center text-2xl shadow-sm">
+                                🔍
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
+                                    &quot;{latestResult.keyword}&quot;
+                                    {latestResult.category && latestResult.category !== 'All' && (
+                                        <span className="ml-2 text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                            {latestResult.category}
+                                        </span>
+                                    )}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                    {locale === 'ja' ? 'Amazon.co.jp で検索結果を見る →' : 'View search results on Amazon.co.jp →'}
+                                </p>
+                            </div>
+                        </a>
                     )}
 
                     {/* 生成されたリンク */}
@@ -340,7 +400,24 @@ export default function AmazonProductSearch({ locale }: AmazonProductSearchProps
                                 key={item.id}
                                 className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 hover:shadow-sm transition-shadow group"
                             >
-                                <span className="text-lg flex-shrink-0">{linkTypeIcon(item.type)}</span>
+                                {/* サムネイル or アイコン */}
+                                {item.imageUrl ? (
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={item.imageUrl}
+                                            alt={item.asin || ''}
+                                            className="w-full h-full object-contain"
+                                            loading="lazy"
+                                            onError={(e) => {
+                                                const parent = (e.target as HTMLElement).parentElement;
+                                                if (parent) parent.innerHTML = `<span class="flex items-center justify-center w-full h-full text-lg">${linkTypeIcon(item.type)}</span>`;
+                                            }}
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="text-lg flex-shrink-0">{linkTypeIcon(item.type)}</span>
+                                )}
 
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium text-gray-900 truncate">
