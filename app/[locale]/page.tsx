@@ -440,9 +440,6 @@ export default async function Home() {
                     <Link href="/shop" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
                       <span className="text-xs sm:text-sm">🛍️</span>{t('shop')}
                     </Link>
-                    <Link href="/recommendations" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
-                      <span className="text-xs sm:text-sm">🏷️</span>{t('recommendations')}
-                    </Link>
                   </div>
                 </div>
               </div>

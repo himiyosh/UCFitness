@@ -83,7 +83,6 @@
         "groups": "グループ",
         "wallet": "ウォレット",
         "shop": "ショップ",
-        "recommendations": "おすすめ",
         "refreshSteps": "今すぐ同期",
         "refreshing": "同期中..."
     },
@@ -293,7 +292,6 @@
         "myGroups": "マイグループ",
         "undouBank": "ウォレット",
         "ucShop": "ショップ",
-        "recommendations": "おすすめ商品",
         "settings": "設定",
         "signOut": "ログアウト"
     },
