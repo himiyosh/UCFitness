@@ -83,6 +83,7 @@
         "groups": "Groups",
         "wallet": "Wallet",
         "shop": "Shop",
+        "recommendations": "Picks",
         "refreshSteps": "Sync Now",
         "refreshing": "Refreshing..."
     },
@@ -292,6 +293,7 @@
         "myGroups": "My Groups",
         "undouBank": "Wallet",
         "ucShop": "Shop",
+        "recommendations": "Recommendations",
         "settings": "Settings",
         "signOut": "Sign out"
     },
