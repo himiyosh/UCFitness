@@ -6,7 +6,7 @@
 Generator ↔ Reviewer パターンで最大3回のイテレーションを回し、
 テスト通過を保証しながらコードを改善するスクリプト。
 
-使用ツール: GitHub Models API (gpt-4o-mini)
+使用ツール: GitHub Models API (gpt-5)
 認証: gh auth token (GitHub CLI のトークンを流用)
 実行環境: ローカル / GitHub Actions
 """
@@ -102,11 +102,13 @@ class GitHubModelsClient:
 
     認証: gh auth token (GitHub CLI) のトークンをそのまま使用。
     エンドポイント: https://models.inference.ai.azure.com/chat/completions
-    デフォルトモデル: gpt-4o-mini (環境変数 AI_MODEL で変更可能)
+    デフォルトモデル: gpt-5 (環境変数 AI_MODEL で変更可能)
     """
 
     API_URL = "https://models.inference.ai.azure.com/chat/completions"
-    DEFAULT_MODEL = "gpt-4o-mini"
+    DEFAULT_MODEL = "gpt-5"
+    # gpt-5/o-series は max_tokens ではなく max_completion_tokens を使用
+    MODELS_USING_COMPLETION_TOKENS = {"gpt-5", "o1", "o3", "o3-mini", "o4-mini"}
     MAX_RETRIES = 3
     RETRY_BASE_DELAY = 2  # 秒
 
@@ -162,10 +164,17 @@ class GitHubModelsClient:
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
         }
+
+        # gpt-5 / o-series は max_completion_tokens を使用
+        token_key = (
+            "max_completion_tokens"
+            if any(self.model.startswith(m) for m in self.MODELS_USING_COMPLETION_TOKENS)
+            else "max_tokens"
+        )
         payload = {
             "model": self.model,
             "messages": messages,
-            "max_tokens": max_tokens,
+            token_key: max_tokens,
             "temperature": temperature,
         }
 
