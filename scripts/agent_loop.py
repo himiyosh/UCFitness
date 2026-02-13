@@ -1180,6 +1180,13 @@ class BuildValidationAgent(BaseAgent):
             2. **Next.js ビルドエラー**: Server/Client Component の不正な混在、dynamic import の問題
             3. **翻訳キーの不足**: useTranslations / getTranslations で使用するキーが ja.json / en.json に不足
             4. **Supabase クエリの型安全性**: select() のカラム名が実際のテーブルスキーマと一致するか
+            5. **React Rules of Hooks 違反**: 以下のパターンを必ず検出し修正すること:
+               - ❌ 条件分岐 (if/else) や early return の **後に** Hooks (useState, useEffect, useCallback, useMemo, useRef 等) が呼ばれている
+               - ❌ ループ (for, while, map 等) の **内部で** Hooks が呼ばれている
+               - ❌ ネストされた関数やコールバックの **内部で** Hooks が呼ばれている
+               - ❌ 条件式の中で Hooks が呼ばれている (例: `if (cond) { useState(...) }`)
+               - ✅ すべての Hooks はコンポーネント/カスタムHookの **トップレベル** で、条件分岐や return 文の **前に** 宣言されなければならない
+               - ✅ 修正方法: Hooks を条件分岐の前に移動し、early return は全 Hooks 宣言の後に配置する
 
             ## 重要なルール
             - **エラーがなければ元のコードをそのまま返すこと。**
@@ -1222,6 +1229,7 @@ class BuildValidationAgent(BaseAgent):
             3. **既存のロジックを壊していないか？** 最小限の修正であること
             4. **新しいエラーを導入していないか？** (import 漏れ、型の不整合 等)
             5. **翻訳キーの修正が正しいか？** (ja.json/en.json に追加すべきキーが正しいか)
+            6. **React Rules of Hooks 違反を導入していないか？** 条件分岐や early return の後に新たな Hooks 呼び出しが追加されていたら必ず reject
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。

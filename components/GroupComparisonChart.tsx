@@ -45,21 +45,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     const [copySuccess, setCopySuccess] = useState(false);
     const shareCardRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    if (!isMounted) return <div className="h-full w-full bg-gray-50/50 rounded-xl animate-pulse" />;
-
-    if (!data || data.length === 0) {
-        return (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center h-[300px] text-gray-400">
-                No data available for comparison.
-            </div>
-        );
-    }
-
-    // Custom Legend Component
+    // Custom Legend Component — must be declared before conditional returns (Rules of Hooks)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const renderLegend = useCallback((props: any) => {
         const payload = props.payload as LegendPayloadEntry[] | undefined;
@@ -91,6 +77,20 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             </div>
         );
     }, [activeUser]);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted) return <div className="h-full w-full bg-gray-50/50 rounded-xl animate-pulse" />;
+
+    if (!data || data.length === 0) {
+        return (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center h-[300px] text-gray-400">
+                No data available for comparison.
+            </div>
+        );
+    }
 
     // Custom Tooltip Component
     const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
