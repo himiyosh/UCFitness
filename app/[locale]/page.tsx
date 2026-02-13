@@ -18,6 +18,7 @@ import { Period } from '@/components/LeaderboardTabs';
 const AnimatedLeaderboard = nextDynamic(() => import('@/components/AnimatedLeaderboard'));
 const GoalProgressChart = nextDynamic(() => import('@/components/GoalProgressChart'));
 const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'));
+const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'));
 
 export const dynamic = 'force-dynamic';
 
@@ -444,6 +445,11 @@ export default async function Home() {
               </div>
             )}
           </div>
+
+          {/* Step Heatmap Calendar */}
+          {session && userId && (
+            <StepCalendar userId={userId} />
+          )}
 
           {/* BOTTOM SECTION: Leaderboards */}
           <AnimatedLeaderboard
