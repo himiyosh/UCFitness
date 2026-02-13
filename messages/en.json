@@ -488,6 +488,8 @@
         "inviteSuccess": "User invited successfully!",
         "searchFailed": "Search failed. Please try again.",
         "leaveFailed": "Failed to leave group",
-        "errorOccurred": "An error occurred."
+        "errorOccurred": "An error occurred.",
+        "memberRankings": "Member Rankings",
+        "pageInfo": "Page {current} of {total}"
     }
 }

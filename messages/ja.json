@@ -488,6 +488,8 @@
         "inviteSuccess": "ユーザーを招待しました！",
         "searchFailed": "検索に失敗しました。もう一度お試しください。",
         "leaveFailed": "グループの退出に失敗しました",
-        "errorOccurred": "エラーが発生しました。"
+        "errorOccurred": "エラーが発生しました。",
+        "memberRankings": "メンバーランキング",
+        "pageInfo": "{current} / {total} ページ"
     }
 }
