@@ -8,3 +8,6 @@ pytest-timeout>=2.2.0
 
 # Config file parsing (future extension)
 pyyaml>=6.0.1
+
+# GitHub Models API HTTP client
+requests>=2.31.0

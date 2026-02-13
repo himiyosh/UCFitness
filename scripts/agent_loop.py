@@ -6,8 +6,9 @@
 Generator ↔ Reviewer パターンで最大3回のイテレーションを回し、
 テスト通過を保証しながらコードを改善するスクリプト。
 
-使用ツール: GitHub CLI (gh copilot suggest)
-実行環境: GitHub Actions
+使用ツール: GitHub Models API (gpt-4o-mini)
+認証: gh auth token (GitHub CLI のトークンを流用)
+実行環境: ローカル / GitHub Actions
 """
 
 from __future__ import annotations
@@ -20,11 +21,14 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from difflib import unified_diff
 from pathlib import Path
 from typing import Optional
+
+import requests
 
 # ---------------------------------------------------------------------------
 # ログ設定
@@ -91,65 +95,162 @@ class LoopResult:
 
 
 # ---------------------------------------------------------------------------
-# CopilotBridge: gh copilot CLI とのインターフェース
+# GitHubModelsClient: GitHub Models API とのインターフェース
 # ---------------------------------------------------------------------------
-class CopilotBridge:
-    """GitHub Copilot CLI をラップし、提案・説明を取得するブリッジ"""
+class GitHubModelsClient:
+    """GitHub Models API を使用してAI応答を取得するクライアント
+
+    認証: gh auth token (GitHub CLI) のトークンをそのまま使用。
+    エンドポイント: https://models.inference.ai.azure.com/chat/completions
+    デフォルトモデル: gpt-4o-mini (環境変数 AI_MODEL で変更可能)
+    """
+
+    API_URL = "https://models.inference.ai.azure.com/chat/completions"
+    DEFAULT_MODEL = "gpt-4o-mini"
+    MAX_RETRIES = 3
+    RETRY_BASE_DELAY = 2  # 秒
+
+    def __init__(self) -> None:
+        self.model = os.environ.get("AI_MODEL", self.DEFAULT_MODEL)
+        self._token: Optional[str] = None
+        logger.info(
+            "GitHubModelsClient 初期化: model=%s, endpoint=%s",
+            self.model, self.API_URL,
+        )
+
+    @property
+    def token(self) -> str:
+        """GitHubトークン (遅延取得・キャッシュ)"""
+        if self._token is None:
+            self._token = self._get_github_token()
+        return self._token
 
     @staticmethod
-    def suggest(prompt: str, *, language: str = "generic") -> str:
-        """gh copilot suggest を実行し、結果を文字列で返す"""
-        cmd = [
-            "gh", "copilot", "suggest",
-            "-t", language,
-            prompt,
-        ]
-        logger.info("CopilotBridge.suggest: %s ...", prompt[:80])
+    def _get_github_token() -> str:
+        """gh auth token からGitHubトークンを取得する"""
         try:
             result = subprocess.run(
-                cmd,
+                ["gh", "auth", "token"],
                 capture_output=True,
                 text=True,
-                timeout=120,
-                cwd=str(REPO_ROOT),
+                timeout=10,
             )
             if result.returncode != 0:
-                logger.warning(
-                    "gh copilot suggest が非ゼロで終了 (code=%d): %s",
-                    result.returncode,
-                    result.stderr[:200],
+                raise RuntimeError(
+                    f"gh auth token が非ゼロで終了 (code={result.returncode}): "
+                    f"{result.stderr.strip()}"
                 )
-                # フォールバック: gh copilot explain を試行
-                return CopilotBridge._fallback_explain(prompt)
-            return result.stdout.strip()
-        except subprocess.TimeoutExpired:
-            logger.error("gh copilot suggest がタイムアウト")
-            return ""
+            token = result.stdout.strip()
+            if not token:
+                raise RuntimeError("gh auth token が空のトークンを返しました")
+            logger.info("GitHubトークンを取得しました (長さ=%d)", len(token))
+            return token
         except FileNotFoundError:
-            logger.error("gh コマンドが見つかりません")
-            return ""
-
-    @staticmethod
-    def explain(code: str) -> str:
-        """gh copilot explain を実行してコードの説明を取得する"""
-        cmd = ["gh", "copilot", "explain", code]
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120,
-                cwd=str(REPO_ROOT),
+            raise RuntimeError(
+                "gh コマンドが見つかりません。GitHub CLI をインストールしてください。"
             )
-            return result.stdout.strip()
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            return ""
 
-    @staticmethod
-    def _fallback_explain(prompt: str) -> str:
-        """suggest が失敗した場合のフォールバック"""
-        logger.info("フォールバック: gh copilot explain を使用")
-        return CopilotBridge.explain(prompt)
+    def _call_api(
+        self,
+        messages: list[dict],
+        *,
+        max_tokens: int = 4096,
+        temperature: float = 0.3,
+    ) -> str:
+        """GitHub Models API にリクエストを送信 (リトライ付き)"""
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                resp = requests.post(
+                    self.API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=120,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                return content.strip()
+
+            except requests.exceptions.Timeout:
+                logger.warning(
+                    "GitHub Models API タイムアウト (試行 %d/%d)",
+                    attempt, self.MAX_RETRIES,
+                )
+            except requests.exceptions.HTTPError as e:
+                status = getattr(e.response, "status_code", None)
+                # 429 (レートリミット) と 5xx はリトライ
+                if status and (status == 429 or status >= 500):
+                    logger.warning(
+                        "GitHub Models API HTTP %d (試行 %d/%d): %s",
+                        status, attempt, self.MAX_RETRIES, e,
+                    )
+                else:
+                    logger.error(
+                        "GitHub Models API HTTPエラー (リトライ不可): %s", e,
+                    )
+                    return ""
+            except (KeyError, IndexError) as e:
+                logger.error("GitHub Models API レスポンス解析エラー: %s", e)
+                return ""
+            except requests.exceptions.RequestException as e:
+                logger.warning(
+                    "GitHub Models API 接続エラー (試行 %d/%d): %s",
+                    attempt, self.MAX_RETRIES, e,
+                )
+
+            if attempt < self.MAX_RETRIES:
+                delay = self.RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                logger.info("%.1f 秒後にリトライします...", delay)
+                time.sleep(delay)
+
+        logger.error("GitHub Models API: %d回リトライ後も失敗", self.MAX_RETRIES)
+        return ""
+
+    def suggest(self, prompt: str, *, language: str = "generic") -> str:
+        """プロンプトに対するAI応答を取得する (CopilotBridge互換)"""
+        logger.info("GitHubModelsClient.suggest: %s ...", prompt[:80])
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "あなたは優秀なソフトウェアエンジニアです。"
+                    "コードの改善提案を求められた場合、改善後のコード全体を返してください。"
+                    "コードブロック (```) で囲んで返答してください。"
+                    "レビューを求められた場合、承認なら 'approve'、"
+                    "却下なら 'reject' を含めて回答してください。"
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ]
+        return self._call_api(messages)
+
+    def explain(self, code: str) -> str:
+        """コードの説明を取得する (CopilotBridge互換)"""
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "あなたは優秀なソフトウェアエンジニアです。"
+                    "コードの説明を簡潔かつ正確に行ってください。"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"以下のコードを説明してください:\n\n{code}",
+            },
+        ]
+        return self._call_api(messages, max_tokens=2048)
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +328,7 @@ class BaseAgent(ABC):
         self.name = name
         self.role = role
         self.focus_areas = focus_areas
-        self.copilot = CopilotBridge()
+        self.copilot = GitHubModelsClient()
 
     @abstractmethod
     def get_generator_prompt(self, file_path: str, code: str) -> str:
@@ -248,14 +349,32 @@ class BaseAgent(ABC):
             return Proposal(
                 description="提案なし",
                 patch="",
-                rationale="Copilot からの応答が空でした",
+                rationale="AI からの応答が空でした",
             )
+
+        # レスポンスからコードブロックを抽出
+        extracted = self._extract_code_block(response)
 
         return Proposal(
             description=f"[{self.name}] {file_path} の改善提案",
-            patch=response,
+            patch=extracted,
             rationale=f"{self.role} の観点からの改善",
         )
+
+    @staticmethod
+    def _extract_code_block(response: str) -> str:
+        """AI レスポンスからコードブロック (```...```) を抽出する
+
+        コードブロックがない場合はレスポンス全体を返す。
+        """
+        import re
+        # ```lang\n ... ``` パターンを検索
+        pattern = r"```(?:\w+)?\s*\n(.*?)```"
+        matches = re.findall(pattern, response, re.DOTALL)
+        if matches:
+            # 最も長いコードブロックを返す (本文コード)
+            return max(matches, key=len).strip()
+        return response.strip()
 
     def review_proposal(
         self,
@@ -274,7 +393,7 @@ class BaseAgent(ABC):
             # 応答がなければ承認扱い
             return ReviewResult(
                 approved=True,
-                feedback="Copilot からの応答なし — 自動承認",
+                feedback="AI からの応答なし — 自動承認",
             )
 
         # 応答にリジェクトキーワードが含まれるかチェック
@@ -1048,7 +1167,7 @@ class AgentLoop:
 def main() -> None:
     """スクリプトのエントリポイント"""
     logger.info("=" * 60)
-    logger.info("自律的コード改善ループ v1.0")
+    logger.info("自律的コード改善ループ v2.0 (GitHub Models API)")
     logger.info("=" * 60)
 
     try:
