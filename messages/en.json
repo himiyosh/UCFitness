@@ -498,5 +498,42 @@
         "errorOccurred": "An error occurred.",
         "memberRankings": "Member Rankings",
         "pageInfo": "Page {current} of {total}"
+    },
+    "Calendar": {
+        "title": "Step Calendar",
+        "totalSteps": "Total Steps",
+        "activeDays": "Active Days",
+        "averageSteps": "Daily Average",
+        "longestStreak": "Longest Streak",
+        "days": "days",
+        "steps": "steps",
+        "noData": "No step data for this year",
+        "less": "Less",
+        "more": "More"
+    },
+    "Achievement": {
+        "title": "Achievement Progress",
+        "stepMilestones": "Step Milestones",
+        "streakAchievements": "Streak",
+        "specialAchievements": "Special",
+        "achieved": "Achieved!",
+        "progress": "{current} / {target}",
+        "nextGoal": "Next Goal",
+        "noProgress": "Start walking to unlock achievements!",
+        "names": {
+            "firstStep": "First Step",
+            "strollMaster": "Stroll Master",
+            "marathonRunner": "Marathon Runner",
+            "globeTrotter": "Globe Trotter",
+            "moonWalker": "Moon Walker",
+            "galaxyVoyager": "Galaxy Voyager",
+            "beyondThree": "Beyond Three",
+            "ironWill": "Iron Will",
+            "unbreakable": "Unbreakable",
+            "legendaryStreaker": "Legendary Streaker",
+            "ucMillionaire": "UC Millionaire",
+            "shopaholic": "Shopaholic",
+            "teamPlayer": "Team Player"
+        }
     }
 }

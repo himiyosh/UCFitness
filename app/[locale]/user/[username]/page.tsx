@@ -8,6 +8,7 @@ import ActivityGraph from '@/components/ActivityGraph';
 import UserMenu from '@/components/UserMenu';
 import ProfileHeader from '@/components/ProfileHeader';
 import ProfileBadges from '@/components/ProfileBadges';
+import AchievementProgress from '@/components/AchievementProgress';
 import SyncHistoryButton from '@/components/SyncHistoryButton';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
@@ -16,6 +17,7 @@ import { getEquippedItems } from "@/lib/shop-service";
 import { getRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
 import RecommendedItems from '@/components/RecommendedItems';
+import StepCalendar from '@/components/StepCalendar';
 
 
 
@@ -256,6 +258,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <ProfileBadges badges={userBadges} />
                         </div>
 
+                        {/* アチーブメント進捗表示 */}
+                        <div className="mt-2">
+                            <AchievementProgress userId={user.id} />
+                        </div>
+
                         {/* Recommended Items */}
                         {recommendedItems && recommendedItems.length > 0 && (
                             <RecommendedItems
@@ -438,6 +445,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             comparisonData={!isOwner && hasViewerStats ? viewerHistoryData : undefined}
                             comparisonLabel={!isOwner && hasViewerStats ? (t('yourSteps') as string) : undefined}
                         />
+
+                        {/* Step Heatmap Calendar */}
+                        <StepCalendar userId={user.id} />
                     </div>
                 </div>
             </div>

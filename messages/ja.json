@@ -498,5 +498,42 @@
         "errorOccurred": "エラーが発生しました。",
         "memberRankings": "メンバーランキング",
         "pageInfo": "{current} / {total} ページ"
+    },
+    "Calendar": {
+        "title": "歩数カレンダー",
+        "totalSteps": "合計歩数",
+        "activeDays": "アクティブ日数",
+        "averageSteps": "1日平均",
+        "longestStreak": "最長連続達成",
+        "days": "日",
+        "steps": "歩",
+        "noData": "この年の歩数データはありません",
+        "less": "少ない",
+        "more": "多い"
+    },
+    "Achievement": {
+        "title": "実績進捗",
+        "stepMilestones": "歩数マイルストーン",
+        "streakAchievements": "連続達成",
+        "specialAchievements": "特別",
+        "achieved": "達成済み！",
+        "progress": "{current} / {target}",
+        "nextGoal": "次の目標",
+        "noProgress": "歩いて実績を解除しよう！",
+        "names": {
+            "firstStep": "はじめの一歩",
+            "strollMaster": "散歩マスター",
+            "marathonRunner": "マラソンランナー",
+            "globeTrotter": "世界旅行者",
+            "moonWalker": "ムーンウォーカー",
+            "galaxyVoyager": "銀河の旅人",
+            "beyondThree": "三日坊主卒業",
+            "ironWill": "鉄の意志",
+            "unbreakable": "不屈の精神",
+            "legendaryStreaker": "伝説の継続者",
+            "ucMillionaire": "UCミリオネア",
+            "shopaholic": "買い物マスター",
+            "teamPlayer": "チームプレイヤー"
+        }
     }
 }
