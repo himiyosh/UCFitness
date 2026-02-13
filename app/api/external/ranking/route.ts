@@ -28,19 +28,19 @@ export async function GET(request: Request) {
         const day = String(jstDate.getUTCDate()).padStart(2, '0');
         const todayYMD = `${year}-${month}-${day}`;
 
-        let targetGroups = [];
+        let targetGroups: { id: string; name: string }[] = [];
 
         if (groupId) {
             const { data: group } = await supabaseAdmin
                 .from('groups')
-                .select('*')
+                .select('id, name')
                 .eq('id', groupId)
                 .single();
             if (group) targetGroups.push(group);
         } else {
             const { data: groups } = await supabaseAdmin
                 .from('groups')
-                .select('*');
+                .select('id, name');
             if (groups) targetGroups = groups;
         }
 
