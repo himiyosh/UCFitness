@@ -236,8 +236,11 @@ class GitHubModelsClient:
                     "あなたは優秀なソフトウェアエンジニアです。"
                     "コードの改善提案を求められた場合、改善後のコード全体を返してください。"
                     "コードブロック (```) で囲んで返答してください。"
+                    "重要: コメントの追加だけの変更は価値がありません。"
+                    "実質的なコードロジックの変更がない場合は、元のコードをそのまま返してください。"
                     "レビューを求められた場合、承認なら 'approve'、"
                     "却下なら 'reject' を含めて回答してください。"
+                    "コメントの追加のみの差分はレビューで必ず reject してください。"
                 ),
             },
             {"role": "user", "content": prompt},
@@ -297,21 +300,26 @@ class TestRunner:
 
     def _run_vitest(self, timeout: int) -> tuple[bool, str]:
         """vitest を実行する (Next.js / TypeScript プロジェクト向け)"""
+        # Windows では npx は .cmd ファイルのため shell=True が必要
         cmd = ["npx", "vitest", "run", "--reporter=verbose"]
-        return self._execute_test_command(cmd, timeout)
+        return self._execute_test_command(cmd, timeout, use_shell=True)
 
     def _execute_test_command(
-        self, cmd: list[str], timeout: int
+        self, cmd: list[str], timeout: int, *, use_shell: bool = False
     ) -> tuple[bool, str]:
         """テストコマンドを実行して結果を返す"""
         logger.info("テスト実行: %s", " ".join(cmd))
         try:
+            # Windows では .cmd ファイル (npx.cmd 等) を実行するために
+            # shell=True が必要。Unix 系では不要。
+            shell = use_shell and sys.platform == "win32"
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
                 cwd=str(self.repo_root),
+                shell=shell,
             )
             output = result.stdout + "\n" + result.stderr
             passed = result.returncode == 0
@@ -438,21 +446,26 @@ class UIUXAgent(BaseAgent):
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはUI/UXの専門家です。以下のコードを分析し、改善提案を生成してください。
+            あなたはUI/UXの専門家です。以下のコードを分析し、具体的なコード改善を行ってください。
 
             対象ファイル: {file_path}
             改善の焦点:
-            - デザインの整合性（一貫したスペーシング、タイポグラフィ）
-            - アクセシビリティ（aria属性、alt属性、キーボードナビゲーション）
-            - レスポンシブデザイン（モバイル対応、ビューポート最適化）
-            - セマンティックHTMLの使用
+            - アクセシビリティ（aria属性、alt属性、キーボードナビゲーション、WCAG 2.1 AA準拠）
+            - セマンティックHTMLの使用（div→nav/main/section/article等への置換）
+            - レスポンシブデザイン（モバイル対応のクラスやメディアクエリ）
+
+            重要なルール:
+            - コメントの追加だけの変更は禁止。必ず実際のコードを変更すること。
+            - 説明コメントは最小限に。コード自体で意図を表現すること。
+            - 改善すべき点がなければ、元のコードをそのまま返すこと。
+            - ファイル末尾には必ず改行を入れること。
 
             コード:
             ```
             {code[:3000]}
             ```
 
-            改善後のコード全体を返してください。変更箇所にはコメントで説明を付けてください。
+            改善後のコード全体をコードブロックで返してください。
         """)
 
     def get_reviewer_prompt(
@@ -470,11 +483,11 @@ class UIUXAgent(BaseAgent):
             {diff_text[:3000]}
             ```
 
-            以下の基準で評価:
-            1. アクセシビリティが向上しているか？
-            2. デザインの一貫性が保たれているか？
+            以下の基準で厳密に評価:
+            1. 実質的なコード変更があるか？（コメント追加のみは reject）
+            2. アクセシビリティが実際に向上しているか？
             3. 既存の機能を壊していないか？
-            4. レスポンシブ対応が適切か？
+            4. 不要なインポートやライブラリの追加がないか？
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
@@ -499,21 +512,27 @@ class PerformanceAgent(BaseAgent):
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはパフォーマンス最適化の専門家です。以下のコードを分析し、改善提案を生成してください。
+            あなたはパフォーマンス最適化の専門家です。以下のコードを分析し、具体的なコード改善を行ってください。
 
             対象ファイル: {file_path}
             改善の焦点:
-            - アルゴリズムの計算量削減 (O記法での改善)
-            - メモリ効率の向上（不要なコピーの削減、ストリーミング処理）
-            - 不要な再レンダリングの防止 (React.memo, useMemo, useCallback)
+            - 不要な再レンダリングの防止 (React.memo, useMemo, useCallback の適切な使用)
+            - メモリ効率の向上（不要なコピーの削減）
             - バンドルサイズ削減 (動的インポート、ツリーシェイキング)
+            - 計算量の削減（配列の繰り返し走査の排除等）
+
+            重要なルール:
+            - コメントの追加だけの変更は禁止。必ず実際のコードロジックを変更すること。
+            - 既存の動作を変えないこと。最適化のみ行うこと。
+            - 改善すべき点がなければ、元のコードをそのまま返すこと。
+            - ファイル末尾には必ず改行を入れること。
 
             コード:
             ```
             {code[:3000]}
             ```
 
-            改善後のコード全体を返してください。変更箇所にはコメントで説明を付けてください。
+            改善後のコード全体をコードブロックで返してください。
         """)
 
     def get_reviewer_prompt(
@@ -531,11 +550,12 @@ class PerformanceAgent(BaseAgent):
             {diff_text[:3000]}
             ```
 
-            以下の基準で評価:
-            1. 計算量が実際に改善されているか？
-            2. メモリ使用量が適切か？
-            3. 可読性を犠牲にしすぎていないか？
-            4. エッジケースでの動作は安全か？
+            以下の基準で厳密に評価:
+            1. 実質的なコード変更があるか？（コメント追加のみは reject）
+            2. 計算量やメモリ使用量が実際に改善されているか？
+            3. 既存の動作を壊していないか？
+            4. 可読性を著しく損なっていないか？
+            5. 不要なインポートやライブラリの追加がないか？
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
@@ -562,23 +582,30 @@ class SecurityAgent(BaseAgent):
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはセキュリティの専門家です。以下のコードを分析し、脆弱性の修正提案を生成してください。
+            あなたはセキュリティの専門家です。以下のコードを分析し、実際の脆弱性がある場合のみ修正してください。
 
             対象ファイル: {file_path}
-            改善の焦点:
-            - XSS対策 (サニタイゼーション、エスケープ)
-            - インジェクション対策 (SQL, NoSQL, コマンド)
-            - 認証・認可の適切な実装
-            - 機密情報のハードコーディング防止
-            - 入力値バリデーションの強化
-            - OWASP Top 10 への準拠
+            検出すべき脆弱性:
+            - 入力値の未検証（ユーザー入力をサニタイズせずに使用）
+            - 機密情報のハードコーディング（APIキー、パスワード等の直接記載）
+            - インジェクション（SQL, NoSQL, コマンドインジェクション）
+            - 不適切なエラーハンドリング（機密情報のリーク）
+            - 認証・認可の不備
+
+            重要なルール:
+            - コメントの追加だけの変更は絶対に禁止。実際のコードを変更すること。
+            - セキュリティ上の問題がなければ、元のコードをそのまま返すこと。
+            - 「念のため」の過剰な防御コードは追加しないこと。
+            - DOMPurify 等の新しいライブラリの追加は避けること。
+            - React の JSX は自動的にXSSをエスケープするため、翻訳キーや静的テキストのサニタイズは不要。
+            - ファイル末尾には必ず改行を入れること。
 
             コード:
             ```
             {code[:3000]}
             ```
 
-            セキュリティ改善後のコード全体を返してください。変更箇所にはコメントで説明を付けてください。
+            改善後のコード全体をコードブロックで返してください。問題がなければ元のコードをそのまま返してください。
         """)
 
     def get_reviewer_prompt(
@@ -596,11 +623,12 @@ class SecurityAgent(BaseAgent):
             {diff_text[:3000]}
             ```
 
-            以下の基準で評価:
-            1. 脆弱性が実際に修正されているか？
-            2. 新たな脆弱性が混入していないか？
-            3. OWASP Top 10 の基準を満たしているか？
-            4. 既存のセキュリティ機構を壊していないか？
+            以下の基準で厳密に評価:
+            1. 実質的なコード変更があるか？（コメント追加のみは必ず reject）
+            2. 修正が実際の脆弱性に対応しているか？（架空のリスクへの対応は reject）
+            3. 新たな脆弱性が混入していないか？
+            4. 既存の機能やセキュリティ機構を壊していないか？
+            5. 不要なライブラリの追加がないか？（DOMPurify等の過剰な依存追加は reject）
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
@@ -1019,6 +1047,11 @@ class AgentLoop:
                     files.append(path)
         return files[:20]  # 安全のため最大20ファイル
 
+    @property
+    def repo_root(self) -> Path:
+        """リポジトリルート（_is_relevantで使用）"""
+        return REPO_ROOT
+
     def _is_relevant(self, file_path: Path, agent: BaseAgent) -> bool:
         """ファイルがエージェントの対象かどうかを判定する"""
         suffix = file_path.suffix
@@ -1035,12 +1068,16 @@ class AgentLoop:
             # Security: API, 認証関連のファイルが対象
             security_patterns = {"api", "auth", "middleware", "server", "action"}
             name_lower = file_path.stem.lower()
-            parent_lower = file_path.parent.name.lower()
+            # ファイルパス全体の中に含まれるかチェック（ネストしたディレクトリ対応）
+            path_parts_lower = [p.lower() for p in file_path.relative_to(self.repo_root).parts] if file_path.is_relative_to(self.repo_root) else [file_path.parent.name.lower()]
             return (
                 suffix in {".ts", ".tsx", ".js", ".jsx", ".py"}
                 and (
                     any(p in name_lower for p in security_patterns)
-                    or any(p in parent_lower for p in security_patterns)
+                    or any(
+                        any(pat in part for pat in security_patterns)
+                        for part in path_parts_lower
+                    )
                 )
             )
 
