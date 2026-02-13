@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Confetti from './Confetti';
 
 interface GoalProgressChartProps {
@@ -11,10 +11,14 @@ interface GoalProgressChartProps {
 }
 
 export default function GoalProgressChart({ current, goal, size = 80, strokeWidth = 8 }: GoalProgressChartProps) {
-    const percentage = Math.min(100, Math.max(0, (current / goal) * 100));
-    const radius = (size - strokeWidth) / 2;
-    const circumference = radius * 2 * Math.PI;
-    const offset = circumference - (percentage / 100) * circumference;
+    const { percentage, radius, circumference, offset } = useMemo(() => {
+        const safeGoal = goal > 0 ? goal : 1;
+        const pct = Math.min(100, Math.max(0, (current / safeGoal) * 100));
+        const r = (size - strokeWidth) / 2;
+        const c = r * 2 * Math.PI;
+        const o = c - (pct / 100) * c;
+        return { percentage: pct, radius: r, circumference: c, offset: o };
+    }, [current, goal, size, strokeWidth]);
 
     const isAchieved = current >= goal;
 

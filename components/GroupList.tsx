@@ -132,6 +132,20 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
         }
     };
 
+    if (memberships.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <span className="text-5xl mb-4">👥</span>
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--theme-primary)' }}>
+                    {t('noGroups')}
+                </h3>
+                <p className="text-sm mb-6 max-w-xs" style={{ color: 'var(--foreground-muted)' }}>
+                    {t('noGroupsDescription')}
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {memberships.map((m, index) => (

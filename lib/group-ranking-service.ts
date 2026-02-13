@@ -13,6 +13,10 @@ export interface GroupRankingEntry {
 }
 
 export const getGroupCompetitionRankings = async (period: Period): Promise<GroupRankingEntry[]> => {
+    // 入力バリデーション
+    const validPeriods: readonly string[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
+    if (!validPeriods.includes(period)) return [];
+
     // JST Calculation
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -40,25 +44,26 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         startDate = `${y}-01-01`;
     }
 
-    // 1. Fetch all groups
-    const { data: groups } = await supabase
-        .from('groups')
-        .select('id, name, keyword, image_url')
-        .eq('is_public', true);
+    // 1-3. グループ・メンバー・歩数データを並列取得
+    const [groupsRes, membersRes, stepsRes] = await Promise.all([
+        supabase
+            .from('groups')
+            .select('id, name, keyword, image_url')
+            .eq('is_public', true),
+        supabase
+            .from('group_members')
+            .select('group_id, user_id'),
+        supabase
+            .from('daily_steps')
+            .select('user_id, steps')
+            .gte('date', startDate),
+    ]);
 
-    if (!groups) return [];
+    const groups = groupsRes.data;
+    const members = membersRes.data;
+    const stepsData = stepsRes.data;
 
-    // 2. Fetch all daily steps for the period with user info
-    // We need to join users to check their group membership?
-    // Actually, users table has `group_keyword` array. But normalized way is `group_members`.
-    // Let's use `group_members` to map User -> Groups.
-
-    // Fetch all members
-    const { data: members } = await supabase
-        .from('group_members')
-        .select('group_id, user_id');
-
-    if (!members) return [];
+    if (!groups || !members) return [];
 
     // Map UserId -> GroupIds[]
     const userGroupMap = new Map<string, string[]>();
@@ -68,12 +73,6 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         }
         userGroupMap.get(m.user_id)?.push(m.group_id);
     });
-
-    // 3. Fetch steps
-    const { data: stepsData } = await supabase
-        .from('daily_steps')
-        .select('user_id, steps')
-        .gte('date', startDate);
 
     // Aggregate steps per group
     const groupStats = new Map<string, { total: number; stepsMap: Map<string, number> }>();
@@ -85,12 +84,14 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
 
     // Sum steps
     stepsData?.forEach(row => {
+        const safeSteps = Number(row.steps);
+        if (isNaN(safeSteps)) return;
         const userGroups = userGroupMap.get(row.user_id);
         if (userGroups) {
             userGroups.forEach(gid => {
                 const stat = groupStats.get(gid);
                 if (stat) {
-                    stat.total += row.steps;
+                    stat.total += safeSteps;
                     // track steps per user for this group to count active members if we want separate "active" count?
                     // For now, let's use all members count for average divisor?
                     // Usually average is Total Steps / Member Count.
@@ -155,19 +156,24 @@ export const getCombinedGroupCompetitionRankings = async () => {
     // Yearly Start
     const yearlyStart = `${y}-01-01`;
 
-    // Parallel Fetch: Groups, Members
-    const [groupsRes, membersRes] = await Promise.all([
+    // ⚡ 全データを並列取得（グループ・メンバー・歩数）
+    const [groupsRes, membersRes, stepsRes] = await Promise.all([
         supabase
             .from('groups')
             .select('id, name, keyword, image_url')
             .eq('is_public', true),
         supabase
             .from('group_members')
-            .select('group_id, user_id')
+            .select('group_id, user_id'),
+        supabase
+            .from('daily_steps')
+            .select('user_id, steps, date')
+            .gte('date', yearlyStart),
     ]);
 
     const groups = groupsRes.data || [];
     const members = membersRes.data || [];
+    const stepsData = stepsRes.data;
 
     if (groups.length === 0) {
         return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
@@ -188,12 +194,6 @@ export const getCombinedGroupCompetitionRankings = async () => {
         groupMemberCounts.set(m.group_id, (groupMemberCounts.get(m.group_id) || 0) + 1);
     });
 
-    // Fetch Steps (Single Query for Year)
-    const { data: stepsData } = await supabase
-        .from('daily_steps')
-        .select('user_id, steps, date')
-        .gte('date', yearlyStart);
-
     // Initialize Group Stats
     // Map<GroupId, { DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0 }>
     const groupStats = new Map<string, { DAILY: number; WEEKLY: number; MONTHLY: number; YEARLY: number }>();
@@ -203,25 +203,26 @@ export const getCombinedGroupCompetitionRankings = async () => {
 
     // Aggregate Steps
     stepsData?.forEach(row => {
+        const safeSteps = Number(row.steps);
+        if (isNaN(safeSteps)) return;
         const userGroups = userGroupMap.get(row.user_id);
         if (userGroups) {
             userGroups.forEach(gid => {
                 const stat = groupStats.get(gid);
                 if (stat) {
-                    const steps = row.steps;
                     const date = row.date;
 
                     // Yearly
-                    stat.YEARLY += steps;
+                    stat.YEARLY += safeSteps;
 
                     // Monthly
-                    if (date >= monthlyStart) stat.MONTHLY += steps;
+                    if (date >= monthlyStart) stat.MONTHLY += safeSteps;
 
                     // Weekly
-                    if (date >= weeklyStart) stat.WEEKLY += steps;
+                    if (date >= weeklyStart) stat.WEEKLY += safeSteps;
 
                     // Daily
-                    if (date === today) stat.DAILY += steps;
+                    if (date === today) stat.DAILY += safeSteps;
                 }
             });
         }

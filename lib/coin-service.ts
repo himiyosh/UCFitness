@@ -40,8 +40,8 @@ export async function processCoins(userId: string, steps: number, date: string) 
 
         const stepGoal = userData?.step_goal || 10000;
 
-        // 現在のストリークを取得
-        const streak = await calculateCurrentStreak(userId, date, stepGoal);
+        // 現在のストリークを取得 (stepGoal依存のため順次実行)
+        const currentStreak = await calculateCurrentStreak(userId, date, stepGoal);
 
         // --- 基本コイン（歩数 × レート）---
         const baseCoins = Math.floor(steps * BASE_RATE);
@@ -50,7 +50,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
         const goalBonus = steps >= stepGoal ? Math.floor(baseCoins * GOAL_BONUS_RATE) : 0;
 
         // --- ストリークボーナス ---
-        const multiplier = getStreakMultiplier(streak);
+        const multiplier = getStreakMultiplier(currentStreak);
         const streakBonus = multiplier > 1.0 ? Math.floor(baseCoins * (multiplier - 1.0)) : 0;
 
         // べき等性キー: userId + date で同日の再処理を検知
@@ -94,7 +94,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
                 date,
                 type: 'STREAK_BONUS',
                 amount: streakBonus,
-                description: `${streak}-day streak bonus (×${multiplier})`,
+                description: `${currentStreak}-day streak bonus (×${multiplier})`,
                 idempotency_key: `${idempotencyPrefix}:STREAK_BONUS`,
             });
         }
@@ -109,9 +109,7 @@ export async function processCoins(userId: string, steps: number, date: string) 
         }
 
         // 残高を再計算して更新
-        await updateCoinBalance(userId, streak);
-
-        console.log(`UndouCoin: ${userId} earned ${baseCoins} + ${goalBonus} goal + ${streakBonus} streak = ${baseCoins + goalBonus + streakBonus} UC (streak: ${streak})`);
+        await updateCoinBalance(userId, currentStreak);
 
     } catch (error) {
         reportError('processCoins', error, { userId, steps, date });
@@ -254,6 +252,9 @@ export async function getCoinBalance(userId: string) {
  * 最適化: 全件取得せず、現在残高から逆算で累積残高を計算
  */
 export async function getRecentTransactions(userId: string, limit: number = 30) {
+    // Guard: ensure limit is a positive integer
+    const safeLimit = Math.max(1, Math.min(Math.floor(limit), 500));
+
     // 現在の総残高を取得（逆算の起点）
     const { data: balanceData } = await supabaseAdmin
         .from('coin_balances')
@@ -270,7 +271,7 @@ export async function getRecentTransactions(userId: string, limit: number = 30) 
         .eq('user_id', userId)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(safeLimit);
 
     if (!recentTx || recentTx.length === 0) return [];
 
@@ -290,10 +291,13 @@ export async function getRecentTransactions(userId: string, limit: number = 30) 
  * daily_steps と coin_transactions から集計
  */
 export async function getDailyBalanceHistory(userId: string, days: number = 30) {
+    // Guard: ensure days is a positive integer
+    const safeDays = Math.max(1, Math.min(Math.floor(days), 365));
+
     const endDate = getJSTDateString();
 
     const endDateObj = new Date(`${endDate}T00:00:00Z`);
-    const startDateObj = new Date(endDateObj.getTime() - days * 24 * 60 * 60 * 1000);
+    const startDateObj = new Date(endDateObj.getTime() - safeDays * 24 * 60 * 60 * 1000);
     const startDate = startDateObj.toISOString().split('T')[0];
 
     // 日別の獲得コインを取得
@@ -344,11 +348,14 @@ export async function getDailyBalanceHistory(userId: string, days: number = 30) 
  * 全ユーザーのコイン残高ランキング
  */
 export async function getCoinLeaderboard(limit: number = 10) {
+    // Guard: ensure limit is a positive integer
+    const safeLimit = Math.max(1, Math.min(Math.floor(limit), 100));
+
     const { data } = await supabaseAdmin
         .from('coin_balances')
         .select('user_id, total_balance, investor_rank')
         .order('total_balance', { ascending: false })
-        .limit(limit);
+        .limit(safeLimit);
 
     if (!data || data.length === 0) return [];
 
@@ -371,8 +378,6 @@ export async function getCoinLeaderboard(limit: number = 10) {
  * 既存の歩数データからコインを一括計算（初回マイグレーション用）
  */
 export async function backfillCoinsForUser(userId: string) {
-    console.log(`Backfilling coins for user ${userId}...`);
-
     const { data: userData } = await supabaseAdmin
         .from('users')
         .select('step_goal')
@@ -389,7 +394,6 @@ export async function backfillCoinsForUser(userId: string) {
         .order('date', { ascending: true });
 
     if (!allSteps || allSteps.length === 0) {
-        console.log(`No step history for user ${userId}`);
         return;
     }
 
@@ -476,14 +480,12 @@ export async function backfillCoinsForUser(userId: string) {
             .from('coin_transactions')
             .insert(batch);
         if (error) {
-            console.error(`Batch insert error at offset ${i}:`, error);
+            reportError('backfillCoinsForUser:batchInsert', error, { userId, offset: i, batchSize: batch.length });
         }
     }
 
     // 残高更新
     await updateCoinBalance(userId, streak);
-
-    console.log(`Backfill complete for ${userId}: ${transactions.length} transactions`);
 }
 
 // ============================================
@@ -512,6 +514,11 @@ export async function deductBalance(
     description: string,
     idempotencyKey?: string,
 ): Promise<DeductResult> {
+    // Server-side input validation
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return { success: false, error: 'amount_must_be_positive' };
+    }
+
     const { data, error } = await supabaseAdmin.rpc('deduct_balance', {
         p_user_id: userId,
         p_amount: amount,
@@ -521,7 +528,7 @@ export async function deductBalance(
     });
 
     if (error) {
-        console.error(`deduct_balance error for ${userId}:`, error);
+        reportError('deductBalance', error, { userId, amount, type });
         return { success: false, error: 'insufficient_balance' };
     }
 
@@ -547,6 +554,11 @@ export async function creditBalance(
     description: string,
     idempotencyKey?: string,
 ): Promise<CreditResult> {
+    // Server-side input validation
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return { success: false, error: 'amount_must_be_positive' };
+    }
+
     const { data, error } = await supabaseAdmin.rpc('credit_balance', {
         p_user_id: userId,
         p_amount: amount,
@@ -556,7 +568,7 @@ export async function creditBalance(
     });
 
     if (error) {
-        console.error(`credit_balance error for ${userId}:`, error);
+        reportError('creditBalance', error, { userId, amount, type });
         return { success: false, error: 'amount_must_be_positive' };
     }
 

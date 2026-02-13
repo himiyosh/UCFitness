@@ -16,11 +16,16 @@ const BANNER_ASPECT = 2.5;
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 export default function BannerImageEditor({ currentBanner, children }: BannerImageEditorProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(currentBanner || null);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
     // クロップ用 state
@@ -32,9 +37,31 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const dragStartRef = useRef<{ x: number; y: number; startOffsetX: number; startOffsetY: number }>({ x: 0, y: 0, startOffsetX: 0, startOffsetY: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
+
+            // Validate file type
+            if (!ALLOWED_IMAGE_TYPES.includes(selectedFile.type)) {
+                setError('Please select a valid image file (JPEG, PNG, WebP, GIF).');
+                e.target.value = '';
+                return;
+            }
+
+            // Validate file size
+            if (selectedFile.size > MAX_FILE_SIZE) {
+                setError(`File size must be under ${MAX_FILE_SIZE_MB}MB.`);
+                e.target.value = '';
+                return;
+            }
+
+            setError(null);
+
+            // Revoke previous object URL to prevent memory leaks
+            if (previewUrl && previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(previewUrl);
+            }
+
             setFile(selectedFile);
             const url = URL.createObjectURL(selectedFile);
             setPreviewUrl(url);
@@ -48,7 +75,16 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             };
             img.src = url;
         }
-    };
+    }, [previewUrl]);
+
+    // Cleanup object URLs on unmount
+    useEffect(() => {
+        return () => {
+            if (previewUrl && previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
 
     // プレビュー領域のサイズ計算
     const getContainerWidth = () => containerRef.current?.clientWidth || 360;
@@ -59,13 +95,6 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         return Math.round(getCropHeight() * 0.75);
     };
     const getPreviewHeight = () => getCropHeight() + getBleed() * 2;
-
-    // 画像の表示高さ（幅はコンテナ幅に合わせ、比率維持）
-    const displayImageHeight = useCallback(() => {
-        if (!imageSize) return 0;
-        const cw = getContainerWidth();
-        return (imageSize.h / imageSize.w) * cw;
-    }, [imageSize]);
 
     // オフセット範囲を制限（transform 基準: 画像はコンテナ幅で描画 → scale で拡大）
     const clampOffsets = useCallback((ox: number, oy: number, s?: number) => {
@@ -168,9 +197,8 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             setIsOpen(false);
             setFile(null);
             router.refresh();
-        } catch (error) {
-            console.error(error);
-            alert("Failed to update banner");
+        } catch (_) {
+            setError('Failed to update banner. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -191,10 +219,11 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
             {isOpen && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 relative">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 relative" role="dialog" aria-modal="true" aria-label="Edit Profile Banner">
                         <button
-                            onClick={() => { setIsOpen(false); setFile(null); }}
+                            onClick={() => { setIsOpen(false); setFile(null); setError(null); }}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                            aria-label="Close"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -205,8 +234,9 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Upload New Banner</label>
+                                <label htmlFor="banner-file-input" className="block text-sm font-medium text-gray-700 mb-1">Upload New Banner</label>
                                 <input
+                                    id="banner-file-input"
                                     type="file"
                                     accept="image/*"
                                     onChange={handleFileChange}
@@ -217,7 +247,10 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         file:bg-[var(--theme-primary-light)] file:text-[var(--theme-primary)]
                                         hover:file:bg-[var(--theme-primary-light)]"
                                 />
-                                <p className="text-xs text-gray-400 mt-1">Recommended size: 1200x300px (approx 4:1 ratio)</p>
+                                <p className="text-xs text-gray-400 mt-1">Recommended size: 1200×300px (approx 4:1). Max {MAX_FILE_SIZE_MB}MB. JPEG, PNG, WebP, GIF.</p>
+                                {error && (
+                                    <p className="text-xs text-red-500 mt-1 font-medium" role="alert">{error}</p>
+                                )}
                             </div>
 
                             {/* クロップ可能なプレビュー領域 */}
@@ -250,7 +283,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                 alt="Preview"
                                                 className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                                                 draggable={false}
-                                                onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/600x150?text=Banner')}
+                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                             />
                                         )}
 
@@ -317,6 +350,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         value={scale}
                                         onChange={(e) => handleScaleChange(Number(e.target.value))}
                                         className="flex-1 h-1.5 accent-[var(--theme-primary)] cursor-pointer"
+                                        aria-label="Zoom level"
                                     />
                                     <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
@@ -327,7 +361,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
                             <div className="flex gap-3 pt-2 justify-end">
                                 <button
-                                    onClick={() => { setIsOpen(false); setFile(null); }}
+                                    onClick={() => { setIsOpen(false); setFile(null); setError(null); }}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                                 >
                                     Cancel

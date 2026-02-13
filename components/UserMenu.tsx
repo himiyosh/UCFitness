@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { signOut } from 'next-auth/react';
 import { Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
@@ -42,15 +42,25 @@ export default function UserMenu({ user }: UserMenuProps) {
         };
     }, []);
 
+    const toggleMenu = useCallback(() => {
+        setIsOpen(prev => !prev);
+    }, []);
+
+    const handleSignOut = useCallback(() => {
+        setIsOpen(false);
+        signOut();
+    }, []);
+
     return (
         <div className="relative ml-3 flex-shrink-0" ref={menuRef}>
             <div>
                 <button
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={toggleMenu}
                     className="relative flex flex-shrink-0 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2"
                     id="user-menu-button"
                     aria-expanded={isOpen}
                     aria-haspopup="true"
+                    aria-label={t('signedInAs')}
                 >
                     <span className="sr-only">{t('signedInAs')}</span>
                     <UserAvatar src={user.image} name={user.name} size="md-lg" borderClass="border-gray-200" />
@@ -125,7 +135,7 @@ export default function UserMenu({ user }: UserMenuProps) {
                     </Link>
 
                     <button
-                        onClick={() => signOut()}
+                        onClick={handleSignOut}
                         className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                         role="menuitem"
                         tabIndex={-1}

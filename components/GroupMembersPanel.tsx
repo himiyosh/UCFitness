@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageModal from '@/components/ImageModal';
 import UserAvatar from '@/components/UserAvatar';
+import { useToast } from '@/components/Toast';
 import LeaveGroupButton from './LeaveGroupButton';
 
 type Member = {
@@ -17,6 +18,13 @@ type Member = {
         image: string | null;
         username: string | null;
     };
+};
+
+type SearchUser = {
+    id: string;
+    name: string | null;
+    image: string | null;
+    username: string | null;
 };
 
 export default function GroupMembersPanel({
@@ -37,143 +45,164 @@ export default function GroupMembersPanel({
     onToggleEdit: () => void
 }) {
     const [members, setMembers] = useState(initialMembers);
-    const [isProcessing, setIsProcessing] = useState<string | null>(null); // userId being processed
+    const [isProcessing, setIsProcessing] = useState<string | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
     const router = useRouter();
+    const { success: toastSuccess, error: toastError } = useToast();
+    const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const searchAbortRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         setMembers(initialMembers);
     }, [initialMembers]);
 
-    const handleTransferOwnership = async (targetId: string, memberName: string) => {
-        if (!confirm(`Are you sure you want to promote ${memberName} to Owner? You will also remain an owner.`)) return;
+    const handleTransferOwnership = useCallback(async (targetId: string, memberName: string) => {
+        setConfirmAction({
+            message: `Are you sure you want to promote ${memberName} to Owner? You will also remain an owner.`,
+            onConfirm: async () => {
+                setConfirmAction(null);
+                setIsProcessing(targetId);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'transfer_ownership',
+                            keyword: groupKeyword,
+                            targetUserId: targetId
+                        })
+                    });
 
-        setIsProcessing(targetId);
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'transfer_ownership',
-                    keyword: groupKeyword,
-                    targetUserId: targetId
-                })
-            });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || 'Failed to promote member');
+                        return;
+                    }
 
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to promote member');
-                return;
+                    toastSuccess(`${memberName} is now an Owner.`);
+                    router.refresh();
+                } catch {
+                    toastError('An error occurred.');
+                } finally {
+                    setIsProcessing(null);
+                }
             }
+        });
+    }, [groupKeyword, router, toastSuccess, toastError]);
 
-            alert(`${memberName} is now an Owner.`);
-            router.refresh();
-
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        } finally {
-            setIsProcessing(null);
-        }
-    };
-
-    const handleDemote = async (targetId: string, memberName: string, isSelf: boolean) => {
+    const handleDemote = useCallback(async (targetId: string, memberName: string, isSelf: boolean) => {
         const msg = isSelf
             ? "Are you sure you want to demote yourself to Member? You will lose owner privileges."
             : `Are you sure you want to demote ${memberName} to Member?`;
 
-        if (!confirm(msg)) return;
+        setConfirmAction({
+            message: msg,
+            onConfirm: async () => {
+                setConfirmAction(null);
+                setIsProcessing(targetId);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'demote',
+                            keyword: groupKeyword,
+                            targetUserId: targetId
+                        })
+                    });
 
-        setIsProcessing(targetId);
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'demote',
-                    keyword: groupKeyword,
-                    targetUserId: targetId
-                })
-            });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || 'Failed to demote member');
+                        return;
+                    }
 
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to demote member');
-                return;
+                    toastSuccess(isSelf ? "You are now a member." : `${memberName} is now a member.`);
+                    router.refresh();
+                } catch {
+                    toastError('An error occurred.');
+                } finally {
+                    setIsProcessing(null);
+                }
             }
+        });
+    }, [groupKeyword, router, toastSuccess, toastError]);
 
-            alert(isSelf ? "You are now a member." : `${memberName} is now a member.`);
-            router.refresh();
+    const handleKick = useCallback(async (targetId: string, memberName: string) => {
+        setConfirmAction({
+            message: `Are you sure you want to remove ${memberName}?`,
+            onConfirm: async () => {
+                setConfirmAction(null);
+                setIsProcessing(targetId);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'kick',
+                            keyword: groupKeyword,
+                            targetUserId: targetId
+                        })
+                    });
 
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        } finally {
-            setIsProcessing(null);
-        }
-    };
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || 'Failed to remove member');
+                        return;
+                    }
 
-    const handleKick = async (targetId: string, memberName: string) => {
-        if (!confirm(`Are you sure you want to remove ${memberName}?`)) return;
-
-        setIsProcessing(targetId);
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'kick',
-                    keyword: groupKeyword,
-                    targetUserId: targetId
-                })
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to remove member');
-                return;
+                    setMembers(prev => prev.filter(m => m.user_id !== targetId));
+                    router.refresh();
+                } catch {
+                    toastError('An error occurred.');
+                } finally {
+                    setIsProcessing(null);
+                }
             }
+        });
+    }, [groupKeyword, router, toastError]);
 
-            // Update local state (though useEffect will likely overwrite this soon which is fine)
-            setMembers(prev => prev.filter(m => m.user_id !== targetId));
-            router.refresh();
-
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        } finally {
-            setIsProcessing(null);
-        }
-    };
-
-    const handleSearch = async (query: string) => {
+    const handleSearch = useCallback((query: string) => {
         setSearchQuery(query);
         if (query.length < 3) {
             setSearchResults([]);
             return;
         }
 
-        setIsSearching(true);
-        try {
-            const res = await fetch(`/api/user/search?q=${encodeURIComponent(query)}`);
-            const data = await res.json();
-            if (res.ok) {
-                // Filter out existing members
-                const existingIds = new Set(members.map(m => m.user_id));
-                const filtered = (data.users || []).filter((u: any) => !existingIds.has(u.id));
-                setSearchResults(filtered);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsSearching(false);
-        }
-    };
+        // デバウンス: 前回のタイマーをクリア
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
-    const handleInvite = async (userId: string) => {
+        searchTimerRef.current = setTimeout(async () => {
+            // 前回のリクエストをキャンセル（race condition 防止）
+            searchAbortRef.current?.abort();
+            const controller = new AbortController();
+            searchAbortRef.current = controller;
+
+            setIsSearching(true);
+            try {
+                const res = await fetch(`/api/user/search?q=${encodeURIComponent(query)}`, {
+                    signal: controller.signal
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const existingIds = new Set(members.map(m => m.user_id));
+                    const filtered = (data.users || []).filter((u: SearchUser) => !existingIds.has(u.id));
+                    setSearchResults(filtered);
+                }
+            } catch (err) {
+                if (err instanceof DOMException && err.name === 'AbortError') return;
+                toastError('Search failed. Please try again.');
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+    }, [members, toastError]);
+
+    const handleInvite = useCallback(async (userId: string) => {
         setIsProcessing(userId);
         try {
             const res = await fetch('/api/user/group', {
@@ -187,56 +216,64 @@ export default function GroupMembersPanel({
             });
 
             if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to invite user');
+                const err = await res.json().catch(() => ({}));
+                toastError(err.error || 'Failed to invite user');
                 return;
             }
 
-            alert('User invited successfully!');
+            toastSuccess('User invited successfully!');
             setSearchQuery('');
             setSearchResults([]);
             setIsInviteOpen(false);
             router.refresh();
-        } catch (error) {
-            console.error(error);
-            alert('Failed to invite user');
+        } catch {
+            toastError('Failed to invite user');
         } finally {
             setIsProcessing(null);
         }
-    };
+    }, [groupKeyword, router, toastSuccess, toastError]);
 
 
-    const handleLeaveGroup = async () => {
-        if (!confirm(`Are you sure you want to leave ${groupName}?`)) return;
+    const handleLeaveGroup = useCallback(async () => {
+        setConfirmAction({
+            message: `Are you sure you want to leave ${groupName}?`,
+            onConfirm: async () => {
+                setConfirmAction(null);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'remove',
+                            keyword: groupKeyword
+                        })
+                    });
 
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'remove',
-                    keyword: groupKeyword
-                })
-            });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || 'Failed to leave group');
+                        return;
+                    }
 
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to leave group');
-                return;
+                    router.push('/groups');
+                    router.refresh();
+                } catch {
+                    toastError('An error occurred.');
+                }
             }
+        });
+    }, [groupKeyword, groupName, router, toastError]);
 
-            // Redirect to groups list
-            router.push('/groups');
-            router.refresh();
-
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        }
-    };
-
-    const ownerCount = members.filter(m => m.role === 'OWNER').length;
+    const ownerCount = useMemo(() => members.filter(m => m.role === 'OWNER').length, [members]);
     const [selectedImage, setSelectedImage] = useState<{ src: string, alt: string } | null>(null);
+
+    // デバウンスタイマーのクリーンアップ
+    useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+            searchAbortRef.current?.abort();
+        };
+    }, []);
 
     return (
         <div>
@@ -248,7 +285,7 @@ export default function GroupMembersPanel({
             />
             <div className="px-0 py-2 pb-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-900">Members ({members.length})</h3>
+                    <h3 className="font-bold text-[var(--foreground)]">Members ({members.length})</h3>
                     {isOwner && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">Owner</span>}
                 </div>
                 <div className="flex gap-2">
@@ -317,7 +354,35 @@ export default function GroupMembersPanel({
                 </div>
             )}
 
+            {/* 確認ダイアログ（alert/confirm の代替） */}
+            {confirmAction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmAction(null)}>
+                    <div className="bg-white rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-sm mb-4 text-[var(--foreground)]">{confirmAction.message}</p>
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={() => setConfirmAction(null)}
+                                className="text-xs font-bold px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-[var(--foreground-muted)]"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmAction.onConfirm}
+                                className="text-xs font-bold px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <ul className="divide-y divide-gray-100">
+                {members.length === 0 && (
+                    <li className="py-8 text-center">
+                        <p className="text-sm text-[var(--foreground-muted)]">No members yet.</p>
+                    </li>
+                )}
                 {members.map((member) => (
                     <li key={member.user_id} className="py-3 sm:py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 transition-colors rounded-lg px-2">
                         <div className="flex items-center gap-3 min-w-0">
@@ -335,7 +400,7 @@ export default function GroupMembersPanel({
                             </div>
 
                             <div className="min-w-0">
-                                <Link href={`/user/${member.users.username}`} className="text-sm font-medium text-gray-900 hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2">
+                                <Link href={member.users.username ? `/user/${member.users.username}` : '#'} className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2" aria-label={`View profile of ${member.users.name || 'Unknown User'}`}>
                                     <span>{member.users.name || 'Unknown User'}</span>
                                     {member.user_id === currentUserId && (
                                         <span className="text-[10px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">YOU</span>

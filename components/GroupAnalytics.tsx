@@ -1,14 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { Period } from '@/components/LeaderboardTabs';
-import GroupComparisonChart from '@/components/GroupComparisonChart';
-import GroupDetailLeaderboard from '@/components/GroupDetailLeaderboard';
 import { ChartData } from '@/lib/group-comparison-service';
 import { RankingEntry } from '@/lib/ranking-utils';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';
-import GroupCompetitionList from '@/components/GroupCompetitionList';
 import { useTheme } from '@/components/ThemeProvider';
+
+const GroupComparisonChart = dynamic(() => import('@/components/GroupComparisonChart'), {
+    loading: () => <div className="w-full h-64 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--theme-secondary)' }} />,
+});
+const GroupDetailLeaderboard = dynamic(() => import('@/components/GroupDetailLeaderboard'), {
+    loading: () => <div className="w-full h-96 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--theme-secondary)' }} />,
+});
+const GroupCompetitionList = dynamic(() => import('@/components/GroupCompetitionList'), {
+    loading: () => <div className="w-full h-48 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--theme-secondary)' }} />,
+});
 
 interface GroupAnalyticsProps {
     rankings: Record<Period, RankingEntry[]>;
@@ -55,22 +63,25 @@ export default function GroupAnalytics({
     const allData = rankings[period];
     const ITEMS_PER_PAGE = 10;
 
-    // Logic extracted from Leaderboard for Header Stats
-    // Check if user is in the full list
-    const userRank = userId ? allData.findIndex(r => r.users.id === userId) + 1 : 0;
-    const userEntry = userRank > 0 ? allData[userRank - 1] : null;
+    // Memoize expensive computations
+    const { userRank, userEntry, averageSteps } = useMemo(() => {
+        const rank = userId ? allData.findIndex(r => r.users.id === userId) + 1 : 0;
+        const entry = rank > 0 ? allData[rank - 1] : null;
+        const total = allData.reduce((sum, r) => sum + r.steps, 0);
+        const avg = allData.length > 0 ? Math.round(total / allData.length) : 0;
+        return { userRank: rank, userEntry: entry, averageSteps: avg };
+    }, [allData, userId]);
 
-    // Calculate Average
-    const totalSteps = allData.reduce((sum, r) => sum + r.steps, 0);
-    const averageSteps = allData.length > 0 ? Math.round(totalSteps / allData.length) : 0;
-
-    // Calculate Group Global Rank
-    const periodGroupRankings = groupCompetitionRankings?.[period];
-    const groupRankIndex = periodGroupRankings && currentGroupId
-        ? periodGroupRankings.findIndex(g => g.groupId === currentGroupId)
-        : -1;
-    const groupRank = groupRankIndex !== -1 ? groupRankIndex + 1 : undefined;
-    const totalGroups = periodGroupRankings?.length || 0;
+    const { groupRank, totalGroups } = useMemo(() => {
+        const periodGroupRankings = groupCompetitionRankings?.[period];
+        const idx = periodGroupRankings && currentGroupId
+            ? periodGroupRankings.findIndex(g => g.groupId === currentGroupId)
+            : -1;
+        return {
+            groupRank: idx !== -1 ? idx + 1 : undefined,
+            totalGroups: periodGroupRankings?.length || 0,
+        };
+    }, [groupCompetitionRankings, period, currentGroupId]);
 
 
 
@@ -105,9 +116,16 @@ export default function GroupAnalytics({
             </div>
 
             {/* Stats Cards */}
+            {allData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed" style={{ borderColor: 'var(--foreground-muted)', color: 'var(--foreground-muted)' }}>
+                    <span className="text-4xl mb-3">📊</span>
+                    <p className="text-base font-semibold mb-1">No activity data yet</p>
+                    <p className="text-sm opacity-70">Start walking to see your group analytics here!</p>
+                </div>
+            ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {userEntry ? (
-                    <div className="bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-xl p-3 sm:p-4 text-white shadow-lg flex items-center justify-between animate-in fade-in zoom-in duration-300 h-full">
+                    <div className="bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-xl p-3 sm:p-4 text-white shadow-lg flex items-center justify-between animate-in fade-in zoom-in duration-300 h-full hover:shadow-xl transition-shadow">
                         <div className="min-w-0 flex-1">
                             <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">Your Rank</p>
                             <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
@@ -122,7 +140,7 @@ export default function GroupAnalytics({
                     </div>
                 ) : <div className="hidden sm:block"></div>}
 
-                <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 h-full">
+                <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 h-full hover:shadow-lg transition-shadow">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="p-1.5 bg-[var(--theme-primary-light)] rounded-full text-[var(--theme-primary)] shrink-0">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,6 +167,7 @@ export default function GroupAnalytics({
                     </div>
                 </div>
             </div>
+            )}
 
             {/* Row 1: Member Leaderboard & Chart (Equal Height) */}
             <div className="flex flex-col xl:flex-row gap-6 items-stretch">

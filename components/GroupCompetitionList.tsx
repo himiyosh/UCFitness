@@ -1,9 +1,8 @@
 'use client';
 
-import { GroupRankingEntry } from '@/lib/group-ranking-service';
-import { Period } from '@/components/LeaderboardTabs';
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
+import { GroupRankingEntry } from '@/lib/group-ranking-service';
 
 interface GroupCompetitionListProps {
     initialRankings: GroupRankingEntry[];
@@ -15,10 +14,12 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
     // Let's show top 10 by default, maybe expand?
     // For now simple list.
 
+    const top10Rankings = useMemo(() => initialRankings.slice(0, 10), [initialRankings]);
+
     return (
         <div className="w-full">
             <div className="overflow-auto styled-scrollbar" style={{ height: '300px' }}>
-                <table className="w-full text-left text-sm relative">
+                <table className="w-full text-left text-sm relative" aria-label="Group competition rankings">
                     <thead className="bg-gray-50 text-gray-500 font-medium sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th className="px-3 py-2.5 w-12 text-center bg-gray-50 text-xs">Rank</th>
@@ -35,7 +36,7 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                 </td>
                             </tr>
                         ) : (
-                            initialRankings.slice(0, 10).map((group, index) => {
+                            top10Rankings.map((group, index) => {
                                 const rank = index + 1;
                                 const isCurrent = group.groupId === currentGroupId;
 
@@ -43,8 +44,8 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                     <tr
                                         key={group.groupId}
                                         className={`
-                                                leaderboard-row transition-colors cursor-pointer
-                                                ${isCurrent ? 'bg-[var(--theme-primary-light)] border-l-4 border-[var(--theme-primary)]' : 'border-l-4 border-transparent'}
+                                                leaderboard-row transition-colors
+                                                ${isCurrent ? 'bg-[var(--theme-primary-light)] border-l-4 border-[var(--theme-primary)]' : 'border-l-4 border-transparent hover:bg-gray-50'}
                                             `}
                                     >
                                         <td className="px-3 py-3 text-center">
@@ -60,10 +61,10 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                         <td className="px-3 py-3">
                                             <Link href={`/groups/${group.groupId}`} className="flex items-center gap-2 group">
                                                 {group.imageUrl ? (
-                                                    <img src={group.imageUrl} alt="" className="w-7 h-7 rounded-lg object-cover bg-gray-100 group-hover:ring-2 ring-[var(--theme-primary-light)] transition-all shrink-0" />
+                                                    <img src={group.imageUrl} alt={group.groupName} loading="lazy" className="w-7 h-7 rounded-lg object-cover bg-gray-100 group-hover:ring-2 ring-[var(--theme-primary-light)] transition-all shrink-0" />
                                                 ) : (
                                                     <div className="w-7 h-7 rounded-lg bg-[var(--theme-primary)]/20 flex items-center justify-center text-[var(--theme-primary)] font-bold text-xs group-hover:bg-[var(--theme-primary)]/30 transition-colors shrink-0">
-                                                        {group.keyword[0]}
+                                                        {group.keyword?.[0] || '?'}
                                                     </div>
                                                 )}
                                                 <div className="min-w-0 flex-1">

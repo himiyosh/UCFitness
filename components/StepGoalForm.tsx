@@ -1,17 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Spinner from '@/components/ui/Spinner';
+
+const MIN_STEP_GOAL = 100;
+const MAX_STEP_GOAL = 1_000_000;
 
 export default function StepGoalForm({ initialGoal }: { initialGoal: number }) {
     const [goal, setGoal] = useState(initialGoal);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleCancel = useCallback(() => {
+        setGoal(initialGoal);
+        setError(null);
+        setIsEditing(false);
+    }, [initialGoal]);
+
+    const handleGoalChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseInt(e.target.value, 10);
+        setGoal(Number.isNaN(value) ? 0 : value);
+        setError(null);
+    }, []);
+
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
+
+        // バリデーション
+        if (!Number.isFinite(goal) || goal < MIN_STEP_GOAL || goal > MAX_STEP_GOAL) {
+            setError(`Step goal must be between ${MIN_STEP_GOAL.toLocaleString()} and ${MAX_STEP_GOAL.toLocaleString()}.`);
+            return;
+        }
+
         setIsSaving(true);
 
         try {
@@ -23,42 +47,53 @@ export default function StepGoalForm({ initialGoal }: { initialGoal: number }) {
 
             if (!res.ok) throw new Error('Failed to update goal');
 
+            setError(null);
             setIsEditing(false);
             router.refresh();
-        } catch (error) {
-            console.error(error);
-            alert('Failed to update step goal');
+        } catch {
+            setError('Failed to update step goal. Please try again.');
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [goal, router]);
 
     if (isEditing) {
         return (
-            <form onSubmit={handleSubmit} className="flex items-center gap-2 mt-2">
-                <input
-                    type="number"
-                    value={goal}
-                    onChange={(e) => setGoal(parseInt(e.target.value) || 0)}
-                    className="block w-24 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
-                />
-                <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="rounded-lg bg-[var(--theme-primary)] px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 flex items-center gap-2 transition-all"
-                >
-                    {isSaving ? (
-                        <Spinner size="sm" />
-                    ) : 'Save'}
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                    Cancel
-                </button>
-            </form>
+            <div className="mt-2">
+                <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                    <input
+                        type="number"
+                        value={goal}
+                        onChange={handleGoalChange}
+                        min={MIN_STEP_GOAL}
+                        max={MAX_STEP_GOAL}
+                        aria-label="Step goal"
+                        aria-describedby={error ? 'step-goal-error' : undefined}
+                        aria-invalid={error ? 'true' : undefined}
+                        className={`block w-28 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ${error ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-[var(--theme-primary)]'} placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 transition-colors`}
+                    />
+                    <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="rounded-lg bg-[var(--theme-primary)] px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+                    >
+                        {isSaving ? (
+                            <Spinner size="sm" />
+                        ) : 'Save'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        disabled={isSaving}
+                        className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                </form>
+                {error && (
+                    <p id="step-goal-error" className="mt-1.5 text-xs text-red-600 animate-fade-in" role="alert">{error}</p>
+                )}
+            </div>
         );
     }
 

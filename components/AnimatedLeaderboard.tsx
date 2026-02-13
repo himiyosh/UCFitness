@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, useMemo, ReactNode } from 'react';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
@@ -98,6 +98,13 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
 
+    // Guard: clamp selectedGroupIndex when allGroupRankings shrinks
+    useEffect(() => {
+        if (allGroupRankings.length > 0 && selectedGroupIndex >= allGroupRankings.length) {
+            setSelectedGroupIndex(allGroupRankings.length - 1);
+        }
+    }, [allGroupRankings.length, selectedGroupIndex]);
+
     // --- Rank Change Tracking (localStorage) ---
     const [rankChanges, setRankChanges] = useState<Record<string, Record<string, number>>>({});
 
@@ -134,10 +141,17 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     };
 
     // Filter current view data
-    const currentGlobal = allGlobalRankings[period];
+    const currentGlobal = allGlobalRankings[period] ?? [];
 
     // Pagination safety — must be at top level (not inside conditional JSX)
     const ITEMS_PER_PAGE = 5;
+
+    // Memoize chart data to avoid new array reference each render
+    const chartData = useMemo(
+        () => currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 })),
+        [currentGlobal]
+    );
+
     const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
     const safePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1);
 
@@ -153,13 +167,15 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
         <div className="space-y-6">
             {/* TABS - Moved to top for alignment */}
             <div className="flex justify-center sm:justify-start">
-                <div className={`flex p-1 rounded-lg shadow-sm w-fit overflow-hidden relative gap-2 ${isMidnight ? '' : 'bg-white border border-gray-200'}`}>
+                <div role="tablist" className={`flex p-1 rounded-lg shadow-sm w-fit overflow-hidden relative gap-2 ${isMidnight ? '' : 'bg-white border border-gray-200'}`}>
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;
                         return (
                             <button
                                 key={tab.key}
                                 onClick={() => handleSwitch(tab.key)}
+                                role="tab"
+                                aria-selected={isActive}
                                 className={`relative z-10 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer text-center ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
                                 style={isMidnight ? (isActive ? {
                                     background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
@@ -255,11 +271,11 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                         {/* User Ranking Content */}
                         {leftTab === 'user' && (
-                        <div className="bg-white px-0 relative overflow-hidden flex flex-col">
+                        <div className="px-0 relative overflow-hidden flex flex-col" style={{ background: isMidnight ? 'transparent' : '#fff' }}>
                             <FadeInWrapper key={period}>
                                 <div className="px-6 pt-6">
                                     <TopUsersChart
-                                        data={currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 }))}
+                                        data={chartData}
                                         userId={userId}
                                         title={t('titleTop10')}
                                     />
@@ -267,7 +283,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                 <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                                     {currentGlobal.length === 0 ? (
-                                        <p className="text-gray-500 text-center py-8">{t('noData')}</p>
+                                        <li className="list-none"><p className="text-center py-8" style={{ color: 'var(--foreground-muted, #6b7280)' }}>{t('noData')}</p></li>
                                     ) : (
                                         (() => {
                                             const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
@@ -295,7 +311,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 } : entry.originalRank === 2 ? {
                                                                                     background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
                                                                                     color: '#ffffff',
-                                                                                    boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35),'
+                                                                                    boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)'
                                                                                 } : entry.originalRank === 3 ? {
                                                                                     background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
                                                                                     color: '#ffffff',
@@ -379,7 +395,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                     {/* Pagination Controls */}
                                                     {totalPages > 1 && (
-                                                        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                                                        <div className="px-5 py-3 flex items-center justify-between" style={{ background: isMidnight ? 'rgba(30,41,59,0.5)' : '#f9fafb', borderTop: isMidnight ? '1px solid rgba(129,140,248,0.15)' : '1px solid #f3f4f6' }}>
                                                             <button
                                                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                                                 disabled={page === 1}
@@ -518,7 +534,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 {groupData.image_url && (
-                                                                    <img src={groupData.image_url} className="w-4 h-4 rounded-full border border-white/30" />
+                                                                    <img src={groupData.image_url} alt="" className="w-4 h-4 rounded-full border border-white/30" />
                                                                 )}
                                                                 <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">{t('yourRank')}</p>
                                                             </div>

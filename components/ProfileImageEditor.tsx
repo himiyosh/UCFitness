@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { updateProfileImage, uploadProfileImage } from '@/app/actions';
 import { compressImage } from '@/lib/image-utils';
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 interface ProfileImageEditorProps {
     initialImage: string | null;
@@ -18,6 +22,8 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(initialImage || null);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [confirmingReset, setConfirmingReset] = useState(false);
     const router = useRouter();
 
     // Reset preview when reopening or props change
@@ -28,13 +34,44 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
         }
     }, [isOpen, initialImage]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
+
+            // Validate file type
+            if (!ALLOWED_IMAGE_TYPES.includes(selectedFile.type)) {
+                setError('Please select a valid image file (JPEG, PNG, WebP, GIF).');
+                e.target.value = '';
+                return;
+            }
+
+            // Validate file size
+            if (selectedFile.size > MAX_FILE_SIZE) {
+                setError(`File size must be under ${MAX_FILE_SIZE_MB}MB.`);
+                e.target.value = '';
+                return;
+            }
+
+            setError(null);
+
+            // Revoke previous object URL to prevent memory leaks
+            if (previewUrl && previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(previewUrl);
+            }
+
             setFile(selectedFile);
             setPreviewUrl(URL.createObjectURL(selectedFile));
         }
-    };
+    }, [previewUrl]);
+
+    // Cleanup object URLs on unmount
+    useEffect(() => {
+        return () => {
+            if (previewUrl && previewUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
 
     const handleSave = async () => {
         setIsLoading(true);
@@ -51,30 +88,32 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                 router.refresh();
                 if (onSuccess) onSuccess(previewUrl);
             }
-        } catch (error) {
-            console.error(error);
-            alert("Failed to update image");
+        } catch (_) {
+            setError('Failed to update image. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleReset = async () => {
-        if (!confirm("Revert to Fitbit profile image?")) return;
+    const handleReset = useCallback(async () => {
+        if (!confirmingReset) {
+            setConfirmingReset(true);
+            return;
+        }
         setIsLoading(true);
+        setError(null);
         try {
-            await updateProfileImage(null); // Passing null triggers reset logic in server action
+            await updateProfileImage(null);
             setIsOpen(false);
+            setConfirmingReset(false);
             router.refresh();
-            alert("Profile image reverted to Fitbit default.");
-            if (onSuccess) onSuccess(null); // Or pass null to indicate reset
-        } catch (error) {
-            console.error(error);
-            alert("Failed to reset image");
+            onSuccess?.(null);
+        } catch (_) {
+            setError('Failed to reset image. Please try again.');
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [confirmingReset, router, onSuccess]);
 
     return (
         <>
@@ -95,10 +134,11 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
 
             {isOpen && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative" role="dialog" aria-modal="true" aria-label="Edit Profile Image">
                         <button
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => { setIsOpen(false); setError(null); setConfirmingReset(false); }}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                            aria-label="Close"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -109,8 +149,9 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Upload New Image</label>
+                                <label htmlFor="profile-file-input" className="block text-sm font-medium text-gray-700 mb-1">Upload New Image</label>
                                 <input
+                                    id="profile-file-input"
                                     type="file"
                                     accept="image/*"
                                     onChange={handleFileChange}
@@ -121,11 +162,15 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                                         file:bg-[var(--theme-primary-light)] file:text-[var(--theme-primary)]
                                         hover:file:bg-[var(--theme-primary-light)]"
                                 />
+                                <p className="text-xs text-gray-400 mt-1">Max {MAX_FILE_SIZE_MB}MB. JPEG, PNG, WebP, GIF.</p>
+                                {error && (
+                                    <p className="text-xs text-red-500 mt-1 font-medium" role="alert">{error}</p>
+                                )}
                             </div>
 
                             {previewUrl && (
                                 <div className="flex justify-center py-4 bg-gray-50 rounded-lg">
-                                    <img src={previewUrl} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-white shadow-sm" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150')} />
+                                    <img src={previewUrl} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-white shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                 </div>
                             )}
 
@@ -133,9 +178,9 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                                 <button
                                     onClick={handleReset}
                                     disabled={isLoading || !isCustom}
-                                    className="flex-1 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${confirmingReset ? 'text-white bg-red-600 hover:bg-red-700' : 'text-red-600 bg-red-50 hover:bg-red-100'}`}
                                 >
-                                    Reset to Fitbit
+                                    {confirmingReset ? 'Confirm Reset?' : 'Reset to Fitbit'}
                                 </button>
                                 <button
                                     onClick={handleSave}

@@ -15,6 +15,11 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        const trimmed = name.trim();
+        if (!trimmed) {
+            setMessage({ text: t('saveFailed'), type: 'error' });
+            return;
+        }
         setIsSaving(true);
         setMessage(null);
 
@@ -24,7 +29,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ name }),
+                body: JSON.stringify({ name: trimmed }),
             });
 
             if (!response.ok) {
@@ -33,8 +38,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
 
             setMessage({ text: t('updated'), type: 'success' });
             window.location.reload();
-        } catch (error) {
-            console.error(error);
+        } catch {
             setMessage({ text: t('saveFailed'), type: 'error' });
         } finally {
             setIsSaving(false);
@@ -60,8 +64,11 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                 <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 whitespace-nowrap transition-all"
+                    className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 whitespace-nowrap transition-all flex items-center gap-1.5"
                 >
+                    {isSaving && (
+                        <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    )}
                     {t('save')}
                 </button>
             </div>

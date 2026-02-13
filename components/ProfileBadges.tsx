@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import BadgeIcon from '@/components/BadgeIcon';
 import { useTranslations } from 'next-intl';
@@ -20,6 +20,34 @@ interface Badge {
 interface ProfileBadgesProps {
     badges: Badge[];
 }
+
+interface SlotConfig {
+    type: string;
+    category: string;
+    label: string;
+    color: string;
+    matchRank?: number;
+}
+
+const SLOTS: SlotConfig[] = [
+    // Rankings
+    { type: 'GLOBAL', category: 'DAILY', label: 'Global Daily', color: 'text-amber-500' },
+    { type: 'GLOBAL', category: 'WEEKLY', label: 'Global Weekly', color: 'text-sky-500' },
+    { type: 'GLOBAL', category: 'MONTHLY', label: 'Global Monthly', color: 'text-violet-500' },
+    { type: 'GROUP', category: 'DAILY', label: 'Group Daily', color: 'text-emerald-500' },
+    { type: 'GROUP', category: 'WEEKLY', label: 'Group Weekly', color: 'text-rose-500' },
+    { type: 'GROUP', category: 'MONTHLY', label: 'Group Monthly', color: 'text-fuchsia-500' },
+    // Personal Achievements
+    { type: 'ACHIEVEMENT', category: 'STREAK', label: 'Best Streak', color: 'text-orange-500' },
+    { type: 'ACHIEVEMENT', category: 'MILESTONE', label: 'Milestone', color: 'text-[var(--theme-primary)]' },
+    { type: 'ACHIEVEMENT', category: 'LIFESTYLE', label: 'Weekend Warrior', color: 'text-teal-500' },
+    // Titles (Average Daily Steps)
+    { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Walker (6k)', color: 'text-fuchsia-400', matchRank: 1 },
+    { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Hiker (8k)', color: 'text-fuchsia-500', matchRank: 2 },
+    { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Achiever (10k)', color: 'text-fuchsia-600', matchRank: 3 },
+    { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Athlete (15k)', color: 'text-fuchsia-700', matchRank: 4 },
+    { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Champion (20k)', color: 'text-fuchsia-800', matchRank: 5 },
+];
 
 export default function ProfileBadges({ badges }: ProfileBadgesProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,44 +69,20 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
         };
     }, [isModalOpen]);
 
-    // We want to display specific "Slots" for achievements.
-    const SLOTS = [
-        // Rankings
-        { type: 'GLOBAL', category: 'DAILY', label: 'Global Daily', color: 'text-amber-500' },
-        { type: 'GLOBAL', category: 'WEEKLY', label: 'Global Weekly', color: 'text-sky-500' },
-        { type: 'GLOBAL', category: 'MONTHLY', label: 'Global Monthly', color: 'text-violet-500' },
-        { type: 'GROUP', category: 'DAILY', label: 'Group Daily', color: 'text-emerald-500' },
-        { type: 'GROUP', category: 'WEEKLY', label: 'Group Weekly', color: 'text-rose-500' },
-        { type: 'GROUP', category: 'MONTHLY', label: 'Group Monthly', color: 'text-fuchsia-500' },
-
-        // Personal Achievements
-        { type: 'ACHIEVEMENT', category: 'STREAK', label: 'Best Streak', color: 'text-orange-500' },
-        { type: 'ACHIEVEMENT', category: 'MILESTONE', label: 'Milestone', color: 'text-[var(--theme-primary)]' },
-        { type: 'ACHIEVEMENT', category: 'LIFESTYLE', label: 'Weekend Warrior', color: 'text-teal-500' },
-
-        // Titles (Average Daily Steps)
-        { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Walker (6k)', color: 'text-fuchsia-400', matchRank: 1 },
-        { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Hiker (8k)', color: 'text-fuchsia-500', matchRank: 2 },
-        { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Achiever (10k)', color: 'text-fuchsia-600', matchRank: 3 },
-        { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Athlete (15k)', color: 'text-fuchsia-700', matchRank: 4 },
-        { type: 'ACHIEVEMENT', category: 'TITLE', label: 'Champion (20k)', color: 'text-fuchsia-800', matchRank: 5 },
-    ];
-
-    const bestBadges = SLOTS.map(slot => {
+    const bestBadges = useMemo(() => SLOTS.map(slot => {
         const relevantBadges = badges.filter(b => {
             const typeMatch = b.badges.type === slot.type;
             const catMatch = b.badges.category === slot.category;
-            // @ts-ignore
             const rankMatch = slot.matchRank ? b.badges.rank === slot.matchRank : true;
             return typeMatch && catMatch && rankMatch;
         });
 
         if (relevantBadges.length === 0) return { ...slot, badge: null };
 
-        // Sort by rank ascending (1 is best) => for matchRank slots, irrelevant but safe.
+        // Sort by rank ascending (1 is best)
         relevantBadges.sort((a, b) => a.badges.rank - b.badges.rank);
         return { ...slot, badge: relevantBadges[0] };
-    });
+    }), [badges]);
 
     // Summary View: Show only earned badges, max 6
     const earnedBadges = bestBadges.filter(b => b.badge !== null);

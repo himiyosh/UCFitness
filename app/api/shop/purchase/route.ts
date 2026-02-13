@@ -12,8 +12,12 @@ export async function POST(request: Request) {
 
     try {
         const { itemId } = await request.json();
-        if (!itemId) {
+        if (!itemId || typeof itemId !== 'string') {
             return NextResponse.json({ error: 'itemId is required' }, { status: 400 });
+        }
+
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId)) {
+            return NextResponse.json({ error: 'Invalid itemId format' }, { status: 400 });
         }
 
         const userId = session.user.id;

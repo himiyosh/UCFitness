@@ -12,7 +12,20 @@ export interface ChartData {
     users: { username: string, color: string }[];
 }
 
+/** daily_steps クエリ結果の行型 */
+interface StepRow {
+    steps: number;
+    date: string;
+    user_id: string;
+}
+
 export const getAllGroupComparisonData = async (groupId: string, currentUserId?: string): Promise<Record<Period, ChartData>> => {
+    // 入力バリデーション
+    if (!groupId || typeof groupId !== 'string' || groupId.trim().length === 0) {
+        const empty = { data: [], users: [] };
+        return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
+    }
+
     // Helper to get formatted date
     const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Tokyo',
@@ -95,7 +108,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     users?.forEach(u => userMap.set(u.id, u));
 
     // 3. Determine Top 10 Members - Fetching ALL steps with pagination
-    let allSteps: any[] = [];
+    let allSteps: StepRow[] = [];
     let page = 0;
     const pageSize = 1000;
 
@@ -112,7 +125,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             .range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
-            console.error('Error fetching steps chunk:', error);
+            console.error('[GroupChart] ステップデータ取得エラー:', error?.code ?? 'UNKNOWN');
             break;
         }
 
@@ -124,9 +137,6 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         page++;
     }
 
-    // DEBUG LOGGING
-    console.log('[GroupChart] Total fetched rows (pagination):', allSteps.length);
-
     if (allSteps.length === 0) {
         const empty = { data: [], users: [] };
         return { DAILY: empty, WEEKLY: empty, MONTHLY: empty, YEARLY: empty };
@@ -136,7 +146,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     const userTotals = new Map<string, number>();
     const userIdToName = new Map<string, string>();
 
-    allSteps.forEach((row: any) => {
+    allSteps.forEach((row) => {
         const uid = row.user_id;
         const safeSteps = Number(row.steps);
         const stepsToAdd = isNaN(safeSteps) ? 0 : safeSteps;
@@ -169,7 +179,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     }));
 
     // Filter steps to only top users
-    const relevantSteps = allSteps.filter((r: any) => topUserIds.includes(r.user_id));
+    const relevantSteps = allSteps.filter((r) => topUserIds.includes(r.user_id));
 
     // 4. Build Data for each Period
 
@@ -238,7 +248,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
         }
 
         // Fill Data
-        relevantSteps.forEach((row: any) => {
+        relevantSteps.forEach((row) => {
             // NORMALIZE DATE: Extract YYYY-MM-DD only
             const rowDateRaw = row.date;
             const rowDateStr = rowDateRaw.length >= 10 ? rowDateRaw.substring(0, 10) : rowDateRaw;

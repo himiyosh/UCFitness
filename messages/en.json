@@ -298,7 +298,8 @@
         "allData": "All Data",
         "totalLabel": "Total:",
         "targetLabel": "Target:",
-        "groupLeaders": "Group Leaders"
+        "groupLeaders": "Group Leaders",
+        "noData": "No data available for this period"
     },
     "UserMenu": {
         "signedInAs": "Signed in as",

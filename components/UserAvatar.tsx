@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useCallback, useMemo, useEffect } from 'react';
+
 /**
  * UserAvatar — 共有アバターコンポーネント
  * アイコンフレーム（装備中）と称号を表示対応
@@ -97,13 +99,20 @@ export default function UserAvatar({
     alt = '',
     borderClass = 'border-white',
 }: UserAvatarProps) {
+    const [imgError, setImgError] = useState(false);
     const sizeConfig = SIZE_MAP[size];
     const initial = (name?.[0] || 'U').toUpperCase();
+    const effectiveSrc = imgError ? null : src;
+    const resolvedAlt = alt || name || 'User avatar';
+
+    // src変更時に画像エラー状態をリセット
+    useEffect(() => { setImgError(false); }, [src]);
 
     // フレーム装備中: border色をframeColorに、ボックスシャドウで光彩効果
     const rainbow = frameColor === 'rainbow';
-    const frameStyle: React.CSSProperties = frameColor
-        ? rainbow
+    const frameStyle = useMemo<React.CSSProperties>(() => {
+        if (!frameColor) return {};
+        return rainbow
             ? {
                 border: 'none',
                 background: 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ec4899, #ef4444)',
@@ -112,23 +121,25 @@ export default function UserAvatar({
             : {
                 borderColor: frameColor,
                 boxShadow: `0 0 6px ${frameColor}80, 0 0 2px ${frameColor}60`,
-            }
-        : {};
+            };
+    }, [frameColor, rainbow, sizeConfig.frame]);
 
     const borderWidth = frameColor ? `${sizeConfig.frame}px` : undefined;
 
+    const handleImgError = useCallback(() => setImgError(true), []);
+
     // キーボードアクセシビリティ: onClickがある場合はEnter/Spaceでも発火
-    const handleKeyDown = onClick ? (e: React.KeyboardEvent) => {
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onClick();
+            onClick?.();
         }
-    } : undefined;
+    }, [onClick]);
     const interactiveProps = onClick ? {
         role: 'button' as const,
         tabIndex: 0,
         onKeyDown: handleKeyDown,
-        'aria-label': alt || name || 'Avatar',
+        'aria-label': resolvedAlt,
     } : {};
 
     return (
@@ -137,14 +148,14 @@ export default function UserAvatar({
             {rainbow ? (
                 <div
                     className={`${sizeConfig.container} rounded-full flex-shrink-0
-                        ${onClick ? 'cursor-pointer' : ''}`}
+                        ${onClick ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
                     style={frameStyle}
                     onClick={onClick}
                     {...interactiveProps}
                 >
                     <div className="w-full h-full rounded-full overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
-                        {src ? (
-                            <img className="w-full h-full object-cover" src={src} alt={alt} />
+                        {effectiveSrc ? (
+                            <img className="w-full h-full object-cover" src={effectiveSrc} alt={resolvedAlt} onError={handleImgError} />
                         ) : (
                             <div className={`w-full h-full rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center ${sizeConfig.text} font-bold text-[var(--theme-primary)]`}>
                                 {initial}
@@ -158,7 +169,7 @@ export default function UserAvatar({
                         ${frameColor ? '' : `border-2 ${borderClass}`} 
                         ${frameColor ? '' : 'shadow-sm'}
                         ${frameColor ? '' : 'bg-white'}
-                        ${onClick ? 'cursor-pointer' : ''}`}
+                        ${onClick ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
                     style={{
                         ...frameStyle,
                         ...(borderWidth ? { borderWidth, borderStyle: 'solid' } : {}),
@@ -167,8 +178,8 @@ export default function UserAvatar({
                     onClick={onClick}
                     {...interactiveProps}
                 >
-                    {src ? (
-                        <img className="w-full h-full object-cover" src={src} alt={alt} />
+                    {effectiveSrc ? (
+                        <img className="w-full h-full object-cover" src={effectiveSrc} alt={resolvedAlt} onError={handleImgError} />
                     ) : (
                         <div className={`w-full h-full rounded-full bg-[var(--theme-primary-light)] flex items-center justify-center ${sizeConfig.text} font-bold text-[var(--theme-primary)]`}>
                             {initial}
@@ -188,28 +199,28 @@ export default function UserAvatar({
     );
 }
 
+/** フレームカラー変換マップ（モジュールレベルで定義してパフォーマンス最適化） */
+const FRAME_COLOR_MAP: Record<string, string> = {
+    'ring-green-400': '#4ade80',
+    'ring-blue-400': '#60a5fa',
+    'ring-yellow-400': '#facc15',
+    'ring-cyan-300': '#67e8f9',
+    'ring-purple-500': '#a855f7',
+    'ring-rose-400': '#fb7185',
+    'ring-orange-400': '#fb923c',
+    'ring-teal-400': '#2dd4bf',
+    'ring-red-500': '#ef4444',
+    'ring-indigo-500': '#6366f1',
+    'ring-emerald-500': '#10b981',
+    'ring-amber-500': '#f59e0b',
+    'ring-pink-500': '#ec4899',
+    'ring-sky-400': '#38bdf8',
+    'ring-rainbow': 'rainbow',
+};
+
 /** フレームのpreview_value (Tailwindクラス名) からCSSカラーに変換 */
 export function getFrameColor(previewValue: string): string {
-    const colorMap: Record<string, string> = {
-        // 既存
-        'ring-green-400': '#4ade80',
-        'ring-blue-400': '#60a5fa',
-        'ring-yellow-400': '#facc15',
-        'ring-cyan-300': '#67e8f9',
-        'ring-purple-500': '#a855f7',
-        // 新規
-        'ring-rose-400': '#fb7185',
-        'ring-orange-400': '#fb923c',
-        'ring-teal-400': '#2dd4bf',
-        'ring-red-500': '#ef4444',
-        'ring-indigo-500': '#6366f1',
-        'ring-emerald-500': '#10b981',
-        'ring-amber-500': '#f59e0b',
-        'ring-pink-500': '#ec4899',
-        'ring-sky-400': '#38bdf8',
-        'ring-rainbow': 'rainbow',
-    };
-    return colorMap[previewValue] || '#d1d5db';
+    return FRAME_COLOR_MAP[previewValue] || '#d1d5db';
 }
 
 /** レインボーフレームかどうか */

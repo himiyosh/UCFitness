@@ -34,12 +34,12 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
     // Current Month Offset (0 = current month, -1 = previous month)
     const [monthOffset, setMonthOffset] = useState(0);
     const [isSharing, setIsSharing] = useState(false);
-    const [isCopying, setIsCopying] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
 
 
     const processedData = useMemo(() => {
         const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const dataMap = new Map(sortedData.map(r => [r.date, r.steps]));
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -72,7 +72,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 const d = new Date(targetMonday.getFullYear(), targetMonday.getMonth(), targetMonday.getDate() + i);
                 const dateStr = toLocalISOString(d);
 
-                const found = sortedData.find(r => r.date === dateStr);
+                const steps = dataMap.get(dateStr) ?? 0;
 
                 const checkToday = new Date();
                 const isToday = d.getDate() === checkToday.getDate() &&
@@ -81,7 +81,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
                 result.push({
                     label: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()],
-                    value: found ? found.steps : 0,
+                    value: steps,
                     fullDate: dateStr,
                     isToday: isToday
                 });
@@ -97,7 +97,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
             // Iterate using a new Date object to prevent reference issues
             for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
                 const dateStr = toLocalISOString(d);
-                const found = sortedData.find(r => r.date === dateStr);
+                const steps = dataMap.get(dateStr) ?? 0;
 
                 const checkToday = new Date();
                 const isToday = d.getDate() === checkToday.getDate() &&
@@ -106,7 +106,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
                 result.push({
                     label: `${d.getMonth() + 1}/${d.getDate()}`,
-                    value: found ? found.steps : 0,
+                    value: steps,
                     fullDate: dateStr,
                     isToday: isToday
                 });
@@ -121,7 +121,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 let current = new Date(minDate);
                 while (current <= today) {
                     const dateStr = toLocalISOString(current);
-                    const found = sortedData.find(r => r.date === dateStr);
+                    const steps = dataMap.get(dateStr) ?? 0;
 
                     const checkToday = new Date();
                     const isToday = current.getDate() === checkToday.getDate() &&
@@ -130,7 +130,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
                     result.push({
                         label: `${current.getMonth() + 1}/${current.getDate()}`,
-                        value: found ? found.steps : 0,
+                        value: steps,
                         fullDate: dateStr,
                         isToday: isToday
                     });
@@ -160,14 +160,16 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
         }
     }, [processedData, viewMode]);
 
-    // Calculate Max Steps including goal
-
-    // Calculate Max Steps including goal
     // Calculate Max Steps including goal (add 20% buffer for visual clarity)
-    const dataMax = Math.max(...processedData.map(d => d.value), 0);
-    const compMax = comparisonData ? Math.max(...processedData.map(d => comparisonMap.get(d.fullDate) || 0), 0) : 0;
-    const maxSteps = Math.max(dataMax, compMax, stepGoal, 2000) * 1.2;
-    const goalPercentage = Math.min((stepGoal / maxSteps) * 100, 100);
+    // Uses reduce instead of Math.max(...spread) to avoid call stack overflow on large datasets
+    const { maxSteps, goalPercentage } = useMemo(() => {
+        const dataMax = processedData.reduce((max, d) => Math.max(max, d.value), 0);
+        const compMax = comparisonData
+            ? processedData.reduce((max, d) => Math.max(max, comparisonMap.get(d.fullDate) || 0), 0)
+            : 0;
+        const max = Math.max(dataMax, compMax, stepGoal, 2000) * 1.2;
+        return { maxSteps: max, goalPercentage: Math.min((stepGoal / max) * 100, 100) };
+    }, [processedData, comparisonData, comparisonMap, stepGoal]);
 
     // Calculate Total for displayed period
     const totalDisplayedSteps = useMemo(() => {
@@ -179,9 +181,9 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
     // Labels for navigation
     const weekRangeLabel = useMemo(() => {
-        if (viewMode !== 'WEEKLY' || processedData.length === 0) return '';
+        if (viewMode !== 'WEEKLY' || processedData.length < 7) return '';
         const start = new Date(processedData[0].fullDate);
-        const end = new Date(processedData[6].fullDate);
+        const end = new Date(processedData[processedData.length - 1].fullDate);
         return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
     }, [processedData, viewMode]);
 
@@ -291,18 +293,18 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                     await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
                                     setCopySuccess(true);
                                     setTimeout(() => setCopySuccess(false), 3000);
-                                } catch (clipboardErr) { console.warn('Clipboard write failed', clipboardErr); }
+                                } catch { /* clipboard write not supported */ }
                                 const file = new File([blob], 'activity.png', { type: 'image/png' });
                                 if (navigator.share) {
                                     try { await navigator.share({ title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] }); }
-                                    catch (shareError) { console.log('Share canceled or failed', shareError); }
+                                    catch { /* share cancelled by user or unsupported */ }
                                 } else {
                                     const url = URL.createObjectURL(blob);
                                     const a = document.createElement('a');
                                     a.href = url; a.download = 'activity.png';
                                     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                                 }
-                            } catch (err) { console.error('Failed to generate image', err); }
+                            } catch { /* image generation failed silently */ }
                             finally { setIsSharing(false); }
                         }}
                         disabled={isSharing}
@@ -335,6 +337,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                             <>
                                 <button
                                     onClick={() => setWeekOffset(prev => prev - 1)}
+                                    aria-label="Previous week"
                                     className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -349,6 +352,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                 <button
                                     onClick={() => setWeekOffset(prev => prev + 1)}
                                     disabled={weekOffset >= 0}
+                                    aria-label="Next week"
                                     className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -360,6 +364,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                             <>
                                 <button
                                     onClick={() => setMonthOffset(prev => prev - 1)}
+                                    aria-label="Previous month"
                                     className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -374,6 +379,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                 <button
                                     onClick={() => setMonthOffset(prev => prev + 1)}
                                     disabled={monthOffset >= 0}
+                                    aria-label="Next month"
                                     className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -479,7 +485,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                             <div
                                                 key={index}
                                                 className={`flex flex-col items-center justify-end h-full group relative hover:z-20 ${barClass}`}
-                                                onMouseMove={(e) => {
+                                                onMouseEnter={(e) => {
                                                     if (!containerRef.current) return;
                                                     const containerRect = containerRef.current.getBoundingClientRect();
                                                     const rect = e.currentTarget.getBoundingClientRect();
@@ -561,8 +567,12 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                     })}
                                 </div>
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-400 absolute inset-0">
-                                    No data available for this range
+                                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 absolute inset-0 gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 opacity-40" aria-hidden="true">
+                                        <path fillRule="evenodd" d="M2.25 13.5a8.25 8.25 0 018.25-8.25.75.75 0 01.75.75v6.75H18a.75.75 0 01.75.75 8.25 8.25 0 01-16.5 0z" clipRule="evenodd" />
+                                        <path fillRule="evenodd" d="M12.75 3a.75.75 0 01.75-.75 8.25 8.25 0 018.25 8.25.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V3z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-sm">{t('noData')}</span>
                                 </div>
                             )}
                         </div>

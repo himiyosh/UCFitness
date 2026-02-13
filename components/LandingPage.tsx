@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthButtons from './AuthButtons';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
@@ -12,6 +12,18 @@ export default function LandingPage() {
     const router = useRouter();
     const pathname = usePathname();
     const [switching, setSwitching] = useState(false);
+
+    // ロケール変更完了後に switching 状態をリセット
+    useEffect(() => {
+        setSwitching(false);
+    }, [locale]);
+
+    // ナビゲーション失敗時のフォールバック（5秒後に自動リセット）
+    useEffect(() => {
+        if (!switching) return;
+        const timer = setTimeout(() => setSwitching(false), 5000);
+        return () => clearTimeout(timer);
+    }, [switching]);
 
     const toggleLocale = () => {
         if (switching) return;
@@ -26,16 +38,24 @@ export default function LandingPage() {
             <button
                 onClick={toggleLocale}
                 disabled={switching}
-                className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:bg-white transition-all text-sm font-medium text-gray-700 cursor-pointer disabled:opacity-50"
+                aria-label={locale === 'ja' ? 'Switch to English' : '日本語に切り替え'}
+                className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:bg-white transition-all text-sm font-medium text-gray-700 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2"
             >
-                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                </svg>
+                {switching ? (
+                    <svg className="w-4 h-4 text-indigo-500 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                ) : (
+                    <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                    </svg>
+                )}
                 {locale === 'ja' ? 'English' : '日本語'}
             </button>
 
             {/* Background Decorations - More colorful! */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none" aria-hidden="true">
                 <div className="absolute -top-1/2 -left-1/2 w-[1000px] h-[1000px] bg-gradient-to-r from-[var(--accent-coral)]/20 to-[var(--accent-pink)]/20 rounded-full blur-3xl animate-pulse"></div>
                 <div className="absolute top-1/2 -right-1/2 w-[800px] h-[800px] bg-gradient-to-r from-[var(--accent-turquoise)]/20 to-[var(--accent-lime)]/20 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-gradient-to-r from-[var(--accent-yellow)]/20 to-[var(--accent-coral)]/20 rounded-full blur-3xl"></div>
@@ -53,7 +73,7 @@ export default function LandingPage() {
                 {/* Logo / Icon - Rainbow border */}
                 <div className="mx-auto mb-8 w-24 h-24 p-1 rounded-3xl animate-rainbow transform rotate-12 hover:rotate-0 transition-transform duration-500 shadow-xl">
                     <div className="w-full h-full bg-[var(--theme-primary)] rounded-[20px] flex items-center justify-center">
-                        <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
@@ -63,7 +83,7 @@ export default function LandingPage() {
                     {t('title')}
                 </h1>
 
-                <p className="text-xl sm:text-2xl text-gray-600 mb-6 max-w-3xl mx-auto font-medium leading-relaxed sm:whitespace-nowrap">
+                <p className="text-xl sm:text-2xl text-gray-600 mb-6 max-w-3xl mx-auto font-medium leading-relaxed lg:whitespace-nowrap">
                     {t('subtitle')}
                     <br />
                     <span className="text-[var(--accent-coral)] font-bold">{t('compete')}</span>, <span className="text-[var(--accent-turquoise)] font-bold">{t('collectBadges')}</span>, {t.rich('stayActive', { span: (chunks) => <span className="text-[var(--accent-lime)] font-bold">{chunks}</span> })}

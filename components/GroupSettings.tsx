@@ -13,7 +13,7 @@ export default function GroupSettings() {
   const t = useTranslations('Groups');
 
   const handleJoin = async () => {
-    if (!keyword.trim()) return;
+    if (isSaving || !keyword.trim()) return;
 
     setIsSaving(true);
     setMessage(null);
@@ -22,19 +22,21 @@ export default function GroupSettings() {
       const response = await fetch('/api/user/group', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add', keyword: keyword }),
+        body: JSON.stringify({ action: 'add', keyword: keyword.trim() }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to join group');
+        const body = await response.json().catch(() => null);
+        const serverMsg = body?.error ?? body?.message;
+        throw new Error(serverMsg || 'Failed to join group');
       }
 
-      setMessage({ text: t('success', { keyword }), type: 'success' });
+      setMessage({ text: t('success', { keyword: keyword.trim() }), type: 'success' });
       setKeyword('');
       router.refresh();
     } catch (error) {
-      console.error(error);
-      setMessage({ text: t('error'), type: 'error' });
+      const msg = error instanceof Error ? error.message : t('error');
+      setMessage({ text: msg, type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -55,11 +57,17 @@ export default function GroupSettings() {
             type="text"
             name="keyword"
             id="keyword"
+            maxLength={100}
             className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
             placeholder={t('placeholder')}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleJoin();
+              }
+            }}
           />
           <button
             type="button"
@@ -75,7 +83,10 @@ export default function GroupSettings() {
         </div>
         {
           message && (
-            <p className={`mt-2 text-xs ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+            <p
+              role="alert"
+              className={`mt-2 text-xs ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+            >
               {message.text}
             </p>
           )
