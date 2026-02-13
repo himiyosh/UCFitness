@@ -28,7 +28,7 @@ export async function checkAndAwardBadges(userId: string) {
     const [badgeResult, userBadgeResult, dailyResult, historyResult] = await Promise.all([
         supabaseAdmin
             .from('badges')
-            .select('*'),
+            .select('id, code, name, category, type, rank'),
         supabaseAdmin
             .from('user_badges')
             .select('badge_code')
@@ -117,7 +117,7 @@ export async function checkAndAwardBadges(userId: string) {
             try {
                 const { data: subs } = await supabaseAdmin
                     .from('push_subscriptions')
-                    .select('*')
+                    .select('endpoint, p256dh, auth')
                     .eq('user_id', userId);
 
                 if (subs && subs.length > 0) {

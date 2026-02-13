@@ -363,7 +363,7 @@ const awardBadge = async (userId: string, badgeCode: string, periodDate: string,
             // 2. Web Push Notification
             const { data: subscriptions } = await supabaseAdmin
                 .from('push_subscriptions')
-                .select('*')
+                .select('endpoint, p256dh, auth')
                 .eq('user_id', userId);
 
             if (subscriptions && subscriptions.length > 0) {

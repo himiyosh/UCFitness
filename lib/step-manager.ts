@@ -156,10 +156,10 @@ async function processUserSteps(user: User) {
 }
 
 export async function updateUserSteps(userId: string) {
-    // Fetch user details
+    // Fetch user details (⚡ 必要カラムのみ取得)
     const { data: user, error } = await supabaseAdmin
         .from('users')
-        .select('*')
+        .select('id, email, provider, access_token, refresh_token, token_expires_at')
         .eq('id', userId)
         .single();
 
@@ -172,9 +172,10 @@ export async function updateUserSteps(userId: string) {
 }
 
 export async function backfillUserSteps(userId: string) {
+    // ⚡ 必要カラムのみ取得
     const { data: user, error } = await supabaseAdmin
         .from('users')
-        .select('*')
+        .select('id, email, provider, access_token, refresh_token, token_expires_at')
         .eq('id', userId)
         .single();
 

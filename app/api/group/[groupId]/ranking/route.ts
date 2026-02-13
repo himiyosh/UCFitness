@@ -28,7 +28,7 @@ export async function GET(
         let apiKey: string | null = null;
 
         if (authHeader && !tokenMatch) {
-            console.warn('[API] Auth header missing "Bearer " prefix');
+            // Auth header present but missing "Bearer " prefix — ignore silently
         }
 
         if (tokenMatch) {
@@ -84,21 +84,37 @@ export async function GET(
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrKeyword);
 
-        let query = supabaseAdmin
-            .from('groups')
-            .select('id');
+        let groupData: { id: string } | null = null;
 
         if (isUuid) {
-            // If it looks like a UUID, it could be either ID or Keyword
-            query = query.or(`keyword.eq.${idOrKeyword},id.eq.${idOrKeyword}`);
+            // 🛡️ セキュリティ: .or()テンプレートリテラルの代わりにパラメータ化クエリを使用
+            const { data: byKeyword } = await supabaseAdmin
+                .from('groups')
+                .select('id')
+                .eq('keyword', idOrKeyword)
+                .single();
+
+            if (byKeyword) {
+                groupData = byKeyword;
+            } else {
+                const { data: byId } = await supabaseAdmin
+                    .from('groups')
+                    .select('id')
+                    .eq('id', idOrKeyword)
+                    .single();
+                groupData = byId;
+            }
         } else {
             // If it's not a UUID, it MUST be a keyword (searching ID would cause DB error)
-            query = query.eq('keyword', idOrKeyword);
+            const { data } = await supabaseAdmin
+                .from('groups')
+                .select('id')
+                .eq('keyword', idOrKeyword)
+                .single();
+            groupData = data;
         }
 
-        const { data: groupData, error: groupError } = await query.single();
-
-        if (groupError || !groupData) {
+        if (!groupData) {
             return NextResponse.json({ error: 'Group not found' }, { status: 404 });
         }
 

@@ -25,23 +25,16 @@ export default async function MyGroupsPage() {
 
     const userId = (session.user as any).id;
 
-    // Fetch User's Group Preference and Custom Image
-    // Fetch User's Group Preference and Custom Image
-    const { data: userData } = await supabase
-        .from('users')
-        .select('name, group_keyword, image')
-        .eq('id', userId)
-        .single();
-
-    // Ensure it's an array
-    const groupOrder = Array.isArray(userData?.group_keyword)
-        ? userData?.group_keyword
-        : (userData?.group_keyword ? [userData.group_keyword] : []);
-
-    // Fetch User's Groups
-    const { data: memberships } = await supabase
-        .from('group_members')
-        .select(`
+    // ⚡ パフォーマンス: ユーザーデータとメンバーシップを並列取得
+    const [userResult, membershipResult] = await Promise.all([
+        supabase
+            .from('users')
+            .select('name, group_keyword, image')
+            .eq('id', userId)
+            .single(),
+        supabase
+            .from('group_members')
+            .select(`
       role,
       joined_at,
       groups (
@@ -52,7 +45,16 @@ export default async function MyGroupsPage() {
         header_image_url
       )
     `)
-        .eq('user_id', userId);
+            .eq('user_id', userId),
+    ]);
+
+    const userData = userResult.data;
+    const memberships = membershipResult.data;
+
+    // Ensure it's an array
+    const groupOrder = Array.isArray(userData?.group_keyword)
+        ? userData?.group_keyword
+        : (userData?.group_keyword ? [userData.group_keyword] : []);
 
     // Normalize memberships (Handle array vs object for joined table)
     const normalizedMemberships = (memberships || []).map((m: any) => ({

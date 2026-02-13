@@ -230,9 +230,10 @@ async function updateCoinBalance(userId: string, currentStreak: number) {
  * ユーザーのコイン残高を取得
  */
 export async function getCoinBalance(userId: string) {
+    // ⚡ 必要カラムのみ取得
     const { data } = await supabaseAdmin
         .from('coin_balances')
-        .select('*')
+        .select('user_id, total_balance, total_earned, total_bonus, current_streak, best_streak, investor_rank')
         .eq('user_id', userId)
         .single();
 
@@ -265,9 +266,10 @@ export async function getRecentTransactions(userId: string, limit: number = 30) 
     const currentBalance = balanceData?.total_balance || 0;
 
     // 最新N件のみ取得（新しい順）
+    // ⚡ 必要カラムのみ取得
     const { data: recentTx } = await supabaseAdmin
         .from('coin_transactions')
-        .select('*')
+        .select('id, date, type, amount, description, created_at')
         .eq('user_id', userId)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })

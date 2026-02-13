@@ -277,10 +277,10 @@ export async function POST(request: Request) {
         updates.name = trimmedName;
       }
 
+      // 🛡️ セキュリティ: https://のみ許可（混合コンテンツ/SSRF防止）
       const isValidUrl = (url: string) => {
         if (!url) return true;
-        // Allow http, https, or relative paths starting with /
-        return /^https?:\/\//.test(url) || url.startsWith('/');
+        return /^https:\/\//.test(url) || url.startsWith('/');
       };
 
       if (image_url !== undefined) {
@@ -297,7 +297,13 @@ export async function POST(request: Request) {
         updates.header_image_url = header_image_url;
       }
 
-      if (body.is_public !== undefined) updates.is_public = body.is_public;
+      // 🛡️ セキュリティ: is_publicの型バリデーション
+      if (body.is_public !== undefined) {
+        if (typeof body.is_public !== 'boolean') {
+          return NextResponse.json({ error: "is_public must be a boolean" }, { status: 400 });
+        }
+        updates.is_public = body.is_public;
+      }
 
       updates.updated_at = new Date().toISOString();
 
