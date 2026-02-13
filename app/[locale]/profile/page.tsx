@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 /**
  * /profile → /user/{username} へリダイレクト
@@ -29,5 +30,3 @@ export default async function ProfileRedirect() {
 
     redirect(`/user/${user.username}`);
 }
-
-export const runtime = 'edge';

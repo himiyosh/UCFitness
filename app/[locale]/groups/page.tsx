@@ -1,26 +1,21 @@
-
-
 import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { Link } from '@/navigation';
 import GroupList from "@/components/GroupList";
 import UserMenu from "@/components/UserMenu";
 import GroupSettings from "@/components/GroupSettings";
 import Breadcrumbs from '@/components/Breadcrumbs';
-
-export const dynamic = 'force-dynamic';
-
 import { getAllGroupRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
 
-// ... imports ...
+export const dynamic = 'force-dynamic';
 
 export default async function MyGroupsPage() {
     const session = await auth();
 
     if (!session || !session.user) {
-        redirect("/api/auth/signin");
+        redirect("/");
     }
 
     const userId = (session.user as any).id;

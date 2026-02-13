@@ -1,5 +1,4 @@
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation"; // Standard redirect works fine for root
 import UserMenu from "@/components/UserMenu";
@@ -16,15 +15,14 @@ export default async function SettingsPage() {
     const session = await auth();
     const t = await getTranslations('Settings');
     const commonT = await getTranslations('Common');
-    const landingT = await getTranslations('Landing');
-    const dashboardT = await getTranslations('Dashboard'); // Added
+    const dashboardT = await getTranslations('Dashboard');
 
     if (!session || !session.user) {
         redirect("/");
     }
 
-    // Fetch current user data
-    const { data: user } = await supabase
+    // ⚡ パフォーマンス: supabaseAdmin を使用し必要なカラムのみ取得
+    const { data: user } = await supabaseAdmin
         .from("users")
         .select("name, image, username, is_custom_image, step_goal, banner_url")
         .eq("id", (session.user as any).id)

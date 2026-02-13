@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "../globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
@@ -16,6 +16,13 @@ import LanguageSyncer from "@/components/LanguageSyncer";
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
 const SplashScreen = dynamic(() => import('@/components/SplashScreen'));
 const FloatingEmojis = dynamic(() => import('@/components/FloatingEmojis'));
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#6366f1',
+};
 
 export const metadata: Metadata = {
   title: "UCFitness",

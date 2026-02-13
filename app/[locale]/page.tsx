@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
@@ -29,8 +28,6 @@ export default async function Home() {
   if (!session?.user) {
     return <LandingPage />;
   }
-
-  const userEmail = session?.user?.email;
 
   let groupKeywords: string[] = [];
   let username: string | undefined;
@@ -102,7 +99,10 @@ export default async function Home() {
       .from('users')
       .update({ group_keyword: groupKeywords })
       .eq('id', userId)
-      .then(() => {/* fire-and-forget */});
+      .then(
+        () => {/* fire-and-forget */},
+        (err: unknown) => console.error('[group_keyword sync]', err)
+      );
 
     // Override session image with fresh DB image if available
     if (userData) {
