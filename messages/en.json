@@ -90,6 +90,11 @@
         "refreshing": "Refreshing...",
         "refreshFailed": "Failed to refresh steps"
     },
+    "LoginBonus": {
+        "title": "Daily Bonus",
+        "claimed": "+{amount} UC! (Day {streak})",
+        "streak": "Login Streak: {streak} days"
+    },
     "Landing": {
         "title": "UCFitness",
         "subtitle": "Walking is the best investment in your health.",
@@ -319,6 +324,7 @@
         "myGroups": "My Groups",
         "undouBank": "Wallet",
         "ucShop": "Shop",
+        "analytics": "Analytics",
         "settings": "Settings",
         "signOut": "Sign out"
     },
@@ -380,6 +386,7 @@
         "iconFrames": "Icon Frames",
         "titles": "Titles",
         "themeColors": "Theme Colors",
+        "consumables": "Consumables",
         "price": "Price",
         "rankRequired": "Rank Required",
         "owned": "Owned",
@@ -535,5 +542,27 @@
             "shopaholic": "Shopaholic",
             "teamPlayer": "Team Player"
         }
+    },
+    "Analytics": {
+        "title": "Analytics",
+        "dailyAverage": "Daily Average",
+        "bestDay": "Best Day",
+        "activeDays": "Active Days",
+        "weekdayChart": "Day-of-Week Averages",
+        "monthlyTrend": "Monthly Trend",
+        "monthComparison": "Month vs Month",
+        "noData": "Not enough step data yet. Keep walking!",
+        "totalSteps": "Total Steps",
+        "changeUp": "vs last month",
+        "changeDown": "vs last month",
+        "days": "days"
+    },
+    "Shield": {
+        "title": "Streak Shield",
+        "description": "Protects your streak for 1 day if you miss your goal",
+        "remaining": "{count} shield(s) remaining",
+        "noShields": "No shields",
+        "used": "Shield used today",
+        "buyMore": "Buy shields in the Shop"
     }
 }

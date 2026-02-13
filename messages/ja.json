@@ -90,6 +90,11 @@
         "refreshing": "同期中...",
         "refreshFailed": "歩数の同期に失敗しました"
     },
+    "LoginBonus": {
+        "title": "デイリーボーナス",
+        "claimed": "+{amount} UC! ({streak}日連続)",
+        "streak": "ログイン連続: {streak}日"
+    },
     "Landing": {
         "title": "UCFitness",
         "subtitle": "歩くことは、最高の健康投資。",
@@ -319,6 +324,7 @@
         "myGroups": "マイグループ",
         "undouBank": "ウォレット",
         "ucShop": "ショップ",
+        "analytics": "分析",
         "settings": "設定",
         "signOut": "ログアウト"
     },
@@ -380,6 +386,7 @@
         "iconFrames": "アイコンフレーム",
         "titles": "称号",
         "themeColors": "テーマカラー",
+        "consumables": "消耗品",
         "price": "価格",
         "rankRequired": "必要ランク",
         "owned": "所持済み",
@@ -535,5 +542,27 @@
             "shopaholic": "買い物マスター",
             "teamPlayer": "チームプレイヤー"
         }
+    },
+    "Analytics": {
+        "title": "分析",
+        "dailyAverage": "日平均",
+        "bestDay": "ベストデー",
+        "activeDays": "アクティブ日数",
+        "weekdayChart": "曜日別平均",
+        "monthlyTrend": "月別トレンド",
+        "monthComparison": "月間比較",
+        "noData": "まだ歩数データがありません。歩き続けましょう！",
+        "totalSteps": "合計歩数",
+        "changeUp": "先月比",
+        "changeDown": "先月比",
+        "days": "日"
+    },
+    "Shield": {
+        "title": "ストリークシールド",
+        "description": "目標未達でもストリークを1日保護します",
+        "remaining": "シールド残り{count}個",
+        "noShields": "シールドなし",
+        "used": "本日シールド使用済み",
+        "buyMore": "ショップでシールドを購入"
     }
 }
