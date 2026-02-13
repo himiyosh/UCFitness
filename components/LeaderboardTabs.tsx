@@ -3,15 +3,16 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
 
 export type Period = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 
-const TABS: { key: Period; label: string }[] = [
-    { key: 'DAILY', label: 'Today' },
-    { key: 'WEEKLY', label: 'This Week' },
-    { key: 'MONTHLY', label: 'This Month' },
-    { key: 'YEARLY', label: 'This Year' },
+const TAB_KEYS: { key: Period; i18nKey: string }[] = [
+    { key: 'DAILY', i18nKey: 'periods.daily' },
+    { key: 'WEEKLY', i18nKey: 'periods.weekly' },
+    { key: 'MONTHLY', i18nKey: 'periods.monthly' },
+    { key: 'YEARLY', i18nKey: 'periods.yearly' },
 ];
 
 const MIDNIGHT_ACTIVE_STYLE: React.CSSProperties = {
@@ -34,6 +35,7 @@ export default function LeaderboardTabs() {
     const searchParams = useSearchParams();
     const currentPeriod = (searchParams.get('period') as Period) || 'DAILY';
     const { theme } = useTheme();
+    const t = useTranslations('Leaderboard');
 
     const isMidnight = theme === 'midnight';
 
@@ -45,7 +47,7 @@ export default function LeaderboardTabs() {
     return (
         <nav aria-label="Ranking period">
         <div className={containerClass} role="tablist">
-            {TABS.map((tab) => {
+            {TAB_KEYS.map((tab) => {
                 const isActive = currentPeriod === tab.key;
                 return (
                     <Link
@@ -57,7 +59,7 @@ export default function LeaderboardTabs() {
                         className={`px-4 py-2 rounded-full text-xs font-bold transition-all hover:scale-105 ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50 hover:shadow-sm') : ''}`}
                         style={isMidnight ? (isActive ? MIDNIGHT_ACTIVE_STYLE : MIDNIGHT_INACTIVE_STYLE) : undefined}
                     >
-                        {tab.label}
+                        {t(tab.i18nKey)}
                     </Link>
                 );
             })}

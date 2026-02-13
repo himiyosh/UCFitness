@@ -138,7 +138,12 @@
             "yearly": "今年"
         },
         "topAndNeighbors": "トップ3 & 周辺",
-        "rankNumber": "#{rank} 位"
+        "rankNumber": "#{rank} 位",
+        "rankHeader": "順位",
+        "groupHeader": "グループ",
+        "avgStepsHeader": "平均歩数",
+        "totalStepsHeader": "総歩数",
+        "membersHeader": "メンバー"
     },
     "Notifications": {
         "title": "通知設定",

@@ -138,7 +138,12 @@
             "yearly": "This Year"
         },
         "topAndNeighbors": "Top 3 & Neighbors",
-        "rankNumber": "Rank #{rank}"
+        "rankNumber": "Rank #{rank}",
+        "rankHeader": "Rank",
+        "groupHeader": "Group",
+        "avgStepsHeader": "Avg Steps",
+        "totalStepsHeader": "Total Steps",
+        "membersHeader": "Members"
     },
     "Notifications": {
         "title": "Notifications",

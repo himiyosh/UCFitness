@@ -2,37 +2,42 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';
 
 interface GroupCompetitionListProps {
     initialRankings: GroupRankingEntry[];
-    currentGroupId?: string; // To highlight specific group
+    currentGroupId?: string;
 }
 
 export default function GroupCompetitionList({ initialRankings, currentGroupId }: GroupCompetitionListProps) {
-    // Only top 10? Or full list? 
-    // Let's show top 10 by default, maybe expand?
-    // For now simple list.
+    const t = useTranslations('Leaderboard');
 
     const top10Rankings = useMemo(() => initialRankings.slice(0, 10), [initialRankings]);
 
     return (
         <div className="w-full">
             <div className="overflow-auto styled-scrollbar" style={{ height: '300px' }}>
-                <table className="w-full text-left text-sm relative" aria-label="Group competition rankings">
-                    <thead className="bg-gray-50 text-gray-500 font-medium sticky top-0 z-10 shadow-sm">
+                <table className="w-full text-left text-sm relative" aria-label={t('groupHeader')}>
+                    <thead className="bg-gray-50 font-medium sticky top-0 z-10 shadow-sm" style={{ color: 'var(--foreground-muted, #6b7280)' }}>
                         <tr>
-                            <th className="px-3 py-2.5 w-12 text-center bg-gray-50 text-xs">Rank</th>
-                            <th className="px-3 py-2.5 bg-gray-50 text-xs">Group</th>
-                            <th className="px-3 py-2.5 text-right bg-gray-50 text-xs">Avg Steps</th>
-                            <th className="px-3 py-2.5 text-right hidden sm:table-cell bg-gray-50 text-xs">Total Steps</th>
+                            <th className="px-3 py-2.5 w-12 text-center bg-gray-50 text-xs">{t('rankHeader')}</th>
+                            <th className="px-3 py-2.5 bg-gray-50 text-xs">{t('groupHeader')}</th>
+                            <th className="px-3 py-2.5 text-right bg-gray-50 text-xs">{t('avgStepsHeader')}</th>
+                            <th className="px-3 py-2.5 text-right hidden sm:table-cell bg-gray-50 text-xs">{t('totalStepsHeader')}</th>
+                            <th className="px-3 py-2.5 text-right hidden md:table-cell bg-gray-50 text-xs">{t('membersHeader')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                         {initialRankings.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
-                                    No group data available.
+                                <td colSpan={5} className="px-6 py-10 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <span className="text-3xl">🏆</span>
+                                        <p className="text-sm" style={{ color: 'var(--foreground-muted, #9ca3af)' }}>
+                                            {t('noData')}
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         ) : (
@@ -68,16 +73,19 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                                     </div>
                                                 )}
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="font-medium text-gray-900 text-xs truncate group-hover:text-[var(--theme-primary)] transition-colors" title={group.groupName}>{group.groupName}</div>
-                                                    <div className="text-[10px] text-gray-400 truncate">{group.keyword}</div>
+                                                    <div className="font-medium text-xs truncate group-hover:text-[var(--theme-primary)] transition-colors" style={{ color: 'var(--foreground, #111827)' }} title={group.groupName}>{group.groupName}</div>
+                                                    <div className="text-[10px] truncate" style={{ color: 'var(--foreground-muted, #9ca3af)' }}>{group.keyword}</div>
                                                 </div>
                                             </Link>
                                         </td>
                                         <td className="px-3 py-3 text-right tabular-nums font-bold text-[var(--theme-primary)] text-xs">
                                             {group.averageSteps.toLocaleString()}
                                         </td>
-                                        <td className="px-3 py-3 text-right tabular-nums text-gray-500 hidden sm:table-cell text-xs">
+                                        <td className="px-3 py-3 text-right tabular-nums hidden sm:table-cell text-xs" style={{ color: 'var(--foreground-muted, #6b7280)' }}>
                                             {group.totalSteps.toLocaleString()}
+                                        </td>
+                                        <td className="px-3 py-3 text-right tabular-nums hidden md:table-cell text-xs" style={{ color: 'var(--foreground-muted, #6b7280)' }}>
+                                            {group.memberCount.toLocaleString()}
                                         </td>
                                     </tr>
                                 );

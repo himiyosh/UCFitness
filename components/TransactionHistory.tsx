@@ -54,7 +54,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
 
     if (!transactions || transactions.length === 0) {
         return (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-full">
+            <div className="bg-white midnight-solid-panel rounded-xl p-6 shadow-sm border border-gray-100 h-full">
                 <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                     📒 {t('transactionHistory')}
                 </h3>
@@ -66,7 +66,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
     }
 
     return (
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 h-full overflow-hidden">
+        <div className="bg-white midnight-solid-panel rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 h-full overflow-hidden">
             <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
                 📒 {t('transactionHistory')}
             </h3>
