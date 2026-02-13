@@ -259,24 +259,24 @@ export async function getRecentTransactions(userId: string, limit: number = 30) 
     // Guard: ensure limit is a positive integer
     const safeLimit = Math.max(1, Math.min(Math.floor(limit), 500));
 
-    // 現在の総残高を取得（逆算の起点）
-    const { data: balanceData } = await supabaseAdmin
-        .from('coin_balances')
-        .select('total_balance')
-        .eq('user_id', userId)
-        .single();
+    // ⚡ 独立した2クエリを並列実行（残高 + 最新取引）
+    const [balanceResult, txResult] = await Promise.all([
+        supabaseAdmin
+            .from('coin_balances')
+            .select('total_balance')
+            .eq('user_id', userId)
+            .single(),
+        supabaseAdmin
+            .from('coin_transactions')
+            .select('id, date, type, amount, description, created_at')
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(safeLimit),
+    ]);
 
-    const currentBalance = balanceData?.total_balance || 0;
-
-    // 最新N件のみ取得（新しい順）
-    // ⚡ 必要カラムのみ取得
-    const { data: recentTx } = await supabaseAdmin
-        .from('coin_transactions')
-        .select('id, date, type, amount, description, created_at')
-        .eq('user_id', userId)
-        .order('date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(safeLimit);
+    const currentBalance = balanceResult.data?.total_balance || 0;
+    const recentTx = txResult.data;
 
     if (!recentTx || recentTx.length === 0) return [];
 

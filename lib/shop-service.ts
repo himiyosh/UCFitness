@@ -311,24 +311,26 @@ export async function equipItem(userId: string, userItemId: string): Promise<{ s
         return { success: false, error: 'invalid_item' };
     }
 
-    // 2. 同カテゴリの装備を全て解除
-    const { error: unequipError } = await supabaseAdmin
-        .from('user_items')
-        .update({ is_equipped: false })
-        .eq('user_id', userId)
-        .eq('is_equipped', true)
-        .in('item_id',
-            // 同カテゴリのアイテムIDリストを取得するサブクエリ的アプローチ
-            (await supabaseAdmin
-                .from('shop_items')
-                .select('id')
-                .eq('category', category)
-            ).data?.map(i => i.id) || []
-        );
+    // 2. 同カテゴリのアイテムIDを取得し、装備を全て解除
+    const { data: categoryItems } = await supabaseAdmin
+        .from('shop_items')
+        .select('id')
+        .eq('category', category);
 
-    if (unequipError) {
-        reportError('equipItem:unequip', unequipError, { userId, userItemId });
-        return { success: false, error: 'unequip_failed' };
+    const categoryItemIds = categoryItems?.map(i => i.id) || [];
+
+    if (categoryItemIds.length > 0) {
+        const { error: unequipError } = await supabaseAdmin
+            .from('user_items')
+            .update({ is_equipped: false })
+            .eq('user_id', userId)
+            .eq('is_equipped', true)
+            .in('item_id', categoryItemIds);
+
+        if (unequipError) {
+            reportError('equipItem:unequip', unequipError, { userId, userItemId });
+            return { success: false, error: 'unequip_failed' };
+        }
     }
 
     // 3. 対象アイテムを装備

@@ -146,16 +146,25 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     const usersMap = new Map<string, any>();
 
     if (scope === 'GROUP' && groupKeyword) {
-        // Fetch specific users first
-        const { data: users } = await supabase
-            .from('users')
-            .select('id, name, image, username, group_keyword')
-            .contains('group_keyword', [groupKeyword]);
+        // 🐛 Fix: group_members テーブルを使用（レガシー group_keyword 配列に依存しない）
+        const { data: groupData } = await supabase
+            .from('groups')
+            .select('id')
+            .eq('keyword', groupKeyword)
+            .single();
 
-        if (!users || users.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+        if (!groupData) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
-        userIds = users.map(u => u.id);
-        users.forEach(u => usersMap.set(u.id, u));
+        const { data: members } = await supabase
+            .from('group_members')
+            .select('user_id, users(id, name, image, username)')
+            .eq('group_id', groupData.id);
+
+        if (!members || members.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+
+        userIds = members.map(m => m.user_id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        members.forEach((m: any) => { if (m.users) usersMap.set(m.users.id, m.users); });
     }
 
     let query = supabase
@@ -336,39 +345,44 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
 
     if (userIds.length === 0) return [];
 
-    const { data: rawSteps, error } = await supabase
-        .from('daily_steps')
-        .select(`
-            steps,
-            date,
-            users!inner (
-                id,
-                name,
-                image,
-                username
-            )
-        `)
-        .in('user_id', userIds)
-        .gte('date', startDate);
+    // ⚡ Performance: JOIN を分割して並列取得
+    const [stepsResult, usersResult] = await Promise.all([
+        supabase
+            .from('daily_steps')
+            .select('steps, date, user_id')
+            .in('user_id', userIds)
+            .gte('date', startDate),
+        supabase
+            .from('users')
+            .select('id, name, image, username')
+            .in('id', userIds),
+    ]);
+
+    const { data: rawSteps, error } = stepsResult;
+    const { data: users } = usersResult;
 
     if (error) {
         console.error('Error fetching group rankings');
         return [];
     }
 
+    const usersLookup = new Map(users?.map(u => [u.id, u]));
+
     // Aggregate
     const userMap = new Map<string, any>();
     rawSteps?.forEach((row: any) => {
-        const userId = row.users.id;
+        const userId = row.user_id;
+        const user = usersLookup.get(userId);
+        if (!user) return;
+
         if (!userMap.has(userId)) {
             userMap.set(userId, {
                 steps: 0,
-                users: row.users
+                users: user
             });
         }
         const entry = userMap.get(userId);
-        const steps = Number(row.steps);
-        entry.steps += steps;
+        entry.steps += Number(row.steps);
     });
 
     return Array.from(userMap.values())
