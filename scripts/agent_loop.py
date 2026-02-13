@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
 """
+⚠️ 非推奨 (DEPRECATED) — このスクリプトは現在使用していません ⚠️
+
+理由:
+  - GitHub Models API (gpt-4.1) のレートリミット (150 req/day) により実用不可
+  - 現在のコード改善ループは GitHub Copilot (VS Code チャット) で直接実行しています
+  - このスクリプトを実行しても即座に停止します
+
+代替手段:
+  VS Code で GitHub Copilot チャットを開き、以下のように指示してください:
+  「UCFitness の改善ループを実行してください」
+  詳細は README.md または会話履歴を参照。
+
+--- 以下は旧実装の説明 (参考用) ---
+
 自律的コード改善ループ (Autonomous Code Improvement Loop)
 
 5つの専門エージェント (Build Validation, UI/UX, Performance, Security, Feature Enhancement) が
 Generator ↔ Reviewer パターンで最大3回のイテレーションを回し、
 テスト通過を保証しながらコードを改善するスクリプト。
 
-使用ツール: GitHub Models API (gpt-4.1)
+使用ツール: GitHub Models API (gpt-4.1) ← レートリミットにより使用停止
 認証: gh auth token (GitHub CLI のトークンを流用)
 実行環境: ローカル / GitHub Actions
 """
@@ -2008,9 +2022,28 @@ class AgentLoop:
 # エントリポイント
 # ---------------------------------------------------------------------------
 def main() -> None:
-    """スクリプトのエントリポイント"""
+    """スクリプトのエントリポイント
+
+    ⚠️ 非推奨: このスクリプトは GitHub Models API のレートリミット (150 req/day) により
+    実用不可となったため、現在は使用していません。
+    代わりに GitHub Copilot (VS Code チャット) で直接改善ループを実行してください。
+    """
+    print("""\n"""
+"⚠️  このスクリプトは非推奨 (DEPRECATED) です。"
+"\n"
+"理由: GitHub Models API (gpt-4.1) のレートリミット (150 req/day) により実用不可\n"
+"代替: VS Code で GitHub Copilot チャットを開き、改善ループを直接指示してください\n"
+"\n"
+"それでも実行したい場合は、環境変数 FORCE_RUN=true を設定してください:\n"
+"  $env:FORCE_RUN = 'true'\n"
+"  python scripts/agent_loop.py\n")
+
+    if os.environ.get("FORCE_RUN", "").lower() != "true":
+        logger.warning("⚠️ 非推奨スクリプト — FORCE_RUN=true なしのため停止します")
+        sys.exit(0)
+
     logger.info("=" * 60)
-    logger.info("自律的コード改善ループ v2.0 (GitHub Models API)")
+    logger.info("自律的コード改善ループ v2.0 (GitHub Models API) [FORCE_RUN モード]")
     logger.info("=" * 60)
 
     try:
