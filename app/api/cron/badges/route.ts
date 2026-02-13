@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { assignBadges } from '@/lib/badge-awards';
 import { Period } from '@/components/LeaderboardTabs';
 
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 // バッジ付与に対応する有効な期間タイプ
