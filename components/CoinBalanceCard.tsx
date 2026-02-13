@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { getStreakMultiplier, getNextRankInfo, getRankIcon } from '@/lib/constants';
+import StreakShieldIndicator from './StreakShieldIndicator';
 
 // --- 残高カウントアップアニメーション用フック ---
 function useCountUp(target: number, duration: number = 1500) {
@@ -158,6 +159,9 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                         </span>
                         <span className="text-xs text-gray-400">{t('days')}</span>
                         {balance.current_streak >= 3 && <span className="text-sm">🔥</span>}
+                    </div>
+                    <div className="mt-2">
+                        <StreakShieldIndicator />
                     </div>
                 </div>
 

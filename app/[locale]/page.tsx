@@ -19,6 +19,7 @@ const AnimatedLeaderboard = nextDynamic(() => import('@/components/AnimatedLeade
 const GoalProgressChart = nextDynamic(() => import('@/components/GoalProgressChart'));
 const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'));
 const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'));
+const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast'));
 
 export const dynamic = 'force-dynamic';
 
@@ -458,6 +459,8 @@ export default async function Home() {
             allGroupRankings={enrichedGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}
           />
+
+          {session && userId && <LoginBonusToast userId={userId} />}
 
           <AutoSync />
 
