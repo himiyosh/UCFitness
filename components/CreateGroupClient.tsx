@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -35,6 +35,13 @@ export default function CreateGroupClient() {
   const [inviteSuccess, setInviteSuccess] = useState<Set<string>>(new Set());
   const [inviteError, setInviteError] = useState<string | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ── タイムアウトクリーンアップ ──
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
 
   // ── 完了 ──
   const [createdKeyword, setCreatedKeyword] = useState('');
@@ -87,6 +94,7 @@ export default function CreateGroupClient() {
           action: 'add',
           keyword: id,
           name: groupName.trim() || undefined,
+          description: description.trim() || undefined,
         }),
       });
       if (!response.ok) {
@@ -95,8 +103,8 @@ export default function CreateGroupClient() {
       }
       setCreatedKeyword(id);
       setStep(2);
-    } catch (err: any) {
-      setError(err.message || t('createError'));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('createError'));
     } finally {
       setIsCreating(false);
     }
@@ -140,8 +148,8 @@ export default function CreateGroupClient() {
     router.refresh();
   };
 
-  // ── ステップインジケーター ──
-  const StepIndicator = () => (
+  // ── ステップインジケーター（useMemoで安定化し不要なDOM再生成を防止） ──
+  const stepIndicator = useMemo(() => (
     <div className="flex items-center justify-center gap-0">
       {/* ステップ1 */}
       <div className="flex items-center gap-2">
@@ -174,7 +182,7 @@ export default function CreateGroupClient() {
         </span>
       </div>
     </div>
-  );
+  ), [step, t]);
 
   return (
     <main className="min-h-screen bg-[var(--theme-page-bg)]">
@@ -204,7 +212,7 @@ export default function CreateGroupClient() {
         </div>
 
         {/* ステップインジケーター */}
-        <StepIndicator />
+        {stepIndicator}
 
         {/* ═══════════════════ ステップ1: 基本情報 ═══════════════════ */}
         {step === 1 && (

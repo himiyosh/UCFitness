@@ -6,6 +6,29 @@ import { revalidatePath } from "next/cache";
 
 import { refreshFitbitToken, getFitbitProfile } from "@/lib/fitbit";
 
+// 🛡️ セキュリティ: セッションからユーザーIDを安全に抽出するヘルパー
+// NextAuth v5 beta の auth() は複数オーバーロードを持つため、
+// ReturnType<typeof auth> ではなく Session 型を直接参照
+function getSessionUserId(session: { user?: { id?: string } | null } | null): string {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userId = (session?.user as any)?.id as string | undefined;
+    if (!userId) throw new Error("Not authenticated");
+    return userId;
+}
+
+// 🛡️ セキュリティ: 許可されたファイルタイプとサイズ制限
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+function validateImageFile(file: File): void {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+        throw new Error("Invalid file type. Allowed: JPEG, PNG, WebP, GIF");
+    }
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File too large. Maximum size: 5MB");
+    }
+}
+
 export async function updateProfileImage(imageUrl: string | null) {
     const session = await auth();
 
@@ -13,9 +36,12 @@ export async function updateProfileImage(imageUrl: string | null) {
         throw new Error("Not authenticated");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
-    console.log("updateProfileImage called for user:", userId, "with URL:", imageUrl);
+    const userId = getSessionUserId(session);
+
+    // 🛡️ セキュリティ: URL検証
+    if (imageUrl && !imageUrl.startsWith('https://')) {
+        throw new Error("Invalid image URL");
+    }
 
     if (imageUrl) {
         const { error } = await supabaseAdmin
@@ -37,7 +63,7 @@ export async function updateProfileImage(imageUrl: string | null) {
             .single();
 
         if (tokenError || !userTokens) {
-            console.error("Failed to fetch user tokens for reset:", tokenError);
+            console.error("Failed to fetch user tokens for reset");
             // Fallback: just set flag false, user needs to re-login to sync.
             await supabaseAdmin.from("users").update({ is_custom_image: false }).eq("id", userId);
             throw new Error("Could not fetch Fitbit profile. Please re-login to sync.");
@@ -49,9 +75,9 @@ export async function updateProfileImage(imageUrl: string | null) {
         try {
             const profile = await getFitbitProfile(accessToken);
             fitbitImage = profile.avatar;
-        } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            if (e.message === "Unauthorized" || e.message?.includes("401")) {
-                console.log("Token expired during reset, refreshing...");
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            if (errMsg === "Unauthorized" || errMsg.includes("401")) {
                 try {
                     const newTokens = await refreshFitbitToken(userTokens.refresh_token);
                     accessToken = newTokens.access_token;
@@ -67,17 +93,17 @@ export async function updateProfileImage(imageUrl: string | null) {
                     // Retry fetch
                     const profile = await getFitbitProfile(accessToken);
                     fitbitImage = profile.avatar;
-                } catch (refreshError) {
-                    console.error("Failed to refresh token during reset:", refreshError);
+                } catch (refreshError: unknown) {
+                    console.error("Failed to refresh token during reset");
                     // Fallback
                     await supabaseAdmin.from("users").update({ is_custom_image: false }).eq("id", userId);
                     throw new Error("Session expired. Please sign out and sign in again.");
                 }
             } else {
-                console.error("Error fetching Fitbit profile:", e);
+                console.error("Error fetching Fitbit profile");
                 // Fallback
                 await supabaseAdmin.from("users").update({ is_custom_image: false }).eq("id", userId);
-                throw e;
+                throw new Error("Failed to fetch Fitbit profile");
             }
         }
 
@@ -109,8 +135,11 @@ export async function uploadProfileImage(formData: FormData) {
         throw new Error("No file uploaded");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = getSessionUserId(session);
+
+    // 🛡️ セキュリティ: ファイル検証
+    validateImageFile(file);
+
     const fileExt = file.name.split('.').pop();
     const filePath = `${userId}-${Date.now()}.${fileExt}`;
 
@@ -123,7 +152,7 @@ export async function uploadProfileImage(formData: FormData) {
         });
 
     if (uploadError) {
-        console.error("Upload error:", uploadError);
+        console.error("Upload error");
         throw new Error("Failed to upload image");
     }
 
@@ -142,7 +171,7 @@ export async function uploadProfileImage(formData: FormData) {
         .eq("id", userId);
 
     if (dbError) {
-        console.error("Database update error:", dbError);
+        console.error("Database update error");
         throw new Error("Failed to update profile image URL");
     }
 
@@ -161,8 +190,11 @@ export async function uploadBannerImage(formData: FormData) {
         throw new Error("No file uploaded");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = getSessionUserId(session);
+
+    // 🛡️ セキュリティ: ファイル検証
+    validateImageFile(file);
+
     // Client compresses to JPEG, so we enforce .jpg extension to match content type
     const fileExt = 'jpg';
     const filePath = `${userId}-banner-${Date.now()}.${fileExt}`;
@@ -176,8 +208,8 @@ export async function uploadBannerImage(formData: FormData) {
         });
 
     if (uploadError) {
-        console.error("Upload error detail:", JSON.stringify(uploadError, null, 2));
-        throw new Error(`Failed to upload image: ${uploadError.message}`);
+        console.error("Upload error");
+        throw new Error("Failed to upload banner image");
     }
 
     const { data: { publicUrl } } = supabaseAdmin
@@ -194,7 +226,7 @@ export async function uploadBannerImage(formData: FormData) {
         .eq("id", userId);
 
     if (dbError) {
-        console.error("Database update error:", dbError);
+        console.error("Database update error");
         throw new Error("Failed to update banner URL");
     }
 
@@ -218,8 +250,7 @@ export async function updateUserLanguage(language: string) {
         throw new Error("Invalid language");
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = getSessionUserId(session);
 
     const { error } = await supabaseAdmin
         .from("users")
@@ -230,7 +261,7 @@ export async function updateUserLanguage(language: string) {
         .eq("id", userId);
 
     if (error) {
-        console.error("Database update error:", error);
+        console.error("Database update error");
         throw new Error("Failed to update language");
     }
 

@@ -1,18 +1,25 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { getStreakMultiplier, getNextRankInfo, getRankIcon } from '@/lib/constants';
 
 // --- 残高カウントアップアニメーション用フック ---
 function useCountUp(target: number, duration: number = 1500) {
     const [count, setCount] = useState(0);
     const prevTarget = useRef(0);
+    const rafId = useRef<number>(0);
 
     useEffect(() => {
         const start = prevTarget.current;
         prevTarget.current = target;
         if (target === 0) { setCount(0); return; }
+
+        // prefers-reduced-motion: アニメーション無効化
+        if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setCount(target);
+            return;
+        }
 
         const startTime = performance.now();
         const animate = (now: number) => {
@@ -21,9 +28,13 @@ function useCountUp(target: number, duration: number = 1500) {
             // easeOutExpo
             const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
             setCount(Math.floor(start + (target - start) * eased));
-            if (progress < 1) requestAnimationFrame(animate);
+            if (progress < 1) {
+                rafId.current = requestAnimationFrame(animate);
+            }
         };
-        requestAnimationFrame(animate);
+        rafId.current = requestAnimationFrame(animate);
+
+        return () => cancelAnimationFrame(rafId.current);
     }, [target, duration]);
 
     return count;
@@ -50,10 +61,15 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
     const animatedBalance = useCountUp(balance.total_balance);
     const animatedToday = useCountUp(todayEarned, 1000);
 
-    const rankIcon = getRankIcon(balance.investor_rank);
-    const lifetimeEarnings = balance.total_earned + balance.total_bonus;
-    const nextRank = getNextRankInfo(lifetimeEarnings);
-    const multiplier = getStreakMultiplier(balance.current_streak);
+    const { rankIcon, lifetimeEarnings, nextRank, multiplier } = useMemo(() => {
+        const lifetime = balance.total_earned + balance.total_bonus;
+        return {
+            rankIcon: getRankIcon(balance.investor_rank),
+            lifetimeEarnings: lifetime,
+            nextRank: getNextRankInfo(lifetime),
+            multiplier: getStreakMultiplier(balance.current_streak),
+        };
+    }, [balance.investor_rank, balance.total_earned, balance.total_bonus, balance.current_streak]);
 
     return (
         <div className="space-y-4">

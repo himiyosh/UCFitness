@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -29,62 +29,10 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
     const t = useTranslations('Groups');
     const { error: toastError } = useToast();
 
-    const handleMakePrimary = async (targetId: string) => {
-        if (isUpdating) return;
-
-        const targetIndex = memberships.findIndex(m => m.groups.id === targetId);
-        if (targetIndex <= 0) return; // Already first or not found
-
+    // 共通の並び替えAPI呼び出しロジック
+    const submitReorder = useCallback(async (newList: GroupMembership[]) => {
         setIsUpdating(true);
-
-        const targetGroup = memberships[targetIndex];
-        const newList = [
-            targetGroup,
-            ...memberships.filter(m => m.groups.id !== targetId)
-        ];
-
-        // Optimistic Update
-        setMemberships(newList);
-
-        try {
-            const keywords = newList.map(m => m.groups.keyword);
-
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'reorder',
-                    groupKeywords: keywords
-                }),
-            });
-
-            if (!res.ok) {
-                throw new Error('Failed to update order');
-            }
-
-            router.refresh(); // Refresh server data to ensure consistency
-        } catch (error) {
-            console.error(error);
-            toastError(t('reorderFailed'));
-            setMemberships(initialMemberships); // Revert
-        } finally {
-            setIsUpdating(false);
-        }
-    };
-
-    const handleMove = async (index: number, direction: -1 | 1) => {
-        if (isUpdating) return;
-
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= memberships.length) return;
-
-        setIsUpdating(true);
-
-        const newList = [...memberships];
-        [newList[index], newList[newIndex]] = [newList[newIndex], newList[index]];
-
-        // Optimistic Update
-        setMemberships(newList);
+        setMemberships(newList); // Optimistic Update
 
         try {
             const keywords = newList.map(m => m.groups.keyword);
@@ -106,14 +54,41 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
         } catch (error) {
             console.error(error);
             toastError(t('reorderFailed'));
-            setMemberships(initialMemberships);
+            setMemberships(initialMemberships); // Revert
         } finally {
             setIsUpdating(false);
         }
-    };
+    }, [router, toastError, t, initialMemberships]);
+
+    const handleMakePrimary = useCallback(async (targetId: string) => {
+        if (isUpdating) return;
+
+        const targetIndex = memberships.findIndex(m => m.groups.id === targetId);
+        if (targetIndex <= 0) return;
+
+        const targetGroup = memberships[targetIndex];
+        const newList = [
+            targetGroup,
+            ...memberships.filter(m => m.groups.id !== targetId)
+        ];
+
+        await submitReorder(newList);
+    }, [isUpdating, memberships, submitReorder]);
+
+    const handleMove = useCallback(async (index: number, direction: -1 | 1) => {
+        if (isUpdating) return;
+
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= memberships.length) return;
+
+        const newList = [...memberships];
+        [newList[index], newList[newIndex]] = [newList[newIndex], newList[index]];
+
+        await submitReorder(newList);
+    }, [isUpdating, memberships, submitReorder]);
 
     // G7: 招待リンクをコピー
-    const handleShareInvite = async (keyword: string, groupId: string) => {
+    const handleShareInvite = useCallback(async (keyword: string, groupId: string) => {
         const url = `${window.location.origin}/groups/join?keyword=${encodeURIComponent(keyword)}`;
         try {
             await navigator.clipboard.writeText(url);
@@ -130,7 +105,21 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
             setCopiedId(groupId);
             setTimeout(() => setCopiedId(null), 2000);
         }
-    };
+    }, []);
+
+    if (memberships.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <span className="text-5xl mb-4">👥</span>
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--theme-primary)' }}>
+                    {t('noGroups')}
+                </h3>
+                <p className="text-sm mb-6 max-w-xs" style={{ color: 'var(--foreground-muted)' }}>
+                    {t('noGroupsDescription')}
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { signOut } from 'next-auth/react';
 import { Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
@@ -42,15 +42,25 @@ export default function UserMenu({ user }: UserMenuProps) {
         };
     }, []);
 
+    const toggleMenu = useCallback(() => {
+        setIsOpen(prev => !prev);
+    }, []);
+
+    const handleSignOut = useCallback(() => {
+        setIsOpen(false);
+        signOut();
+    }, []);
+
     return (
         <div className="relative ml-3 flex-shrink-0" ref={menuRef}>
             <div>
                 <button
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={toggleMenu}
                     className="relative flex flex-shrink-0 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2"
                     id="user-menu-button"
                     aria-expanded={isOpen}
                     aria-haspopup="true"
+                    aria-label={t('signedInAs')}
                 >
                     <span className="sr-only">{t('signedInAs')}</span>
                     <UserAvatar src={user.image} name={user.name} size="md-lg" borderClass="border-gray-200" />
@@ -60,7 +70,7 @@ export default function UserMenu({ user }: UserMenuProps) {
             {/* Dropdown menu */}
             {isOpen && (
                 <div
-                    className="absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    className="absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none animate-fade-in"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="user-menu-button"
@@ -69,6 +79,8 @@ export default function UserMenu({ user }: UserMenuProps) {
                     <Link
                         href={user.username ? `/user/${user.username}` : '/profile'}
                         className="block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                        role="menuitem"
+                        tabIndex={-1}
                         onClick={() => setIsOpen(false)}
                     >
                         <div className="flex items-center gap-3">
@@ -86,7 +98,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/groups"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -96,7 +108,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/wallet"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -106,7 +118,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/shop"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -116,7 +128,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/settings"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -125,8 +137,8 @@ export default function UserMenu({ user }: UserMenuProps) {
                     </Link>
 
                     <button
-                        onClick={() => signOut()}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                        onClick={handleSignOut}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                     >

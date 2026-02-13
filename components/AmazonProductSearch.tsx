@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
 import Spinner from '@/components/ui/Spinner';
@@ -118,7 +118,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const inputRef = useRef<HTMLInputElement>(null);
 
     // --- 入力タイプのリアルタイム検知 ---
-    const inputInfo = detectInputType(input);
+    const inputInfo = useMemo(() => detectInputType(input), [input]);
 
     // --- リンク生成 ---
     const handleGenerate = useCallback(async () => {
@@ -158,8 +158,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
             setHistory(prev => [historyItem, ...prev].slice(0, 20)); // 最大20件
 
             toastSuccess(t('linkGenerated'));
-        } catch (error) {
-            console.error('リンク生成エラー:', error);
+        } catch (_error: unknown) {
             toastError(t('generateError'));
         } finally {
             setIsGenerating(false);
@@ -183,10 +182,10 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     }, []);
 
     // --- 選択中の商品候補 ---
-    const candidates = latestResult?.candidates || [];
-    const selectedCandidate = candidates.length > 0 ? candidates[candidateIndex] : null;
+    const candidates = useMemo(() => latestResult?.candidates || [], [latestResult?.candidates]);
+    const selectedCandidate = useMemo(() => candidates.length > 0 ? candidates[candidateIndex] : null, [candidates, candidateIndex]);
     // 候補がある場合は選択中の候補のリンクを優先表示
-    const displayLink = selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || '';
+    const displayLink = useMemo(() => selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || '', [selectedCandidate, latestResult?.affiliateLink]);
 
     // --- 候補ナビゲーション ---
     const goNextCandidate = useCallback(() => {
@@ -246,9 +245,9 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     }, [selectedCandidate, latestResult, locale, toastSuccess, toastError, onItemAdded]);
 
     // 現在の商品が追加可能かどうか
-    const currentAsin = selectedCandidate?.asin || latestResult?.asin;
-    const isAlreadySaved = currentAsin ? savedAsins.has(currentAsin) : false;
-    const canAddRecommended = !!currentAsin && !isAlreadySaved;
+    const currentAsin = useMemo(() => selectedCandidate?.asin || latestResult?.asin, [selectedCandidate?.asin, latestResult?.asin]);
+    const isAlreadySaved = useMemo(() => currentAsin ? savedAsins.has(currentAsin) : false, [currentAsin, savedAsins]);
+    const canAddRecommended = useMemo(() => !!currentAsin && !isAlreadySaved, [currentAsin, isAlreadySaved]);
 
     return (
         <div className="space-y-6">
@@ -268,6 +267,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 onChange={e => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder={t('directPlaceholder')}
+                                aria-label={t('directDescription')}
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent pr-24"
                             />
                             {/* 入力タイプバッジ */}
@@ -288,7 +288,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                 </div>
 
                 {/* カテゴリ選択（常に表示） */}
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap" role="radiogroup" aria-label={locale === 'ja' ? 'カテゴリ' : 'Category'}>
                     <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
                         {locale === 'ja' ? '📂 カテゴリ' : '📂 Category'}
                     </span>
@@ -296,6 +296,8 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 <button
                                     key={cat.key}
                                     onClick={() => setCategory(cat.key)}
+                                    role="radio"
+                                    aria-checked={category === cat.key ? 'true' : 'false'}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                                         category === cat.key
                                             ? 'bg-orange-100 text-orange-800 border border-orange-300'

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { reportError } from "@/lib/errors";
 import { sanitizeSearchQuery } from "@/lib/security-utils";
 import { NextResponse } from "next/server";
 
@@ -40,22 +41,21 @@ export async function GET(request: Request) {
         if (isUuid) {
             queryBuilder = queryBuilder.eq('id', cleanQuery);
         } else {
-            // ILIKE for username or email
-            // We use 'or' to search both
-            queryBuilder = queryBuilder.or(`username.ilike.%${cleanQuery}%,email.eq.${cleanQuery}`);
+            // 🛡️ ユーザー名のみで検索 — email検索を削除してメール列挙攻撃を防止
+            queryBuilder = queryBuilder.ilike('username', `%${cleanQuery}%`);
         }
 
         const { data: users, error } = await queryBuilder;
 
         if (error) {
-            console.error("Search User Error", error);
+            reportError('user/search', error);
             return NextResponse.json({ error: "Search failed" }, { status: 500 });
         }
 
         return NextResponse.json({ users: users || [] });
 
-    } catch (error) {
-        console.error("Search Request Error", error);
+    } catch (error: unknown) {
+        reportError('user/search', error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

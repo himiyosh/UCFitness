@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { reportError } from '@/lib/errors';
 import { Period } from '@/components/LeaderboardTabs';
 import { sendBadgeNotification } from './teams';
 
@@ -13,24 +14,49 @@ const BADGE_DEFINITIONS = {
         WEEKLY: ['GROUP_WEEKLY_1', 'GROUP_WEEKLY_2', 'GROUP_WEEKLY_3'],
         MONTHLY: ['GROUP_MONTHLY_1', 'GROUP_MONTHLY_2', 'GROUP_MONTHLY_3'],
     }
-};
+} as const;
+
+/** バッジ定義へアクセスする際の安全なキー型 */
+type BadgePeriodKey = keyof typeof BADGE_DEFINITIONS.GLOBAL;
+
+/**
+ * 日付範囲を計算するヘルパー
+ */
+function computeDateRange(period: Period, dateStr: string): { startDate: string; endDate: string } {
+    const startDate = dateStr;
+    let endDate = dateStr;
+
+    if (period === 'WEEKLY') {
+        const d = new Date(dateStr);
+        const end = new Date(d);
+        end.setUTCDate(end.getUTCDate() + 6);
+        endDate = end.toISOString().split('T')[0];
+    } else if (period === 'MONTHLY') {
+        const [y, m] = dateStr.split('-').map(Number);
+        const end = new Date(y, m, 0); // Last day of month
+        endDate = `${y}-${String(m).padStart(2, '0')}-${end.getDate()}`;
+    }
+
+    return { startDate, endDate };
+}
 
 export const assignBadges = async (period: Period, dateStr: string) => {
-    console.log(`Starting badge assignment for ${period} on ${dateStr}`);
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        reportError('assignBadges', new Error('Invalid dateStr format'));
+        return;
+    }
 
-    // 1. Assign Global Badges
-    await assignGlobalBadges(period, dateStr);
-
-    // 2. Assign Group Badges
-    await assignGroupBadges(period, dateStr);
+    // 1 & 2. Assign Global and Group Badges in parallel
+    await Promise.all([
+        assignGlobalBadges(period, dateStr),
+        assignGroupBadges(period, dateStr),
+    ]);
 
     // 3. Assign Personal Achievements
     // Only run these on DAILY trigger to avoid redundant calculations
     if (period === 'DAILY') {
         await assignPersonalBadges(dateStr);
     }
-
-    console.log(`Finished badge assignment for ${period}`);
 };
 
 const assignPersonalBadges = async (dateStr: string) => {
@@ -80,10 +106,12 @@ const assignPersonalBadges = async (dateStr: string) => {
             const history = historyMap.get(user.user_id) || [];
             const goal = goalMap.get(user.user_id) || 10000;
 
-            await assignStreakBadges(user.user_id, dateStr, history, goal);
-            await assignMilestoneBadges(user.user_id, history);
-            await assignTitleBadges(user.user_id, dateStr, history);
-            await assignLifestyleBadges(user.user_id, dateStr, user.steps);
+            await Promise.all([
+                assignStreakBadges(user.user_id, dateStr, history, goal),
+                assignMilestoneBadges(user.user_id, history),
+                assignTitleBadges(user.user_id, dateStr, history),
+                assignLifestyleBadges(user.user_id, dateStr, user.steps),
+            ]);
         }));
     }
 }
@@ -160,39 +188,26 @@ const assignLifestyleBadges = async (userId: string, dateStr: string, steps: num
 }
 
 const assignGlobalBadges = async (period: Period, dateStr: string) => {
-    // Determine Range
-    const startDate = dateStr;
-    let endDate = dateStr;
+    if (period === 'YEARLY') return;
 
-    if (period === 'WEEKLY') {
-        const d = new Date(dateStr);
-        const end = new Date(d);
-        end.setUTCDate(end.getUTCDate() + 6);
-        endDate = end.toISOString().split('T')[0];
-    } else if (period === 'MONTHLY') {
-        const [y, m] = dateStr.split('-').map(Number);
-        const end = new Date(y, m, 0); // Last day of month
-        endDate = `${y}-${String(m).padStart(2, '0')}-${end.getDate()}`;
-    }
-
+    const { startDate, endDate } = computeDateRange(period, dateStr);
     const rankings = await getRankingsForRange(startDate, endDate);
 
     // CONSTRAINT: Global Badges require 10+ active users
     if (rankings.length < 10) {
-        console.log(`Skipping Global Badge assignment for ${period}: Only ${rankings.length} active users (Req: 10)`);
         return;
     }
 
+    const periodKey = period as BadgePeriodKey;
+    const badgeCodes = BADGE_DEFINITIONS.GLOBAL[periodKey];
+    if (!badgeCodes) return;
+
     const top3 = rankings.slice(0, 3);
 
-    for (let i = 0; i < top3.length; i++) {
-        const entry = top3[i];
-        if (entry.steps <= 0) continue;
-
-        const badgeCode = BADGE_DEFINITIONS.GLOBAL[period as 'DAILY' | 'WEEKLY' | 'MONTHLY'][i];
-
-        await awardBadge(entry.userId, badgeCode, dateStr, null);
-    }
+    await Promise.all(top3.map((entry, i) => {
+        if (entry.steps <= 0) return Promise.resolve();
+        return awardBadge(entry.userId, badgeCodes[i], dateStr, null);
+    }));
 };
 
 const getRankingsForRange = async (startDate: string, endDate: string, userIds?: string[]) => {
@@ -211,7 +226,7 @@ const getRankingsForRange = async (startDate: string, endDate: string, userIds?:
 
     const { data, error } = await query;
     if (error) {
-        console.error("Error fetching steps:", error);
+        reportError('getRankingsForRange', error, { startDate, endDate });
         return [];
     }
 
@@ -230,53 +245,74 @@ const getRankingsForRange = async (startDate: string, endDate: string, userIds?:
 const assignGroupBadges = async (period: Period, dateStr: string) => {
     if (period === 'YEARLY') return;
 
+    const periodKey = period as BadgePeriodKey;
+    const badgeCodes = BADGE_DEFINITIONS.GROUP[periodKey];
+    if (!badgeCodes) return;
+
     // 1. Get all groups
     const { data: groups } = await supabaseAdmin
         .from('groups')
         .select('id');
 
-    if (!groups) return;
+    if (!groups || groups.length === 0) return;
 
-    // Determine Range (Same as Global)
-    const startDate = dateStr;
-    let endDate = dateStr;
-    if (period === 'WEEKLY') {
-        const d = new Date(dateStr);
-        const end = new Date(d);
-        end.setUTCDate(end.getUTCDate() + 6);
-        endDate = end.toISOString().split('T')[0];
-    } else if (period === 'MONTHLY') {
-        const [y, m] = dateStr.split('-').map(Number);
-        const end = new Date(y, m, 0); // Last day of month
-        endDate = `${y}-${String(m).padStart(2, '0')}-${end.getDate()}`;
+    const { startDate, endDate } = computeDateRange(period, dateStr);
+
+    // 2. Fetch ALL group members in one query (eliminates N+1)
+    const groupIds = groups.map(g => g.id);
+    const { data: allMembers } = await supabaseAdmin
+        .from('group_members')
+        .select('user_id, group_id')
+        .in('group_id', groupIds);
+
+    if (!allMembers) return;
+
+    // Build a map: groupId → user_id[]
+    const groupMembersMap = new Map<string, string[]>();
+    for (const member of allMembers) {
+        const list = groupMembersMap.get(member.group_id) ?? [];
+        list.push(member.user_id);
+        groupMembersMap.set(member.group_id, list);
     }
 
-    for (const group of groups) {
-        const { data: members } = await supabaseAdmin
-            .from('group_members')
-            .select('user_id')
-            .eq('group_id', group.id);
+    // 3. For each qualifying group, compute rankings and award badges
+    // Get all unique userIds across qualifying groups for a single rankings query
+    const qualifyingGroups = groups.filter(g => {
+        const members = groupMembersMap.get(g.id);
+        return members && members.length >= 5;
+    });
 
-        if (!members) continue;
+    if (qualifyingGroups.length === 0) return;
 
-        if (members.length < 5) {
-            continue;
+    // Get all unique user IDs for a single range query
+    const allUserIds = new Set<string>();
+    for (const group of qualifyingGroups) {
+        const members = groupMembersMap.get(group.id) ?? [];
+        for (const uid of members) {
+            allUserIds.add(uid);
         }
+    }
 
-        const userIds = members.map(m => m.user_id);
-        if (userIds.length === 0) continue;
+    // Single query for all relevant users' steps in range
+    const allRankings = await getRankingsForRange(startDate, endDate, Array.from(allUserIds));
+    const stepsLookup = new Map(allRankings.map(r => [r.userId, r.steps]));
 
-        const rankings = await getRankingsForRange(startDate, endDate, userIds);
+    // Award badges per group
+    await Promise.all(qualifyingGroups.map(async (group) => {
+        const userIds = groupMembersMap.get(group.id) ?? [];
+
+        // Compute group-specific rankings from the pre-fetched data
+        const rankings = userIds
+            .map(userId => ({ userId, steps: stepsLookup.get(userId) ?? 0 }))
+            .sort((a, b) => b.steps - a.steps);
+
         const top3 = rankings.slice(0, 3);
 
-        for (let i = 0; i < top3.length; i++) {
-            const entry = top3[i];
-            if (entry.steps <= 0) continue;
-
-            const badgeCode = BADGE_DEFINITIONS.GROUP[period][i];
-            await awardBadge(entry.userId, badgeCode, dateStr, group.id);
-        }
-    }
+        await Promise.all(top3.map((entry, i) => {
+            if (entry.steps <= 0) return Promise.resolve();
+            return awardBadge(entry.userId, badgeCodes[i], dateStr, group.id);
+        }));
+    }));
 };
 
 const awardBadge = async (userId: string, badgeCode: string, periodDate: string, groupId: string | null) => {
@@ -291,43 +327,50 @@ const awardBadge = async (userId: string, badgeCode: string, periodDate: string,
             });
 
         if (error) {
+            // 23505 = unique violation (badge already awarded) — ignore
             if (error.code !== '23505') {
-                console.error(`Failed to award badge ${badgeCode} to ${userId}:`, error);
+                reportError('awardBadge:insert', error, { badgeCode });
             }
-        } else {
-            console.log(`Awarded ${badgeCode} to ${userId} for ${periodDate}`);
+            return;
+        }
 
-            const { data: badgeData } = await supabaseAdmin
+        // Fetch badge info and user info in parallel
+        const [badgeResult, userResult] = await Promise.all([
+            supabaseAdmin
                 .from('badges')
                 .select('name, image_url, description')
                 .eq('code', badgeCode)
-                .single();
-
-            const { data: userData } = await supabaseAdmin
+                .single(),
+            supabaseAdmin
                 .from('users')
                 .select('username')
                 .eq('id', userId)
-                .single();
+                .single(),
+        ]);
 
-            if (badgeData && userData) {
-                // 1. Teams Notification
-                await sendBadgeNotification(
-                    userData.username || "A user",
-                    badgeData.name,
-                    badgeData.image_url,
-                    badgeData.description
-                );
+        const badgeData = badgeResult.data;
+        const userData = userResult.data;
 
-                // 2. Web Push Notification
-                const { data: subscriptions } = await supabaseAdmin
-                    .from('push_subscriptions')
-                    .select('*')
-                    .eq('user_id', userId);
+        if (badgeData && userData) {
+            // 1. Teams Notification
+            await sendBadgeNotification(
+                userData.username || "A user",
+                badgeData.name,
+                badgeData.image_url,
+                badgeData.description
+            );
 
-                if (subscriptions && subscriptions.length > 0) {
-                    const { sendWebPushNotification } = await import('@/lib/web-push');
+            // 2. Web Push Notification
+            const { data: subscriptions } = await supabaseAdmin
+                .from('push_subscriptions')
+                .select('endpoint, p256dh, auth')
+                .eq('user_id', userId);
 
-                    for (const sub of subscriptions) {
+            if (subscriptions && subscriptions.length > 0) {
+                const { sendWebPushNotification } = await import('@/lib/web-push');
+
+                await Promise.allSettled(
+                    subscriptions.map(sub => {
                         const pushSub = {
                             endpoint: sub.endpoint,
                             keys: {
@@ -336,17 +379,17 @@ const awardBadge = async (userId: string, badgeCode: string, periodDate: string,
                             }
                         };
 
-                        await sendWebPushNotification(pushSub as any, {
+                        return sendWebPushNotification(pushSub, {
                             title: '🎉 New Badge Unlocked!',
                             body: `You earned the "${badgeData.name}" badge!`,
                             icon: badgeData.image_url || '/globe.svg',
                             url: `/profile`
                         });
-                    }
-                }
+                    })
+                );
             }
         }
-    } catch (e) {
-        console.error("Exception awarding badge:", e);
+    } catch (error: unknown) {
+        reportError('awardBadge', error, { badgeCode });
     }
 };

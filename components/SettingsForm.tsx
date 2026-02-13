@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import ProfileImageEditor from "@/components/ProfileImageEditor";
 import BannerImageEditor from "@/components/BannerImageEditor";
 import ImageModal from "@/components/ImageModal";
@@ -35,12 +35,11 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     const [switchingLocale, setSwitchingLocale] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    // フレームカラーのリアクティブ状態
-    const initialFrameColor = (() => {
+    // フレームカラーのリアクティブ状態（遅延初期化で不要な再計算を防止）
+    const [activeFrameColor, setActiveFrameColor] = useState<string | null>(() => {
         const equipped = ownedFrames.find(f => f.isEquipped);
         return equipped ? getFrameColor(equipped.previewValue) : null;
-    })();
-    const [activeFrameColor, setActiveFrameColor] = useState<string | null>(initialFrameColor);
+    });
     const router = useRouter(); // Use navigation router
     const pathname = usePathname();
     const locale = useLocale();
@@ -50,14 +49,17 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     const { theme, setTheme } = useTheme(); // Theme hook
 
     // S3: プロフィール完成度の計算
-    const completionItems = [
+    const completionItems = useMemo(() => [
         { key: 'name', label: t('displayName'), done: !!user.name && user.name.trim().length > 0 },
         { key: 'username', label: t('userId'), done: !!user.username && user.username.trim().length > 0 },
         { key: 'banner', label: t('banner'), done: !!user.banner_url },
         { key: 'image', label: t('profilePhoto'), done: !!user.is_custom_image },
         { key: 'goal', label: t('dailyGoal'), done: !!user.step_goal && user.step_goal > 0 },
-    ];
-    const completionPercent = Math.round((completionItems.filter(i => i.done).length / completionItems.length) * 100);
+    ], [user.name, user.username, user.banner_url, user.is_custom_image, user.step_goal, t]);
+    const completionPercent = useMemo(
+        () => Math.round((completionItems.filter(i => i.done).length / completionItems.length) * 100),
+        [completionItems]
+    );
 
     // Midnight を所有していないのに適用中の場合、classic にリセット
     useEffect(() => {
@@ -66,7 +68,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
         }
     }, [theme, ownsMidnight, setTheme]);
 
-    const handleLanguageChange = async (newLocale: string) => {
+    const handleLanguageChange = useCallback(async (newLocale: string) => {
         if (switchingLocale) return;
         setSwitchingLocale(newLocale);
         try {
@@ -84,13 +86,20 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             await update({ user: { language: newLocale } }); // Update session immediately
             router.replace(pathname, { locale: newLocale });
             router.refresh();
-        } catch (e) {
-            console.error("Failed to update language:", e);
+        } catch {
             setSwitchingLocale(null);
         }
-    };
+    }, [switchingLocale, update, router, pathname]);
 
-    const handleSave = async () => {
+    const handleSave = useCallback(async () => {
+        const trimmedName = name.trim();
+        const trimmedUsername = username.trim();
+
+        if (!trimmedName || !trimmedUsername) {
+            setMessage({ text: t('saveError'), type: 'error' });
+            return;
+        }
+
         setIsSaving(true);
         setMessage(null);
 
@@ -99,7 +108,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             const nameRes = await fetch('/api/user/profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name }),
+                body: JSON.stringify({ name: trimmedName }),
             });
             if (!nameRes.ok) throw new Error('Failed to update name');
 
@@ -107,21 +116,21 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             const usernameRes = await fetch('/api/user/username', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username }),
+                body: JSON.stringify({ username: trimmedUsername }),
             });
 
             const usernameData = await usernameRes.json();
             if (!usernameRes.ok) throw new Error(usernameData.error || 'Failed to update ID');
 
-            setMessage({ text: t('saveSuccess'), type: 'success' }); // Use translation
+            setMessage({ text: t('saveSuccess'), type: 'success' });
             router.refresh();
-        } catch (error: any) {
-            console.error(error);
-            setMessage({ text: error.message || t('saveError'), type: 'error' }); // Use translation
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : t('saveError');
+            setMessage({ text: msg, type: 'error' });
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [name, username, router, t]);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -230,16 +239,18 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                             <p id="username-hint" className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t.raw('usernameHint') }} />
                         </div>
 
-                        {message && (
-                            <div className={`p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                {message.type === 'success' ? (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                ) : (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                )}
-                                {message.text}
-                            </div>
-                        )}
+                        <div role="status" aria-live="polite">
+                            {message && (
+                                <div className={`p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                    {message.type === 'success' ? (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    )}
+                                    {message.text}
+                                </div>
+                            )}
+                        </div>
 
                         <div className="pt-2">
                             <button

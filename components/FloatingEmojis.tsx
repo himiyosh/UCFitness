@@ -1,9 +1,13 @@
 'use client';
 
+import { memo, useEffect, useState } from 'react';
+
 /**
  * 背景に浮遊する絵文字を表示するデコレーションコンポーネント
  * Landing Page と同じ float アニメーション + テーマ別フィルターで
  * ダッシュボードにもポップな雰囲気を与える
+ *
+ * prefers-reduced-motion が有効な場合はアニメーションを停止し静的表示にする
  */
 
 const EMOJIS = [
@@ -23,9 +27,19 @@ const EMOJIS = [
   { emoji: '🎉', size: 'text-lg',  left: '70%', top: '70%', anim: 'animate-float',          mobileHide: false },
   { emoji: '🏆', size: 'text-xl',  left: '8%',  top: '75%', anim: 'animate-float',          mobileHide: false },
   { emoji: '⚡', size: 'text-4xl', left: '48%', top: '82%', anim: 'animate-float-delayed',  mobileHide: false },
-];
+] as const;
 
-export default function FloatingEmojis() {
+const FloatingEmojis = memo(function FloatingEmojis() {
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReducedMotion(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+
   return (
     <div
       className="fixed inset-0 overflow-hidden pointer-events-none"
@@ -35,7 +49,7 @@ export default function FloatingEmojis() {
       {EMOJIS.map((item, i) => (
         <span
           key={i}
-          className={`absolute emoji-float ${item.anim} ${item.size}${item.mobileHide ? ' hidden sm:block' : ''}`}
+          className={`absolute emoji-float ${reducedMotion ? '' : item.anim} ${item.size}${item.mobileHide ? ' hidden sm:block' : ''}`}
           style={{
             left: item.left,
             top: item.top,
@@ -46,4 +60,6 @@ export default function FloatingEmojis() {
       ))}
     </div>
   );
-}
+});
+
+export default FloatingEmojis;

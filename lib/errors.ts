@@ -24,13 +24,20 @@ export function reportError(
     error: unknown,
     context?: Record<string, unknown>
 ): void {
+    const errorDetail: Record<string, unknown> = error instanceof Error
+        ? {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+            ...(error instanceof AppError ? { code: error.code, errorContext: error.context } : {}),
+        }
+        : { message: String(error) };
+
     const entry = {
+        ...context,
         timestamp: new Date().toISOString(),
         operation,
-        ...context,
-        error: error instanceof Error
-            ? { message: error.message, name: error.name, stack: error.stack }
-            : String(error),
+        error: errorDetail,
     };
     console.error(`[ERROR] ${operation}:`, JSON.stringify(entry));
 }

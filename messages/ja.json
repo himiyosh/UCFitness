@@ -15,7 +15,10 @@
         "displayName": "表示名",
         "skipToContent": "メインコンテンツへ",
         "signInWithFitbit": "Fitbit でログイン",
-        "ucHint": "UndouCoin（運動コイン）― 毎日の歩数から獲得できるコイン。たくさん歩いて貯めよう！"
+        "ucHint": "UndouCoin（運動コイン）― 毎日の歩数から獲得できるコイン。たくさん歩いて貯めよう！",
+        "you": "自分",
+        "anonymous": "匿名ユーザー",
+        "userNotFound": "ユーザーが見つかりません。"
     },
     "Settings": {
         "title": "設定",
@@ -84,7 +87,8 @@
         "wallet": "ウォレット",
         "shop": "ショップ",
         "refreshSteps": "今すぐ同期",
-        "refreshing": "同期中..."
+        "refreshing": "同期中...",
+        "refreshFailed": "歩数の同期に失敗しました"
     },
     "Landing": {
         "title": "UCFitness",
@@ -132,7 +136,14 @@
             "weekly": "今週",
             "monthly": "今月",
             "yearly": "今年"
-        }
+        },
+        "topAndNeighbors": "トップ3 & 周辺",
+        "rankNumber": "#{rank} 位",
+        "rankHeader": "順位",
+        "groupHeader": "グループ",
+        "avgStepsHeader": "平均歩数",
+        "totalStepsHeader": "総歩数",
+        "membersHeader": "メンバー"
     },
     "Notifications": {
         "title": "通知設定",
@@ -226,6 +237,7 @@
         "joinOrCreate": "参加 / 作成",
         "yourGroups": "あなたのグループ",
         "noGroups": "まだグループに参加していません。",
+        "noGroupsDescription": "グループに参加して、みんなと歩数を競い合おう！",
         "joinGroup": "グループに参加",
         "enterGroupName": "ランキングを表示するグループ名を入力してください。",
         "placeholder": "GroupId",
@@ -298,7 +310,9 @@
         "allData": "全データ",
         "totalLabel": "合計:",
         "targetLabel": "目標:",
-        "groupLeaders": "グループリーダー"
+        "groupLeaders": "グループリーダー",
+        "noData": "この期間のデータはありません",
+        "noGroupActivityYet": "今日のグループ活動はまだありません。"
     },
     "UserMenu": {
         "signedInAs": "ログイン中",
@@ -421,5 +435,68 @@
         "linkReady": "商品が見つかりました！",
         "linkGenerated": "商品が見つかりました。",
         "generateError": "リンク生成に失敗しました。"
+    },
+    "GroupAnalytics": {
+        "noData": "アクティビティデータがまだありません",
+        "noDataDesc": "歩き始めるとグループ分析がここに表示されます！",
+        "yourRank": "あなたの順位",
+        "inGroup": "グループ内",
+        "steps": "歩数",
+        "groupRank": "グループ順位",
+        "average": "平均",
+        "globalGroupRankings": "全グループランキング",
+        "byAverageSteps": "平均歩数順",
+        "settingsMembers": "設定 & メンバー",
+        "memberRankings": "メンバー順位",
+        "pageInfo": "{total} ページ中 {current} ページ目",
+        "comparisonTitle": {
+            "daily": "過去7日間の比較",
+            "weekly": "今週の比較",
+            "monthly": "今月の比較",
+            "yearly": "今年の比較"
+        }
+    },
+    "GroupDetail": {
+        "owner": "オーナー",
+        "member": "メンバー",
+        "settingsMembers": "設定 & メンバー",
+        "membersCount": "メンバー ({count})",
+        "unknownUser": "不明なユーザー",
+        "close": "閉じる",
+        "invite": "招待",
+        "done": "完了",
+        "edit": "編集",
+        "inviteNewMember": "新しいメンバーを招待",
+        "searchPlaceholder": "ID、ユーザー名、またはメールで検索...",
+        "noUsersFound": "ユーザーが見つかりません。",
+        "cancel": "キャンセル",
+        "confirm": "確認",
+        "noMembersYet": "メンバーがまだいません。",
+        "demoteSelf": "自分を降格",
+        "leave": "退出",
+        "demote": "降格",
+        "makeOwner": "オーナーにする",
+        "remove": "削除",
+        "dangerZone": "危険な操作",
+        "adding": "追加中...",
+        "add": "追加",
+        "confirmPromote": "{name} をオーナーに昇格しますか？あなたもオーナーのままです。",
+        "confirmDemoteSelf": "自分をメンバーに降格しますか？オーナー権限を失います。",
+        "confirmDemote": "{name} をメンバーに降格しますか？",
+        "confirmRemove": "{name} を削除しますか？",
+        "confirmLeave": "{name} から退出しますか？",
+        "promoteFailed": "メンバーの昇格に失敗しました",
+        "promoteSuccess": "{name} がオーナーになりました。",
+        "demoteFailed": "メンバーの降格に失敗しました",
+        "demoteSelfSuccess": "メンバーになりました。",
+        "demoteSuccess": "{name} がメンバーになりました。",
+        "removeFailed": "メンバーの削除に失敗しました",
+        "inviteFailed": "ユーザーの招待に失敗しました",
+        "inviteSuccess": "ユーザーを招待しました！",
+        "searchFailed": "検索に失敗しました。もう一度お試しください。",
+        "leaveFailed": "グループの退出に失敗しました",
+        "errorOccurred": "エラーが発生しました。",
+        "memberRankings": "メンバーランキング",
+        "pageInfo": "{current} / {total} ページ"
     }
 }

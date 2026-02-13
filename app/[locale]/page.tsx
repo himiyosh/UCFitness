@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
@@ -9,13 +8,16 @@ import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
 import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
 import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
-import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
+import nextDynamic from 'next/dynamic';
 import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip } from '@/lib/ranking-utils';
-import GoalProgressChart from '@/components/GoalProgressChart';
-import RunnerAnimation from '@/components/RunnerAnimation';
 import AutoSync from '@/components/AutoSync';
 import LandingPage from '@/components/LandingPage';
 import { Period } from '@/components/LeaderboardTabs';
+
+// ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
+const AnimatedLeaderboard = nextDynamic(() => import('@/components/AnimatedLeaderboard'));
+const GoalProgressChart = nextDynamic(() => import('@/components/GoalProgressChart'));
+const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'));
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +28,6 @@ export default async function Home() {
   if (!session?.user) {
     return <LandingPage />;
   }
-
-  const userEmail = session?.user?.email;
 
   let groupKeywords: string[] = [];
   let username: string | undefined;
@@ -40,23 +40,56 @@ export default async function Home() {
 
   if (session?.user && (session.user as any).id) {
     const userId = (session.user as any).id;
-    // Fetch current user's profile
-    const { data: userData } = await supabase
-      .from('users')
-      .select('username, step_goal, banner_url, image, name')
-      .eq('id', userId)
-      .single();
+
+    // Use JST (date calculations are synchronous — compute before queries)
+    const now = new Date();
+    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const today = jstDate.toISOString().split('T')[0];
+    const yesterdayDate = new Date(jstDate);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toISOString().split('T')[0];
+
+    const currentDate = new Date(`${today}T00:00:00Z`);
+    const utcDay = currentDate.getUTCDay();
+    const daysToSubtract = (utcDay + 6) % 7;
+    const thisWeekMonday = new Date(currentDate);
+    thisWeekMonday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
+    const thisWeekStartStr = thisWeekMonday.toISOString().split('T')[0];
+    const lastWeekMonday = new Date(thisWeekMonday);
+    lastWeekMonday.setUTCDate(thisWeekMonday.getUTCDate() - 7);
+    const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
+    const [y, m] = today.split('-');
+    const thisMonthStartStr = `${y}-${m}-01`;
+    const thisMonthDate = new Date(`${thisMonthStartStr}T00:00:00Z`);
+    const lastMonthDate = new Date(thisMonthDate);
+    lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
+    const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
+
+    // ⚡ パフォーマンス: 3つの独立クエリを並列実行（逐次→並列で ~3x 高速化）
+    const [userResult, membershipResult, stepsResult] = await Promise.all([
+      supabase
+        .from('users')
+        .select('username, step_goal, banner_url, image, name')
+        .eq('id', userId)
+        .single(),
+      supabase
+        .from('group_members')
+        .select('groups(keyword)')
+        .eq('user_id', userId),
+      supabase
+        .from('daily_steps')
+        .select('steps, date')
+        .eq('user_id', userId)
+        .gte('date', lastMonthStartStr),
+    ]);
+
+    const userData = userResult.data;
+    const memberships = membershipResult.data;
+    const userStepsData = stepsResult.data;
 
     stepGoal = userData?.step_goal || 10000;
     username = userData?.username;
     bannerUrl = userData?.banner_url;
-
-    // グループ所属は group_members テーブル (正規化データ) から取得
-    // users.group_keyword (レガシー非正規配列) に依存しない
-    const { data: memberships } = await supabase
-      .from('group_members')
-      .select('groups(keyword)')
-      .eq('user_id', userId);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     groupKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
@@ -66,8 +99,10 @@ export default async function Home() {
       .from('users')
       .update({ group_keyword: groupKeywords })
       .eq('id', userId)
-      .then(() => {/* fire-and-forget */});
-
+      .then(
+        () => {/* fire-and-forget */},
+        (err: unknown) => console.error('[group_keyword sync]', err)
+      );
 
     // Override session image with fresh DB image if available
     if (userData) {
@@ -81,50 +116,6 @@ export default async function Home() {
     if (!userData?.username) {
       redirect('/setup');
     }
-
-    // Use JST
-    const now = new Date();
-    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const today = jstDate.toISOString().split('T')[0];
-
-    // Fetch yesterday's steps (JST)
-    const yesterdayDate = new Date(jstDate);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = yesterdayDate.toISOString().split('T')[0];
-
-    // --- Calculate Last Week & Last Month Ranges ---
-    const currentDate = new Date(`${today}T00:00:00Z`);
-    const utcDay = currentDate.getUTCDay(); // 0(Sun) - 6(Sat)
-    const daysToSubtract = (utcDay + 6) % 7;
-
-    // This Week Start (Mon)
-    const thisWeekMonday = new Date(currentDate);
-    thisWeekMonday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
-    const thisWeekStartStr = thisWeekMonday.toISOString().split('T')[0];
-
-    // Last Week Start (Mon - 7)
-    const lastWeekMonday = new Date(thisWeekMonday);
-    lastWeekMonday.setUTCDate(thisWeekMonday.getUTCDate() - 7);
-    const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
-
-    // This Month Start
-    const [y, m] = today.split('-');
-    const thisMonthStartStr = `${y}-${m}-01`;
-
-    // Last Month Start (1st of prev month)
-    const thisMonthDate = new Date(`${thisMonthStartStr}T00:00:00Z`);
-    const lastMonthDate = new Date(thisMonthDate);
-    lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
-    const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
-
-    // ⚡ Bolt Optimization: Combined Query
-    // Fetch all needed data in a single request (Today, Yesterday, Last Week, Last Month)
-    // We fetch from the earliest date needed (Last Month Start)
-    const { data: userStepsData } = await supabase
-      .from('daily_steps')
-      .select('steps, date')
-      .eq('user_id', userId)
-      .gte('date', lastMonthStartStr);
 
     // Process results in memory
     const stepsMap = new Map<string, number>();

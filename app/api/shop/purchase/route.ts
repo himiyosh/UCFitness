@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { purchaseItem } from '@/lib/shop-service';
+import { reportError } from '@/lib/errors';
 
 export async function POST(request: Request) {
     const session = await auth();
@@ -12,8 +13,12 @@ export async function POST(request: Request) {
 
     try {
         const { itemId } = await request.json();
-        if (!itemId) {
+        if (!itemId || typeof itemId !== 'string') {
             return NextResponse.json({ error: 'itemId is required' }, { status: 400 });
+        }
+
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId)) {
+            return NextResponse.json({ error: 'Invalid itemId format' }, { status: 400 });
         }
 
         const userId = session.user.id;
@@ -38,8 +43,8 @@ export async function POST(request: Request) {
             newBalance: result.newBalance,
             userItem: result.userItem,
         });
-    } catch (error) {
-        console.error('Shop purchase error:', error);
+    } catch (error: unknown) {
+        reportError('shop/purchase', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

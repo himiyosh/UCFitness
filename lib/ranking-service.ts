@@ -54,7 +54,7 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
     const { data: rawSteps, error } = await query;
 
     if (error) {
-        console.error(`Error fetching ${scope} rankings:`, error);
+        console.error(`Error fetching ${scope} rankings`);
         return [];
     }
 
@@ -146,16 +146,25 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     const usersMap = new Map<string, any>();
 
     if (scope === 'GROUP' && groupKeyword) {
-        // Fetch specific users first
-        const { data: users } = await supabase
-            .from('users')
-            .select('id, name, image, username, group_keyword')
-            .contains('group_keyword', [groupKeyword]);
+        // 🐛 Fix: group_members テーブルを使用（レガシー group_keyword 配列に依存しない）
+        const { data: groupData } = await supabase
+            .from('groups')
+            .select('id')
+            .eq('keyword', groupKeyword)
+            .single();
 
-        if (!users || users.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+        if (!groupData) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
-        userIds = users.map(u => u.id);
-        users.forEach(u => usersMap.set(u.id, u));
+        const { data: members } = await supabase
+            .from('group_members')
+            .select('user_id, users(id, name, image, username)')
+            .eq('group_id', groupData.id);
+
+        if (!members || members.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+
+        userIds = members.map(m => m.user_id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        members.forEach((m: any) => { if (m.users) usersMap.set(m.users.id, m.users); });
     }
 
     let query = supabase
@@ -171,7 +180,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     const { data: rawSteps, error } = await query;
 
     if (error) {
-        console.error(`Error fetching ${scope} all rankings:`, error);
+        console.error(`Error fetching ${scope} all rankings`);
         return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     }
 
@@ -291,6 +300,9 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
 // New Functions using 'groups' table
 
 export const getGroupRankings = async (groupId: string, period: Period) => {
+    // 🛡️ 入力検証
+    if (!groupId || typeof groupId !== 'string' || groupId.length > 100) return [];
+
     // JST Calculation
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -325,7 +337,7 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
         .eq('group_id', groupId);
 
     if (memberError || !groupMembers) {
-        console.error('Error fetching group members:', memberError);
+        console.error('Error fetching group members');
         return [];
     }
 
@@ -333,39 +345,44 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
 
     if (userIds.length === 0) return [];
 
-    const { data: rawSteps, error } = await supabase
-        .from('daily_steps')
-        .select(`
-            steps,
-            date,
-            users!inner (
-                id,
-                name,
-                image,
-                username
-            )
-        `)
-        .in('user_id', userIds)
-        .gte('date', startDate);
+    // ⚡ Performance: JOIN を分割して並列取得
+    const [stepsResult, usersResult] = await Promise.all([
+        supabase
+            .from('daily_steps')
+            .select('steps, date, user_id')
+            .in('user_id', userIds)
+            .gte('date', startDate),
+        supabase
+            .from('users')
+            .select('id, name, image, username')
+            .in('id', userIds),
+    ]);
+
+    const { data: rawSteps, error } = stepsResult;
+    const { data: users } = usersResult;
 
     if (error) {
-        console.error(`Error fetching group rankings for ${groupId}:`, error);
+        console.error('Error fetching group rankings');
         return [];
     }
+
+    const usersLookup = new Map(users?.map(u => [u.id, u]));
 
     // Aggregate
     const userMap = new Map<string, any>();
     rawSteps?.forEach((row: any) => {
-        const userId = row.users.id;
+        const userId = row.user_id;
+        const user = usersLookup.get(userId);
+        if (!user) return;
+
         if (!userMap.has(userId)) {
             userMap.set(userId, {
                 steps: 0,
-                users: row.users
+                users: user
             });
         }
         const entry = userMap.get(userId);
-        const steps = Number(row.steps);
-        entry.steps += steps;
+        entry.steps += Number(row.steps);
     });
 
     return Array.from(userMap.values())
@@ -373,6 +390,11 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
 };
 
 export const getAllGroupRankings = async (groupId: string) => {
+    // 🛡️ 入力検証
+    if (!groupId || typeof groupId !== 'string' || groupId.length > 100) {
+        return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+    }
+
     // JST Calculation (Robust)
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -426,23 +448,26 @@ export const getAllGroupRankings = async (groupId: string) => {
     const userIds = groupMembers?.map(m => m.user_id) || [];
     if (userIds.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
-    // ⚡ Bolt Optimization: Fetch steps without join
-    const { data: rawSteps, error } = await supabase
-        .from('daily_steps')
-        .select('steps, date, user_id') // No join
-        .in('user_id', userIds)
-        .gte('date', queryStartStr);
+    // ⚡ Performance: ステップとユーザー情報を並列取得
+    const [stepsResult, usersResult] = await Promise.all([
+        supabase
+            .from('daily_steps')
+            .select('steps, date, user_id')
+            .in('user_id', userIds)
+            .gte('date', queryStartStr),
+        supabase
+            .from('users')
+            .select('id, name, image, username')
+            .in('id', userIds)
+    ]);
+
+    const { data: rawSteps, error } = stepsResult;
+    const { data: users } = usersResult;
 
     if (error) {
-        console.error('Error fetching all group rankings:', error);
+        console.error('Error fetching all group rankings');
         return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     }
-
-    // Fetch User Details separately
-    const { data: users } = await supabase
-        .from('users')
-        .select('id, name, image, username')
-        .in('id', userIds);
 
     const usersMap = new Map(users?.map(u => [u.id, u]));
 
@@ -508,7 +533,13 @@ export const getAllGroupRankings = async (groupId: string) => {
 };
 
 export const getBatchGroupRankings = async (groupIds: string[]) => {
-    if (groupIds.length === 0) return {};
+    if (!groupIds || groupIds.length === 0) return {};
+
+    // 🛡️ 入力検証: グループID数の上限
+    if (groupIds.length > 50) {
+        console.error('Too many group IDs requested');
+        return {};
+    }
 
     // JST Calculation (Robust)
     const now = new Date();
@@ -565,23 +596,26 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     // 2. Get unique User IDs
     const uniqueUserIds = Array.from(new Set(groupMembers.map(m => m.user_id)));
 
-    // 3. Fetch Steps for ALL users (Optimization: No Join)
-    const { data: rawSteps, error } = await supabase
-        .from('daily_steps')
-        .select('steps, date, user_id')
-        .in('user_id', uniqueUserIds)
-        .gte('date', queryStartStr);
+    // 3. ⚡ Performance: ステップとユーザー情報を並列取得
+    const [stepsResult, usersResult] = await Promise.all([
+        supabase
+            .from('daily_steps')
+            .select('steps, date, user_id')
+            .in('user_id', uniqueUserIds)
+            .gte('date', queryStartStr),
+        supabase
+            .from('users')
+            .select('id, name, image, username')
+            .in('id', uniqueUserIds)
+    ]);
+
+    const { data: rawSteps, error } = stepsResult;
+    const { data: users } = usersResult;
 
     if (error) {
-        console.error('Error fetching batch group rankings:', error);
+        console.error('Error fetching batch group rankings');
         return {};
     }
-
-    // 3b. Fetch Users details
-    const { data: users } = await supabase
-        .from('users')
-        .select('id, name, image, username')
-        .in('id', uniqueUserIds);
 
     const usersMap = new Map(users?.map(u => [u.id, u]));
 

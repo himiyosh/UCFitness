@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     LineChart,
     Line,
@@ -12,9 +12,26 @@ import {
     ResponsiveContainer
 } from 'recharts';
 
+interface ChartDataPoint {
+    label: string;
+    [username: string]: string | number;
+}
+
+interface LegendPayloadEntry {
+    value: string;
+    color: string;
+    type?: string;
+}
+
+interface TooltipPayloadEntry {
+    name: string;
+    value: number;
+    color: string;
+}
+
 interface GroupComparisonChartProps {
-    data: any[];
-    users: { username: string, color: string }[];
+    data: ChartDataPoint[];
+    users: { username: string; color: string }[];
     currentUsername?: string;
     title?: string;
     groupName?: string;
@@ -27,6 +44,39 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     const [isSharing, setIsSharing] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     const shareCardRef = useRef<HTMLDivElement>(null);
+
+    // Custom Legend Component — must be declared before conditional returns (Rules of Hooks)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderLegend = useCallback((props: any) => {
+        const payload = props.payload as LegendPayloadEntry[] | undefined;
+        if (!payload) return null;
+        return (
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-4 px-2">
+                {payload.map((entry, index) => {
+                    const isHidden = activeUser && activeUser !== entry.value;
+                    return (
+                        <div
+                            key={`item-${index}`}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Toggle ${entry.value}`}
+                            onClick={() => setActiveUser(activeUser === entry.value ? null : entry.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveUser(activeUser === entry.value ? null : entry.value); } }}
+                            className={`flex items-center gap-1.5 cursor-pointer transition-opacity duration-200 ${isHidden ? 'opacity-30' : 'opacity-100'}`}
+                        >
+                            <div
+                                style={{ backgroundColor: entry.color }}
+                                className="w-2 h-2 rounded-full"
+                            />
+                            <span className="text-[10px] sm:text-xs text-gray-600 font-medium truncate max-w-[80px] sm:max-w-[120px]">
+                                {entry.value}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }, [activeUser]);
 
     useEffect(() => {
         setIsMounted(true);
@@ -42,42 +92,15 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
         );
     }
 
-    // Custom Legend Component
-    const renderLegend = (props: any) => {
-        const { payload } = props;
-        return (
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-4 px-2">
-                {payload.map((entry: any, index: number) => {
-                    const isHidden = activeUser && activeUser !== entry.value;
-                    return (
-                        <div
-                            key={`item-${index}`}
-                            onClick={() => setActiveUser(activeUser === entry.value ? null : entry.value)}
-                            className={`flex items-center gap-1.5 cursor-pointer transition-opacity duration-200 ${isHidden ? 'opacity-30' : 'opacity-100'}`}
-                        >
-                            <div
-                                style={{ backgroundColor: entry.color }}
-                                className="w-2 h-2 rounded-full"
-                            />
-                            <span className="text-[10px] sm:text-xs text-gray-600 font-medium truncate max-w-[80px] sm:max-w-[120px]">
-                                {entry.value}
-                            </span>
-                        </div>
-                    );
-                })}
-            </div>
-        );
-    };
-
     // Custom Tooltip Component
-    const CustomTooltip = ({ active, payload, label }: any) => {
+    const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
         if (active && payload && payload.length) {
             // Sort payload by value desc
             const sortedPayload = [...payload].sort((a, b) => b.value - a.value);
             return (
                 <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-100 text-xs z-50">
                     <p className="font-bold text-gray-900 mb-1.5">{label}</p>
-                    {sortedPayload.map((entry: any) => {
+                    {sortedPayload.map((entry) => {
                         const isHidden = activeUser && activeUser !== entry.name;
                         if (isHidden) return null;
 
@@ -135,8 +158,8 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                 ]);
                                 setCopySuccess(true);
                                 setTimeout(() => setCopySuccess(false), 3000);
-                            } catch (clipboardErr) {
-                                console.warn('Clipboard write failed', clipboardErr);
+                            } catch {
+                                // Clipboard write not supported in this browser
                             }
 
                             // 2. Share
@@ -149,8 +172,8 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                         text: 'Check out our group activity on UCFitness!',
                                         files: [file]
                                     });
-                                } catch (shareError) {
-                                    console.log('Share canceled or failed', shareError);
+                                } catch {
+                                    // Share canceled or not supported
                                 }
                             } else {
                                 const url = URL.createObjectURL(blob);
@@ -162,14 +185,15 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                 document.body.removeChild(a);
                                 URL.revokeObjectURL(url);
                             }
-                        } catch (err) {
-                            console.error('Failed to generate image', err);
+                        } catch {
+                            // Image generation failed silently
                         } finally {
                             setIsSharing(false);
                         }
                     }}
                     disabled={isSharing}
                     className={`p-1.5 rounded-full transition-all ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] cursor-wait' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'}`}
+                    aria-label="Share Group Stats"
                     title="Share Group Stats"
                 >
                     {isSharing ? (
@@ -216,7 +240,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }} />
                         <Legend content={renderLegend} />
-                        {users.map((user: any) => {
+                        {users.map((user) => {
                             const isCurrentUser = user.username === currentUsername;
                             const isActive = activeUser ? activeUser === user.username : true;
 
@@ -301,7 +325,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                             wrapperStyle={{ paddingTop: '40px', fontSize: '24px' }}
                                             formatter={(value) => <span className="text-white ml-2 mr-4">{value}</span>}
                                         />
-                                        {users.map((user: any) => (
+                                        {users.map((user) => (
                                             <Line
                                                 key={user.username}
                                                 type="monotoneX"

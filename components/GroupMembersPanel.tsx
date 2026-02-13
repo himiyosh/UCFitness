@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageModal from '@/components/ImageModal';
 import UserAvatar from '@/components/UserAvatar';
+import { useToast } from '@/components/Toast';
+import { useTranslations } from 'next-intl';
 import LeaveGroupButton from './LeaveGroupButton';
 
 type Member = {
@@ -13,10 +15,16 @@ type Member = {
     users: {
         id: string;
         name: string | null;
-        email: string | null;
         image: string | null;
         username: string | null;
     };
+};
+
+type SearchUser = {
+    id: string;
+    name: string | null;
+    image: string | null;
+    username: string | null;
 };
 
 export default function GroupMembersPanel({
@@ -37,143 +45,166 @@ export default function GroupMembersPanel({
     onToggleEdit: () => void
 }) {
     const [members, setMembers] = useState(initialMembers);
-    const [isProcessing, setIsProcessing] = useState<string | null>(null); // userId being processed
+    const [isProcessing, setIsProcessing] = useState<string | null>(null);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
     const router = useRouter();
+    const { success: toastSuccess, error: toastError } = useToast();
+    const detailT = useTranslations('GroupDetail');
+    const commonT = useTranslations('Common');
+    const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const searchAbortRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         setMembers(initialMembers);
     }, [initialMembers]);
 
-    const handleTransferOwnership = async (targetId: string, memberName: string) => {
-        if (!confirm(`Are you sure you want to promote ${memberName} to Owner? You will also remain an owner.`)) return;
+    const handleTransferOwnership = useCallback(async (targetId: string, memberName: string) => {
+        setConfirmAction({
+            message: detailT('confirmPromote', { name: memberName }),
+            onConfirm: async () => {
+                setConfirmAction(null);
+                setIsProcessing(targetId);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'transfer_ownership',
+                            keyword: groupKeyword,
+                            targetUserId: targetId
+                        })
+                    });
 
-        setIsProcessing(targetId);
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'transfer_ownership',
-                    keyword: groupKeyword,
-                    targetUserId: targetId
-                })
-            });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || detailT('promoteFailed'));
+                        return;
+                    }
 
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to promote member');
-                return;
+                    toastSuccess(detailT('promoteSuccess', { name: memberName }));
+                    router.refresh();
+                } catch {
+                    toastError(detailT('errorOccurred'));
+                } finally {
+                    setIsProcessing(null);
+                }
             }
+        });
+    }, [groupKeyword, router, toastSuccess, toastError, detailT]);
 
-            alert(`${memberName} is now an Owner.`);
-            router.refresh();
-
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        } finally {
-            setIsProcessing(null);
-        }
-    };
-
-    const handleDemote = async (targetId: string, memberName: string, isSelf: boolean) => {
+    const handleDemote = useCallback(async (targetId: string, memberName: string, isSelf: boolean) => {
         const msg = isSelf
-            ? "Are you sure you want to demote yourself to Member? You will lose owner privileges."
-            : `Are you sure you want to demote ${memberName} to Member?`;
+            ? detailT('confirmDemoteSelf')
+            : detailT('confirmDemote', { name: memberName });
 
-        if (!confirm(msg)) return;
+        setConfirmAction({
+            message: msg,
+            onConfirm: async () => {
+                setConfirmAction(null);
+                setIsProcessing(targetId);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'demote',
+                            keyword: groupKeyword,
+                            targetUserId: targetId
+                        })
+                    });
 
-        setIsProcessing(targetId);
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'demote',
-                    keyword: groupKeyword,
-                    targetUserId: targetId
-                })
-            });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || detailT('demoteFailed'));
+                        return;
+                    }
 
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to demote member');
-                return;
+                    toastSuccess(isSelf ? detailT('demoteSelfSuccess') : detailT('demoteSuccess', { name: memberName }));
+                    router.refresh();
+                } catch {
+                    toastError(detailT('errorOccurred'));
+                } finally {
+                    setIsProcessing(null);
+                }
             }
+        });
+    }, [groupKeyword, router, toastSuccess, toastError, detailT]);
 
-            alert(isSelf ? "You are now a member." : `${memberName} is now a member.`);
-            router.refresh();
+    const handleKick = useCallback(async (targetId: string, memberName: string) => {
+        setConfirmAction({
+            message: detailT('confirmRemove', { name: memberName }),
+            onConfirm: async () => {
+                setConfirmAction(null);
+                setIsProcessing(targetId);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'kick',
+                            keyword: groupKeyword,
+                            targetUserId: targetId
+                        })
+                    });
 
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        } finally {
-            setIsProcessing(null);
-        }
-    };
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || detailT('removeFailed'));
+                        return;
+                    }
 
-    const handleKick = async (targetId: string, memberName: string) => {
-        if (!confirm(`Are you sure you want to remove ${memberName}?`)) return;
-
-        setIsProcessing(targetId);
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'kick',
-                    keyword: groupKeyword,
-                    targetUserId: targetId
-                })
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to remove member');
-                return;
+                    setMembers(prev => prev.filter(m => m.user_id !== targetId));
+                    router.refresh();
+                } catch {
+                    toastError(detailT('errorOccurred'));
+                } finally {
+                    setIsProcessing(null);
+                }
             }
+        });
+    }, [groupKeyword, router, toastError, detailT]);
 
-            // Update local state (though useEffect will likely overwrite this soon which is fine)
-            setMembers(prev => prev.filter(m => m.user_id !== targetId));
-            router.refresh();
-
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        } finally {
-            setIsProcessing(null);
-        }
-    };
-
-    const handleSearch = async (query: string) => {
+    const handleSearch = useCallback((query: string) => {
         setSearchQuery(query);
         if (query.length < 3) {
             setSearchResults([]);
             return;
         }
 
-        setIsSearching(true);
-        try {
-            const res = await fetch(`/api/user/search?q=${encodeURIComponent(query)}`);
-            const data = await res.json();
-            if (res.ok) {
-                // Filter out existing members
-                const existingIds = new Set(members.map(m => m.user_id));
-                const filtered = (data.users || []).filter((u: any) => !existingIds.has(u.id));
-                setSearchResults(filtered);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsSearching(false);
-        }
-    };
+        // デバウンス: 前回のタイマーをクリア
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
-    const handleInvite = async (userId: string) => {
+        searchTimerRef.current = setTimeout(async () => {
+            // 前回のリクエストをキャンセル（race condition 防止）
+            searchAbortRef.current?.abort();
+            const controller = new AbortController();
+            searchAbortRef.current = controller;
+
+            setIsSearching(true);
+            try {
+                const res = await fetch(`/api/user/search?q=${encodeURIComponent(query)}`, {
+                    signal: controller.signal
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const existingIds = new Set(members.map(m => m.user_id));
+                    const filtered = (data.users || []).filter((u: SearchUser) => !existingIds.has(u.id));
+                    setSearchResults(filtered);
+                }
+            } catch (err) {
+                if (err instanceof DOMException && err.name === 'AbortError') return;
+                toastError('Search failed. Please try again.');
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+    }, [members, toastError]);
+
+    const handleInvite = useCallback(async (userId: string) => {
         setIsProcessing(userId);
         try {
             const res = await fetch('/api/user/group', {
@@ -187,56 +218,64 @@ export default function GroupMembersPanel({
             });
 
             if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to invite user');
+                const err = await res.json().catch(() => ({}));
+                toastError(err.error || detailT('inviteFailed'));
                 return;
             }
 
-            alert('User invited successfully!');
+            toastSuccess(detailT('inviteSuccess'));
             setSearchQuery('');
             setSearchResults([]);
             setIsInviteOpen(false);
             router.refresh();
-        } catch (error) {
-            console.error(error);
-            alert('Failed to invite user');
+        } catch {
+            toastError('Failed to invite user');
         } finally {
             setIsProcessing(null);
         }
-    };
+    }, [groupKeyword, router, toastSuccess, toastError, detailT]);
 
 
-    const handleLeaveGroup = async () => {
-        if (!confirm(`Are you sure you want to leave ${groupName}?`)) return;
+    const handleLeaveGroup = useCallback(async () => {
+        setConfirmAction({
+            message: detailT('confirmLeave', { name: groupName }),
+            onConfirm: async () => {
+                setConfirmAction(null);
+                try {
+                    const res = await fetch('/api/user/group', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'remove',
+                            keyword: groupKeyword
+                        })
+                    });
 
-        try {
-            const res = await fetch('/api/user/group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'remove',
-                    keyword: groupKeyword
-                })
-            });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        toastError(err.error || detailT('leaveFailed'));
+                        return;
+                    }
 
-            if (!res.ok) {
-                const err = await res.json();
-                alert(err.error || 'Failed to leave group');
-                return;
+                    router.push('/groups');
+                    router.refresh();
+                } catch {
+                    toastError(detailT('errorOccurred'));
+                }
             }
+        });
+    }, [groupKeyword, groupName, router, toastError, detailT]);
 
-            // Redirect to groups list
-            router.push('/groups');
-            router.refresh();
-
-        } catch (error) {
-            console.error(error);
-            alert('An error occurred.');
-        }
-    };
-
-    const ownerCount = members.filter(m => m.role === 'OWNER').length;
+    const ownerCount = useMemo(() => members.filter(m => m.role === 'OWNER').length, [members]);
     const [selectedImage, setSelectedImage] = useState<{ src: string, alt: string } | null>(null);
+
+    // デバウンスタイマーのクリーンアップ
+    useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+            searchAbortRef.current?.abort();
+        };
+    }, []);
 
     return (
         <div>
@@ -248,8 +287,8 @@ export default function GroupMembersPanel({
             />
             <div className="px-0 py-2 pb-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-900">Members ({members.length})</h3>
-                    {isOwner && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">Owner</span>}
+                    <h3 className="font-bold text-[var(--foreground)]">{detailT('membersCount', { count: members.length })}</h3>
+                    {isOwner && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">{detailT('owner')}</span>}
                 </div>
                 <div className="flex gap-2">
                     {isOwner && (
@@ -257,14 +296,14 @@ export default function GroupMembersPanel({
                             onClick={() => setIsInviteOpen(!isInviteOpen)}
                             className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isInviteOpen ? 'bg-[var(--theme-primary)] text-white' : 'text-[var(--theme-primary)] bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20'}`}
                         >
-                            {isInviteOpen ? 'Close' : 'Invite'}
+                            {isInviteOpen ? detailT('close') : detailT('invite')}
                         </button>
                     )}
                     <button
                         onClick={onToggleEdit}
                         className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
                     >
-                        {isEditing ? 'Done' : 'Edit'}
+                        {isEditing ? detailT('done') : detailT('edit')}
                     </button>
                 </div>
             </div>
@@ -272,11 +311,11 @@ export default function GroupMembersPanel({
             {/* Invite Panel */}
             {isInviteOpen && (
                 <div className="p-4 bg-[var(--theme-primary-light)] border-b border-[var(--theme-primary)]/20 animate-fade-in">
-                    <p className="text-sm text-[var(--theme-primary)] mb-2 font-bold">Invite New Member</p>
+                    <p className="text-sm text-[var(--theme-primary)] mb-2 font-bold">{detailT('inviteNewMember')}</p>
                     <div className="relative">
                         <input
                             type="text"
-                            placeholder="Search by ID, Username, or Email..."
+                            placeholder={detailT('searchPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => handleSearch(e.target.value)}
                             className="w-full pl-4 pr-4 py-2 text-sm text-gray-900 border border-[var(--theme-primary)]/30 rounded-lg focus:ring-2 focus:ring-[var(--theme-primary)] outline-none bg-white"
@@ -305,19 +344,47 @@ export default function GroupMembersPanel({
                                         disabled={!!isProcessing}
                                         className="text-xs font-bold text-white bg-[var(--theme-primary)] px-3 py-1.5 rounded hover:bg-[var(--theme-primary)]/90 transition-colors disabled:opacity-50"
                                     >
-                                        {isProcessing === user.id ? 'Adding...' : 'Add'}
+                                        {isProcessing === user.id ? detailT('adding') : detailT('add')}
                                     </button>
                                 </div>
                             ))}
                         </div>
                     )}
                     {searchQuery.length >= 3 && searchResults.length === 0 && !isSearching && (
-                        <p className="text-xs text-[var(--theme-primary)]/70 mt-2">No users found.</p>
+                        <p className="text-xs text-[var(--theme-primary)]/70 mt-2">{detailT('noUsersFound')}</p>
                     )}
                 </div>
             )}
 
+            {/* 確認ダイアログ（alert/confirm の代替） */}
+            {confirmAction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmAction(null)}>
+                    <div className="bg-white rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-sm mb-4 text-[var(--foreground)]">{confirmAction.message}</p>
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={() => setConfirmAction(null)}
+                                className="text-xs font-bold px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-[var(--foreground-muted)]"
+                            >
+                                {detailT('cancel')}
+                            </button>
+                            <button
+                                onClick={confirmAction.onConfirm}
+                                className="text-xs font-bold px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
+                            >
+                                {detailT('confirm')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <ul className="divide-y divide-gray-100">
+                {members.length === 0 && (
+                    <li className="py-8 text-center">
+                        <p className="text-sm text-[var(--foreground-muted)]">{detailT('noMembersYet')}</p>
+                    </li>
+                )}
                 {members.map((member) => (
                     <li key={member.user_id} className="py-3 sm:py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 transition-colors rounded-lg px-2">
                         <div className="flex items-center gap-3 min-w-0">
@@ -335,14 +402,14 @@ export default function GroupMembersPanel({
                             </div>
 
                             <div className="min-w-0">
-                                <Link href={`/user/${member.users.username}`} className="text-sm font-medium text-gray-900 hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2">
-                                    <span>{member.users.name || 'Unknown User'}</span>
+                                <Link href={member.users.username ? `/user/${member.users.username}` : '#'} className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2" aria-label={`View profile of ${member.users.name || detailT('unknownUser')}`}>
+                                    <span>{member.users.name || detailT('unknownUser')}</span>
                                     {member.user_id === currentUserId && (
-                                        <span className="text-[10px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">YOU</span>
+                                        <span className="text-[10px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">{commonT('you')}</span>
                                     )}
                                 </Link>
                                 <p className="text-xs text-gray-500 truncate">
-                                    {member.role === 'OWNER' ? 'Owner' : 'Member'}
+                                    {member.role === 'OWNER' ? detailT('owner') : detailT('member')}
                                 </p>
                             </div>
                         </div>
@@ -358,7 +425,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
                                             >
-                                                Demote Self
+                                                {isProcessing === member.user_id ? '...' : detailT('demoteSelf')}
                                             </button>
                                             {ownerCount > 1 && (
                                                 <button
@@ -366,7 +433,7 @@ export default function GroupMembersPanel({
                                                     disabled={!!isProcessing}
                                                     className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
                                                 >
-                                                    Leave
+                                                    {detailT('leave')}
                                                 </button>
                                             )}
                                         </>
@@ -379,7 +446,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
                                             >
-                                                Demote
+                                                {isProcessing === member.user_id ? '...' : detailT('demote')}
                                             </button>
                                         ) : (
                                             <button
@@ -387,7 +454,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-[var(--theme-primary)] hover:text-[var(--theme-primary)] font-bold px-3 py-1.5 rounded-lg bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] transition-colors border border-[var(--theme-primary)]/20 whitespace-nowrap"
                                             >
-                                                Make Owner
+                                                {isProcessing === member.user_id ? '...' : detailT('makeOwner')}
                                             </button>
                                         )}
                                         <button
@@ -395,7 +462,7 @@ export default function GroupMembersPanel({
                                             disabled={!!isProcessing}
                                             className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
                                         >
-                                            {isProcessing === member.user_id ? '...' : 'Remove'}
+                                            {isProcessing === member.user_id ? '...' : detailT('remove')}
                                         </button>
                                     </>
                                 )}
@@ -409,7 +476,7 @@ export default function GroupMembersPanel({
             {
                 isEditing && !isOwner && (
                     <div className="mt-6 pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Danger Zone</h4>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">{detailT('dangerZone')}</h4>
                         <LeaveGroupButton
                             groupKeyword={groupKeyword}
                             groupName={groupName}

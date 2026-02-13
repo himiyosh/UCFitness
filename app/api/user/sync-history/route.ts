@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { getFitbitActivityTimeSeries, refreshFitbitToken } from "@/lib/fitbit";
@@ -28,13 +29,13 @@ export async function POST(request: Request) {
         // 2. Fetch history from Fitbit (1 year) with Retry Logic
         try {
             stepsSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
-        } catch (error: any) {
+        } catch (error: unknown) {
             // Check for unauthorized/expired token
-            if (error.message?.includes("Unauthorized") || error.message?.includes("401")) {
+            if (error instanceof Error && (error.message?.includes("Unauthorized") || error.message?.includes("401"))) {
                 console.log("Token expired during history sync, refreshing...");
 
                 if (!user.refresh_token) {
-                    throw new Error("Token expired and no refresh token available. Please sign in again.");
+                    return NextResponse.json({ error: "Session expired. Please sign out and sign in again." }, { status: 401 });
                 }
 
                 try {
@@ -52,9 +53,9 @@ export async function POST(request: Request) {
                     // Retry fetch with new token
                     stepsSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
 
-                } catch (refreshError) {
-                    console.error("Failed to refresh token:", refreshError);
-                    throw new Error("Session expired. Please sign out and sign in again.");
+                } catch (refreshError: unknown) {
+                    reportError('sync-history:refresh', refreshError);
+                    return NextResponse.json({ error: "Session expired. Please sign out and sign in again." }, { status: 401 });
                 }
             } else {
                 // Other errors
@@ -81,15 +82,15 @@ export async function POST(request: Request) {
             .upsert(records, { onConflict: 'user_id,date' });
 
         if (error) {
-            console.error("Supabase upsert error:", error);
+            reportError('sync-history:upsert', error);
             return NextResponse.json({ error: "Database error" }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, count: records.length });
 
-    } catch (error: any) {
-        console.error("Sync history error:", error);
-        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    } catch (error: unknown) {
+        reportError('sync-history', error);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
 

@@ -1,4 +1,5 @@
 import { SignJWT, importPKCS8, importJWK } from 'jose';
+import { reportError } from './errors';
 
 export interface PushPayload {
     title: string;
@@ -31,7 +32,15 @@ function uint8ArrayToBase64Url(uint8Array: Uint8Array) {
         .replace(/=+$/, '');
 }
 
-export const sendWebPushNotification = async (subscription: any, payload: PushPayload) => {
+export interface PushSubscriptionData {
+    endpoint: string;
+    keys?: {
+        p256dh: string;
+        auth: string;
+    };
+}
+
+export const sendWebPushNotification = async (subscription: PushSubscriptionData, payload: PushPayload) => {
     try {
         if (!subscription || !subscription.endpoint) {
             throw new Error('Invalid subscription object');
@@ -42,8 +51,8 @@ export const sendWebPushNotification = async (subscription: any, payload: PushPa
         const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
 
         if (!vapidPublicKey || !vapidPrivateKey) {
-            console.error('Missing VAPID keys');
-            return { success: false, error: { message: 'Server configuration error: Missing VAPID keys' } };
+            reportError('sendWebPush:config', new Error('Missing VAPID keys'));
+            return { success: false, error: { message: 'Server configuration error' } };
         }
 
         // 1. Generate JWT for VAPID
@@ -80,12 +89,12 @@ export const sendWebPushNotification = async (subscription: any, payload: PushPa
                     throw new Error('Invalid VAPID Public Key length. Expected uncompressed P-256 point (65 bytes).');
                 }
             }
-        } catch (keyError: any) {
-            console.error("VAPID Key Import Error:", keyError);
+        } catch (keyError: unknown) {
+            const message = keyError instanceof Error ? keyError.message : 'Unknown key import error';
+            reportError('sendWebPush:keyImport', keyError);
             return {
                 success: false, error: {
-                    message: `Failed to import VAPID Key: ${keyError.message}`,
-                    stack: keyError.stack
+                    message: `Failed to import VAPID Key: ${message}`,
                 }
             };
         }
@@ -115,7 +124,7 @@ export const sendWebPushNotification = async (subscription: any, payload: PushPa
 
         if (!response.ok) {
             const text = await response.text();
-            console.error('Web Push Service Error:', response.status, text);
+            reportError('sendWebPush:pushService', new Error(`Push Service responded with ${response.status}`), { statusCode: response.status });
             return {
                 success: false,
                 statusCode: response.status,
@@ -125,15 +134,14 @@ export const sendWebPushNotification = async (subscription: any, payload: PushPa
 
         return { success: true, statusCode: 201 };
 
-    } catch (error: any) {
-        console.error('Error sending web push notification:', error);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        reportError('sendWebPush', error);
         return {
             success: false,
             statusCode: 500,
             error: {
-                message: error.message || 'Unknown error',
-                name: error.name,
-                stack: error.stack
+                message,
             }
         };
     }

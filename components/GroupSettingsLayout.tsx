@@ -1,10 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import GroupMembersPanel from './GroupMembersPanel';
 
+/** メンバー情報の型定義（GroupMembersPanel の Member 型と一致） */
+interface GroupMember {
+    user_id: string;
+    role: 'OWNER' | 'MEMBER';
+    users: {
+        id: string;
+        name: string | null;
+        image: string | null;
+        username: string | null;
+    };
+}
+
 interface Props {
-    members: any[];
+    members: GroupMember[];
     group: {
         id: string;
         name: string;
@@ -17,9 +29,13 @@ interface Props {
 export default function GroupSettingsLayout({ members, group, isOwner, currentUserId }: Props) {
     const [isEditing, setIsEditing] = useState(false);
 
+    const handleToggleEdit = useCallback(() => {
+        setIsEditing(prev => !prev);
+    }, []);
+
     return (
         <div className="space-y-8">
-            {/* Member Management */}
+            {/* メンバー管理 */}
             <GroupMembersPanel
                 members={members}
                 groupKeyword={group.keyword}
@@ -27,7 +43,7 @@ export default function GroupSettingsLayout({ members, group, isOwner, currentUs
                 isOwner={isOwner}
                 currentUserId={currentUserId}
                 isEditing={isEditing}
-                onToggleEdit={() => setIsEditing(!isEditing)}
+                onToggleEdit={handleToggleEdit}
             />
         </div>
     );

@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
     Area,
@@ -24,38 +25,71 @@ interface CoinGrowthChartProps {
     data: BalanceHistoryEntry[];
 }
 
+/** 日付フォーマット（コンポーネント外に定数化） */
+function formatDate(dateStr: string): string {
+    const d = new Date(dateStr + 'T00:00:00');
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/** 数値フォーマット（コンポーネント外に定数化） */
+function formatNumber(num: number): string {
+    if (Math.abs(num) >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(num) >= 1_000) return `${(num / 1_000).toFixed(0)}K`;
+    return num.toString();
+}
+
+/** Tooltip payload型定義 */
+interface TooltipPayloadItem {
+    dataKey: string;
+    value?: number;
+}
+
+interface CustomTooltipProps {
+    active?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    payload?: readonly any[];
+    label?: string | number;
+}
+
 export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     const t = useTranslations('Bank');
 
-    if (!data || data.length === 0) {
-        return (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-base font-bold text-gray-900 mb-4">{t('assetGrowth')}</h3>
-                <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
-                    {t('noTransactions')}
-                </div>
-            </div>
-        );
-    }
+    // チャートデータとドメインの計算をメモ化
+    const { chartData, hasNegative, balanceDomain, dailyDomain } = useMemo(() => {
+        if (!data || data.length === 0) {
+            return { chartData: [], hasNegative: false, balanceDomain: [0, 1000] as [number, number], dailyDomain: [0, 500] as [number, number] };
+        }
 
-    // 日付フォーマット
-    const formatDate = (dateStr: string) => {
-        const d = new Date(dateStr + 'T00:00:00');
-        return `${d.getMonth() + 1}/${d.getDate()}`;
-    };
+        const mapped = data.map(d => ({
+            ...d,
+            dateLabel: formatDate(d.date),
+        }));
 
-    // 数値フォーマット
-    const formatNumber = (num: number) => {
-        if (Math.abs(num) >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-        if (Math.abs(num) >= 1_000) return `${(num / 1_000).toFixed(0)}K`;
-        return num.toString();
-    };
+        const neg = mapped.some(d => d.dailyCoins < 0);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const CustomTooltip = ({ active, payload, label }: any) => {
+        const maxBalance = Math.max(...mapped.map(d => d.balance));
+        const minBalance = Math.min(...mapped.map(d => d.balance));
+        const balPadding = Math.ceil((maxBalance - minBalance) * 0.15) || 1000;
+        const balDomain: [number, number] = [
+            Math.min(0, minBalance - balPadding),
+            maxBalance + balPadding,
+        ];
+
+        const maxDaily = Math.max(...mapped.map(d => Math.abs(d.dailyCoins)));
+        const dailyPad = Math.ceil(maxDaily * 0.2) || 500;
+        const dDomain: [number, number] = [
+            neg ? -(maxDaily + dailyPad) : 0,
+            maxDaily + dailyPad,
+        ];
+
+        return { chartData: mapped, hasNegative: neg, balanceDomain: balDomain, dailyDomain: dDomain };
+    }, [data]);
+
+    // ツールチップレンダラー（安定参照でRechartsの不要なリマウントを防止）
+    const renderTooltip = useCallback(({ active, payload, label }: CustomTooltipProps) => {
         if (active && payload && payload.length) {
-            const daily = payload.find((p: any) => p.dataKey === 'dailyCoins');
-            const bal = payload.find((p: any) => p.dataKey === 'balance');
+            const daily = payload.find((p: TooltipPayloadItem) => p.dataKey === 'dailyCoins');
+            const bal = payload.find((p: TooltipPayloadItem) => p.dataKey === 'balance');
             const dailyVal = daily?.value ?? 0;
             const isExpense = dailyVal < 0;
             return (
@@ -75,31 +109,18 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
             );
         }
         return null;
-    };
+    }, [t]);
 
-    const chartData = data.map(d => ({
-        ...d,
-        dateLabel: formatDate(d.date),
-    }));
-
-    // バーにマイナスがある場合、0 ラインを表示するかどうか
-    const hasNegative = chartData.some(d => d.dailyCoins < 0);
-
-    // Y軸の上限に余白を持たせる
-    const maxBalance = Math.max(...chartData.map(d => d.balance));
-    const minBalance = Math.min(...chartData.map(d => d.balance));
-    const balancePadding = Math.ceil((maxBalance - minBalance) * 0.15) || 1000;
-    const balanceDomain: [number, number] = [
-        Math.min(0, minBalance - balancePadding),
-        maxBalance + balancePadding,
-    ];
-
-    const maxDaily = Math.max(...chartData.map(d => Math.abs(d.dailyCoins)));
-    const dailyPadding = Math.ceil(maxDaily * 0.2) || 500;
-    const dailyDomain: [number, number] = [
-        hasNegative ? -(maxDaily + dailyPadding) : 0,
-        maxDaily + dailyPadding,
-    ];
+    if (!data || data.length === 0) {
+        return (
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-base font-bold text-gray-900 mb-4">{t('assetGrowth')}</h3>
+                <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+                    {t('noTransactions')}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100">
@@ -146,7 +167,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             axisLine={false}
                             tickFormatter={formatNumber}
                         />
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={renderTooltip} />
                         {hasNegative && (
                             <ReferenceLine yAxisId="daily" y={0} stroke="#d1d5db" strokeDasharray="3 3" />
                         )}

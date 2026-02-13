@@ -1,13 +1,16 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
+import { reportError } from "@/lib/errors";
 
 export async function POST(request: Request) {
     const session = await auth();
 
-    if (!session || !session.user || !(session.user as any).id) {
+    if (!session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const userId = session.user.id;
 
     try {
         const body = await request.json();
@@ -26,16 +29,16 @@ export async function POST(request: Request) {
         const { error } = await supabaseAdmin
             .from("users")
             .update({ name: name.trim() })
-            .eq("id", (session.user as any).id);
+            .eq("id", userId);
 
         if (error) {
-            console.error("Error updating profile:", error);
+            reportError('user/profile:update', error, { userId });
             return NextResponse.json({ error: "Database error" }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Error processing request:", error);
+    } catch (error: unknown) {
+        reportError('user/profile', error, { userId });
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

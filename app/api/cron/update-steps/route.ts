@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { updateAllUserSteps } from '@/lib/step-manager';
+import { reportError } from '@/lib/errors';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -28,10 +29,10 @@ export async function GET(request: Request) {
             message: '全ユーザーの歩数同期が完了しました',
             timestamp: new Date().toISOString(),
         });
-    } catch (error) {
-        console.error('[Cron] Step sync failed:', error);
+    } catch (error: unknown) {
+        reportError('cron/update-steps', error);
         return NextResponse.json(
-            { error: 'Internal Server Error', message: 'ステップ同期中にエラーが発生しました' },
+            { error: 'Internal Server Error' },
             { status: 500 }
         );
     }

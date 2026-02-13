@@ -28,9 +28,10 @@ export default async function ShopPage() {
     const userId = (session.user as any).id;
 
     // ユーザー情報取得
+    // ⚡ パフォーマンス: 必要なカラムのみ取得
     const { data: user } = await supabaseAdmin
         .from("users")
-        .select("name, email, image, username, step_goal")
+        .select("name, image, username")
         .eq("id", userId)
         .single();
 

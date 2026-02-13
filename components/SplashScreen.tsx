@@ -40,16 +40,26 @@ export default function SplashScreen() {
     }, [skipSplash]);
 
     useEffect(() => {
-        // セッション内でスプラッシュ済みならスキップ
-        const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
-
-        if (hasSeenSplash) {
+        // prefers-reduced-motion: アニメーションをスキップ
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReducedMotion) {
             setIsVisible(false);
             setShouldRender(false);
             return;
         }
 
-        sessionStorage.setItem('hasSeenSplash', 'true');
+        // セッション内でスプラッシュ済みならスキップ
+        try {
+            const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+            if (hasSeenSplash) {
+                setIsVisible(false);
+                setShouldRender(false);
+                return;
+            }
+            sessionStorage.setItem('hasSeenSplash', 'true');
+        } catch {
+            // sessionStorage が利用不可（プライベートブラウジング等）の場合はそのまま続行
+        }
 
         // プログレスカウンターアニメーション
         const interval = setInterval(() => {
@@ -87,7 +97,7 @@ export default function SplashScreen() {
             style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #fda085 100%)',
                 backgroundSize: '400% 400%',
-                animation: 'splashGradientShift 3s ease infinite',
+                animation: isVisible ? 'splashGradientShift 3s ease infinite' : 'none',
             }}
             onClick={skipSplash}
             role="status"

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase';
 import { getJSTDateString } from './date-utils';
+import { reportError } from './errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,69 +18,59 @@ interface BadgeDefinition {
  * Should be called after step updates.
  */
 export async function checkAndAwardBadges(userId: string) {
-    console.log(`Checking badges for user ${userId}...`);
-
-    // 1. Fetch all available badges
-    const { data: allBadges, error: badgeError } = await supabaseAdmin
-        .from('badges')
-        .select('*');
-
-    if (badgeError || !allBadges) {
-        console.error("Failed to fetch badges definitions:", badgeError);
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
         return;
     }
 
-    // 3. Fetch user's current awarded badges
-    const { data: userBadges, error: userBadgeError } = await supabaseAdmin
-        .from('user_badges')
-        .select('badge_code')
-        .eq('user_id', userId);
+    // 1. Fetch badge definitions, user badges, today's steps in parallel
+    const today = getJSTDateString();
 
+    const [badgeResult, userBadgeResult, dailyResult, historyResult] = await Promise.all([
+        supabaseAdmin
+            .from('badges')
+            .select('id, code, name, category, type, rank'),
+        supabaseAdmin
+            .from('user_badges')
+            .select('badge_code')
+            .eq('user_id', userId),
+        supabaseAdmin
+            .from('daily_steps')
+            .select('steps')
+            .eq('user_id', userId)
+            .eq('date', today)
+            .single(),
+        supabaseAdmin
+            .from('daily_steps')
+            .select('steps')
+            .eq('user_id', userId),
+    ]);
+
+    const { data: allBadges, error: badgeError } = badgeResult;
+    if (badgeError || !allBadges) {
+        reportError('checkAndAwardBadges:fetchBadges', badgeError ?? new Error('No badge definitions found'));
+        return;
+    }
+
+    const { data: userBadges, error: userBadgeError } = userBadgeResult;
     if (userBadgeError) {
-        console.error("Failed to fetch user badges:", userBadgeError);
+        reportError('checkAndAwardBadges:fetchUserBadges', userBadgeError);
         return;
     }
 
     const earnedBadgeIds = new Set(userBadges?.map(ub => ub.badge_code));
 
-    // 3. Fetch User Stats (Steps)
-    // We need: Today's steps, All-time total steps, Streak (calculated)
-
-    // Fetch today's steps for "Daily" badges
-    const today = getJSTDateString();
-
-    const { data: dailyRecord } = await supabaseAdmin
-        .from('daily_steps')
-        .select('steps')
-        .eq('user_id', userId)
-        .eq('date', today)
-        .single();
-
-    const stepsToday = dailyRecord?.steps || 0;
-
-    // Fetch Total Steps
-    // Note: Doing a sum query might be heavy if lots of rows, but for MVP it's fine.
-    // Ideally we should have a user_stats table.
-    const { data: allHistory } = await supabaseAdmin
-        .from('daily_steps')
-        .select('steps')
-        .eq('user_id', userId);
-
-    const totalSteps = allHistory?.reduce((acc, curr) => acc + curr.steps, 0) || 0;
+    const stepsToday = dailyResult.data?.steps ?? 0;
+    const totalSteps = historyResult.data?.reduce((acc: number, curr: { steps: number }) => acc + curr.steps, 0) ?? 0;
 
     // 4. Evaluate Badges
     const newBadges: { user_id: string; badge_code: string; awarded_at: string; period_date: string }[] = [];
 
-    for (const badge of allBadges) {
+    for (const badge of allBadges as BadgeDefinition[]) {
         if (earnedBadgeIds.has(badge.code)) continue; // Already earned
 
         let earned = false;
 
-        // Logic Mapping based on Badge Name or Category
-        // Note: This matches the names seen in translations roughly
-
         // --- Daily Steps Categories ---
-        // "Walker (6k)", "Hiker (8k)", "Achiever (10k)", "Athlete (15k)", "Champion (20k)"
         if (badge.name.includes('Walker') || badge.name.includes('6k')) {
             if (stepsToday >= 6000) earned = true;
         }
@@ -97,20 +88,13 @@ export async function checkAndAwardBadges(userId: string) {
         }
 
         // --- Milestone Categories ---
-        // Assuming names like "Milestone 100k", or just checking types if columns existed
-        // Let's guess simple logic for now using totalSteps
         else if (badge.category === 'Milestone') {
-            // Example specific logic if we can identify them. 
-            // If names are generic, we might need a mapping table.
-            // For now, let's skip explicit milestone logic unless we know the thresholds.
-            // If the name contains the number, we can parse it.
             if (badge.name.includes('100k') && totalSteps >= 100000) earned = true;
             if (badge.name.includes('500k') && totalSteps >= 500000) earned = true;
             if (badge.name.includes('1M') && totalSteps >= 1000000) earned = true;
         }
 
         if (earned) {
-            console.log(`User ${userId} earned badge: ${badge.name}`);
             newBadges.push({
                 user_id: userId,
                 badge_code: badge.code,
@@ -127,31 +111,36 @@ export async function checkAndAwardBadges(userId: string) {
             .insert(newBadges);
 
         if (insertError) {
-            console.error("Failed to award badges:", insertError);
+            reportError('checkAndAwardBadges:insertBadges', insertError);
         } else {
-            // Optional: Send Push Notification here if we want standardizing
+            // Send Push Notifications for newly earned badges
             try {
                 const { data: subs } = await supabaseAdmin
                     .from('push_subscriptions')
-                    .select('*')
+                    .select('endpoint, p256dh, auth')
                     .eq('user_id', userId);
 
                 if (subs && subs.length > 0) {
                     const { sendWebPushNotification } = await import('./web-push');
 
-                    // Simple text for notification
-                    const badgeNames = newBadges.map(b => allBadges.find(def => def.code === b.badge_code)?.name).join(', ');
+                    const badgeMap = new Map((allBadges as BadgeDefinition[]).map(def => [def.code, def.name]));
+                    const badgeNames = newBadges
+                        .map(b => badgeMap.get(b.badge_code))
+                        .filter(Boolean)
+                        .join(', ');
 
-                    for (const sub of subs) {
-                        await sendWebPushNotification(sub, {
-                            title: '🎉 New Badge Unlocked! 🏆',
-                            body: `Wow! You've earned: ${badgeNames} ✨\nKeep being awesome! 🚀`,
-                            url: '/profile' // Helper to open profile
-                        });
-                    }
+                    await Promise.allSettled(
+                        subs.map(sub =>
+                            sendWebPushNotification(sub, {
+                                title: '🎉 New Badge Unlocked! 🏆',
+                                body: `Wow! You've earned: ${badgeNames} ✨\nKeep being awesome! 🚀`,
+                                url: '/profile'
+                            })
+                        )
+                    );
                 }
-            } catch (notifyError) {
-                console.error("Failed to notify user:", notifyError);
+            } catch (error: unknown) {
+                reportError('checkAndAwardBadges:notify', error);
             }
         }
     }

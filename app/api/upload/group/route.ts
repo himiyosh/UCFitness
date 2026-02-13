@@ -1,11 +1,12 @@
 import { auth } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
     const session = await auth();
 
-    if (!session || !session.user || !(session.user as any).id) {
+    if (!session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -18,6 +19,11 @@ export async function POST(request: Request) {
         // 🛡️ Sentinel: Validate Inputs
         if (!file || !groupId || !type) {
             return NextResponse.json({ error: "Missing file or metadata" }, { status: 400 });
+        }
+
+        // 🛡️ Validate groupId format (パストラバーサル防止)
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(groupId)) {
+            return NextResponse.json({ error: "Invalid groupId format" }, { status: 400 });
         }
 
         // 1. Validate 'type' (Prevent Path Traversal)
@@ -38,7 +44,7 @@ export async function POST(request: Request) {
              return NextResponse.json({ error: "File too large. Max 5MB." }, { status: 400 });
         }
 
-        const userId = (session.user as any).id;
+        const userId = session.user.id;
 
         // Verify Ownership
         const { data: membership } = await supabaseAdmin
@@ -59,9 +65,9 @@ export async function POST(request: Request) {
         const fileName = `${type}-${Date.now()}.${fileExt}`;
         const filePath = `public/${groupId}/${fileName}`;
 
-        // Convert file to buffer
+        // Convert file to Uint8Array (edge-compatible)
         const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const buffer = new Uint8Array(arrayBuffer);
 
         // Upload to 'group-assets'
         const { error: uploadError } = await supabaseAdmin
@@ -73,7 +79,7 @@ export async function POST(request: Request) {
             });
 
         if (uploadError) {
-            console.error("Upload error", uploadError);
+            reportError("group-upload", uploadError, { groupId });
             return NextResponse.json({ error: "Upload failed" }, { status: 500 });
         }
 
@@ -85,8 +91,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ publicUrl });
 
-    } catch (error) {
-        console.error("Upload handler error:", error);
+    } catch (error: unknown) {
+        reportError("group-upload", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

@@ -1,104 +1,78 @@
 import React from 'react';
 
 type BadgeType = 'GLOBAL' | 'GROUP';
-type BadgeCategory = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'STREAK' | 'MILESTONE' | 'LIFESTYLE';
+type BadgeCategory = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'STREAK' | 'MILESTONE' | 'LIFESTYLE' | 'TITLE';
 type BadgeRank = 1 | 2 | 3;
 
+interface BadgeStyleSet {
+    body: string;
+    highlight: string;
+    shadow: string;
+    text: string;
+    glow: string;
+    ribbon: string;
+    ribbonShadow: string;
+}
+
 interface BadgeIconProps {
-    type: string;
-    category: string;
-    rank: number;
+    type: BadgeType | string;
+    category: BadgeCategory | string;
+    rank: BadgeRank | number;
     className?: string;
 }
 
+/** カテゴリ別スタイルマップ（コンポーネント外に定数化） */
+const CATEGORY_STYLES: Record<string, BadgeStyleSet> = {
+    STREAK: {
+        body: 'fill-orange-500', highlight: 'fill-orange-300', shadow: 'fill-orange-700',
+        text: 'fill-orange-950', glow: 'shadow-orange-500/50', ribbon: '', ribbonShadow: '',
+    },
+    MILESTONE: {
+        body: 'fill-indigo-500', highlight: 'fill-indigo-300', shadow: 'fill-indigo-700',
+        text: 'fill-indigo-950', glow: 'shadow-indigo-500/50', ribbon: '', ribbonShadow: '',
+    },
+    LIFESTYLE: {
+        body: 'fill-teal-500', highlight: 'fill-teal-300', shadow: 'fill-teal-700',
+        text: 'fill-teal-950', glow: 'shadow-teal-500/50', ribbon: '', ribbonShadow: '',
+    },
+    TITLE: {
+        body: 'fill-fuchsia-500', highlight: 'fill-fuchsia-300', shadow: 'fill-fuchsia-700',
+        text: 'fill-fuchsia-950', glow: 'shadow-fuchsia-500/50', ribbon: '', ribbonShadow: '',
+    },
+};
+
+/** ランク別スタイルマップ（コンポーネント外に定数化） */
+const RANK_STYLES: Record<number, BadgeStyleSet> = {
+    1: { // Gold
+        body: 'fill-amber-400', highlight: 'fill-amber-200', shadow: 'fill-amber-600',
+        ribbon: 'fill-red-600', ribbonShadow: 'fill-red-800', text: 'fill-amber-900', glow: 'shadow-amber-500/50',
+    },
+    2: { // Silver
+        body: 'fill-slate-300', highlight: 'fill-slate-100', shadow: 'fill-slate-500',
+        ribbon: 'fill-blue-600', ribbonShadow: 'fill-blue-800', text: 'fill-slate-800', glow: 'shadow-slate-400/50',
+    },
+    3: { // Bronze
+        body: 'fill-orange-400', highlight: 'fill-orange-200', shadow: 'fill-orange-700',
+        ribbon: 'fill-green-600', ribbonShadow: 'fill-green-800', text: 'fill-orange-950', glow: 'shadow-orange-500/50',
+    },
+};
+
+const DEFAULT_STYLE: BadgeStyleSet = {
+    body: 'fill-gray-400', highlight: 'fill-gray-200', shadow: 'fill-gray-600',
+    ribbon: 'fill-gray-600', ribbonShadow: 'fill-gray-800', text: 'fill-gray-900', glow: 'shadow-gray-500/50',
+};
+
+function getStyles(rank: number, category?: string): BadgeStyleSet {
+    if (category && CATEGORY_STYLES[category]) {
+        return CATEGORY_STYLES[category];
+    }
+    return RANK_STYLES[rank] ?? DEFAULT_STYLE;
+}
+
 export default function BadgeIcon({ type, category, rank, className = "w-10 h-10" }: BadgeIconProps) {
-    const getStyles = (rank: number, category?: string) => {
-        // Achievement specific color overrides
-        if (category === 'STREAK') {
-            return {
-                body: 'fill-orange-500',
-                highlight: 'fill-orange-300',
-                shadow: 'fill-orange-700',
-                text: 'fill-orange-950',
-                glow: 'shadow-orange-500/50',
-                ribbon: '', ribbonShadow: '' // Unused
-            };
-        } else if (category === 'MILESTONE') {
-            return {
-                body: 'fill-indigo-500',
-                highlight: 'fill-indigo-300',
-                shadow: 'fill-indigo-700',
-                text: 'fill-indigo-950',
-                glow: 'shadow-indigo-500/50',
-                ribbon: '', ribbonShadow: ''
-            };
-        } else if (category === 'LIFESTYLE') {
-            return {
-                body: 'fill-teal-500',
-                highlight: 'fill-teal-300',
-                shadow: 'fill-teal-700',
-                text: 'fill-teal-950',
-                glow: 'shadow-teal-500/50',
-                ribbon: '', ribbonShadow: ''
-            };
-        } else if (category === 'TITLE') {
-            return {
-                body: 'fill-fuchsia-500',
-                highlight: 'fill-fuchsia-300',
-                shadow: 'fill-fuchsia-700',
-                text: 'fill-fuchsia-950',
-                glow: 'shadow-fuchsia-500/50',
-                ribbon: '', ribbonShadow: ''
-            };
-        }
-
-        switch (rank) {
-            case 1: // Gold
-                return {
-                    body: 'fill-amber-400',
-                    highlight: 'fill-amber-200',
-                    shadow: 'fill-amber-600',
-                    ribbon: 'fill-red-600',
-                    ribbonShadow: 'fill-red-800',
-                    text: 'fill-amber-900',
-                    glow: 'shadow-amber-500/50'
-                };
-            case 2: // Silver
-                return {
-                    body: 'fill-slate-300',
-                    highlight: 'fill-slate-100',
-                    shadow: 'fill-slate-500',
-                    ribbon: 'fill-blue-600',
-                    ribbonShadow: 'fill-blue-800',
-                    text: 'fill-slate-800',
-                    glow: 'shadow-slate-400/50'
-                };
-            case 3: // Bronze
-                return {
-                    body: 'fill-orange-400',
-                    highlight: 'fill-orange-200',
-                    shadow: 'fill-orange-700',
-                    ribbon: 'fill-green-600',
-                    ribbonShadow: 'fill-green-800',
-                    text: 'fill-orange-950',
-                    glow: 'shadow-orange-500/50'
-                };
-            default:
-                return {
-                    body: 'fill-gray-400',
-                    highlight: 'fill-gray-200',
-                    shadow: 'fill-gray-600',
-                    ribbon: 'fill-gray-600',
-                    ribbonShadow: 'fill-gray-800',
-                    text: 'fill-gray-900',
-                    glow: 'shadow-gray-500/50'
-                };
-        }
-    };
-
     const s = getStyles(rank, category);
 
-    // Render Logic for Achievements (Standalone Icon)
+    // アチーブメント用レンダリング（スタンドアロンアイコン）
     if (type === 'ACHIEVEMENT') {
         let Path = <path />;
         let Scale = "scale(1)";
@@ -122,8 +96,8 @@ export default function BadgeIcon({ type, category, rank, className = "w-10 h-10
         }
 
         return (
-            <div className={`relative flex items-center justify-center drop-shadow-md transition-transform hover:scale-110 ${className}`}>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-sm">
+            <div className={`relative flex items-center justify-center drop-shadow-md transition-transform hover:scale-110 ${className}`} role="img" aria-label={`${category} achievement rank ${rank}`}>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-sm" aria-hidden="true">
                     {/* Main Icon Group */}
                     <g transform={Scale}>
                         {/* Shadow Layer */}
@@ -146,7 +120,7 @@ export default function BadgeIcon({ type, category, rank, className = "w-10 h-10
         );
     }
 
-    // Default Render: Trophy (Review)
+    // デフォルトレンダリング: トロフィー
     const PeriodIcon = () => {
         if (category === 'DAILY') {
             // Sun/Star
@@ -161,8 +135,8 @@ export default function BadgeIcon({ type, category, rank, className = "w-10 h-10
     }
 
     return (
-        <div className={`relative flex items-center justify-center drop-shadow-md transition-transform hover:scale-110 ${className}`}>
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-sm">
+        <div className={`relative flex items-center justify-center drop-shadow-md transition-transform hover:scale-110 ${className}`} role="img" aria-label={`${type === 'GLOBAL' ? 'World' : 'Group'} ${category} rank ${rank} badge`}>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-sm" aria-hidden="true">
 
                 {/* Trophy Base */}
                 <path d="M8 20L16 20L15.5 22H8.5L8 20Z" className={s.shadow} />
@@ -183,7 +157,7 @@ export default function BadgeIcon({ type, category, rank, className = "w-10 h-10
                 <PeriodIcon />
 
                 {/* Rank Text - Moved to Base */}
-                <text x="12" y="21.5" textAnchor="middle" className={`text-[2px] font-black fill-white uppercase tracking-widest`} style={{ fontSize: '2px', fontFamily: 'sans-serif' }}>
+                <text x="12" y="21.5" textAnchor="middle" className={`text-[2px] font-black fill-white uppercase tracking-widest font-sans`}>
                     {type === 'GLOBAL' ? 'WORLD' : 'GROUP'}
                 </text>
             </svg>

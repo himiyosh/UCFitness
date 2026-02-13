@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
+import { useToast } from '@/components/Toast';
 
 export interface OwnedTitle {
     userItemId: string;    // user_items.id
@@ -21,13 +22,14 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
     const t = useTranslations('Settings');
     const locale = useLocale();
     const router = useRouter();
+    const { error: toastError } = useToast();
     const [titles, setTitles] = useState<OwnedTitle[]>(ownedTitles);
     const [loading, setLoading] = useState(false);
 
-    const equippedTitle = titles.find(t => t.isEquipped);
-    const currentValue = equippedTitle?.userItemId || 'none';
+    const equippedTitle = useMemo(() => titles.find(title => title.isEquipped), [titles]);
+    const currentValue = useMemo(() => equippedTitle?.userItemId || 'none', [equippedTitle]);
 
-    const handleChange = async (value: string) => {
+    const handleChange = useCallback(async (value: string) => {
         if (loading) return;
 
         // 現在装備中のものを選択した場合は何もしない
@@ -43,7 +45,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     body: JSON.stringify({ userItemId: equippedTitle.userItemId, action: 'unequip' }),
                 });
                 if (!res.ok) throw new Error('Failed');
-                setTitles(prev => prev.map(t => ({ ...t, isEquipped: false })));
+                setTitles(prev => prev.map(title => ({ ...title, isEquipped: false })));
             } else {
                 // 新しい称号を装備（equipItem が同カテゴリ自動解除する）
                 const res = await fetch('/api/shop/equip', {
@@ -52,15 +54,15 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     body: JSON.stringify({ userItemId: value, action: 'equip' }),
                 });
                 if (!res.ok) throw new Error('Failed');
-                setTitles(prev => prev.map(t => ({ ...t, isEquipped: t.userItemId === value })));
+                setTitles(prev => prev.map(title => ({ ...title, isEquipped: title.userItemId === value })));
             }
             router.refresh();
-        } catch (e) {
-            console.error('Title equip error:', e);
+        } catch (_e: unknown) {
+            toastError(locale === 'ja' ? '称号変更に失敗しました' : 'Failed to change title');
         } finally {
             setLoading(false);
         }
-    };
+    }, [loading, currentValue, equippedTitle, router, toastError, locale]);
 
     // 称号を1つも持っていない場合
     if (titles.length === 0) {
@@ -88,6 +90,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     value={currentValue}
                     onChange={(e) => handleChange(e.target.value)}
                     disabled={loading}
+                    aria-label={t('titleLabel')}
                     className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm py-2.5 text-gray-900 appearance-none pl-3 pr-8 bg-white disabled:opacity-60 cursor-pointer"
                 >
                     <option value="none">{t('noTitle')}</option>
@@ -112,7 +115,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
             <p className="mt-2 text-xs text-gray-400 font-medium">
                 ✨ {t('titleAchievementHint')}
             </p>
-            <a href="/settings/../shop" onClick={(e) => { e.preventDefault(); router.push('/shop'); }} className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--theme-primary)] hover:underline cursor-pointer font-medium">
+            <a href="/shop" onClick={(e) => { e.preventDefault(); router.push('/shop'); }} className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--theme-primary)] hover:underline cursor-pointer font-medium">
                 🛍️ {t('moreTitles')} →
             </a>
         </div>

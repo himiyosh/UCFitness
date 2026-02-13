@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getGroupRankings } from '@/lib/ranking-service';
+import { reportError } from '@/lib/errors';
 import { Period } from '@/components/LeaderboardTabs';
 
 interface RouteParams {
@@ -22,14 +23,12 @@ export async function GET(
         let userId: string | null = null;
         let isAdmin = false;
 
-        if (authHeader) console.log(`[API] Auth Header: '${authHeader}'`);
-
         // Support case-insensitive "Bearer" prefix
         const tokenMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
         let apiKey: string | null = null;
 
         if (authHeader && !tokenMatch) {
-            console.warn('[API] Auth header missing "Bearer " prefix');
+            // Auth header present but missing "Bearer " prefix — ignore silently
         }
 
         if (tokenMatch) {
@@ -37,8 +36,6 @@ export async function GET(
         }
 
         if (apiKey) {
-            console.log(`[API] Key lookup for: ${apiKey.substring(0, 10)}...`);
-
             // Use supabaseAdmin to bypass RLS for API Key lookup
             const { data: keyData, error: keyError } = await supabaseAdmin
                 .from('api_keys')
@@ -47,15 +44,12 @@ export async function GET(
                 .single();
 
             if (keyError || !keyData) {
-                console.error('[API] Key lookup failed:', keyError);
                 return NextResponse.json({ error: 'Unauthorized: Invalid API Key' }, { status: 401 });
             }
-            console.log(`[API] Key valid. User: ${keyData.user_id}, Admin: ${keyData.is_admin}`);
 
             // Check Scope
             if (!keyData.scopes || !keyData.scopes.includes('ranking:read')) {
-                console.error('[API] Insufficient Scope:', keyData.scopes);
-                return NextResponse.json({ error: 'Forbidden: Insufficient Scope (Required: ranking:read)' }, { status: 403 });
+                return NextResponse.json({ error: 'Forbidden: Insufficient scope' }, { status: 403 });
             }
 
             userId = keyData.user_id;
@@ -90,21 +84,37 @@ export async function GET(
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrKeyword);
 
-        let query = supabaseAdmin
-            .from('groups')
-            .select('id');
+        let groupData: { id: string } | null = null;
 
         if (isUuid) {
-            // If it looks like a UUID, it could be either ID or Keyword
-            query = query.or(`keyword.eq.${idOrKeyword},id.eq.${idOrKeyword}`);
+            // 🛡️ セキュリティ: .or()テンプレートリテラルの代わりにパラメータ化クエリを使用
+            const { data: byKeyword } = await supabaseAdmin
+                .from('groups')
+                .select('id')
+                .eq('keyword', idOrKeyword)
+                .single();
+
+            if (byKeyword) {
+                groupData = byKeyword;
+            } else {
+                const { data: byId } = await supabaseAdmin
+                    .from('groups')
+                    .select('id')
+                    .eq('id', idOrKeyword)
+                    .single();
+                groupData = byId;
+            }
         } else {
             // If it's not a UUID, it MUST be a keyword (searching ID would cause DB error)
-            query = query.eq('keyword', idOrKeyword);
+            const { data } = await supabaseAdmin
+                .from('groups')
+                .select('id')
+                .eq('keyword', idOrKeyword)
+                .single();
+            groupData = data;
         }
 
-        const { data: groupData, error: groupError } = await query.single();
-
-        if (groupError || !groupData) {
+        if (!groupData) {
             return NextResponse.json({ error: 'Group not found' }, { status: 404 });
         }
 
@@ -121,7 +131,6 @@ export async function GET(
                 .single();
 
             if (membershipError || !membership) {
-                console.warn(`[API] User ${userId} attempted to access rankings for group ${idOrKeyword} without membership.`);
                 return NextResponse.json({ error: 'Forbidden: You are not a member of this group' }, { status: 403 });
             }
         }
@@ -173,8 +182,8 @@ export async function GET(
             .eq('group_id', targetGroupId);
 
         if (memberError || !groupMembers) {
-            console.error('[API] Error fetching group members:', memberError);
-            return NextResponse.json({ error: 'Error fetching group members' }, { status: 500 });
+            reportError('group/ranking:fetchMembers', memberError, { groupId: targetGroupId });
+            return NextResponse.json({ error: 'Error fetching group data' }, { status: 500 });
         }
 
         const memberUserIds = groupMembers.map(m => m.user_id);
@@ -193,7 +202,6 @@ export async function GET(
                     id,
                     name,
                     image,
-                    email,
                     username
                 )
             `)
@@ -201,27 +209,32 @@ export async function GET(
             .gte('date', startDate);
 
         if (stepsError) {
-            console.error(`[API] Error fetching group rankings for ${targetGroupId}:`, stepsError);
+            reportError('group/ranking:fetchSteps', stepsError, { groupId: targetGroupId });
             return NextResponse.json({ error: 'Error fetching rankings' }, { status: 500 });
         }
 
         // Aggregate
-        const userMap = new Map<string, any>();
-        rawSteps?.forEach((row: any) => {
-            const email = row.users.email;
-            if (!userMap.has(email)) {
-                userMap.set(email, {
+        interface UserStepRow {
+            steps: number;
+            users: { id: string; name: string; image: string; username: string };
+        }
+        const userMap = new Map<string, { steps: number; users: UserStepRow['users'] }>();
+        // Supabase の型推論は users を配列として返すが、!inner指定の多対一リレーションでは単一オブジェクト
+        (rawSteps as unknown as UserStepRow[] | null)?.forEach((row) => {
+            const uid = row.users.id;
+            if (!userMap.has(uid)) {
+                userMap.set(uid, {
                     steps: 0,
                     users: row.users
                 });
             }
-            const entry = userMap.get(email);
+            const entry = userMap.get(uid)!;
             entry.steps += Number(row.steps);
         });
 
         const rankings = Array.from(userMap.values())
             .sort((a, b) => b.steps - a.steps)
-            .map((item: any, index: number) => ({
+            .map((item, index) => ({
                 rank: index + 1,
                 steps: item.steps,
                 user: {
@@ -234,8 +247,8 @@ export async function GET(
 
         return NextResponse.json(rankings);
 
-    } catch (error) {
-        console.error('[API] Error fetching group rankings:', error);
+    } catch (error: unknown) {
+        reportError('group/ranking', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

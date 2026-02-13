@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 
 interface Transaction {
@@ -23,6 +24,13 @@ const TYPE_CONFIG: Record<string, { color: string; icon: string; key: string }> 
     PURCHASE: { color: 'text-red-600', icon: '🛍️', key: 'purchase' },
 };
 
+function formatDate(dateStr: string) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${month}/${day}`;
+}
+
 export default function TransactionHistory({ transactions }: TransactionHistoryProps) {
     const t = useTranslations('Bank');
     const locale = useLocale();
@@ -30,18 +38,23 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
     // descriptionからロケールに応じたアイテム名を取得
     // 新形式: "Shop: English Name / 日本語名"
     // 旧形式: "Shop: English Name"
-    const getPurchaseItemName = (description: string) => {
+    const getPurchaseItemName = useCallback((description: string) => {
         const content = description.replace(/^Shop:\s*/, '');
         const parts = content.split(' / ');
         if (parts.length === 2) {
             return locale === 'ja' ? parts[1] : parts[0];
         }
         return content; // 旧形式フォールバック
-    };
+    }, [locale]);
+
+    const filteredTransactions = useMemo(
+        () => transactions?.filter(tx => tx.amount !== 0) ?? [],
+        [transactions]
+    );
 
     if (!transactions || transactions.length === 0) {
         return (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-full">
+            <div className="bg-white midnight-solid-panel rounded-xl p-6 shadow-sm border border-gray-100 h-full">
                 <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                     📒 {t('transactionHistory')}
                 </h3>
@@ -52,15 +65,8 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
         );
     }
 
-    const formatDate = (dateStr: string) => {
-        const d = new Date(dateStr + 'T00:00:00');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${month}/${day}`;
-    };
-
     return (
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 h-full overflow-hidden">
+        <div className="bg-white midnight-solid-panel rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 h-full overflow-hidden">
             <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
                 📒 {t('transactionHistory')}
             </h3>
@@ -75,11 +81,11 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
 
             {/* トランザクション行 */}
             <div className="max-h-[400px] overflow-y-auto styled-scrollbar">
-                {transactions.filter(tx => tx.amount !== 0).map((tx, i, filtered) => {
+                {filteredTransactions.map((tx, i) => {
                     const config = TYPE_CONFIG[tx.type] || TYPE_CONFIG.STEPS;
                     const isPositive = tx.amount >= 0;
                     // 日付が前の行と同じなら非表示
-                    const showDate = i === 0 || filtered[i - 1].date !== tx.date;
+                    const showDate = i === 0 || filteredTransactions[i - 1].date !== tx.date;
 
                     return (
                         <div

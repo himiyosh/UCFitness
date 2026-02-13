@@ -17,6 +17,12 @@ interface User {
     token_expires_at: number | null;
 }
 
+/** Fitbit activity time series entry */
+interface FitbitTimeSeriesEntry {
+    dateTime: string;
+    value: string;
+}
+
 /**
  * Helper to ensure we have a valid access token.
  * If the current one is expired (or near expiry) or if a request fails, we refresh it.
@@ -36,7 +42,6 @@ async function ensureFitbitAccessToken(user: User) {
     const nowSeconds = Math.floor(Date.now() / 1000);
     // Refresh if expired or expiring in next 5 minutes
     if (user.refresh_token && user.token_expires_at && (user.token_expires_at - nowSeconds < 300)) {
-        console.log(`Token expiring soon for user ${user.id}, refreshing...`);
         return await performTokenRefresh(user);
     }
 
@@ -46,7 +51,7 @@ async function ensureFitbitAccessToken(user: User) {
 async function performTokenRefresh(user: User) {
     try {
         if (!user.refresh_token) {
-            console.error(`No refresh token available for user ${user.id}`);
+            reportError('performTokenRefresh', new Error('No refresh token available'), { userId: user.id });
             return null;
         }
 
@@ -64,14 +69,13 @@ async function performTokenRefresh(user: User) {
             .eq('id', user.id);
 
         if (updateError) {
-            console.error(`Failed to update tokens for user ${user.id}`, updateError);
+            reportError('performTokenRefresh:updateDB', updateError, { userId: user.id });
             return null;
         } else {
-            console.log(`Tokens refreshed for user ${user.id}`);
             return newTokens.access_token;
         }
     } catch (refreshError) {
-        console.error(`Failed to refresh token for user ${user.id}`, refreshError);
+        reportError('performTokenRefresh', refreshError, { userId: user.id });
         return null; // Can't refresh
     }
 }
@@ -89,34 +93,32 @@ async function processUserSteps(user: User) {
 
     if (user.provider === 'fitbit') {
         if (!accessToken) {
-            console.error(`Could not obtain access token for user ${user.id}`);
+            reportError('processUserSteps', new Error('Could not obtain access token'), { userId: user.id });
             return null;
         }
 
         try {
             steps = await getFitbitSteps(accessToken, today);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) {
-            if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-                console.log(`Received 401 for user ${user.id}, forcing refresh...`);
-                // Force refresh
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes('Unauthorized') || message.includes('401')) {
+                // Force refresh on 401
                 accessToken = await performTokenRefresh(user);
                 if (accessToken) {
                     try {
                         steps = await getFitbitSteps(accessToken, today);
                     } catch (retryError) {
-                        console.error(`Retry failed regarding steps for user ${user.id}:`, retryError);
+                        reportError('processUserSteps:retrySteps', retryError, { userId: user.id });
                     }
                 }
             } else {
-                console.error(`Error fetching steps for user ${user.id}:`, error);
+                reportError('processUserSteps:fetchSteps', error, { userId: user.id });
             }
         }
     }
 
     // Only update if steps were fetched successfully (steps >= 0)
     if (steps !== null && steps >= 0) {
-        console.log(`Updating steps for user ${user.id} (${user.provider}): ${steps}`);
         const { error: upsertError } = await supabaseAdmin
             .from('daily_steps')
             .upsert(
@@ -132,27 +134,20 @@ async function processUserSteps(user: User) {
         if (upsertError) {
             reportError('processUserSteps:upsert', upsertError, { userId: user.id, steps, date: today });
         } else {
-            // Check for badges
-            // Fire and forget to not block response? Or await to ensure consistency?
-            // Await is safer for now to ensure debugging logs appear in order.
-            try {
-                await checkAndAwardBadges(user.id);
-            } catch (badgeError) {
-                reportError('processUserSteps:badges', badgeError, { userId: user.id });
-            }
-
-            // 称号達成チェック & 自動付与
-            try {
-                await checkAndAwardTitleAchievements(user.id);
-            } catch (titleError) {
-                reportError('processUserSteps:titles', titleError, { userId: user.id });
-            }
-
-            // UndouCoin: 歩数をコインに変換して記録
-            try {
-                await processCoins(user.id, steps, today);
-            } catch (coinError) {
-                reportError('processUserSteps:coins', coinError, { userId: user.id, steps, date: today });
+            // バッジ・称号・コインは独立処理なので並列実行
+            const results = await Promise.allSettled([
+                checkAndAwardBadges(user.id),
+                checkAndAwardTitleAchievements(user.id),
+                processCoins(user.id, steps, today),
+            ]);
+            const labels = ['badges', 'titles', 'coins'] as const;
+            for (let i = 0; i < results.length; i++) {
+                if (results[i].status === 'rejected') {
+                    reportError(`processUserSteps:${labels[i]}`, (results[i] as PromiseRejectedResult).reason, {
+                        userId: user.id,
+                        ...(labels[i] === 'coins' ? { steps, date: today } : {}),
+                    });
+                }
             }
         }
     }
@@ -161,15 +156,15 @@ async function processUserSteps(user: User) {
 }
 
 export async function updateUserSteps(userId: string) {
-    // Fetch user details
+    // Fetch user details (⚡ 必要カラムのみ取得)
     const { data: user, error } = await supabaseAdmin
         .from('users')
-        .select('*')
+        .select('id, email, provider, access_token, refresh_token, token_expires_at')
         .eq('id', userId)
         .single();
 
     if (error || !user) {
-        console.error(`Failed to fetch user ${userId}:`, error);
+        reportError('updateUserSteps:fetchUser', error, { userId });
         return null;
     }
 
@@ -177,15 +172,15 @@ export async function updateUserSteps(userId: string) {
 }
 
 export async function backfillUserSteps(userId: string) {
-    console.log(`Starting backfill for user ${userId}`);
+    // ⚡ 必要カラムのみ取得
     const { data: user, error } = await supabaseAdmin
         .from('users')
-        .select('*')
+        .select('id, email, provider, access_token, refresh_token, token_expires_at')
         .eq('id', userId)
         .single();
 
     if (error || !user) {
-        console.error(`Failed to fetch user ${userId} for backfill:`, error);
+        reportError('backfillUserSteps:fetchUser', error, { userId });
         return;
     }
 
@@ -195,7 +190,7 @@ export async function backfillUserSteps(userId: string) {
 
     let accessToken = await ensureFitbitAccessToken(user);
     if (!accessToken) {
-        console.error(`Could not obtain access token for backfill user ${user.id}`);
+        reportError('backfillUserSteps', new Error('Could not obtain access token'), { userId: user.id });
         return;
     }
 
@@ -205,9 +200,9 @@ export async function backfillUserSteps(userId: string) {
         let timeSeries;
         try {
             timeSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (e: any) {
-            if (e.message.includes('Unauthorized') || e.message.includes('401')) {
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            if (message.includes('Unauthorized') || message.includes('401')) {
                 accessToken = await performTokenRefresh(user);
                 if (accessToken) {
                     timeSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
@@ -218,17 +213,15 @@ export async function backfillUserSteps(userId: string) {
         }
 
         if (timeSeries && Array.isArray(timeSeries)) {
-            console.log(`Fetched ${timeSeries.length} days of history for user ${user.id}`);
-
             // Prepare upsert operations
-            // Supabase upsert can take an array
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const stepsData = timeSeries.map((entry: any) => ({
-                user_id: user.id,
-                date: entry.dateTime,
-                steps: parseInt(entry.value, 10),
-                updated_at: new Date().toISOString(),
-            }));
+            const stepsData = (timeSeries as FitbitTimeSeriesEntry[])
+                .map((entry) => ({
+                    user_id: user.id,
+                    date: entry.dateTime,
+                    steps: parseInt(entry.value, 10),
+                    updated_at: new Date().toISOString(),
+                }))
+                .filter((d) => !isNaN(d.steps));
 
             const { error: upsertError } = await supabaseAdmin
                 .from('daily_steps')
@@ -236,8 +229,6 @@ export async function backfillUserSteps(userId: string) {
 
             if (upsertError) {
                 reportError('backfillUserSteps:upsert', upsertError, { userId: user.id, recordCount: stepsData.length });
-            } else {
-                console.log(`Successfully backfilled steps for user ${user.id}`);
             }
         }
 
@@ -254,11 +245,9 @@ export async function updateAllUserSteps() {
         .select('id, email, provider, access_token, refresh_token, token_expires_at');
 
     if (error || !users) {
-        console.error('Failed to fetch users:', error);
+        reportError('updateAllUserSteps:fetchUsers', error, {});
         return;
     }
-
-    console.log(`Updating steps for ${users.length} users in parallel...`);
 
     // Optimization: Run updates in parallel
     // We can map over users and call processUserSteps

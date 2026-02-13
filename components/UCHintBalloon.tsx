@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
@@ -52,15 +52,16 @@ export default function UCHintBalloon({ size = 'sm' }: { size?: 'sm' | 'md' }) {
     const balloonRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
 
+    const tooltipId = useId();
     const styles = themeStyles[theme] || themeStyles.classic;
 
-    // ボタン位置からバルーンの表示位置を計算
+    // ボタン位置からバルーンの表示位置を計算（fixed positioning なので scrollY 不要）
     const updatePosition = useCallback(() => {
         if (!buttonRef.current) return;
         const rect = buttonRef.current.getBoundingClientRect();
         setPos({
-            top: rect.top + window.scrollY - 8,
-            left: rect.left + window.scrollX + rect.width / 2,
+            top: rect.top - 8,
+            left: rect.left + rect.width / 2,
         });
     }, []);
 
@@ -75,8 +76,15 @@ export default function UCHintBalloon({ size = 'sm' }: { size?: 'sm' | 'md' }) {
                 setIsOpen(false);
             }
         };
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsOpen(false);
+        };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
     }, [isOpen]);
 
     // 開く時に位置を計算
@@ -92,6 +100,8 @@ export default function UCHintBalloon({ size = 'sm' }: { size?: 'sm' | 'md' }) {
                 ref={buttonRef}
                 type="button"
                 aria-label="UC info"
+                aria-expanded={isOpen}
+                aria-describedby={isOpen ? tooltipId : undefined}
                 onClick={() => setIsOpen(!isOpen)}
                 onMouseEnter={() => setIsOpen(true)}
                 onMouseLeave={() => setIsOpen(false)}
@@ -108,6 +118,7 @@ export default function UCHintBalloon({ size = 'sm' }: { size?: 'sm' | 'md' }) {
             {isOpen && pos && createPortal(
                 <div
                     ref={balloonRef}
+                    id={tooltipId}
                     role="tooltip"
                     className="fixed z-[9999] w-56 px-3.5 py-2.5 rounded-xl"
                     style={{

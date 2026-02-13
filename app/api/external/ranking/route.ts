@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabase";
+import { reportError } from "@/lib/errors";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    console.log('[API Debug] Starting request processing for /api/external/ranking');
 
     try {
         const authHeader = request.headers.get('authorization');
@@ -12,7 +12,6 @@ export async function GET(request: Request) {
 
         // Fail securely if CRON_SECRET is not configured or if the header is missing/incorrect
         if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-            console.warn('[API Debug] Auth failed: Missing or invalid token');
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
@@ -29,19 +28,19 @@ export async function GET(request: Request) {
         const day = String(jstDate.getUTCDate()).padStart(2, '0');
         const todayYMD = `${year}-${month}-${day}`;
 
-        let targetGroups = [];
+        let targetGroups: { id: string; name: string }[] = [];
 
         if (groupId) {
             const { data: group } = await supabaseAdmin
                 .from('groups')
-                .select('*')
+                .select('id, name')
                 .eq('id', groupId)
                 .single();
             if (group) targetGroups.push(group);
         } else {
             const { data: groups } = await supabaseAdmin
                 .from('groups')
-                .select('*');
+                .select('id, name');
             if (groups) targetGroups = groups;
         }
 
@@ -98,9 +97,9 @@ export async function GET(request: Request) {
             groups: stats
         });
 
-    } catch (error) {
-        console.error('[API Debug] Critical Error:', error);
-        return NextResponse.json({ error: "Internal Server Error", details: String(error) }, { status: 500 });
+    } catch (error: unknown) {
+        reportError('external/ranking', error);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
 

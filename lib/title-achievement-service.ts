@@ -60,6 +60,11 @@ const TITLE_RULES: TitleDefinition[] = [
  * ステップ同期後に呼ばれるメイン関数
  */
 export async function checkAndAwardTitleAchievements(userId: string): Promise<string[]> {
+    // 入力バリデーション
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+        return [];
+    }
+
     const awarded: string[] = [];
 
     try {
@@ -69,9 +74,11 @@ export async function checkAndAwardTitleAchievements(userId: string): Promise<st
             .select('shop_items!inner(item_code)')
             .eq('user_id', userId);
 
-        const ownedCodes = new Set(
-            (ownedItems || []).map((ui: any) => ui.shop_items?.item_code).filter(Boolean)
-        );
+        const ownedCodes = new Set<string>();
+        for (const ui of (ownedItems || [])) {
+            const code = (ui as { shop_items?: { item_code?: string } }).shop_items?.item_code;
+            if (code) ownedCodes.add(code);
+        }
 
         // チェック対象のルール（未所持のもの）
         const uncheckedRules = TITLE_RULES.filter(r => !ownedCodes.has(r.itemCode));
@@ -87,15 +94,14 @@ export async function checkAndAwardTitleAchievements(userId: string): Promise<st
                     const success = await grantTitle(userId, rule.itemCode);
                     if (success) {
                         awarded.push(rule.itemCode);
-                        console.log(`🏷️ Title awarded: ${rule.itemCode} → user ${userId}`);
                     }
                 }
-            } catch (e) {
-                console.error(`Title check error [${rule.itemCode}]:`, e);
+            } catch (e: unknown) {
+                console.error(`称号チェックエラー [${rule.itemCode}]`);
             }
         }
-    } catch (e) {
-        console.error('checkAndAwardTitleAchievements error:', e);
+    } catch (e: unknown) {
+        console.error('称号達成チェック処理エラー');
     }
 
     return awarded;
@@ -202,17 +208,22 @@ function calculateStreak(
 ): number {
     if (records.length === 0) return 0;
 
-    // 日付降順でソート済み
+    // Map化してO(1)ルックアップ（元のfindはO(n)×最大400回）
+    const stepsMap = new Map<string, number>();
+    for (const r of records) {
+        stepsMap.set(r.date, r.steps);
+    }
+
     let streak = 0;
     const startDate = new Date(today + 'T00:00:00Z');
 
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < records.length; i++) {
         const checkDate = new Date(startDate);
         checkDate.setUTCDate(checkDate.getUTCDate() - i);
         const dateStr = checkDate.toISOString().split('T')[0];
 
-        const record = records.find(r => r.date === dateStr);
-        if (record && record.steps >= stepGoal) {
+        const steps = stepsMap.get(dateStr);
+        if (steps !== undefined && steps >= stepGoal) {
             streak++;
         } else {
             break;
@@ -226,6 +237,8 @@ function calculateStreak(
  * 称号をユーザーに付与（user_items に挿入）
  */
 async function grantTitle(userId: string, itemCode: string): Promise<boolean> {
+    if (!userId || !itemCode) return false;
+
     // shop_items から item_id を取得
     const { data: shopItem } = await supabaseAdmin
         .from('shop_items')
@@ -234,7 +247,7 @@ async function grantTitle(userId: string, itemCode: string): Promise<boolean> {
         .single();
 
     if (!shopItem) {
-        console.error(`Title item not found: ${itemCode}`);
+        console.error('称号アイテムが見つかりません');
         return false;
     }
 
@@ -249,7 +262,7 @@ async function grantTitle(userId: string, itemCode: string): Promise<boolean> {
     if (error) {
         // 既に存在する場合はスキップ
         if (error.code === '23505') return false;
-        console.error(`Failed to grant title ${itemCode}:`, error);
+        console.error('称号付与に失敗しました:', error.code);
         return false;
     }
 

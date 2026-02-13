@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
-import { useLocale } from 'next-intl';
+import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -38,14 +38,35 @@ export default function GroupDetailLeaderboard({
     onPageChange: (page: number) => void
 }) {
     const locale = useLocale();
+    const ga = useTranslations('GroupDetail');
+    const lt = useTranslations('Leaderboard');
+    const commonT = useTranslations('Common');
     const allData = rankings[period];
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
     const ITEMS_PER_PAGE = 5;
-    const totalPages = Math.ceil(allData.length / ITEMS_PER_PAGE);
+    const totalPages = useMemo(() => Math.ceil(allData.length / ITEMS_PER_PAGE), [allData.length]);
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const displayData = allData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const displayData = useMemo(() => allData.slice(startIndex, startIndex + ITEMS_PER_PAGE), [allData, startIndex]);
+
+    // ページネーションウィンドウを正しくクランプ（末尾付近でボタンが消えないように）
+    const paginationPages = useMemo(() => {
+        const maxVisible = Math.min(5, totalPages);
+        let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        const end = Math.min(totalPages, start + maxVisible - 1);
+        // 末尾にぶつかったらstartを後退させて常にmaxVisible個表示
+        start = Math.max(1, end - maxVisible + 1);
+        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    }, [totalPages, currentPage]);
+
+    const handlePrevPage = useCallback(() => {
+        onPageChange(Math.max(1, currentPage - 1));
+    }, [currentPage, onPageChange]);
+
+    const handleNextPage = useCallback(() => {
+        onPageChange(Math.min(totalPages, currentPage + 1));
+    }, [currentPage, totalPages, onPageChange]);
 
     return (
         <div className="space-y-6">
@@ -53,10 +74,10 @@ export default function GroupDetailLeaderboard({
                 <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
-                        Member Rankings
+                        {ga('memberRankings')}
                     </h3>
                     <div className="text-xs text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-md">
-                        Page {currentPage} of {totalPages || 1}
+                        {ga('pageInfo', { current: currentPage, total: totalPages || 1 })}
                     </div>
                 </div>
 
@@ -65,14 +86,14 @@ export default function GroupDetailLeaderboard({
                     <FadeInWrapper key={`${period}-${currentPage}`}>
                         <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
                             {displayData.length === 0 ? (
-                                <p className="text-gray-500 text-center py-12 flex flex-col items-center gap-2">
+                                <li className="text-gray-500 text-center py-12 flex flex-col items-center gap-2 list-none">
                                     <span className="bg-gray-50 p-3 rounded-full">
-                                        <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                         </svg>
                                     </span>
-                                    <span>No data available yet.</span>
-                                </p>
+                                    <span>{lt('noData')}</span>
+                                </li>
                             ) : (
                                 displayData.map((entry, index) => {
                                     // Calculate rank dynamically based on list position since it's a full list for the group
@@ -112,17 +133,17 @@ export default function GroupDetailLeaderboard({
                                                     <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                         {entry.users.username ? (
                                                             <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline decoration-[var(--theme-primary)]/30">
-                                                                {entry.users?.name || 'Anonymous'}
+                                                                {entry.users?.name || commonT('anonymous')}
                                                             </Link>
                                                         ) : (
-                                                            <span>{entry.users?.name || 'Anonymous'}</span>
+                                                            <span>{entry.users?.name || commonT('anonymous')}</span>
                                                         )}
-                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">YOU</span>}
+                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) ? (
                                                         <p className="text-[10px] text-gray-400 font-medium">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                     ) : (
-                                                        <p className="text-xs text-gray-400">Rank #{rank}</p>
+                                                        <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -152,46 +173,42 @@ export default function GroupDetailLeaderboard({
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <nav aria-label="Pagination" className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
                         <button
-                            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                            onClick={handlePrevPage}
                             disabled={currentPage === 1}
+                            aria-label="Previous page"
                             className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                            Prev
+                            {lt('prev')}
                         </button>
                         <div className="flex gap-1.5">
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let p = i + 1;
-                                if (totalPages > 5 && currentPage > 3) {
-                                    p = currentPage - 2 + i;
-                                }
-                                if (p > totalPages) return null;
-
-                                return (
-                                    <button
-                                        key={p}
-                                        onClick={() => onPageChange(p)}
-                                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
-                                            ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-110'
-                                            : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
-                                            }`}
-                                    >
-                                        {p}
-                                    </button>
-                                );
-                            })}
+                            {paginationPages.map((p) => (
+                                <button
+                                    key={p}
+                                    onClick={() => onPageChange(p)}
+                                    aria-label={`Go to page ${p}`}
+                                    aria-current={currentPage === p ? 'page' : undefined}
+                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
+                                        ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-110'
+                                        : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
+                                        }`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
                         </div>
                         <button
-                            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                            onClick={handleNextPage}
                             disabled={currentPage === totalPages}
+                            aria-label="Next page"
                             className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
-                            Next
+                            {lt('next')}
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </button>
-                    </div>
+                    </nav>
                 )}
             </div>
 

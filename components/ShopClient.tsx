@@ -61,7 +61,10 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
 
     // フィルタされたアイテム
-    const filteredItems = activeTab === 'ALL' ? items : items.filter(i => i.category === activeTab);
+    const filteredItems = useMemo(
+        () => activeTab === 'ALL' ? items : items.filter(i => i.category === activeTab),
+        [items, activeTab]
+    );
 
     // トースト表示（グローバルToastProvider経由）
     const showToast = useCallback((message: string, type: 'success' | 'error') => {
@@ -88,7 +91,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             }
             // 成功
             setOwnedItemIds(prev => new Set([...prev, item.id]));
-            setCurrentBalance(data.newBalance ?? currentBalance - item.price);
+            setCurrentBalance(prev => data.newBalance ?? prev - item.price);
             // ユーザーアイテムリスト更新（サーバーから返された実IDを使用）
             if (data.userItem) {
                 setUserItemsState(prev => [data.userItem, ...prev]);
@@ -106,7 +109,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
         } finally {
             setIsLoading(null);
         }
-    }, [currentBalance, locale, showToast, t]);
+    }, [locale, showToast, t]);
 
     // 装備 / 装備解除処理
     const handleEquip = useCallback(async (userItem: UserItem, action: 'equip' | 'unequip') => {
@@ -490,9 +493,9 @@ function ShopItemCard({
                     {!isOwned && !isComingSoon && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onBuy(); }}
-                            disabled={!canAfford || isLoading}
+                            disabled={!canAfford || !meetsRank || isLoading}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                canAfford
+                                canAfford && meetsRank
                                     ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-95'
                                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             }`}
@@ -501,6 +504,8 @@ function ShopItemCard({
                                 <span className="flex items-center gap-1">
                                     <Spinner size="xs" />
                                 </span>
+                            ) : !meetsRank ? (
+                                `🔒 ${getRankShortLabel(item.rank_required)}`
                             ) : (
                                 `🛒 ${t('buy')}`
                             )}
@@ -609,7 +614,11 @@ function InventoryView({
                                                         : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'
                                                 }`}
                                             >
-                                                {isLoading === ui.id ? '...' : isEquipped ? t('unequip') : t('equip')}
+                                                {isLoading === ui.id ? (
+                                    <span className="flex items-center justify-center gap-1">
+                                        <Spinner size="xs" />
+                                    </span>
+                                ) : isEquipped ? t('unequip') : t('equip')}
                                             </button>
                                         </div>
                                     </div>
@@ -740,9 +749,9 @@ function ItemPreviewDialog({
                     ) : (
                         <button
                             onClick={onBuy}
-                            disabled={!canAfford || isLoading}
+                            disabled={!canAfford || !meetsRank || isLoading}
                             className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all ${
-                                canAfford
+                                canAfford && meetsRank
                                     ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-[0.98] shadow-md'
                                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             }`}
@@ -751,6 +760,8 @@ function ItemPreviewDialog({
                                 <span className="flex items-center justify-center gap-2">
                                     <Spinner size="sm" />
                                 </span>
+                            ) : !meetsRank ? (
+                                <>🔒 {getRankShortLabel(item.rank_required)} {t('rankRequired')}</>
                             ) : canAfford ? (
                                 <>🛒 {t('buy')} — {item.price.toLocaleString()} {t('uc')}</>
                             ) : (

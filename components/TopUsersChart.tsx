@@ -1,8 +1,8 @@
 'use client';
 
+import { useMemo } from 'react';
 import { RankingEntry } from '@/lib/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
-import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
 
 interface TopUsersChartProps {
@@ -15,27 +15,47 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
 
-    if (!data || data.length === 0) return null;
+    // Memoize derived data to prevent recalculation on every render
+    const chartData = useMemo(() => (data ?? []).slice(0, 10), [data]);
+    const maxSteps = useMemo(() => Math.max(...chartData.map(d => d.steps), 1), [chartData]);
 
-    // Use top 10 users max
-    const chartData = data.slice(0, 10);
-    const maxSteps = Math.max(...chartData.map(d => d.steps)) || 1;
+    if (chartData.length === 0) {
+        return (
+            <div className={`p-4 rounded-xl shadow-sm mb-6 ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}>
+                {title && <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>}
+                <p className={`text-sm text-center py-8 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>
+                    No data available yet
+                </p>
+            </div>
+        );
+    }
 
     return (
-        <div className={`p-4 rounded-xl shadow-sm mb-6 ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}>
+        <div
+            className={`p-4 rounded-xl shadow-sm mb-6 ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}
+            role="img"
+            aria-label={title ? `${title} - bar chart showing top ${chartData.length} users` : `Bar chart showing top ${chartData.length} users`}
+        >
             {title && <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>}
 
             <div className="flex items-end justify-between gap-2 h-auto w-full pt-4 pb-2">
                 {chartData.map((entry, index) => {
-                    const isMe = entry.users.id === userId;
-                    const heightPercentage = Math.max((entry.steps / maxSteps) * 100, 5); // Min 5% height
-                    // Fallback to index+1 if originalRank is missing (Global list case)
+                    const user = entry.users;
+                    if (!user?.id) return null;
+
+                    const isMe = user.id === userId;
+                    const heightPercentage = Math.max((entry.steps / maxSteps) * 100, 5);
                     const rank = entry.originalRank ?? (index + 1);
 
                     return (
-                        <div key={entry.users.id} className="flex-1 flex flex-col items-center gap-2 group relative">
-                            {/* Tooltip */}
-                            <div className="opacity-0 group-hover:opacity-100 absolute -top-10 bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 transition-opacity pointer-events-none">
+                        <div
+                            key={user.id}
+                            className="flex-1 flex flex-col items-center gap-2 group relative"
+                            tabIndex={0}
+                            aria-label={`Rank ${rank}: ${user.name || 'Unknown'}, ${entry.steps.toLocaleString()} steps`}
+                        >
+                            {/* Tooltip - visible on hover and focus */}
+                            <div className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute -top-10 bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 transition-opacity pointer-events-none" role="tooltip">
                                 {entry.steps.toLocaleString()} steps
                             </div>
 
@@ -53,22 +73,21 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
                                     `}
                                     style={{ height: `${heightPercentage}%` }}
                                 >
-                                    {/* Rank Badge - Only for top 3 */}
                                     {rank <= 3 && (
-                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-lg drop-shadow-sm transition-transform group-hover:scale-110">
+                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-lg drop-shadow-sm transition-transform group-hover:scale-110 group-focus:scale-110">
                                             {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Avatar / Name */}
+                            {/* Avatar */}
                             <div className="flex flex-col items-center gap-1 z-10">
                                 <UserAvatar
-                                    src={entry.users.image}
-                                    name={entry.users.name || '?'}
+                                    src={user.image}
+                                    name={user.name || '?'}
                                     size="xs"
-                                    frameColor={entry.users.frameColor}
+                                    frameColor={user.frameColor}
                                     borderClass={isMe ? 'border-[var(--theme-primary)]' : 'border-white'}
                                 />
                             </div>

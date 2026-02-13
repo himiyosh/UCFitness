@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
 """
+⚠️ 非推奨 (DEPRECATED) — このスクリプトは現在使用していません ⚠️
+
+理由:
+  - GitHub Models API (gpt-4.1) のレートリミット (150 req/day) により実用不可
+  - 現在のコード改善ループは GitHub Copilot (VS Code チャット) で直接実行しています
+  - このスクリプトを実行しても即座に停止します
+
+代替手段:
+  VS Code で GitHub Copilot チャットを開き、以下のように指示してください:
+  「UCFitness の改善ループを実行してください」
+  詳細は README.md または会話履歴を参照。
+
+--- 以下は旧実装の説明 (参考用) ---
+
 自律的コード改善ループ (Autonomous Code Improvement Loop)
 
-3つの専門エージェント (UI/UX, Performance, Security) が
+5つの専門エージェント (Build Validation, UI/UX, Performance, Security, Feature Enhancement) が
 Generator ↔ Reviewer パターンで最大3回のイテレーションを回し、
 テスト通過を保証しながらコードを改善するスクリプト。
 
-使用ツール: GitHub Models API (gpt-4.1)
+使用ツール: GitHub Models API (gpt-4.1) ← レートリミットにより使用停止
 認証: gh auth token (GitHub CLI のトークンを流用)
 実行環境: ローカル / GitHub Actions
 """
@@ -46,6 +60,7 @@ logger = logging.getLogger("agent_loop")
 MAX_ITERATIONS = 3                 # Generator↔Reviewer ループの最大回数
 MAX_CYCLES_DEFAULT = 5             # マルチサイクルのデフォルト最大回数
 MAX_CHANGED_LINES = 300            # 1ファイルあたりの最大変更行数
+MAX_CODE_CONTEXT = 8000            # AIに送信するコードの最大文字数
 COMMIT_PREFIX = "[bot] AI-Improvement"
 IMPROVEMENT_BRANCH = "bot/ai-improvements"  # 改善コミット用の固定ブランチ
 REPO_ROOT = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve()
@@ -62,6 +77,45 @@ EXCLUDE_PATTERNS = {
     "__pycache__", ".git", "coverage",
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
 }
+
+# ---------------------------------------------------------------------------
+# アプリケーションコンテキスト (プロンプト注入用)
+# ---------------------------------------------------------------------------
+APP_CONTEXT = textwrap.dedent("""\
+    ## アプリケーション情報: UCFitness
+    UCFitness は Fitbit と連携した歩数トラッキング・フィットネス競争アプリ (PWA) です。
+
+    ### 主な機能
+    - 歩数記録・Fitbit同期 (AutoSync)
+    - リーダーボード (日/週/月/年 + アニメーション付きランキング)
+    - グループ対戦 (作成・参加・ランキング・分析)
+    - バッジ収集システム (達成バッジ・レベルバッジ)
+    - コイン経済 (歩数→コイン換算・投資家ランク)
+    - ショップ (アイコンフレーム・タイトル・テーマ購入)
+    - プロフィール管理 (プロフィール画像・バナー画像・称号)
+    - プッシュ通知 (Web Push)
+
+    ### 技術スタック
+    - Next.js 15 (App Router, RSC + Client Components)
+    - TypeScript, React 19
+    - Tailwind CSS v4 (@import "tailwindcss" 構文)
+    - Supabase (PostgreSQL)
+    - NextAuth v5 beta (認証)
+    - next-intl (i18n: ja/en)
+    - Recharts 3.6 (チャート)
+    - Cloudflare Pages (デプロイ)
+    - CSS カスタムプロパティでテーマ切替 (classic/midnight)
+      - Tailwind の dark: は不使用。var(--theme-primary) 等を使用
+    - アニメーション: 純粋 CSS keyframes (framer-motion 不使用)
+
+    ### 現在不足しているUXパターン
+    - Error Boundary (error.tsx が未実装)
+    - ローディングスケルトン (コンテンツ形状のプレースホルダー)
+    - 確認ダイアログ (破壊的操作のガード)
+    - 最終同期タイムスタンプの表示
+    - ページ遷移アニメーション
+    - 空状態のリッチUI (イラスト・CTA付き)
+""")
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +146,8 @@ class LoopResult:
     improvements: list[str] = field(default_factory=list)
     final_status: str = "skipped"   # improved / no_change / rolled_back / skipped
     error: Optional[str] = None
+    diff_text: str = ""              # unified diff テキスト
+    rationale: str = ""              # AI による改善理由
 
 
 # ---------------------------------------------------------------------------
@@ -109,8 +165,8 @@ class GitHubModelsClient:
     DEFAULT_MODEL = "gpt-4.1"
     # gpt-5/o-series は max_tokens ではなく max_completion_tokens を使用
     MODELS_USING_COMPLETION_TOKENS = {"gpt-5", "o1", "o3", "o3-mini", "o4-mini"}
-    MAX_RETRIES = 3
-    RETRY_BASE_DELAY = 2  # 秒
+    MAX_RETRIES = 5
+    RETRY_BASE_DELAY = 5  # 秒 (429 対策で長めに設定)
 
     def __init__(self) -> None:
         self.model = os.environ.get("AI_MODEL", self.DEFAULT_MODEL)
@@ -200,6 +256,21 @@ class GitHubModelsClient:
                 status = getattr(e.response, "status_code", None)
                 # 429 (レートリミット) と 5xx はリトライ
                 if status and (status == 429 or status >= 500):
+                    # Retry-After ヘッダーがあればその値を使う
+                    retry_after = None
+                    if hasattr(e.response, 'headers'):
+                        retry_after = e.response.headers.get('Retry-After')
+                    if retry_after:
+                        try:
+                            retry_seconds = int(retry_after)
+                            logger.warning(
+                                "GitHub Models API HTTP %d (試行 %d/%d): Retry-After=%ds",
+                                status, attempt, self.MAX_RETRIES, retry_seconds,
+                            )
+                            time.sleep(retry_seconds)
+                            continue
+                        except ValueError:
+                            pass
                     logger.warning(
                         "GitHub Models API HTTP %d (試行 %d/%d): %s",
                         status, attempt, self.MAX_RETRIES, e,
@@ -238,9 +309,11 @@ class GitHubModelsClient:
                     "コードブロック (```) で囲んで返答してください。"
                     "重要: コメントの追加だけの変更は価値がありません。"
                     "実質的なコードロジックの変更がない場合は、元のコードをそのまま返してください。"
+                    "絶対に既存の関数や export を削除しないでください。"
+                    "関数の最適化は可能ですが、関数自体の削除は禁止です。"
                     "レビューを求められた場合、承認なら 'approve'、"
                     "却下なら 'reject' を含めて回答してください。"
-                    "コメントの追加のみの差分はレビューで必ず reject してください。"
+                    "コメントの追加のみの差分、または関数削除がある差分はレビューで必ず reject してください。"
                 ),
             },
             {"role": "user", "content": prompt},
@@ -387,13 +460,14 @@ class BaseAgent(ABC):
                 rationale="AI からの応答が空でした",
             )
 
-        # レスポンスからコードブロックを抽出
+        # レスポンスからコードブロックと改善理由を抽出
         extracted = self._extract_code_block(response)
+        rationale = self._extract_rationale(response)
 
         return Proposal(
             description=f"[{self.name}] {file_path} の改善提案",
             patch=extracted,
-            rationale=f"{self.role} の観点からの改善",
+            rationale=rationale or f"{self.role} の観点からの改善",
         )
 
     @staticmethod
@@ -410,6 +484,19 @@ class BaseAgent(ABC):
             # 最も長いコードブロックを返す (本文コード)
             return max(matches, key=len).strip()
         return response.strip()
+
+    @staticmethod
+    def _extract_rationale(response: str) -> str:
+        """AI レスポンスからコードブロック外の説明テキスト（改善理由）を抽出する"""
+        import re
+        # コードブロックを除去し、残ったテキストを改善理由とする
+        text = re.sub(r"```(?:\w+)?\s*\n.*?```", "", response, flags=re.DOTALL).strip()
+        # 先頭の無駄な記号を除去
+        text = re.sub(r"^[#\-*>\s]+", "", text).strip()
+        # 長すぎる場合は先頭 300 文字に制限
+        if len(text) > 300:
+            text = text[:300] + "..."
+        return text
 
     def review_proposal(
         self,
@@ -447,43 +534,99 @@ class BaseAgent(ABC):
 # 3つの専門エージェント
 # ---------------------------------------------------------------------------
 class UIUXAgent(BaseAgent):
-    """🎨 UI/UX Agent: デザイン整合性、アクセシビリティ、レスポンシブ改善"""
+    """🎨 UI/UX Agent: 実質的なUI改善、UXパターン追加、視覚的品質向上"""
 
     def __init__(self):
         super().__init__(
             name="UI/UX Agent",
             role="UI/UXデザインの専門家",
             focus_areas=[
-                "デザインの整合性",
+                "ローディングスケルトン・シマー効果",
+                "空状態のリッチUI (イラスト・CTA付き)",
+                "エラー状態の改善 (リトライボタン・ユーザーフレンドリーなメッセージ)",
+                "アニメーション・トランジション追加 (CSS keyframes)",
+                "レスポンシブデザインの強化",
+                "視覚的階層の改善 (カード・セクション・スペーシング)",
                 "アクセシビリティ (WCAG 2.1 AA)",
-                "レスポンシブデザイン",
-                "セマンティックHTML",
-                "カラーコントラスト",
             ],
         )
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはUI/UXの専門家です。以下のコードを分析し、具体的なコード改善を行ってください。
+            {APP_CONTEXT}
+
+            あなたはモダンWebアプリのUI/UX専門家で、Vercel/Stripe/Linear等の洗練されたUIに精通しています。
+            以下のReactコンポーネントを分析し、ユーザー体験を大幅に向上させる具体的なコード改善を行ってください。
 
             対象ファイル: {file_path}
-            改善の焦点:
-            - アクセシビリティ（aria属性、alt属性、キーボードナビゲーション、WCAG 2.1 AA準拠）
-            - セマンティックHTMLの使用（div→nav/main/section/article等への置換）
-            - レスポンシブデザイン（モバイル対応のクラスやメディアクエリ）
 
-            重要なルール:
-            - コメントの追加だけの変更は禁止。必ず実際のコードを変更すること。
-            - 説明コメントは最小限に。コード自体で意図を表現すること。
+            ## 必ず以下のいずれかを実装すること（最低1つ）
+
+            ### A. ローディング状態の追加
+            データ取得中にスケルトンを表示。コンポーネントの形状に合わせたプレースホルダーを作成:
+            ```tsx
+            if (loading) return (
+              <div className="space-y-3 p-4">
+                <div className="animate-pulse rounded-lg h-10 w-2/3" style={{{{background: 'var(--theme-secondary)'}}}}/>
+                <div className="animate-pulse rounded-lg h-6 w-full" style={{{{background: 'var(--theme-secondary)'}}}}/>
+                <div className="animate-pulse rounded-lg h-6 w-4/5" style={{{{background: 'var(--theme-secondary)'}}}}/>
+              </div>
+            );
+            ```
+
+            ### B. 空状態のリッチUI
+            データが0件の場合にアイコン + メッセージ + CTAボタンを表示:
+            ```tsx
+            if (!data?.length) return (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <span className="text-5xl mb-4">🏃</span>
+                <h3 className="text-lg font-bold" style={{{{color: 'var(--theme-primary)'}}}}>まだデータがありません</h3>
+                <p className="text-sm mt-2" style={{{{color: 'var(--foreground-muted)'}}}}>歩数を記録して始めましょう！</p>
+              </div>
+            );
+            ```
+
+            ### C. エラー状態のUI
+            APIエラー時にリトライボタン付きのUIを表示:
+            ```tsx
+            if (error) return (
+              <div className="flex flex-col items-center py-12 text-center">
+                <span className="text-4xl mb-3">⚠️</span>
+                <p className="font-semibold">データの取得に失敗しました</p>
+                <button onClick={{{{() => refetch()}}}} className="mt-4 px-4 py-2 rounded-lg text-white" style={{{{background: 'var(--theme-primary)'}}}}>
+                  再試行
+                </button>
+              </div>
+            );
+            ```
+
+            ### D. ボタン・フォームのインタラクション強化
+            - ボタンに hover:scale-105 transition-transform を追加
+            - 送信中ボタン: disabled + スピナーアニメーション
+            - 破壊的操作前に window.confirm() で確認
+
+            ### E. トランジション・アニメーション
+            - リストアイテムに opacity + translateY アニメーション
+            - カードに hover shadow トランジション
+            - 数値変化のカウントアップエフェクト
+
+            ## 重要なルール
+            - **必ず1つ以上の実質的なUIコード変更を行うこと。** コメント追加・変数名変更・import整理だけの変更は禁止。
+            - テーマ: var(--theme-primary), var(--theme-secondary), var(--accent-coral) 等のCSS変数を使用。dark: は不使用。
+            - framer-motion は使わない。CSS keyframes と Tailwind アニメーションのみ。
+            - 新しい外部ライブラリは追加しない。
+            - **既存の関数・export を削除しないこと。** 追加のみ許可。
             - 改善すべき点がなければ、元のコードをそのまま返すこと。
             - ファイル末尾には必ず改行を入れること。
 
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
+
             コード:
             ```
-            {code[:3000]}
+            {code[:MAX_CODE_CONTEXT]}
             ```
-
-            改善後のコード全体をコードブロックで返してください。
         """)
 
     def get_reviewer_prompt(
@@ -498,14 +641,16 @@ class UIUXAgent(BaseAgent):
 
             差分:
             ```diff
-            {diff_text[:3000]}
+            {diff_text[:MAX_CODE_CONTEXT]}
             ```
 
             以下の基準で厳密に評価:
-            1. 実質的なコード変更があるか？（コメント追加のみは reject）
-            2. アクセシビリティが実際に向上しているか？
-            3. 既存の機能を壊していないか？
-            4. 不要なインポートやライブラリの追加がないか？
+            1. **実質的なUI/UX改善があるか？** コメント追加・変数名変更・import整理のみは reject
+            2. **ユーザー体験が具体的に向上しているか？** (ローディング状態、空状態、エラーハンドリング等)
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **テーマシステム (CSS変数) に従っているか？** Tailwind dark: を使っていたら reject
+            5. **framer-motion や新しい外部ライブラリを追加していないか？**
+            6. **既存機能を壊していないか？**
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
@@ -530,27 +675,58 @@ class PerformanceAgent(BaseAgent):
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはパフォーマンス最適化の専門家です。以下のコードを分析し、具体的なコード改善を行ってください。
+            {APP_CONTEXT}
+
+            あなたはReact/Next.jsパフォーマンス最適化の専門家です。
+            以下のコードを分析し、**測定可能な**パフォーマンス改善を行ってください。
 
             対象ファイル: {file_path}
-            改善の焦点:
-            - 不要な再レンダリングの防止 (React.memo, useMemo, useCallback の適切な使用)
-            - メモリ効率の向上（不要なコピーの削減）
-            - バンドルサイズ削減 (動的インポート、ツリーシェイキング)
-            - 計算量の削減（配列の繰り返し走査の排除等）
 
-            重要なルール:
-            - コメントの追加だけの変更は禁止。必ず実際のコードロジックを変更すること。
+            ## 具体的に探すべきパターン（優先順）
+
+            ### 1. 不要な再レンダリング防止
+            - コンポーネント内で毎レンダー新規作成されるオブジェクト/配列リテラルを useMemo でメモ化
+            - インラインのコールバック `onClick={{() => handle(id)}}` を useCallback に変換
+            - 重い子コンポーネントを React.memo でラップ
+            - 例:
+              ```tsx
+              // Before
+              const options = items.filter(i => i.active).map(i => ({{label: i.name, value: i.id}}));
+              // After
+              const options = useMemo(() => items.filter(i => i.active).map(i => ({{label: i.name, value: i.id}})), [items]);
+              ```
+
+            ### 2. 重いコンポーネントの遅延ロード
+            - Recharts チャート、モーダル、重いUIセクションを `dynamic(() => import(...), {{ ssr: false }})` で遅延。
+            - 例:
+              ```tsx
+              const HeavyChart = dynamic(() => import('./GoalProgressChart'), {{ ssr: false, loading: () => <div className="animate-pulse h-64" /> }});
+              ```
+
+            ### 3. 計算量の削減
+            - 配列の繰り返し走査（filter().map() を reduce に統合）
+            - ループ内の find/filter を Map/Set で置換
+            - 条件付き early return で不要な処理をスキップ
+
+            ### 4. API・DB 最適化
+            - 並列実行可能な await を Promise.all() に統合
+            - Supabase クエリで不要なカラムを select から除外
+
+            ## 重要なルール
+            - **コメント追加のみ・変数名変更のみ・import整理のみの変更は禁止。**
+            - **既存の関数・export を絶対に削除しないこと。** 最適化は可能だが、削除は禁止。
             - 既存の動作を変えないこと。最適化のみ行うこと。
             - 改善すべき点がなければ、元のコードをそのまま返すこと。
             - ファイル末尾には必ず改行を入れること。
 
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
+
             コード:
             ```
-            {code[:3000]}
+            {code[:MAX_CODE_CONTEXT]}
             ```
-
-            改善後のコード全体をコードブロックで返してください。
         """)
 
     def get_reviewer_prompt(
@@ -565,15 +741,15 @@ class PerformanceAgent(BaseAgent):
 
             差分:
             ```diff
-            {diff_text[:3000]}
+            {diff_text[:MAX_CODE_CONTEXT]}
             ```
 
             以下の基準で厳密に評価:
-            1. 実質的なコード変更があるか？（コメント追加のみは reject）
-            2. 計算量やメモリ使用量が実際に改善されているか？
-            3. 既存の動作を壊していないか？
-            4. 可読性を著しく損なっていないか？
-            5. 不要なインポートやライブラリの追加がないか？
+            1. **実質的なコード変更があるか？** コメント追加・import整理のみは reject
+            2. **パフォーマンスが測定可能に改善されているか？** 定数化などの軽微な変更は reject
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **既存の動作を壊していないか？**
+            5. **不要なライブラリを追加していないか？**
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
@@ -600,30 +776,62 @@ class SecurityAgent(BaseAgent):
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはセキュリティの専門家です。以下のコードを分析し、実際の脆弱性がある場合のみ修正してください。
+            {APP_CONTEXT}
+
+            あなたはWebアプリケーションセキュリティの専門家です。
+            以下のコードを分析し、**実際に悪用可能な脆弱性**がある場合のみ修正してください。
 
             対象ファイル: {file_path}
-            検出すべき脆弱性:
-            - 入力値の未検証（ユーザー入力をサニタイズせずに使用）
-            - 機密情報のハードコーディング（APIキー、パスワード等の直接記載）
-            - インジェクション（SQL, NoSQL, コマンドインジェクション）
-            - 不適切なエラーハンドリング（機密情報のリーク）
-            - 認証・認可の不備
 
-            重要なルール:
-            - コメントの追加だけの変更は絶対に禁止。実際のコードを変更すること。
+            ## 具体的に探すべき脆弱性（実際の問題のみ）
+
+            ### API エンドポイント (route.ts) の場合:
+            - ユーザー入力の未検証（型チェックなしにそのまま使用）
+            - 認証チェックの欠落（auth() なしでデータアクセス）
+            - Rate limiting の欠如
+            - エラーメッセージでの機密情報リーク（スタックトレースや内部IDの露出）
+            - IDOR（他ユーザーのデータにアクセス可能）
+            例:
+            ```ts
+            // Before: 認証なし
+            const userId = body.userId;
+            const data = await supabase.from('users').select('*').eq('id', userId);
+            // After: 認証付き
+            const session = await auth();
+            if (!session?.user?.id) return NextResponse.json({{{{ error: 'Unauthorized' }}}}, {{{{ status: 401 }}}});
+            const data = await supabase.from('users').select('id,name').eq('id', session.user.id);
+            ```
+
+            ### Server Actions (actions.ts) の場合:
+            - 入力値の型検証（string で来るべき値が未検証）
+            - 権限チェックの欠落
+
+            ### クライアントコンポーネント (.tsx) の場合:
+            - dangerouslySetInnerHTML の使用
+            - URLパラメータの未サニタイズ使用
+            - localStorage への機密情報保存
+
+            ## 絶対にやってはいけないこと
+            - 「念のため」の過剰な防御コードの追加
+            - DOMPurify 等の新しいライブラリの追加
+            - React JSX で自動エスケープされる翻訳キーのサニタイズ
+            - セキュリティ問題がないコードへの変更
+
+            ## 重要なルール
+            - **コメント追加のみの変更は絶対に禁止。** 実際のコードを変更すること。
+            - **既存の関数・export を絶対に削除しないこと。**
             - セキュリティ上の問題がなければ、元のコードをそのまま返すこと。
-            - 「念のため」の過剰な防御コードは追加しないこと。
-            - DOMPurify 等の新しいライブラリの追加は避けること。
-            - React の JSX は自動的にXSSをエスケープするため、翻訳キーや静的テキストのサニタイズは不要。
             - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
+            問題がなければ元のコードをそのまま返してください。
 
             コード:
             ```
-            {code[:3000]}
+            {code[:MAX_CODE_CONTEXT]}
             ```
-
-            改善後のコード全体をコードブロックで返してください。問題がなければ元のコードをそのまま返してください。
         """)
 
     def get_reviewer_prompt(
@@ -638,24 +846,450 @@ class SecurityAgent(BaseAgent):
 
             差分:
             ```diff
-            {diff_text[:3000]}
+            {diff_text[:MAX_CODE_CONTEXT]}
             ```
 
             以下の基準で厳密に評価:
-            1. 実質的なコード変更があるか？（コメント追加のみは必ず reject）
-            2. 修正が実際の脆弱性に対応しているか？（架空のリスクへの対応は reject）
-            3. 新たな脆弱性が混入していないか？
-            4. 既存の機能やセキュリティ機構を壊していないか？
-            5. 不要なライブラリの追加がないか？（DOMPurify等の過剰な依存追加は reject）
+            1. **実質的なコード変更があるか？** コメント追加のみは必ず reject
+            2. **修正が実際の脆弱性に対応しているか？** 架空のリスクへの対応は reject
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **新たな脆弱性が混入していないか？**
+            5. **既存の機能やセキュリティ機構を壊していないか？**
+            6. **不要なライブラリの追加がないか？** DOMPurify等の過剰な依存追加は reject
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
         """)
 
 
-# ---------------------------------------------------------------------------
-# ユーティリティ関数
-# ---------------------------------------------------------------------------
+class FeatureEnhancementAgent(BaseAgent):
+    """✨ Feature Enhancement Agent: 既存コンポーネントにUXパターン・小機能を追加"""
+
+    def __init__(self):
+        super().__init__(
+            name="Feature Enhancement Agent",
+            role="UX機能強化の専門家",
+            focus_areas=[
+                "ローディングスケルトンの追加",
+                "空状態UIの追加 (データなし時のリッチ表示)",
+                "エラーバウンダリ・エラーUIの追加",
+                "ボタンのローディング状態",
+                "フォームバリデーションの強化",
+                "確認ダイアログ (破壊的操作前)",
+                "トランジション・アニメーション",
+                "ツールチップ・ヘルプテキストの追加",
+            ],
+        )
+
+    def get_generator_prompt(self, file_path: str, code: str) -> str:
+        return textwrap.dedent(f"""\
+            {APP_CONTEXT}
+
+            あなたはフロントエンドUX機能強化の専門家です。
+            以下のReactコンポーネントを分析し、不足している**UXパターン**を具体的に追加してください。
+
+            対象ファイル: {file_path}
+
+            ## 必ず1つ以上追加すること
+
+            ### A. 状態管理の3層（最重要 — このコンポーネントに該当するものを全て追加）
+
+            **ローディング状態** — データ取得中のスケルトン:
+            ```tsx
+            if (loading) return (
+              <div className="space-y-3 p-4">
+                <div className="animate-pulse rounded-lg h-10 w-2/3" style={{{{background: 'var(--theme-secondary)'}}}}/>
+                <div className="animate-pulse rounded-lg h-6 w-full" style={{{{background: 'var(--theme-secondary)'}}}}/>
+              </div>
+            );
+            ```
+
+            **空状態** — データが0件の場合:
+            ```tsx
+            if (!data?.length) return (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <span className="text-5xl mb-4">🏃</span>
+                <h3 className="text-lg font-bold" style={{{{color: 'var(--theme-primary)'}}}}>まだデータがありません</h3>
+                <p className="text-sm mt-2" style={{{{color: 'var(--foreground-muted)'}}}}>歩数を記録して始めましょう！</p>
+              </div>
+            );
+            ```
+
+            **エラー状態** — APIエラー時:
+            ```tsx
+            if (error) return (
+              <div className="flex flex-col items-center py-12 text-center">
+                <span className="text-4xl mb-3">⚠️</span>
+                <p className="font-semibold">データの取得に失敗しました</p>
+                <button onClick={{{{() => retry()}}}} className="mt-4 px-4 py-2 rounded-lg text-white"
+                  style={{{{background: 'var(--theme-primary)'}}}}>再試行</button>
+              </div>
+            );
+            ```
+
+            ### B. ボタン・フォームの強化
+            - 送信ボタンにローディング状態を追加:
+              ```tsx
+              <button disabled={{{{isSubmitting}}}} className="relative ...">
+                {{{{isSubmitting ? (
+                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                ) : '保存'}}}}
+              </button>
+              ```
+            - 破壊的操作（削除・退会）の前に: `if (!window.confirm('本当に削除しますか？')) return;`
+
+            ### C. 視覚的フィードバック
+            - カードに hover:shadow-lg transition-shadow を追加
+            - ボタンに hover:scale-105 transition-transform を追加
+            - 操作後の成功/エラートースト表示
+
+            ## 重要なルール
+            - **必ず具体的なコードを追加すること。** コメントだけの追加は禁止。
+            - **既存の関数・export は絶対に削除しないこと。** 追加のみ許可。
+            - **既存のロジックは変更しないこと。** UXパターンの追加のみ。
+            - テーマ: var(--theme-primary), var(--theme-secondary) 等のCSS変数を使用。dark: は不使用。
+            - framer-motion は使わない。CSS keyframes と Tailwind のみ。
+            - 新しい外部ライブラリは追加しない。
+            - 改善点がなければ元のコードをそのまま返すこと。
+            - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
+
+            コード:
+            ```
+            {code[:MAX_CODE_CONTEXT]}
+            ```
+        """)
+
+    def get_reviewer_prompt(
+        self, file_path: str, original: str, modified: str, proposal_desc: str
+    ) -> str:
+        diff_text = _create_diff(original, modified, file_path)
+        return textwrap.dedent(f"""\
+            あなたはUX機能強化のシニアレビュアーです。以下の変更を批判的に評価してください。
+
+            ファイル: {file_path}
+            提案内容: {proposal_desc}
+
+            差分:
+            ```diff
+            {diff_text[:MAX_CODE_CONTEXT]}
+            ```
+
+            以下の基準で厳密に評価:
+            1. **実質的なUXパターンが追加されているか？** コメントのみ・変数名変更のみは reject
+            2. **追加されたUIが実用的か？** (スケルトン、空状態、エラー状態、ローディングボタン等)
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **既存のロジックを壊していないか？**
+            5. **テーマシステムに従っているか？** (CSS変数を使用しているか)
+            6. **framer-motion や外部ライブラリを追加していないか？**
+
+            問題がある場合は "reject" を含む応答を、
+            承認する場合は "approve" を含む応答を返してください。
+        """)
+
+
+class BuildValidationAgent(BaseAgent):
+    """🔨 Build Validation Agent: ビルドエラー・型エラー・翻訳キー不足・レンダリングエラーを検出し修正"""
+
+    def __init__(self):
+        super().__init__(
+            name="Build Validation Agent",
+            role="ビルド検証・品質保証・レンダリング安全性の専門家",
+            focus_areas=[
+                "TypeScript コンパイルエラーの修正",
+                "未使用 import の削除",
+                "型定義の不整合解消",
+                "翻訳キー (i18n) の整合性検証",
+                "Next.js ビルド互換性 (Server/Client Component 分離)",
+                "Supabase クエリの型安全性",
+                "React Rules of Hooks 違反の検出・修正",
+                "SSR/CSR ハイドレーションミスマッチの検出",
+                "レンダリング中の副作用・無限ループの検出",
+                "Server/Client Component 境界の不正使用検出",
+            ],
+        )
+
+    def run_build_check(self) -> tuple[bool, str]:
+        """next build を実行してビルドエラーを検出する"""
+        logger.info("🔨 next build を実行中...")
+        try:
+            shell = sys.platform == "win32"
+            result = subprocess.run(
+                ["npx", "next", "build"],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=str(REPO_ROOT),
+                shell=shell,
+            )
+            output = result.stdout + "\n" + result.stderr
+            passed = result.returncode == 0
+            status = "✅ BUILD PASS" if passed else "❌ BUILD FAIL"
+            logger.info("ビルド結果: %s (exit=%d)", status, result.returncode)
+            return passed, output
+        except subprocess.TimeoutExpired:
+            logger.error("ビルドがタイムアウト (300秒)")
+            return False, "ビルドがタイムアウトしました"
+        except FileNotFoundError as e:
+            logger.warning("npx が見つかりません: %s", e)
+            return True, "ビルドツールが利用不可 — スキップ"
+
+    def run_typecheck(self) -> tuple[bool, str]:
+        """TypeScript 型チェックを実行する"""
+        logger.info("🔍 TypeScript 型チェックを実行中...")
+        try:
+            shell = sys.platform == "win32"
+            result = subprocess.run(
+                ["npx", "tsc", "--noEmit", "--pretty"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(REPO_ROOT),
+                shell=shell,
+            )
+            output = result.stdout + "\n" + result.stderr
+            passed = result.returncode == 0
+            return passed, output
+        except subprocess.TimeoutExpired:
+            return False, "型チェックがタイムアウトしました"
+        except FileNotFoundError:
+            return True, "tsc が利用不可 — スキップ"
+
+    def check_i18n_keys(self) -> list[dict]:
+        """翻訳キーの整合性を検証する (コード内使用 vs JSON 定義)"""
+        import re
+
+        missing_keys: list[dict] = []
+        messages_dir = REPO_ROOT / "messages"
+
+        # ja.json を基準としてキーを収集
+        ja_path = messages_dir / "ja.json"
+        en_path = messages_dir / "en.json"
+        if not ja_path.exists() or not en_path.exists():
+            return missing_keys
+
+        try:
+            ja_data = json.loads(ja_path.read_text(encoding="utf-8"))
+            en_data = json.loads(en_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            logger.warning("翻訳ファイルの解析に失敗")
+            return missing_keys
+
+        # コンポーネントから useTranslations の使用箇所を検出
+        components_dir = REPO_ROOT / "components"
+        app_dir = REPO_ROOT / "app"
+
+        for search_dir in [components_dir, app_dir]:
+            if not search_dir.exists():
+                continue
+            for tsx_file in search_dir.rglob("*.tsx"):
+                if _should_skip_file(tsx_file):
+                    continue
+                try:
+                    code = tsx_file.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    continue
+
+                # useTranslations('Namespace') を検出
+                ns_matches = re.findall(
+                    r"useTranslations\(['\"](\w+)['\"]\)", code
+                )
+                # getTranslations('Namespace') も検出 (Server Components)
+                ns_matches.extend(re.findall(
+                    r"getTranslations\(['\"](\w+)['\"]\)", code
+                ))
+
+                for namespace in set(ns_matches):
+                    # 対応する変数名を特定
+                    var_patterns = re.findall(
+                        rf"const\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\(['\"]"
+                        + re.escape(namespace) + r"['\"]\)",
+                        code,
+                    )
+                    for var_name in var_patterns:
+                        # var_name('key') パターンを検出
+                        key_matches = re.findall(
+                            rf"{re.escape(var_name)}\(['\"]([a-zA-Z0-9_.]+)['\"]",
+                            code,
+                        )
+                        for key in key_matches:
+                            # ネストキー (e.g. "comparisonTitle.daily") に対応
+                            parts = key.split(".")
+                            # ja.json でチェック
+                            ja_val = ja_data.get(namespace, {})
+                            for part in parts:
+                                if isinstance(ja_val, dict):
+                                    ja_val = ja_val.get(part)
+                                else:
+                                    ja_val = None
+                                    break
+                            # en.json でチェック
+                            en_val = en_data.get(namespace, {})
+                            for part in parts:
+                                if isinstance(en_val, dict):
+                                    en_val = en_val.get(part)
+                                else:
+                                    en_val = None
+                                    break
+
+                            if ja_val is None or en_val is None:
+                                missing_keys.append({
+                                    "file": str(tsx_file.relative_to(REPO_ROOT)),
+                                    "namespace": namespace,
+                                    "key": key,
+                                    "missing_in": [
+                                        lang for lang, val in
+                                        [("ja", ja_val), ("en", en_val)]
+                                        if val is None
+                                    ],
+                                })
+
+        return missing_keys
+
+    def get_generator_prompt(self, file_path: str, code: str) -> str:
+        # ビルドエラー情報を収集して含める
+        build_ok, build_output = self.run_build_check()
+        typecheck_ok, typecheck_output = self.run_typecheck()
+        i18n_issues = self.check_i18n_keys()
+
+        error_context = ""
+        if not build_ok:
+            # ビルドエラーから対象ファイルに関連するエラーを抽出
+            relevant_errors = [
+                line for line in build_output.splitlines()
+                if Path(file_path).name in line or "Error" in line or "error" in line.lower()
+            ]
+            error_context += f"\n### ビルドエラー:\n" + "\n".join(relevant_errors[:30])
+
+        if not typecheck_ok:
+            relevant_type_errors = [
+                line for line in typecheck_output.splitlines()
+                if Path(file_path).name in line or "error TS" in line
+            ]
+            error_context += f"\n### 型エラー:\n" + "\n".join(relevant_type_errors[:30])
+
+        # 対象ファイルに関連する i18n 不足キー
+        file_i18n_issues = [
+            issue for issue in i18n_issues
+            if issue["file"] == file_path or Path(file_path).name in issue["file"]
+        ]
+        if file_i18n_issues:
+            error_context += "\n### 翻訳キー不足:\n"
+            for issue in file_i18n_issues:
+                error_context += (
+                    f"- {issue['namespace']}.{issue['key']} "
+                    f"(不足: {', '.join(issue['missing_in'])})\n"
+                )
+
+        return textwrap.dedent(f"""\
+            {APP_CONTEXT}
+
+            あなたはビルドエラー修正・レンダリングエラー検出・品質保証の専門家です。
+            以下のファイルのビルドエラー・型エラー・翻訳キー不足・レンダリングエラーを修正してください。
+
+            対象ファイル: {file_path}
+            {error_context}
+
+            ## 修正すべき項目
+            1. **TypeScript コンパイルエラー**: 型の不整合、未使用 import、missing module
+            2. **Next.js ビルドエラー**: Server/Client Component の不正な混在、dynamic import の問題
+            3. **翻訳キーの不足**: useTranslations / getTranslations で使用するキーが ja.json / en.json に不足
+            4. **Supabase クエリの型安全性**: select() のカラム名が実際のテーブルスキーマと一致するか
+            5. **React Rules of Hooks 違反**: 以下のパターンを必ず検出し修正すること:
+               - ❌ 条件分岐 (if/else) や early return の **後に** Hooks (useState, useEffect, useCallback, useMemo, useRef 等) が呼ばれている
+               - ❌ ループ (for, while, map 等) の **内部で** Hooks が呼ばれている
+               - ❌ ネストされた関数やコールバックの **内部で** Hooks が呼ばれている
+               - ❌ 条件式の中で Hooks が呼ばれている (例: `if (cond) { useState(...) }`)
+               - ✅ すべての Hooks はコンポーネント/カスタムHookの **トップレベル** で、条件分岐や return 文の **前に** 宣言されなければならない
+               - ✅ 修正方法: Hooks を条件分岐の前に移動し、early return は全 Hooks 宣言の後に配置する
+            6. **React レンダリングエラー**: 以下のパターンを検出し修正すること:
+               a. **SSR/CSR ハイドレーションミスマッチ**:
+                  - ❌ サーバーとクライアントで異なる出力を返すコード (例: `typeof window !== 'undefined'` で分岐した JSX)
+                  - ❌ `Date.now()`, `Math.random()` 等の非決定的な値をレンダリング時に直接使用
+                  - ❌ `<p>` 内に `<div>`, `<table>` 外の `<tr>` 等の不正な HTML ネスト
+                  - ✅ `useEffect` + `useState` で SSR 安全にクライアント限定コンテンツを表示する
+               b. **レンダリング中の副作用**:
+                  - ❌ レンダリング関数内で直接 `setState()` を呼び出す (無限ループ)
+                  - ❌ レンダリング中に DOM を直接操作する (`document.getElementById` 等)
+                  - ❌ レンダリング中に `fetch()` / `async` 操作を直接実行する
+                  - ✅ 副作用は必ず `useEffect` 内に配置する
+               c. **条件付きレンダリングの問題**:
+                  - ❌ `&&` 演算子で `0` や `""` がフォールスルーして意図せず表示される (例: `{count && <Tag/>}` → 0 が表示)
+                  - ✅ `{count > 0 && <Tag/>}` または三項演算子を使用する
+               d. **Server/Client Component 境界の不正使用**:
+                  - ❌ Server Component で `useState`, `useEffect`, `onClick` 等を使用 ('use client' ディレクティブ不足)
+                  - ❌ Client Component から Server Component を import して children 以外で使用
+                  - ❌ Server Component で `useTranslations` を使用 (代わりに `getTranslations` を使用)
+               e. **key prop の問題**:
+                  - ❌ リスト内の要素に `key` が設定されていない、または index を key に使用している (動的リストの場合)
+                  - ❌ 兄弟要素間で重複する key が存在する
+               f. **非同期コンポーネントのエラー**:
+                  - ❌ Client Component ('use client') を async 関数として定義している
+                  - ❌ Server Component 内で async を使わずに await している
+               g. **useEffect の依存配列の問題**:
+                  - ❌ 依存配列にオブジェクト/配列リテラルを直接書いて無限ループを引き起こす
+                  - ❌ 必要な依存変数が依存配列から漏れている
+                  - ❌ `useEffect` 内で依存配列に含まれる state を即座に set して無限ループ
+
+            ## 重要なルール
+            - **エラーがなければ元のコードをそのまま返すこと。**
+            - **既存の関数・export は絶対に削除しないこと。**
+            - **ロジックの変更は最小限に。** エラー修正のみ行うこと。
+            - テーマ: var(--theme-primary) 等のCSS変数を使用。dark: は不使用。
+            - framer-motion は使わない。
+            - 新しい外部ライブラリは追加しない。
+            - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 修正内容」として何を修正したかを簡潔に説明（2-3行）し、
+            その後に修正後のコード全体をコードブロックで返してください。
+            エラーがない場合は「## 修正不要」と記述し、元のコードをそのまま返してください。
+
+            コード:
+            ```
+            {code[:MAX_CODE_CONTEXT]}
+            ```
+        """)
+
+    def get_reviewer_prompt(
+        self, file_path: str, original: str, modified: str, proposal_desc: str
+    ) -> str:
+        diff_text = _create_diff(original, modified, file_path)
+        return textwrap.dedent(f"""\
+            あなたはビルドエラー修正のシニアレビュアーです。以下の変更を評価してください。
+
+            ファイル: {file_path}
+            提案内容: {proposal_desc}
+
+            差分:
+            ```diff
+            {diff_text[:MAX_CODE_CONTEXT]}
+            ```
+
+            以下の基準で厳密に評価:
+            1. **ビルドエラーが実際に修正されているか？** 無関係な変更のみの場合は reject
+            2. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            3. **既存のロジックを壊していないか？** 最小限の修正であること
+            4. **新しいエラーを導入していないか？** (import 漏れ、型の不整合 等)
+            5. **翻訳キーの修正が正しいか？** (ja.json/en.json に追加すべきキーが正しいか)
+            6. **React Rules of Hooks 違反を導入していないか？** 条件分岐や early return の後に新たな Hooks 呼び出しが追加されていたら必ず reject
+            7. **レンダリングエラーを導入していないか？** 以下を必ずチェック:
+               - SSR/CSR ハイドレーションミスマッチ (サーバーとクライアントで異なる出力)
+               - レンダリング中の setState 呼び出し (無限ループ)
+               - Server Component で useState/useEffect/onClick を使用していないか
+               - Client Component を async にしていないか
+               - `&&` 演算子で 0 や空文字がフォールスルーしていないか
+               - useEffect の依存配列にオブジェクトリテラル直書きで無限ループしていないか
+               - 不正な HTML ネスト (`<p>` 内の `<div>` 等)
+
+            問題がある場合は "reject" を含む応答を、
+            承認する場合は "approve" を含む応答を返してください。
+        """)
+
+
 def _create_diff(original: str, modified: str, file_path: str) -> str:
     """unified diff を生成する"""
     return "\n".join(
@@ -695,6 +1329,53 @@ def _count_changed_lines(original: str, modified: str) -> int:
         )
     )
     return sum(1 for line in diff if line.startswith("+") or line.startswith("-"))
+
+
+def _count_exports_and_functions(code: str) -> dict[str, int]:
+    """コード内の export / function / const 定義をカウントする。
+
+    関数削除を検出するために使用。変更後にカウントが減少していたら
+    破壊的な変更とみなす。
+    """
+    import re
+    counts = {
+        "export": len(re.findall(r"\bexport\b", code)),
+        "function": len(re.findall(r"\bfunction\s+\w+", code)),
+        "arrow_fn": len(re.findall(r"\bconst\s+\w+\s*=\s*(?:async\s*)?\(", code)),
+        "export_default": len(re.findall(r"\bexport\s+default\b", code)),
+    }
+    counts["total_definitions"] = counts["function"] + counts["arrow_fn"]
+    return counts
+
+
+def _check_destructive_changes(original: str, modified: str) -> tuple[bool, str]:
+    """破壊的な変更（関数/export の削除）を検出する。
+
+    Returns:
+        (is_destructive, reason): 問題がある場合 True と理由。
+    """
+    orig_counts = _count_exports_and_functions(original)
+    mod_counts = _count_exports_and_functions(modified)
+
+    issues = []
+    if mod_counts["total_definitions"] < orig_counts["total_definitions"]:
+        diff = orig_counts["total_definitions"] - mod_counts["total_definitions"]
+        issues.append(
+            f"関数/定義が {diff} 個減少 "
+            f"({orig_counts['total_definitions']}→{mod_counts['total_definitions']})"
+        )
+    if mod_counts["export"] < orig_counts["export"]:
+        diff = orig_counts["export"] - mod_counts["export"]
+        issues.append(
+            f"export が {diff} 個減少 "
+            f"({orig_counts['export']}→{mod_counts['export']})"
+        )
+    if mod_counts["export_default"] < orig_counts["export_default"]:
+        issues.append("export default が削除されています")
+
+    if issues:
+        return True, "; ".join(issues)
+    return False, ""
 
 
 # ---------------------------------------------------------------------------
@@ -762,6 +1443,20 @@ class GeneratorReviewerLoop:
 
                 # パッチ適用
                 modified_code = proposal.patch
+                # 破壊的変更チェック (関数/export の削除を検出)
+                is_destructive, reason = _check_destructive_changes(
+                    current_code, modified_code
+                )
+                if is_destructive:
+                    logger.warning(
+                        "🚫 破壊的変更を検出 — スキップ: %s", reason,
+                    )
+                    file_path.write_text(current_code, encoding="utf-8")
+                    result.improvements.append(
+                        f"イテレーション{iteration}: 破壊的変更を検出 — {reason}"
+                    )
+                    continue
+
                 if _count_changed_lines(current_code, modified_code) > MAX_CHANGED_LINES:
                     logger.warning(
                         "変更行数が上限 (%d行) を超過 — スキップ",
@@ -802,6 +1497,15 @@ class GeneratorReviewerLoop:
 
                 if review.approved:
                     logger.info("✅ Reviewer が承認 — 改善を適用")
+                    # diff を記録（最終承認時のもので上書き）
+                    diff_lines = list(unified_diff(
+                        current_code.splitlines(keepends=True),
+                        modified_code.splitlines(keepends=True),
+                        fromfile=f"a/{file_path.name}",
+                        tofile=f"b/{file_path.name}",
+                    ))
+                    result.diff_text = "".join(diff_lines)
+                    result.rationale = proposal.rationale or proposal.description
                     current_code = modified_code
                     # バックアップを更新（新しい状態を保存）
                     self._update_backup(file_path, backup_path)
@@ -889,12 +1593,14 @@ class AgentLoop:
             "uiux": [UIUXAgent()],
             "performance": [PerformanceAgent()],
             "security": [SecurityAgent()],
+            "feature": [FeatureEnhancementAgent()],
+            "build": [BuildValidationAgent()],
         }
         if target in agent_map:
             logger.info("🎯 対象エージェント: %s", target)
             return agent_map[target]
-        logger.info("🎯 対象エージェント: all (3エージェント)")
-        return [UIUXAgent(), PerformanceAgent(), SecurityAgent()]
+        logger.info("🎯 対象エージェント: all (5エージェント)")
+        return [BuildValidationAgent(), UIUXAgent(), PerformanceAgent(), SecurityAgent(), FeatureEnhancementAgent()]
 
     def _ensure_improvement_branch(self) -> None:
         """改善用の固定ブランチに切り替える（なければ main から作成）"""
@@ -1017,10 +1723,17 @@ class AgentLoop:
         cycle_results: list[LoopResult] = []
 
         # 各ファイル × 各エージェントでループ実行
+        file_agent_count = 0
         for file_path in changed_files:
             for agent in self.agents:
                 if not self._is_relevant(file_path, agent):
                     continue
+
+                # レートリミット対策: ファイル間にクールダウンを挿入
+                if file_agent_count > 0:
+                    cooldown = int(os.environ.get("INTER_FILE_DELAY", "10"))
+                    logger.info("⏳ レートリミット対策: %d秒クールダウン...", cooldown)
+                    time.sleep(cooldown)
 
                 loop = GeneratorReviewerLoop(
                     agent, self.test_runner, skip_tests=self.skip_tests,
@@ -1028,6 +1741,7 @@ class AgentLoop:
                 result = loop.execute(file_path)
                 cycle_results.append(result)
                 self.results.append(result)
+                file_agent_count += 1
 
                 logger.info(
                     "📊 結果: %s | %s | status=%s | iterations=%d",
@@ -1070,13 +1784,36 @@ class AgentLoop:
             return []
 
     def _get_all_target_files(self) -> list[Path]:
-        """全対象ファイルのリストを返す（フォールバック用）"""
-        files = []
+        """全対象ファイルのリストを返す（フォールバック用）
+
+        各拡張子から均等にファイルを選択し、特定の拡張子に偏らないようにする。
+        """
+        import random
+        files_by_ext: dict[str, list[Path]] = {}
         for ext in TARGET_EXTENSIONS:
-            for path in REPO_ROOT.rglob(f"*{ext}"):
-                if not _should_skip_file(path):
-                    files.append(path)
-        return files[:20]  # 安全のため最大20ファイル
+            ext_files = [
+                path for path in REPO_ROOT.rglob(f"*{ext}")
+                if not _should_skip_file(path)
+            ]
+            if ext_files:
+                random.shuffle(ext_files)
+                files_by_ext[ext] = ext_files
+
+        # ラウンドロビンで各拡張子からファイルを選択（偏り防止）
+        max_files = 30
+        result: list[Path] = []
+        round_idx = 0
+        while len(result) < max_files:
+            added = False
+            for ext_files in files_by_ext.values():
+                if round_idx < len(ext_files) and len(result) < max_files:
+                    result.append(ext_files[round_idx])
+                    added = True
+            if not added:
+                break
+            round_idx += 1
+
+        return result
 
     @property
     def repo_root(self) -> Path:
@@ -1111,6 +1848,15 @@ class AgentLoop:
                     )
                 )
             )
+
+        if isinstance(agent, FeatureEnhancementAgent):
+            # Feature Enhancement: TSX/JSX コンポーネントのみ対象
+            # (UI に関わるファイルに UX パターンを追加)
+            return suffix in {".tsx", ".jsx"}
+
+        if isinstance(agent, BuildValidationAgent):
+            # Build Validation: TS/TSX/JS/JSX + JSON (翻訳ファイル) が対象
+            return suffix in {".ts", ".tsx", ".js", ".jsx", ".json"}
 
         return False
 
@@ -1148,103 +1894,156 @@ class AgentLoop:
         logger.info("✅ コミット＆プッシュ完了 [%s]: %s", IMPROVEMENT_BRANCH, message)
 
     def _write_summary(self) -> None:
-        """サマリーレポートを GitHub Actions の GITHUB_STEP_SUMMARY に出力する"""
+        """Markdown レポートを生成し、コンソール・ファイル・GitHub Actions に出力する"""
+        from datetime import datetime
+
         summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        lines = [
-            "# 🤖 自律的コード改善レポート\n",
-            f"| 項目 | 値 |",
-            f"|------|------|",
-            f"| トリガー | {self.trigger_event} |",
-            f"| サイクル数 | {len(self.cycle_history)} |",
-            f"| 処理ファイル数 | {len(self.results)} |",
-            f"| 改善成功 | {sum(1 for r in self.results if r.final_status == 'improved')} |",
-            f"| 変更なし | {sum(1 for r in self.results if r.final_status == 'no_change')} |",
-            f"| ロールバック | {sum(1 for r in self.results if r.final_status == 'rolled_back')} |",
-            f"| スキップ | {sum(1 for r in self.results if r.final_status == 'skipped')} |",
-            "",
-            "## 🔄 サイクル履歴\n",
-        ]
+        improved_count = sum(1 for r in self.results if r.final_status == "improved")
+        no_change_count = sum(1 for r in self.results if r.final_status == "no_change")
+        rolled_back_count = sum(1 for r in self.results if r.final_status == "rolled_back")
+        skipped_count = sum(1 for r in self.results if r.final_status == "skipped")
 
-        for ch in self.cycle_history:
-            icon = "✅" if ch["improved_count"] > 0 else "➖"
-            lines.append(
-                f"- {icon} サイクル {ch['cycle']}: "
-                f"{ch['improved_count']} 件改善"
-            )
+        lines: list[str] = []
+
+        # ── ヘッダー ──
+        lines.append("# 🤖 AI 自律改善レポート")
+        lines.append("")
+        lines.append(f"> 生成日時: {now}")
         lines.append("")
 
-        lines.append("## 📋 詳細結果\n")
+        # ── サマリーテーブル ──
+        lines.append("## 📊 サマリー")
+        lines.append("")
+        lines.append("| 項目 | 値 |")
+        lines.append("|------|------|")
+        lines.append(f"| トリガー | {self.trigger_event} |")
+        lines.append(f"| サイクル数 | {len(self.cycle_history)} |")
+        lines.append(f"| 処理ファイル数 | {len(self.results)} |")
+        lines.append(f"| ✅ 改善成功 | **{improved_count}** |")
+        lines.append(f"| ➖ 変更なし | {no_change_count} |")
+        lines.append(f"| ⏪ ロールバック | {rolled_back_count} |")
+        lines.append(f"| ⏭️ スキップ | {skipped_count} |")
+        lines.append("")
 
-        for r in self.results:
-            status_icon = {
-                "improved": "✅",
-                "no_change": "➖",
-                "rolled_back": "⏪",
-                "skipped": "⏭️",
-            }.get(r.final_status, "❓")
-
-            lines.append(
-                f"### {status_icon} {r.agent_name} → `{Path(r.file_path).name}`"
-            )
-            lines.append(f"- **ステータス:** {r.final_status}")
-            lines.append(f"- **イテレーション数:** {r.iterations}")
-            if r.improvements:
-                lines.append("- **改善履歴:**")
-                for imp in r.improvements:
-                    lines.append(f"  - {imp}")
-            if r.error:
-                lines.append(f"- **エラー:** {r.error}")
+        # ── サイクル履歴 ──
+        if self.cycle_history:
+            lines.append("## 🔄 サイクル履歴")
             lines.append("")
+            for ch in self.cycle_history:
+                icon = "✅" if ch["improved_count"] > 0 else "➖"
+                lines.append(
+                    f"- {icon} サイクル {ch['cycle']}: "
+                    f"{ch['improved_count']} 件改善"
+                )
+            lines.append("")
+
+        # ── 改善されたファイルの詳細（diff付き）──
+        improved_results = [r for r in self.results if r.final_status == "improved"]
+        if improved_results:
+            lines.append("## ✅ 改善されたファイル")
+            lines.append("")
+            for r in improved_results:
+                rel_path = str(Path(r.file_path).relative_to(REPO_ROOT)) if REPO_ROOT in Path(r.file_path).parents else r.file_path
+                lines.append(f"### 📝 `{rel_path}`")
+                lines.append("")
+                lines.append(f"- **エージェント:** {r.agent_name}")
+                lines.append(f"- **イテレーション数:** {r.iterations}")
+                if r.rationale:
+                    lines.append(f"- **改善理由:** {r.rationale}")
+                if r.improvements:
+                    lines.append("- **履歴:**")
+                    for imp in r.improvements:
+                        lines.append(f"  - {imp}")
+                lines.append("")
+
+                # diff の表示
+                if r.diff_text:
+                    lines.append("<details>")
+                    lines.append(f"<summary>📄 差分を表示（クリックで展開）</summary>")
+                    lines.append("")
+                    lines.append("```diff")
+                    # diff が長すぎる場合は先頭 200 行に制限
+                    diff_lines_list = r.diff_text.splitlines()
+                    if len(diff_lines_list) > 200:
+                        lines.extend(diff_lines_list[:200])
+                        lines.append(f"\n... (以下 {len(diff_lines_list) - 200} 行省略)")
+                    else:
+                        lines.extend(diff_lines_list)
+                    lines.append("```")
+                    lines.append("")
+                    lines.append("</details>")
+                else:
+                    lines.append("> ⚠️ diff データなし")
+                lines.append("")
+
+        # ── 変更なし / スキップ / ロールバックのファイル ──
+        other_results = [r for r in self.results if r.final_status != "improved"]
+        if other_results:
+            lines.append("## 📋 その他のファイル")
+            lines.append("")
+            lines.append("| ファイル | エージェント | ステータス | 備考 |")
+            lines.append("|----------|------------|----------|------|")
+            for r in other_results:
+                status_icon = {
+                    "no_change": "➖",
+                    "rolled_back": "⏪",
+                    "skipped": "⏭️",
+                }.get(r.final_status, "❓")
+                fname = Path(r.file_path).name
+                note = r.error or (r.improvements[-1] if r.improvements else "—")
+                # テーブル内のパイプ文字をエスケープ
+                note = note.replace("|", "\\|")
+                lines.append(f"| `{fname}` | {r.agent_name} | {status_icon} {r.final_status} | {note} |")
+            lines.append("")
+
+        # ── フッター ──
+        lines.append("---")
+        lines.append(f"*レポート生成: agent_loop.py v3 | モデル: {os.environ.get('AI_MODEL', 'gpt-4.1')}*")
 
         summary_text = "\n".join(lines)
 
-        # GitHub Actions のステップサマリーに出力
+        # 1. Markdown レポートをファイルに保存
+        report_md_path = REPO_ROOT / "improvement-report.md"
+        report_md_path.write_text(summary_text, encoding="utf-8")
+        logger.info("📄 Markdown レポートを出力: %s", report_md_path)
+
+        # 2. GitHub Actions のステップサマリーに出力
         if summary_path:
             Path(summary_path).write_text(summary_text, encoding="utf-8")
             logger.info("📊 サマリーを GITHUB_STEP_SUMMARY に出力しました")
 
-        # コンソールにも出力
+        # 3. コンソールにも出力
         print(summary_text)
-
-        # JSON レポートも生成
-        report = {
-            "trigger": self.trigger_event,
-            "total_cycles": len(self.cycle_history),
-            "cycle_history": self.cycle_history,
-            "total_files": len(self.results),
-            "improved": sum(1 for r in self.results if r.final_status == "improved"),
-            "no_change": sum(1 for r in self.results if r.final_status == "no_change"),
-            "rolled_back": sum(
-                1 for r in self.results if r.final_status == "rolled_back"
-            ),
-            "skipped": sum(1 for r in self.results if r.final_status == "skipped"),
-            "details": [
-                {
-                    "file": r.file_path,
-                    "agent": r.agent_name,
-                    "status": r.final_status,
-                    "iterations": r.iterations,
-                    "improvements": r.improvements,
-                    "error": r.error,
-                }
-                for r in self.results
-            ],
-        }
-        report_path = REPO_ROOT / "improvement-report.json"
-        report_path.write_text(
-            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        logger.info("📄 JSON レポートを出力: %s", report_path)
 
 
 # ---------------------------------------------------------------------------
 # エントリポイント
 # ---------------------------------------------------------------------------
 def main() -> None:
-    """スクリプトのエントリポイント"""
+    """スクリプトのエントリポイント
+
+    ⚠️ 非推奨: このスクリプトは GitHub Models API のレートリミット (150 req/day) により
+    実用不可となったため、現在は使用していません。
+    代わりに GitHub Copilot (VS Code チャット) で直接改善ループを実行してください。
+    """
+    print("""\n"""
+"⚠️  このスクリプトは非推奨 (DEPRECATED) です。"
+"\n"
+"理由: GitHub Models API (gpt-4.1) のレートリミット (150 req/day) により実用不可\n"
+"代替: VS Code で GitHub Copilot チャットを開き、改善ループを直接指示してください\n"
+"\n"
+"それでも実行したい場合は、環境変数 FORCE_RUN=true を設定してください:\n"
+"  $env:FORCE_RUN = 'true'\n"
+"  python scripts/agent_loop.py\n")
+
+    if os.environ.get("FORCE_RUN", "").lower() != "true":
+        logger.warning("⚠️ 非推奨スクリプト — FORCE_RUN=true なしのため停止します")
+        sys.exit(0)
+
     logger.info("=" * 60)
-    logger.info("自律的コード改善ループ v2.0 (GitHub Models API)")
+    logger.info("自律的コード改善ループ v2.0 (GitHub Models API) [FORCE_RUN モード]")
     logger.info("=" * 60)
 
     try:

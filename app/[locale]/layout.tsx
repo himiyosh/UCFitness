@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "../globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import SplashScreen from "@/components/SplashScreen";
 import GlobalLoader from "@/components/GlobalLoader";
+import dynamic from 'next/dynamic';
 
 import { Suspense } from "react";
 import { NextIntlClientProvider } from 'next-intl';
@@ -12,7 +12,17 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { auth } from "@/lib/auth";
 import LanguageSyncer from "@/components/LanguageSyncer";
-import FloatingEmojis from '@/components/FloatingEmojis';
+
+// ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
+const SplashScreen = dynamic(() => import('@/components/SplashScreen'));
+const FloatingEmojis = dynamic(() => import('@/components/FloatingEmojis'));
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#6366f1',
+};
 
 export const metadata: Metadata = {
   title: "UCFitness",

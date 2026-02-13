@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'edge';
@@ -83,15 +84,14 @@ export async function POST(request: Request) {
             .single();
 
         if (error) {
-            console.error('[API] おすすめアイテム追加エラー:', error);
+            reportError('[API] おすすめアイテム追加エラー', error);
             return NextResponse.json({ error: '保存に失敗しました' }, { status: 500 });
         }
 
         return NextResponse.json({ item: data, message: 'おすすめアイテムに追加しました' });
-    } catch (error) {
-        console.error('[API] おすすめアイテム追加エラー:', error);
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: `保存に失敗しました: ${message}` }, { status: 500 });
+    } catch (error: unknown) {
+        reportError('[API] おすすめアイテム追加エラー', error);
+        return NextResponse.json({ error: '保存に失敗しました' }, { status: 500 });
     }
 }
 
@@ -119,13 +119,13 @@ export async function DELETE(request: Request) {
             .eq('user_id', userId); // 本人のみ削除可能
 
         if (error) {
-            console.error('[API] おすすめアイテム削除エラー:', error);
+            reportError('[API] おすすめアイテム削除エラー', error);
             return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 });
         }
 
         return NextResponse.json({ message: '削除しました' });
-    } catch (error) {
-        console.error('[API] おすすめアイテム削除エラー:', error);
+    } catch (error: unknown) {
+        reportError('[API] おすすめアイテム削除エラー', error);
         return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 });
     }
 }

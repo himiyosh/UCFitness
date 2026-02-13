@@ -30,7 +30,7 @@
 #>
 
 param(
-    [ValidateSet("all", "uiux", "performance", "security")]
+    [ValidateSet("all", "uiux", "performance", "security", "feature")]
     [string]$Agent = "all",
 
     [int]$MaxCycles = 10,

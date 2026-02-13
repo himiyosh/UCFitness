@@ -13,8 +13,12 @@ import { getAllGroupRankings } from "@/lib/ranking-service";
 import { enrichRankingsWithEquip } from "@/lib/ranking-utils";
 import { getGroupCompetitionRankings } from "@/lib/group-ranking-service";
 import JoinGroupPreview from "@/components/JoinGroupPreview";
-import GroupAnalytics from "@/components/GroupAnalytics";
+import nextDynamic from 'next/dynamic';
 import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
+import { getTranslations } from 'next-intl/server';
+
+// ⚡ パフォーマンス: GroupAnalytics（内部でRecharts使用）を遅延読み込み
+const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
 
 export const dynamic = 'force-dynamic';
 
@@ -29,12 +33,34 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const userId = (session.user as any).id;
     const { groupId } = params;
 
-    // 0. Fetch Current User (to ensure fresh profile image/name)
-    const { data: dbUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    const dashboardT = await getTranslations('Dashboard');
+    const groupsT = await getTranslations('Groups');
+    const detailT = await getTranslations('GroupDetail');
+
+    // ⚡ パフォーマンス: 3つの独立クエリを並列実行
+    const [userResult, groupResult, membershipResult] = await Promise.all([
+        supabase
+            .from('users')
+            .select('id, name, image, username')
+            .eq('id', userId)
+            .single(),
+        supabase
+            .from('groups')
+            .select('id, name, keyword, description, is_public, header_image_url, image_url, created_at, created_by')
+            .eq('id', groupId)
+            .single(),
+        supabase
+            .from('group_members')
+            .select('role')
+            .eq('group_id', groupId)
+            .eq('user_id', userId)
+            .single(),
+    ]);
+
+    const dbUser = userResult.data;
+    const group = groupResult.data;
+    const groupError = groupResult.error;
+    const membership = membershipResult.data;
 
     // Construct user object for menu, preferring DB data
     const currentUser = dbUser ? {
@@ -44,24 +70,9 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         username: dbUser.username
     } : session.user;
 
-    // 1. Fetch Group Details (Regardless of membership)
-    const { data: group, error: groupError } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('id', groupId)
-        .single();
-
     if (groupError || !group) {
         return notFound();
     }
-
-    // 2. Check Membership
-    const { data: membership } = await supabase
-        .from('group_members')
-        .select('role')
-        .eq('group_id', groupId)
-        .eq('user_id', userId)
-        .single();
 
     const isMember = !!membership;
     // @ts-ignore
@@ -77,10 +88,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         <div className="flex items-center gap-2">
                             <Link href="/" className="flex items-center gap-2 group">
                                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
-                                    UCFitness
+                                    {dashboardT('title')}
                                 </h1>
                                 <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                    Beta
+                                    {dashboardT('beta')}
                                 </span>
                             </Link>
                         </div>
@@ -94,7 +105,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     <div className="mb-6">
                         <Breadcrumbs
                             items={[
-                                { label: 'Groups', href: '/groups' },
+                                { label: groupsT('title'), href: '/groups' },
                                 { label: group.name }
                             ]}
                         />
@@ -105,20 +116,43 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         );
     }
 
-    // 2. Fetch Rankings & enrich with equipped items
-    const rawRankings = await getAllGroupRankings(groupId);
-    const rankings = await enrichRankingsWithEquip(rawRankings);
-
-    // 3. Fetch Group Competition Rankings
-    const [compDaily, compWeekly, compMonthly, compYearly] = await Promise.all([
+    // ⚡ パフォーマンス: ランキング・コンペ・比較データ・メンバーを並列実行
+    const [rawRankings, compDaily, compWeekly, compMonthly, compYearly, comparisonData, membersResult] = await Promise.all([
+        getAllGroupRankings(groupId),
         getGroupCompetitionRankings('DAILY'),
         getGroupCompetitionRankings('WEEKLY'),
         getGroupCompetitionRankings('MONTHLY'),
         getGroupCompetitionRankings('YEARLY'),
+        getAllGroupComparisonData(groupId, userId),
+        supabase
+            .from('group_members')
+            .select(`
+            user_id,
+            role,
+            users (
+                id,
+                name,
+                image,
+                username
+            )
+        `)
+            .eq('group_id', groupId)
+            .order('role', { ascending: false }),
     ]);
 
-    // 2.5 Fetch Comparison Data (New)
-    const comparisonData = await getAllGroupComparisonData(groupId, userId);
+    const rankings = await enrichRankingsWithEquip(rawRankings);
+    // Supabase の group_members → users は多対一リレーション（単一オブジェクト返却）だが
+    // 型推論では配列として推論されるため、実際の型にキャスト
+    const members = membersResult.data as Array<{
+        user_id: string;
+        role: 'OWNER' | 'MEMBER';
+        users: {
+            id: string;
+            name: string | null;
+            image: string | null;
+            username: string | null;
+        };
+    }> | null;
 
     const groupCompetitionRankings = {
         DAILY: compDaily,
@@ -126,22 +160,6 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         MONTHLY: compMonthly,
         YEARLY: compYearly
     };
-
-    // 3. Fetch All Members for Management Panel
-    const { data: members } = await supabase
-        .from('group_members')
-        .select(`
-        user_id,
-        role,
-        users (
-            id,
-            name,
-            image,
-            username
-        )
-    `)
-        .eq('group_id', groupId)
-        .order('role', { ascending: false }); // Owner first
 
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
@@ -151,10 +169,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
-                                UCFitness
+                                {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                Beta
+                                {dashboardT('beta')}
                             </span>
                         </Link>
                     </div>
@@ -170,13 +188,13 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 <div className="flex items-center justify-between">
                     <Breadcrumbs
                         items={[
-                            { label: 'Groups', href: '/groups' },
+                            { label: groupsT('title'), href: '/groups' },
                             { label: group.name }
                         ]}
                     />
                     {isOwner && (
                         <span className="bg-[var(--theme-primary-light)] text-[var(--theme-primary)] px-3 py-1 rounded-full text-xs font-bold border border-[var(--theme-primary)]/20">
-                            Owner
+                            {detailT('owner')}
                         </span>
                     )}
                 </div>
@@ -241,7 +259,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             groupImage={group.image_url}
                         >
                             <div className="p-4 sm:p-6">
-                                <h2 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pb-2 border-b border-gray-100">Settings & Members</h2>
+                                <h2 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pb-2 border-b border-gray-100">{detailT('settingsMembers')}</h2>
                                 <GroupSettingsLayout
                                     members={members || []}
                                     group={group}

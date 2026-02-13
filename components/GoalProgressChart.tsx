@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Confetti from './Confetti';
 
 interface GoalProgressChartProps {
@@ -11,10 +11,14 @@ interface GoalProgressChartProps {
 }
 
 export default function GoalProgressChart({ current, goal, size = 80, strokeWidth = 8 }: GoalProgressChartProps) {
-    const percentage = Math.min(100, Math.max(0, (current / goal) * 100));
-    const radius = (size - strokeWidth) / 2;
-    const circumference = radius * 2 * Math.PI;
-    const offset = circumference - (percentage / 100) * circumference;
+    const { percentage, radius, circumference, offset } = useMemo(() => {
+        const safeGoal = goal > 0 ? goal : 1;
+        const pct = Math.min(100, Math.max(0, (current / safeGoal) * 100));
+        const r = (size - strokeWidth) / 2;
+        const c = r * 2 * Math.PI;
+        const o = c - (pct / 100) * c;
+        return { percentage: pct, radius: r, circumference: c, offset: o };
+    }, [current, goal, size, strokeWidth]);
 
     const isAchieved = current >= goal;
 
@@ -47,8 +51,13 @@ export default function GoalProgressChart({ current, goal, size = 80, strokeWidt
                 onComplete={() => setShowConfetti(false)}
             />
             <div
-                className={`relative flex items-center justify-center ${isAchieved ? 'animate-celebrate' : ''}`}
+                className={`relative flex items-center justify-center transition-transform duration-300 hover:scale-110 ${isAchieved ? 'animate-celebrate' : ''}`}
                 style={{ width: size, height: size }}
+                role="progressbar"
+                aria-valuenow={Math.round(percentage)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${Math.round(percentage)}% goal progress`}
             >
                 <svg
                     width={size}
@@ -65,6 +74,7 @@ export default function GoalProgressChart({ current, goal, size = 80, strokeWidt
                         stroke="currentColor"
                         strokeWidth={strokeWidth}
                         className="text-gray-100"
+                        style={{ color: 'var(--theme-ring-bg, #f3f4f6)' }}
                     />
 
                     {/* Progress Circle - with gradient for achievement */}

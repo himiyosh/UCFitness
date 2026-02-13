@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase';
 import { INVESTOR_RANKS, type InvestorRank } from './coin-service';
+import { reportError } from './errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,7 +71,7 @@ export async function getShopItems(category?: ShopCategory): Promise<ShopItem[]>
 
     const { data, error } = await query;
     if (error) {
-        console.error('getShopItems error:', error);
+        reportError('getShopItems', error);
         return [];
     }
     return data as ShopItem[];
@@ -78,6 +79,8 @@ export async function getShopItems(category?: ShopCategory): Promise<ShopItem[]>
 
 /** 特定アイテムを取得 */
 export async function getShopItem(itemId: string): Promise<ShopItem | null> {
+    if (!itemId) return null;
+
     const { data, error } = await supabaseAdmin
         .from('shop_items')
         .select('*')
@@ -85,7 +88,7 @@ export async function getShopItem(itemId: string): Promise<ShopItem | null> {
         .single();
 
     if (error) {
-        console.error('getShopItem error:', error);
+        reportError('getShopItem', error, { itemId });
         return null;
     }
     return data as ShopItem;
@@ -97,6 +100,7 @@ export async function getShopItem(itemId: string): Promise<ShopItem | null> {
 
 /** ユーザーの全所持アイテムを取得 */
 export async function getUserItems(userId: string): Promise<UserItem[]> {
+    if (!userId) return [];
     const { data, error } = await supabaseAdmin
         .from('user_items')
         .select('*, shop_items(*)')
@@ -104,7 +108,7 @@ export async function getUserItems(userId: string): Promise<UserItem[]> {
         .order('purchased_at', { ascending: false });
 
     if (error) {
-        console.error('getUserItems error:', error);
+        reportError('getUserItems', error, { userId });
         return [];
     }
     return data as UserItem[];
@@ -112,6 +116,7 @@ export async function getUserItems(userId: string): Promise<UserItem[]> {
 
 /** ユーザーが特定アイテムを所持しているかチェック */
 export async function userOwnsItem(userId: string, itemId: string): Promise<boolean> {
+    if (!userId || !itemId) return false;
     const { data, error } = await supabaseAdmin
         .from('user_items')
         .select('id')
@@ -120,7 +125,7 @@ export async function userOwnsItem(userId: string, itemId: string): Promise<bool
         .maybeSingle();
 
     if (error) {
-        console.error('userOwnsItem error:', error);
+        reportError('userOwnsItem', error, { userId, itemId });
         return false;
     }
     return data !== null;
@@ -128,6 +133,7 @@ export async function userOwnsItem(userId: string, itemId: string): Promise<bool
 
 /** ユーザーの装備中アイテムを取得 */
 export async function getEquippedItems(userId: string): Promise<EquippedItems> {
+    if (!userId) return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
     const { data, error } = await supabaseAdmin
         .from('user_items')
         .select('*, shop_items(*)')
@@ -135,7 +141,7 @@ export async function getEquippedItems(userId: string): Promise<EquippedItems> {
         .eq('is_equipped', true);
 
     if (error) {
-        console.error('getEquippedItems error:', error);
+        reportError('getEquippedItems', error, { userId });
         return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
     }
 
@@ -167,7 +173,7 @@ export async function getEquippedItemsForUsers(userIds: string[]): Promise<Recor
         .eq('is_equipped', true);
 
     if (error) {
-        console.error('getEquippedItemsForUsers error:', error);
+        reportError('getEquippedItemsForUsers', error, { userCount: userIds.length });
         return {};
     }
 
@@ -194,7 +200,8 @@ export async function getEquippedItemsForUsers(userIds: string[]): Promise<Recor
         'ring-rainbow': 'rainbow',
     };
 
-    for (const item of (data as any[])) {
+    // Supabase の型推論は shop_items を配列として返すが、多対一リレーションでは単一オブジェクト
+    for (const item of (data as unknown as { user_id: string; shop_items: { category: string; preview_value: string; name_en: string; name_ja: string } | null }[])) {
         const userId = item.user_id;
         const shopItem = item.shop_items;
         if (!shopItem) continue;
@@ -221,6 +228,10 @@ export async function getEquippedItemsForUsers(userIds: string[]): Promise<Recor
 
 /** アイテムを購入する（アトミック: DB側で残高減算+アイテム付与を1トランザクション実行） */
 export async function purchaseItem(userId: string, itemId: string): Promise<PurchaseResult> {
+    if (!userId || !itemId) {
+        return { success: false, error: 'item_not_found' };
+    }
+
     const idempotencyKey = `purchase_${userId}_${itemId}`;
 
     const { data, error } = await supabaseAdmin.rpc('purchase_item', {
@@ -230,7 +241,7 @@ export async function purchaseItem(userId: string, itemId: string): Promise<Purc
     });
 
     if (error) {
-        console.error('purchaseItem RPC error:', error);
+        reportError('purchaseItem', error, { userId, itemId });
         return { success: false, error: 'unknown' };
     }
 
@@ -280,6 +291,9 @@ export async function purchaseItem(userId: string, itemId: string): Promise<Purc
 
 /** アイテムを装備する（同カテゴリの既存装備は自動解除） */
 export async function equipItem(userId: string, userItemId: string): Promise<{ success: boolean; error?: string }> {
+    if (!userId || !userItemId) {
+        return { success: false, error: 'item_not_found' };
+    }
     // 1. user_item を取得して所有確認
     const { data: userItem, error: fetchError } = await supabaseAdmin
         .from('user_items')
@@ -297,24 +311,26 @@ export async function equipItem(userId: string, userItemId: string): Promise<{ s
         return { success: false, error: 'invalid_item' };
     }
 
-    // 2. 同カテゴリの装備を全て解除
-    const { error: unequipError } = await supabaseAdmin
-        .from('user_items')
-        .update({ is_equipped: false })
-        .eq('user_id', userId)
-        .eq('is_equipped', true)
-        .in('item_id',
-            // 同カテゴリのアイテムIDリストを取得するサブクエリ的アプローチ
-            (await supabaseAdmin
-                .from('shop_items')
-                .select('id')
-                .eq('category', category)
-            ).data?.map(i => i.id) || []
-        );
+    // 2. 同カテゴリのアイテムIDを取得し、装備を全て解除
+    const { data: categoryItems } = await supabaseAdmin
+        .from('shop_items')
+        .select('id')
+        .eq('category', category);
 
-    if (unequipError) {
-        console.error('equipItem unequip error:', unequipError);
-        return { success: false, error: 'unequip_failed' };
+    const categoryItemIds = categoryItems?.map(i => i.id) || [];
+
+    if (categoryItemIds.length > 0) {
+        const { error: unequipError } = await supabaseAdmin
+            .from('user_items')
+            .update({ is_equipped: false })
+            .eq('user_id', userId)
+            .eq('is_equipped', true)
+            .in('item_id', categoryItemIds);
+
+        if (unequipError) {
+            reportError('equipItem:unequip', unequipError, { userId, userItemId });
+            return { success: false, error: 'unequip_failed' };
+        }
     }
 
     // 3. 対象アイテムを装備
@@ -325,7 +341,7 @@ export async function equipItem(userId: string, userItemId: string): Promise<{ s
         .eq('user_id', userId);
 
     if (equipError) {
-        console.error('equipItem equip error:', equipError);
+        reportError('equipItem:equip', equipError, { userId, userItemId });
         return { success: false, error: 'equip_failed' };
     }
 
@@ -334,6 +350,10 @@ export async function equipItem(userId: string, userItemId: string): Promise<{ s
 
 /** アイテムの装備を解除する */
 export async function unequipItem(userId: string, userItemId: string): Promise<{ success: boolean; error?: string }> {
+    if (!userId || !userItemId) {
+        return { success: false, error: 'unequip_failed' };
+    }
+
     const { error } = await supabaseAdmin
         .from('user_items')
         .update({ is_equipped: false })
@@ -341,7 +361,7 @@ export async function unequipItem(userId: string, userItemId: string): Promise<{
         .eq('user_id', userId);
 
     if (error) {
-        console.error('unequipItem error:', error);
+        reportError('unequipItem', error, { userId, userItemId });
         return { success: false, error: 'unequip_failed' };
     }
 

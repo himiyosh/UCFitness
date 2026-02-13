@@ -1,8 +1,18 @@
 import NextAuth from "next-auth";
 import { supabaseAdmin } from "./supabase";
 import { backfillUserSteps } from "./step-manager";
+import { reportError } from "./errors";
 
 // Custom Fitbit Provider since it's missing from the installed next-auth package
+interface FitbitProfile {
+    user: {
+        encodedId: string;
+        fullName: string;
+        avatar: string;
+        email?: string;
+    };
+}
+
 const FitbitProvider = (options: { clientId: string; clientSecret: string }) => ({
     id: "fitbit",
     name: "Fitbit",
@@ -10,7 +20,7 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
     authorization: "https://www.fitbit.com/oauth2/authorize?response_type=code&scope=activity%20profile&prompt=login",
     token: "https://api.fitbit.com/oauth2/token",
     userinfo: "https://api.fitbit.com/1/user/-/profile.json",
-    profile(profile: any) {
+    profile(profile: FitbitProfile) {
         return {
             id: profile.user.encodedId,
             name: profile.user.fullName,
@@ -39,30 +49,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     // debug: true, // Enable for debugging if needed
     callbacks: {
-        async signIn({ user, account, profile }: any) {
-            console.log(`[Auth] SignIn Start: Provider=${account?.provider}, ProviderID=${account?.providerAccountId}`);
+        async signIn({ user, account }: { user: any; account?: any; profile?: any }) {
             if (!account) return false;
 
             // 1. Try to find user by Provider Account ID (Fitbit ID) first - This is stable
-            console.log(`[Auth] Querying DB for provider=${account.provider}, provider_account_id=${account.providerAccountId}`);
-
             let { data: existingUser, error: selectError } = await supabaseAdmin
                 .from("users")
-                .select("id, is_custom_image, email, provider, provider_account_id") // Added fields for debug
+                .select("id, is_custom_image, email, provider, provider_account_id")
                 .eq("provider", account.provider)
                 .eq("provider_account_id", account.providerAccountId)
                 .single();
 
-            console.log(`[Auth] Lookup by ProviderID result:`, existingUser ? `Found (ID: ${existingUser.id})` : "Not Found");
             if (selectError && selectError.code !== 'PGRST116') {
-                console.log(`[Auth] Lookup Error:`, selectError);
+                reportError('auth.signIn:lookupByProvider', selectError);
             }
 
             // 2. Fallback: Try by Email (legacy or first-time sync issue)
             // Only if not found by provider ID and user has an email
             if (!existingUser && user.email) {
-                console.log(`[Auth] Fallback lookup by email`);
-                const { data: userByEmail, error: emailError } = await supabaseAdmin
+                const { data: userByEmail } = await supabaseAdmin
                     .from("users")
                     .select("id, is_custom_image, email, provider, provider_account_id")
                     .eq("email", user.email)
@@ -70,24 +75,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 if (userByEmail) {
                     existingUser = userByEmail;
-                    console.log(`[Auth] Found by Email: ${existingUser.id}`);
                 }
-            }
-
-            if (selectError && selectError.code !== 'PGRST116') {
-                console.error("[Auth] Error finding user:", selectError);
             }
 
             let error;
 
             if (existingUser) {
-                console.log(`[Auth] Updating existing user: ${existingUser.id}`);
                 // Update tokens. 
                 // CRITICAL: Do NOT overwrite the email in DB with the one from Fitbit if they already have one.
                 // The user might have updated their email in the setup process.
                 // We only update tokens and potentially image.
 
-                const updates: any = {
+                const updates: Record<string, string | undefined> = {
                     provider: account.provider,
                     provider_account_id: account.providerAccountId,
                     access_token: account.access_token,
@@ -97,14 +96,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 };
 
                 // Only update image from Fitbit if user hasn't set a custom one
-                console.log(`[DEBUG_AUTH] Checking user ${existingUser.id}`);
-                console.log(`[DEBUG_AUTH] is_custom_image: ${existingUser.is_custom_image} (Type: ${typeof existingUser.is_custom_image})`);
-
                 if (!existingUser.is_custom_image) {
-                    console.log(`[DEBUG_AUTH] Overwriting image with Fitbit provider image`);
                     updates.image = user.image;
-                } else {
-                    console.log(`[DEBUG_AUTH] Keeping custom image.`); // Removed .image access to avoid type error if not selected
                 }
 
                 const { error: updateError } = await supabaseAdmin
@@ -113,7 +106,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     .eq("id", existingUser.id); // Update by ID, not email (email might differ)
                 error = updateError;
             } else {
-                console.log(`[Auth] Creating new user (ProviderID: ${account?.providerAccountId})`);
                 // New user: Insert everything including name
                 // Note: user.email might be the pending one here.
                 const { data: newUser, error: insertError } = await supabaseAdmin
@@ -136,7 +128,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 error = insertError;
 
                 if (newUser && !insertError) {
-                    console.log(`[Auth] New user created (ID: ${newUser.id}). Triggering backfill for steps history...`);
                     // Note: This backfill might take time, in Edge environment ensure it doesn't timeout or block response too long.
                     // Ideally this should be offloaded to a queue or background job, but for now we await it or fire-and-forget?
                     // Given runtime=edge, fire-and-forget might be killed. user setups page handles loading history too.
@@ -146,16 +137,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
 
             if (error) {
-                console.error("[Auth] Error saving user to Supabase:", error);
+                reportError('auth.signIn:saveUser', error);
                 return false;
-            } else {
-                console.log(`[Auth] Successfully updated user tokens for ${existingUser ? existingUser.id : 'new user'}`);
             }
 
             return true;
         },
-        async session({ session, token }: any) {
-            // console.log(`[Auth] Session Callback. User Email: ${session.user?.email}`);
+        async session({ session, token }: { session: any; token: any }) {
             if (session.user) {
                 // Optimization: Populate from Token if available to avoid DB hits in Middleware
                 if (token.id && token.username && token.email) {
@@ -168,7 +156,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }
 
                 // Fallback: DB Lookup (Only if token is missing data)
-                console.log("[Auth] Session missing token data, querying DB...");
 
                 let data = null;
 
@@ -225,10 +212,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
             return session;
         },
-        async jwt({ token, account, user, trigger, session }: any) {
+        async jwt({ token, account, user, trigger, session }: { token: any; account?: any; user?: any; trigger?: string; session?: any }) {
             // Initial sign in
             if (account && user) {
-                console.log(`[Auth] JWT Initial Signin. ProvID: ${account.providerAccountId}. UserID from NextAuth: ${user.id}`);
                 token.accessToken = account.access_token;
                 token.provider_account_id = account.providerAccountId; // Persist for recovery
 
@@ -241,18 +227,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     .single();
 
                 if (error) {
-                    console.log(`[Auth] JWT Lookup Error:`, error);
+                    reportError('auth.jwt:initialLookup', error);
                 }
 
                 if (data) {
-                    console.log(`[Auth] JWT Lookup Success: ID=${data.id}`);
                     token.id = data.id;
                     token.username = data.username;
                     token.email = data.email; // Real DB email
                     token.image = data.image;
                     token.language = data.language;
-                } else {
-                    console.log(`[Auth] JWT Lookup Failed: No user found for ${account.providerAccountId}`);
                 }
             }
 
@@ -260,7 +243,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (!token.id || !token.username) {
                 if (trigger !== 'update') {
                     let data = null;
-                    console.log(`[Auth] JWT Recovery. TokenID: ${token.id}, Sub: ${token.sub}`);
 
                     // 1. Try by ID
                     if (token.id) {
@@ -276,7 +258,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (!data && token.provider_account_id) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id, language") // language removed
+                            .select("id, username, email, image, provider_account_id, language")
                             .eq("provider_account_id", token.provider_account_id)
                             .single();
                         data = res.data;
@@ -286,14 +268,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     if (!data && token.sub) {
                         const res = await supabaseAdmin
                             .from("users")
-                            .select("id, username, email, image, provider_account_id, language") // language removed
+                            .select("id, username, email, image, provider_account_id, language")
                             .eq("provider_account_id", token.sub)
                             .single();
                         data = res.data;
                     }
 
                     if (data) {
-                        console.log(`[Auth] JWT Recovery Success. Username: ${data.username}`);
                         token.id = data.id;
                         token.username = data.username;
                         token.email = data.email;
@@ -306,7 +287,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             // Client side session update
             if (trigger === "update" && session?.user) {
-                // console.log(`[Auth] JWT Update Trigger. New Username: ${session.user.username}`);
                 if (session.user.username) token.username = session.user.username;
                 if (session.user.email) token.email = session.user.email;
                 if (session.user.image) token.image = session.user.image;

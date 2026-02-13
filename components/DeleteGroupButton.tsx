@@ -12,11 +12,11 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
     const [isConfirming, setIsConfirming] = useState(false);
     const [confirmText, setConfirmText] = useState('');
     const [isThinking, setIsThinking] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
     const handleDelete = async () => {
         if (!confirmText || confirmText !== groupName) {
-            alert("Please type the group name exactly to confirm.");
             return;
         }
 
@@ -24,6 +24,7 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
             return;
         }
 
+        setError(null);
         setIsThinking(true);
         try {
             const res = await fetch('/api/user/group', {
@@ -36,7 +37,7 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
             });
 
             if (!res.ok) {
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || 'Failed to delete group');
             }
 
@@ -44,9 +45,8 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
             router.push('/groups');
             router.refresh();
 
-        } catch (error: any) {
-            console.error(error);
-            alert(error.message);
+        } catch {
+            setError('Failed to delete group. Please try again.');
             setIsThinking(false);
         }
     };
@@ -74,17 +74,24 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
                     <button
                         onClick={handleDelete}
                         disabled={isThinking || confirmText !== groupName}
-                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-bold py-2 rounded-lg transition-colors text-sm"
+                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-bold py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-1.5"
                     >
+                        {isThinking && (
+                            <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                        )}
                         {isThinking ? 'Deleting...' : 'Delete Group'}
                     </button>
                     <button
-                        onClick={() => { setIsConfirming(false); setConfirmText(''); }}
-                        className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-medium rounded-lg hover:bg-gray-50 text-sm"
+                        onClick={() => { setIsConfirming(false); setConfirmText(''); setError(null); }}
+                        disabled={isThinking}
+                        className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-medium rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Cancel
                     </button>
                 </div>
+                {error && (
+                    <p className="text-red-600 text-xs mt-2" role="alert">{error}</p>
+                )}
             </div>
         );
     }

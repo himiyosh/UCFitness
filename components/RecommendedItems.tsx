@@ -96,8 +96,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     }, []);
 
     /** タイトルから【】内の装飾テキストを除去して整形 */
-    const cleanTitle = (title: string) =>
-        title.replace(/【.*?】/g, '').trim() || 'Item';
+    const cleanTitle = useCallback((title: string) =>
+        title.replace(/【.*?】/g, '').trim() || 'Item', []);
 
     // --- カルーセル: カード幅 + gap ---
     const CARD_W = 142; // 130px + 12px gap
@@ -151,6 +151,9 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {/* ビューポート */}
                 <div
                     className="overflow-hidden"
+                    role="region"
+                    aria-roledescription="carousel"
+                    aria-label={locale === 'ja' ? '愛用アイテム' : 'My Picks'}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                 >
@@ -199,7 +202,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             <button
                                 onClick={(e) => handleDelete(item.id, e)}
                                 disabled={deletingId === item.id}
-                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
+                                aria-label={locale === 'ja' ? '削除' : 'Remove'}
                                 title={locale === 'ja' ? '削除' : 'Remove'}
                             >
                                 ✕
@@ -277,6 +281,9 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 <div
                     className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={handleBackdropClick}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={locale === 'ja' ? 'アイテムを検索' : 'Search Items'}
                 >
                     <div
                         ref={modalRef}
@@ -291,6 +298,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             <button
                                 onClick={() => setShowModal(false)}
                                 className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors text-gray-400 hover:text-gray-600"
+                                aria-label={locale === 'ja' ? '閉じる' : 'Close'}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
                                     <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />

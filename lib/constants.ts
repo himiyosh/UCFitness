@@ -31,18 +31,31 @@ export const INVESTOR_RANKS = [
 
 export type InvestorRank = typeof INVESTOR_RANKS[number]['rank'];
 
+/** 次のランクまでの情報 */
+export interface NextRankInfo {
+    readonly minBalance: number;
+    readonly rank: InvestorRank;
+    readonly label: string;
+    readonly labelJa: string;
+    readonly icon: string;
+    remaining: number;
+    progress: number;
+}
+
 // --- ストリーク倍率の取得 ---
 export function getStreakMultiplier(streakDays: number): number {
+    const days = Math.max(0, Math.floor(streakDays));
     for (const { minDays, multiplier } of STREAK_MULTIPLIERS) {
-        if (streakDays >= minDays) return multiplier;
+        if (days >= minDays) return multiplier;
     }
     return 1.0;
 }
 
 // --- 投資家ランクの判定 ---
-export function getInvestorRank(totalBalance: number) {
+export function getInvestorRank(totalBalance: number): typeof INVESTOR_RANKS[number] {
+    const balance = Math.max(0, totalBalance);
     for (const rank of INVESTOR_RANKS) {
-        if (totalBalance >= rank.minBalance) return rank;
+        if (balance >= rank.minBalance) return rank;
     }
     return INVESTOR_RANKS[INVESTOR_RANKS.length - 1];
 }
@@ -53,7 +66,7 @@ export function getRankIcon(rank: string): string {
 }
 
 // --- 次のランクまでの情報 ---
-export function getNextRankInfo(totalBalance: number) {
+export function getNextRankInfo(totalBalance: number): NextRankInfo | null {
     const currentRank = getInvestorRank(totalBalance);
     const currentIndex = INVESTOR_RANKS.findIndex(r => r.rank === currentRank.rank);
     if (currentIndex <= 0) return null; // すでに最高ランク

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -12,18 +13,20 @@ export async function GET() {
     }
 
     try {
-        // Check DB for this user
-        // We can search by email since that's what we have in the session (even if it's pending, we check DB)
-        // Or better, search by provider ID if we can get it from session... 
-        // asking session for provider ID is hard unless we put it there.
-        // But we put 'sub' in token? getServerSession returns session object.
+        // 🛡️ セキュリティ: IDベースのDB検索を優先（メールフォールバック付き）
+        const userId = (session.user as any).id as string | undefined;
 
-        // Let's use email.
-        const { data: user, error } = await supabaseAdmin
+        let queryBuilder = supabaseAdmin
             .from('users')
-            .select('username, email, is_custom_image')
-            .eq('email', session.user.email)
-            .single();
+            .select('username, email, is_custom_image');
+
+        if (userId) {
+            queryBuilder = queryBuilder.eq('id', userId);
+        } else {
+            queryBuilder = queryBuilder.eq('email', session.user.email);
+        }
+
+        const { data: user, error } = await queryBuilder.single();
 
         if (error || !user) {
             return NextResponse.json({ authenticated: true, isSetup: false });
@@ -31,16 +34,16 @@ export async function GET() {
 
         const isSetup = !!user.username && !user.email.includes('@pending.setup');
 
+        // 🛡️ セキュリティ: メールアドレスをクライアントに返さない
         return NextResponse.json({
             authenticated: true,
             isSetup,
             username: user.username,
-            email: user.email,
             is_custom_image: user.is_custom_image
         });
 
-    } catch (error) {
-        console.error('Error checking user status:', error);
+    } catch (error: unknown) {
+        reportError('user-status', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

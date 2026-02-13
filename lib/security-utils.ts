@@ -12,8 +12,7 @@
  */
 export function sanitizeSearchQuery(query: string): string {
     if (!query) return '';
-    // Remove control characters for PostgREST: comma, parentheses
-    // Also remove percent sign to prevent wildcard abuse if needed,
-    // but here we focus on injection structure
-    return query.replace(/[(),]/g, '').trim();
+    // PostgREST構造区切り文字を除去: カンマ, 括弧
+    // SQL ILIKE ワイルドカード (%, _) も除去してワイルドカードインジェクションを防止
+    return query.replace(/[(),%_]/g, '').trim();
 }

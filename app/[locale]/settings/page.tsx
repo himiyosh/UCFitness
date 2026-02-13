@@ -1,5 +1,4 @@
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation"; // Standard redirect works fine for root
 import UserMenu from "@/components/UserMenu";
@@ -16,40 +15,40 @@ export default async function SettingsPage() {
     const session = await auth();
     const t = await getTranslations('Settings');
     const commonT = await getTranslations('Common');
-    const landingT = await getTranslations('Landing');
-    const dashboardT = await getTranslations('Dashboard'); // Added
+    const dashboardT = await getTranslations('Dashboard');
 
     if (!session || !session.user) {
         redirect("/");
     }
 
-    // Fetch current user data
-    const { data: user } = await supabase
+    // ⚡ パフォーマンス: supabaseAdmin を使用し必要なカラムのみ取得
+    const { data: user } = await supabaseAdmin
         .from("users")
         .select("name, image, username, is_custom_image, step_goal, banner_url")
         .eq("id", (session.user as any).id)
         .single();
 
     if (!user) {
-        return <div>User not found</div>;
+        return <div className="flex items-center justify-center min-h-screen text-[var(--foreground-muted)]">{commonT('userNotFound')}</div>;
     }
 
-    // Midnight テーマの所有チェック（shop_items → user_items）
+    // ⚡ パフォーマンス: Midnight テーマチェックと所持アイテムを並列取得
     const userId = (session.user as any).id;
-    const { data: midnightItem } = await supabaseAdmin
-        .from('user_items')
-        .select('id, shop_items!inner(item_code)')
-        .eq('user_id', userId)
-        .eq('shop_items.item_code', 'theme_midnight')
-        .maybeSingle();
-    const ownsMidnight = midnightItem !== null;
-
-    // 所持している称号アイテムを取得（!inner を使わず JS でフィルタ）
-    const { data: ownedTitleItems } = await supabaseAdmin
-        .from('user_items')
-        .select('id, is_equipped, shop_items(item_code, name_en, name_ja, preview_value, category)')
-        .eq('user_id', userId)
-        .order('purchased_at', { ascending: true });
+    const [midnightResult, ownedItemsResult] = await Promise.all([
+        supabaseAdmin
+            .from('user_items')
+            .select('id, shop_items!inner(item_code)')
+            .eq('user_id', userId)
+            .eq('shop_items.item_code', 'theme_midnight')
+            .maybeSingle(),
+        supabaseAdmin
+            .from('user_items')
+            .select('id, is_equipped, shop_items(item_code, name_en, name_ja, preview_value, category)')
+            .eq('user_id', userId)
+            .order('purchased_at', { ascending: true }),
+    ]);
+    const ownsMidnight = midnightResult.data !== null;
+    const ownedTitleItems = ownedItemsResult.data;
 
     const ownedTitles = (ownedTitleItems || [])
         .filter((item: any) => item.shop_items?.category === 'TITLE')
