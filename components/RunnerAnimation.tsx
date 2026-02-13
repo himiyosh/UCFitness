@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { memo, useEffect, useState } from 'react';
 
 // パーティクルのランダム値を事前生成（SSR/CSR間の不一致を防止）
 function generateParticles(count: number) {
@@ -45,10 +45,21 @@ function generateSparkles(count: number) {
 
 const SPARKLES = generateSparkles(10);
 
-export default function RunnerAnimation({ userImage }: { userImage?: string | null }) {
+const RunnerAnimation = memo(function RunnerAnimation({ userImage }: { userImage?: string | null }) {
+    const [reducedMotion, setReducedMotion] = useState(false);
+
+    useEffect(() => {
+        const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+        setReducedMotion(mql.matches);
+        const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+        mql.addEventListener('change', handler);
+        return () => mql.removeEventListener('change', handler);
+    }, []);
+
     return (
-        <div className="relative w-48 h-48 flex items-center justify-center">
+        <div className="relative w-48 h-48 flex items-center justify-center" aria-hidden="true" role="presentation">
             {/* パーティクルトレイル（光粒子エフェクト） */}
+            {!reducedMotion && (
             <div className="absolute inset-0">
                 {PARTICLES.map((p, i) => (
                     <div
@@ -68,9 +79,10 @@ export default function RunnerAnimation({ userImage }: { userImage?: string | nu
                     />
                 ))}
             </div>
+            )}
 
             {/* エナジーオーラ（パルスリング） */}
-            {RINGS.map((r, i) => (
+            {!reducedMotion && RINGS.map((r, i) => (
                 <div
                     key={`ring-${i}`}
                     className="absolute rounded-full aura-ring"
@@ -87,7 +99,7 @@ export default function RunnerAnimation({ userImage }: { userImage?: string | nu
             ))}
 
             {/* スパークル（放射状の光点） */}
-            {SPARKLES.map((s, i) => (
+            {!reducedMotion && SPARKLES.map((s, i) => (
                 <div
                     key={`sparkle-${i}`}
                     className="absolute rounded-full aura-sparkle"
@@ -111,8 +123,8 @@ export default function RunnerAnimation({ userImage }: { userImage?: string | nu
             {/* ランナー（ユーザー画像 or シェブロン） */}
             <div className="relative z-10">
                 {userImage ? (
-                    <div className="w-24 h-24 rounded-full border-2 border-white shadow-lg overflow-hidden runner-bob">
-                        <img src={userImage} alt="Runner" className="w-full h-full object-cover" />
+                    <div className={`w-24 h-24 rounded-full border-2 border-white shadow-lg overflow-hidden ${reducedMotion ? '' : 'runner-bob'}`}>
+                        <img src={userImage} alt="" className="w-full h-full object-cover" />
                     </div>
                 ) : (
                     <div className="flex items-center gap-1 transform skew-x-[-12deg]">
@@ -170,4 +182,6 @@ export default function RunnerAnimation({ userImage }: { userImage?: string | nu
             `}</style>
         </div>
     );
-}
+});
+
+export default RunnerAnimation;

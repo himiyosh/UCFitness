@@ -9,6 +9,8 @@ interface ConfettiPiece {
   delay: number;
   size: number;
   duration: number;
+  borderRadius: string;
+  rotation: number;
 }
 
 interface ConfettiProps {
@@ -45,22 +47,31 @@ const Confetti = memo(function Confetti({
       delay: Math.random() * 0.5, // stagger start
       size: Math.random() * 10 + 6, // 6-16px
       duration: Math.random() * 2 + 2, // 2-4s fall time
+      borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+      rotation: Math.round(Math.random() * 360),
     }));
   }, [pieceCount]);
 
+  // prefers-reduced-motion: スキップしてすぐ完了コールバック
   useEffect(() => {
-    if (trigger && !isActive) {
-      setIsActive(true);
-      setPieces(generatePieces());
+    if (!trigger || isActive) return;
 
-      const timer = setTimeout(() => {
-        setIsActive(false);
-        setPieces([]);
-        onComplete?.();
-      }, duration);
-
-      return () => clearTimeout(timer);
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      onComplete?.();
+      return;
     }
+
+    setIsActive(true);
+    setPieces(generatePieces());
+
+    const timer = setTimeout(() => {
+      setIsActive(false);
+      setPieces([]);
+      onComplete?.();
+    }, duration);
+
+    return () => clearTimeout(timer);
   }, [trigger, isActive, duration, generatePieces, onComplete]);
 
   if (!isActive || pieces.length === 0) return null;
@@ -80,9 +91,9 @@ const Confetti = memo(function Confetti({
             width: `${piece.size}px`,
             height: `${piece.size}px`,
             backgroundColor: piece.color,
-            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            borderRadius: piece.borderRadius,
             animation: `confettiFall ${piece.duration}s linear ${piece.delay}s forwards`,
-            transform: `rotate(${Math.random() * 360}deg)`,
+            transform: `rotate(${piece.rotation}deg)`,
           }}
         />
       ))}

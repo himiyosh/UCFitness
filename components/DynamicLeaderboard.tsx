@@ -28,7 +28,11 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
     const [groupRankingsList, setGroupRankingsList] = useState<{ keyword: string; neighbors: RankingEntry[] }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    // 配列参照の安定化（親が毎レンダー新配列を渡してもeffectが再実行されない）
+    const serializedKeywords = JSON.stringify(groupKeywords);
+
     useEffect(() => {
+        const keywords: string[] = JSON.parse(serializedKeywords);
         const fetchData = async () => {
             setIsLoading(true);
             try {
@@ -40,7 +44,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
 
                 // Fetch Groups
                 const groupResults = await Promise.all(
-                    groupKeywords.map(async (keyword) => {
+                    keywords.map(async (keyword) => {
                         const res = await fetch(`/api/rankings?scope=GROUP&period=${period}&keyword=${keyword}`);
                         const data = await res.json();
                         const { displayRankings: filtered } = getDisplayRankings(data, userId);
@@ -48,15 +52,16 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                     })
                 );
                 setGroupRankingsList(groupResults);
-            } catch (error) {
-                console.error('Failed to fetch rankings', error);
+            } catch (_error: unknown) {
+                // エラーはUIにローディング解除で反映
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchData();
-    }, [period, userId, groupKeywords]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [period, userId, serializedKeywords]);
 
     return (
         <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
@@ -67,6 +72,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                 <div
                     className={`flex p-1 space-x-1 rounded-lg w-fit ${theme !== 'midnight' ? 'bg-white border border-gray-200' : ''}`}
                     style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}
+                    role="tablist"
+                    aria-label="Leaderboard period"
                 >
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;
@@ -74,6 +81,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                             <button
                                 key={tab.key}
                                 onClick={() => setPeriod(tab.key)}
+                                role="tab"
+                                aria-selected={isActive ? 'true' : 'false'}
                                 className={`px-4 py-2 text-sm font-semibold rounded-md transition-all cursor-pointer ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
                                 style={theme === 'midnight' ? {
                                     backgroundColor: isActive ? 'var(--theme-primary)' : 'transparent',
@@ -192,11 +201,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                     )
                 )}
 
-                {/* Join Group Panel */}
-                {/* We can optionally pass session or handle it here, but GroupSettings seems self-contained or needs session? */}
-                {/* Actually GroupSettings uses client side supabase or server actions? */}
-                {/* Looking at imports in page.tsx: GroupSettings is imported. It likely needs 'session' prop or uses User data internally? */}
-                {/* Checking page.tsx: <GroupSettings /> is rendered if session exists. */}
+                {/* グループ設定パネル */}
                 {userId && <GroupSettings />}
             </div>
         </div>

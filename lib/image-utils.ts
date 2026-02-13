@@ -1,4 +1,10 @@
 export async function compressImage(file: File, maxWidth: number = 800, quality: number = 0.8): Promise<File> {
+    // 入力バリデーション
+    if (maxWidth <= 0) {
+        throw new Error(`maxWidth must be positive, got ${maxWidth}`);
+    }
+    const clampedQuality = Math.max(0, Math.min(1, quality));
+
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -14,6 +20,10 @@ export async function compressImage(file: File, maxWidth: number = 800, quality:
                     height = (height * maxWidth) / width;
                     width = maxWidth;
                 }
+
+                // 最小1pxを保証
+                width = Math.max(1, Math.round(width));
+                height = Math.max(1, Math.round(height));
 
                 canvas.width = width;
                 canvas.height = height;
@@ -35,10 +45,10 @@ export async function compressImage(file: File, maxWidth: number = 800, quality:
                         lastModified: Date.now(),
                     });
                     resolve(compressedFile);
-                }, 'image/jpeg', quality);
+                }, 'image/jpeg', clampedQuality);
             };
-            img.onerror = (error) => reject(error);
+            img.onerror = () => reject(new Error('Failed to load image for compression'));
         };
-        reader.onerror = (error) => reject(error);
+        reader.onerror = () => reject(new Error('Failed to read file'));
     });
 }

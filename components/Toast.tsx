@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -29,19 +29,35 @@ export function useToast() {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
+    const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+    // アンマウント時に全タイマーをクリーンアップ
+    useEffect(() => {
+        const timers = timersRef.current;
+        return () => {
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
+    }, []);
+
+    const removeToast = useCallback((id: string) => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+        const timer = timersRef.current.get(id);
+        if (timer) {
+            clearTimeout(timer);
+            timersRef.current.delete(id);
+        }
+    }, []);
 
     const addToast = useCallback((message: string, type: ToastType = 'info') => {
         const id = Math.random().toString(36).substring(2, 9);
         setToasts((prev) => [...prev, { id, message, type }]);
 
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             removeToast(id);
-        }, 4000); // Auto remove after 4 seconds
-    }, []);
-
-    const removeToast = useCallback((id: string) => {
-        setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, []);
+        }, 4000);
+        timersRef.current.set(id, timer);
+    }, [removeToast]);
 
     const success = useCallback((message: string) => addToast(message, 'success'), [addToast]);
     const error = useCallback((message: string) => addToast(message, 'error'), [addToast]);
@@ -49,7 +65,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ toast: addToast, success, error }}>
             {children}
-            <div className="fixed bottom-16 sm:bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full sm:w-auto">
+            <div
+                className="fixed bottom-16 sm:bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full sm:w-auto"
+                aria-live="polite"
+                aria-relevant="additions"
+                role="status"
+            >
                 {toasts.map((toast) => (
                     <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
                 ))}

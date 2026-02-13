@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -31,16 +32,16 @@ export async function GET() {
 
         const isSetup = !!user.username && !user.email.includes('@pending.setup');
 
+        // 🛡️ セキュリティ: メールアドレスをクライアントに返さない
         return NextResponse.json({
             authenticated: true,
             isSetup,
             username: user.username,
-            email: user.email,
             is_custom_image: user.is_custom_image
         });
 
-    } catch (error) {
-        console.error('Error checking user status:', error);
+    } catch (error: unknown) {
+        reportError('user-status', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

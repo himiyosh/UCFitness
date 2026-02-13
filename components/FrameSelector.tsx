@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useState, useCallback, useMemo } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import { getFrameColor } from '@/components/UserAvatar';
+import { useToast } from '@/components/Toast';
 
 export interface OwnedFrame {
     userItemId: string;    // user_items.id
@@ -21,14 +22,16 @@ interface FrameSelectorProps {
 
 export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelectorProps) {
     const t = useTranslations('Settings');
+    const locale = useLocale();
     const router = useRouter();
+    const { error: toastError } = useToast();
     const [frames, setFrames] = useState<OwnedFrame[]>(ownedFrames);
     const [loading, setLoading] = useState(false);
 
-    const equippedFrame = frames.find(f => f.isEquipped);
-    const currentValue = equippedFrame?.userItemId || 'none';
+    const equippedFrame = useMemo(() => frames.find(f => f.isEquipped), [frames]);
+    const currentValue = useMemo(() => equippedFrame?.userItemId || 'none', [equippedFrame]);
 
-    const handleChange = async (value: string) => {
+    const handleChange = useCallback(async (value: string) => {
         if (loading) return;
         if (value === currentValue) return;
 
@@ -57,12 +60,12 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
                 onFrameChange?.(selectedFrame ? getFrameColor(selectedFrame.previewValue) : null);
             }
             router.refresh();
-        } catch (e) {
-            console.error('Frame equip error:', e);
+        } catch (_e: unknown) {
+            toastError(locale === 'ja' ? 'フレーム変更に失敗しました' : 'Failed to change frame');
         } finally {
             setLoading(false);
         }
-    };
+    }, [loading, currentValue, equippedFrame, ownedFrames, onFrameChange, router, toastError, locale]);
 
     // フレームを1つも持っていない場合
     if (frames.length === 0) {
@@ -83,8 +86,8 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
     }
 
     // 選択中のフレームカラーをプレビュー
-    const selectedFrame = frames.find(f => f.userItemId === currentValue);
-    const previewColor = selectedFrame ? getFrameColor(selectedFrame.previewValue) : null;
+    const selectedFrame = useMemo(() => frames.find(f => f.userItemId === currentValue), [frames, currentValue]);
+    const previewColor = useMemo(() => selectedFrame ? getFrameColor(selectedFrame.previewValue) : null, [selectedFrame]);
 
     return (
         <div className="border-t border-gray-200 pt-6">
@@ -118,12 +121,13 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
                         value={currentValue}
                         onChange={(e) => handleChange(e.target.value)}
                         disabled={loading}
+                        aria-label={t('frameLabel')}
                         className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm py-2.5 text-gray-900 appearance-none pl-3 pr-8 bg-white disabled:opacity-60 cursor-pointer"
                     >
                         <option value="none">{t('noFrame')}</option>
                         {frames.map(frame => (
                             <option key={frame.userItemId} value={frame.userItemId}>
-                                {frame.nameJa}
+                                {locale === 'ja' ? frame.nameJa : frame.nameEn}
                             </option>
                         ))}
                     </select>

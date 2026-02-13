@@ -44,6 +44,63 @@ export type SearchCategory =
     | 'Electronics'
     | 'Books';
 
+// --- Creators API レスポンス型定義 ---
+
+interface OAuthTokenResponse {
+    access_token?: string;
+    expires_in?: number;
+    token_type?: string;
+}
+
+interface CreatorsItemInfo {
+    title?: { displayValue?: string };
+    byLineInfo?: { brand?: { displayValue?: string } };
+}
+
+interface CreatorsImage {
+    url?: string;
+}
+
+interface CreatorsItem {
+    asin: string;
+    detailPageURL?: string;
+    itemInfo?: CreatorsItemInfo;
+    images?: {
+        primary?: {
+            large?: CreatorsImage;
+            medium?: CreatorsImage;
+        };
+    };
+    offersV2?: {
+        listings?: Array<{
+            price?: {
+                money?: { displayAmount?: string };
+            };
+        }>;
+    };
+    customerReviews?: {
+        starRating?: { value?: number | string };
+        count?: number;
+    };
+    browseNodeInfo?: {
+        browseNodes?: Array<{ displayName?: string }>;
+    };
+}
+
+interface CreatorsSearchResponse {
+    searchResult?: {
+        items?: CreatorsItem[];
+        totalResultCount?: number;
+        searchURL?: string;
+    };
+}
+
+interface CreatorsGetItemsResponse {
+    itemsResult?: {
+        items?: CreatorsItem[];
+    };
+}
+
 // ============================================
 // OAuth2 Token 管理
 // ============================================
@@ -73,8 +130,6 @@ async function getAccessToken(): Promise<string> {
         scope: 'creatorsapi/default',
     }).toString();
 
-    console.log('[Creators API] トークン取得中...', tokenUrl);
-
     const response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
@@ -85,13 +140,12 @@ async function getAccessToken(): Promise<string> {
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Creators API] トークン取得エラー:', response.status, errorText);
-        throw new Error(`OAuth2 トークン取得失敗: ${response.status} - ${errorText}`);
+        throw new Error(`OAuth2 トークン取得失敗: ${response.status} - ${extractErrorMessage(errorText)}`);
     }
 
-    const data = await response.json();
-    const accessToken = data.access_token as string | undefined;
-    const expiresIn = data.expires_in as number | undefined;
+    const data: OAuthTokenResponse = await response.json();
+    const accessToken = data.access_token;
+    const expiresIn = data.expires_in;
 
     if (!accessToken || !expiresIn) {
         throw new Error('OAuth2 レスポンスにアクセストークンが含まれていません');
@@ -103,7 +157,6 @@ async function getAccessToken(): Promise<string> {
         expiresAt: Date.now() + Math.max(expiresIn - 30, 0) * 1000,
     };
 
-    console.log('[Creators API] トークン取得成功（有効期限:', expiresIn, '秒）');
     return accessToken;
 }
 
@@ -143,12 +196,10 @@ async function apiRequest<T>(endpoint: string, body: Record<string, unknown>): P
                 // リトライ可能なエラー
                 if ((status === 429 || status >= 500) && attempt < maxRetries) {
                     const delay = baseDelayMs * Math.pow(2, attempt) + Math.random() * 100;
-                    console.warn(`[Creators API] リトライ ${attempt + 1}/${maxRetries} (${status}) ${delay}ms後`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }
 
-                console.error('[Creators API] エラー:', status, errorBody);
                 throw new Error(`Creators API エラー: ${status} - ${extractErrorMessage(errorBody)}`);
             }
 
@@ -156,7 +207,6 @@ async function apiRequest<T>(endpoint: string, body: Record<string, unknown>): P
         } catch (error) {
             if (attempt < maxRetries && !(error instanceof Error && error.message.startsWith('Creators API エラー'))) {
                 const delay = baseDelayMs * Math.pow(2, attempt);
-                console.warn(`[Creators API] ネットワークエラー、リトライ ${attempt + 1}/${maxRetries}`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
@@ -179,14 +229,20 @@ export async function searchProducts(
     category: SearchCategory = 'All',
     itemCount: number = 10
 ): Promise<SearchResult> {
+    const trimmed = keywords.trim();
+    if (!trimmed) {
+        return { products: [], totalResults: 0, searchUrl: '' };
+    }
+
     const partnerTag = env.AMAZON_PARTNER_TAG;
+    const safeItemCount = Math.max(1, Math.min(itemCount, 50));
 
     // Creators API のリソース名は小文字 camelCase
     const body = {
-        keywords,
+        keywords: trimmed,
         searchIndex: category,
         partnerTag,
-        itemCount: Math.min(itemCount, 50), // Creators API は最大50件
+        itemCount: safeItemCount,
         resources: [
             'itemInfo.title',
             'itemInfo.byLineInfo',
@@ -198,12 +254,10 @@ export async function searchProducts(
         ],
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await apiRequest<any>('/catalog/v1/searchItems', body);
+    const data = await apiRequest<CreatorsSearchResponse>('/catalog/v1/searchItems', body);
 
-    const products: AmazonProduct[] = (data.searchResult?.items || []).map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (item: any) => parseItem(item, partnerTag)
+    const products: AmazonProduct[] = (data.searchResult?.items ?? []).map(
+        (item) => parseItem(item, partnerTag)
     );
 
     return {
@@ -218,6 +272,8 @@ export async function searchProducts(
  * ASIN で商品を直接取得してアフィリエイトリンク付きで返す
  */
 export async function getProductsByAsin(asins: string[]): Promise<AmazonProduct[]> {
+    if (asins.length === 0) return [];
+
     const partnerTag = env.AMAZON_PARTNER_TAG;
 
     const body = {
@@ -233,12 +289,10 @@ export async function getProductsByAsin(asins: string[]): Promise<AmazonProduct[
         ],
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await apiRequest<any>('/catalog/v1/getItems', body);
+    const data = await apiRequest<CreatorsGetItemsResponse>('/catalog/v1/getItems', body);
 
-    return (data.itemsResult?.items || []).map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (item: any) => parseItem(item, partnerTag)
+    return (data.itemsResult?.items ?? []).map(
+        (item) => parseItem(item, partnerTag)
     );
 }
 
@@ -250,8 +304,7 @@ export async function getProductsByAsin(asins: string[]): Promise<AmazonProduct[
  * Creators API のレスポンスアイテムを AmazonProduct に変換
  * PA-API v5 との違い: PascalCase → camelCase、Offers → offersV2
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseItem(item: any, partnerTag: string): AmazonProduct {
+function parseItem(item: CreatorsItem, partnerTag: string): AmazonProduct {
     // offersV2.listings[].price.money.displayAmount
     const priceListing = item.offersV2?.listings?.[0];
     const priceDisplay = priceListing?.price?.money?.displayAmount;
@@ -269,8 +322,8 @@ function parseItem(item: any, partnerTag: string): AmazonProduct {
         url: item.detailPageURL || `https://www.amazon.co.jp/dp/${item.asin}?tag=${partnerTag}`,
         imageUrl: item.images?.primary?.large?.url || item.images?.primary?.medium?.url || null,
         price: priceDisplay || null,
-        rating: rating != null ? parseFloat(String(rating)) : null,
-        totalReviews: totalReviews || null,
+        rating: rating != null && !Number.isNaN(Number(rating)) ? Number(rating) : null,
+        totalReviews: totalReviews ?? null,
         brand: item.itemInfo?.byLineInfo?.brand?.displayValue || null,
         category: categoryName,
     };
@@ -412,16 +465,17 @@ export async function searchProductCandidates(
     keyword: string,
     category?: string,
 ): Promise<SearchCandidate[]> {
+    const trimmedKeyword = keyword.trim();
+    if (!trimmedKeyword) return [];
+
     const partnerTag = env.AMAZON_PARTNER_TAG;
 
     // 検索 URL 構築
-    const params = new URLSearchParams({ k: keyword });
+    const params = new URLSearchParams({ k: trimmedKeyword });
     if (category && category !== 'All' && SEARCH_INDEX_URL_MAP[category]) {
         params.set('i', SEARCH_INDEX_URL_MAP[category]);
     }
     const searchUrl = `https://www.amazon.co.jp/s?${params.toString()}`;
-
-    console.log('[Amazon Search] 検索中:', searchUrl);
 
     const response = await fetch(searchUrl, {
         headers: {
@@ -432,7 +486,6 @@ export async function searchProductCandidates(
     });
 
     if (!response.ok) {
-        console.error('[Amazon Search] エラー:', response.status);
         return [];
     }
 
@@ -481,7 +534,6 @@ export async function searchProductCandidates(
         });
     }
 
-    console.log(`[Amazon Search] ${candidates.length}件の候補を取得`);
     return candidates;
 }
 

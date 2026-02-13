@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
@@ -19,6 +20,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
         }
 
+        // 🛡️ Sentinel: ファイルタイプとサイズのバリデーション
+        const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+            return NextResponse.json({ error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." }, { status: 400 });
+        }
+
+        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+        if (file.size > MAX_SIZE) {
+            return NextResponse.json({ error: "File too large. Max 5MB." }, { status: 400 });
+        }
+
         const userId = (session.user as any).id;
         // Client compresses to JPEG, so we enforce .jpg extension to match content type
         const fileExt = 'jpg';
@@ -33,8 +45,8 @@ export async function POST(request: Request) {
             });
 
         if (uploadError) {
-            console.error("Upload error detail:", JSON.stringify(uploadError, null, 2));
-            return NextResponse.json({ error: `Failed to upload image: ${uploadError.message}` }, { status: 500 });
+            reportError("banner-upload", uploadError, { userId });
+            return NextResponse.json({ error: "Failed to upload image" }, { status: 500 });
         }
 
         const { data: { publicUrl } } = supabaseAdmin
@@ -51,14 +63,14 @@ export async function POST(request: Request) {
             .eq("id", userId);
 
         if (dbError) {
-            console.error("Database update error:", dbError);
+            reportError("banner-db-update", dbError, { userId });
             return NextResponse.json({ error: "Failed to update banner URL" }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, url: publicUrl });
 
-    } catch (error) {
-        console.error("Error processing request:", error);
+    } catch (error: unknown) {
+        reportError("banner-upload", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

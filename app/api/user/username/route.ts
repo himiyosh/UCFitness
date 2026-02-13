@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
@@ -60,13 +61,13 @@ export async function POST(request: Request) {
             if (error.code === '23505') {
                 return NextResponse.json({ error: "This User ID is already taken." }, { status: 409 });
             }
-            console.error("Error updating username:", error);
+            reportError("username-update", error);
             return NextResponse.json({ error: "Database error" }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Error processing request:", error);
+    } catch (error: unknown) {
+        reportError("username-update", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

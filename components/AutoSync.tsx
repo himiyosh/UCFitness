@@ -14,16 +14,16 @@ export default function AutoSync() {
                 });
 
                 if (res.ok) {
-                    // Refresh the server components to show new data
+                    // サーバーコンポーネントをリフレッシュして新しいデータを表示
                     router.refresh();
                 }
-            } catch (error) {
-                console.error('Auto sync failed:', error);
+            } catch (_error: unknown) {
+                // 自動同期の失敗はサイレントに処理（ユーザー操作は不要）
             }
         };
 
         syncSteps();
     }, [router]);
 
-    return null; // This component renders nothing
+    return null;
 }
