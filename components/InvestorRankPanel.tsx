@@ -28,7 +28,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
 
     // 現在のランクのインデックス（RANKS は降順なので index が小さい = ランクが高い）
     // 不正なランク値の場合はBEGINNER（最後のインデックス）にフォールバック
-    const currentIndex = RANK_INDEX_MAP.get(currentRank) ?? (RANKS.length - 1);
+    const currentIndex = RANK_INDEX_MAP.get(currentRank as typeof RANKS[number]['rank']) ?? (RANKS.length - 1);
 
     // 各ランクの状態を事前計算（.map() 内での繰り返し findIndex を排除）
     const rankStates = useMemo(() => {

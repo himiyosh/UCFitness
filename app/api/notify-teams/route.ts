@@ -38,7 +38,8 @@ export async function GET(request: Request) {
         }
 
         if (rankings && rankings.length > 0) {
-            await sendTeamsNotification(rankings);
+            // Supabase の型推論は users を配列として返すが、多対一リレーションでは単一オブジェクト
+            await sendTeamsNotification(rankings as unknown as Parameters<typeof sendTeamsNotification>[0]);
         } else {
             // No rankings found to send.
         }

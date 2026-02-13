@@ -200,7 +200,8 @@ export async function getEquippedItemsForUsers(userIds: string[]): Promise<Recor
         'ring-rainbow': 'rainbow',
     };
 
-    for (const item of (data as { user_id: string; shop_items: { category: string; preview_value: string; name_en: string; name_ja: string } | null }[])) {
+    // Supabase の型推論は shop_items を配列として返すが、多対一リレーションでは単一オブジェクト
+    for (const item of (data as unknown as { user_id: string; shop_items: { category: string; preview_value: string; name_en: string; name_ja: string } | null }[])) {
         const userId = item.user_id;
         const shopItem = item.shop_items;
         if (!shopItem) continue;

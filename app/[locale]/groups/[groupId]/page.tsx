@@ -141,7 +141,18 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     ]);
 
     const rankings = await enrichRankingsWithEquip(rawRankings);
-    const members = membersResult.data;
+    // Supabase の group_members → users は多対一リレーション（単一オブジェクト返却）だが
+    // 型推論では配列として推論されるため、実際の型にキャスト
+    const members = membersResult.data as Array<{
+        user_id: string;
+        role: 'OWNER' | 'MEMBER';
+        users: {
+            id: string;
+            name: string | null;
+            image: string | null;
+            username: string | null;
+        };
+    }> | null;
 
     const groupCompetitionRankings = {
         DAILY: compDaily,

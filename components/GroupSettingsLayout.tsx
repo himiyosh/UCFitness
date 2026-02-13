@@ -3,13 +3,16 @@
 import { useCallback, useState } from 'react';
 import GroupMembersPanel from './GroupMembersPanel';
 
-/** メンバー情報の型定義 */
+/** メンバー情報の型定義（GroupMembersPanel の Member 型と一致） */
 interface GroupMember {
-    id: string;
-    username: string | null;
-    display_name: string | null;
-    profile_image: string | null;
-    role?: string;
+    user_id: string;
+    role: 'OWNER' | 'MEMBER';
+    users: {
+        id: string;
+        name: string | null;
+        image: string | null;
+        username: string | null;
+    };
 }
 
 interface Props {

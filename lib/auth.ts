@@ -49,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     // debug: true, // Enable for debugging if needed
     callbacks: {
-        async signIn({ user, account }: { user: any; account: any; profile?: any }) {
+        async signIn({ user, account }: { user: any; account?: any; profile?: any }) {
             if (!account) return false;
 
             // 1. Try to find user by Provider Account ID (Fitbit ID) first - This is stable
@@ -212,7 +212,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
             return session;
         },
-        async jwt({ token, account, user, trigger, session }: { token: any; account: any; user: any; trigger?: string; session?: any }) {
+        async jwt({ token, account, user, trigger, session }: { token: any; account?: any; user?: any; trigger?: string; session?: any }) {
             // Initial sign in
             if (account && user) {
                 token.accessToken = account.access_token;

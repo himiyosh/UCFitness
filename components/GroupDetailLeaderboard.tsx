@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, ReactNode } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -38,6 +38,9 @@ export default function GroupDetailLeaderboard({
     onPageChange: (page: number) => void
 }) {
     const locale = useLocale();
+    const ga = useTranslations('GroupDetail');
+    const lt = useTranslations('Leaderboard');
+    const commonT = useTranslations('Common');
     const allData = rankings[period];
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';

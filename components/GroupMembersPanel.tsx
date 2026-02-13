@@ -15,7 +15,6 @@ type Member = {
     users: {
         id: string;
         name: string | null;
-        email: string | null;
         image: string | null;
         username: string | null;
     };

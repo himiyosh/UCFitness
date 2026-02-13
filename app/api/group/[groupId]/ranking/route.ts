@@ -219,7 +219,8 @@ export async function GET(
             users: { id: string; name: string; image: string; username: string };
         }
         const userMap = new Map<string, { steps: number; users: UserStepRow['users'] }>();
-        (rawSteps as UserStepRow[] | null)?.forEach((row) => {
+        // Supabase の型推論は users を配列として返すが、!inner指定の多対一リレーションでは単一オブジェクト
+        (rawSteps as unknown as UserStepRow[] | null)?.forEach((row) => {
             const uid = row.users.id;
             if (!userMap.has(uid)) {
                 userMap.set(uid, {
