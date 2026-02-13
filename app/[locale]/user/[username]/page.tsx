@@ -31,9 +31,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const dashboardT = await getTranslations('Dashboard');
 
     // Fetch target user data
+    // 🛡️ Sentinel: email を除外して PII 漏洩を防止
     const { data: user } = await supabase
         .from("users")
-        .select("id, name, email, image, group_keyword, username, step_goal, is_custom_image, banner_url")
+        .select("id, name, image, group_keyword, username, step_goal, is_custom_image, banner_url")
         .eq("username", username)
         .single();
 
@@ -164,7 +165,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     };
 
     // Viewer Stats (Fetch if logged in and different user)
-    const isOwner = session?.user?.email === user.email;
+    // 🛡️ Sentinel: email ではなく ID で所有者判定
+    const isOwner = (session?.user as any)?.id === user.id;
     let viewerStats = { daily: 0, weekly: 0, monthly: 0 };
     let hasViewerStats = false;
     let viewerUser = session?.user; // Default to session user
