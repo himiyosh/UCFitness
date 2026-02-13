@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
     Area,
@@ -46,8 +46,9 @@ interface TooltipPayloadItem {
 
 interface CustomTooltipProps {
     active?: boolean;
-    payload?: TooltipPayloadItem[];
-    label?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    payload?: readonly any[];
+    label?: string | number;
 }
 
 export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
@@ -84,21 +85,11 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
         return { chartData: mapped, hasNegative: neg, balanceDomain: balDomain, dailyDomain: dDomain };
     }, [data]);
 
-    if (!data || data.length === 0) {
-        return (
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-base font-bold text-gray-900 mb-4">{t('assetGrowth')}</h3>
-                <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
-                    {t('noTransactions')}
-                </div>
-            </div>
-        );
-    }
-
-    const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+    // ツールチップレンダラー（安定参照でRechartsの不要なリマウントを防止）
+    const renderTooltip = useCallback(({ active, payload, label }: CustomTooltipProps) => {
         if (active && payload && payload.length) {
-            const daily = payload.find((p) => p.dataKey === 'dailyCoins');
-            const bal = payload.find((p) => p.dataKey === 'balance');
+            const daily = payload.find((p: TooltipPayloadItem) => p.dataKey === 'dailyCoins');
+            const bal = payload.find((p: TooltipPayloadItem) => p.dataKey === 'balance');
             const dailyVal = daily?.value ?? 0;
             const isExpense = dailyVal < 0;
             return (
@@ -118,7 +109,18 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
             );
         }
         return null;
-    };
+    }, [t]);
+
+    if (!data || data.length === 0) {
+        return (
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-base font-bold text-gray-900 mb-4">{t('assetGrowth')}</h3>
+                <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+                    {t('noTransactions')}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100">
@@ -165,7 +167,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             axisLine={false}
                             tickFormatter={formatNumber}
                         />
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={renderTooltip} />
                         {hasNegative && (
                             <ReferenceLine yAxisId="daily" y={0} stroke="#d1d5db" strokeDasharray="3 3" />
                         )}

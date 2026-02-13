@@ -94,7 +94,7 @@ export default function GroupMembersPanel({
                 }
             }
         });
-    }, [groupKeyword, router, toastSuccess, toastError]);
+    }, [groupKeyword, router, toastSuccess, toastError, detailT]);
 
     const handleDemote = useCallback(async (targetId: string, memberName: string, isSelf: boolean) => {
         const msg = isSelf
@@ -132,7 +132,7 @@ export default function GroupMembersPanel({
                 }
             }
         });
-    }, [groupKeyword, router, toastSuccess, toastError]);
+    }, [groupKeyword, router, toastSuccess, toastError, detailT]);
 
     const handleKick = useCallback(async (targetId: string, memberName: string) => {
         setConfirmAction({
@@ -166,7 +166,7 @@ export default function GroupMembersPanel({
                 }
             }
         });
-    }, [groupKeyword, router, toastError]);
+    }, [groupKeyword, router, toastError, detailT]);
 
     const handleSearch = useCallback((query: string) => {
         setSearchQuery(query);
@@ -233,7 +233,7 @@ export default function GroupMembersPanel({
         } finally {
             setIsProcessing(null);
         }
-    }, [groupKeyword, router, toastSuccess, toastError]);
+    }, [groupKeyword, router, toastSuccess, toastError, detailT]);
 
 
     const handleLeaveGroup = useCallback(async () => {
@@ -264,7 +264,7 @@ export default function GroupMembersPanel({
                 }
             }
         });
-    }, [groupKeyword, groupName, router, toastError]);
+    }, [groupKeyword, groupName, router, toastError, detailT]);
 
     const ownerCount = useMemo(() => members.filter(m => m.role === 'OWNER').length, [members]);
     const [selectedImage, setSelectedImage] = useState<{ src: string, alt: string } | null>(null);
@@ -425,7 +425,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
                                             >
-                                                {detailT('demoteSelf')}
+                                                {isProcessing === member.user_id ? '...' : detailT('demoteSelf')}
                                             </button>
                                             {ownerCount > 1 && (
                                                 <button
@@ -446,7 +446,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
                                             >
-                                                {detailT('demote')}
+                                                {isProcessing === member.user_id ? '...' : detailT('demote')}
                                             </button>
                                         ) : (
                                             <button
@@ -454,7 +454,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-[var(--theme-primary)] hover:text-[var(--theme-primary)] font-bold px-3 py-1.5 rounded-lg bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] transition-colors border border-[var(--theme-primary)]/20 whitespace-nowrap"
                                             >
-                                                {detailT('makeOwner')}
+                                                {isProcessing === member.user_id ? '...' : detailT('makeOwner')}
                                             </button>
                                         )}
                                         <button

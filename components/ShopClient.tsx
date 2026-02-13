@@ -91,7 +91,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             }
             // 成功
             setOwnedItemIds(prev => new Set([...prev, item.id]));
-            setCurrentBalance(data.newBalance ?? currentBalance - item.price);
+            setCurrentBalance(prev => data.newBalance ?? prev - item.price);
             // ユーザーアイテムリスト更新（サーバーから返された実IDを使用）
             if (data.userItem) {
                 setUserItemsState(prev => [data.userItem, ...prev]);
@@ -109,7 +109,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
         } finally {
             setIsLoading(null);
         }
-    }, [currentBalance, locale, showToast, t]);
+    }, [locale, showToast, t]);
 
     // 装備 / 装備解除処理
     const handleEquip = useCallback(async (userItem: UserItem, action: 'equip' | 'unequip') => {

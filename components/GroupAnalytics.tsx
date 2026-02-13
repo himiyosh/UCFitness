@@ -64,7 +64,6 @@ export default function GroupAnalytics({
 
     const currentChartData = comparisonData[period];
     const allData = rankings[period];
-    const ITEMS_PER_PAGE = 10;
 
     // Memoize expensive computations
     const { userRank, userEntry, averageSteps } = useMemo(() => {
