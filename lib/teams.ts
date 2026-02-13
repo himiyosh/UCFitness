@@ -1,4 +1,16 @@
-export async function sendTeamsNotification(rankings: any[]) {
+import { reportError } from './errors';
+
+interface RankingUser {
+    name?: string | null;
+    username?: string | null;
+}
+
+interface TeamsRankingEntry {
+    steps: number;
+    users?: RankingUser;
+}
+
+export async function sendTeamsNotification(rankings: TeamsRankingEntry[]) {
     const webhookUrl = process.env.TEAMS_WEBHOOK_URL;
 
     if (!webhookUrl) {
@@ -35,10 +47,10 @@ export async function sendTeamsNotification(rankings: any[]) {
         });
 
         if (!res.ok) {
-            console.error('Failed to send Teams notification:', res.status, res.statusText);
+            reportError('sendTeamsNotification', new Error(`Teams webhook failed: ${res.status}`));
         }
-    } catch (error) {
-        console.error('Error sending Teams notification:', error);
+    } catch (error: unknown) {
+        reportError('sendTeamsNotification', error);
     }
 }
 
@@ -81,9 +93,9 @@ export async function sendBadgeNotification(username: string, badgeName: string,
         });
 
         if (!res.ok) {
-            console.error('Failed to send Teams badge notification:', res.status, res.statusText);
+            reportError('sendBadgeNotification', new Error(`Teams badge webhook failed: ${res.status}`));
         }
-    } catch (error) {
-        console.error('Error sending Teams badge notification:', error);
+    } catch (error: unknown) {
+        reportError('sendBadgeNotification', error);
     }
 }

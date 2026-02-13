@@ -35,8 +35,8 @@ export function useWebPush() {
             const registration = await navigator.serviceWorker.register('/sw.js');
             const sub = await registration.pushManager.getSubscription();
             setSubscription(sub);
-        } catch (error) {
-            console.error('Service Worker creation failed', error);
+        } catch (error: unknown) {
+            console.error('Service Worker registration failed');
         }
     };
 
@@ -69,8 +69,8 @@ export function useWebPush() {
             if (!res.ok) throw new Error('Failed to sync subscription with backend');
 
             return true;
-        } catch (error) {
-            console.error('Failed to subscribe', error);
+        } catch (error: unknown) {
+            console.error('Failed to subscribe to push notifications');
             // Permissions might have been denied during the process
             setPermission(Notification.permission);
             return false;
@@ -87,8 +87,8 @@ export function useWebPush() {
                 setSubscription(null);
             }
             return true;
-        } catch (error) {
-            console.error('Error unsubscribing', error);
+        } catch (error: unknown) {
+            console.error('Failed to unsubscribe from push notifications');
             return false;
         } finally {
             setLoading(false);

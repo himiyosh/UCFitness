@@ -58,7 +58,7 @@ export async function enrichRankingsWithEquip(
     return rankings;
 }
 
-export function getDisplayRankings(allRankings: any[], userId?: string | null, maxItems?: number): {
+export function getDisplayRankings(allRankings: RankingEntry[], userId?: string | null, maxItems?: number): {
     displayRankings: RankingEntry[];
     isTruncated: boolean
 } {
@@ -165,7 +165,7 @@ export async function enrichAllGroupRankingsWithEquip<T extends { neighbors: Rec
  * 同時に originalRank を付与する
  */
 export function optimizeRankingsForPayload(
-    rankings: Record<string, any[]>,
+    rankings: Record<string, RankingEntry[]>,
     userId?: string | null,
     limit: number = 100
 ): Record<string, RankingEntry[]> {
