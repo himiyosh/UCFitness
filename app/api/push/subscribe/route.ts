@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'edge';
@@ -8,15 +9,16 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     const user = session?.user;
 
-    if (!user) {
+    if (!user || !(user as any).id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
         const subscription = await request.json();
 
-        // Basic Validation
-        if (!subscription || !subscription.endpoint || !subscription.keys) {
+        // 🛡️ セキュリティ: サブスクリプションオブジェクトとキーの検証
+        if (!subscription || !subscription.endpoint || !subscription.keys
+            || !subscription.keys.p256dh || !subscription.keys.auth) {
             return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
         }
 
@@ -31,13 +33,13 @@ export async function POST(request: NextRequest) {
             }, { onConflict: 'user_id, endpoint' });
 
         if (error) {
-            console.error('Database error saving subscription:', error);
-            return NextResponse.json({ error: `Failed to save subscription: ${error.message || error.details || JSON.stringify(error)}` }, { status: 500 });
+            reportError('push/subscribe:save', error);
+            return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (err: any) {
-        console.error('Error processing subscription:', err);
+    } catch (err: unknown) {
+        reportError('push/subscribe', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }
@@ -47,7 +49,7 @@ export async function DELETE(request: NextRequest) {
     const session = await auth();
     const user = session?.user;
 
-    if (!user) {
+    if (!user || !(user as any).id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -64,13 +66,13 @@ export async function DELETE(request: NextRequest) {
             .match({ user_id: (user as any).id, endpoint });
 
         if (error) {
-            console.error('Database error deleting subscription:', error);
+            reportError('push/subscribe:delete', error);
             return NextResponse.json({ error: 'Failed to delete subscription' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (err: any) {
-        console.error('Error processing unsubscribe:', err);
+    } catch (err: unknown) {
+        reportError('push/subscribe:delete', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }

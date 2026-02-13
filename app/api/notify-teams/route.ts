@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendTeamsNotification } from '@/lib/teams';
+import { reportError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,6 @@ export async function GET(request: Request) {
         steps,
         users (
           name,
-          email,
           username
         )
       `)
@@ -33,17 +33,19 @@ export async function GET(request: Request) {
             .order('steps', { ascending: false });
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            reportError('notify-teams:fetch', error);
+            return NextResponse.json({ error: 'Failed to fetch rankings' }, { status: 500 });
         }
 
         if (rankings && rankings.length > 0) {
             await sendTeamsNotification(rankings);
         } else {
-            console.log("No rankings found to send.");
+            // No rankings found to send.
         }
 
         return NextResponse.json({ message: 'Teams notification sent (if data existed)' });
-    } catch (error) {
+    } catch (error: unknown) {
+        reportError('notify-teams', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
