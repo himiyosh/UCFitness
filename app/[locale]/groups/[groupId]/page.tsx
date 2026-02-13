@@ -18,7 +18,7 @@ import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
 import { getTranslations } from 'next-intl/server';
 
 // ⚡ パフォーマンス: GroupAnalytics（内部でRecharts使用）を遅延読み込み
-const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'), { ssr: false });
+const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
 
 export const dynamic = 'force-dynamic';
 

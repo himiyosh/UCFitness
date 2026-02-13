@@ -16,9 +16,9 @@ import LandingPage from '@/components/LandingPage';
 import { Period } from '@/components/LeaderboardTabs';
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
-const AnimatedLeaderboard = nextDynamic(() => import('@/components/AnimatedLeaderboard'), { ssr: false });
-const GoalProgressChart = nextDynamic(() => import('@/components/GoalProgressChart'), { ssr: false });
-const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'), { ssr: false });
+const AnimatedLeaderboard = nextDynamic(() => import('@/components/AnimatedLeaderboard'));
+const GoalProgressChart = nextDynamic(() => import('@/components/GoalProgressChart'));
+const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'));
 
 export const dynamic = 'force-dynamic';
 

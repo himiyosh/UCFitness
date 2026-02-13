@@ -14,8 +14,8 @@ import { auth } from "@/lib/auth";
 import LanguageSyncer from "@/components/LanguageSyncer";
 
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
-const SplashScreen = dynamic(() => import('@/components/SplashScreen'), { ssr: false });
-const FloatingEmojis = dynamic(() => import('@/components/FloatingEmojis'), { ssr: false });
+const SplashScreen = dynamic(() => import('@/components/SplashScreen'));
+const FloatingEmojis = dynamic(() => import('@/components/FloatingEmojis'));
 
 export const metadata: Metadata = {
   title: "UCFitness",
