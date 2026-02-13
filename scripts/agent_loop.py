@@ -978,12 +978,12 @@ class FeatureEnhancementAgent(BaseAgent):
 
 
 class BuildValidationAgent(BaseAgent):
-    """🔨 Build Validation Agent: ビルドエラー・型エラー・翻訳キー不足を検出し修正"""
+    """🔨 Build Validation Agent: ビルドエラー・型エラー・翻訳キー不足・レンダリングエラーを検出し修正"""
 
     def __init__(self):
         super().__init__(
             name="Build Validation Agent",
-            role="ビルド検証・品質保証の専門家",
+            role="ビルド検証・品質保証・レンダリング安全性の専門家",
             focus_areas=[
                 "TypeScript コンパイルエラーの修正",
                 "未使用 import の削除",
@@ -991,6 +991,10 @@ class BuildValidationAgent(BaseAgent):
                 "翻訳キー (i18n) の整合性検証",
                 "Next.js ビルド互換性 (Server/Client Component 分離)",
                 "Supabase クエリの型安全性",
+                "React Rules of Hooks 違反の検出・修正",
+                "SSR/CSR ハイドレーションミスマッチの検出",
+                "レンダリング中の副作用・無限ループの検出",
+                "Server/Client Component 境界の不正使用検出",
             ],
         )
 
@@ -1169,8 +1173,8 @@ class BuildValidationAgent(BaseAgent):
         return textwrap.dedent(f"""\
             {APP_CONTEXT}
 
-            あなたはビルドエラー修正と品質保証の専門家です。
-            以下のファイルのビルドエラー・型エラー・翻訳キー不足を修正してください。
+            あなたはビルドエラー修正・レンダリングエラー検出・品質保証の専門家です。
+            以下のファイルのビルドエラー・型エラー・翻訳キー不足・レンダリングエラーを修正してください。
 
             対象ファイル: {file_path}
             {error_context}
@@ -1187,6 +1191,34 @@ class BuildValidationAgent(BaseAgent):
                - ❌ 条件式の中で Hooks が呼ばれている (例: `if (cond) { useState(...) }`)
                - ✅ すべての Hooks はコンポーネント/カスタムHookの **トップレベル** で、条件分岐や return 文の **前に** 宣言されなければならない
                - ✅ 修正方法: Hooks を条件分岐の前に移動し、early return は全 Hooks 宣言の後に配置する
+            6. **React レンダリングエラー**: 以下のパターンを検出し修正すること:
+               a. **SSR/CSR ハイドレーションミスマッチ**:
+                  - ❌ サーバーとクライアントで異なる出力を返すコード (例: `typeof window !== 'undefined'` で分岐した JSX)
+                  - ❌ `Date.now()`, `Math.random()` 等の非決定的な値をレンダリング時に直接使用
+                  - ❌ `<p>` 内に `<div>`, `<table>` 外の `<tr>` 等の不正な HTML ネスト
+                  - ✅ `useEffect` + `useState` で SSR 安全にクライアント限定コンテンツを表示する
+               b. **レンダリング中の副作用**:
+                  - ❌ レンダリング関数内で直接 `setState()` を呼び出す (無限ループ)
+                  - ❌ レンダリング中に DOM を直接操作する (`document.getElementById` 等)
+                  - ❌ レンダリング中に `fetch()` / `async` 操作を直接実行する
+                  - ✅ 副作用は必ず `useEffect` 内に配置する
+               c. **条件付きレンダリングの問題**:
+                  - ❌ `&&` 演算子で `0` や `""` がフォールスルーして意図せず表示される (例: `{count && <Tag/>}` → 0 が表示)
+                  - ✅ `{count > 0 && <Tag/>}` または三項演算子を使用する
+               d. **Server/Client Component 境界の不正使用**:
+                  - ❌ Server Component で `useState`, `useEffect`, `onClick` 等を使用 ('use client' ディレクティブ不足)
+                  - ❌ Client Component から Server Component を import して children 以外で使用
+                  - ❌ Server Component で `useTranslations` を使用 (代わりに `getTranslations` を使用)
+               e. **key prop の問題**:
+                  - ❌ リスト内の要素に `key` が設定されていない、または index を key に使用している (動的リストの場合)
+                  - ❌ 兄弟要素間で重複する key が存在する
+               f. **非同期コンポーネントのエラー**:
+                  - ❌ Client Component ('use client') を async 関数として定義している
+                  - ❌ Server Component 内で async を使わずに await している
+               g. **useEffect の依存配列の問題**:
+                  - ❌ 依存配列にオブジェクト/配列リテラルを直接書いて無限ループを引き起こす
+                  - ❌ 必要な依存変数が依存配列から漏れている
+                  - ❌ `useEffect` 内で依存配列に含まれる state を即座に set して無限ループ
 
             ## 重要なルール
             - **エラーがなければ元のコードをそのまま返すこと。**
@@ -1230,6 +1262,14 @@ class BuildValidationAgent(BaseAgent):
             4. **新しいエラーを導入していないか？** (import 漏れ、型の不整合 等)
             5. **翻訳キーの修正が正しいか？** (ja.json/en.json に追加すべきキーが正しいか)
             6. **React Rules of Hooks 違反を導入していないか？** 条件分岐や early return の後に新たな Hooks 呼び出しが追加されていたら必ず reject
+            7. **レンダリングエラーを導入していないか？** 以下を必ずチェック:
+               - SSR/CSR ハイドレーションミスマッチ (サーバーとクライアントで異なる出力)
+               - レンダリング中の setState 呼び出し (無限ループ)
+               - Server Component で useState/useEffect/onClick を使用していないか
+               - Client Component を async にしていないか
+               - `&&` 演算子で 0 や空文字がフォールスルーしていないか
+               - useEffect の依存配列にオブジェクトリテラル直書きで無限ループしていないか
+               - 不正な HTML ネスト (`<p>` 内の `<div>` 等)
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
