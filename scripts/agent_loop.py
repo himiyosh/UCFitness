@@ -46,6 +46,7 @@ logger = logging.getLogger("agent_loop")
 MAX_ITERATIONS = 3                 # Generator↔Reviewer ループの最大回数
 MAX_CYCLES_DEFAULT = 5             # マルチサイクルのデフォルト最大回数
 MAX_CHANGED_LINES = 300            # 1ファイルあたりの最大変更行数
+MAX_CODE_CONTEXT = 8000            # AIに送信するコードの最大文字数
 COMMIT_PREFIX = "[bot] AI-Improvement"
 IMPROVEMENT_BRANCH = "bot/ai-improvements"  # 改善コミット用の固定ブランチ
 REPO_ROOT = Path(os.environ.get("GITHUB_WORKSPACE", ".")).resolve()
@@ -62,6 +63,45 @@ EXCLUDE_PATTERNS = {
     "__pycache__", ".git", "coverage",
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
 }
+
+# ---------------------------------------------------------------------------
+# アプリケーションコンテキスト (プロンプト注入用)
+# ---------------------------------------------------------------------------
+APP_CONTEXT = textwrap.dedent("""\
+    ## アプリケーション情報: UCFitness
+    UCFitness は Fitbit と連携した歩数トラッキング・フィットネス競争アプリ (PWA) です。
+
+    ### 主な機能
+    - 歩数記録・Fitbit同期 (AutoSync)
+    - リーダーボード (日/週/月/年 + アニメーション付きランキング)
+    - グループ対戦 (作成・参加・ランキング・分析)
+    - バッジ収集システム (達成バッジ・レベルバッジ)
+    - コイン経済 (歩数→コイン換算・投資家ランク)
+    - ショップ (アイコンフレーム・タイトル・テーマ購入)
+    - プロフィール管理 (プロフィール画像・バナー画像・称号)
+    - プッシュ通知 (Web Push)
+
+    ### 技術スタック
+    - Next.js 15 (App Router, RSC + Client Components)
+    - TypeScript, React 19
+    - Tailwind CSS v4 (@import "tailwindcss" 構文)
+    - Supabase (PostgreSQL)
+    - NextAuth v5 beta (認証)
+    - next-intl (i18n: ja/en)
+    - Recharts 3.6 (チャート)
+    - Cloudflare Pages (デプロイ)
+    - CSS カスタムプロパティでテーマ切替 (classic/midnight)
+      - Tailwind の dark: は不使用。var(--theme-primary) 等を使用
+    - アニメーション: 純粋 CSS keyframes (framer-motion 不使用)
+
+    ### 現在不足しているUXパターン
+    - Error Boundary (error.tsx が未実装)
+    - ローディングスケルトン (コンテンツ形状のプレースホルダー)
+    - 確認ダイアログ (破壊的操作のガード)
+    - 最終同期タイムスタンプの表示
+    - ページ遷移アニメーション
+    - 空状態のリッチUI (イラスト・CTA付き)
+""")
 
 
 # ---------------------------------------------------------------------------
@@ -238,9 +278,11 @@ class GitHubModelsClient:
                     "コードブロック (```) で囲んで返答してください。"
                     "重要: コメントの追加だけの変更は価値がありません。"
                     "実質的なコードロジックの変更がない場合は、元のコードをそのまま返してください。"
+                    "絶対に既存の関数や export を削除しないでください。"
+                    "関数の最適化は可能ですが、関数自体の削除は禁止です。"
                     "レビューを求められた場合、承認なら 'approve'、"
                     "却下なら 'reject' を含めて回答してください。"
-                    "コメントの追加のみの差分はレビューで必ず reject してください。"
+                    "コメントの追加のみの差分、または関数削除がある差分はレビューで必ず reject してください。"
                 ),
             },
             {"role": "user", "content": prompt},
@@ -447,40 +489,70 @@ class BaseAgent(ABC):
 # 3つの専門エージェント
 # ---------------------------------------------------------------------------
 class UIUXAgent(BaseAgent):
-    """🎨 UI/UX Agent: デザイン整合性、アクセシビリティ、レスポンシブ改善"""
+    """🎨 UI/UX Agent: 実質的なUI改善、UXパターン追加、視覚的品質向上"""
 
     def __init__(self):
         super().__init__(
             name="UI/UX Agent",
             role="UI/UXデザインの専門家",
             focus_areas=[
-                "デザインの整合性",
+                "ローディングスケルトン・シマー効果",
+                "空状態のリッチUI (イラスト・CTA付き)",
+                "エラー状態の改善 (リトライボタン・ユーザーフレンドリーなメッセージ)",
+                "アニメーション・トランジション追加 (CSS keyframes)",
+                "レスポンシブデザインの強化",
+                "視覚的階層の改善 (カード・セクション・スペーシング)",
                 "アクセシビリティ (WCAG 2.1 AA)",
-                "レスポンシブデザイン",
-                "セマンティックHTML",
-                "カラーコントラスト",
             ],
         )
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはUI/UXの専門家です。以下のコードを分析し、具体的なコード改善を行ってください。
+            {APP_CONTEXT}
+
+            あなたはモダンWebアプリのUI/UX専門家です。以下のReactコンポーネントを分析し、
+            ユーザー体験を大幅に向上させる具体的なコード改善を行ってください。
 
             対象ファイル: {file_path}
-            改善の焦点:
-            - アクセシビリティ（aria属性、alt属性、キーボードナビゲーション、WCAG 2.1 AA準拠）
-            - セマンティックHTMLの使用（div→nav/main/section/article等への置換）
-            - レスポンシブデザイン（モバイル対応のクラスやメディアクエリ）
 
-            重要なルール:
-            - コメントの追加だけの変更は禁止。必ず実際のコードを変更すること。
-            - 説明コメントは最小限に。コード自体で意図を表現すること。
+            ## 改善の優先順位 (上から順に重要)
+
+            ### 1. ローディング・空状態・エラー状態の改善 (最重要)
+            - データ取得中に表示するスケルトンローダー（Tailwind の animate-pulse を使用）
+            - データが空の場合のリッチな空状態UI（アイコン + メッセージ + CTA ボタン）
+            - エラー発生時のユーザーフレンドリーなUI（リトライボタン付き）
+            - 例: `if (loading) return <div className="animate-pulse bg-gray-200 rounded-lg h-40" />`
+            - 例: `if (!data?.length) return <EmptyState icon="🏃" message="まだデータがありません" />`
+
+            ### 2. インタラクション・フィードバックの強化
+            - ボタンのホバー・クリックエフェクト (transform, transition)
+            - フォーム送信中のローディング状態 (disabled + スピナー)
+            - 成功・エラー時の視覚フィードバック
+            - 確認ダイアログ（破壊的操作の前）
+
+            ### 3. レスポンシブ・視覚的改善
+            - モバイルファーストのレイアウト調整
+            - カード・セクション間のスペーシング改善
+            - テキストの階層（見出し・サブテキスト・キャプション）
+
+            ### 4. アクセシビリティ
+            - aria-label、role 属性の追加
+            - キーボードナビゲーション対応
+            - フォーカスインジケーター
+
+            ## 重要なルール
+            - **必ず実質的なコード変更を行うこと。** コメント追加・変数名変更・import整理だけの変更は禁止。
+            - **テーマシステムに従うこと:** var(--theme-primary), var(--accent-coral) 等のCSS変数を使用。Tailwindの dark: は使わない。
+            - **framer-motion は使わないこと。** CSS keyframes と Tailwind のアニメーションクラスのみ使用。
+            - **新しい外部ライブラリは追加しないこと。**
+            - **既存の関数・export を削除しないこと。** 追加のみ許可。
+            - i18n: next-intl の useTranslations() を使用。ハードコード文字列は避ける。
             - 改善すべき点がなければ、元のコードをそのまま返すこと。
             - ファイル末尾には必ず改行を入れること。
 
             コード:
             ```
-            {code[:3000]}
+            {code[:MAX_CODE_CONTEXT]}
             ```
 
             改善後のコード全体をコードブロックで返してください。
@@ -498,14 +570,16 @@ class UIUXAgent(BaseAgent):
 
             差分:
             ```diff
-            {diff_text[:3000]}
+            {diff_text[:MAX_CODE_CONTEXT]}
             ```
 
             以下の基準で厳密に評価:
-            1. 実質的なコード変更があるか？（コメント追加のみは reject）
-            2. アクセシビリティが実際に向上しているか？
-            3. 既存の機能を壊していないか？
-            4. 不要なインポートやライブラリの追加がないか？
+            1. **実質的なUI/UX改善があるか？** コメント追加・変数名変更・import整理のみは reject
+            2. **ユーザー体験が具体的に向上しているか？** (ローディング状態、空状態、エラーハンドリング等)
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **テーマシステム (CSS変数) に従っているか？** Tailwind dark: を使っていたら reject
+            5. **framer-motion や新しい外部ライブラリを追加していないか？**
+            6. **既存機能を壊していないか？**
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
@@ -530,24 +604,30 @@ class PerformanceAgent(BaseAgent):
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはパフォーマンス最適化の専門家です。以下のコードを分析し、具体的なコード改善を行ってください。
+            {APP_CONTEXT}
+
+            あなたはReact/Next.jsパフォーマンス最適化の専門家です。
+            以下のコードを分析し、測定可能なパフォーマンス改善を行ってください。
 
             対象ファイル: {file_path}
-            改善の焦点:
-            - 不要な再レンダリングの防止 (React.memo, useMemo, useCallback の適切な使用)
-            - メモリ効率の向上（不要なコピーの削減）
-            - バンドルサイズ削減 (動的インポート、ツリーシェイキング)
-            - 計算量の削減（配列の繰り返し走査の排除等）
 
-            重要なルール:
-            - コメントの追加だけの変更は禁止。必ず実際のコードロジックを変更すること。
+            ## 改善の焦点（優先順位順）
+            1. **不要な再レンダリング防止**: React.memo, useMemo, useCallback の適切な使用
+            2. **重いコンポーネントの遅延ロード**: dynamic import + React.lazy
+            3. **計算量の削減**: 配列の繰り返し走査排除、Map/Set の活用
+            4. **メモリ効率**: 不要なコピー・中間配列の削減
+            5. **バンドルサイズ削減**: 条件付きインポート、ツリーシェイキング意識
+
+            ## 重要なルール
+            - **コメント追加のみ・変数名変更のみ・import整理のみの変更は禁止。**
+            - **既存の関数・export を絶対に削除しないこと。** 関数の最適化は可能だが、削除は禁止。
             - 既存の動作を変えないこと。最適化のみ行うこと。
             - 改善すべき点がなければ、元のコードをそのまま返すこと。
             - ファイル末尾には必ず改行を入れること。
 
             コード:
             ```
-            {code[:3000]}
+            {code[:MAX_CODE_CONTEXT]}
             ```
 
             改善後のコード全体をコードブロックで返してください。
@@ -565,15 +645,15 @@ class PerformanceAgent(BaseAgent):
 
             差分:
             ```diff
-            {diff_text[:3000]}
+            {diff_text[:MAX_CODE_CONTEXT]}
             ```
 
             以下の基準で厳密に評価:
-            1. 実質的なコード変更があるか？（コメント追加のみは reject）
-            2. 計算量やメモリ使用量が実際に改善されているか？
-            3. 既存の動作を壊していないか？
-            4. 可読性を著しく損なっていないか？
-            5. 不要なインポートやライブラリの追加がないか？
+            1. **実質的なコード変更があるか？** コメント追加・import整理のみは reject
+            2. **パフォーマンスが測定可能に改善されているか？** 定数化などの軽微な変更は reject
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **既存の動作を壊していないか？**
+            5. **不要なライブラリを追加していないか？**
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
@@ -600,18 +680,25 @@ class SecurityAgent(BaseAgent):
 
     def get_generator_prompt(self, file_path: str, code: str) -> str:
         return textwrap.dedent(f"""\
-            あなたはセキュリティの専門家です。以下のコードを分析し、実際の脆弱性がある場合のみ修正してください。
+            {APP_CONTEXT}
+
+            あなたはWebアプリケーションセキュリティの専門家です。
+            以下のコードを分析し、実際の脆弱性がある場合のみ修正してください。
 
             対象ファイル: {file_path}
-            検出すべき脆弱性:
+
+            ## 検出すべき脆弱性（実際の問題のみ）
             - 入力値の未検証（ユーザー入力をサニタイズせずに使用）
             - 機密情報のハードコーディング（APIキー、パスワード等の直接記載）
             - インジェクション（SQL, NoSQL, コマンドインジェクション）
             - 不適切なエラーハンドリング（機密情報のリーク）
             - 認証・認可の不備
+            - Rate limiting の欠如（API エンドポイントの場合）
+            - CSRF 対策の不備
 
-            重要なルール:
-            - コメントの追加だけの変更は絶対に禁止。実際のコードを変更すること。
+            ## 重要なルール
+            - **コメント追加のみの変更は絶対に禁止。** 実際のコードを変更すること。
+            - **既存の関数・export を絶対に削除しないこと。**
             - セキュリティ上の問題がなければ、元のコードをそのまま返すこと。
             - 「念のため」の過剰な防御コードは追加しないこと。
             - DOMPurify 等の新しいライブラリの追加は避けること。
@@ -620,7 +707,7 @@ class SecurityAgent(BaseAgent):
 
             コード:
             ```
-            {code[:3000]}
+            {code[:MAX_CODE_CONTEXT]}
             ```
 
             改善後のコード全体をコードブロックで返してください。問題がなければ元のコードをそのまま返してください。
@@ -638,24 +725,132 @@ class SecurityAgent(BaseAgent):
 
             差分:
             ```diff
-            {diff_text[:3000]}
+            {diff_text[:MAX_CODE_CONTEXT]}
             ```
 
             以下の基準で厳密に評価:
-            1. 実質的なコード変更があるか？（コメント追加のみは必ず reject）
-            2. 修正が実際の脆弱性に対応しているか？（架空のリスクへの対応は reject）
-            3. 新たな脆弱性が混入していないか？
-            4. 既存の機能やセキュリティ機構を壊していないか？
-            5. 不要なライブラリの追加がないか？（DOMPurify等の過剰な依存追加は reject）
+            1. **実質的なコード変更があるか？** コメント追加のみは必ず reject
+            2. **修正が実際の脆弱性に対応しているか？** 架空のリスクへの対応は reject
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **新たな脆弱性が混入していないか？**
+            5. **既存の機能やセキュリティ機構を壊していないか？**
+            6. **不要なライブラリの追加がないか？** DOMPurify等の過剰な依存追加は reject
 
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
         """)
 
 
-# ---------------------------------------------------------------------------
-# ユーティリティ関数
-# ---------------------------------------------------------------------------
+class FeatureEnhancementAgent(BaseAgent):
+    """✨ Feature Enhancement Agent: 既存コンポーネントにUXパターン・小機能を追加"""
+
+    def __init__(self):
+        super().__init__(
+            name="Feature Enhancement Agent",
+            role="UX機能強化の専門家",
+            focus_areas=[
+                "ローディングスケルトンの追加",
+                "空状態UIの追加 (データなし時のリッチ表示)",
+                "エラーバウンダリ・エラーUIの追加",
+                "ボタンのローディング状態",
+                "フォームバリデーションの強化",
+                "確認ダイアログ (破壊的操作前)",
+                "トランジション・アニメーション",
+                "ツールチップ・ヘルプテキストの追加",
+            ],
+        )
+
+    def get_generator_prompt(self, file_path: str, code: str) -> str:
+        return textwrap.dedent(f"""\
+            {APP_CONTEXT}
+
+            あなたはフロントエンドUX機能強化の専門家です。
+            以下のReactコンポーネントを分析し、不足している **UXパターン** を具体的に追加してください。
+
+            対象ファイル: {file_path}
+
+            ## 追加すべきUXパターン (上から順に優先)
+
+            ### 1. 状態管理の完全化
+            - **ローディング状態**: データ取得中にスケルトン/シマーを表示
+              ```tsx
+              if (loading) return (
+                <div className="space-y-4">
+                  <div className="animate-pulse bg-gray-200 rounded-lg h-12 w-full" />
+                  <div className="animate-pulse bg-gray-200 rounded-lg h-8 w-3/4" />
+                </div>
+              );
+              ```
+            - **空状態**: データが0件の場合にリッチなUIを表示
+              ```tsx
+              if (!items?.length) return (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <span className="text-4xl mb-4">🏃</span>
+                  <p className="text-lg font-semibold" style={{{{ color: 'var(--theme-primary)' }}}}>
+                    まだデータがありません
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">歩数を記録して始めましょう！</p>
+                </div>
+              );
+              ```
+            - **エラー状態**: APIエラー時にリトライ可能なUIを表示
+
+            ### 2. インタラクション強化
+            - ボタンに送信中ローディング状態を追加 (disabled + スピナー)
+            - 破壊的操作（削除・退会等）の前に確認ステップを追加
+            - フォームのバリデーションメッセージを改善
+
+            ### 3. 視覚的フィードバック
+            - 操作後の成功/エラー表示の追加
+            - ホバー・フォーカスエフェクトの追加
+            - 数値変化のアニメーション
+
+            ## 重要なルール
+            - **必ず具体的なコードを追加すること。** コメントだけの追加は禁止。
+            - **既存の関数・export は絶対に削除しないこと。** 追加のみ許可。
+            - **既存のロジックは変更しないこと。** UXパターンの追加のみ。
+            - テーマシステム: var(--theme-primary) 等のCSS変数を使用。dark: は不使用。
+            - framer-motion は使わないこと。CSS keyframes と Tailwind のみ。
+            - 新しい外部ライブラリは追加しないこと。
+            - i18n: hardcoded Japanese text は useTranslations() に置き換え可能だが、
+              翻訳キーがない場合はまずハードコードでOK。
+            - 改善点がなければ元のコードをそのまま返すこと。
+            - ファイル末尾には必ず改行を入れること。
+
+            コード:
+            ```
+            {code[:MAX_CODE_CONTEXT]}
+            ```
+
+            改善後のコード全体をコードブロックで返してください。
+        """)
+
+    def get_reviewer_prompt(
+        self, file_path: str, original: str, modified: str, proposal_desc: str
+    ) -> str:
+        diff_text = _create_diff(original, modified, file_path)
+        return textwrap.dedent(f"""\
+            あなたはUX機能強化のシニアレビュアーです。以下の変更を批判的に評価してください。
+
+            ファイル: {file_path}
+            提案内容: {proposal_desc}
+
+            差分:
+            ```diff
+            {diff_text[:MAX_CODE_CONTEXT]}
+            ```
+
+            以下の基準で厳密に評価:
+            1. **実質的なUXパターンが追加されているか？** コメントのみ・変数名変更のみは reject
+            2. **追加されたUIが実用的か？** (スケルトン、空状態、エラー状態、ローディングボタン等)
+            3. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            4. **既存のロジックを壊していないか？**
+            5. **テーマシステムに従っているか？** (CSS変数を使用しているか)
+            6. **framer-motion や外部ライブラリを追加していないか？**
+
+            問題がある場合は "reject" を含む応答を、
+            承認する場合は "approve" を含む応答を返してください。
+        """)
 def _create_diff(original: str, modified: str, file_path: str) -> str:
     """unified diff を生成する"""
     return "\n".join(
@@ -695,6 +890,53 @@ def _count_changed_lines(original: str, modified: str) -> int:
         )
     )
     return sum(1 for line in diff if line.startswith("+") or line.startswith("-"))
+
+
+def _count_exports_and_functions(code: str) -> dict[str, int]:
+    """コード内の export / function / const 定義をカウントする。
+
+    関数削除を検出するために使用。変更後にカウントが減少していたら
+    破壊的な変更とみなす。
+    """
+    import re
+    counts = {
+        "export": len(re.findall(r"\bexport\b", code)),
+        "function": len(re.findall(r"\bfunction\s+\w+", code)),
+        "arrow_fn": len(re.findall(r"\bconst\s+\w+\s*=\s*(?:async\s*)?\(", code)),
+        "export_default": len(re.findall(r"\bexport\s+default\b", code)),
+    }
+    counts["total_definitions"] = counts["function"] + counts["arrow_fn"]
+    return counts
+
+
+def _check_destructive_changes(original: str, modified: str) -> tuple[bool, str]:
+    """破壊的な変更（関数/export の削除）を検出する。
+
+    Returns:
+        (is_destructive, reason): 問題がある場合 True と理由。
+    """
+    orig_counts = _count_exports_and_functions(original)
+    mod_counts = _count_exports_and_functions(modified)
+
+    issues = []
+    if mod_counts["total_definitions"] < orig_counts["total_definitions"]:
+        diff = orig_counts["total_definitions"] - mod_counts["total_definitions"]
+        issues.append(
+            f"関数/定義が {diff} 個減少 "
+            f"({orig_counts['total_definitions']}→{mod_counts['total_definitions']})"
+        )
+    if mod_counts["export"] < orig_counts["export"]:
+        diff = orig_counts["export"] - mod_counts["export"]
+        issues.append(
+            f"export が {diff} 個減少 "
+            f"({orig_counts['export']}→{mod_counts['export']})"
+        )
+    if mod_counts["export_default"] < orig_counts["export_default"]:
+        issues.append("export default が削除されています")
+
+    if issues:
+        return True, "; ".join(issues)
+    return False, ""
 
 
 # ---------------------------------------------------------------------------
@@ -762,6 +1004,20 @@ class GeneratorReviewerLoop:
 
                 # パッチ適用
                 modified_code = proposal.patch
+                # 破壊的変更チェック (関数/export の削除を検出)
+                is_destructive, reason = _check_destructive_changes(
+                    current_code, modified_code
+                )
+                if is_destructive:
+                    logger.warning(
+                        "🚫 破壊的変更を検出 — スキップ: %s", reason,
+                    )
+                    file_path.write_text(current_code, encoding="utf-8")
+                    result.improvements.append(
+                        f"イテレーション{iteration}: 破壊的変更を検出 — {reason}"
+                    )
+                    continue
+
                 if _count_changed_lines(current_code, modified_code) > MAX_CHANGED_LINES:
                     logger.warning(
                         "変更行数が上限 (%d行) を超過 — スキップ",
@@ -889,12 +1145,13 @@ class AgentLoop:
             "uiux": [UIUXAgent()],
             "performance": [PerformanceAgent()],
             "security": [SecurityAgent()],
+            "feature": [FeatureEnhancementAgent()],
         }
         if target in agent_map:
             logger.info("🎯 対象エージェント: %s", target)
             return agent_map[target]
-        logger.info("🎯 対象エージェント: all (3エージェント)")
-        return [UIUXAgent(), PerformanceAgent(), SecurityAgent()]
+        logger.info("🎯 対象エージェント: all (4エージェント)")
+        return [UIUXAgent(), PerformanceAgent(), SecurityAgent(), FeatureEnhancementAgent()]
 
     def _ensure_improvement_branch(self) -> None:
         """改善用の固定ブランチに切り替える（なければ main から作成）"""
@@ -1070,13 +1327,36 @@ class AgentLoop:
             return []
 
     def _get_all_target_files(self) -> list[Path]:
-        """全対象ファイルのリストを返す（フォールバック用）"""
-        files = []
+        """全対象ファイルのリストを返す（フォールバック用）
+
+        各拡張子から均等にファイルを選択し、特定の拡張子に偏らないようにする。
+        """
+        import random
+        files_by_ext: dict[str, list[Path]] = {}
         for ext in TARGET_EXTENSIONS:
-            for path in REPO_ROOT.rglob(f"*{ext}"):
-                if not _should_skip_file(path):
-                    files.append(path)
-        return files[:20]  # 安全のため最大20ファイル
+            ext_files = [
+                path for path in REPO_ROOT.rglob(f"*{ext}")
+                if not _should_skip_file(path)
+            ]
+            if ext_files:
+                random.shuffle(ext_files)
+                files_by_ext[ext] = ext_files
+
+        # ラウンドロビンで各拡張子からファイルを選択（偏り防止）
+        max_files = 30
+        result: list[Path] = []
+        round_idx = 0
+        while len(result) < max_files:
+            added = False
+            for ext_files in files_by_ext.values():
+                if round_idx < len(ext_files) and len(result) < max_files:
+                    result.append(ext_files[round_idx])
+                    added = True
+            if not added:
+                break
+            round_idx += 1
+
+        return result
 
     @property
     def repo_root(self) -> Path:
@@ -1111,6 +1391,11 @@ class AgentLoop:
                     )
                 )
             )
+
+        if isinstance(agent, FeatureEnhancementAgent):
+            # Feature Enhancement: TSX/JSX コンポーネントのみ対象
+            # (UI に関わるファイルに UX パターンを追加)
+            return suffix in {".tsx", ".jsx"}
 
         return False
 
