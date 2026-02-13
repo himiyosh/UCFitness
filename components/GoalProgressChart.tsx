@@ -51,8 +51,13 @@ export default function GoalProgressChart({ current, goal, size = 80, strokeWidt
                 onComplete={() => setShowConfetti(false)}
             />
             <div
-                className={`relative flex items-center justify-center ${isAchieved ? 'animate-celebrate' : ''}`}
+                className={`relative flex items-center justify-center transition-transform duration-300 hover:scale-110 ${isAchieved ? 'animate-celebrate' : ''}`}
                 style={{ width: size, height: size }}
+                role="progressbar"
+                aria-valuenow={Math.round(percentage)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${Math.round(percentage)}% goal progress`}
             >
                 <svg
                     width={size}
@@ -69,6 +74,7 @@ export default function GoalProgressChart({ current, goal, size = 80, strokeWidt
                         stroke="currentColor"
                         strokeWidth={strokeWidth}
                         className="text-gray-100"
+                        style={{ color: 'var(--theme-ring-bg, #f3f4f6)' }}
                     />
 
                     {/* Progress Circle - with gradient for achievement */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 
 
 type StepRecord = {
@@ -35,6 +35,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
     const [monthOffset, setMonthOffset] = useState(0);
     const [isSharing, setIsSharing] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    const [shareError, setShareError] = useState(false);
 
 
     const processedData = useMemo(() => {
@@ -214,6 +215,38 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
     const containerRef = useRef<HTMLDivElement>(null);
     const shareCardRef = useRef<HTMLDivElement>(null);
 
+    const handleShare = useCallback(async () => {
+        if (isSharing) return;
+        setIsSharing(true);
+        setCopySuccess(false);
+        setShareError(false);
+        try {
+            const { toBlob } = await import('html-to-image');
+            if (!shareCardRef.current) return;
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
+            if (!blob) throw new Error('Blob generation failed');
+            try {
+                await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 3000);
+            } catch { /* clipboard write not supported */ }
+            const file = new File([blob], 'activity.png', { type: 'image/png' });
+            if (navigator.share) {
+                try { await navigator.share({ title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] }); }
+                catch { /* share cancelled by user or unsupported */ }
+            } else {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'activity.png';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            }
+        } catch {
+            setShareError(true);
+            setTimeout(() => setShareError(false), 3000);
+        } finally { setIsSharing(false); }
+    }, [isSharing]);
+
     return (
         <div ref={containerRef} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative">
             {/* Anchors for scrolling (positioned with offset for sticky header) */}
@@ -279,40 +312,17 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                         ))}
                     </div>
                     <button
-                        onClick={async () => {
-                            if (isSharing) return;
-                            setIsSharing(true);
-                            setCopySuccess(false);
-                            try {
-                                const { toBlob } = await import('html-to-image');
-                                if (!shareCardRef.current) return;
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                                const blob = await toBlob(shareCardRef.current, { cacheBust: true, backgroundColor: '#ffffff', canvasWidth: 1080, canvasHeight: 1920, pixelRatio: 1 });
-                                if (!blob) return;
-                                try {
-                                    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-                                    setCopySuccess(true);
-                                    setTimeout(() => setCopySuccess(false), 3000);
-                                } catch { /* clipboard write not supported */ }
-                                const file = new File([blob], 'activity.png', { type: 'image/png' });
-                                if (navigator.share) {
-                                    try { await navigator.share({ title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] }); }
-                                    catch { /* share cancelled by user or unsupported */ }
-                                } else {
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url; a.download = 'activity.png';
-                                    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                                }
-                            } catch { /* image generation failed silently */ }
-                            finally { setIsSharing(false); }
-                        }}
+                        onClick={handleShare}
                         disabled={isSharing}
-                        className={`p-1.5 rounded-full transition-all flex-shrink-0 ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-gray-50'}`}
+                        className={`p-1.5 rounded-full transition-all flex-shrink-0 ${shareError ? 'bg-red-50 text-red-500' : isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-gray-50'}`}
                         title="Share Statistics"
                     >
                         {isSharing ? (
                             <div className="w-4 h-4 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin"></div>
+                        ) : shareError ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                            </svg>
                         ) : copySuccess ? (
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-green-500">
                                 <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
@@ -444,7 +454,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                             {processedData.length > 0 ? (
                                 <div className={`flex items-end h-full ${viewMode === 'MONTHLY' ? 'gap-px w-full' : 'gap-1'} ${viewMode === 'ALL' ? 'min-w-full' : 'w-full'}`}>
                                     {/* Inner flex container - Conditional layout */}
-                                    {processedData.map((day, index) => {
+                                    {processedData.map((day, dayIndex) => {
                                         // Use same maxSteps for bars
                                         const heightPercentage = Math.min((day.value / maxSteps) * 100, 100);
                                         const compValue = comparisonMap.get(day.fullDate) || 0;
@@ -465,7 +475,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                             step = 1;
                                         }
 
-                                        const showLabel = index === 0 || index === total - 1 || index % step === 0;
+                                        const showLabel = dayIndex === 0 || dayIndex === total - 1 || dayIndex % step === 0;
 
                                         // Bar width styling
                                         const barClass = viewMode === 'ALL'
@@ -483,7 +493,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
                                         return (
                                             <div
-                                                key={index}
+                                                key={day.fullDate}
                                                 className={`flex flex-col items-center justify-end h-full group relative hover:z-20 ${barClass}`}
                                                 onMouseEnter={(e) => {
                                                     if (!containerRef.current) return;

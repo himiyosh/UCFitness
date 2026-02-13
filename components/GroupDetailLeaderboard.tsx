@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
@@ -49,6 +49,24 @@ export default function GroupDetailLeaderboard({
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const displayData = useMemo(() => allData.slice(startIndex, startIndex + ITEMS_PER_PAGE), [allData, startIndex]);
+
+    // ページネーションウィンドウを正しくクランプ（末尾付近でボタンが消えないように）
+    const paginationPages = useMemo(() => {
+        const maxVisible = Math.min(5, totalPages);
+        let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        const end = Math.min(totalPages, start + maxVisible - 1);
+        // 末尾にぶつかったらstartを後退させて常にmaxVisible個表示
+        start = Math.max(1, end - maxVisible + 1);
+        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    }, [totalPages, currentPage]);
+
+    const handlePrevPage = useCallback(() => {
+        onPageChange(Math.max(1, currentPage - 1));
+    }, [currentPage, onPageChange]);
+
+    const handleNextPage = useCallback(() => {
+        onPageChange(Math.min(totalPages, currentPage + 1));
+    }, [currentPage, totalPages, onPageChange]);
 
     return (
         <div className="space-y-6">
@@ -157,7 +175,7 @@ export default function GroupDetailLeaderboard({
                 {totalPages > 1 && (
                     <nav aria-label="Pagination" className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
                         <button
-                            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                            onClick={handlePrevPage}
                             disabled={currentPage === 1}
                             aria-label="Previous page"
                             className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
@@ -166,31 +184,23 @@ export default function GroupDetailLeaderboard({
                             {lt('prev')}
                         </button>
                         <div className="flex gap-1.5">
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let p = i + 1;
-                                if (totalPages > 5 && currentPage > 3) {
-                                    p = currentPage - 2 + i;
-                                }
-                                if (p > totalPages) return null;
-
-                                return (
-                                    <button
-                                        key={p}
-                                        onClick={() => onPageChange(p)}
-                                        aria-label={`Go to page ${p}`}
-                                        aria-current={currentPage === p ? 'page' : undefined}
-                                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
-                                            ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-110'
-                                            : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
-                                            }`}
-                                    >
-                                        {p}
-                                    </button>
-                                );
-                            })}
+                            {paginationPages.map((p) => (
+                                <button
+                                    key={p}
+                                    onClick={() => onPageChange(p)}
+                                    aria-label={`Go to page ${p}`}
+                                    aria-current={currentPage === p ? 'page' : undefined}
+                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
+                                        ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-110'
+                                        : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
+                                        }`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
                         </div>
                         <button
-                            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                            onClick={handleNextPage}
                             disabled={currentPage === totalPages}
                             aria-label="Next page"
                             className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"

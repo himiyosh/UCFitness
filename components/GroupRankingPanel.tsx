@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
+import { RankingEntry } from '@/lib/ranking-utils';
 
 type Props = {
     keyword: string;
-    neighbors: any[];
+    neighbors: RankingEntry[];
     userId?: string | null;
     index: number;
     totalCount: number;
@@ -22,27 +23,34 @@ import { useTranslations } from 'next-intl';
 export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId }: Props) {
     const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
+    const [moveDirection, setMoveDirection] = useState<'up' | 'down' | null>(null);
+    const [moveError, setMoveError] = useState<string | null>(null);
     const router = useRouter();
     const t = useTranslations('Graph');
     const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
 
-    const handleMove = async (direction: 'up' | 'down') => {
+    const handleMove = useCallback(async (direction: 'up' | 'down') => {
         setIsMoving(true);
+        setMoveDirection(direction);
+        setMoveError(null);
         try {
-            await fetch('/api/user/group', {
+            const res = await fetch('/api/user/group', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'move', keyword: keyword, direction }),
             });
+            if (!res.ok) throw new Error('Failed');
             router.refresh();
         } catch {
-            // Error silently handled — UI remains unchanged
+            setMoveError(direction === 'up' ? '↑' : '↓');
+            setTimeout(() => setMoveError(null), 2000);
         } finally {
             setIsMoving(false);
+            setMoveDirection(null);
         }
-    };
+    }, [keyword, router]);
 
     const isFirst = index === 0;
     const isLast = totalCount <= 0 || index >= totalCount - 1;
@@ -74,30 +82,41 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 >{keyword}</span>
             </div>
             <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
+                {moveError && (
+                    <span className="text-[10px] text-red-500 font-bold animate-pulse mr-1">Error</span>
+                )}
                 {!isFirst && (
                     <button
                         onClick={() => handleMove('up')}
-                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded transition-colors ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
                         title="Move Up"
                         aria-label="Move group up"
                         disabled={isMoving}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                            <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
-                        </svg>
+                        {isMoving && moveDirection === 'up' ? (
+                            <div className="w-4 h-4 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+                            </svg>
+                        )}
                     </button>
                 )}
                 {!isLast && (
                     <button
                         onClick={() => handleMove('down')}
-                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded transition-colors ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
                         title="Move Down"
                         aria-label="Move group down"
                         disabled={isMoving}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                            <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
-                        </svg>
+                        {isMoving && moveDirection === 'down' ? (
+                            <div className="w-4 h-4 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+                            </svg>
+                        )}
                     </button>
                 )}
             </div>
@@ -112,7 +131,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 <div role="list" className={`divide-y lg:border-t-0 lg:col-span-7 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                     {neighbors.length > 0 ? (
                         (() => {
-                            return neighbors.map((entry: any, i: number) => {
+                            return neighbors.map((entry, i: number) => {
                                 const isMe = entry.users?.id === userId;
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
 

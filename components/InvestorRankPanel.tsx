@@ -83,11 +83,12 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
                             aria-label={`${t(`ranks.${rank.rank}`)}${isCurrentRank ? ` — ${t('currentLabel')}` : ''}`}
                             className={`
                                 relative flex items-center gap-2 p-2 rounded-lg transition-all duration-300
+                                hover:scale-[1.02] hover:shadow-md cursor-default
                                 ${isCurrentRank
                                     ? `${rank.bg} border-2 ${rank.border} shadow-md ${rank.glow}`
                                     : isAchieved
-                                        ? `${rank.bg} border border-gray-200 opacity-90`
-                                        : 'bg-gray-50/50 border border-dashed border-gray-200 opacity-60'
+                                        ? `${rank.bg} border border-gray-200 opacity-90 hover:opacity-100`
+                                        : 'bg-gray-50/50 border border-dashed border-gray-200 opacity-60 hover:opacity-75'
                                 }
                             `}
                         >
