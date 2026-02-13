@@ -132,6 +132,8 @@ class LoopResult:
     improvements: list[str] = field(default_factory=list)
     final_status: str = "skipped"   # improved / no_change / rolled_back / skipped
     error: Optional[str] = None
+    diff_text: str = ""              # unified diff テキスト
+    rationale: str = ""              # AI による改善理由
 
 
 # ---------------------------------------------------------------------------
@@ -1058,6 +1060,15 @@ class GeneratorReviewerLoop:
 
                 if review.approved:
                     logger.info("✅ Reviewer が承認 — 改善を適用")
+                    # diff を記録（最終承認時のもので上書き）
+                    diff_lines = list(unified_diff(
+                        current_code.splitlines(keepends=True),
+                        modified_code.splitlines(keepends=True),
+                        fromfile=f"a/{file_path.name}",
+                        tofile=f"b/{file_path.name}",
+                    ))
+                    result.diff_text = "".join(diff_lines)
+                    result.rationale = proposal.rationale or proposal.description
                     current_code = modified_code
                     # バックアップを更新（新しい状態を保存）
                     self._update_backup(file_path, backup_path)
@@ -1433,94 +1444,128 @@ class AgentLoop:
         logger.info("✅ コミット＆プッシュ完了 [%s]: %s", IMPROVEMENT_BRANCH, message)
 
     def _write_summary(self) -> None:
-        """サマリーレポートを GitHub Actions の GITHUB_STEP_SUMMARY に出力する"""
+        """Markdown レポートを生成し、コンソール・ファイル・GitHub Actions に出力する"""
+        from datetime import datetime
+
         summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        lines = [
-            "# 🤖 自律的コード改善レポート\n",
-            f"| 項目 | 値 |",
-            f"|------|------|",
-            f"| トリガー | {self.trigger_event} |",
-            f"| サイクル数 | {len(self.cycle_history)} |",
-            f"| 処理ファイル数 | {len(self.results)} |",
-            f"| 改善成功 | {sum(1 for r in self.results if r.final_status == 'improved')} |",
-            f"| 変更なし | {sum(1 for r in self.results if r.final_status == 'no_change')} |",
-            f"| ロールバック | {sum(1 for r in self.results if r.final_status == 'rolled_back')} |",
-            f"| スキップ | {sum(1 for r in self.results if r.final_status == 'skipped')} |",
-            "",
-            "## 🔄 サイクル履歴\n",
-        ]
+        improved_count = sum(1 for r in self.results if r.final_status == "improved")
+        no_change_count = sum(1 for r in self.results if r.final_status == "no_change")
+        rolled_back_count = sum(1 for r in self.results if r.final_status == "rolled_back")
+        skipped_count = sum(1 for r in self.results if r.final_status == "skipped")
 
-        for ch in self.cycle_history:
-            icon = "✅" if ch["improved_count"] > 0 else "➖"
-            lines.append(
-                f"- {icon} サイクル {ch['cycle']}: "
-                f"{ch['improved_count']} 件改善"
-            )
+        lines: list[str] = []
+
+        # ── ヘッダー ──
+        lines.append("# 🤖 AI 自律改善レポート")
+        lines.append("")
+        lines.append(f"> 生成日時: {now}")
         lines.append("")
 
-        lines.append("## 📋 詳細結果\n")
+        # ── サマリーテーブル ──
+        lines.append("## 📊 サマリー")
+        lines.append("")
+        lines.append("| 項目 | 値 |")
+        lines.append("|------|------|")
+        lines.append(f"| トリガー | {self.trigger_event} |")
+        lines.append(f"| サイクル数 | {len(self.cycle_history)} |")
+        lines.append(f"| 処理ファイル数 | {len(self.results)} |")
+        lines.append(f"| ✅ 改善成功 | **{improved_count}** |")
+        lines.append(f"| ➖ 変更なし | {no_change_count} |")
+        lines.append(f"| ⏪ ロールバック | {rolled_back_count} |")
+        lines.append(f"| ⏭️ スキップ | {skipped_count} |")
+        lines.append("")
 
-        for r in self.results:
-            status_icon = {
-                "improved": "✅",
-                "no_change": "➖",
-                "rolled_back": "⏪",
-                "skipped": "⏭️",
-            }.get(r.final_status, "❓")
-
-            lines.append(
-                f"### {status_icon} {r.agent_name} → `{Path(r.file_path).name}`"
-            )
-            lines.append(f"- **ステータス:** {r.final_status}")
-            lines.append(f"- **イテレーション数:** {r.iterations}")
-            if r.improvements:
-                lines.append("- **改善履歴:**")
-                for imp in r.improvements:
-                    lines.append(f"  - {imp}")
-            if r.error:
-                lines.append(f"- **エラー:** {r.error}")
+        # ── サイクル履歴 ──
+        if self.cycle_history:
+            lines.append("## 🔄 サイクル履歴")
             lines.append("")
+            for ch in self.cycle_history:
+                icon = "✅" if ch["improved_count"] > 0 else "➖"
+                lines.append(
+                    f"- {icon} サイクル {ch['cycle']}: "
+                    f"{ch['improved_count']} 件改善"
+                )
+            lines.append("")
+
+        # ── 改善されたファイルの詳細（diff付き）──
+        improved_results = [r for r in self.results if r.final_status == "improved"]
+        if improved_results:
+            lines.append("## ✅ 改善されたファイル")
+            lines.append("")
+            for r in improved_results:
+                rel_path = str(Path(r.file_path).relative_to(REPO_ROOT)) if REPO_ROOT in Path(r.file_path).parents else r.file_path
+                lines.append(f"### 📝 `{rel_path}`")
+                lines.append("")
+                lines.append(f"- **エージェント:** {r.agent_name}")
+                lines.append(f"- **イテレーション数:** {r.iterations}")
+                if r.rationale:
+                    lines.append(f"- **改善理由:** {r.rationale}")
+                if r.improvements:
+                    lines.append("- **履歴:**")
+                    for imp in r.improvements:
+                        lines.append(f"  - {imp}")
+                lines.append("")
+
+                # diff の表示
+                if r.diff_text:
+                    lines.append("<details>")
+                    lines.append(f"<summary>📄 差分を表示（クリックで展開）</summary>")
+                    lines.append("")
+                    lines.append("```diff")
+                    # diff が長すぎる場合は先頭 200 行に制限
+                    diff_lines_list = r.diff_text.splitlines()
+                    if len(diff_lines_list) > 200:
+                        lines.extend(diff_lines_list[:200])
+                        lines.append(f"\n... (以下 {len(diff_lines_list) - 200} 行省略)")
+                    else:
+                        lines.extend(diff_lines_list)
+                    lines.append("```")
+                    lines.append("")
+                    lines.append("</details>")
+                else:
+                    lines.append("> ⚠️ diff データなし")
+                lines.append("")
+
+        # ── 変更なし / スキップ / ロールバックのファイル ──
+        other_results = [r for r in self.results if r.final_status != "improved"]
+        if other_results:
+            lines.append("## 📋 その他のファイル")
+            lines.append("")
+            lines.append("| ファイル | エージェント | ステータス | 備考 |")
+            lines.append("|----------|------------|----------|------|")
+            for r in other_results:
+                status_icon = {
+                    "no_change": "➖",
+                    "rolled_back": "⏪",
+                    "skipped": "⏭️",
+                }.get(r.final_status, "❓")
+                fname = Path(r.file_path).name
+                note = r.error or (r.improvements[-1] if r.improvements else "—")
+                # テーブル内のパイプ文字をエスケープ
+                note = note.replace("|", "\\|")
+                lines.append(f"| `{fname}` | {r.agent_name} | {status_icon} {r.final_status} | {note} |")
+            lines.append("")
+
+        # ── フッター ──
+        lines.append("---")
+        lines.append(f"*レポート生成: agent_loop.py v3 | モデル: {os.environ.get('AI_MODEL', 'gpt-4.1')}*")
 
         summary_text = "\n".join(lines)
 
-        # GitHub Actions のステップサマリーに出力
+        # 1. Markdown レポートをファイルに保存
+        report_md_path = REPO_ROOT / "improvement-report.md"
+        report_md_path.write_text(summary_text, encoding="utf-8")
+        logger.info("📄 Markdown レポートを出力: %s", report_md_path)
+
+        # 2. GitHub Actions のステップサマリーに出力
         if summary_path:
             Path(summary_path).write_text(summary_text, encoding="utf-8")
             logger.info("📊 サマリーを GITHUB_STEP_SUMMARY に出力しました")
 
-        # コンソールにも出力
+        # 3. コンソールにも出力
         print(summary_text)
-
-        # JSON レポートも生成
-        report = {
-            "trigger": self.trigger_event,
-            "total_cycles": len(self.cycle_history),
-            "cycle_history": self.cycle_history,
-            "total_files": len(self.results),
-            "improved": sum(1 for r in self.results if r.final_status == "improved"),
-            "no_change": sum(1 for r in self.results if r.final_status == "no_change"),
-            "rolled_back": sum(
-                1 for r in self.results if r.final_status == "rolled_back"
-            ),
-            "skipped": sum(1 for r in self.results if r.final_status == "skipped"),
-            "details": [
-                {
-                    "file": r.file_path,
-                    "agent": r.agent_name,
-                    "status": r.final_status,
-                    "iterations": r.iterations,
-                    "improvements": r.improvements,
-                    "error": r.error,
-                }
-                for r in self.results
-            ],
-        }
-        report_path = REPO_ROOT / "improvement-report.json"
-        report_path.write_text(
-            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        logger.info("📄 JSON レポートを出力: %s", report_path)
 
 
 # ---------------------------------------------------------------------------
