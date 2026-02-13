@@ -2,7 +2,7 @@
 """
 自律的コード改善ループ (Autonomous Code Improvement Loop)
 
-3つの専門エージェント (UI/UX, Performance, Security) が
+5つの専門エージェント (Build Validation, UI/UX, Performance, Security, Feature Enhancement) が
 Generator ↔ Reviewer パターンで最大3回のイテレーションを回し、
 テスト通過を保証しながらコードを改善するスクリプト。
 
@@ -975,6 +975,259 @@ class FeatureEnhancementAgent(BaseAgent):
             問題がある場合は "reject" を含む応答を、
             承認する場合は "approve" を含む応答を返してください。
         """)
+
+
+class BuildValidationAgent(BaseAgent):
+    """🔨 Build Validation Agent: ビルドエラー・型エラー・翻訳キー不足を検出し修正"""
+
+    def __init__(self):
+        super().__init__(
+            name="Build Validation Agent",
+            role="ビルド検証・品質保証の専門家",
+            focus_areas=[
+                "TypeScript コンパイルエラーの修正",
+                "未使用 import の削除",
+                "型定義の不整合解消",
+                "翻訳キー (i18n) の整合性検証",
+                "Next.js ビルド互換性 (Server/Client Component 分離)",
+                "Supabase クエリの型安全性",
+            ],
+        )
+
+    def run_build_check(self) -> tuple[bool, str]:
+        """next build を実行してビルドエラーを検出する"""
+        logger.info("🔨 next build を実行中...")
+        try:
+            shell = sys.platform == "win32"
+            result = subprocess.run(
+                ["npx", "next", "build"],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=str(REPO_ROOT),
+                shell=shell,
+            )
+            output = result.stdout + "\n" + result.stderr
+            passed = result.returncode == 0
+            status = "✅ BUILD PASS" if passed else "❌ BUILD FAIL"
+            logger.info("ビルド結果: %s (exit=%d)", status, result.returncode)
+            return passed, output
+        except subprocess.TimeoutExpired:
+            logger.error("ビルドがタイムアウト (300秒)")
+            return False, "ビルドがタイムアウトしました"
+        except FileNotFoundError as e:
+            logger.warning("npx が見つかりません: %s", e)
+            return True, "ビルドツールが利用不可 — スキップ"
+
+    def run_typecheck(self) -> tuple[bool, str]:
+        """TypeScript 型チェックを実行する"""
+        logger.info("🔍 TypeScript 型チェックを実行中...")
+        try:
+            shell = sys.platform == "win32"
+            result = subprocess.run(
+                ["npx", "tsc", "--noEmit", "--pretty"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(REPO_ROOT),
+                shell=shell,
+            )
+            output = result.stdout + "\n" + result.stderr
+            passed = result.returncode == 0
+            return passed, output
+        except subprocess.TimeoutExpired:
+            return False, "型チェックがタイムアウトしました"
+        except FileNotFoundError:
+            return True, "tsc が利用不可 — スキップ"
+
+    def check_i18n_keys(self) -> list[dict]:
+        """翻訳キーの整合性を検証する (コード内使用 vs JSON 定義)"""
+        import re
+
+        missing_keys: list[dict] = []
+        messages_dir = REPO_ROOT / "messages"
+
+        # ja.json を基準としてキーを収集
+        ja_path = messages_dir / "ja.json"
+        en_path = messages_dir / "en.json"
+        if not ja_path.exists() or not en_path.exists():
+            return missing_keys
+
+        try:
+            ja_data = json.loads(ja_path.read_text(encoding="utf-8"))
+            en_data = json.loads(en_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            logger.warning("翻訳ファイルの解析に失敗")
+            return missing_keys
+
+        # コンポーネントから useTranslations の使用箇所を検出
+        components_dir = REPO_ROOT / "components"
+        app_dir = REPO_ROOT / "app"
+
+        for search_dir in [components_dir, app_dir]:
+            if not search_dir.exists():
+                continue
+            for tsx_file in search_dir.rglob("*.tsx"):
+                if _should_skip_file(tsx_file):
+                    continue
+                try:
+                    code = tsx_file.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    continue
+
+                # useTranslations('Namespace') を検出
+                ns_matches = re.findall(
+                    r"useTranslations\(['\"](\w+)['\"]\)", code
+                )
+                # getTranslations('Namespace') も検出 (Server Components)
+                ns_matches.extend(re.findall(
+                    r"getTranslations\(['\"](\w+)['\"]\)", code
+                ))
+
+                for namespace in set(ns_matches):
+                    # 対応する変数名を特定
+                    var_patterns = re.findall(
+                        rf"const\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\(['\"]"
+                        + re.escape(namespace) + r"['\"]\)",
+                        code,
+                    )
+                    for var_name in var_patterns:
+                        # var_name('key') パターンを検出
+                        key_matches = re.findall(
+                            rf"{re.escape(var_name)}\(['\"]([a-zA-Z0-9_.]+)['\"]",
+                            code,
+                        )
+                        for key in key_matches:
+                            # ネストキー (e.g. "comparisonTitle.daily") に対応
+                            parts = key.split(".")
+                            # ja.json でチェック
+                            ja_val = ja_data.get(namespace, {})
+                            for part in parts:
+                                if isinstance(ja_val, dict):
+                                    ja_val = ja_val.get(part)
+                                else:
+                                    ja_val = None
+                                    break
+                            # en.json でチェック
+                            en_val = en_data.get(namespace, {})
+                            for part in parts:
+                                if isinstance(en_val, dict):
+                                    en_val = en_val.get(part)
+                                else:
+                                    en_val = None
+                                    break
+
+                            if ja_val is None or en_val is None:
+                                missing_keys.append({
+                                    "file": str(tsx_file.relative_to(REPO_ROOT)),
+                                    "namespace": namespace,
+                                    "key": key,
+                                    "missing_in": [
+                                        lang for lang, val in
+                                        [("ja", ja_val), ("en", en_val)]
+                                        if val is None
+                                    ],
+                                })
+
+        return missing_keys
+
+    def get_generator_prompt(self, file_path: str, code: str) -> str:
+        # ビルドエラー情報を収集して含める
+        build_ok, build_output = self.run_build_check()
+        typecheck_ok, typecheck_output = self.run_typecheck()
+        i18n_issues = self.check_i18n_keys()
+
+        error_context = ""
+        if not build_ok:
+            # ビルドエラーから対象ファイルに関連するエラーを抽出
+            relevant_errors = [
+                line for line in build_output.splitlines()
+                if Path(file_path).name in line or "Error" in line or "error" in line.lower()
+            ]
+            error_context += f"\n### ビルドエラー:\n" + "\n".join(relevant_errors[:30])
+
+        if not typecheck_ok:
+            relevant_type_errors = [
+                line for line in typecheck_output.splitlines()
+                if Path(file_path).name in line or "error TS" in line
+            ]
+            error_context += f"\n### 型エラー:\n" + "\n".join(relevant_type_errors[:30])
+
+        # 対象ファイルに関連する i18n 不足キー
+        file_i18n_issues = [
+            issue for issue in i18n_issues
+            if issue["file"] == file_path or Path(file_path).name in issue["file"]
+        ]
+        if file_i18n_issues:
+            error_context += "\n### 翻訳キー不足:\n"
+            for issue in file_i18n_issues:
+                error_context += (
+                    f"- {issue['namespace']}.{issue['key']} "
+                    f"(不足: {', '.join(issue['missing_in'])})\n"
+                )
+
+        return textwrap.dedent(f"""\
+            {APP_CONTEXT}
+
+            あなたはビルドエラー修正と品質保証の専門家です。
+            以下のファイルのビルドエラー・型エラー・翻訳キー不足を修正してください。
+
+            対象ファイル: {file_path}
+            {error_context}
+
+            ## 修正すべき項目
+            1. **TypeScript コンパイルエラー**: 型の不整合、未使用 import、missing module
+            2. **Next.js ビルドエラー**: Server/Client Component の不正な混在、dynamic import の問題
+            3. **翻訳キーの不足**: useTranslations / getTranslations で使用するキーが ja.json / en.json に不足
+            4. **Supabase クエリの型安全性**: select() のカラム名が実際のテーブルスキーマと一致するか
+
+            ## 重要なルール
+            - **エラーがなければ元のコードをそのまま返すこと。**
+            - **既存の関数・export は絶対に削除しないこと。**
+            - **ロジックの変更は最小限に。** エラー修正のみ行うこと。
+            - テーマ: var(--theme-primary) 等のCSS変数を使用。dark: は不使用。
+            - framer-motion は使わない。
+            - 新しい外部ライブラリは追加しない。
+            - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 修正内容」として何を修正したかを簡潔に説明（2-3行）し、
+            その後に修正後のコード全体をコードブロックで返してください。
+            エラーがない場合は「## 修正不要」と記述し、元のコードをそのまま返してください。
+
+            コード:
+            ```
+            {code[:MAX_CODE_CONTEXT]}
+            ```
+        """)
+
+    def get_reviewer_prompt(
+        self, file_path: str, original: str, modified: str, proposal_desc: str
+    ) -> str:
+        diff_text = _create_diff(original, modified, file_path)
+        return textwrap.dedent(f"""\
+            あなたはビルドエラー修正のシニアレビュアーです。以下の変更を評価してください。
+
+            ファイル: {file_path}
+            提案内容: {proposal_desc}
+
+            差分:
+            ```diff
+            {diff_text[:MAX_CODE_CONTEXT]}
+            ```
+
+            以下の基準で厳密に評価:
+            1. **ビルドエラーが実際に修正されているか？** 無関係な変更のみの場合は reject
+            2. **既存の関数・export を削除していないか？** 削除がある場合は必ず reject
+            3. **既存のロジックを壊していないか？** 最小限の修正であること
+            4. **新しいエラーを導入していないか？** (import 漏れ、型の不整合 等)
+            5. **翻訳キーの修正が正しいか？** (ja.json/en.json に追加すべきキーが正しいか)
+
+            問題がある場合は "reject" を含む応答を、
+            承認する場合は "approve" を含む応答を返してください。
+        """)
+
+
 def _create_diff(original: str, modified: str, file_path: str) -> str:
     """unified diff を生成する"""
     return "\n".join(
@@ -1279,12 +1532,13 @@ class AgentLoop:
             "performance": [PerformanceAgent()],
             "security": [SecurityAgent()],
             "feature": [FeatureEnhancementAgent()],
+            "build": [BuildValidationAgent()],
         }
         if target in agent_map:
             logger.info("🎯 対象エージェント: %s", target)
             return agent_map[target]
-        logger.info("🎯 対象エージェント: all (4エージェント)")
-        return [UIUXAgent(), PerformanceAgent(), SecurityAgent(), FeatureEnhancementAgent()]
+        logger.info("🎯 対象エージェント: all (5エージェント)")
+        return [BuildValidationAgent(), UIUXAgent(), PerformanceAgent(), SecurityAgent(), FeatureEnhancementAgent()]
 
     def _ensure_improvement_branch(self) -> None:
         """改善用の固定ブランチに切り替える（なければ main から作成）"""
@@ -1537,6 +1791,10 @@ class AgentLoop:
             # Feature Enhancement: TSX/JSX コンポーネントのみ対象
             # (UI に関わるファイルに UX パターンを追加)
             return suffix in {".tsx", ".jsx"}
+
+        if isinstance(agent, BuildValidationAgent):
+            # Build Validation: TS/TSX/JS/JSX + JSON (翻訳ファイル) が対象
+            return suffix in {".ts", ".tsx", ".js", ".jsx", ".json"}
 
         return False
 
