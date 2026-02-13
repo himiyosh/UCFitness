@@ -46,7 +46,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
             .single(),
         supabase
             .from('groups')
-            .select('id, name, keyword, description, is_public, header_image_url, image_url, created_at, created_by')
+            .select('*')
             .eq('id', groupId)
             .single(),
         supabase
