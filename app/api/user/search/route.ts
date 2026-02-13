@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sanitizeSearchQuery } from "@/lib/security-utils";
 import { NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic';
@@ -14,11 +15,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
 
-    if (!query || query.length < 3) {
+    if (!query) {
         return NextResponse.json({ users: [] });
     }
 
-    const cleanQuery = query.trim();
+    const cleanQuery = sanitizeSearchQuery(query);
+
+    if (cleanQuery.length < 3) {
+        return NextResponse.json({ users: [] });
+    }
 
     try {
         // Search by ID (exact) or Username (partial)

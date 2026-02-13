@@ -37,3 +37,8 @@
 **Vulnerability:** `app/api/user/search/route.ts` returned the `email` field for all users found in search results. This allowed any authenticated user to harvest email addresses by searching for usernames (or partial usernames).
 **Learning:** `SELECT *` or overly broad field selection in API responses is a common source of PII leaks. APIs should only return the minimum data necessary for the UI (Principle of Least Privilege/Data Minimization).
 **Prevention:** Explicitly select only public fields (id, name, username, image) in Supabase queries destined for public or semi-public responses. Never include email, tokens, or PII unless strictly required and authorized.
+
+## 2026-03-05 - PostgREST Filter Injection in Search
+**Vulnerability:** `app/api/user/search/route.ts` directly interpolated user input into a Supabase `.or()` clause without sanitization, allowing potential filter injection by using characters like `,`, `(`, and `)`.
+**Learning:** PostgREST (and Supabase) filter strings use specific characters for logic delimiters. Interpolating raw strings into complex filters like `.or()` is risky even if `select` limits columns, as it can alter the query logic.
+**Prevention:** Always sanitize user input intended for PostgREST filter strings by removing control characters (`,`, `(`, `)`) or using parameterized queries/RPCs where possible (though Supabase JS client handles basic values, complex filter strings are raw text).
