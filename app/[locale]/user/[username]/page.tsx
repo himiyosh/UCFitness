@@ -18,6 +18,7 @@ import { getRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
 import RecommendedItems from '@/components/RecommendedItems';
 import StepCalendar from '@/components/StepCalendar';
+import FollowButtonWrapper from '@/components/FollowButtonWrapper';
 
 
 
@@ -253,6 +254,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
                         <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji} />
+
+                        {/* フォローボタン（他ユーザーのプロフィール閲覧時のみ表示） */}
+                        {session?.user && !isOwner && (
+                            <div className="flex justify-center mt-3">
+                                <FollowButtonWrapper targetUserId={user.id} />
+                            </div>
+                        )}
 
                         <div className="mt-2">
                             <ProfileBadges badges={userBadges} />

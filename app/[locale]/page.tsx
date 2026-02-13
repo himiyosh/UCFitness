@@ -20,6 +20,8 @@ const GoalProgressChart = nextDynamic(() => import('@/components/GoalProgressCha
 const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'));
 const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'));
 const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast'));
+const DashboardChallenges = nextDynamic(() => import('@/components/DashboardChallenges'));
+const DashboardFollowing = nextDynamic(() => import('@/components/DashboardFollowing'));
 
 export const dynamic = 'force-dynamic';
 
@@ -447,9 +449,19 @@ export default async function Home() {
             )}
           </div>
 
+          {/* アクティブチャレンジ ウィジェット */}
+          {session && userId && (
+            <DashboardChallenges />
+          )}
+
           {/* Step Heatmap Calendar */}
           {session && userId && (
             <StepCalendar userId={userId} />
+          )}
+
+          {/* Following Activity */}
+          {session && userId && (
+            <DashboardFollowing />
           )}
 
           {/* BOTTOM SECTION: Leaderboards */}
