@@ -151,8 +151,8 @@ class GitHubModelsClient:
     DEFAULT_MODEL = "gpt-4.1"
     # gpt-5/o-series は max_tokens ではなく max_completion_tokens を使用
     MODELS_USING_COMPLETION_TOKENS = {"gpt-5", "o1", "o3", "o3-mini", "o4-mini"}
-    MAX_RETRIES = 3
-    RETRY_BASE_DELAY = 2  # 秒
+    MAX_RETRIES = 5
+    RETRY_BASE_DELAY = 5  # 秒 (429 対策で長めに設定)
 
     def __init__(self) -> None:
         self.model = os.environ.get("AI_MODEL", self.DEFAULT_MODEL)
@@ -242,6 +242,21 @@ class GitHubModelsClient:
                 status = getattr(e.response, "status_code", None)
                 # 429 (レートリミット) と 5xx はリトライ
                 if status and (status == 429 or status >= 500):
+                    # Retry-After ヘッダーがあればその値を使う
+                    retry_after = None
+                    if hasattr(e.response, 'headers'):
+                        retry_after = e.response.headers.get('Retry-After')
+                    if retry_after:
+                        try:
+                            retry_seconds = int(retry_after)
+                            logger.warning(
+                                "GitHub Models API HTTP %d (試行 %d/%d): Retry-After=%ds",
+                                status, attempt, self.MAX_RETRIES, retry_seconds,
+                            )
+                            time.sleep(retry_seconds)
+                            continue
+                        except ValueError:
+                            pass
                     logger.warning(
                         "GitHub Models API HTTP %d (試行 %d/%d): %s",
                         status, attempt, self.MAX_RETRIES, e,
@@ -431,13 +446,14 @@ class BaseAgent(ABC):
                 rationale="AI からの応答が空でした",
             )
 
-        # レスポンスからコードブロックを抽出
+        # レスポンスからコードブロックと改善理由を抽出
         extracted = self._extract_code_block(response)
+        rationale = self._extract_rationale(response)
 
         return Proposal(
             description=f"[{self.name}] {file_path} の改善提案",
             patch=extracted,
-            rationale=f"{self.role} の観点からの改善",
+            rationale=rationale or f"{self.role} の観点からの改善",
         )
 
     @staticmethod
@@ -454,6 +470,19 @@ class BaseAgent(ABC):
             # 最も長いコードブロックを返す (本文コード)
             return max(matches, key=len).strip()
         return response.strip()
+
+    @staticmethod
+    def _extract_rationale(response: str) -> str:
+        """AI レスポンスからコードブロック外の説明テキスト（改善理由）を抽出する"""
+        import re
+        # コードブロックを除去し、残ったテキストを改善理由とする
+        text = re.sub(r"```(?:\w+)?\s*\n.*?```", "", response, flags=re.DOTALL).strip()
+        # 先頭の無駄な記号を除去
+        text = re.sub(r"^[#\-*>\s]+", "", text).strip()
+        # 長すぎる場合は先頭 300 文字に制限
+        if len(text) > 300:
+            text = text[:300] + "..."
+        return text
 
     def review_proposal(
         self,
@@ -512,52 +541,78 @@ class UIUXAgent(BaseAgent):
         return textwrap.dedent(f"""\
             {APP_CONTEXT}
 
-            あなたはモダンWebアプリのUI/UX専門家です。以下のReactコンポーネントを分析し、
-            ユーザー体験を大幅に向上させる具体的なコード改善を行ってください。
+            あなたはモダンWebアプリのUI/UX専門家で、Vercel/Stripe/Linear等の洗練されたUIに精通しています。
+            以下のReactコンポーネントを分析し、ユーザー体験を大幅に向上させる具体的なコード改善を行ってください。
 
             対象ファイル: {file_path}
 
-            ## 改善の優先順位 (上から順に重要)
+            ## 必ず以下のいずれかを実装すること（最低1つ）
 
-            ### 1. ローディング・空状態・エラー状態の改善 (最重要)
-            - データ取得中に表示するスケルトンローダー（Tailwind の animate-pulse を使用）
-            - データが空の場合のリッチな空状態UI（アイコン + メッセージ + CTA ボタン）
-            - エラー発生時のユーザーフレンドリーなUI（リトライボタン付き）
-            - 例: `if (loading) return <div className="animate-pulse bg-gray-200 rounded-lg h-40" />`
-            - 例: `if (!data?.length) return <EmptyState icon="🏃" message="まだデータがありません" />`
+            ### A. ローディング状態の追加
+            データ取得中にスケルトンを表示。コンポーネントの形状に合わせたプレースホルダーを作成:
+            ```tsx
+            if (loading) return (
+              <div className="space-y-3 p-4">
+                <div className="animate-pulse rounded-lg h-10 w-2/3" style={{{{background: 'var(--theme-secondary)'}}}}/>
+                <div className="animate-pulse rounded-lg h-6 w-full" style={{{{background: 'var(--theme-secondary)'}}}}/>
+                <div className="animate-pulse rounded-lg h-6 w-4/5" style={{{{background: 'var(--theme-secondary)'}}}}/>
+              </div>
+            );
+            ```
 
-            ### 2. インタラクション・フィードバックの強化
-            - ボタンのホバー・クリックエフェクト (transform, transition)
-            - フォーム送信中のローディング状態 (disabled + スピナー)
-            - 成功・エラー時の視覚フィードバック
-            - 確認ダイアログ（破壊的操作の前）
+            ### B. 空状態のリッチUI
+            データが0件の場合にアイコン + メッセージ + CTAボタンを表示:
+            ```tsx
+            if (!data?.length) return (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <span className="text-5xl mb-4">🏃</span>
+                <h3 className="text-lg font-bold" style={{{{color: 'var(--theme-primary)'}}}}>まだデータがありません</h3>
+                <p className="text-sm mt-2" style={{{{color: 'var(--foreground-muted)'}}}}>歩数を記録して始めましょう！</p>
+              </div>
+            );
+            ```
 
-            ### 3. レスポンシブ・視覚的改善
-            - モバイルファーストのレイアウト調整
-            - カード・セクション間のスペーシング改善
-            - テキストの階層（見出し・サブテキスト・キャプション）
+            ### C. エラー状態のUI
+            APIエラー時にリトライボタン付きのUIを表示:
+            ```tsx
+            if (error) return (
+              <div className="flex flex-col items-center py-12 text-center">
+                <span className="text-4xl mb-3">⚠️</span>
+                <p className="font-semibold">データの取得に失敗しました</p>
+                <button onClick={{{{() => refetch()}}}} className="mt-4 px-4 py-2 rounded-lg text-white" style={{{{background: 'var(--theme-primary)'}}}}>
+                  再試行
+                </button>
+              </div>
+            );
+            ```
 
-            ### 4. アクセシビリティ
-            - aria-label、role 属性の追加
-            - キーボードナビゲーション対応
-            - フォーカスインジケーター
+            ### D. ボタン・フォームのインタラクション強化
+            - ボタンに hover:scale-105 transition-transform を追加
+            - 送信中ボタン: disabled + スピナーアニメーション
+            - 破壊的操作前に window.confirm() で確認
+
+            ### E. トランジション・アニメーション
+            - リストアイテムに opacity + translateY アニメーション
+            - カードに hover shadow トランジション
+            - 数値変化のカウントアップエフェクト
 
             ## 重要なルール
-            - **必ず実質的なコード変更を行うこと。** コメント追加・変数名変更・import整理だけの変更は禁止。
-            - **テーマシステムに従うこと:** var(--theme-primary), var(--accent-coral) 等のCSS変数を使用。Tailwindの dark: は使わない。
-            - **framer-motion は使わないこと。** CSS keyframes と Tailwind のアニメーションクラスのみ使用。
-            - **新しい外部ライブラリは追加しないこと。**
+            - **必ず1つ以上の実質的なUIコード変更を行うこと。** コメント追加・変数名変更・import整理だけの変更は禁止。
+            - テーマ: var(--theme-primary), var(--theme-secondary), var(--accent-coral) 等のCSS変数を使用。dark: は不使用。
+            - framer-motion は使わない。CSS keyframes と Tailwind アニメーションのみ。
+            - 新しい外部ライブラリは追加しない。
             - **既存の関数・export を削除しないこと。** 追加のみ許可。
-            - i18n: next-intl の useTranslations() を使用。ハードコード文字列は避ける。
             - 改善すべき点がなければ、元のコードをそのまま返すこと。
             - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
 
             コード:
             ```
             {code[:MAX_CODE_CONTEXT]}
             ```
-
-            改善後のコード全体をコードブロックで返してください。
         """)
 
     def get_reviewer_prompt(
@@ -609,30 +664,55 @@ class PerformanceAgent(BaseAgent):
             {APP_CONTEXT}
 
             あなたはReact/Next.jsパフォーマンス最適化の専門家です。
-            以下のコードを分析し、測定可能なパフォーマンス改善を行ってください。
+            以下のコードを分析し、**測定可能な**パフォーマンス改善を行ってください。
 
             対象ファイル: {file_path}
 
-            ## 改善の焦点（優先順位順）
-            1. **不要な再レンダリング防止**: React.memo, useMemo, useCallback の適切な使用
-            2. **重いコンポーネントの遅延ロード**: dynamic import + React.lazy
-            3. **計算量の削減**: 配列の繰り返し走査排除、Map/Set の活用
-            4. **メモリ効率**: 不要なコピー・中間配列の削減
-            5. **バンドルサイズ削減**: 条件付きインポート、ツリーシェイキング意識
+            ## 具体的に探すべきパターン（優先順）
+
+            ### 1. 不要な再レンダリング防止
+            - コンポーネント内で毎レンダー新規作成されるオブジェクト/配列リテラルを useMemo でメモ化
+            - インラインのコールバック `onClick={{() => handle(id)}}` を useCallback に変換
+            - 重い子コンポーネントを React.memo でラップ
+            - 例:
+              ```tsx
+              // Before
+              const options = items.filter(i => i.active).map(i => ({{label: i.name, value: i.id}}));
+              // After
+              const options = useMemo(() => items.filter(i => i.active).map(i => ({{label: i.name, value: i.id}})), [items]);
+              ```
+
+            ### 2. 重いコンポーネントの遅延ロード
+            - Recharts チャート、モーダル、重いUIセクションを `dynamic(() => import(...), {{ ssr: false }})` で遅延。
+            - 例:
+              ```tsx
+              const HeavyChart = dynamic(() => import('./GoalProgressChart'), {{ ssr: false, loading: () => <div className="animate-pulse h-64" /> }});
+              ```
+
+            ### 3. 計算量の削減
+            - 配列の繰り返し走査（filter().map() を reduce に統合）
+            - ループ内の find/filter を Map/Set で置換
+            - 条件付き early return で不要な処理をスキップ
+
+            ### 4. API・DB 最適化
+            - 並列実行可能な await を Promise.all() に統合
+            - Supabase クエリで不要なカラムを select から除外
 
             ## 重要なルール
             - **コメント追加のみ・変数名変更のみ・import整理のみの変更は禁止。**
-            - **既存の関数・export を絶対に削除しないこと。** 関数の最適化は可能だが、削除は禁止。
+            - **既存の関数・export を絶対に削除しないこと。** 最適化は可能だが、削除は禁止。
             - 既存の動作を変えないこと。最適化のみ行うこと。
             - 改善すべき点がなければ、元のコードをそのまま返すこと。
             - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
 
             コード:
             ```
             {code[:MAX_CODE_CONTEXT]}
             ```
-
-            改善後のコード全体をコードブロックで返してください。
         """)
 
     def get_reviewer_prompt(
@@ -685,34 +765,59 @@ class SecurityAgent(BaseAgent):
             {APP_CONTEXT}
 
             あなたはWebアプリケーションセキュリティの専門家です。
-            以下のコードを分析し、実際の脆弱性がある場合のみ修正してください。
+            以下のコードを分析し、**実際に悪用可能な脆弱性**がある場合のみ修正してください。
 
             対象ファイル: {file_path}
 
-            ## 検出すべき脆弱性（実際の問題のみ）
-            - 入力値の未検証（ユーザー入力をサニタイズせずに使用）
-            - 機密情報のハードコーディング（APIキー、パスワード等の直接記載）
-            - インジェクション（SQL, NoSQL, コマンドインジェクション）
-            - 不適切なエラーハンドリング（機密情報のリーク）
-            - 認証・認可の不備
-            - Rate limiting の欠如（API エンドポイントの場合）
-            - CSRF 対策の不備
+            ## 具体的に探すべき脆弱性（実際の問題のみ）
+
+            ### API エンドポイント (route.ts) の場合:
+            - ユーザー入力の未検証（型チェックなしにそのまま使用）
+            - 認証チェックの欠落（auth() なしでデータアクセス）
+            - Rate limiting の欠如
+            - エラーメッセージでの機密情報リーク（スタックトレースや内部IDの露出）
+            - IDOR（他ユーザーのデータにアクセス可能）
+            例:
+            ```ts
+            // Before: 認証なし
+            const userId = body.userId;
+            const data = await supabase.from('users').select('*').eq('id', userId);
+            // After: 認証付き
+            const session = await auth();
+            if (!session?.user?.id) return NextResponse.json({{{{ error: 'Unauthorized' }}}}, {{{{ status: 401 }}}});
+            const data = await supabase.from('users').select('id,name').eq('id', session.user.id);
+            ```
+
+            ### Server Actions (actions.ts) の場合:
+            - 入力値の型検証（string で来るべき値が未検証）
+            - 権限チェックの欠落
+
+            ### クライアントコンポーネント (.tsx) の場合:
+            - dangerouslySetInnerHTML の使用
+            - URLパラメータの未サニタイズ使用
+            - localStorage への機密情報保存
+
+            ## 絶対にやってはいけないこと
+            - 「念のため」の過剰な防御コードの追加
+            - DOMPurify 等の新しいライブラリの追加
+            - React JSX で自動エスケープされる翻訳キーのサニタイズ
+            - セキュリティ問題がないコードへの変更
 
             ## 重要なルール
             - **コメント追加のみの変更は絶対に禁止。** 実際のコードを変更すること。
             - **既存の関数・export を絶対に削除しないこと。**
             - セキュリティ上の問題がなければ、元のコードをそのまま返すこと。
-            - 「念のため」の過剰な防御コードは追加しないこと。
-            - DOMPurify 等の新しいライブラリの追加は避けること。
-            - React の JSX は自動的にXSSをエスケープするため、翻訳キーや静的テキストのサニタイズは不要。
             - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
+            問題がなければ元のコードをそのまま返してください。
 
             コード:
             ```
             {code[:MAX_CODE_CONTEXT]}
             ```
-
-            改善後のコード全体をコードブロックで返してください。問題がなければ元のコードをそのまま返してください。
         """)
 
     def get_reviewer_prompt(
@@ -767,64 +872,81 @@ class FeatureEnhancementAgent(BaseAgent):
             {APP_CONTEXT}
 
             あなたはフロントエンドUX機能強化の専門家です。
-            以下のReactコンポーネントを分析し、不足している **UXパターン** を具体的に追加してください。
+            以下のReactコンポーネントを分析し、不足している**UXパターン**を具体的に追加してください。
 
             対象ファイル: {file_path}
 
-            ## 追加すべきUXパターン (上から順に優先)
+            ## 必ず1つ以上追加すること
 
-            ### 1. 状態管理の完全化
-            - **ローディング状態**: データ取得中にスケルトン/シマーを表示
+            ### A. 状態管理の3層（最重要 — このコンポーネントに該当するものを全て追加）
+
+            **ローディング状態** — データ取得中のスケルトン:
+            ```tsx
+            if (loading) return (
+              <div className="space-y-3 p-4">
+                <div className="animate-pulse rounded-lg h-10 w-2/3" style={{{{background: 'var(--theme-secondary)'}}}}/>
+                <div className="animate-pulse rounded-lg h-6 w-full" style={{{{background: 'var(--theme-secondary)'}}}}/>
+              </div>
+            );
+            ```
+
+            **空状態** — データが0件の場合:
+            ```tsx
+            if (!data?.length) return (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <span className="text-5xl mb-4">🏃</span>
+                <h3 className="text-lg font-bold" style={{{{color: 'var(--theme-primary)'}}}}>まだデータがありません</h3>
+                <p className="text-sm mt-2" style={{{{color: 'var(--foreground-muted)'}}}}>歩数を記録して始めましょう！</p>
+              </div>
+            );
+            ```
+
+            **エラー状態** — APIエラー時:
+            ```tsx
+            if (error) return (
+              <div className="flex flex-col items-center py-12 text-center">
+                <span className="text-4xl mb-3">⚠️</span>
+                <p className="font-semibold">データの取得に失敗しました</p>
+                <button onClick={{{{() => retry()}}}} className="mt-4 px-4 py-2 rounded-lg text-white"
+                  style={{{{background: 'var(--theme-primary)'}}}}>再試行</button>
+              </div>
+            );
+            ```
+
+            ### B. ボタン・フォームの強化
+            - 送信ボタンにローディング状態を追加:
               ```tsx
-              if (loading) return (
-                <div className="space-y-4">
-                  <div className="animate-pulse bg-gray-200 rounded-lg h-12 w-full" />
-                  <div className="animate-pulse bg-gray-200 rounded-lg h-8 w-3/4" />
-                </div>
-              );
+              <button disabled={{{{isSubmitting}}}} className="relative ...">
+                {{{{isSubmitting ? (
+                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                ) : '保存'}}}}
+              </button>
               ```
-            - **空状態**: データが0件の場合にリッチなUIを表示
-              ```tsx
-              if (!items?.length) return (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <span className="text-4xl mb-4">🏃</span>
-                  <p className="text-lg font-semibold" style={{{{ color: 'var(--theme-primary)' }}}}>
-                    まだデータがありません
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">歩数を記録して始めましょう！</p>
-                </div>
-              );
-              ```
-            - **エラー状態**: APIエラー時にリトライ可能なUIを表示
+            - 破壊的操作（削除・退会）の前に: `if (!window.confirm('本当に削除しますか？')) return;`
 
-            ### 2. インタラクション強化
-            - ボタンに送信中ローディング状態を追加 (disabled + スピナー)
-            - 破壊的操作（削除・退会等）の前に確認ステップを追加
-            - フォームのバリデーションメッセージを改善
-
-            ### 3. 視覚的フィードバック
-            - 操作後の成功/エラー表示の追加
-            - ホバー・フォーカスエフェクトの追加
-            - 数値変化のアニメーション
+            ### C. 視覚的フィードバック
+            - カードに hover:shadow-lg transition-shadow を追加
+            - ボタンに hover:scale-105 transition-transform を追加
+            - 操作後の成功/エラートースト表示
 
             ## 重要なルール
             - **必ず具体的なコードを追加すること。** コメントだけの追加は禁止。
             - **既存の関数・export は絶対に削除しないこと。** 追加のみ許可。
             - **既存のロジックは変更しないこと。** UXパターンの追加のみ。
-            - テーマシステム: var(--theme-primary) 等のCSS変数を使用。dark: は不使用。
-            - framer-motion は使わないこと。CSS keyframes と Tailwind のみ。
-            - 新しい外部ライブラリは追加しないこと。
-            - i18n: hardcoded Japanese text は useTranslations() に置き換え可能だが、
-              翻訳キーがない場合はまずハードコードでOK。
+            - テーマ: var(--theme-primary), var(--theme-secondary) 等のCSS変数を使用。dark: は不使用。
+            - framer-motion は使わない。CSS keyframes と Tailwind のみ。
+            - 新しい外部ライブラリは追加しない。
             - 改善点がなければ元のコードをそのまま返すこと。
             - ファイル末尾には必ず改行を入れること。
+
+            ## 回答形式
+            まず「## 改善内容」として何を変えたかを簡潔に説明（2-3行）し、
+            その後に改善後のコード全体をコードブロックで返してください。
 
             コード:
             ```
             {code[:MAX_CODE_CONTEXT]}
             ```
-
-            改善後のコード全体をコードブロックで返してください。
         """)
 
     def get_reviewer_prompt(
@@ -1285,10 +1407,17 @@ class AgentLoop:
         cycle_results: list[LoopResult] = []
 
         # 各ファイル × 各エージェントでループ実行
+        file_agent_count = 0
         for file_path in changed_files:
             for agent in self.agents:
                 if not self._is_relevant(file_path, agent):
                     continue
+
+                # レートリミット対策: ファイル間にクールダウンを挿入
+                if file_agent_count > 0:
+                    cooldown = int(os.environ.get("INTER_FILE_DELAY", "10"))
+                    logger.info("⏳ レートリミット対策: %d秒クールダウン...", cooldown)
+                    time.sleep(cooldown)
 
                 loop = GeneratorReviewerLoop(
                     agent, self.test_runner, skip_tests=self.skip_tests,
@@ -1296,6 +1425,7 @@ class AgentLoop:
                 result = loop.execute(file_path)
                 cycle_results.append(result)
                 self.results.append(result)
+                file_agent_count += 1
 
                 logger.info(
                     "📊 結果: %s | %s | status=%s | iterations=%d",
