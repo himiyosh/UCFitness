@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { equipItem, unequipItem } from '@/lib/shop-service';
+import { reportError } from '@/lib/errors';
 
 export async function POST(request: Request) {
     const session = await auth();
@@ -12,8 +13,8 @@ export async function POST(request: Request) {
 
     try {
         const { userItemId, action } = await request.json();
-        if (!userItemId || !action) {
-            return NextResponse.json({ error: 'userItemId and action are required' }, { status: 400 });
+        if (!userItemId || typeof userItemId !== 'string') {
+            return NextResponse.json({ error: 'Valid userItemId is required' }, { status: 400 });
         }
 
         if (action !== 'equip' && action !== 'unequip') {
@@ -31,8 +32,8 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Shop equip error:', error);
+    } catch (error: unknown) {
+        reportError('shop/equip', error, { userId: session.user.id });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

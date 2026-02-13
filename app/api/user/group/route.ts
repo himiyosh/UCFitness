@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
+import { reportError } from "@/lib/errors";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -88,7 +89,9 @@ export async function POST(request: Request) {
       }
     } else if (action === 'kick') {
       const { targetUserId } = body;
-      if (!targetUserId) return NextResponse.json({ error: "Missing target user" }, { status: 400 });
+      if (!targetUserId || typeof targetUserId !== 'string') {
+        return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
+      }
 
       // Find group
       const { data: group } = await supabaseAdmin
@@ -136,7 +139,9 @@ export async function POST(request: Request) {
 
     } else if (action === 'transfer_ownership') {
       const { targetUserId } = body;
-      if (!targetUserId) return NextResponse.json({ error: "Missing target user" }, { status: 400 });
+      if (!targetUserId || typeof targetUserId !== 'string') {
+        return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
+      }
 
       // Find group
       const { data: group } = await supabaseAdmin
@@ -166,13 +171,15 @@ export async function POST(request: Request) {
         .eq('group_id', group.id)
         .eq('user_id', targetUserId);
 
-      if (promoteError) console.error("Promote Error", promoteError);
+      if (promoteError) reportError('user/group:transfer_ownership', promoteError, { groupId: group.id, targetUserId });
 
       return NextResponse.json({ success: true });
 
     } else if (action === 'demote') {
       const { targetUserId } = body;
-      if (!targetUserId) return NextResponse.json({ error: "Missing target user" }, { status: 400 });
+      if (!targetUserId || typeof targetUserId !== 'string') {
+        return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
+      }
 
       // Find group
       const { data: group } = await supabaseAdmin
@@ -228,7 +235,7 @@ export async function POST(request: Request) {
         .eq('group_id', group.id)
         .eq('user_id', targetUserId);
 
-      if (demoteError) console.error("Demote Error", demoteError);
+      if (demoteError) reportError('user/group:demote', demoteError, { groupId: group.id, targetUserId });
 
       return NextResponse.json({ success: true });
 
@@ -300,7 +307,7 @@ export async function POST(request: Request) {
         .eq('id', group.id);
 
       if (updateError) {
-        console.error("Group Update Error", updateError);
+        reportError('user/group:update_metadata', updateError, { groupId: group.id });
         return NextResponse.json({ error: "Failed to update group" }, { status: 500 });
       }
 
@@ -308,7 +315,9 @@ export async function POST(request: Request) {
 
     } else if (action === 'invite') {
       const { targetUserId } = body;
-      if (!targetUserId) return NextResponse.json({ error: "Missing target user" }, { status: 400 });
+      if (!targetUserId || typeof targetUserId !== 'string') {
+        return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
+      }
 
       // Find group
       const { data: group } = await supabaseAdmin
@@ -386,7 +395,6 @@ export async function POST(request: Request) {
 
       // Ensure new list has same items (length and content)
       if (groupKeywords.length !== currentKeywords.length) {
-        console.error('Length mismatch:', groupKeywords.length, 'vs', currentKeywords.length);
         return NextResponse.json({ error: "Keyword count mismatch" }, { status: 400 });
       }
 
@@ -395,7 +403,6 @@ export async function POST(request: Request) {
 
       const isSame = sortedCurrent.every((val, index) => val === sortedNew[index]);
       if (!isSame) {
-        console.error('Content mismatch');
         return NextResponse.json({ error: "Invalid group list provided" }, { status: 400 });
       }
 
@@ -406,7 +413,7 @@ export async function POST(request: Request) {
         .eq('id', userId);
 
       if (updateError) {
-        console.error("Reorder Error", updateError);
+        reportError('user/group:reorder', updateError, { userId });
         return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
       }
 
@@ -449,12 +456,12 @@ export async function POST(request: Request) {
         .eq('id', group.id);
 
       if (deleteError) {
-        console.error("Delete Group Error", deleteError);
+        reportError('user/group:delete_group', deleteError, { groupId: group.id });
         return NextResponse.json({ error: "Failed to delete group" }, { status: 500 });
       }
 
-      // 全メンバーのレガシー group_keyword 配列を同期
-      for (const memberId of memberUserIds) {
+      // 全メンバーのレガシー group_keyword 配列を同期（並列実行）
+      await Promise.all(memberUserIds.map(async (memberId) => {
         const { data: memberships } = await supabaseAdmin
           .from('group_members')
           .select('groups(keyword)')
@@ -467,7 +474,7 @@ export async function POST(request: Request) {
           .from('users')
           .update({ group_keyword: newKeywords })
           .eq('id', memberId);
-      }
+      }));
 
       // ストレージのグループ画像をクリーンアップ
       const imagesToDelete: string[] = [];
@@ -482,7 +489,7 @@ export async function POST(request: Request) {
           .from('group-assets')
           .remove(imagesToDelete);
         if (storageError) {
-          console.warn("Failed to cleanup group images:", storageError);
+          reportError('user/group:delete_group:storage', storageError, { groupId: group.id });
           // 画像削除失敗はグループ削除自体の成功には影響させない
         }
       }
@@ -507,8 +514,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, keywords: newKeywords });
 
-  } catch (error) {
-    console.error("Error processing request:", error);
+  } catch (error: unknown) {
+    reportError('user/group', error, { userId: session.user.id });
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

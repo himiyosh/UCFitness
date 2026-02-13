@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { assignBadges } from '@/lib/badge-awards';
+import { reportError } from '@/lib/errors';
 import { Period } from '@/components/LeaderboardTabs';
 
 export const runtime = 'edge';
@@ -53,10 +54,10 @@ export async function GET(request: Request) {
             targetDate: yesterday,
             timestamp: new Date().toISOString(),
         });
-    } catch (error) {
-        console.error(`[Cron] ${type} badge assignment failed:`, error);
+    } catch (error: unknown) {
+        reportError('cron/badges', error, { type });
         return NextResponse.json(
-            { error: 'Internal Server Error', message: `${type} バッジ付与中にエラーが発生しました` },
+            { error: 'Internal Server Error' },
             { status: 500 }
         );
     }
