@@ -87,7 +87,8 @@
         "wallet": "ウォレット",
         "shop": "ショップ",
         "refreshSteps": "今すぐ同期",
-        "refreshing": "同期中..."
+        "refreshing": "同期中...",
+        "refreshFailed": "歩数の同期に失敗しました"
     },
     "Landing": {
         "title": "UCFitness",
@@ -231,6 +232,7 @@
         "joinOrCreate": "参加 / 作成",
         "yourGroups": "あなたのグループ",
         "noGroups": "まだグループに参加していません。",
+        "noGroupsDescription": "グループに参加して、みんなと歩数を競い合おう！",
         "joinGroup": "グループに参加",
         "enterGroupName": "ランキングを表示するグループ名を入力してください。",
         "placeholder": "GroupId",

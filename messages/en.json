@@ -87,7 +87,8 @@
         "wallet": "Wallet",
         "shop": "Shop",
         "refreshSteps": "Sync Now",
-        "refreshing": "Refreshing..."
+        "refreshing": "Refreshing...",
+        "refreshFailed": "Failed to refresh steps"
     },
     "Landing": {
         "title": "UCFitness",
@@ -231,6 +232,7 @@
         "joinOrCreate": "Join or Create",
         "yourGroups": "Your Groups",
         "noGroups": "You haven't joined any groups yet.",
+        "noGroupsDescription": "Join a group and compete with others on step counts!",
         "joinGroup": "Join a Group",
         "enterGroupName": "Enter a group name to see its ranking.",
         "placeholder": "GroupId",
