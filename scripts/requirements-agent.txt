@@ -1,0 +1,10 @@
+# Autonomous Code Improvement Loop - Python Dependencies
+
+# Test execution + rollback decision
+pytest>=7.4.0
+
+# Per-test timeout
+pytest-timeout>=2.2.0
+
+# Config file parsing (future extension)
+pyyaml>=6.0.1
