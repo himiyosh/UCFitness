@@ -53,10 +53,10 @@ export default function GroupDetailLeaderboard({
                 <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
-                        Member Rankings
+                        {ga('memberRankings')}
                     </h3>
                     <div className="text-xs text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-md">
-                        Page {currentPage} of {totalPages || 1}
+                        {ga('pageInfo', { current: currentPage, total: totalPages || 1 })}
                     </div>
                 </div>
 
@@ -71,7 +71,7 @@ export default function GroupDetailLeaderboard({
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                         </svg>
                                     </span>
-                                    <span>No data available yet.</span>
+                                    <span>{lt('noData')}</span>
                                 </li>
                             ) : (
                                 displayData.map((entry, index) => {
@@ -112,17 +112,17 @@ export default function GroupDetailLeaderboard({
                                                     <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                         {entry.users.username ? (
                                                             <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline decoration-[var(--theme-primary)]/30">
-                                                                {entry.users?.name || 'Anonymous'}
+                                                                {entry.users?.name || commonT('anonymous')}
                                                             </Link>
                                                         ) : (
-                                                            <span>{entry.users?.name || 'Anonymous'}</span>
+                                                            <span>{entry.users?.name || commonT('anonymous')}</span>
                                                         )}
-                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">YOU</span>}
+                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) ? (
                                                         <p className="text-[10px] text-gray-400 font-medium">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                     ) : (
-                                                        <p className="text-xs text-gray-400">Rank #{rank}</p>
+                                                        <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -160,7 +160,7 @@ export default function GroupDetailLeaderboard({
                             className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                            Prev
+                            {lt('prev')}
                         </button>
                         <div className="flex gap-1.5">
                             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -192,7 +192,7 @@ export default function GroupDetailLeaderboard({
                             aria-label="Next page"
                             className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
-                            Next
+                            {lt('next')}
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </nav>

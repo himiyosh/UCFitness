@@ -24,6 +24,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
     const [isMoving, setIsMoving] = useState(false);
     const router = useRouter();
     const t = useTranslations('Graph');
+    const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
 
@@ -154,12 +155,12 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
                                                         {entry.users?.username ? (
                                                             <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline truncate">
-                                                                {entry.users?.name || 'Anonymous'}
+                                                                {entry.users?.name || commonT('anonymous')}
                                                             </Link>
                                                         ) : (
-                                                            <span className="truncate">{entry.users?.name || 'Anonymous'}</span>
+                                                            <span className="truncate">{entry.users?.name || commonT('anonymous')}</span>
                                                         )}
-                                                        {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">YOU</span>}
+                                                        {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
                                                         <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
@@ -186,7 +187,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                             });
                         })()
                     ) : (
-                        <p className={`text-center py-8 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>No group activity yet today.</p>
+                        <p className={`text-center py-8 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
                     )}
                 </div>
             </div>

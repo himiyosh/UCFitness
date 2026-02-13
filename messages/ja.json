@@ -15,7 +15,10 @@
         "displayName": "表示名",
         "skipToContent": "メインコンテンツへ",
         "signInWithFitbit": "Fitbit でログイン",
-        "ucHint": "UndouCoin（運動コイン）― 毎日の歩数から獲得できるコイン。たくさん歩いて貯めよう！"
+        "ucHint": "UndouCoin（運動コイン）― 毎日の歩数から獲得できるコイン。たくさん歩いて貯めよう！",
+        "you": "自分",
+        "anonymous": "匿名ユーザー",
+        "userNotFound": "ユーザーが見つかりません。"
     },
     "Settings": {
         "title": "設定",
@@ -132,7 +135,9 @@
             "weekly": "今週",
             "monthly": "今月",
             "yearly": "今年"
-        }
+        },
+        "topAndNeighbors": "トップ3 & 周辺",
+        "rankNumber": "#{rank} 位"
     },
     "Notifications": {
         "title": "通知設定",
@@ -299,7 +304,8 @@
         "totalLabel": "合計:",
         "targetLabel": "目標:",
         "groupLeaders": "グループリーダー",
-        "noData": "この期間のデータはありません"
+        "noData": "この期間のデータはありません",
+        "noGroupActivityYet": "今日のグループ活動はまだありません。"
     },
     "UserMenu": {
         "signedInAs": "ログイン中",
@@ -422,5 +428,66 @@
         "linkReady": "商品が見つかりました！",
         "linkGenerated": "商品が見つかりました。",
         "generateError": "リンク生成に失敗しました。"
+    },
+    "GroupAnalytics": {
+        "noData": "アクティビティデータがまだありません",
+        "noDataDesc": "歩き始めるとグループ分析がここに表示されます！",
+        "yourRank": "あなたの順位",
+        "inGroup": "グループ内",
+        "steps": "歩数",
+        "groupRank": "グループ順位",
+        "average": "平均",
+        "globalGroupRankings": "全グループランキング",
+        "byAverageSteps": "平均歩数順",
+        "settingsMembers": "設定 & メンバー",
+        "memberRankings": "メンバー順位",
+        "pageInfo": "{total} ページ中 {current} ページ目",
+        "comparisonTitle": {
+            "daily": "過去7日間の比較",
+            "weekly": "今週の比較",
+            "monthly": "今月の比較",
+            "yearly": "今年の比較"
+        }
+    },
+    "GroupDetail": {
+        "owner": "オーナー",
+        "member": "メンバー",
+        "settingsMembers": "設定 & メンバー",
+        "membersCount": "メンバー ({count})",
+        "unknownUser": "不明なユーザー",
+        "close": "閉じる",
+        "invite": "招待",
+        "done": "完了",
+        "edit": "編集",
+        "inviteNewMember": "新しいメンバーを招待",
+        "searchPlaceholder": "ID、ユーザー名、またはメールで検索...",
+        "noUsersFound": "ユーザーが見つかりません。",
+        "cancel": "キャンセル",
+        "confirm": "確認",
+        "noMembersYet": "メンバーがまだいません。",
+        "demoteSelf": "自分を降格",
+        "leave": "退出",
+        "demote": "降格",
+        "makeOwner": "オーナーにする",
+        "remove": "削除",
+        "dangerZone": "危険な操作",
+        "adding": "追加中...",
+        "add": "追加",
+        "confirmPromote": "{name} をオーナーに昇格しますか？あなたもオーナーのままです。",
+        "confirmDemoteSelf": "自分をメンバーに降格しますか？オーナー権限を失います。",
+        "confirmDemote": "{name} をメンバーに降格しますか？",
+        "confirmRemove": "{name} を削除しますか？",
+        "confirmLeave": "{name} から退出しますか？",
+        "promoteFailed": "メンバーの昇格に失敗しました",
+        "promoteSuccess": "{name} がオーナーになりました。",
+        "demoteFailed": "メンバーの降格に失敗しました",
+        "demoteSelfSuccess": "メンバーになりました。",
+        "demoteSuccess": "{name} がメンバーになりました。",
+        "removeFailed": "メンバーの削除に失敗しました",
+        "inviteFailed": "ユーザーの招待に失敗しました",
+        "inviteSuccess": "ユーザーを招待しました！",
+        "searchFailed": "検索に失敗しました。もう一度お試しください。",
+        "leaveFailed": "グループの退出に失敗しました",
+        "errorOccurred": "エラーが発生しました。"
     }
 }

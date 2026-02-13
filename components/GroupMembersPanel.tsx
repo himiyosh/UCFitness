@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import ImageModal from '@/components/ImageModal';
 import UserAvatar from '@/components/UserAvatar';
 import { useToast } from '@/components/Toast';
+import { useTranslations } from 'next-intl';
 import LeaveGroupButton from './LeaveGroupButton';
 
 type Member = {
@@ -53,6 +54,8 @@ export default function GroupMembersPanel({
     const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
     const router = useRouter();
     const { success: toastSuccess, error: toastError } = useToast();
+    const detailT = useTranslations('GroupDetail');
+    const commonT = useTranslations('Common');
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchAbortRef = useRef<AbortController | null>(null);
 
@@ -62,7 +65,7 @@ export default function GroupMembersPanel({
 
     const handleTransferOwnership = useCallback(async (targetId: string, memberName: string) => {
         setConfirmAction({
-            message: `Are you sure you want to promote ${memberName} to Owner? You will also remain an owner.`,
+            message: detailT('confirmPromote', { name: memberName }),
             onConfirm: async () => {
                 setConfirmAction(null);
                 setIsProcessing(targetId);
@@ -79,14 +82,14 @@ export default function GroupMembersPanel({
 
                     if (!res.ok) {
                         const err = await res.json().catch(() => ({}));
-                        toastError(err.error || 'Failed to promote member');
+                        toastError(err.error || detailT('promoteFailed'));
                         return;
                     }
 
-                    toastSuccess(`${memberName} is now an Owner.`);
+                    toastSuccess(detailT('promoteSuccess', { name: memberName }));
                     router.refresh();
                 } catch {
-                    toastError('An error occurred.');
+                    toastError(detailT('errorOccurred'));
                 } finally {
                     setIsProcessing(null);
                 }
@@ -96,8 +99,8 @@ export default function GroupMembersPanel({
 
     const handleDemote = useCallback(async (targetId: string, memberName: string, isSelf: boolean) => {
         const msg = isSelf
-            ? "Are you sure you want to demote yourself to Member? You will lose owner privileges."
-            : `Are you sure you want to demote ${memberName} to Member?`;
+            ? detailT('confirmDemoteSelf')
+            : detailT('confirmDemote', { name: memberName });
 
         setConfirmAction({
             message: msg,
@@ -117,14 +120,14 @@ export default function GroupMembersPanel({
 
                     if (!res.ok) {
                         const err = await res.json().catch(() => ({}));
-                        toastError(err.error || 'Failed to demote member');
+                        toastError(err.error || detailT('demoteFailed'));
                         return;
                     }
 
-                    toastSuccess(isSelf ? "You are now a member." : `${memberName} is now a member.`);
+                    toastSuccess(isSelf ? detailT('demoteSelfSuccess') : detailT('demoteSuccess', { name: memberName }));
                     router.refresh();
                 } catch {
-                    toastError('An error occurred.');
+                    toastError(detailT('errorOccurred'));
                 } finally {
                     setIsProcessing(null);
                 }
@@ -134,7 +137,7 @@ export default function GroupMembersPanel({
 
     const handleKick = useCallback(async (targetId: string, memberName: string) => {
         setConfirmAction({
-            message: `Are you sure you want to remove ${memberName}?`,
+            message: detailT('confirmRemove', { name: memberName }),
             onConfirm: async () => {
                 setConfirmAction(null);
                 setIsProcessing(targetId);
@@ -151,14 +154,14 @@ export default function GroupMembersPanel({
 
                     if (!res.ok) {
                         const err = await res.json().catch(() => ({}));
-                        toastError(err.error || 'Failed to remove member');
+                        toastError(err.error || detailT('removeFailed'));
                         return;
                     }
 
                     setMembers(prev => prev.filter(m => m.user_id !== targetId));
                     router.refresh();
                 } catch {
-                    toastError('An error occurred.');
+                    toastError(detailT('errorOccurred'));
                 } finally {
                     setIsProcessing(null);
                 }
@@ -217,11 +220,11 @@ export default function GroupMembersPanel({
 
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                toastError(err.error || 'Failed to invite user');
+                toastError(err.error || detailT('inviteFailed'));
                 return;
             }
 
-            toastSuccess('User invited successfully!');
+            toastSuccess(detailT('inviteSuccess'));
             setSearchQuery('');
             setSearchResults([]);
             setIsInviteOpen(false);
@@ -236,7 +239,7 @@ export default function GroupMembersPanel({
 
     const handleLeaveGroup = useCallback(async () => {
         setConfirmAction({
-            message: `Are you sure you want to leave ${groupName}?`,
+            message: detailT('confirmLeave', { name: groupName }),
             onConfirm: async () => {
                 setConfirmAction(null);
                 try {
@@ -251,14 +254,14 @@ export default function GroupMembersPanel({
 
                     if (!res.ok) {
                         const err = await res.json().catch(() => ({}));
-                        toastError(err.error || 'Failed to leave group');
+                        toastError(err.error || detailT('leaveFailed'));
                         return;
                     }
 
                     router.push('/groups');
                     router.refresh();
                 } catch {
-                    toastError('An error occurred.');
+                    toastError(detailT('errorOccurred'));
                 }
             }
         });
@@ -285,8 +288,8 @@ export default function GroupMembersPanel({
             />
             <div className="px-0 py-2 pb-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-[var(--foreground)]">Members ({members.length})</h3>
-                    {isOwner && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">Owner</span>}
+                    <h3 className="font-bold text-[var(--foreground)]">{detailT('membersCount', { count: members.length })}</h3>
+                    {isOwner && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">{detailT('owner')}</span>}
                 </div>
                 <div className="flex gap-2">
                     {isOwner && (
@@ -294,14 +297,14 @@ export default function GroupMembersPanel({
                             onClick={() => setIsInviteOpen(!isInviteOpen)}
                             className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isInviteOpen ? 'bg-[var(--theme-primary)] text-white' : 'text-[var(--theme-primary)] bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20'}`}
                         >
-                            {isInviteOpen ? 'Close' : 'Invite'}
+                            {isInviteOpen ? detailT('close') : detailT('invite')}
                         </button>
                     )}
                     <button
                         onClick={onToggleEdit}
                         className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
                     >
-                        {isEditing ? 'Done' : 'Edit'}
+                        {isEditing ? detailT('done') : detailT('edit')}
                     </button>
                 </div>
             </div>
@@ -309,11 +312,11 @@ export default function GroupMembersPanel({
             {/* Invite Panel */}
             {isInviteOpen && (
                 <div className="p-4 bg-[var(--theme-primary-light)] border-b border-[var(--theme-primary)]/20 animate-fade-in">
-                    <p className="text-sm text-[var(--theme-primary)] mb-2 font-bold">Invite New Member</p>
+                    <p className="text-sm text-[var(--theme-primary)] mb-2 font-bold">{detailT('inviteNewMember')}</p>
                     <div className="relative">
                         <input
                             type="text"
-                            placeholder="Search by ID, Username, or Email..."
+                            placeholder={detailT('searchPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => handleSearch(e.target.value)}
                             className="w-full pl-4 pr-4 py-2 text-sm text-gray-900 border border-[var(--theme-primary)]/30 rounded-lg focus:ring-2 focus:ring-[var(--theme-primary)] outline-none bg-white"
@@ -342,14 +345,14 @@ export default function GroupMembersPanel({
                                         disabled={!!isProcessing}
                                         className="text-xs font-bold text-white bg-[var(--theme-primary)] px-3 py-1.5 rounded hover:bg-[var(--theme-primary)]/90 transition-colors disabled:opacity-50"
                                     >
-                                        {isProcessing === user.id ? 'Adding...' : 'Add'}
+                                        {isProcessing === user.id ? detailT('adding') : detailT('add')}
                                     </button>
                                 </div>
                             ))}
                         </div>
                     )}
                     {searchQuery.length >= 3 && searchResults.length === 0 && !isSearching && (
-                        <p className="text-xs text-[var(--theme-primary)]/70 mt-2">No users found.</p>
+                        <p className="text-xs text-[var(--theme-primary)]/70 mt-2">{detailT('noUsersFound')}</p>
                     )}
                 </div>
             )}
@@ -364,13 +367,13 @@ export default function GroupMembersPanel({
                                 onClick={() => setConfirmAction(null)}
                                 className="text-xs font-bold px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-[var(--foreground-muted)]"
                             >
-                                Cancel
+                                {detailT('cancel')}
                             </button>
                             <button
                                 onClick={confirmAction.onConfirm}
                                 className="text-xs font-bold px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
                             >
-                                Confirm
+                                {detailT('confirm')}
                             </button>
                         </div>
                     </div>
@@ -380,7 +383,7 @@ export default function GroupMembersPanel({
             <ul className="divide-y divide-gray-100">
                 {members.length === 0 && (
                     <li className="py-8 text-center">
-                        <p className="text-sm text-[var(--foreground-muted)]">No members yet.</p>
+                        <p className="text-sm text-[var(--foreground-muted)]">{detailT('noMembersYet')}</p>
                     </li>
                 )}
                 {members.map((member) => (
@@ -400,14 +403,14 @@ export default function GroupMembersPanel({
                             </div>
 
                             <div className="min-w-0">
-                                <Link href={member.users.username ? `/user/${member.users.username}` : '#'} className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2" aria-label={`View profile of ${member.users.name || 'Unknown User'}`}>
-                                    <span>{member.users.name || 'Unknown User'}</span>
+                                <Link href={member.users.username ? `/user/${member.users.username}` : '#'} className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2" aria-label={`View profile of ${member.users.name || detailT('unknownUser')}`}>
+                                    <span>{member.users.name || detailT('unknownUser')}</span>
                                     {member.user_id === currentUserId && (
-                                        <span className="text-[10px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">YOU</span>
+                                        <span className="text-[10px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">{commonT('you')}</span>
                                     )}
                                 </Link>
                                 <p className="text-xs text-gray-500 truncate">
-                                    {member.role === 'OWNER' ? 'Owner' : 'Member'}
+                                    {member.role === 'OWNER' ? detailT('owner') : detailT('member')}
                                 </p>
                             </div>
                         </div>
@@ -423,7 +426,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
                                             >
-                                                Demote Self
+                                                {detailT('demoteSelf')}
                                             </button>
                                             {ownerCount > 1 && (
                                                 <button
@@ -431,7 +434,7 @@ export default function GroupMembersPanel({
                                                     disabled={!!isProcessing}
                                                     className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
                                                 >
-                                                    Leave
+                                                    {detailT('leave')}
                                                 </button>
                                             )}
                                         </>
@@ -444,7 +447,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
                                             >
-                                                Demote
+                                                {detailT('demote')}
                                             </button>
                                         ) : (
                                             <button
@@ -452,7 +455,7 @@ export default function GroupMembersPanel({
                                                 disabled={!!isProcessing}
                                                 className="text-xs text-[var(--theme-primary)] hover:text-[var(--theme-primary)] font-bold px-3 py-1.5 rounded-lg bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] transition-colors border border-[var(--theme-primary)]/20 whitespace-nowrap"
                                             >
-                                                Make Owner
+                                                {detailT('makeOwner')}
                                             </button>
                                         )}
                                         <button
@@ -460,7 +463,7 @@ export default function GroupMembersPanel({
                                             disabled={!!isProcessing}
                                             className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
                                         >
-                                            {isProcessing === member.user_id ? '...' : 'Remove'}
+                                            {isProcessing === member.user_id ? '...' : detailT('remove')}
                                         </button>
                                     </>
                                 )}
@@ -474,7 +477,7 @@ export default function GroupMembersPanel({
             {
                 isEditing && !isOwner && (
                     <div className="mt-6 pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Danger Zone</h4>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">{detailT('dangerZone')}</h4>
                         <LeaveGroupButton
                             groupKeyword={groupKeyword}
                             groupName={groupName}

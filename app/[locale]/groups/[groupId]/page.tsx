@@ -15,6 +15,7 @@ import { getGroupCompetitionRankings } from "@/lib/group-ranking-service";
 import JoinGroupPreview from "@/components/JoinGroupPreview";
 import GroupAnalytics from "@/components/GroupAnalytics";
 import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
 
     const userId = (session.user as any).id;
     const { groupId } = params;
+
+    const dashboardT = await getTranslations('Dashboard');
+    const groupsT = await getTranslations('Groups');
+    const detailT = await getTranslations('GroupDetail');
 
     // 0. Fetch Current User (to ensure fresh profile image/name)
     const { data: dbUser } = await supabase
@@ -77,10 +82,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         <div className="flex items-center gap-2">
                             <Link href="/" className="flex items-center gap-2 group">
                                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
-                                    UCFitness
+                                    {dashboardT('title')}
                                 </h1>
                                 <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                    Beta
+                                    {dashboardT('beta')}
                                 </span>
                             </Link>
                         </div>
@@ -94,7 +99,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     <div className="mb-6">
                         <Breadcrumbs
                             items={[
-                                { label: 'Groups', href: '/groups' },
+                                { label: groupsT('title'), href: '/groups' },
                                 { label: group.name }
                             ]}
                         />
@@ -151,10 +156,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
-                                UCFitness
+                                {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                Beta
+                                {dashboardT('beta')}
                             </span>
                         </Link>
                     </div>
@@ -170,13 +175,13 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 <div className="flex items-center justify-between">
                     <Breadcrumbs
                         items={[
-                            { label: 'Groups', href: '/groups' },
+                            { label: groupsT('title'), href: '/groups' },
                             { label: group.name }
                         ]}
                     />
                     {isOwner && (
                         <span className="bg-[var(--theme-primary-light)] text-[var(--theme-primary)] px-3 py-1 rounded-full text-xs font-bold border border-[var(--theme-primary)]/20">
-                            Owner
+                            {detailT('owner')}
                         </span>
                     )}
                 </div>
@@ -241,7 +246,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             groupImage={group.image_url}
                         >
                             <div className="p-4 sm:p-6">
-                                <h2 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pb-2 border-b border-gray-100">Settings & Members</h2>
+                                <h2 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pb-2 border-b border-gray-100">{detailT('settingsMembers')}</h2>
                                 <GroupSettingsLayout
                                     members={members || []}
                                     group={group}

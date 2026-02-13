@@ -15,7 +15,10 @@
         "displayName": "Display Name",
         "skipToContent": "Skip to content",
         "signInWithFitbit": "Sign in with Fitbit",
-        "ucHint": "UndouCoin (\u904b\u52d5\u30b3\u30a4\u30f3) \u2014 Coins earned from your daily steps. Walk more to earn more!"
+        "ucHint": "UndouCoin (\u904b\u52d5\u30b3\u30a4\u30f3) \u2014 Coins earned from your daily steps. Walk more to earn more!",
+        "you": "YOU",
+        "anonymous": "Anonymous",
+        "userNotFound": "User not found."
     },
     "Settings": {
         "title": "Settings",
@@ -132,7 +135,9 @@
             "weekly": "This Week",
             "monthly": "This Month",
             "yearly": "This Year"
-        }
+        },
+        "topAndNeighbors": "Top 3 & Neighbors",
+        "rankNumber": "Rank #{rank}"
     },
     "Notifications": {
         "title": "Notifications",
@@ -299,7 +304,8 @@
         "totalLabel": "Total:",
         "targetLabel": "Target:",
         "groupLeaders": "Group Leaders",
-        "noData": "No data available for this period"
+        "noData": "No data available for this period",
+        "noGroupActivityYet": "No group activity yet today."
     },
     "UserMenu": {
         "signedInAs": "Signed in as",
@@ -422,5 +428,66 @@
         "linkReady": "Product found!",
         "linkGenerated": "Product found.",
         "generateError": "Failed to generate link."
+    },
+    "GroupAnalytics": {
+        "noData": "No activity data yet",
+        "noDataDesc": "Start walking to see your group analytics here!",
+        "yourRank": "Your Rank",
+        "inGroup": "in group",
+        "steps": "steps",
+        "groupRank": "Group Rank",
+        "average": "Average",
+        "globalGroupRankings": "Global Group Rankings",
+        "byAverageSteps": "By Average Steps",
+        "settingsMembers": "Settings & Members",
+        "memberRankings": "Member Rankings",
+        "pageInfo": "Page {current} of {total}",
+        "comparisonTitle": {
+            "daily": "Last 7 Days Comparison",
+            "weekly": "This Week Comparison",
+            "monthly": "This Month Comparison",
+            "yearly": "This Year Comparison"
+        }
+    },
+    "GroupDetail": {
+        "owner": "Owner",
+        "member": "Member",
+        "settingsMembers": "Settings & Members",
+        "membersCount": "Members ({count})",
+        "unknownUser": "Unknown User",
+        "close": "Close",
+        "invite": "Invite",
+        "done": "Done",
+        "edit": "Edit",
+        "inviteNewMember": "Invite New Member",
+        "searchPlaceholder": "Search by ID, Username, or Email...",
+        "noUsersFound": "No users found.",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "noMembersYet": "No members yet.",
+        "demoteSelf": "Demote Self",
+        "leave": "Leave",
+        "demote": "Demote",
+        "makeOwner": "Make Owner",
+        "remove": "Remove",
+        "dangerZone": "Danger Zone",
+        "adding": "Adding...",
+        "add": "Add",
+        "confirmPromote": "Are you sure you want to promote {name} to Owner? You will also remain an owner.",
+        "confirmDemoteSelf": "Are you sure you want to demote yourself to Member? You will lose owner privileges.",
+        "confirmDemote": "Are you sure you want to demote {name} to Member?",
+        "confirmRemove": "Are you sure you want to remove {name}?",
+        "confirmLeave": "Are you sure you want to leave {name}?",
+        "promoteFailed": "Failed to promote member",
+        "promoteSuccess": "{name} is now an Owner.",
+        "demoteFailed": "Failed to demote member",
+        "demoteSelfSuccess": "You are now a member.",
+        "demoteSuccess": "{name} is now a member.",
+        "removeFailed": "Failed to remove member",
+        "inviteFailed": "Failed to invite user",
+        "inviteSuccess": "User invited successfully!",
+        "searchFailed": "Search failed. Please try again.",
+        "leaveFailed": "Failed to leave group",
+        "errorOccurred": "An error occurred."
     }
 }

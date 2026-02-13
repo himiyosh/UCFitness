@@ -7,13 +7,14 @@ import GroupRankingPanel from '@/components/GroupRankingPanel';
 import GroupSettings from '@/components/GroupSettings';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
+import { useTranslations } from 'next-intl';
 
 // Helper to tabs
-const TABS: { key: Period; label: string }[] = [
-    { key: 'DAILY', label: 'Today' },
-    { key: 'WEEKLY', label: 'This Week' },
-    { key: 'MONTHLY', label: 'This Month' },
-    { key: 'YEARLY', label: 'This Year' },
+const TABS: { key: Period; labelKey: string }[] = [
+    { key: 'DAILY', labelKey: 'periods.daily' },
+    { key: 'WEEKLY', labelKey: 'periods.weekly' },
+    { key: 'MONTHLY', labelKey: 'periods.monthly' },
+    { key: 'YEARLY', labelKey: 'periods.yearly' },
 ];
 
 interface DynamicLeaderboardProps {
@@ -24,6 +25,8 @@ interface DynamicLeaderboardProps {
 export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const { theme } = useTheme();
+    const t = useTranslations('Leaderboard');
+    const commonT = useTranslations('Common');
     const [globalRankings, setGlobalRankings] = useState<RankingEntry[]>([]);
     const [groupRankingsList, setGroupRankingsList] = useState<{ keyword: string; neighbors: RankingEntry[] }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +93,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                     textShadow: '0 1px 2px rgba(0,0,0,0.5)'
                                 } : undefined}
                             >
-                                {tab.label}
+                                {t(tab.labelKey)}
                             </button>
                         );
                     })}
@@ -99,9 +102,9 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                 <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[400px]">
                     <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
                         <h3 className="text-base font-bold text-gray-900">
-                            Global Leaderboard
+                            {t('titleGlobal')}
                         </h3>
-                        <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded text-xs font-semibold">Top 3 & Neighbors</span>
+                        <span className="bg-gray-100 text-gray-600 py-1 px-2 rounded text-xs font-semibold">{t('topAndNeighbors')}</span>
                     </div>
 
                     <div className="bg-white px-0 relative">
@@ -113,7 +116,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
 
                         <ul role="list" className="divide-y divide-gray-50">
                             {globalRankings.length === 0 && !isLoading ? (
-                                <p className="text-gray-500 text-center py-8">No data available yet.</p>
+                                <p className="text-gray-500 text-center py-8">{t('noData')}</p>
                             ) : (
                                 globalRankings.map((entry, index) => {
                                     const isGap = index > 0 && entry.originalRank > globalRankings[index - 1].originalRank + 1;
@@ -138,8 +141,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                     <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users?.frameColor} borderClass="border-gray-100" />
                                                     <div>
                                                         <p className="text-sm font-medium text-gray-900">
-                                                            {entry.users?.name || 'Anonymous'}
-                                                            {entry.users.id === userId && <span className="ml-2 text-xs text-[var(--theme-primary)] font-bold">(YOU)</span>}
+                                                            {entry.users?.name || commonT('anonymous')}
+                                                            {entry.users.id === userId && <span className="ml-2 text-xs text-[var(--theme-primary)] font-bold">({commonT('you')})</span>}
                                                         </p>
                                                         {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
                                                             <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleNameEn}</span>
@@ -196,7 +199,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                 ) : (
                     !isLoading && (
                         <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center text-gray-500">
-                            Join your first group to see rankings here!
+                            {t('joinPrompt')}
                         </div>
                     )
                 )}

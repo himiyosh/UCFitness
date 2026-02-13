@@ -31,7 +31,7 @@ export default async function SettingsPage() {
         .single();
 
     if (!user) {
-        return <div>User not found</div>;
+        return <div className="flex items-center justify-center min-h-screen text-[var(--foreground-muted)]">{commonT('userNotFound')}</div>;
     }
 
     // Midnight テーマの所有チェック（shop_items → user_items）

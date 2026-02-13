@@ -95,6 +95,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     const [leftTab, setLeftTab] = useState<'user' | 'group'>('user');
     const [page, setPage] = useState(1);
     const t = useTranslations('Leaderboard');
+    const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
 
@@ -344,12 +345,12 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 {entry.users.username ? (
                                                                                     <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
-                                                                                        {entry.users?.name || 'Anonymous'}
+                                                                                        {entry.users?.name || commonT('anonymous')}
                                                                                     </Link>
                                                                                 ) : (
-                                                                                    <span>{entry.users?.name || 'Anonymous'}</span>
+                                                                                    <span>{entry.users?.name || commonT('anonymous')}</span>
                                                                                 )}
-                                                                                {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">YOU</span>}
+                                                                                {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">{commonT('you')}</span>}
                                                                             </p>
                                                                             {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
                                                                                 <p className="text-[10px] text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
