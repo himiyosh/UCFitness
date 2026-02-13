@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
     const session = await auth();
 
-    if (!session || !session.user || !(session.user as any).id) {
+    if (!session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,6 +19,11 @@ export async function POST(request: Request) {
         // 🛡️ Sentinel: Validate Inputs
         if (!file || !groupId || !type) {
             return NextResponse.json({ error: "Missing file or metadata" }, { status: 400 });
+        }
+
+        // 🛡️ Validate groupId format (パストラバーサル防止)
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(groupId)) {
+            return NextResponse.json({ error: "Invalid groupId format" }, { status: 400 });
         }
 
         // 1. Validate 'type' (Prevent Path Traversal)
@@ -39,7 +44,7 @@ export async function POST(request: Request) {
              return NextResponse.json({ error: "File too large. Max 5MB." }, { status: 400 });
         }
 
-        const userId = (session.user as any).id;
+        const userId = session.user.id;
 
         // Verify Ownership
         const { data: membership } = await supabaseAdmin

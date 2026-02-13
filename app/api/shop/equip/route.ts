@@ -17,6 +17,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Valid userItemId is required' }, { status: 400 });
         }
 
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userItemId)) {
+            return NextResponse.json({ error: 'Invalid userItemId format' }, { status: 400 });
+        }
+
         if (action !== 'equip' && action !== 'unequip') {
             return NextResponse.json({ error: 'action must be "equip" or "unequip"' }, { status: 400 });
         }

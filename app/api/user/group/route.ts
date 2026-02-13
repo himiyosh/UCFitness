@@ -15,8 +15,9 @@ export async function POST(request: Request) {
     const { action, keyword, name } = body;
     const userId = session.user.id;
 
-    if (!action) {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    const VALID_ACTIONS = ['add', 'remove', 'kick', 'transfer_ownership', 'demote', 'update_metadata', 'invite', 'reorder', 'delete_group'];
+    if (!action || !VALID_ACTIONS.includes(action)) {
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
     // Keyword is required for all actions except 'reorder'
@@ -162,6 +163,18 @@ export async function POST(request: Request) {
 
       if (!currentUserMember || currentUserMember.role !== 'OWNER') {
         return NextResponse.json({ error: "Forbidden: Only owner can promote members" }, { status: 403 });
+      }
+
+      // Verify target is a group member
+      const { data: targetMember } = await supabaseAdmin
+        .from('group_members')
+        .select('role')
+        .eq('group_id', group.id)
+        .eq('user_id', targetUserId)
+        .single();
+
+      if (!targetMember) {
+        return NextResponse.json({ error: "Target user is not a member of this group" }, { status: 400 });
       }
 
       // Promote Target to OWNER (Allow multiple owners)
