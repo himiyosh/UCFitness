@@ -123,8 +123,9 @@ export async function checkAndAwardBadges(userId: string) {
                 if (subs && subs.length > 0) {
                     const { sendWebPushNotification } = await import('./web-push');
 
+                    const badgeMap = new Map((allBadges as BadgeDefinition[]).map(def => [def.code, def.name]));
                     const badgeNames = newBadges
-                        .map(b => (allBadges as BadgeDefinition[]).find(def => def.code === b.badge_code)?.name)
+                        .map(b => badgeMap.get(b.badge_code))
                         .filter(Boolean)
                         .join(', ');
 

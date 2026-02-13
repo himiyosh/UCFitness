@@ -168,12 +168,20 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
  * コイン残高を再集計して更新
  */
 async function updateCoinBalance(userId: string, currentStreak: number) {
-    // 全トランザクションの合計を計算
-    const { data: totals } = await supabaseAdmin
-        .from('coin_transactions')
-        .select('type, amount')
-        .eq('user_id', userId);
+    // ⚡ 独立した2クエリを並列実行
+    const [totalsResult, existingResult] = await Promise.all([
+        supabaseAdmin
+            .from('coin_transactions')
+            .select('type, amount')
+            .eq('user_id', userId),
+        supabaseAdmin
+            .from('coin_balances')
+            .select('best_streak')
+            .eq('user_id', userId)
+            .single(),
+    ]);
 
+    const totals = totalsResult.data;
     if (!totals) return;
 
     let totalEarned = 0;
@@ -195,12 +203,7 @@ async function updateCoinBalance(userId: string, currentStreak: number) {
     const lifetimeEarnings = totalEarned + totalBonus;
     const investorRank = getInvestorRank(lifetimeEarnings);
 
-    // 既存レコード取得
-    const { data: existing } = await supabaseAdmin
-        .from('coin_balances')
-        .select('best_streak')
-        .eq('user_id', userId)
-        .single();
+    const existing = existingResult.data;
 
     const bestStreak = Math.max(currentStreak, existing?.best_streak || 0);
 
@@ -302,15 +305,23 @@ export async function getDailyBalanceHistory(userId: string, days: number = 30) 
     const startDateObj = new Date(endDateObj.getTime() - safeDays * 24 * 60 * 60 * 1000);
     const startDate = startDateObj.toISOString().split('T')[0];
 
-    // 日別の獲得コインを取得
-    const { data: transactions } = await supabaseAdmin
-        .from('coin_transactions')
-        .select('date, amount')
-        .eq('user_id', userId)
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true });
+    // ⚡ 独立した2クエリを並列実行
+    const [txResult, priorResult] = await Promise.all([
+        supabaseAdmin
+            .from('coin_transactions')
+            .select('date, amount')
+            .eq('user_id', userId)
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('date', { ascending: true }),
+        supabaseAdmin
+            .from('coin_transactions')
+            .select('amount')
+            .eq('user_id', userId)
+            .lt('date', startDate),
+    ]);
 
+    const transactions = txResult.data;
     if (!transactions || transactions.length === 0) return [];
 
     // 日別に集計
@@ -321,14 +332,7 @@ export async function getDailyBalanceHistory(userId: string, days: number = 30) 
     }
 
     // 累積残高を計算
-    // まず開始日以前の総額を取得
-    const { data: priorTotals } = await supabaseAdmin
-        .from('coin_transactions')
-        .select('amount')
-        .eq('user_id', userId)
-        .lt('date', startDate);
-
-    let runningBalance = (priorTotals || []).reduce((sum, tx) => sum + tx.amount, 0);
+    let runningBalance = (priorResult.data || []).reduce((sum, tx) => sum + tx.amount, 0);
 
     // 日ごとのデータを生成
     const result: { date: string; dailyCoins: number; balance: number }[] = [];
@@ -380,20 +384,22 @@ export async function getCoinLeaderboard(limit: number = 10) {
  * 既存の歩数データからコインを一括計算（初回マイグレーション用）
  */
 export async function backfillCoinsForUser(userId: string) {
-    const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('step_goal')
-        .eq('id', userId)
-        .single();
+    // ⚡ 独立した2クエリを並列実行
+    const [userResult, stepsResult] = await Promise.all([
+        supabaseAdmin
+            .from('users')
+            .select('step_goal')
+            .eq('id', userId)
+            .single(),
+        supabaseAdmin
+            .from('daily_steps')
+            .select('date, steps')
+            .eq('user_id', userId)
+            .order('date', { ascending: true }),
+    ]);
 
-    const stepGoal = userData?.step_goal || 10000;
-
-    // 全歩数履歴を取得
-    const { data: allSteps } = await supabaseAdmin
-        .from('daily_steps')
-        .select('date, steps')
-        .eq('user_id', userId)
-        .order('date', { ascending: true });
+    const stepGoal = userResult.data?.step_goal || 10000;
+    const allSteps = stepsResult.data;
 
     if (!allSteps || allSteps.length === 0) {
         return;
