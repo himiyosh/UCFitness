@@ -85,7 +85,7 @@ export default function UsernameForm({ initialUsername = '', isOnboarding = fals
                     <button
                         type="submit"
                         disabled={isSaving}
-                        className="rounded-md bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--theme-primary)]/90 disabled:opacity-50 whitespace-nowrap flex items-center gap-1.5 transition-colors"
+                        className="rounded-md bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[var(--theme-primary)]/90 hover:scale-105 disabled:opacity-50 whitespace-nowrap flex items-center gap-1.5 transition-all"
                     >
                         {isSaving && <Spinner size="xs" />}
                         {isOnboarding ? 'Next' : 'Save'}

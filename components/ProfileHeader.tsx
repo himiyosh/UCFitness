@@ -62,6 +62,10 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
                     className={`h-32 sm:h-36 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url ? 'bg-[var(--theme-primary)]' : 'cursor-pointer hover:opacity-90 transition-opacity'}`}
                     style={user.banner_url ? { backgroundImage: `url(${encodeURI(user.banner_url)})` } : {}}
                     onClick={() => user.banner_url && setIsBannerModalOpen(true)}
+                    onKeyDown={(e) => { if (user.banner_url && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setIsBannerModalOpen(true); } }}
+                    role={user.banner_url ? 'button' : undefined}
+                    tabIndex={user.banner_url ? 0 : undefined}
+                    aria-label={user.banner_url ? `View ${user.name}'s banner` : undefined}
                 >
                 </div>
 
@@ -70,6 +74,10 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
                     <div className="-mt-8 sm:-mt-12 mb-2 flex justify-center relative group/image">
                         <div
                             onClick={() => user.image && setIsImageModalOpen(true)}
+                            onKeyDown={(e) => { if (user.image && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setIsImageModalOpen(true); } }}
+                            role={user.image ? 'button' : undefined}
+                            tabIndex={user.image ? 0 : undefined}
+                            aria-label={user.image ? `View ${user.name}'s profile picture` : undefined}
                             className={user.image ? 'cursor-pointer transition-transform hover:scale-105 active:scale-95' : ''}
                         >
                             <UserAvatar

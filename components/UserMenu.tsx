@@ -70,7 +70,7 @@ export default function UserMenu({ user }: UserMenuProps) {
             {/* Dropdown menu */}
             {isOpen && (
                 <div
-                    className="absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    className="absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none animate-fade-in"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="user-menu-button"
@@ -79,6 +79,8 @@ export default function UserMenu({ user }: UserMenuProps) {
                     <Link
                         href={user.username ? `/user/${user.username}` : '/profile'}
                         className="block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                        role="menuitem"
+                        tabIndex={-1}
                         onClick={() => setIsOpen(false)}
                     >
                         <div className="flex items-center gap-3">
@@ -96,7 +98,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/groups"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -106,7 +108,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/wallet"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -116,7 +118,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/shop"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -126,7 +128,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/settings"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                         onClick={() => setIsOpen(false)}
@@ -136,7 +138,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <button
                         onClick={handleSignOut}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
                         role="menuitem"
                         tabIndex={-1}
                     >

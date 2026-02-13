@@ -75,7 +75,7 @@ export default function StepGoalForm({ initialGoal }: { initialGoal: number }) {
                     <button
                         type="submit"
                         disabled={isSaving}
-                        className="rounded-lg bg-[var(--theme-primary)] px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+                        className="rounded-lg bg-[var(--theme-primary)] px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
                     >
                         {isSaving ? (
                             <Spinner size="sm" />
@@ -102,7 +102,7 @@ export default function StepGoalForm({ initialGoal }: { initialGoal: number }) {
             <span className="text-xl font-bold text-gray-900">{goal.toLocaleString()} <span className="text-xs font-medium text-gray-500">steps</span></span>
             <button
                 onClick={() => setIsEditing(true)}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full hover:bg-gray-200 transition-colors inline-flex items-center gap-1"
+                className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full hover:bg-gray-200 hover:scale-105 transition-all inline-flex items-center gap-1"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                     <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3L10.58 12.42a4 4 0 01-1.343.886l-3.155 1.262a.5.5 0 01-.65-.65z" />

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 interface ProfileFormProps {
@@ -12,8 +13,9 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const t = useTranslations('Common');
+    const router = useRouter();
 
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         const trimmed = name.trim();
         if (!trimmed) {
@@ -37,13 +39,13 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
             }
 
             setMessage({ text: t('updated'), type: 'success' });
-            window.location.reload();
+            router.refresh();
         } catch {
             setMessage({ text: t('saveFailed'), type: 'error' });
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [name, t, router]);
 
     return (
         <form onSubmit={handleSave} className="w-full">
@@ -64,7 +66,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                 <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 whitespace-nowrap transition-all flex items-center gap-1.5"
+                    className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 disabled:opacity-50 whitespace-nowrap transition-all flex items-center gap-1.5"
                 >
                     {isSaving && (
                         <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
@@ -72,11 +74,13 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                     {t('save')}
                 </button>
             </div>
-            {message && (
-                <p className={`mt-1 text-xs ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                    {message.text}
-                </p>
-            )}
+            <div role="status" aria-live="polite">
+                {message && (
+                    <p className={`mt-1 text-xs ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                        {message.text}
+                    </p>
+                )}
+            </div>
         </form>
     );
 }
