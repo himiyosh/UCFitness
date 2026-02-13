@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth";
 import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
 import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import AnimatedLeaderboard from '@/components/AnimatedLeaderboard';
-import { RankingEntry, enrichRankingsWithEquip } from '@/lib/ranking-utils';
+import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip } from '@/lib/ranking-utils';
 import GoalProgressChart from '@/components/GoalProgressChart';
 import RunnerAnimation from '@/components/RunnerAnimation';
 import AutoSync from '@/components/AutoSync';
@@ -144,8 +144,12 @@ export default async function Home() {
 
   // Pre-load ALL rankings (Optimization: Single query per scope)
   const rawGlobalRankings = await getCachedGlobalRankings();
+
+  // ⚡ Bolt Optimization: Truncate rankings to reduce HTML payload size (Top 100 + You)
+  const optimizedRankings = optimizeRankingsForPayload(rawGlobalRankings, (session?.user as any)?.id, 100);
+
   // 装備アイテム情報を注入（フレーム・称号）
-  const allGlobalRankings = await enrichRankingsWithEquip(rawGlobalRankings) as Record<string, RankingEntry[]>;
+  const allGlobalRankings = await enrichRankingsWithEquip(optimizedRankings) as Record<string, RankingEntry[]>;
 
   // Extract Stats for Current User
   const userId = (session?.user as any)?.id;
@@ -173,7 +177,8 @@ export default async function Home() {
 
   // ⚡ Bolt Optimization: Batch fetch rankings for all groups to avoid N+1 queries
   // ⚡ Bolt Optimization: Use cached global rankings to derive group rankings (Avoids heavy DB query)
-  const batchGroupRankings = await deriveBatchGroupRankings(validGroupIds, allGlobalRankings);
+  // Use rawGlobalRankings (full list) to ensure we find all group members
+  const batchGroupRankings = await deriveBatchGroupRankings(validGroupIds, rawGlobalRankings);
 
   const allGroupRankings = (await Promise.all(
     groupKeywords
@@ -236,6 +241,9 @@ export default async function Home() {
       };
     })
   ));
+
+  // ⚡ Bolt Optimization: Enrich Group Rankings with equipment info (Fix regression from truncating global)
+  const enrichedGroupRankings = await enrichAllGroupRankingsWithEquip(allGroupRankings);
 
   // Fetch Group Competition Rankings
   // ⚡ Bolt Optimization: Combined call to reduce DB queries (12 -> 3)
@@ -450,7 +458,7 @@ export default async function Home() {
           <AnimatedLeaderboard
             userId={(session?.user as any)?.id}
             allGlobalRankings={allGlobalRankings}
-            allGroupRankings={allGroupRankings}
+            allGroupRankings={enrichedGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}
           />
 

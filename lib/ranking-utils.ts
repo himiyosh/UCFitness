@@ -122,3 +122,81 @@ export function getDisplayRankings(allRankings: any[], userId?: string | null, m
 
     return { displayRankings: combined, isTruncated: rankedItems.length > combined.length };
 }
+
+/**
+ * グループランキングリストを一括でエンリッチする
+ */
+export async function enrichAllGroupRankingsWithEquip<T extends { neighbors: Record<string, RankingEntry[]> }>(
+    groupRankings: T[]
+): Promise<T[]> {
+    const userIdSet = new Set<string>();
+    for (const group of groupRankings) {
+        for (const period of Object.keys(group.neighbors)) {
+            for (const entry of group.neighbors[period]) {
+                if (entry.users?.id) userIdSet.add(entry.users.id);
+            }
+        }
+    }
+
+    const userIds = Array.from(userIdSet);
+    if (userIds.length === 0) return groupRankings;
+
+    const equipMap = await getEquippedItemsForUsers(userIds);
+
+    for (const group of groupRankings) {
+        for (const period of Object.keys(group.neighbors)) {
+            for (const entry of group.neighbors[period]) {
+                const equip = equipMap[entry.users.id];
+                if (equip) {
+                    entry.users.frameColor = equip.frameColor;
+                    entry.users.titleNameJa = equip.titleNameJa;
+                    entry.users.titleNameEn = equip.titleNameEn;
+                    entry.users.titleEmoji = equip.titleEmoji;
+                }
+            }
+        }
+    }
+
+    return groupRankings;
+}
+
+/**
+ * クライアントペイロード最適化: トップN + 指定ユーザーのみを含むランキングを返す
+ * 同時に originalRank を付与する
+ */
+export function optimizeRankingsForPayload(
+    rankings: Record<string, any[]>,
+    userId?: string | null,
+    limit: number = 100
+): Record<string, RankingEntry[]> {
+    const optimized: Record<string, RankingEntry[]> = {};
+
+    for (const period of Object.keys(rankings)) {
+        const fullList = rankings[period];
+
+        // Map full list to objects with explicit rank
+        // Shallow clone user object to avoid side effects if enriched later
+        const withRank: RankingEntry[] = fullList.map((entry, idx) => ({
+            ...entry,
+            originalRank: entry.originalRank ?? (idx + 1),
+            users: { ...entry.users }
+        }));
+
+        const topN = withRank.slice(0, limit);
+
+        // If user is not in top N, find them and add them
+        if (userId) {
+            const userInTopN = topN.find(r => r.users.id === userId);
+            if (!userInTopN) {
+                const userEntry = withRank.find(r => r.users.id === userId);
+                if (userEntry) {
+                    topN.push(userEntry);
+                }
+            }
+        }
+
+        optimized[period] = topN;
+    }
+
+    return optimized;
+}

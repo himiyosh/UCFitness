@@ -114,9 +114,10 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 changes[p] = {};
                 allGlobalRankings[p]?.forEach((entry, i) => {
                     const uid = entry.users.id;
-                    current[p][uid] = i + 1;
+                    const rank = entry.originalRank ?? (i + 1);
+                    current[p][uid] = rank;
                     if (prev[p] && prev[p][uid] !== undefined) {
-                        changes[p][uid] = prev[p][uid] - (i + 1); // positive = moved up
+                        changes[p][uid] = prev[p][uid] - rank; // positive = moved up
                     }
                 });
             }
@@ -272,7 +273,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                             const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
                                             const paginatedItems = currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
                                                 ...entry,
-                                                originalRank: startIndex + idx + 1
+                                                originalRank: entry.originalRank ?? (startIndex + idx + 1)
                                             }));
 
                                             return (
