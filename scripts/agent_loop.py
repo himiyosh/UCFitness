@@ -273,6 +273,24 @@ class TestRunner:
 
     def __init__(self, repo_root: Path = REPO_ROOT):
         self.repo_root = repo_root
+        self.baseline_passing: bool | None = None  # None = 未チェック
+
+    def check_baseline(self) -> bool:
+        """ベースラインテストを実行し、結果をキャッシュする。
+
+        テストが既に壊れている場合、AIの変更でテスト検証をスキップするために使用。
+        """
+        logger.info("🔬 ベースラインテストを実行中...")
+        passed, output = self.run_tests()
+        self.baseline_passing = passed
+        if passed:
+            logger.info("✅ ベースラインテスト PASS — テスト検証を有効化")
+        else:
+            logger.warning(
+                "⚠️ ベースラインテスト FAIL — テスト検証をスキップします\n"
+                "  テスト出力 (末尾): %s", output.strip()[-200:]
+            )
+        return passed
 
     def run_tests(self, *, timeout: int = 300) -> tuple[bool, str]:
         """
@@ -693,10 +711,13 @@ class GeneratorReviewerLoop:
         agent: BaseAgent,
         test_runner: TestRunner,
         max_rounds: int = MAX_ITERATIONS,
+        *,
+        skip_tests: bool = False,
     ):
         self.agent = agent
         self.test_runner = test_runner
         self.max_rounds = max_rounds
+        self.skip_tests = skip_tests
 
     def execute(self, file_path: Path) -> LoopResult:
         """ファイルに対してGenerator↔Reviewerループを実行する"""
@@ -755,17 +776,20 @@ class GeneratorReviewerLoop:
                 logger.info("パッチを適用しました")
 
                 # --- テスト実行 ---
-                logger.info("🧪 テスト実行中...")
-                tests_passed, test_output = self.test_runner.run_tests()
+                if self.skip_tests:
+                    logger.info("🧪 テストスキップ (ベースライン失敗のため)")
+                else:
+                    logger.info("🧪 テスト実行中...")
+                    tests_passed, test_output = self.test_runner.run_tests()
 
-                if not tests_passed:
-                    logger.warning("❌ テスト失敗 — ロールバック")
-                    self._rollback(file_path, backup_path)
-                    current_code = file_path.read_text(encoding="utf-8")
-                    result.improvements.append(
-                        f"イテレーション{iteration}: テスト失敗によりロールバック"
-                    )
-                    continue
+                    if not tests_passed:
+                        logger.warning("❌ テスト失敗 — ロールバック")
+                        self._rollback(file_path, backup_path)
+                        current_code = file_path.read_text(encoding="utf-8")
+                        result.improvements.append(
+                            f"イテレーション{iteration}: テスト失敗によりロールバック"
+                        )
+                        continue
 
                 # --- Reviewer フェーズ ---
                 logger.info("🔍 Reviewer: 批判的評価中...")
@@ -853,6 +877,7 @@ class AgentLoop:
         self.trigger_event = os.environ.get("TRIGGER_EVENT", "push")
         self.agents = self._select_agents()
         self.test_runner = TestRunner()
+        self.skip_tests = False  # ベースラインテスト失敗時にTrue
         self.results: list[LoopResult] = []
         self.cycle_history: list[dict] = []  # 各サイクルの結果を記録
 
@@ -936,6 +961,10 @@ class AgentLoop:
         logger.info("トリガー: %s | 最大サイクル: %d | ドライラン: %s",
                     self.trigger_event, self.max_cycles, self.dry_run)
 
+        # ベースラインテストを実行
+        baseline_ok = self.test_runner.check_baseline()
+        self.skip_tests = not baseline_ok
+
         # 改善用固定ブランチに切り替え
         if not self.dry_run:
             self._ensure_improvement_branch()
@@ -993,7 +1022,9 @@ class AgentLoop:
                 if not self._is_relevant(file_path, agent):
                     continue
 
-                loop = GeneratorReviewerLoop(agent, self.test_runner)
+                loop = GeneratorReviewerLoop(
+                    agent, self.test_runner, skip_tests=self.skip_tests,
+                )
                 result = loop.execute(file_path)
                 cycle_results.append(result)
                 self.results.append(result)
