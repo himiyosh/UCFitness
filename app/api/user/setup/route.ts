@@ -10,6 +10,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // 🛡️ セキュリティ: IDベースのユーザー特定（メール衝突によるIDOR防止）
+    const userId = (session.user as any).id as string | undefined;
+
     try {
         const body = await request.json();
         const { username, email, name } = body;
@@ -69,14 +72,14 @@ export async function POST(request: Request) {
                     .from('users')
                     .select('id')
                     .eq('email', updates.email!)
-                    .neq('email', session.user.email)
+                    .neq(userId ? 'id' : 'email', userId || session.user.email)
                     .single()
                 : Promise.resolve({ data: null }),
             supabaseAdmin
                 .from('users')
                 .select('id')
                 .eq('username', username)
-                .neq('email', session.user.email) // Ignore self
+                .neq(userId ? 'id' : 'email', userId || session.user.email) // Ignore self
                 .single(),
         ]);
 
@@ -96,11 +99,11 @@ export async function POST(request: Request) {
         }
 
         // Update User
-        // We identify user by their CURRENT session email (which might be the pending one)
+        // 🛡️ セキュリティ: IDが利用可能な場合はIDで特定（メール衝突によるIDOR防止）
         const { error: updateError } = await supabaseAdmin
             .from('users')
             .update(updates)
-            .eq('email', session.user.email);
+            .eq(userId ? 'id' : 'email', userId || session.user.email);
 
         if (updateError) {
             reportError("user-setup", updateError);

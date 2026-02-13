@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { reportError } from '@/lib/errors';
 import { generateAffiliateLink, searchProductCandidates, detectInputType } from '@/lib/amazon-creators-api';
 
 export const runtime = 'edge';
@@ -46,11 +47,10 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json(result);
-    } catch (error) {
-        console.error('[API] アフィリエイトリンク生成エラー:', error);
-        const message = error instanceof Error ? error.message : 'Unknown error';
+    } catch (error: unknown) {
+        reportError('amazon/search', error);
         return NextResponse.json(
-            { error: `リンク生成に失敗しました: ${message}` },
+            { error: 'リンク生成に失敗しました' },
             { status: 500 }
         );
     }

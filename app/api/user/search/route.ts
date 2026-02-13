@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { reportError } from "@/lib/errors";
 import { sanitizeSearchQuery } from "@/lib/security-utils";
 import { NextResponse } from "next/server";
 
@@ -47,14 +48,14 @@ export async function GET(request: Request) {
         const { data: users, error } = await queryBuilder;
 
         if (error) {
-            console.error("Search User Error:", error instanceof Error ? error.message : "Unknown error");
+            reportError('user/search', error);
             return NextResponse.json({ error: "Search failed" }, { status: 500 });
         }
 
         return NextResponse.json({ users: users || [] });
 
     } catch (error: unknown) {
-        console.error("Search Request Error:", error instanceof Error ? error.message : "Unknown error");
+        reportError('user/search', error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

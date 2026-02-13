@@ -8,11 +8,14 @@ import UserMenu from "@/components/UserMenu";
 import UCHintBalloon from "@/components/UCHintBalloon";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import CoinBalanceCard from "@/components/CoinBalanceCard";
-import CoinGrowthChart from "@/components/CoinGrowthChart";
-import TransactionHistory from "@/components/TransactionHistory";
-import InvestorRankPanel from "@/components/InvestorRankPanel";
+import nextDynamic from 'next/dynamic';
 import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/coin-service";
 import { getTranslations } from "next-intl/server";
+
+// ⚡ パフォーマンス: Recharts系の重いチャートコンポーネントを遅延読み込み
+const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart'), { ssr: false });
+const TransactionHistory = nextDynamic(() => import('@/components/TransactionHistory'), { ssr: false });
+const InvestorRankPanel = nextDynamic(() => import('@/components/InvestorRankPanel'), { ssr: false });
 
 export const dynamic = 'force-dynamic';
 

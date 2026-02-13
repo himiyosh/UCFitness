@@ -42,8 +42,8 @@ export async function POST(request: Request) {
             newBalance: result.newBalance,
             userItem: result.userItem,
         });
-    } catch (error) {
-        console.error('Shop purchase error:', error);
+    } catch (error: unknown) {
+        reportError('shop/purchase', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
