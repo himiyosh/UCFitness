@@ -40,9 +40,9 @@ export async function GET(request: Request) {
         if (isUuid) {
             queryBuilder = queryBuilder.eq('id', cleanQuery);
         } else {
-            // ILIKE for username or email
-            // We use 'or' to search both
-            queryBuilder = queryBuilder.or(`username.ilike.%${cleanQuery}%,email.eq.${cleanQuery}`);
+            // ILIKE for username only
+            // 🛡️ Sentinel: Removed email search to prevent email enumeration (privacy leak)
+            queryBuilder = queryBuilder.ilike('username', `%${cleanQuery}%`);
         }
 
         const { data: users, error } = await queryBuilder;
