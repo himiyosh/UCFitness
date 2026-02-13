@@ -82,14 +82,15 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
                         {isThinking ? 'Deleting...' : 'Delete Group'}
                     </button>
                     <button
-                        onClick={() => { setIsConfirming(false); setConfirmText(''); }}
-                        className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-medium rounded-lg hover:bg-gray-50 text-sm"
+                        onClick={() => { setIsConfirming(false); setConfirmText(''); setError(null); }}
+                        disabled={isThinking}
+                        className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-medium rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Cancel
                     </button>
                 </div>
                 {error && (
-                    <p className="text-red-600 text-xs mt-2">{error}</p>
+                    <p className="text-red-600 text-xs mt-2" role="alert">{error}</p>
                 )}
             </div>
         );

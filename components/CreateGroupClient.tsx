@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -148,8 +148,8 @@ export default function CreateGroupClient() {
     router.refresh();
   };
 
-  // ── ステップインジケーター ──
-  const StepIndicator = () => (
+  // ── ステップインジケーター（useMemoで安定化し不要なDOM再生成を防止） ──
+  const stepIndicator = useMemo(() => (
     <div className="flex items-center justify-center gap-0">
       {/* ステップ1 */}
       <div className="flex items-center gap-2">
@@ -182,7 +182,7 @@ export default function CreateGroupClient() {
         </span>
       </div>
     </div>
-  );
+  ), [step, t]);
 
   return (
     <main className="min-h-screen bg-[var(--theme-page-bg)]">
@@ -212,7 +212,7 @@ export default function CreateGroupClient() {
         </div>
 
         {/* ステップインジケーター */}
-        <StepIndicator />
+        {stepIndicator}
 
         {/* ═══════════════════ ステップ1: 基本情報 ═══════════════════ */}
         {step === 1 && (

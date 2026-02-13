@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './Toast';
 
@@ -13,11 +13,13 @@ export default function LeaveGroupButton({
 }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const processingRef = useRef(false);
     const router = useRouter();
     const toast = useToast();
 
     const handleLeave = useCallback(async () => {
-        if (isProcessing) return;
+        if (processingRef.current) return;
+        processingRef.current = true;
         setIsProcessing(true);
         try {
             const res = await fetch('/api/user/group', {
@@ -32,6 +34,7 @@ export default function LeaveGroupButton({
             if (!res.ok) {
                 const err = await res.json().catch(() => null);
                 toast.error(err?.error || 'Failed to leave group');
+                processingRef.current = false;
                 setIsProcessing(false);
                 setShowConfirm(false);
                 return;
@@ -43,10 +46,11 @@ export default function LeaveGroupButton({
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'An unexpected error occurred';
             toast.error(message);
+            processingRef.current = false;
             setIsProcessing(false);
             setShowConfirm(false);
         }
-    }, [isProcessing, groupKeyword, router, toast]);
+    }, [groupKeyword, router, toast]);
 
     return (
         <div className="bg-white rounded-xl p-6 border border-gray-100 text-center shadow-sm">

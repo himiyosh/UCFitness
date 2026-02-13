@@ -60,6 +60,20 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
         if (isOpen && modalRef.current) modalRef.current.focus();
     }, [isOpen]);
 
+    // プロパティ変更時に状態を同期（モーダルが開くたびに最新値を反映）
+    useEffect(() => {
+        if (isOpen) {
+            setName(currentName);
+            setIsPublic(isVisible);
+            setIconPreview(currentIcon);
+            setHeaderPreview(currentHeader);
+            setIconFile(null);
+            setHeaderFile(null);
+            setError(null);
+            setShowDangerZone(false);
+        }
+    }, [isOpen, currentName, currentIcon, currentHeader, isVisible]);
+
     const validateFile = useCallback((file: File): string | null => {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
             return 'Invalid file type. Please use JPEG, PNG, GIF, or WebP.';
@@ -252,7 +266,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                 onClick={() => setIsPublic(!isPublic)}
                                 className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2 ${isPublic ? 'bg-[var(--theme-primary)]' : 'bg-gray-200'}`}
                                 role="switch"
-                                aria-checked={isPublic ? 'true' : 'false'}
+                                aria-checked={isPublic}
                                 aria-label="Show in Rankings"
                             >
                                 <span

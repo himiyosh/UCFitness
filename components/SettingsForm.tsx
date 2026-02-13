@@ -35,12 +35,11 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     const [switchingLocale, setSwitchingLocale] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    // フレームカラーのリアクティブ状態
-    const initialFrameColor = (() => {
+    // フレームカラーのリアクティブ状態（遅延初期化で不要な再計算を防止）
+    const [activeFrameColor, setActiveFrameColor] = useState<string | null>(() => {
         const equipped = ownedFrames.find(f => f.isEquipped);
         return equipped ? getFrameColor(equipped.previewValue) : null;
-    })();
-    const [activeFrameColor, setActiveFrameColor] = useState<string | null>(initialFrameColor);
+    });
     const router = useRouter(); // Use navigation router
     const pathname = usePathname();
     const locale = useLocale();
@@ -92,7 +91,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
         }
     }, [switchingLocale, update, router, pathname]);
 
-    const handleSave = async () => {
+    const handleSave = useCallback(async () => {
         const trimmedName = name.trim();
         const trimmedUsername = username.trim();
 
@@ -131,7 +130,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
         } finally {
             setIsSaving(false);
         }
-    };
+    }, [name, username, router, t]);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
