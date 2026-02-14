@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter } from '@/navigation';
+import { Link } from '@/navigation';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
@@ -38,7 +38,6 @@ export default function GroupDetailLeaderboard({
     onPageChange: (page: number) => void
 }) {
     const locale = useLocale();
-    const router = useRouter();
     const ga = useTranslations('GroupDetail');
     const lt = useTranslations('Leaderboard');
     const commonT = useTranslations('Common');
@@ -102,9 +101,10 @@ export default function GroupDetailLeaderboard({
                                     const isCurrentUser = entry.users.id === userId;
 
                                     return (
-                                        <li key={entry.users.id} className={`leaderboard-row px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 cursor-pointer hover:shadow-sm ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
-                                            onClick={() => entry.users.username && router.push(`/user/${entry.users.username}`)}
-                                        >
+                                        <li key={entry.users.id} className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 hover:shadow-sm ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}>
+                                            {entry.users.username ? (
+                                                <Link href={`/user/${entry.users.username}`} className="absolute inset-0 z-20" aria-label={entry.users?.name || ''} />
+                                            ) : null}
                                             <div className="flex items-center gap-3">
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
                                                     style={rank === 1 ? {
@@ -134,7 +134,7 @@ export default function GroupDetailLeaderboard({
 
                                                 <div>
                                                     <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                                                        <span className={entry.users.username ? 'hover:text-[var(--theme-primary)] hover:underline decoration-[var(--theme-primary)]/30' : ''}>
+                                                        <span>
                                                             {entry.users?.name || commonT('anonymous')}
                                                         </span>
                                                         {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">{commonT('you')}</span>}
