@@ -122,21 +122,34 @@ export async function processCoins(userId: string, steps: number, date: string) 
 
 /**
  * 現在の連続目標達成日数を計算
+ * ストリークシールドが使用された日は「パス」として扱う
  */
 async function calculateCurrentStreak(userId: string, currentDate: string, stepGoal: number): Promise<number> {
     // 過去60日分のデータを取得（十分な範囲）
     const sixtyDaysAgo = new Date(new Date(currentDate).getTime() - 60 * 24 * 60 * 60 * 1000);
     const startDate = sixtyDaysAgo.toISOString().split('T')[0];
 
-    const { data: history } = await supabaseAdmin
-        .from('daily_steps')
-        .select('date, steps')
-        .eq('user_id', userId)
-        .gte('date', startDate)
-        .lte('date', currentDate)
-        .order('date', { ascending: false });
+    // ⚡ 歩数データとシールド使用日を並列取得
+    const [historyResult, shieldResult] = await Promise.all([
+        supabaseAdmin
+            .from('daily_steps')
+            .select('date, steps')
+            .eq('user_id', userId)
+            .gte('date', startDate)
+            .lte('date', currentDate)
+            .order('date', { ascending: false }),
+        supabaseAdmin
+            .from('user_streak_shields')
+            .select('last_used_date')
+            .eq('user_id', userId)
+            .single(),
+    ]);
 
+    const history = historyResult.data;
     if (!history || history.length === 0) return 0;
+
+    // シールド使用日
+    const shieldUsedDate = shieldResult.data?.last_used_date || null;
 
     // 日付でMapに変換
     const stepsMap = new Map(history.map(h => [h.date, h.steps]));
@@ -150,6 +163,11 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
         const daySteps = stepsMap.get(dateStr);
 
         if (daySteps !== undefined && daySteps >= stepGoal) {
+            // 目標達成: ストリーク継続
+            streak++;
+            checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+        } else if (shieldUsedDate === dateStr) {
+            // シールドが使用された日: パスとして扱い、ストリーク継続
             streak++;
             checkDate.setUTCDate(checkDate.getUTCDate() - 1);
         } else {

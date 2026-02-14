@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 // --- 型定義 ---
 
-export type ShopCategory = 'ICON_FRAME' | 'TITLE' | 'THEME_COLOR';
+export type ShopCategory = 'ICON_FRAME' | 'TITLE' | 'THEME_COLOR' | 'CONSUMABLE';
 
 export interface ShopItem {
     id: string;
@@ -42,6 +42,7 @@ export interface EquippedItems {
     ICON_FRAME: (UserItem & { shop_items: ShopItem }) | null;
     TITLE: (UserItem & { shop_items: ShopItem }) | null;
     THEME_COLOR: (UserItem & { shop_items: ShopItem }) | null;
+    CONSUMABLE: null;
 }
 
 export interface PurchaseResult {
@@ -133,7 +134,7 @@ export async function userOwnsItem(userId: string, itemId: string): Promise<bool
 
 /** ユーザーの装備中アイテムを取得 */
 export async function getEquippedItems(userId: string): Promise<EquippedItems> {
-    if (!userId) return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
+    if (!userId) return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null, CONSUMABLE: null };
     const { data, error } = await supabaseAdmin
         .from('user_items')
         .select('*, shop_items(*)')
@@ -142,13 +143,13 @@ export async function getEquippedItems(userId: string): Promise<EquippedItems> {
 
     if (error) {
         reportError('getEquippedItems', error, { userId });
-        return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
+        return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null, CONSUMABLE: null };
     }
 
-    const equipped: EquippedItems = { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
+    const equipped: EquippedItems = { ICON_FRAME: null, TITLE: null, THEME_COLOR: null, CONSUMABLE: null };
     for (const item of (data as UserItem[])) {
         const category = item.shop_items?.category as ShopCategory;
-        if (category && category in equipped) {
+        if (category && category !== 'CONSUMABLE' && category in equipped) {
             equipped[category] = item as UserItem & { shop_items: ShopItem };
         }
     }
@@ -232,6 +233,20 @@ export async function purchaseItem(userId: string, itemId: string): Promise<Purc
         return { success: false, error: 'item_not_found' };
     }
 
+    // アイテム情報を取得してカテゴリを判定
+    const item = await getShopItem(itemId);
+    if (!item) {
+        return { success: false, error: 'item_not_found' };
+    }
+    if (!item.is_active) {
+        return { success: false, error: 'item_inactive' };
+    }
+
+    // --- 消耗品（CONSUMABLE）は別フロー: 複数回購入可能 ---
+    if (item.category === 'CONSUMABLE') {
+        return purchaseConsumable(userId, item);
+    }
+
     const idempotencyKey = `purchase_${userId}_${itemId}`;
 
     const { data, error } = await supabaseAdmin.rpc('purchase_item', {
@@ -282,6 +297,74 @@ export async function purchaseItem(userId: string, itemId: string): Promise<Purc
         success: true,
         userItem: userItem as UserItem,
         newBalance: result.new_balance,
+    };
+}
+
+// ============================================
+// 消耗品購入（ストリークシールド等）
+// ============================================
+
+/** 消耗品を購入する（複数回購入可能、user_streak_shields を upsert） */
+async function purchaseConsumable(userId: string, item: ShopItem): Promise<PurchaseResult> {
+    const idempotencyKey = `consumable_${userId}_${item.id}_${Date.now()}`;
+
+    // deductBalance で残高を減算
+    const { deductBalance } = await import('./coin-service');
+    const deductResult = await deductBalance(
+        userId,
+        item.price,
+        'PURCHASE',
+        `Purchase: ${item.name_en}`,
+        idempotencyKey,
+    );
+
+    if (!deductResult.success) {
+        if (deductResult.error === 'insufficient_balance') {
+            return { success: false, error: 'insufficient_balance' };
+        }
+        return { success: false, error: 'unknown' };
+    }
+
+    // ストリークシールドの場合: user_streak_shields をインクリメント
+    if (item.item_code === 'streak_shield') {
+        // 既存レコードを確認
+        const { data: existing } = await supabaseAdmin
+            .from('user_streak_shields')
+            .select('remaining_uses')
+            .eq('user_id', userId)
+            .single();
+
+        if (existing) {
+            // 既存レコード: remaining_uses をインクリメント
+            const { error: updateError } = await supabaseAdmin
+                .from('user_streak_shields')
+                .update({
+                    remaining_uses: existing.remaining_uses + 1,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('user_id', userId);
+
+            if (updateError) {
+                reportError('purchaseConsumable:increment', updateError, { userId });
+            }
+        } else {
+            // 新規レコード: remaining_uses=1 で作成
+            const { error: insertError } = await supabaseAdmin
+                .from('user_streak_shields')
+                .insert({
+                    user_id: userId,
+                    remaining_uses: 1,
+                });
+
+            if (insertError) {
+                reportError('purchaseConsumable:insert', insertError, { userId });
+            }
+        }
+    }
+
+    return {
+        success: true,
+        newBalance: deductResult.new_balance,
     };
 }
 
@@ -381,6 +464,8 @@ export function getCategoryMeta(category: ShopCategory): { icon: string; labelEn
             return { icon: '🏷️', labelEn: 'Titles', labelJa: '称号' };
         case 'THEME_COLOR':
             return { icon: '🎨', labelEn: 'Theme Colors', labelJa: 'テーマカラー' };
+        case 'CONSUMABLE':
+            return { icon: '🛡️', labelEn: 'Consumables', labelJa: '消耗品' };
     }
 }
 

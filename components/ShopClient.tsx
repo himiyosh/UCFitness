@@ -33,6 +33,7 @@ const TABS: { key: TabKey; icon: string; labelKey: string }[] = [
     { key: 'ICON_FRAME', icon: '🖼️', labelKey: 'iconFrames' },
     { key: 'TITLE', icon: '🏷️', labelKey: 'titles' },
     { key: 'THEME_COLOR', icon: '🎨', labelKey: 'themeColors' },
+    { key: 'CONSUMABLE', icon: '🛡️', labelKey: 'consumables' },
 ];
 
 const RANK_ORDER: Record<string, number> = {
@@ -189,7 +190,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 
     // カテゴリ別の未所持アイテム数
     const categoryStats = useMemo(() => {
-        const stats: Record<string, number> = { ICON_FRAME: 0, TITLE: 0, THEME_COLOR: 0 };
+        const stats: Record<string, number> = { ICON_FRAME: 0, TITLE: 0, THEME_COLOR: 0, CONSUMABLE: 0 };
         for (const item of items) {
             if (item.is_active && !ownedItemIds.has(item.id)) {
                 stats[item.category] = (stats[item.category] ?? 0) + 1;
@@ -272,6 +273,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                         { icon: '🖼️', label: t('iconFrames'), count: categoryStats.ICON_FRAME },
                         { icon: '🏷️', label: t('titles'), count: categoryStats.TITLE },
                         { icon: '🎨', label: t('themeColors'), count: categoryStats.THEME_COLOR },
+                        { icon: '🛡️', label: t('consumables'), count: categoryStats.CONSUMABLE },
                     ].map(cat => (
                         <div key={cat.label} className="flex items-center gap-1.5 text-white/90">
                             <span className="text-sm">{cat.icon}</span>

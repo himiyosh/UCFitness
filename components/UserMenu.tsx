@@ -127,6 +127,26 @@ export default function UserMenu({ user }: UserMenuProps) {
                     </Link>
 
                     <Link
+                        href="/challenges"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        role="menuitem"
+                        tabIndex={-1}
+                        onClick={() => setIsOpen(false)}
+                    >
+                        🎯 {t('challenges')}
+                    </Link>
+
+                    <Link
+                        href="/analytics"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        role="menuitem"
+                        tabIndex={-1}
+                        onClick={() => setIsOpen(false)}
+                    >
+                        📊 {t('analytics')}
+                    </Link>
+
+                    <Link
                         href="/settings"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                         role="menuitem"

@@ -16,6 +16,7 @@ import JoinGroupPreview from "@/components/JoinGroupPreview";
 import nextDynamic from 'next/dynamic';
 import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
 import { getTranslations } from 'next-intl/server';
+import GroupEventList from "@/components/GroupEventList";
 
 // ⚡ パフォーマンス: GroupAnalytics（内部でRecharts使用）を遅延読み込み
 const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
@@ -77,6 +78,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const isMember = !!membership;
     // @ts-ignore
     const isOwner = membership?.role === 'OWNER';
+    const isOwnerOrAdmin = membership?.role === 'OWNER' || membership?.role === 'ADMIN';
 
     // 3. Handle Non-Members -> Show Join Screen
     if (!isMember) {
@@ -242,6 +244,11 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             <GroupHeaderActions group={group} isOwner={isOwner} />
                         </div>
                     </div>
+                </section>
+
+                {/* グループイベントセクション */}
+                <section>
+                    <GroupEventList groupId={groupId} isOwnerOrAdmin={isOwnerOrAdmin} />
                 </section>
 
                 <div className="space-y-12">
