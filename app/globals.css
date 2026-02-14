@@ -1341,13 +1341,13 @@ button:not(:disabled) {
 @keyframes ringPulse {
   0% {
     opacity: 0.5;
-    stroke-width: 2;
+    stroke-width: 2.5;
     r: 33;
   }
 
   100% {
     opacity: 0;
-    stroke-width: 0.5;
+    stroke-width: 1;
     r: 38;
   }
 }

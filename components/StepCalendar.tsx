@@ -215,7 +215,7 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                     {isAchieved && (
                         <circle
                             cx="40" cy="40" r={r}
-                            fill="none" stroke="#22c55e" strokeWidth="2"
+                            fill="none" stroke="#22c55e" strokeWidth="2.5"
                             className="animate-[ringPulse_1.5s_ease-out_infinite]"
                             style={{ transformOrigin: '40px 40px' }}
                         />
