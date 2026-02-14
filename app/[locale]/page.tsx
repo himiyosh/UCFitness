@@ -290,9 +290,9 @@ export default async function Home() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         {/* MAIN LAYOUT CONTAINER */}
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6">
 
           {/* TOP SECTION: Motivation */}
           <div className="flex flex-col gap-6">
@@ -358,21 +358,9 @@ export default async function Home() {
             <DashboardChallenges />
           )}
 
-          {/* デイリーミッション + ギアレコメンド統合パネル */}
-          {session && userId && (
-            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 gap-6 lg:items-stretch">
-              <div className="lg:col-span-8 flex [&>div]:w-full">
-                <div className="w-full"><DailyMissions /></div>
-              </div>
-              <div className="lg:col-span-4 flex [&>div]:w-full">
-                <div className="w-full"><TrendingGear /></div>
-              </div>
-            </div>
-          )}
-
           {/* アクティビティ統計 + 歩数カレンダー（統合パネル） + フォロー中ユーザー */}
           {session && userId && (
-            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 gap-6 lg:items-stretch">
+            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-6 gap-5 lg:items-stretch">
               <div className="lg:col-span-8 flex [&>div]:w-full [&>div>div]:h-full">
                 <div className="w-full">
                   <StepCalendar
@@ -391,6 +379,18 @@ export default async function Home() {
               </div>
               <div className="lg:col-span-4 flex [&>div]:w-full">
                 <div className="w-full"><FollowingPanel /></div>
+              </div>
+            </div>
+          )}
+
+          {/* デイリーミッション + ギアレコメンド統合パネル */}
+          {session && userId && (
+            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-6 gap-5 lg:items-stretch">
+              <div className="lg:col-span-5 flex [&>div]:w-full">
+                <div className="w-full"><DailyMissions /></div>
+              </div>
+              <div className="lg:col-span-7 flex [&>div]:w-full">
+                <div className="w-full"><TrendingGear /></div>
               </div>
             </div>
           )}

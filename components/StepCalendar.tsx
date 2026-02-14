@@ -297,9 +297,9 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
         <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
-                <div className="mb-5 pb-5 border-b border-gray-100">
+                <div className="mb-4 pb-4 border-b border-gray-100">
                     {/* 今日の歩数 — メイン表示 */}
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-3">
                         <div>
                             <div className="flex items-center gap-2 mb-1.5">
                                 <div className="p-1.5 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
@@ -332,7 +332,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     </div>
 
                     {/* 週間・月間 サブ統計 */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2">
                         <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -364,7 +364,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             )}
 
             {/* ヘッダー: タイトル + 年ナビ */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                     <span>📅</span>
                     {t('title')}
@@ -475,28 +475,28 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     </div>
 
                     {/* 統計サマリー */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                        <div className="bg-gray-50 rounded-lg p-3 text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                        <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('totalSteps')}</p>
-                            <p className="text-lg sm:text-xl font-black text-gray-900 tabular-nums mt-0.5">
+                            <p className="text-base sm:text-lg font-black text-gray-900 tabular-nums mt-0.5">
                                 {stats.totalSteps.toLocaleString()}
                             </p>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-3 text-center">
+                        <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('activeDays')}</p>
-                            <p className="text-lg sm:text-xl font-black text-gray-900 tabular-nums mt-0.5">
+                            <p className="text-base sm:text-lg font-black text-gray-900 tabular-nums mt-0.5">
                                 {stats.activeDays} <span className="text-xs font-semibold text-gray-400">{t('days')}</span>
                             </p>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-3 text-center">
+                        <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('averageSteps')}</p>
-                            <p className="text-lg sm:text-xl font-black text-gray-900 tabular-nums mt-0.5">
+                            <p className="text-base sm:text-lg font-black text-gray-900 tabular-nums mt-0.5">
                                 {stats.avg.toLocaleString()}
                             </p>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-3 text-center">
+                        <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('longestStreak')}</p>
-                            <p className="text-lg sm:text-xl font-black text-gray-900 tabular-nums mt-0.5">
+                            <p className="text-base sm:text-lg font-black text-gray-900 tabular-nums mt-0.5">
                                 {stats.longestStreak} <span className="text-xs font-semibold text-gray-400">{t('days')}</span>
                             </p>
                         </div>
