@@ -542,7 +542,9 @@
         "steps": "steps",
         "noData": "No step data for this year",
         "less": "Less",
-        "more": "More"
+        "more": "More",
+        "showCalendar": "Show Calendar",
+        "hideCalendar": "Hide Calendar"
     },
     "Achievement": {
         "title": "Achievement Progress",

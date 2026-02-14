@@ -542,7 +542,9 @@
         "steps": "歩",
         "noData": "この年の歩数データはありません",
         "less": "少ない",
-        "more": "多い"
+        "more": "多い",
+        "showCalendar": "カレンダーを表示",
+        "hideCalendar": "カレンダーを非表示"
     },
     "Achievement": {
         "title": "実績進捗",

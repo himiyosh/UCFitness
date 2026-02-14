@@ -214,6 +214,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
     const [data, setData] = useState<StepDay[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -352,32 +353,45 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                 </div>
             )}
 
-            {/* ヘッダー: タイトル + 年ナビ */}
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+            {/* カレンダー トグルボタン */}
+            <button
+                onClick={() => setCalendarOpen((v) => !v)}
+                className="w-full flex items-center justify-between py-1.5 text-gray-500 hover:text-gray-700 transition-colors group"
+            >
+                <span className="flex items-center gap-1.5 text-xs font-bold">
                     <span>📅</span>
                     {t('title')}
-                </h3>
+                </span>
+                <svg className={`w-4 h-4 transition-transform duration-200 ${calendarOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {/* 折りたたみカレンダーセクション */}
+            {calendarOpen && (
+            <div className="mt-2">
+            {/* 年ナビ */}
+            <div className="flex items-center justify-end mb-2">
                 <div className="flex items-center gap-1">
                     <button
                         onClick={() => setYear((y) => y - 1)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+                        className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
                         aria-label="Previous year"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <span className="text-sm font-bold text-gray-700 tabular-nums min-w-[3rem] text-center">
+                    <span className="text-xs font-bold text-gray-600 tabular-nums min-w-[3rem] text-center">
                         {year}
                     </span>
                     <button
                         onClick={() => setYear((y) => y + 1)}
                         disabled={year >= currentYear}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         aria-label="Next year"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                     </button>
@@ -385,7 +399,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             </div>
 
             {data.length === 0 ? (
-                <div className="text-center py-8 text-sm text-[var(--foreground-muted)]">
+                <div className="text-center py-4 text-sm text-[var(--foreground-muted)]">
                     {t('noData')}
                 </div>
             ) : (
@@ -491,6 +505,8 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         </div>
                     </div>
                 </>
+            )}
+            </div>
             )}
         </div>
     );
