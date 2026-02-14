@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import Confetti from './Confetti';
 
 // 歩数データ型
 interface StepDay {
@@ -180,30 +181,59 @@ function HeatmapCell({
     );
 }
 
-// ゴール進捗リング（軽量SVG）
+// ゴール進捗リング（軽量SVG）+ 100%達成時の紙吹雪＆アニメーション
 function GoalRing({ current, goal }: { current: number; goal: number }) {
     const pct = Math.min(current / goal, 1);
+    const isAchieved = pct >= 1;
     const r = 32;
     const circ = 2 * Math.PI * r;
     const offset = circ * (1 - pct);
-    const color = pct >= 1 ? '#22c55e' : 'var(--theme-primary)';
+    const color = isAchieved ? '#22c55e' : 'var(--theme-primary)';
+
+    // 🎉 紙吹雪: 初回100%達成時のみ発火
+    const [hasTriggeredConfetti, setHasTriggeredConfetti] = useState(false);
+    const [showConfetti, setShowConfetti] = useState(false);
+
+    useEffect(() => {
+        if (isAchieved && !hasTriggeredConfetti) {
+            setShowConfetti(true);
+            setHasTriggeredConfetti(true);
+        }
+    }, [isAchieved, hasTriggeredConfetti]);
 
     return (
-        <div className="relative w-[110px] h-[110px] sm:w-[130px] sm:h-[130px]">
-            <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-                <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="5" />
-                <circle
-                    cx="40" cy="40" r={r} fill="none"
-                    stroke={color} strokeWidth="5" strokeLinecap="round"
-                    strokeDasharray={circ} strokeDashoffset={offset}
-                    className="transition-all duration-700 ease-out"
-                />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(pct * 100)}%</span>
-                <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{goal.toLocaleString()}</span>
+        <>
+            <Confetti
+                trigger={showConfetti}
+                duration={4000}
+                pieceCount={80}
+                onComplete={() => setShowConfetti(false)}
+            />
+            <div className={`relative w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] transition-transform duration-300 ${isAchieved ? 'animate-celebrate' : ''}`}>
+                <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
+                    <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="5" />
+                    <circle
+                        cx="40" cy="40" r={r} fill="none"
+                        stroke={color} strokeWidth="5" strokeLinecap="round"
+                        strokeDasharray={circ} strokeDashoffset={offset}
+                        className="transition-all duration-700 ease-out"
+                    />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    {isAchieved ? (
+                        <>
+                            <span className="text-lg">🎉</span>
+                            <span className="text-xs font-bold text-green-600">100%</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(pct * 100)}%</span>
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{goal.toLocaleString()}</span>
+                        </>
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     );
 }
 
