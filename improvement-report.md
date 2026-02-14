@@ -314,3 +314,51 @@
 ---
 
 *提案: GitHub Copilot (🔍 New Feature Discovery Agent) | Cycle 2 | 2026-02-14*
+
+---
+
+## 💰 収益化レビュー (2026-02-15)
+
+> **実施:** GitHub Copilot (💰 Monetization Agent)
+> **対象:** 全9ページ + Amazon コンポーネント2つ
+
+### 📊 広告スロット優先度マトリクス
+
+| ページ | 優先度 | 推奨スロット | リスク |
+|--------|--------|-------------|--------|
+| Dashboard | 🔴 高 | StepCalendar ↔ DashboardFollowing 間 | 低 |
+| Profile | 🔴 高 | StepCalendar 下部（右カラム） | 低 |
+| Groups List | 🟡 中 | GroupList 下部 | 低〜中 |
+| Group Detail | 🟡 中 | EventList ↔ Analytics 間 | 低 |
+| Wallet | 🟡 中 | TransactionHistory グリッド下部 | 低 |
+| Analytics | 🟡 中 | PersonalAnalytics 下部 | 低 |
+| Challenges | 🟡 中 | ChallengeList 下部 | 中 |
+| Shop | ⚪ 非推奨 | ❌ 広告なし推奨 | 🔴 高 |
+| Settings | ⚪ 非推奨 | ❌ 広告なし推奨 | 🔴 高 |
+
+### 🛒 Amazon アフィリエイト拡張機会
+
+1. **Dashboard**（最高トラフィック）— DashboardFollowing ↔ AnimatedLeaderboard 間に「トレンドフィットネスギア」ウィジェット追加
+2. **Group Detail** — グループ管理者がキュレーションする「グループ推奨ギア」（ソーシャルプルーフ効果）
+3. **Challenges** — チャレンジ達成時のギアレコメンデーション（「🏆 次のチャレンジに備えよう！」）
+
+### 🎨 広告統合前に修正すべきデザイン問題
+
+| 問題 | 対象ファイル | 詳細 |
+|------|-------------|------|
+| ハードコードされた orange 色 | `RecommendedItems.tsx` | ドットインジケーター `bg-orange-400`、ナビ矢印 `hover:text-orange-500` → `var(--theme-primary)` へ移行 |
+| ハードコードされた orange 色 | `AmazonProductSearch.tsx` | 生成ボタン `from-orange-500 to-amber-500`、カテゴリピル `orange-100/orange-800` → テーマカラーへ移行 |
+| max-width 不整合 | `challenges/page.tsx` | `max-w-4xl` → 他ページの `max-w-5xl` に統一すべき |
+| レイアウトパターン不整合 | `challenges/page.tsx` | Sticky ヘッダー・Breadcrumbs なし → 共通パターンに統一すべき |
+
+### 🏗️ AdSense 実装準備チェックリスト
+
+- [ ] `<AdSlot>` ラッパーコンポーネント作成（`size`: banner/leaderboard/rectangle, テーマ対応, 「広告」ラベル）
+- [ ] 広告スロットとインタラクティブ要素間に `space-y-8` 以上を確保
+- [ ] Shop 商品グリッド・Settings フォーム・モーダル内には広告禁止
+- [ ] レスポンシブ対応: モバイル 320×50、デスクトップ 728×90
+- [ ] Intersection Observer による遅延読み込み（Core Web Vitals 保護）
+
+---
+
+*レビュー: GitHub Copilot (💰 Monetization Agent) | 2026-02-15*

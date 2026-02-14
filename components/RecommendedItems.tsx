@@ -235,7 +235,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {slideIndex > 0 && (
                     <button
                         onClick={slidePrev}
-                        className="absolute left-[-6px] top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 border border-black/10 shadow-lg flex items-center justify-center text-gray-500 hover:text-orange-500 hover:shadow-xl active:scale-95 transition-all"
+                        className="absolute left-[-6px] top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 border border-black/10 shadow-lg flex items-center justify-center text-gray-500 hover:text-[var(--theme-primary)] hover:shadow-xl active:scale-95 transition-all"
                         aria-label="Previous"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -248,7 +248,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {slideIndex < maxSlide && (
                     <button
                         onClick={slideNext}
-                        className="absolute right-[-6px] top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 border border-black/10 shadow-lg flex items-center justify-center text-gray-500 hover:text-orange-500 hover:shadow-xl active:scale-95 transition-all"
+                        className="absolute right-[-6px] top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 border border-black/10 shadow-lg flex items-center justify-center text-gray-500 hover:text-[var(--theme-primary)] hover:shadow-xl active:scale-95 transition-all"
                         aria-label="Next"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -266,7 +266,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 onClick={() => setSlideIndex(i)}
                                 className={`h-1.5 rounded-full transition-all duration-300 ${
                                     i === slideIndex
-                                        ? 'w-5 bg-orange-400'
+                                        ? 'w-5 bg-[var(--theme-primary)]'
                                         : 'w-1.5 bg-gray-200 hover:bg-gray-300'
                                 }`}
                                 aria-label={`Slide ${i + 1}`}

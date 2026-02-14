@@ -3,6 +3,9 @@
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useCallback } from 'react';
 import ChallengeCard from '@/components/ChallengeCard';
+import dynamic from 'next/dynamic';
+
+const ChallengeGearBanner = dynamic(() => import('@/components/ChallengeGearBanner'));
 
 // ============================================
 // チャレンジ一覧 コンポーネント
@@ -146,6 +149,11 @@ export default function ChallengeList() {
                     <div className="text-5xl mb-4">🎯</div>
                     <p className="text-gray-500 text-sm">{t('noActive')}</p>
                 </div>
+            )}
+
+            {/* チャレンジ達成ギアバナー（completedタブのみ） */}
+            {!loading && !error && tab === 'completed' && challenges.length > 0 && (
+                <ChallengeGearBanner />
             )}
 
             {/* チャレンジ一覧 */}
