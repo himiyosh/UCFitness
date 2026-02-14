@@ -47,3 +47,8 @@
 **Vulnerability:** `app/api/user/group/route.ts` validated unique group keywords but failed to validate group names (length) and image URLs (protocol). This allowed creation of groups with excessively long names (DoS/UI break) or potentially malicious image URLs.
 **Learning:** Partial validation is dangerous. Validating the "key" (keyword) but not the "value" (name, metadata) leaves the application exposed. All user inputs, especially those stored and displayed to other users, must be validated.
 **Prevention:** Implement comprehensive input validation for all fields in a request payload, not just the unique identifiers. Use strict length limits and protocol allowlists for URLs.
+
+## 2026-05-23 - Email Enumeration via RLS
+**Vulnerability:** The `users` table RLS policy allowed authenticated users (and potentially anonymous users) to query the `email` column via the Supabase client, enabling email enumeration.
+**Learning:** Even with RLS policies restricting row access, if column-level privileges are broad (e.g., via previous grants), sensitive columns can be exposed. Client-side code should strictly use only public profile data.
+**Prevention:** Explicitly restrict column-level privileges on public tables using `REVOKE SELECT ON table` followed by `GRANT SELECT (col1, col2)` for only the safe columns. Keep PII like emails restricted to server-side code (using `service_role` key) only.
