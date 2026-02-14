@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Confetti from './Confetti';
 
 // 歩数データ型
@@ -108,9 +108,9 @@ function HeatmapCell({
     const [showTooltip, setShowTooltip] = useState(false);
     const level = getIntensityLevel(steps);
 
-    // CSS変数ベースの色で opacity を制御
+    // 統合グリッド内の位置（列1は曜日ラベル用のため +2）
     const colorStyle: React.CSSProperties = {
-        gridColumn: col + 1,
+        gridColumn: col + 2,
         gridRow: row + 1,
     };
 
@@ -139,7 +139,7 @@ function HeatmapCell({
             onTouchEnd={() => setShowTooltip(false)}
         >
             <div
-                className="w-full h-full rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]"
+                className="aspect-square w-full rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]"
                 style={levelStyles[level]}
             />
             {showTooltip && (
@@ -254,12 +254,10 @@ function CalendarSkeleton() {
                 <div className="h-6 w-40 bg-gray-200 rounded" />
                 <div className="h-8 w-24 bg-gray-200 rounded" />
             </div>
-            <div className="overflow-x-auto">
-                <div className="grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(53, 10px)', gridTemplateRows: 'repeat(7, 10px)' }}>
-                    {Array.from({ length: 53 * 7 }).map((_, i) => (
-                        <div key={i} className="w-[10px] h-[10px] bg-gray-100 rounded-sm" />
-                    ))}
-                </div>
+            <div className="grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(53, 1fr)' }}>
+                {Array.from({ length: 53 * 7 }).map((_, i) => (
+                    <div key={i} className="aspect-square bg-gray-100 rounded-sm" />
+                ))}
             </div>
         </div>
     );
@@ -324,24 +322,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
     // 曜日ラベル
     const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // セルサイズをコンテナ幅に合わせて動的計算
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [cellSize, setCellSize] = useState(4); // 初期値は小さく（ResizeObserver で即補正）
 
-    useEffect(() => {
-        const el = containerRef.current;
-        if (!el) return;
-        const compute = () => {
-            const w = el.clientWidth;
-            // 利用可能幅 = コンテナ幅 - 曜日ラベル(24px)
-            // セルサイズ = (利用可能幅 - gap合計) / 列数
-            const size = Math.floor((w - 24) / maxCol - 2);
-            setCellSize(Math.max(4, Math.min(13, size)));
-        };
-        const observer = new ResizeObserver(compute);
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, [maxCol]);
 
     if (loading) {
         return (
@@ -486,68 +467,61 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     {t('noData')}
                 </div>
             ) : (
-                /* ヒートマップ */
-                <div ref={containerRef} className={`w-full${activity ? ' flex-1' : ''}`}>
-                    <div>
-                        {/* 月ラベル */}
-                        <div
-                            className="grid gap-[2px] mb-1"
-                            style={{ gridTemplateColumns: `24px repeat(${maxCol}, ${cellSize}px)` }}
-                        >
-                            <div />
-                            {Array.from({ length: maxCol }).map((_, colIdx) => {
-                                const label = monthLabels.find((ml) => ml.col === colIdx);
-                                return (
-                                    <div key={colIdx} className="text-[9px] text-gray-400 font-medium leading-none truncate">
-                                        {label ? label.label : ''}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                /* ヒートマップ（CSS 1fr で自動フィル） */
+                <div className={activity ? 'flex-1' : ''}>
+                    {/* 月ラベル */}
+                    <div
+                        className="grid gap-[2px] mb-0.5"
+                        style={{ gridTemplateColumns: `20px repeat(${maxCol}, 1fr)` }}
+                    >
+                        <div />
+                        {Array.from({ length: maxCol }).map((_, colIdx) => {
+                            const label = monthLabels.find((ml) => ml.col === colIdx);
+                            return (
+                                <div key={colIdx} className="text-[8px] text-gray-400 font-medium leading-none truncate">
+                                    {label ? label.label : ''}
+                                </div>
+                            );
+                        })}
+                    </div>
 
-                        {/* メイングリッド */}
-                        <div className="flex gap-[2px]">
-                            <div className="grid gap-[2px]" style={{ gridTemplateRows: `repeat(7, ${cellSize}px)` }}>
-                                {dayLabels.map((label, i) => (
-                                    <div
-                                        key={label}
-                                        className="text-[9px] text-gray-400 font-medium leading-none flex items-center pr-1"
-                                        style={{ height: `${cellSize}px` }}
-                                    >
-                                        {i % 2 === 1 ? label.slice(0, 3) : ''}
-                                    </div>
-                                ))}
-                            </div>
+                    {/* 統合グリッド: 曜日ラベル(列1) + データセル(列2+) */}
+                    <div
+                        className="grid gap-[2px]"
+                        style={{ gridTemplateColumns: `20px repeat(${maxCol}, 1fr)` }}
+                    >
+                        {/* 曜日ラベル */}
+                        {dayLabels.map((label, i) => (
                             <div
-                                className="grid gap-[2px]"
-                                style={{
-                                    gridTemplateColumns: `repeat(${maxCol}, ${cellSize}px)`,
-                                    gridTemplateRows: `repeat(7, ${cellSize}px)`,
-                                }}
+                                key={label}
+                                className="text-[8px] text-gray-400 font-medium leading-none flex items-center justify-end pr-0.5"
+                                style={{ gridColumn: 1, gridRow: i + 1 }}
                             >
-                                {gridCells.map((cell) => (
-                                    <HeatmapCell
-                                        key={cell.date}
-                                        date={cell.date}
-                                        steps={cell.steps}
-                                        col={cell.col}
-                                        row={cell.row}
-                                        stepsLabel={t('steps')}
-                                    />
-                                ))}
+                                {i % 2 === 1 ? label.slice(0, 3) : ''}
                             </div>
-                        </div>
+                        ))}
+                        {/* データセル */}
+                        {gridCells.map((cell) => (
+                            <HeatmapCell
+                                key={cell.date}
+                                date={cell.date}
+                                steps={cell.steps}
+                                col={cell.col}
+                                row={cell.row}
+                                stepsLabel={t('steps')}
+                            />
+                        ))}
+                    </div>
 
-                        {/* 凡例 */}
-                        <div className="flex items-center gap-1.5 mt-2 justify-end text-[10px] text-gray-400">
-                            <span>{t('less')}</span>
-                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: '#ebedf0' }} />
-                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
-                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
-                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />
-                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'var(--theme-primary)' }} />
-                            <span>{t('more')}</span>
-                        </div>
+                    {/* 凡例 */}
+                    <div className="flex items-center gap-1.5 mt-2 justify-end text-[10px] text-gray-400">
+                        <span>{t('less')}</span>
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#ebedf0' }} />
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'var(--theme-primary)' }} />
+                        <span>{t('more')}</span>
                     </div>
                 </div>
             )}
