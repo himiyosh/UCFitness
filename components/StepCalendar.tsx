@@ -386,15 +386,15 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         </div>
 
                         {/* 週間・月間パネル（中央の空白エリアに配置） */}
-                        <div className="flex-1 grid grid-cols-2 gap-1 self-center">
-                            <div className="bg-gray-50 rounded-lg py-1.5 text-center">
+                        <div className="grid grid-cols-2 gap-1 self-center mx-2">
+                            <div className="bg-gray-50 rounded-lg py-1.5 px-3 text-center min-w-[90px]">
                                 <div className="text-[10px] text-gray-400 font-medium leading-none mt-0.5">{dashT('thisWeek')}</div>
                                 <div className="text-base font-black text-gray-800 tabular-nums leading-tight">{activity.weeklySteps.toLocaleString()}</div>
                                 <div className={`text-[10px] font-semibold leading-none mb-0.5 ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
                                     {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
                                 </div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg py-1.5 text-center">
+                            <div className="bg-gray-50 rounded-lg py-1.5 px-3 text-center min-w-[90px]">
                                 <div className="text-[10px] text-gray-400 font-medium leading-none mt-0.5">{dashT('thisMonth')}</div>
                                 <div className="text-base font-black text-gray-800 tabular-nums leading-tight">{activity.monthlySteps.toLocaleString()}</div>
                                 <div className={`text-[10px] font-semibold leading-none mb-0.5 ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
