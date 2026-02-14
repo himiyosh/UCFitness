@@ -18,7 +18,6 @@ import { Period } from '@/components/LeaderboardTabs';
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const AnimatedLeaderboard = nextDynamic(() => import('@/components/AnimatedLeaderboard'));
-const GoalProgressChart = nextDynamic(() => import('@/components/GoalProgressChart'));
 const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'));
 const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'));
 const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast'));
@@ -295,110 +294,11 @@ export default async function Home() {
         {/* MAIN LAYOUT CONTAINER */}
         <div className="flex flex-col gap-8">
 
-          {/* TOP SECTION: Stats & Motivation (Equal Height on Desktop) */}
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 min-h-[220px]">
-            {/* My Stats Panel (Left: 5 cols) - Premium Design */}
+          {/* TOP SECTION: Motivation */}
+          <div className="flex flex-col gap-6">
+            {/* Motivation / Status - Full Width */}
             {session && (
-              <div className="lg:col-span-5 flex flex-col h-full overflow-hidden rounded-2xl bg-white shadow-lg shadow-[var(--theme-primary)]/10 border border-[var(--theme-primary)]/10 relative group">
-                {/* Decorative Background Blob */}
-                <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-gradient-to-br from-[var(--theme-primary)]/20 to-[var(--theme-secondary)]/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
-
-                <div className="p-6 relative z-10 flex flex-col h-full justify-between">
-                  {/* Header */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
-                      {/* Bolt Icon */}
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">{t('yourActivity')}</h3>
-                  </div>
-
-                  {/* Today's Main Stat */}
-                  <div className="mb-6 flex items-start justify-between relative">
-                    <div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] drop-shadow-sm" style={{ fontFamily: '"Inter", sans-serif' }}>
-                          {mySteps.toLocaleString()}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-400">{t('stepsToday')}</span>
-                      </div>
-
-                      {/* Comparison Badge */}
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${mySteps - yesterdaySteps >= 0
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : 'bg-red-50 text-red-600 border border-red-100'
-                          }`}>
-                          {mySteps - yesterdaySteps >= 0 ? (
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                          ) : (
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                          )}
-                          {Math.abs(mySteps - yesterdaySteps).toLocaleString()}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">{t('vsYesterday')}</span>
-                      </div>
-                    </div>
-
-                    {/* Goal Progress Chart */}
-                    <div className="absolute right-4 -top-7 animate-in fade-in zoom-in duration-500 delay-150">
-                      <GoalProgressChart current={mySteps} goal={stepGoal} size={100} />
-                    </div>
-                  </div>
-
-                  {/* Secondary Stats Grid */}
-                  <div className="grid grid-cols-2 gap-3 mt-auto">
-                    {/* Weekly */}
-                    <Link
-                      href={username ? `/user/${username}#weekly-graph` : '/profile'}
-                      className="block bg-gray-50 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item cursor-pointer"
-                    >
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        {t('thisWeek')}
-                      </p>
-                      <div className="flex flex-col">
-                        <span className="text-2xl font-black text-gray-800 group-hover/item:text-indigo-600 transition-colors leaderboard-steps activity-stats-number">
-                          {myWeeklySteps.toLocaleString()}
-                        </span>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`text-[11px] font-bold ${myWeeklySteps >= lastWeekSteps ? 'delta-up' : 'delta-down'}`}>
-                            {myWeeklySteps >= lastWeekSteps ? '▲' : '▼'} {Math.abs(myWeeklySteps - lastWeekSteps).toLocaleString()}
-                          </span>
-                          <span className="text-[10px] text-gray-400">{t('vsLastWeek')}</span>
-                        </div>
-                      </div>
-                    </Link>
-
-                    {/* Monthly */}
-                    <Link
-                      href={username ? `/user/${username}#monthly-graph` : '/profile'}
-                      className="block bg-gray-50 p-3 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all duration-300 group/item cursor-pointer"
-                    >
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        {t('thisMonth')}
-                      </p>
-                      <div className="flex flex-col">
-                        <span className="text-2xl font-black text-gray-800 group-hover/item:text-indigo-600 transition-colors leaderboard-steps activity-stats-number">
-                          {myMonthlySteps.toLocaleString()}
-                        </span>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`text-[11px] font-bold ${myMonthlySteps >= lastMonthSteps ? 'delta-up' : 'delta-down'}`}>
-                            {myMonthlySteps >= lastMonthSteps ? '▲' : '▼'} {Math.abs(myMonthlySteps - lastMonthSteps).toLocaleString()}
-                          </span>
-                          <span className="text-[10px] text-gray-400">{t('vsLastMonth')}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Motivation / Status (Right: 7 cols) - Adjusted styling to match */}
-            {session && (
-              <div className="motivation-panel lg:col-span-7 flex flex-col justify-center h-full rounded-2xl p-4 sm:p-8 text-white shadow-xl shadow-[var(--theme-primary)]/20 relative overflow-hidden group">
+              <div className="motivation-panel flex flex-col justify-center h-full rounded-2xl p-4 sm:p-8 text-white shadow-xl shadow-[var(--theme-primary)]/20 relative overflow-hidden group min-h-[180px]">
 
                 {/* Background Image or Gradient */}
                 {primaryGroupBanner ? (
@@ -470,11 +370,24 @@ export default async function Home() {
             </div>
           )}
 
-          {/* Step Heatmap Calendar + フォロー中ユーザー統合パネル */}
+          {/* アクティビティ統計 + 歩数カレンダー（統合パネル） + フォロー中ユーザー */}
           {session && userId && (
             <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 gap-6 lg:items-stretch">
               <div className="lg:col-span-8 flex [&>div]:w-full [&>div>div]:h-full">
-                <div className="w-full"><StepCalendar userId={userId} /></div>
+                <div className="w-full">
+                  <StepCalendar
+                    userId={userId}
+                    activity={{
+                      todaySteps: mySteps,
+                      yesterdaySteps,
+                      weeklySteps: myWeeklySteps,
+                      lastWeekSteps,
+                      monthlySteps: myMonthlySteps,
+                      lastMonthSteps,
+                      stepGoal,
+                    }}
+                  />
+                </div>
               </div>
               <div className="lg:col-span-4 flex [&>div]:w-full">
                 <div className="w-full"><FollowingPanel /></div>
