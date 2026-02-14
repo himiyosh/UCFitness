@@ -1340,15 +1340,15 @@ button:not(:disabled) {
 /* GoalRing 達成パルス — SVGリングと中心一致 */
 @keyframes ringPulse {
   0% {
-    opacity: 0.6;
-    stroke-width: 3;
-    r: 32;
+    opacity: 0.5;
+    stroke-width: 2;
+    r: 33;
   }
 
   100% {
     opacity: 0;
-    stroke-width: 1;
-    r: 39;
+    stroke-width: 0.5;
+    r: 38;
   }
 }
 
