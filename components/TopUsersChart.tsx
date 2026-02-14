@@ -32,13 +32,13 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
 
     return (
         <div
-            className={`p-4 rounded-xl shadow-sm mb-6 hover:shadow-md transition-shadow ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}
+            className={`p-3 sm:p-4 rounded-xl shadow-sm mb-3 sm:mb-6 hover:shadow-md transition-shadow ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}
             role="img"
             aria-label={title ? `${title} - bar chart showing top ${chartData.length} users` : `Bar chart showing top ${chartData.length} users`}
         >
-            {title && <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>}
+            {title && <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-4 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>}
 
-            <div className="flex items-end justify-between gap-2 h-auto w-full pt-4 pb-2">
+            <div className="flex items-end justify-between gap-2 h-auto w-full pt-2 sm:pt-4 pb-1 sm:pb-2">
                 {chartData.map((entry, index) => {
                     const user = entry.users;
                     if (!user?.id) return null;
@@ -60,7 +60,7 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
                             </div>
 
                             {/* Bar Area - Fixed Height for plotting */}
-                            <div className="w-full h-32 sm:h-40 flex items-end justify-center relative">
+                            <div className="w-full h-20 sm:h-40 flex items-end justify-center relative">
                                 <div
                                     className={`
                                         w-full max-w-[20px] sm:max-w-[32px] rounded-t-md transition-all duration-700 ease-out relative
@@ -74,7 +74,7 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
                                     style={{ height: `${heightPercentage}%` }}
                                 >
                                     {rank <= 3 && (
-                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-lg drop-shadow-sm transition-transform group-hover:scale-110 group-focus:scale-110">
+                                        <div className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 text-sm sm:text-lg drop-shadow-sm transition-transform group-hover:scale-110 group-focus:scale-110">
                                             {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
                                         </div>
                                     )}
