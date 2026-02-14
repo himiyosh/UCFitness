@@ -448,6 +448,14 @@
         "title": "Trending Fitness Gear",
         "subtitle": "Popular picks from the community"
     },
+    "GroupGear": {
+        "title": "Members' Gear",
+        "subtitle": "Popular items in this group"
+    },
+    "ChallengeGear": {
+        "title": "Gear Up for the Next Challenge!",
+        "subtitle": "Popular fitness gear from the community"
+    },
     "GroupAnalytics": {
         "noData": "No activity data yet",
         "noDataDesc": "Start walking to see your group analytics here!",

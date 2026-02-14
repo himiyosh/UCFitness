@@ -18,8 +18,9 @@ import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
 import { getTranslations } from 'next-intl/server';
 import GroupEventList from "@/components/GroupEventList";
 
-// ⚡ パフォーマンス: GroupAnalytics（内部でRecharts使用）を遅延読み込み
+// ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
+const GroupGear = nextDynamic(() => import('@/components/GroupGear'));
 
 export const dynamic = 'force-dynamic';
 
@@ -249,6 +250,11 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 {/* グループイベントセクション */}
                 <section>
                     <GroupEventList groupId={groupId} isOwnerOrAdmin={isOwnerOrAdmin} />
+                </section>
+
+                {/* メンバーの愛用ギア */}
+                <section>
+                    <GroupGear groupId={groupId} />
                 </section>
 
                 <div className="space-y-12">

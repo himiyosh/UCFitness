@@ -448,6 +448,14 @@
         "title": "みんなの愛用ギア",
         "subtitle": "コミュニティで人気のフィットネスアイテム"
     },
+    "GroupGear": {
+        "title": "メンバーの愛用ギア",
+        "subtitle": "グループ内で人気のアイテム"
+    },
+    "ChallengeGear": {
+        "title": "次のチャレンジに備えよう！",
+        "subtitle": "ユーザーに人気のフィットネスギア"
+    },
     "GroupAnalytics": {
         "noData": "アクティビティデータがまだありません",
         "noDataDesc": "歩き始めるとグループ分析がここに表示されます！",

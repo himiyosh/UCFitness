@@ -271,10 +271,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <AchievementProgress userId={user.id} />
                         </div>
 
-                        {/* Recommended Items */}
-                        {recommendedItems && recommendedItems.length > 0 && (
+                        {/* Recommended Items — オーナーには常時表示（アイテム追加を促す） */}
+                        {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (
                             <RecommendedItems
-                                items={recommendedItems}
+                                items={recommendedItems || []}
                                 isOwner={isOwner}
                                 locale={locale}
                             />
