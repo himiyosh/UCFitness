@@ -138,17 +138,23 @@ function HeatmapCell({
             onTouchEnd={() => setShowTooltip(false)}
         >
             <div
-                className={`w-[9px] h-[9px] rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]`}
+                className={`w-[10px] h-[10px] sm:w-[13px] sm:h-[13px] rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]`}
                 style={levelStyles[level]}
             />
             {showTooltip && (
-                <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                <div className={`absolute z-[100] left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none ${
+                    row <= 1 ? 'top-full mt-2' : 'bottom-full mb-2'
+                }`}>
                     <div className="font-semibold">{formattedDate}</div>
                     <div className="tabular-nums">
                         {steps.toLocaleString()} {stepsLabel}
                     </div>
                     {/* ツールチップの矢印 */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+                    <div className={`absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-transparent ${
+                        row <= 1
+                            ? 'bottom-full border-b-4 border-b-gray-900'
+                            : 'top-full border-t-4 border-t-gray-900'
+                    }`} />
                 </div>
             )}
         </div>
@@ -191,16 +197,11 @@ function CalendarSkeleton() {
                 <div className="h-8 w-24 bg-gray-200 rounded" />
             </div>
             <div className="overflow-x-auto">
-                <div className="grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(53, 8px)', gridTemplateRows: 'repeat(7, 8px)' }}>
+                <div className="grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(53, 10px)', gridTemplateRows: 'repeat(7, 10px)' }}>
                     {Array.from({ length: 53 * 7 }).map((_, i) => (
-                        <div key={i} className="w-[8px] h-[8px] bg-gray-100 rounded-sm" />
+                        <div key={i} className="w-[10px] h-[10px] bg-gray-100 rounded-sm" />
                     ))}
                 </div>
-            </div>
-            <div className="grid grid-cols-4 gap-2 mt-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-4 bg-gray-100 rounded" />
-                ))}
             </div>
         </div>
     );
@@ -387,18 +388,18 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                 </div>
             ) : (
                 /* ヒートマップ */
-                <div className="overflow-x-auto flex-1">
+                <div className="overflow-x-auto overflow-y-visible flex-1">
                     <div className="inline-block">
                         {/* 月ラベル */}
                         <div
                             className="grid gap-[2px] mb-1"
-                            style={{ gridTemplateColumns: `22px repeat(${maxCol}, 9px)` }}
+                            style={{ gridTemplateColumns: `24px repeat(${maxCol}, 10px)` }}
                         >
                             <div />
                             {Array.from({ length: maxCol }).map((_, colIdx) => {
                                 const label = monthLabels.find((ml) => ml.col === colIdx);
                                 return (
-                                    <div key={colIdx} className="text-[8px] text-gray-400 leading-none">
+                                    <div key={colIdx} className="text-[9px] sm:text-[10px] text-gray-400 font-medium leading-none">
                                         {label ? label.label : ''}
                                     </div>
                                 );
@@ -407,22 +408,22 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
 
                         {/* メイングリッド */}
                         <div className="flex gap-[2px]">
-                            <div className="grid gap-[2px]" style={{ gridTemplateRows: 'repeat(7, 9px)' }}>
+                            <div className="grid gap-[2px]" style={{ gridTemplateRows: 'repeat(7, 10px)' }}>
                                 {dayLabels.map((label, i) => (
                                     <div
                                         key={label}
-                                        className="text-[8px] text-gray-400 leading-none flex items-center pr-1"
-                                        style={{ height: '9px' }}
+                                        className="text-[9px] sm:text-[10px] text-gray-400 font-medium leading-none flex items-center pr-1"
+                                        style={{ height: '10px' }}
                                     >
-                                        {i % 2 === 1 ? label.slice(0, 2) : ''}
+                                        {i % 2 === 1 ? label.slice(0, 3) : ''}
                                     </div>
                                 ))}
                             </div>
                             <div
                                 className="grid gap-[2px]"
                                 style={{
-                                    gridTemplateColumns: `repeat(${maxCol}, 9px)`,
-                                    gridTemplateRows: 'repeat(7, 9px)',
+                                    gridTemplateColumns: `repeat(${maxCol}, 10px)`,
+                                    gridTemplateRows: 'repeat(7, 10px)',
                                 }}
                             >
                                 {gridCells.map((cell) => (
@@ -436,6 +437,17 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                                     />
                                 ))}
                             </div>
+                        </div>
+
+                        {/* 凡例 */}
+                        <div className="flex items-center gap-1.5 mt-2 justify-end text-[10px] text-gray-400">
+                            <span>{t('less')}</span>
+                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: '#ebedf0' }} />
+                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
+                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
+                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />
+                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'var(--theme-primary)' }} />
+                            <span>{t('more')}</span>
                         </div>
                     </div>
                 </div>
