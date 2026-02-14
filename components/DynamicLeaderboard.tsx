@@ -128,7 +128,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                     <span className="text-gray-400 text-xs tracking-widest">•••</span>
                                                 </div>
                                             )}
-                                            <li className={`relative px-3 py-2 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.username ? 'cursor-pointer' : ''} ${entry.users.id === userId ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                            <li className={`relative px-3 py-2.5 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.username ? 'cursor-pointer' : ''} ${entry.users.id === userId ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                                 onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                             >
                                                 <div className="flex items-center gap-2 sm:gap-4">

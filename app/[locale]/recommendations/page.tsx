@@ -9,6 +9,7 @@ import RefreshButton from '@/components/RefreshButton';
 import Breadcrumbs from "@/components/Breadcrumbs";
 import AmazonProductSearch from "@/components/AmazonProductSearch";
 import { getTranslations, getLocale } from "next-intl/server";
+import Footer from '@/components/Footer';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,6 +104,7 @@ export default async function RecommendationsPage() {
                 {/* 検索コンポーネント */}
                 <AmazonProductSearch locale={locale} />
             </div>
+            <Footer />
         </main>
     );
 }

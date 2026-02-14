@@ -21,6 +21,7 @@ import FollowButtonWrapper from '@/components/FollowButtonWrapper';
 import AchievementCard from '@/components/AchievementCard';
 import ShareMilestone from '@/components/ShareMilestone';
 import AdSlot from '@/components/AdSlot';
+import Footer from '@/components/Footer';
 
 
 
@@ -475,6 +476,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     </div>
                 </div>
             </div>
+            <Footer />
         </main>
     );
 }

@@ -11,6 +11,7 @@ import GroupSettings from "@/components/GroupSettings";
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
+import Footer from '@/components/Footer';
 
 export const dynamic = 'force-dynamic';
 
@@ -248,6 +249,7 @@ export default async function MyGroupsPage() {
                     </aside>
                 </div>
             </div>
+            <Footer />
         </main>
     );
 }

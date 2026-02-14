@@ -12,6 +12,7 @@ import CoinBalanceCard from "@/components/CoinBalanceCard";
 import nextDynamic from 'next/dynamic';
 import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/coin-service";
 import { getTranslations } from "next-intl/server";
+import Footer from '@/components/Footer';
 
 // ⚡ パフォーマンス: Recharts系の重いチャートコンポーネントを遅延読み込み
 const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart'));
@@ -145,6 +146,7 @@ export default async function BankPage() {
                     </div>
                 </div>
             </div>
+            <Footer />
         </main>
     );
 }

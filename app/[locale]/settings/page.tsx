@@ -7,6 +7,7 @@ import { Link } from "@/navigation"; // Localized Link
 import Breadcrumbs from "@/components/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
 import { getTranslations } from 'next-intl/server';
+import Footer from '@/components/Footer';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -108,6 +109,7 @@ export default async function SettingsPage() {
 
                 <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} />
             </div>
+            <Footer />
         </main>
     );
 }

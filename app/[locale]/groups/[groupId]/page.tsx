@@ -17,6 +17,7 @@ import JoinGroupPreview from "@/components/JoinGroupPreview";
 import nextDynamic from 'next/dynamic';
 import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
 import { getTranslations } from 'next-intl/server';
+import Footer from '@/components/Footer';
 import GroupEventList from "@/components/GroupEventList";
 import GroupWeeklyReport from "@/components/GroupWeeklyReport";
 
@@ -118,6 +119,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                     <JoinGroupPreview group={group} userId={userId} />
                 </div>
+                <Footer />
             </main>
         );
     }
@@ -296,6 +298,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 </div>
 
             </div>
+            <Footer />
         </main>
     );
 }

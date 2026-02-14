@@ -9,6 +9,7 @@ import UserMenu from '@/components/UserMenu';
 import RefreshButton from '@/components/RefreshButton';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ChallengesPageClient from '@/components/ChallengesPageClient';
+import Footer from '@/components/Footer';
 
 // ============================================
 // チャレンジページ（Server Component）
@@ -87,6 +88,7 @@ export default async function ChallengesPage() {
                 {/* チャレンジコンテンツ */}
                 <ChallengesPageClient />
             </div>
+            <Footer />
         </main>
     );
 }

@@ -300,7 +300,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                             return (
                                                                 <li key={`${entry.users.id}-${period}`}
-                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-1.5 sm:py-2.5 flex items-center justify-between transition-colors overflow-hidden ${entry.users.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between transition-colors overflow-hidden ${entry.users.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                                                     onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                                                 >
 
@@ -376,7 +376,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         })}
                                                         {/* 行数を常にITEMS_PER_PAGEに揃えるプレースホルダー */}
                                                         {paginatedItems.length < ITEMS_PER_PAGE && Array.from({ length: ITEMS_PER_PAGE - paginatedItems.length }).map((_, i) => (
-                                                            <li key={`placeholder-${i}`} className="px-3 sm:px-6 py-1.5 sm:py-2.5 flex items-center justify-between overflow-hidden" aria-hidden="true">
+                                                            <li key={`placeholder-${i}`} className="px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between overflow-hidden" aria-hidden="true">
                                                                 <div className="relative z-10 flex items-center gap-3 invisible">
                                                                     <div className="flex flex-col items-center gap-0.5">
                                                                         <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold">&nbsp;</span>

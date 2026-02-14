@@ -12,6 +12,7 @@ import ShopClient from "@/components/ShopClient";
 import { getShopItems, getUserItems, getEquippedItems } from "@/lib/shop-service";
 import { getCoinBalance, getInvestorRank } from "@/lib/coin-service";
 import { getTranslations, getLocale } from "next-intl/server";
+import Footer from '@/components/Footer';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,6 +115,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                     initialViewMode={resolvedParams.view === 'gear' ? 'gear' : resolvedParams.view === 'inventory' ? 'inventory' : 'shop'}
                 />
             </div>
+            <Footer />
         </main>
     );
 }

@@ -9,6 +9,7 @@ import RefreshButton from '@/components/RefreshButton';
 import Breadcrumbs from "@/components/Breadcrumbs";
 import nextDynamic from 'next/dynamic';
 import { supabaseAdmin } from "@/lib/supabase";
+import Footer from '@/components/Footer';
 
 // ⚡ パフォーマンス: クライアントコンポーネントを遅延読み込み
 const PersonalAnalytics = nextDynamic(() => import('@/components/PersonalAnalytics'));
@@ -90,6 +91,7 @@ export default async function AnalyticsPage() {
 
                 <PersonalAnalytics userId={userId} />
             </div>
+            <Footer />
         </main>
     );
 }

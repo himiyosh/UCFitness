@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import UsernameForm from "@/components/UsernameForm";
+import Footer from '@/components/Footer';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export default async function OnboardingPage() {
                     <UsernameForm isOnboarding={true} />
                 </div>
             </div>
+            <Footer />
         </main>
     );
 }

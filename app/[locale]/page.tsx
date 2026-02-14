@@ -13,6 +13,7 @@ import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-s
 import nextDynamic from 'next/dynamic';
 import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip } from '@/lib/ranking-utils';
 import AutoSync from '@/components/AutoSync';
+import Footer from '@/components/Footer';
 import LandingPage from '@/components/LandingPage';
 import { Period } from '@/components/LeaderboardTabs';
 
@@ -331,7 +332,7 @@ export default async function Home() {
                       <h4 className="font-black text-base sm:text-2xl tracking-tight whitespace-nowrap">{t('keepStepping')}</h4>
                     </div>
 
-                    <p className="opacity-90 text-[10px] sm:text-sm leading-snug font-medium text-indigo-50 mt-2 sm:mt-3">
+                    <p className="opacity-90 text-[10px] sm:text-sm leading-snug font-medium text-indigo-50 mt-2 sm:mt-3 whitespace-nowrap">
                       {t('joinGroups').split('\n').map((line, i, arr) => (
                         <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
                       ))}
@@ -425,6 +426,7 @@ export default async function Home() {
 
         </div>
       </div>
+      <Footer />
     </main>
   );
 }
