@@ -115,8 +115,9 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
         return (
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="text-base font-bold text-gray-900 mb-4">{t('assetGrowth')}</h3>
-                <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
-                    {t('noTransactions')}
+                <div className="flex flex-col items-center justify-center h-48 text-gray-400 text-sm gap-2">
+                    <span className="text-4xl">📊</span>
+                    <p>{t('noTransactions')}</p>
                 </div>
             </div>
         );

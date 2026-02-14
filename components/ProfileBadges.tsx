@@ -90,7 +90,7 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
 
     return (
         <>
-            <div className="md:col-span-1 bg-white midnight-solid-panel rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+            <div className="md:col-span-1 bg-white midnight-solid-panel rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">
                         {t('achievements')}

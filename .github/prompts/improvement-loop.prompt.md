@@ -35,8 +35,16 @@ main には絶対に push/merge しないこと。
 ### Step 3: 検証
 
 - 修正ごとにコミット (コミットメッセージは日本語)
-- 最後に `npx next build` で 0 エラーを確認
+- 最後に `npx tsc --noEmit` で型エラー 0 を確認（`next build` はキャッシュ破損するため原則使わない）
 - `git push` は明示的に許可があるまで実行しない
+
+### Step 4: dev サーバー再起動
+
+1. **不要ターミナルの削除**: `kill_terminal` で以前のバックグラウンドターミナルをすべて削除
+2. **ポート 3000 を確保**: `Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }` を実行
+3. **`.next` キャッシュ削除**: `Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue`
+4. **dev サーバー起動**: `npm run dev` を `isBackground: true` で実行
+5. **起動確認**: `get_terminal_output` でポート 3000 で起動したことを確認し、ユーザーに報告
 
 ---
 

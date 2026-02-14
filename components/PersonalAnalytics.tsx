@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
 interface AnalyticsData {
@@ -120,17 +120,19 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
     }
 
     // 曜日チャートの最大値
-    const maxWeekday = Math.max(...data.weekdayAverages, 1);
+    const maxWeekday = useMemo(() => Math.max(...data.weekdayAverages, 1), [data.weekdayAverages]);
 
     // 月別チャートの最大値
-    const maxMonthly = Math.max(...data.monthlyTotals.map(m => m.totalSteps), 1);
+    const maxMonthly = useMemo(() => Math.max(...data.monthlyTotals.map(m => m.totalSteps), 1), [data.monthlyTotals]);
 
     // 今月のデータ
-    const currentMonthData = data.monthlyTotals[data.monthlyTotals.length - 1];
+    const currentMonthData = useMemo(() => data.monthlyTotals[data.monthlyTotals.length - 1], [data.monthlyTotals]);
 
     // 曜日の最高を特定
-    const weekdayValues = WEEKDAY_ORDER.map(i => data.weekdayAverages[i]);
-    const bestWeekdayIdx = weekdayValues.indexOf(Math.max(...weekdayValues));
+    const { weekdayValues, bestWeekdayIdx } = useMemo(() => {
+        const vals = WEEKDAY_ORDER.map(i => data.weekdayAverages[i]);
+        return { weekdayValues: vals, bestWeekdayIdx: vals.indexOf(Math.max(...vals)) };
+    }, [data.weekdayAverages]);
 
     return (
         <div className="space-y-5">

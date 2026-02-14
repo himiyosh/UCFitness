@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
-import { supabase } from '@/lib/supabase';
+import { auth } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 // ============================================
@@ -9,13 +10,19 @@ import { NextRequest, NextResponse } from 'next/server';
 // ============================================
 
 export async function GET(request: NextRequest) {
+    // 🛡️ セキュリティ: 認証チェック（グループメンバー情報を含むため）
+    const session = await auth();
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const groupId = request.nextUrl.searchParams.get('groupId');
     if (!groupId) {
         return NextResponse.json({ error: 'groupId is required' }, { status: 400 });
     }
 
     // グループメンバーの user_id 一覧を取得
-    const { data: members } = await supabase
+    const { data: members } = await supabaseAdmin
         .from('group_members')
         .select('user_id')
         .eq('group_id', groupId);
@@ -27,7 +34,7 @@ export async function GET(request: NextRequest) {
     const memberIds = members.map(m => m.user_id);
 
     // メンバーの recommended_items を取得（ユーザー情報付き）
-    const { data: rawItems } = await supabase
+    const { data: rawItems } = await supabaseAdmin
         .from('recommended_items')
         .select('asin, title, image_url, affiliate_link, user_id, users (username, image)')
         .in('user_id', memberIds)

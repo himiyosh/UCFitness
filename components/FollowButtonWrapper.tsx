@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import FollowButton from '@/components/FollowButton';
 
 // ============================================
@@ -16,22 +16,23 @@ interface FollowButtonWrapperProps {
 export default function FollowButtonWrapper({ targetUserId, className }: FollowButtonWrapperProps) {
     const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
 
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                const res = await fetch(`/api/user/follow/status?targetUserId=${targetUserId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setIsFollowing(data.isFollowing);
-                } else {
-                    setIsFollowing(false);
-                }
-            } catch {
+    const checkStatus = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/user/follow/status?targetUserId=${targetUserId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setIsFollowing(data.isFollowing);
+            } else {
                 setIsFollowing(false);
             }
-        };
-        checkStatus();
+        } catch {
+            setIsFollowing(false);
+        }
     }, [targetUserId]);
+
+    useEffect(() => {
+        checkStatus();
+    }, [checkStatus]);
 
     // ステータス取得中はスケルトン表示
     if (isFollowing === null) {

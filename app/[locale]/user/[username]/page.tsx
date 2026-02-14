@@ -1,15 +1,14 @@
-
+export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
-import { cookies } from 'next/headers';
+import { supabaseAdmin } from "@/lib/supabase";
 import Link from 'next/link';
 import ActivityGraph from '@/components/ActivityGraph';
 import UserMenu from '@/components/UserMenu';
 import ProfileHeader from '@/components/ProfileHeader';
 import ProfileBadges from '@/components/ProfileBadges';
 import AchievementProgress from '@/components/AchievementProgress';
-import SyncHistoryButton from '@/components/SyncHistoryButton';
+import RefreshButton from '@/components/RefreshButton';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
@@ -19,6 +18,9 @@ import { getTranslations } from "next-intl/server";
 import RecommendedItems from '@/components/RecommendedItems';
 import StepCalendar from '@/components/StepCalendar';
 import FollowButtonWrapper from '@/components/FollowButtonWrapper';
+import AchievementCard from '@/components/AchievementCard';
+import ShareMilestone from '@/components/ShareMilestone';
+import AdSlot from '@/components/AdSlot';
 
 
 
@@ -35,36 +37,50 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
     // Fetch target user data
     // 🛡️ Sentinel: email を除外して PII 漏洩を防止
-    const { data: user } = await supabase
+    const { data: user } = await supabaseAdmin
         .from("users")
         .select("id, name, image, group_keyword, username, step_goal, is_custom_image, banner_url")
         .eq("username", username)
         .single();
 
-    let primaryGroup: any = undefined;
+    if (!user) {
+        notFound();
+    }
 
-    if (user) {
-        // Fetch valid public groups for this user
-        const { data: publicGroups } = await supabase
+    // ⚡ パフォーマンス: 6つの独立クエリを並列実行（逐次→並列で大幅高速化）
+    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, historyResult] = await Promise.all([
+        supabaseAdmin
             .from('group_members')
             .select('groups!inner(keyword, is_public, name, header_image_url, image_url)')
             .eq('user_id', user.id)
-            .eq('groups.is_public', true);
+            .eq('groups.is_public', true),
+        getUserBadges(user.id),
+        getEquippedItems(user.id),
+        supabaseAdmin
+            .from('recommended_items')
+            .select('id, asin, title, image_url, affiliate_link, display_order')
+            .eq('user_id', user.id)
+            .order('display_order', { ascending: true })
+            .limit(6),
+        supabaseAdmin
+            .from('daily_steps')
+            .select('steps, date, updated_at')
+            .eq("user_id", user.id)
+            .order('date', { ascending: true }),
+    ]);
 
-        // Override the denormalized group_keyword with actual public groups
-        if (publicGroups) {
-            // @ts-ignore
-            user.group_keyword = publicGroups.map((g: any) => g.groups.keyword);
-            // @ts-ignore
-            primaryGroup = publicGroups[0]?.groups;
-        } else {
-            user.group_keyword = [];
-        }
+    let primaryGroup: any = undefined;
+    const publicGroups = publicGroupsResult.data;
+
+    // Override the denormalized group_keyword with actual public groups
+    if (publicGroups) {
+        // @ts-ignore
+        user.group_keyword = publicGroups.map((g: any) => g.groups.keyword);
+        // @ts-ignore
+        primaryGroup = publicGroups[0]?.groups;
+    } else {
+        user.group_keyword = [];
     }
-
-    // Fetch Badges & Equipped Items
-    const userBadges = user ? await getUserBadges(user.id) : [];
-    const equippedItems = user ? await getEquippedItems(user.id) : { ICON_FRAME: null, TITLE: null, THEME_COLOR: null };
     let frameColor = equippedItems.ICON_FRAME?.shop_items?.preview_value || null;
     const titleName = (locale === 'ja'
         ? equippedItems.TITLE?.shop_items?.name_ja
@@ -76,14 +92,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     }
 
     // Fetch recommended items
-    const { data: rawRecommendedItems } = user
-        ? await supabase
-            .from('recommended_items')
-            .select('id, asin, title, image_url, affiliate_link, display_order')
-            .eq('user_id', user.id)
-            .order('display_order', { ascending: true })
-            .limit(6)
-        : { data: null };
+    const rawRecommendedItems = recommendedResult.data;
 
     // アフィリエイトリンクのパートナータグを常に最新に置換
     const currentTag = process.env.AMAZON_PARTNER_TAG || 'studio344-22';
@@ -93,22 +102,14 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         image_url: item.image_url.replace(/tag=[^&]+/, `tag=${currentTag}`),
     })) ?? null;
 
-    if (!user) {
-        notFound();
-    }
-
     // Fetch stats
     let totalSteps = 0;
     let bestDay = { date: '-', steps: 0 };
     let allHistoryData: any[] = [];
     let lastSyncedAt: string | null = null;
 
-    // Fetch All History for target user
-    const { data: allHistory } = await supabase
-        .from('daily_steps')
-        .select('steps, date, updated_at')
-        .eq("user_id", user.id)
-        .order('date', { ascending: true });
+    // Use history from parallel fetch
+    const allHistory = historyResult.data;
 
     if (allHistory && allHistory.length > 0) {
         allHistoryData = allHistory;
@@ -179,7 +180,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         const viewerId = (session.user as any).id;
 
         // Fetch viewer's fresh data (image) to ensure header is correct
-        const { data: vUser } = await supabase
+        const { data: vUser } = await supabaseAdmin
             .from("users")
             .select("name, image, username")
             .eq("id", viewerId)
@@ -196,7 +197,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         }
 
         // グラフ比較に必要なため、閲覧者の全履歴も取得
-        const { data: vData } = await supabase
+        const { data: vData } = await supabaseAdmin
             .from('daily_steps')
             .select('steps, date')
             .eq('user_id', viewerId)
@@ -235,7 +236,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </Link>
                     </div>
                     {/* Use updated viewerUser for correct image */}
-                    {session?.user && viewerUser && <UserMenu user={viewerUser} />}
+                    <div className="flex items-center gap-1">
+                        {session?.user && <RefreshButton />}
+                        {session?.user && viewerUser && <UserMenu user={viewerUser} />}
+                    </div>
                 </div>
             </header>
 
@@ -253,7 +257,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <h2 className="text-2xl font-bold text-gray-900 truncate">{t('profile')}</h2>
                         </div>
 
-                        <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji} />
+                        <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji}>
+                            <ShareMilestone totalSteps={totalSteps} username={username} />
+                        </ProfileHeader>
 
                         {/* フォローボタン（他ユーザーのプロフィール閲覧時のみ表示） */}
                         {session?.user && !isOwner && (
@@ -271,14 +277,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <AchievementProgress userId={user.id} />
                         </div>
 
-                        {/* Recommended Items — オーナーには常時表示（アイテム追加を促す） */}
-                        {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (
-                            <RecommendedItems
-                                items={recommendedItems || []}
-                                isOwner={isOwner}
-                                locale={locale}
-                            />
-                        )}
+                        {/* 公開実績カード */}
+                        <div className="mt-2">
+                            <AchievementCard username={username} />
+                        </div>
+
+
 
                         {/* Lifetime Stats */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-200">
@@ -338,7 +342,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                                 {isOwner ? t('activityTitle') : t('activityTitleOther')}
                             </h2>
-                            {isOwner && <SyncHistoryButton />}
+
                         </div>
 
 
@@ -456,6 +460,18 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         {/* Step Heatmap Calendar */}
                         <StepCalendar userId={user.id} />
+
+                        {/* Recommended Items — 愛用アイテム */}
+                        {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (
+                            <RecommendedItems
+                                items={recommendedItems || []}
+                                isOwner={isOwner}
+                                locale={locale}
+                            />
+                        )}
+
+                        {/* 広告スロット（将来のAdSense用） */}
+                        <AdSlot slot="content-between" />
                     </div>
                 </div>
             </div>
@@ -463,4 +479,3 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     );
 }
 
-export const runtime = 'edge';

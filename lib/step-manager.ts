@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase';
-import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeries } from './fitbit';
+import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeriesByDateRange } from './fitbit';
 import { checkAndAwardBadges } from './badge-allocator';
 import { processCoins } from './coin-service';
 import { checkAndAwardTitleAchievements } from './title-achievement-service';
@@ -195,40 +195,86 @@ export async function backfillUserSteps(userId: string) {
     }
 
     try {
-        // Fetch last 1 year (1y)
-        // Note: Fitbit API limit is 150 request per hour per user, so 1 request for 1y is efficient.
-        let timeSeries;
-        try {
-            timeSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
-        } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
-            if (message.includes('Unauthorized') || message.includes('401')) {
-                accessToken = await performTokenRefresh(user);
-                if (accessToken) {
-                    timeSeries = await getFitbitActivityTimeSeries(accessToken, '1y');
-                }
-            } else {
-                throw e;
+        // 全期間の歩数を取得（1095日ずつ分割リクエスト）
+        // Fitbit API: steps の Date Range は最大1095日、Rate Limit は 150リクエスト/時/ユーザー
+        // 例: 5年分でも 2リクエストで完了するため Rate Limit の心配なし
+        const today = new Date();
+        const todayStr = today.toISOString().slice(0, 10);
+        const MAX_RANGE_DAYS = 1095; // Fitbit API steps の最大取得日数
+        const MAX_HISTORY_YEARS = 10; // 最大10年前まで遡る（十分な範囲）
+        const oldestDate = new Date(today);
+        oldestDate.setFullYear(oldestDate.getFullYear() - MAX_HISTORY_YEARS);
+
+        let allStepsData: { user_id: string; date: string; steps: number; updated_at: string }[] = [];
+        let currentEnd = new Date(today);
+
+        while (currentEnd > oldestDate) {
+            const currentStart = new Date(currentEnd);
+            currentStart.setDate(currentStart.getDate() - MAX_RANGE_DAYS + 1);
+            if (currentStart < oldestDate) {
+                currentStart.setTime(oldestDate.getTime());
             }
+
+            const startStr = currentStart.toISOString().slice(0, 10);
+            const endStr = currentEnd.toISOString().slice(0, 10);
+
+            let timeSeries;
+            try {
+                timeSeries = await getFitbitActivityTimeSeriesByDateRange(accessToken, startStr, endStr);
+            } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
+                if (message.includes('Unauthorized') || message.includes('401')) {
+                    accessToken = await performTokenRefresh(user);
+                    if (accessToken) {
+                        timeSeries = await getFitbitActivityTimeSeriesByDateRange(accessToken, startStr, endStr);
+                    } else {
+                        break;
+                    }
+                } else {
+                    // 404 等はこの期間にデータなし → ループ終了
+                    break;
+                }
+            }
+
+            if (timeSeries && Array.isArray(timeSeries) && timeSeries.length > 0) {
+                const chunkData = (timeSeries as FitbitTimeSeriesEntry[])
+                    .map((entry) => ({
+                        user_id: user.id,
+                        date: entry.dateTime,
+                        steps: parseInt(entry.value, 10),
+                        updated_at: new Date().toISOString(),
+                    }))
+                    .filter((d) => !isNaN(d.steps));
+
+                allStepsData = allStepsData.concat(chunkData);
+            } else {
+                // データが返らない → これ以上遡っても無駄
+                break;
+            }
+
+            // 次のチャンクへ（1日重複を避ける）
+            currentEnd = new Date(currentStart);
+            currentEnd.setDate(currentEnd.getDate() - 1);
         }
 
-        if (timeSeries && Array.isArray(timeSeries)) {
-            // Prepare upsert operations
-            const stepsData = (timeSeries as FitbitTimeSeriesEntry[])
-                .map((entry) => ({
-                    user_id: user.id,
-                    date: entry.dateTime,
-                    steps: parseInt(entry.value, 10),
-                    updated_at: new Date().toISOString(),
-                }))
-                .filter((d) => !isNaN(d.steps));
+        // 一括 upsert（Supabase は大量レコードでも OK）
+        if (allStepsData.length > 0) {
+            // 1000件ずつバッチ処理（Supabase の安全な上限）
+            const BATCH_SIZE = 1000;
+            for (let i = 0; i < allStepsData.length; i += BATCH_SIZE) {
+                const batch = allStepsData.slice(i, i + BATCH_SIZE);
+                const { error: upsertError } = await supabaseAdmin
+                    .from('daily_steps')
+                    .upsert(batch, { onConflict: 'user_id,date' });
 
-            const { error: upsertError } = await supabaseAdmin
-                .from('daily_steps')
-                .upsert(stepsData, { onConflict: 'user_id,date' });
-
-            if (upsertError) {
-                reportError('backfillUserSteps:upsert', upsertError, { userId: user.id, recordCount: stepsData.length });
+                if (upsertError) {
+                    reportError('backfillUserSteps:upsert', upsertError, {
+                        userId: user.id,
+                        batchIndex: i,
+                        batchSize: batch.length,
+                        totalRecords: allStepsData.length,
+                    });
+                }
             }
         }
 

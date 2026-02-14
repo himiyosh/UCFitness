@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
@@ -143,7 +142,8 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors overflow-hidden cursor-pointer ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all overflow-hidden ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
                                         >
 
                                             {/* Content Wrapper */}
@@ -172,13 +172,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                 <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users?.frameColor} borderClass="border-white" />
                                                 <div className="flex flex-col min-w-0">
                                                     <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
-                                                        {entry.users?.username ? (
-                                                            <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline truncate">
-                                                                {entry.users?.name || commonT('anonymous')}
-                                                            </Link>
-                                                        ) : (
-                                                            <span className="truncate">{entry.users?.name || commonT('anonymous')}</span>
-                                                        )}
+                                                        <span className="truncate">
+                                                            {entry.users?.name || commonT('anonymous')}
+                                                        </span>
                                                         {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (

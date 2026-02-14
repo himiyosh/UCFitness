@@ -78,6 +78,37 @@ export async function getFitbitActivityTimeSeries(
     return data['activities-steps'];
 }
 
+/**
+ * 日付範囲指定で歩数タイムシリーズを取得
+ * Fitbit API の steps は最大1095日（約3年）まで取得可能
+ * 全期間取得するには1095日ずつ分割して呼び出す
+ */
+export async function getFitbitActivityTimeSeriesByDateRange(
+    accessToken: string,
+    startDate: string,
+    endDate: string
+): Promise<FitbitTimeSeries[]> {
+    validateAccessToken(accessToken);
+    validateDateFormat(startDate);
+    validateDateFormat(endDate);
+
+    const response = await fetch(
+        `https://api.fitbit.com/1/user/-/activities/steps/date/${startDate}/${endDate}.json`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`Fitbit API error: ${response.status}`);
+    }
+
+    const data = (await response.json()) as { 'activities-steps': FitbitTimeSeries[] };
+    return data['activities-steps'];
+}
+
 export async function refreshFitbitToken(refreshToken: string): Promise<FitbitTokenResponse> {
     if (!refreshToken || typeof refreshToken !== 'string' || refreshToken.trim().length === 0) {
         throw new Error('Invalid refresh token');

@@ -92,8 +92,8 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
         );
     }
 
-    // Custom Tooltip Component
-    const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
+    // Custom Tooltip Component — memoized via useCallback to avoid Recharts re-mount
+    const CustomTooltip = useCallback(({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
         if (active && payload && payload.length) {
             // Sort payload by value desc
             const sortedPayload = [...payload].sort((a, b) => b.value - a.value);
@@ -116,7 +116,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             );
         }
         return null;
-    };
+    }, [activeUser]);
 
     return (
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 xl:h-full flex flex-col relative">

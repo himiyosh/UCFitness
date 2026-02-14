@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 import Spinner from '@/components/ui/Spinner';
+import ShopRecommendations from '@/components/ShopRecommendations';
 
 /** item_code → アプリテーマのマッピング */
 const THEME_MAP: Record<string, Theme> = {
@@ -24,6 +25,7 @@ interface ShopClientProps {
     locale: string;
     userImage: string | null;
     userName: string | null;
+    initialViewMode?: 'shop' | 'gear' | 'inventory';
 }
 
 type TabKey = 'ALL' | ShopCategory;
@@ -45,7 +47,7 @@ const RANK_ORDER: Record<string, number> = {
 };
 
 // --- メインコンポーネント ---
-export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName }: ShopClientProps) {
+export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName, initialViewMode = 'shop' }: ShopClientProps) {
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
     const { success: toastSuccess, error: toastError } = useToast();
@@ -59,7 +61,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
     const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
-    const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
+    const [viewMode, setViewMode] = useState<'shop' | 'gear' | 'inventory'>(initialViewMode);
 
     // フィルタされたアイテム
     const filteredItems = useMemo(
@@ -287,29 +289,31 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 )}
             </div>
 
-            {/* ショップ / インベントリ切り替え */}
+            {/* ショップ / ギア / インベントリ切り替え */}
             <div className="flex bg-gray-100/80 rounded-lg p-1 mb-4">
-                <button
-                    onClick={() => setViewMode('shop')}
-                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
-                        viewMode === 'shop'
-                            ? 'bg-white text-amber-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                >
-                    🛍️ {t('shopTab')}
-                </button>
-                <button
-                    onClick={() => setViewMode('inventory')}
-                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
-                        viewMode === 'inventory'
-                            ? 'bg-white text-amber-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                >
-                    📦 {t('inventoryTab')}
-                </button>
+                {[
+                    { key: 'shop' as const, icon: '🛍️', label: t('shopTab') },
+                    { key: 'gear' as const, icon: '🏋️', label: t('gearTab') },
+                    { key: 'inventory' as const, icon: '📦', label: t('inventoryTab') },
+                ].map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setViewMode(tab.key)}
+                        className={`flex-1 px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${
+                            viewMode === tab.key
+                                ? 'bg-white text-amber-600 shadow-sm'
+                                : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                    >
+                        {tab.icon} {tab.label}
+                    </button>
+                ))}
             </div>
+
+            {/* --- ギアビュー --- */}
+            {viewMode === 'gear' && (
+                <ShopRecommendations />
+            )}
 
             {/* --- ショップビュー --- */}
             {viewMode === 'shop' && (
@@ -320,7 +324,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all hover:scale-105 active:scale-95 ${
                                     activeTab === tab.key
                                         ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                         : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'

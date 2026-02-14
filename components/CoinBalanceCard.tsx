@@ -129,7 +129,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
             {/* 📊 統計カード群 */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {/* 通算獲得 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
                     <p className="text-sm text-gray-500 font-medium mb-1">{t('lifetimeEarnings')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className="text-xl font-bold text-amber-600 tabular-nums">
@@ -140,7 +140,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 </div>
 
                 {/* 今日の入金 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
                     <p className="text-sm text-gray-500 font-medium mb-1">{t('todayEarned')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className={`text-xl font-bold tabular-nums ${animatedToday >= 0 ? 'text-green-600' : 'text-red-500'}`}>
@@ -151,7 +151,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 </div>
 
                 {/* ストリーク */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
                     <p className="text-sm text-gray-500 font-medium mb-1">{t('currentStreak')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className="text-xl font-bold text-orange-500 tabular-nums">
@@ -166,7 +166,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 </div>
 
                 {/* 歩数獲得分 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
                     <p className="text-sm text-gray-500 font-medium mb-1">{t('totalEarned')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className="text-xl font-bold text-gray-900 tabular-nums">
@@ -177,7 +177,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 </div>
 
                 {/* ボーナス獲得分 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
                     <p className="text-sm text-gray-500 font-medium mb-1">{t('totalBonus')}</p>
                     <div className="flex items-baseline gap-1">
                         <span className="text-xl font-bold text-purple-600 tabular-nums">

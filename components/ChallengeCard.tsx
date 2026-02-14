@@ -144,9 +144,17 @@ export default function ChallengeCard({ challenge, progress = 0, onJoin }: Chall
                     <button
                         onClick={handleJoin}
                         disabled={joining}
-                        className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-bold bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-bold bg-[var(--theme-primary)] text-white hover:opacity-90 hover:scale-105 transition-all disabled:opacity-50"
                     >
-                        {joining ? '...' : t('join')}
+                        {joining ? (
+                            <>
+                                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                {t('join')}
+                            </>
+                        ) : t('join')}
                     </button>
                 ) : null}
             </div>

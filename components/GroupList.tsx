@@ -126,7 +126,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
             {memberships.map((m, index) => (
                 <div
                     key={m.groups.id}
-                    className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden"
+                    className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group overflow-hidden"
                 >
                     <Link href={`/groups/${m.groups.id}`} className="block relative h-full flex flex-row sm:flex-col min-h-[110px] sm:min-h-0">
                         {/* Banner Section */}

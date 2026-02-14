@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
@@ -135,11 +135,11 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     }, [allGlobalRankings]);
 
     // Handle Tab Switch
-    const handleSwitch = (newPeriod: Period) => {
+    const handleSwitch = useCallback((newPeriod: Period) => {
         if (newPeriod === period) return;
         setPeriod(newPeriod);
         setPage(1); // Reset to page 1 on tab switch
-    };
+    }, [period]);
 
     // Filter current view data
     const currentGlobal = allGlobalRankings[period] ?? [];
@@ -299,7 +299,10 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors cursor-pointer overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
+                                                                <li key={`${entry.users.id}-${period}`}
+                                                                    className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors overflow-hidden ${entry.users.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
+                                                                >
 
                                                                     {/* Content Wrapper */}
                                                                     <div className="relative z-10 flex items-center gap-3">
@@ -343,13 +346,9 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         )}
                                                                         <div>
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                                                                                {entry.users.username ? (
-                                                                                    <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
-                                                                                        {entry.users?.name || commonT('anonymous')}
-                                                                                    </Link>
-                                                                                ) : (
-                                                                                    <span>{entry.users?.name || commonT('anonymous')}</span>
-                                                                                )}
+                                                                                <span>
+                                                                                    {entry.users?.name || commonT('anonymous')}
+                                                                                </span>
                                                                                 {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">{commonT('you')}</span>}
                                                                             </p>
                                                                             {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (

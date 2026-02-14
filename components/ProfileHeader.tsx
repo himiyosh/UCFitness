@@ -31,9 +31,10 @@ interface ProfileHeaderProps {
     frameColor?: string | null;
     titleName?: string | null;
     titleEmoji?: string | null;
+    children?: React.ReactNode;
 }
 
-export default function ProfileHeader({ user, badges = [], readonly = false, frameColor, titleName, titleEmoji }: ProfileHeaderProps) {
+export default function ProfileHeader({ user, badges = [], readonly = false, frameColor, titleName, titleEmoji, children }: ProfileHeaderProps) {
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
 
@@ -56,7 +57,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
             />
 
             {/* Main Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8 hover:shadow-lg transition-shadow overflow-visible relative z-10">
                 {/* Banner */}
                 <div
                     className={`h-32 sm:h-36 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url ? 'bg-[var(--theme-primary)]' : 'cursor-pointer hover:opacity-90 transition-opacity'}`}
@@ -102,7 +103,12 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
                         <h1 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h1>
                         <p className="text-xs sm:text-sm text-gray-500">@{user.username || 'user'}</p>
 
-
+                        {/* カード内追加コンテンツ（シェアボタン等） */}
+                        {children && (
+                            <div className="mt-3 flex justify-center">
+                                {children}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

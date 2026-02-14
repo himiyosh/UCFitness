@@ -32,7 +32,7 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
 
     return (
         <div
-            className={`p-4 rounded-xl shadow-sm mb-6 ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}
+            className={`p-4 rounded-xl shadow-sm mb-6 hover:shadow-md transition-shadow ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}
             role="img"
             aria-label={title ? `${title} - bar chart showing top ${chartData.length} users` : `Bar chart showing top ${chartData.length} users`}
         >

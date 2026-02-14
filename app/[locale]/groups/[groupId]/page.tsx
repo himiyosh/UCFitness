@@ -1,11 +1,12 @@
-
+export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
 import UserMenu from "@/components/UserMenu";
+import RefreshButton from '@/components/RefreshButton';
 import GroupHeaderActions from "@/components/GroupHeaderActions";
 import GroupSettingsLayout from "@/components/GroupSettingsLayout";
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -17,6 +18,7 @@ import nextDynamic from 'next/dynamic';
 import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
 import { getTranslations } from 'next-intl/server';
 import GroupEventList from "@/components/GroupEventList";
+import GroupWeeklyReport from "@/components/GroupWeeklyReport";
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
@@ -41,17 +43,17 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
 
     // ⚡ パフォーマンス: 3つの独立クエリを並列実行
     const [userResult, groupResult, membershipResult] = await Promise.all([
-        supabase
+        supabaseAdmin
             .from('users')
             .select('id, name, image, username')
             .eq('id', userId)
             .single(),
-        supabase
+        supabaseAdmin
             .from('groups')
             .select('id, name, keyword, description, is_public, header_image_url, image_url, created_at, created_by')
             .eq('id', groupId)
             .single(),
-        supabase
+        supabaseAdmin
             .from('group_members')
             .select('role')
             .eq('group_id', groupId)
@@ -98,7 +100,8 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                                 </span>
                             </Link>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1">
+                            <RefreshButton />
                             <UserMenu user={currentUser} />
                         </div>
                     </div>
@@ -127,7 +130,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         getGroupCompetitionRankings('MONTHLY'),
         getGroupCompetitionRankings('YEARLY'),
         getAllGroupComparisonData(groupId, userId),
-        supabase
+        supabaseAdmin
             .from('group_members')
             .select(`
             user_id,
@@ -179,7 +182,8 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             </span>
                         </Link>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-1">
+                        <RefreshButton />
                         <UserMenu user={currentUser} />
                     </div>
                 </div>
@@ -261,6 +265,9 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                 </div>
 
+                {/* ウィークリーレポート */}
+                <GroupWeeklyReport groupId={groupId} />
+
                 <div className="space-y-12">
                     {/* Main Content Area - Layout controlled by GroupAnalytics */}
                     <div>
@@ -293,4 +300,3 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     );
 }
 
-export const runtime = 'edge';

@@ -53,7 +53,7 @@ export default function LeaveGroupButton({
     }, [groupKeyword, router, toast]);
 
     return (
-        <div className="bg-white rounded-xl p-6 border border-gray-100 text-center shadow-sm">
+        <div className="bg-white rounded-xl p-6 border border-gray-100 text-center shadow-sm hover:shadow-md transition-shadow">
             <p className="text-sm text-gray-500 mb-4">You are a member of this group.</p>
             {showConfirm ? (
                 <div className="flex flex-col items-center gap-3">
@@ -89,7 +89,7 @@ export default function LeaveGroupButton({
                 <button
                     onClick={() => setShowConfirm(true)}
                     aria-label={`Leave group ${groupName}`}
-                    className="text-red-500 hover:text-red-700 text-sm font-bold hover:underline"
+                    className="text-red-500 hover:text-red-700 text-sm font-bold hover:underline hover:scale-105 active:scale-95 transition-transform"
                 >
                     Leave Group
                 </button>

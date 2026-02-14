@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import UserMenu from "@/components/UserMenu";
+import RefreshButton from '@/components/RefreshButton';
 import UCHintBalloon from "@/components/UCHintBalloon";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import ShopClient from "@/components/ShopClient";
@@ -14,7 +15,8 @@ import { getTranslations, getLocale } from "next-intl/server";
 
 export const dynamic = 'force-dynamic';
 
-export default async function ShopPage() {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+    const resolvedParams = await searchParams;
     const session = await auth();
     const t = await getTranslations('Shop');
     const dashboardT = await getTranslations('Dashboard');
@@ -65,11 +67,14 @@ export default async function ShopPage() {
                             </span>
                         </Link>
                     </div>
-                    <UserMenu user={{
-                        ...session.user,
-                        name: user?.name || session.user.name,
-                        image: user?.image || session.user.image,
-                    }} />
+                    <div className="flex items-center gap-1">
+                        <RefreshButton />
+                        <UserMenu user={{
+                            ...session.user,
+                            name: user?.name || session.user.name,
+                            image: user?.image || session.user.image,
+                        }} />
+                    </div>
                 </div>
             </header>
 
@@ -106,6 +111,7 @@ export default async function ShopPage() {
                     locale={locale}
                     userImage={user?.image ?? null}
                     userName={user?.name ?? null}
+                    initialViewMode={resolvedParams.view === 'gear' ? 'gear' : resolvedParams.view === 'inventory' ? 'inventory' : 'shop'}
                 />
             </div>
         </main>

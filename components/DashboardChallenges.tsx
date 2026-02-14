@@ -60,7 +60,7 @@ export default function DashboardChallenges() {
     if (challenges.length === 0) return null;
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow p-5">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                     🎯 {t('activeChallenges')}

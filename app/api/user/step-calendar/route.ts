@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { reportError } from "@/lib/errors";
 import { NextResponse } from "next/server";
 
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const endDate = `${year}-12-31`;
 
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
             .from("daily_steps")
             .select("date, steps")
             .eq("user_id", userId)

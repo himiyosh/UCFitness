@@ -11,11 +11,11 @@
 
 | 項目 | 値 |
 |------|------|
-| 総コミット数 | 23 |
-| 変更ファイル数 | **118** |
-| 総追加行 | **+4,616** |
-| 総削除行 | **-2,161** |
-| サイクル数 | 4 |
+| 総コミット数 | 24 |
+| 変更ファイル数 | **179** |
+| 総追加行 | **+4,979** |
+| 総削除行 | **-2,363** |
+| サイクル数 | 5 |
 | ビルドエラー | **0** ✅ |
 | 型エラー | **0** ✅ |
 
@@ -362,3 +362,88 @@
 ---
 
 *レビュー: GitHub Copilot (💰 Monetization Agent) | 2026-02-15*
+
+---
+
+## 🔄 Cycle 5 — コンポーネント全面改善 (2026-02-14)
+
+| コミット | 内容 | 対象ファイル数 |
+|----------|------|---------------|
+| `2863a74` | UI/UX・パフォーマンス・エラー状態の強化 | 61 |
+
+**主な改善内容:**
+- **UI/UX:** hover/active トランジション追加 (23+ コンポーネント)
+- **パフォーマンス:** `Promise.all` 並列化、`useCallback`/`useMemo` 最適化
+- **エラー状態:** `StepCalendar`, `TrendingGear`, `FollowingList` にリトライ UI 追加
+- **セキュリティ:** `supabase` → `supabaseAdmin` 統一、認証チェック追加
+- **ビルド:** `runtime = 'edge'` 宣言をファイル先頭に移動
+
+---
+
+## 🔍 新機能提案 — Cycle 5 (2026-02-14)
+
+### 🏆 優先度 High (すぐに着手すべき)
+
+| #   | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+| --- | ------ | ---- | ------ | -------- | -------- |
+| 1   | **UCギフト送信（チップ機能）** | フォロー中ユーザーにUCを送れる。`deductBalance`/`creditBalance` に `GIFT_SEND`/`GIFT_RECEIVE` 型が既に実装済み。UIとAPIルートを追加するだけ | 🟢 Easy | `coin-service.ts` の `deductBalance`/`creditBalance`, `user_follows`, `coin_balances` | DAU +15%, ソーシャル粘着度向上 |
+| 2   | **ウィークリーチャレンジ自動生成** | 毎週月曜にシステムが自動でチャレンジを作成。既存の `challenges` テーブル + `cron/weekly-summary` の cron パターンを流用 | 🟢 Easy | `challenges`, `challenge_participants`, `cron/` パターン, `coin_transactions` | 参加率 +25%, リテンション向上 |
+| 3   | **フォロー中ユーザーのステップ比較グラフ** | `DashboardFollowing` の拡張。フォロー中ユーザーとの週間/月間歩数推移を Recharts で可視化 | 🟢 Easy | `user_follows`, `daily_steps`, `PersonalAnalytics` の Recharts パターン, `DashboardFollowing` | エンゲージメント +20% |
+| 4   | **Amazon アフィリエイト 歩数連動レコメンド** | 歩数レベル・アクティビティに応じたフィットネスギア自動レコメンド。低歩数ユーザーにはモチベーショングッズ、高歩数ユーザーには上級ギアを提案 | 🟡 Medium | `recommended_items`, `amazon-creators-api.ts`, `daily_steps`, `coin_balances` | アフィリエイト収益 +30% |
+| 5   | **デイリーミッションシステム** | 毎日3つのミニミッション（例: 5000歩達成, ショップ訪問, フォロー中チェック）を提示し、全達成でボーナスUC付与 | 🟡 Medium | `coin_transactions`, `daily_steps`, `step_goals`, `LoginBonusToast` パターン | DAU +30%, セッション時間 +25% |
+
+### 📋 優先度 Medium (次スプリントで検討)
+
+| #   | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+| --- | ------ | ---- | ------ | -------- | -------- |
+| 6   | **グループ内ウィークリーレポート** | グループメンバー全員の週間サマリーをグループページに自動表示。既存 `getUserWeeklySummary` ロジックをグループ単位に拡張 | 🟡 Medium | `cron/weekly-summary`, `group_members`, `daily_steps`, `GroupAnalytics` | グループ活性化 +20% |
+| 7   | **歩数マイルストーン共有（SNSシェア）** | バッジ獲得・チャレンジ達成時にOGP画像を動的生成し、Twitter/LINE でシェア可能に。Next.js の `opengraph-image` を活用 | 🟡 Medium | `user_badges`, `challenges`, `apple-icon.tsx`/`icon.tsx` (画像生成パターン) | オーガニック流入 +15% |
+| 8   | **UCステーキング（定期預金）** | UCを一定期間ロックすると利息（ボーナスUC）が付与される「投資家」テーマ強化。`coin_transactions` に `STAKING_LOCK`/`STAKING_REWARD` 型を追加 | 🟡 Medium | `coin_transactions`, `coin_balances`, `INVESTOR_RANKS`, `constants.ts` | UC経済の深化, セッション頻度 +15% |
+| 9   | **プロフィールページ公開実績カード** | ユーザープロフィール（`/user/[username]`）に累計歩数・最長ストリーク・バッジ数のサマリーカードを追加 | 🟢 Easy | `daily_steps`, `coin_balances`(best_streak), `user_badges`, `ProfileHeader` | プロフィール閲覧 +25% |
+| 10  | **AdSense 導入準備（広告スロットコンポーネント）** | 非ログインユーザー・ランディングページ向けの広告表示コンポーネントを作成。ログインユーザーには非表示（将来のPremium控除可能） | 🟡 Medium | `LandingPage.tsx`, session チェックパターン, `layout.tsx` | 月間広告収益の基盤構築 |
+
+### 💡 優先度 Low (バックログ)
+
+| #   | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+| --- | ------ | ---- | ------ | -------- | -------- |
+| 11  | **フレンドチャレンジ（1対1対決）** | フォロー中ユーザーを指名して期間限定の1対1歩数対決。勝者にUCボーナス | 🟡 Medium | `challenges`, `user_follows`, `coin_transactions`, `push_subscriptions` | ソーシャル強化, DAU +10% |
+| 12  | **ストリークリカバリー（有料復活）** | ストリーク途切れから24時間以内にUCを支払ってストリークを復活。`streak_shield` の上位版 | 🟢 Easy | `user_streak_shields`, `coin_service.deductBalance`, `daily_steps` | UC消費促進, ストリーク維持率 +20% |
+| 13  | **季節イベント・限定チャレンジ** | 正月・桜・夏・ハロウィン等の季節テーマチャレンジ。限定バッジ・フレーム報酬 | 🔴 Hard | `challenges`, `badges`, `shop_items`(ICON_FRAME), `user_badges` | 季節DAUスパイク +40% |
+| 14  | **歩数予測AI（週間目標達成予測）** | 過去データから今週の目標達成確率を表示。Edge Function で軽量統計モデル | 🔴 Hard | `daily_steps`, `step_goals`, `PersonalAnalytics` | 差別化, モチベーション維持 |
+| 15  | **Premium サブスクリプション基盤** | 広告非表示・限定フレーム・詳細アナリティクス等のプレミアム機能。Stripe Checkout + `users` テーブルに `subscription_tier` 追加 | 🔴 Hard | `users`, `shop_items`, `SettingsForm`, Cloudflare Pages | 直接収益, ARPU向上 |
+
+### 📐 実装設計メモ (High 項目のみ)
+
+#### 1. UCギフト送信（チップ機能）
+- **DB変更:** なし（`coin_transactions` に `GIFT_SEND`/`GIFT_RECEIVE` 型は既にサポート済み、`deductBalance`/`creditBalance` RPC も実装済み）
+- **API:** `POST /api/user/gift` — `{ recipientId, amount, message? }` → `deductBalance(sender, amount, 'GIFT_SEND')` + `creditBalance(recipient, amount, 'GIFT_RECEIVE')`
+- **コンポーネント:** `GiftModal.tsx`（金額入力 + 確認ダイアログ）, `FollowButton` 近くに「💰 チップ」ボタン追加
+- **既存ファイルへの影響:** `FollowButton.tsx`, `TransactionHistory.tsx`, `messages/ja.json`, `messages/en.json`
+
+#### 2. ウィークリーチャレンジ自動生成
+- **DB変更:** `challenges` テーブルに `is_system BOOLEAN DEFAULT false` カラム追加
+- **API:** `GET /api/cron/weekly-challenge` — CRON_SECRET 認証、週ごとにランダムテーマでチャレンジ INSERT
+- **コンポーネント:** `ChallengeList.tsx` にシステムチャレンジバッジ追加、`DashboardChallenges.tsx` に「今週のチャレンジ」セクション
+- **既存ファイルへの影響:** `cron/weekly-summary/route.ts` を参考
+
+#### 3. フォロー中ユーザーのステップ比較グラフ
+- **DB変更:** なし
+- **API:** `GET /api/user/following-comparison?period=WEEKLY`
+- **コンポーネント:** `FollowingComparisonChart.tsx`（Recharts `LineChart` / `BarChart`）
+- **既存ファイルへの影響:** `DashboardFollowing.tsx` に「📊 比較」タブ追加
+
+#### 4. Amazon アフィリエイト 歩数連動レコメンド
+- **DB変更:** なし
+- **API:** `GET /api/amazon/personalized` — ユーザーの投資家ランク + 直近歩数平均に応じたカテゴリ自動選択
+- **コンポーネント:** `PersonalizedGearBanner.tsx`
+- **既存ファイルへの影響:** `amazon-creators-api.ts` に `getPersonalizedSearchQuery` 追加
+
+#### 5. デイリーミッションシステム
+- **DB変更:** 新テーブル `daily_missions` — `(id, user_id, date, mission_type, is_completed, reward_uc, completed_at)`
+- **API:** `GET /api/user/missions`, `POST /api/user/missions/complete`
+- **コンポーネント:** `DailyMissions.tsx`（チェックリスト風UI + プログレスバー）
+- **既存ファイルへの影響:** `page.tsx` にミッションカード追加, `coin-service.ts` に `MISSION_REWARD` 型追加
+
+---
+
+*レビュー: GitHub Copilot (Claude Opus 4.6) | 2026-02-14*

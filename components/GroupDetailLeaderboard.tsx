@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
@@ -101,7 +100,10 @@ export default function GroupDetailLeaderboard({
                                     const isCurrentUser = entry.users.id === userId;
 
                                     return (
-                                        <li key={entry.users.id} className={`leaderboard-row px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 cursor-pointer ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}>
+                                        <li key={entry.users.id}
+                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 hover:shadow-sm ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                            onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
+                                        >
                                             <div className="flex items-center gap-3">
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
                                                     style={rank === 1 ? {
@@ -131,13 +133,9 @@ export default function GroupDetailLeaderboard({
 
                                                 <div>
                                                     <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                                                        {entry.users.username ? (
-                                                            <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline decoration-[var(--theme-primary)]/30">
-                                                                {entry.users?.name || commonT('anonymous')}
-                                                            </Link>
-                                                        ) : (
-                                                            <span>{entry.users?.name || commonT('anonymous')}</span>
-                                                        )}
+                                                        <span>
+                                                            {entry.users?.name || commonT('anonymous')}
+                                                        </span>
                                                         {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) ? (

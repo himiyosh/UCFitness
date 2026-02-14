@@ -42,10 +42,12 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
     const [events, setEvents] = useState<GroupEvent[]>([]);
     const [eventDetails, setEventDetails] = useState<Map<string, EventWithProgress>>(new Map());
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
 
     const fetchEvents = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
             const res = await fetch(`/api/group/${groupId}/events`);
             if (!res.ok) throw new Error('Failed to fetch events');
@@ -76,6 +78,7 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
             setEventDetails(detailMap);
         } catch (err) {
             console.error('Failed to fetch events:', err);
+            setError('Failed to load events');
         } finally {
             setLoading(false);
         }
@@ -120,6 +123,27 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
                         <div className="h-3 w-full bg-gray-200 rounded-full" />
                     </div>
                 ))}
+            </div>
+        );
+    }
+
+    // エラー状態
+    if (error) {
+        return (
+            <div className="space-y-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    🏆 {t('title')}
+                </h2>
+                <div className="bg-white midnight-solid-panel rounded-xl border border-gray-200 p-8 text-center">
+                    <span className="text-3xl block mb-2">⚠️</span>
+                    <p className="text-sm text-red-500 mb-3">{error}</p>
+                    <button
+                        onClick={fetchEvents}
+                        className="text-sm font-semibold text-[var(--theme-primary)] hover:underline"
+                    >
+                        🔄 {t('retry') || 'Retry'}
+                    </button>
+                </div>
             </div>
         );
     }

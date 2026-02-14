@@ -171,7 +171,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         href={item.affiliate_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="recommended-card flex-shrink-0 w-[130px] rounded-xl border border-black/[0.06] bg-white overflow-hidden group relative"
+                        className="recommended-card flex-shrink-0 w-[130px] rounded-xl border border-black/[0.06] bg-white overflow-hidden group relative hover:shadow-md hover:-translate-y-0.5 transition-all"
                     >
                         {/* 商品画像 */}
                         <div className="w-[130px] h-[110px] bg-gray-50 flex items-center justify-center overflow-hidden">

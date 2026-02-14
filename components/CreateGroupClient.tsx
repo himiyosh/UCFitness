@@ -79,7 +79,7 @@ export default function CreateGroupClient() {
   }, [invitedMembers]);
 
   // ── ステップ1: グループ作成 ──
-  const handleCreate = async () => {
+  const handleCreate = useCallback(async () => {
     setError(null);
     const id = groupId.trim();
     if (!id) { setError(t('groupIdRequired')); return; }
@@ -108,7 +108,7 @@ export default function CreateGroupClient() {
     } finally {
       setIsCreating(false);
     }
-  };
+  }, [groupId, groupName, description, t]);
 
   // ── ステップ2: メンバー招待 ──
   const handleInvite = async (user: SearchUser) => {

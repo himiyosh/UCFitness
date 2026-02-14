@@ -59,7 +59,7 @@ export default function GroupEventCard({
     };
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white midnight-solid-panel rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow overflow-hidden">
             {/* ヘッダー */}
             <div className="p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">

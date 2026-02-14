@@ -1,5 +1,7 @@
+export const runtime = 'edge';
+
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import UsernameForm from "@/components/UsernameForm";
 
@@ -13,7 +15,7 @@ export default async function OnboardingPage() {
     }
 
     // Check if user already has a username
-    const { data: user } = await supabase
+    const { data: user } = await supabaseAdmin
         .from("users")
         .select("username")
         .eq("id", (session.user as any).id)
@@ -43,4 +45,3 @@ export default async function OnboardingPage() {
     );
 }
 
-export const runtime = 'edge';

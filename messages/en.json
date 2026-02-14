@@ -86,6 +86,8 @@
         "groups": "Groups",
         "wallet": "Wallet",
         "shop": "Shop",
+        "challenges": "Challenges",
+        "analytics": "Analytics",
         "refreshSteps": "Sync Now",
         "refreshing": "Refreshing...",
         "refreshFailed": "Failed to refresh steps"
@@ -187,8 +189,6 @@
         "vsLMo": "vs L.Mo",
         "keepItUp": "Keep it up!",
         "keepItUpDesc": "Integrating fitness into your daily routine is the best way to stay healthy.",
-        "syncHistory": "Sync History",
-        "syncing": "Syncing...",
         "goToSettings": "Go to Settings",
         "achievements": "Achievements",
         "viewAll": "View All",
@@ -196,6 +196,11 @@
         "unlockDesc": "Unlock badges by ranking in groups or hitting personal milestones.",
         "noAchievements": "No achievements yet.",
         "keepWalking": "Keep walking to unlock!",
+        "share": "Share",
+        "copyLink": "Copy Link",
+        "linkCopied": "Link copied!",
+        "shareProfile": "🚶 Walked {steps} steps on UCFitness! Check out my profile!",
+        "locale": "en",
         "locked": "Locked",
         "howToUnlock": "How to Unlock",
         "streakDesc": "Reach step goal for consecutive days (Min: 3 Days).",
@@ -412,6 +417,7 @@
         "comingSoon": "Coming Soon",
         "myItems": "My Items",
         "shopTab": "Shop",
+        "gearTab": "Gear",
         "inventoryTab": "Inventory",
         "rankLocked": "Requires {rank}",
         "featured": "Featured",
@@ -442,7 +448,12 @@
         "generateButton": "Generate",
         "linkReady": "Product found!",
         "linkGenerated": "Product found.",
-        "generateError": "Failed to generate link."
+        "generateError": "Failed to generate link.",
+        "personalizedTitle": "Recommended for You",
+        "personalizedDesc": "Perfect items for your {steps} daily average steps",
+        "rankRecommend": "Based on your rank",
+        "stepsRecommend": "Based on your steps",
+        "viewShop": "View in Shop"
     },
     "TrendingGear": {
         "title": "Trending Fitness Gear",
@@ -517,7 +528,12 @@
         "leaveFailed": "Failed to leave group",
         "errorOccurred": "An error occurred.",
         "memberRankings": "Member Rankings",
-        "pageInfo": "Page {current} of {total}"
+        "pageInfo": "Page {current} of {total}",
+        "weeklyReport": "Weekly Report",
+        "groupTotal": "Group Total",
+        "avgPerMember": "Avg per Member",
+        "showLess": "Show Less",
+        "showAll": "Show All ({count})"
     },
     "Calendar": {
         "title": "Step Calendar",
@@ -529,7 +545,9 @@
         "steps": "steps",
         "noData": "No step data for this year",
         "less": "Less",
-        "more": "More"
+        "more": "More",
+        "showCalendar": "Show Calendar",
+        "hideCalendar": "Hide Calendar"
     },
     "Achievement": {
         "title": "Achievement Progress",
@@ -540,6 +558,16 @@
         "progress": "{current} / {target}",
         "nextGoal": "Next Goal",
         "noProgress": "Start walking to unlock achievements!",
+        "showDetails": "Show All",
+        "hideDetails": "Collapse",
+        "achievementTitle": "Public Achievements",
+        "totalSteps": "Total Steps",
+        "activeDays": "Active Days",
+        "goalDays": "Goal Days",
+        "bestStreak": "Best Streak",
+        "badges": "Badges",
+        "totalUc": "Total UC",
+        "days": "d",
         "names": {
             "firstStep": "First Step",
             "strollMaster": "Stroll Master",
@@ -573,6 +601,7 @@
     },
     "Challenge": {
         "title": "Challenges",
+        "headerDesc": "Complete step challenges and earn UC rewards!",
         "subtitle": "Complete step challenges and earn UC rewards!",
         "active": "Active",
         "completed": "Completed",
@@ -623,7 +652,23 @@
         "noFollowing": "You're not following anyone yet.",
         "todaySteps": "today",
         "followingActivity": "Following Activity",
-        "more": "more"
+        "more": "more",
+        "stepComparison": "Step Comparison",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "dailyTrend": "Daily Trend",
+        "comparisonError": "Failed to load comparison data",
+        "retry": "Retry",
+        "noComparisonData": "Follow more users to compare steps"
+    },
+    "Mission": {
+        "dailyMissions": "Daily Missions",
+        "allCompleted": "All Missions Complete!",
+        "loadError": "Failed to load missions",
+        "retry": "Retry",
+        "refresh": "Refresh missions",
+        "bonusHint": "Complete all for bonus",
+        "bonusReward": "Complete all missions for +100 UC bonus!"
     },
     "GroupEvent": {
         "title": "Group Events",

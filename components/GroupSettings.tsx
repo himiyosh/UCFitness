@@ -73,7 +73,7 @@ export default function GroupSettings() {
             type="button"
             onClick={handleJoin}
             disabled={isSaving || !keyword.trim()}
-            className="inline-flex items-center rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-primary)] disabled:opacity-50 whitespace-nowrap gap-2 transition-all"
+            className="inline-flex items-center rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-primary)] disabled:opacity-50 whitespace-nowrap gap-2 transition-all"
           >
             {isSaving && (
               <Spinner size="sm" />
