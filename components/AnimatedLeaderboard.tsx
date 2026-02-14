@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
@@ -135,11 +135,11 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     }, [allGlobalRankings]);
 
     // Handle Tab Switch
-    const handleSwitch = (newPeriod: Period) => {
+    const handleSwitch = useCallback((newPeriod: Period) => {
         if (newPeriod === period) return;
         setPeriod(newPeriod);
         setPage(1); // Reset to page 1 on tab switch
-    };
+    }, [period]);
 
     // Filter current view data
     const currentGlobal = allGlobalRankings[period] ?? [];

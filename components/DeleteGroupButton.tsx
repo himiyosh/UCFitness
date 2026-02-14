@@ -20,7 +20,7 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
             return;
         }
 
-        if (!confirm("Are you absolutely sure? This action cannot be undone and will remove all members.")) {
+        if (!window.confirm("Are you absolutely sure? This action cannot be undone and will remove all members.")) {
             return;
         }
 

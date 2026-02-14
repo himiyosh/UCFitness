@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 
@@ -10,24 +10,26 @@ export default function StreakShieldIndicator() {
     const [remaining, setRemaining] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        async function fetchShields() {
-            try {
-                const res = await fetch('/api/user/shields');
-                if (res.ok) {
-                    const data = await res.json();
-                    setRemaining(data.remaining ?? 0);
-                } else {
-                    setRemaining(0);
-                }
-            } catch {
+    const fetchShields = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/user/shields');
+            if (res.ok) {
+                const data = await res.json();
+                setRemaining(data.remaining ?? 0);
+            } else {
                 setRemaining(0);
-            } finally {
-                setLoading(false);
             }
+        } catch {
+            setRemaining(0);
+        } finally {
+            setLoading(false);
         }
-        fetchShields();
     }, []);
+
+    useEffect(() => {
+        fetchShields();
+    }, [fetchShields]);
 
     if (loading) {
         return (

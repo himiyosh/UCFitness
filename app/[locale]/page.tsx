@@ -1,4 +1,6 @@
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+export const runtime = 'edge';
+
+import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
@@ -72,16 +74,16 @@ export default async function Home() {
 
     // ⚡ パフォーマンス: 3つの独立クエリを並列実行（逐次→並列で ~3x 高速化）
     const [userResult, membershipResult, stepsResult] = await Promise.all([
-      supabase
+      supabaseAdmin
         .from('users')
         .select('username, step_goal, banner_url, image, name')
         .eq('id', userId)
         .single(),
-      supabase
+      supabaseAdmin
         .from('group_members')
         .select('groups(keyword)')
         .eq('user_id', userId),
-      supabase
+      supabaseAdmin
         .from('daily_steps')
         .select('steps, date')
         .eq('user_id', userId)
@@ -160,7 +162,7 @@ export default async function Home() {
   const validGroupIds: string[] = [];
 
   if (groupKeywords.length > 0) {
-    const { data: groupsData } = await supabase
+    const { data: groupsData } = await supabaseAdmin
       .from('groups')
       .select('id, keyword, header_image_url, image_url')
       .in('keyword', groupKeywords);
@@ -489,5 +491,3 @@ export default async function Home() {
     </main>
   );
 }
-
-export const runtime = 'edge';

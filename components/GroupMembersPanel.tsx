@@ -386,7 +386,7 @@ export default function GroupMembersPanel({
                     </li>
                 )}
                 {members.map((member) => (
-                    <li key={member.user_id} className="py-3 sm:py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 transition-colors rounded-lg px-2">
+                    <li key={member.user_id} className="py-3 sm:py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 hover:shadow-sm transition-all rounded-lg px-2">
                         <div className="flex items-center gap-3 min-w-0">
                             {/* Avatar */}
                             <div

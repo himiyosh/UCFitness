@@ -101,7 +101,7 @@ export default function GroupDetailLeaderboard({
                                     const isCurrentUser = entry.users.id === userId;
 
                                     return (
-                                        <li key={entry.users.id} className={`leaderboard-row px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 cursor-pointer ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}>
+                                        <li key={entry.users.id} className={`leaderboard-row px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 cursor-pointer hover:shadow-sm ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}>
                                             <div className="flex items-center gap-3">
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
                                                     style={rank === 1 ? {

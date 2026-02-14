@@ -21,6 +21,7 @@ export default function TrendingGear() {
     const t = useTranslations('TrendingGear');
     const [items, setItems] = useState<TrendingItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
@@ -34,7 +35,9 @@ export default function TrendingGear() {
                     setItems(data.items);
                 }
             })
-            .catch(() => { /* 静かに失敗 */ })
+            .catch(() => {
+                if (!cancelled) setError(true);
+            })
             .finally(() => {
                 if (!cancelled) setLoading(false);
             });
@@ -68,8 +71,25 @@ export default function TrendingGear() {
         title.replace(/【.*?】/g, '').trim() || 'Item', []);
 
     // アイテムがない場合（ローディング含む）は非表示
-    if (!loading && items.length === 0) return null;
     if (loading) return null;
+    if (error) {
+        return (
+            <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 text-center h-full flex flex-col items-center justify-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-amber-50 flex items-center justify-center">
+                    <span className="text-2xl">⚠️</span>
+                </div>
+                <p className="text-sm text-gray-500 font-medium mb-3">{t('title')}</p>
+                <button
+                    onClick={() => { setError(false); setLoading(true); window.location.reload(); }}
+                    className="px-4 py-2 rounded-lg text-sm font-bold text-white hover:scale-105 active:scale-95 transition-all"
+                    style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
+                >
+                    ↻ Retry
+                </button>
+            </div>
+        );
+    }
+    if (items.length === 0) return null;
 
     return (
         <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 overflow-hidden h-full flex flex-col">

@@ -104,20 +104,20 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
         setMessage(null);
 
         try {
-            // Update Name
-            const nameRes = await fetch('/api/user/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: trimmedName }),
-            });
+            // 名前とユーザー名を並列で更新
+            const [nameRes, usernameRes] = await Promise.all([
+                fetch('/api/user/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: trimmedName }),
+                }),
+                fetch('/api/user/username', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: trimmedUsername }),
+                }),
+            ]);
             if (!nameRes.ok) throw new Error('Failed to update name');
-
-            // Update Username
-            const usernameRes = await fetch('/api/user/username', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: trimmedUsername }),
-            });
 
             const usernameData = await usernameRes.json();
             if (!usernameRes.ok) throw new Error(usernameData.error || 'Failed to update ID');

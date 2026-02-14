@@ -32,6 +32,7 @@ export default function FollowingList({ limit, compact = false, className = '' }
     const t = useTranslations('Follow');
     const [following, setFollowing] = useState<FollowingUser[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
         const fetchFollowing = async () => {
@@ -40,9 +41,11 @@ export default function FollowingList({ limit, compact = false, className = '' }
                 if (res.ok) {
                     const data = await res.json();
                     setFollowing(data.following || []);
+                } else {
+                    setError(true);
                 }
             } catch {
-                // エラー時は空リスト
+                setError(true);
             } finally {
                 setIsLoading(false);
             }
@@ -63,6 +66,23 @@ export default function FollowingList({ limit, compact = false, className = '' }
                         </div>
                     </div>
                 ))}
+            </div>
+        );
+    }
+
+    // エラー状態
+    if (error) {
+        return (
+            <div className={`text-center py-6 ${className}`}>
+                <div className="text-3xl mb-2">⚠️</div>
+                <p className="text-sm text-[var(--foreground-muted)] mb-2">{t('noFollowing')}</p>
+                <button
+                    onClick={() => { setError(false); setIsLoading(true); window.location.reload(); }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:scale-105 active:scale-95 transition-all"
+                    style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
+                >
+                    ↻ Retry
+                </button>
             </div>
         );
     }

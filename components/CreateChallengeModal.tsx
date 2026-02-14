@@ -233,7 +233,7 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[var(--theme-primary)] hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[var(--theme-primary)] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {submitting ? (
                             <>

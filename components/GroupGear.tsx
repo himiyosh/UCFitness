@@ -72,9 +72,32 @@ export default function GroupGear({ groupId }: GroupGearProps) {
     const cleanTitle = useCallback((title: string) =>
         title.replace(/【.*?】/g, '').trim() || 'Item', []);
 
-    // アイテムなし・ローディング中は非表示
+    // アイテムなし
     if (!loading && items.length === 0) return null;
-    if (loading) return null;
+
+    // ローディングスケルトン
+    if (loading) {
+        return (
+            <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col">
+                <div className="px-5 pt-5 pb-3 flex items-center gap-2.5">
+                    <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse" />
+                    <div className="space-y-1.5">
+                        <div className="h-3.5 bg-gray-200 rounded w-24 animate-pulse" />
+                        <div className="h-2.5 bg-gray-100 rounded w-32 animate-pulse" />
+                    </div>
+                </div>
+                <div className="flex gap-3 px-5 pb-5">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="flex-shrink-0 w-36 rounded-xl border border-gray-100 p-2.5 animate-pulse">
+                            <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2" />
+                            <div className="h-3 bg-gray-200 rounded w-full mb-1.5" />
+                            <div className="h-3 bg-gray-100 rounded w-2/3" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 overflow-hidden h-full flex flex-col">

@@ -75,7 +75,7 @@ export default function StepGoalForm({ initialGoal }: { initialGoal: number }) {
                     <button
                         type="submit"
                         disabled={isSaving}
-                        className="rounded-lg bg-[var(--theme-primary)] px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+                        className="rounded-lg bg-[var(--theme-primary)] px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
                     >
                         {isSaving ? (
                             <Spinner size="sm" />

@@ -1,5 +1,7 @@
+export const runtime = 'edge';
+
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import GroupList from "@/components/GroupList";
@@ -22,12 +24,12 @@ export default async function MyGroupsPage() {
 
     // ⚡ パフォーマンス: ユーザーデータとメンバーシップを並列取得
     const [userResult, membershipResult] = await Promise.all([
-        supabase
+        supabaseAdmin
             .from('users')
             .select('name, group_keyword, image')
             .eq('id', userId)
             .single(),
-        supabase
+        supabaseAdmin
             .from('group_members')
             .select(`
       role,
@@ -248,4 +250,3 @@ export default async function MyGroupsPage() {
     );
 }
 
-export const runtime = 'edge';

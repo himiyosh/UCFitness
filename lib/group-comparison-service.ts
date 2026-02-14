@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { Period } from '@/components/LeaderboardTabs';
 
 export interface ComparisonDataPoint {

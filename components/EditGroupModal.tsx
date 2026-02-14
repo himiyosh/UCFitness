@@ -133,37 +133,40 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
             let uploadedIconUrl = currentIcon;
             let uploadedHeaderUrl = currentHeader;
 
-            // 1. Upload Icon if changed
+            // 1 & 2. Upload Icon and Header in parallel if changed
+            const uploadPromises: Promise<void>[] = [];
+
             if (iconFile) {
                 const formData = new FormData();
                 formData.append('file', iconFile);
                 formData.append('groupId', groupId);
                 formData.append('type', 'icon');
-
-                const res = await fetch('/api/upload/group', {
-                    method: 'POST',
-                    body: formData,
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Icon upload failed');
-                uploadedIconUrl = data.publicUrl;
+                uploadPromises.push(
+                    fetch('/api/upload/group', { method: 'POST', body: formData })
+                        .then(async (res) => {
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Icon upload failed');
+                            uploadedIconUrl = data.publicUrl;
+                        })
+                );
             }
 
-            // 2. Upload Header if changed
             if (headerFile) {
                 const formData = new FormData();
                 formData.append('file', headerFile);
                 formData.append('groupId', groupId);
                 formData.append('type', 'header');
-
-                const res = await fetch('/api/upload/group', {
-                    method: 'POST',
-                    body: formData,
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Header upload failed');
-                uploadedHeaderUrl = data.publicUrl;
+                uploadPromises.push(
+                    fetch('/api/upload/group', { method: 'POST', body: formData })
+                        .then(async (res) => {
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Header upload failed');
+                            uploadedHeaderUrl = data.publicUrl;
+                        })
+                );
             }
+
+            await Promise.all(uploadPromises);
 
             // 3. Update Group Metadata
             const res = await fetch('/api/user/group', {

@@ -56,7 +56,7 @@ export default function LeaderboardTabs() {
                         scroll={false}
                         role="tab"
                         aria-selected={isActive}
-                        className={`px-4 py-2 rounded-full text-xs font-bold transition-all hover:scale-105 ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50 hover:shadow-sm') : ''}`}
+                        className={`px-4 py-2 rounded-full text-xs font-bold transition-all hover:scale-105 active:scale-95 ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50 hover:shadow-sm') : ''}`}
                         style={isMidnight ? (isActive ? MIDNIGHT_ACTIVE_STYLE : MIDNIGHT_INACTIVE_STYLE) : undefined}
                     >
                         {t(tab.i18nKey)}

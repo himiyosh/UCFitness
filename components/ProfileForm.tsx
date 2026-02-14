@@ -66,7 +66,7 @@ export default function ProfileForm({ initialName }: ProfileFormProps) {
                 <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 disabled:opacity-50 whitespace-nowrap transition-all flex items-center gap-1.5"
+                    className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 active:scale-95 disabled:opacity-50 whitespace-nowrap transition-all flex items-center gap-1.5"
                 >
                     {isSaving && (
                         <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />

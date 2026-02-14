@@ -1,7 +1,7 @@
-
+export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
@@ -41,17 +41,17 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
 
     // ⚡ パフォーマンス: 3つの独立クエリを並列実行
     const [userResult, groupResult, membershipResult] = await Promise.all([
-        supabase
+        supabaseAdmin
             .from('users')
             .select('id, name, image, username')
             .eq('id', userId)
             .single(),
-        supabase
+        supabaseAdmin
             .from('groups')
             .select('id, name, keyword, description, is_public, header_image_url, image_url, created_at, created_by')
             .eq('id', groupId)
             .single(),
-        supabase
+        supabaseAdmin
             .from('group_members')
             .select('role')
             .eq('group_id', groupId)
@@ -127,7 +127,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         getGroupCompetitionRankings('MONTHLY'),
         getGroupCompetitionRankings('YEARLY'),
         getAllGroupComparisonData(groupId, userId),
-        supabase
+        supabaseAdmin
             .from('group_members')
             .select(`
             user_id,
@@ -293,4 +293,3 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     );
 }
 
-export const runtime = 'edge';

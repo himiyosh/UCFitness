@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,7 @@ export default async function ProfileRedirect() {
 
     const userId = (session.user as any).id;
 
-    const { data: user } = await supabase
+    const { data: user } = await supabaseAdmin
         .from("users")
         .select("username")
         .eq("id", userId)

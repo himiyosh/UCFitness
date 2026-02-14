@@ -320,7 +320,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all hover:scale-105 active:scale-95 ${
                                     activeTab === tab.key
                                         ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                         : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'

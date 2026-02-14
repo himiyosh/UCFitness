@@ -1,5 +1,7 @@
 'use client';
 
+export const runtime = 'edge';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -256,4 +258,3 @@ export default function SetupPage() {
     );
 }
 
-export const runtime = 'edge';

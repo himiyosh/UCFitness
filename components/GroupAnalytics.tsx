@@ -142,7 +142,7 @@ export default function GroupAnalytics({
                     </div>
                 ) : <div className="hidden sm:block"></div>}
 
-                <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 h-full hover:shadow-lg transition-shadow">
+                    <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 h-full hover:shadow-lg transition-all">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="p-1.5 bg-[var(--theme-primary-light)] rounded-full text-[var(--theme-primary)] shrink-0">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

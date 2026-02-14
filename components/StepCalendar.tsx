@@ -174,9 +174,11 @@ export default function StepCalendar({ userId }: { userId: string }) {
     const [year, setYear] = useState(currentYear);
     const [data, setData] = useState<StepDay[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
+        setError(false);
         try {
             const res = await fetch(`/api/user/step-calendar?userId=${encodeURIComponent(userId)}&year=${year}`);
             if (res.ok) {
@@ -184,9 +186,11 @@ export default function StepCalendar({ userId }: { userId: string }) {
                 setData(json.data || []);
             } else {
                 setData([]);
+                setError(true);
             }
         } catch {
             setData([]);
+            setError(true);
         } finally {
             setLoading(false);
         }
@@ -226,6 +230,26 @@ export default function StepCalendar({ userId }: { userId: string }) {
         return (
             <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <CalendarSkeleton />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="text-center py-8">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-amber-50 flex items-center justify-center">
+                        <span className="text-2xl">⚠️</span>
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium mb-3">{t('noData')}</p>
+                    <button
+                        onClick={fetchData}
+                        className="px-4 py-2 rounded-lg text-sm font-bold text-white hover:scale-105 active:scale-95 transition-all"
+                        style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
+                    >
+                        ↻ Retry
+                    </button>
+                </div>
             </div>
         );
     }

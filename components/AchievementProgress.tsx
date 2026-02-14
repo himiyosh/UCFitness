@@ -118,10 +118,27 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
         );
     }
 
-    if (error || items.length === 0) {
+    if (error) {
         return (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <h3 className="text-sm font-bold text-gray-900 mb-2">{t('title')}</h3>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+                <span className="text-3xl block mb-2">⚠️</span>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{t('title')}</h3>
+                <p className="text-xs text-gray-500 mb-3">{t('noProgress')}</p>
+                <button
+                    onClick={() => { setError(false); setLoading(true); fetch(`/api/user/achievement-progress?userId=${encodeURIComponent(userId)}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => setItems(data.progress || [])).catch(() => setError(true)).finally(() => setLoading(false)); }}
+                    className="text-xs font-semibold text-[var(--theme-primary)] hover:underline"
+                >
+                    🔄 Retry
+                </button>
+            </div>
+        );
+    }
+
+    if (items.length === 0) {
+        return (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+                <span className="text-3xl block mb-2">🏅</span>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{t('title')}</h3>
                 <p className="text-xs text-gray-500">{t('noProgress')}</p>
             </div>
         );
