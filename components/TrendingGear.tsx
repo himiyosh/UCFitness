@@ -5,8 +5,7 @@ import { useTranslations } from 'next-intl';
 
 // ============================================
 // TrendingGear — ダッシュボード用コミュニティ人気アイテム
-// フォロー・グループメンバーが愛用しているアイテムを
-// 縦リスト形式で表示。Amazon アフィリエイト収益化。
+// 横スクロールカルーセルで表示。Amazon アフィリエイト収益化。
 // ============================================
 
 interface TrendingItem {
@@ -23,6 +22,8 @@ export default function TrendingGear() {
     const [items, setItems] = useState<TrendingItem[]>([]);
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -40,6 +41,28 @@ export default function TrendingGear() {
         return () => { cancelled = true; };
     }, []);
 
+    /** スクロール状態を監視 */
+    const updateScrollState = useCallback(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        setCanScrollLeft(el.scrollLeft > 8);
+        setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+    }, []);
+
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        updateScrollState();
+        el.addEventListener('scroll', updateScrollState, { passive: true });
+        return () => el.removeEventListener('scroll', updateScrollState);
+    }, [items, updateScrollState]);
+
+    const scroll = useCallback((direction: 'left' | 'right') => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+    }, []);
+
     /** タイトルから【】内の装飾テキストを除去して整形 */
     const cleanTitle = useCallback((title: string) =>
         title.replace(/【.*?】/g, '').trim() || 'Item', []);
@@ -51,7 +74,7 @@ export default function TrendingGear() {
     return (
         <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 overflow-hidden h-full flex flex-col">
             {/* ヘッダー */}
-            <div className="px-5 pt-5 pb-3 flex items-center flex-shrink-0">
+            <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2.5">
                     <div className="p-2 bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/20">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,28 +90,52 @@ export default function TrendingGear() {
                         </p>
                     </div>
                 </div>
+                {/* スクロールナビ */}
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => scroll('left')}
+                        disabled={!canScrollLeft}
+                        className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
+                        aria-label="Scroll left"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => scroll('right')}
+                        disabled={!canScrollRight}
+                        className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
+                        aria-label="Scroll right"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
-            {/* アイテムリスト — 縦スクロール */}
+            {/* アイテムカルーセル — 4列サイドバーでは縦折り返し */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 space-y-2 scrollbar-hide"
+                className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 scrollbar-hide"
             >
+              <div className="grid grid-cols-2 gap-2.5">
                 {items.map(item => (
                     <a
                         key={item.asin}
                         href={item.affiliate_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-md hover:border-[var(--theme-primary)]/20 p-2.5 transition-all duration-200 group"
+                        className="rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 hover:shadow-lg hover:border-[var(--theme-primary)]/20 hover:scale-[1.03] p-2 transition-all duration-200 group"
                     >
                         {/* 商品画像 */}
-                        <div className="w-14 h-14 flex-shrink-0 rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden">
+                        <div className="w-full aspect-square rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-2">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={item.image_url}
                                 alt={item.title || item.asin}
-                                className="max-w-full max-h-full object-contain"
+                                className="max-w-[80%] max-h-[80%] object-contain"
                                 loading="lazy"
                                 onError={(e) => {
                                     (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${item.asin}&Format=_SL160_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=studio344-22`;
@@ -96,39 +143,38 @@ export default function TrendingGear() {
                             />
                         </div>
 
-                        {/* タイトル + メタ情報 */}
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-medium text-gray-700 leading-[1.4] line-clamp-2 group-hover:text-gray-900 transition-colors">
-                                {cleanTitle(item.title)}
-                            </p>
-                            <div className="mt-1 flex items-center gap-2">
-                                {/* 愛用者アバター */}
-                                <div className="flex items-center -space-x-1.5">
-                                    {item.users.slice(0, 2).map((u, i) => (
-                                        <div
-                                            key={i}
-                                            className="w-4 h-4 rounded-full border border-white overflow-hidden bg-gray-200"
-                                            title={u.username}
-                                        >
-                                            {u.image ? (
-                                                // eslint-disable-next-line @next/next/no-img-element
-                                                <img src={u.image} alt="" className="w-full h-full object-cover" loading="lazy" />
-                                            ) : (
-                                                <span className="flex items-center justify-center w-full h-full text-[7px] text-gray-400">
-                                                    {u.username.charAt(0).toUpperCase()}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {item.count > 2 && (
-                                        <span className="text-[9px] text-gray-400 ml-1">+{item.count - 2}</span>
-                                    )}
-                                </div>
-                                <span className="text-[9px] text-gray-400">→</span>
+                        {/* タイトル */}
+                        <p className="text-[11px] font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1.5 h-8">
+                            {cleanTitle(item.title)}
+                        </p>
+
+                        {/* 愛用者アバター */}
+                        <div className="flex items-center">
+                            <div className="flex items-center -space-x-1.5">
+                                {item.users.slice(0, 3).map((u, i) => (
+                                    <div
+                                        key={i}
+                                        className="w-4.5 h-4.5 rounded-full border-2 border-white overflow-hidden bg-gray-200 shadow-sm"
+                                        title={u.username}
+                                    >
+                                        {u.image ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={u.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                        ) : (
+                                            <span className="flex items-center justify-center w-full h-full text-[7px] font-bold text-gray-400">
+                                                {u.username.charAt(0).toUpperCase()}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
+                            {item.count > 3 && (
+                                <span className="text-[9px] text-gray-400 font-medium ml-1">+{item.count - 3}</span>
+                            )}
                         </div>
                     </a>
                 ))}
+              </div>
             </div>
         </div>
     );
