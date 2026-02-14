@@ -26,19 +26,20 @@ const MILESTONES = [
 export default function ShareMilestone({ totalSteps, bestStreak, badgeCount, username }: ShareMilestoneProps) {
     const t = useTranslations('Profile');
     const [showMenu, setShowMenu] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // 達成済みマイルストーンのうち最高のもの
     const milestone = MILESTONES.find(m => totalSteps >= m.steps);
 
     const shareText = useCallback(() => {
-        const streakLine = bestStreak ? `\n🔥 最長ストリーク: ${bestStreak}日` : '';
-        const badgeLine = badgeCount ? `\n🏅 バッジ: ${badgeCount}個` : '';
+        const streakLine = bestStreak ? `\n🔥 ${t('shareStreak', { days: bestStreak })}` : '';
+        const badgeLine = badgeCount ? `\n🏅 ${t('shareBadges', { count: badgeCount })}` : '';
         const text = milestone
-            ? `${milestone.emoji} UCFitness で累計 ${milestone.label} を達成しました！🎉${streakLine}${badgeLine}\n#UCFitness #フィットネス #歩数チャレンジ`
-            : `🏃 UCFitness で歩数トラッキング中！\n合計: ${totalSteps.toLocaleString()} 歩${streakLine}\n#UCFitness #フィットネス`;
+            ? `${milestone.emoji} ${t('shareMilestone', { label: t('locale') === 'ja' ? milestone.label : milestone.labelEn })}🎉${streakLine}${badgeLine}\n#UCFitness`
+            : `🏃 ${t('shareTracking', { steps: totalSteps.toLocaleString() })}${streakLine}\n#UCFitness`;
 
         return text;
-    }, [milestone, totalSteps, bestStreak, badgeCount]);
+    }, [milestone, totalSteps, bestStreak, badgeCount, t]);
 
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/user/${username}` : '';
 
@@ -57,6 +58,8 @@ export default function ShareMilestone({ totalSteps, bestStreak, badgeCount, use
     const copyToClipboard = useCallback(async () => {
         try {
             await navigator.clipboard.writeText(`${shareText()}\n${shareUrl}`);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
             setShowMenu(false);
         } catch {
             // サイレントフェイル
@@ -81,6 +84,13 @@ export default function ShareMilestone({ totalSteps, bestStreak, badgeCount, use
                 </svg>
                 {t('share')}
             </button>
+
+            {/* コピー成功トースト */}
+            {copied && (
+                <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
+                    ✅ {t('linkCopied')}
+                </div>
+            )}
 
             {/* シェアメニュー */}
             {showMenu && (
