@@ -209,8 +209,17 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                 pieceCount={80}
                 onComplete={() => setShowConfetti(false)}
             />
-            <div className={`relative w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] rounded-full transition-transform duration-300 ${isAchieved ? 'animate-celebrate' : ''}`}>
+            <div className={`relative w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] rounded-full transition-transform duration-300`}>
                 <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
+                    {/* 達成時パルスリング — SVGベースで円と完全に中心一致 */}
+                    {isAchieved && (
+                        <circle
+                            cx="40" cy="40" r={r}
+                            fill="none" stroke="#22c55e" strokeWidth="3"
+                            className="animate-[ringPulse_1.5s_ease-out_infinite]"
+                            style={{ transformOrigin: '40px 40px' }}
+                        />
+                    )}
                     <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="5" />
                     <circle
                         cx="40" cy="40" r={r} fill="none"

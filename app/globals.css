@@ -1337,6 +1337,21 @@ button:not(:disabled) {
   animation: celebratePulse 1.5s infinite;
 }
 
+/* GoalRing 達成パルス — SVGリングと中心一致 */
+@keyframes ringPulse {
+  0% {
+    opacity: 0.6;
+    stroke-width: 3;
+    r: 32;
+  }
+
+  100% {
+    opacity: 0;
+    stroke-width: 1;
+    r: 39;
+  }
+}
+
 /* リーダーボード行ホバー */
 .leaderboard-row:hover {
   background-color: var(--theme-primary-light);
