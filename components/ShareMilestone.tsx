@@ -81,7 +81,7 @@ export default function ShareMilestone({ totalSteps, username }: ShareMilestoneP
                             onClick={shareTwitter}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
                         >
-                            <span className="text-base">𝕏</span>
+                            <span className="w-5 text-center text-base font-bold">𝕏</span>
                             <span className="text-sm font-medium text-gray-700">Twitter / X</span>
                         </button>
 
@@ -90,7 +90,7 @@ export default function ShareMilestone({ totalSteps, username }: ShareMilestoneP
                             onClick={shareLine}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
                         >
-                            <span className="text-base">💬</span>
+                            <span className="w-5 text-center text-base">💬</span>
                             <span className="text-sm font-medium text-gray-700">LINE</span>
                         </button>
 
@@ -99,7 +99,7 @@ export default function ShareMilestone({ totalSteps, username }: ShareMilestoneP
                             onClick={copyToClipboard}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
                         >
-                            <span className="text-base">📋</span>
+                            <span className="w-5 text-center text-base">📋</span>
                             <span className="text-sm font-medium text-gray-700">{t('copyLink')}</span>
                         </button>
                     </div>
