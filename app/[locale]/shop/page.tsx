@@ -14,7 +14,8 @@ import { getTranslations, getLocale } from "next-intl/server";
 
 export const dynamic = 'force-dynamic';
 
-export default async function ShopPage() {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+    const resolvedParams = await searchParams;
     const session = await auth();
     const t = await getTranslations('Shop');
     const dashboardT = await getTranslations('Dashboard');
@@ -106,6 +107,7 @@ export default async function ShopPage() {
                     locale={locale}
                     userImage={user?.image ?? null}
                     userName={user?.name ?? null}
+                    initialViewMode={resolvedParams.view === 'gear' ? 'gear' : resolvedParams.view === 'inventory' ? 'inventory' : 'shop'}
                 />
             </div>
         </main>

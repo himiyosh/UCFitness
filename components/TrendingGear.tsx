@@ -206,7 +206,7 @@ export default function TrendingGear() {
 
             {/* ショップリンク */}
             <div className="text-center py-2 border-t border-gray-100 flex-shrink-0">
-                <Link href="/shop" className="text-xs font-semibold text-[var(--theme-primary)] hover:underline">
+                <Link href="/shop?view=gear" className="text-xs font-semibold text-[var(--theme-primary)] hover:underline">
                     🛍️ {recT('viewShop')}
                 </Link>
             </div>

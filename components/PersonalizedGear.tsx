@@ -122,7 +122,7 @@ export default function PersonalizedGear() {
 
                 {/* ショップリンク */}
                 <div className="text-center pt-1">
-                    <Link href="/shop" className="text-xs font-semibold text-[var(--theme-primary)] hover:underline">
+                    <Link href="/shop?view=gear" className="text-xs font-semibold text-[var(--theme-primary)] hover:underline">
                         🛍️ {t('viewShop')}
                     </Link>
                 </div>

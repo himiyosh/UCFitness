@@ -25,6 +25,7 @@ interface ShopClientProps {
     locale: string;
     userImage: string | null;
     userName: string | null;
+    initialViewMode?: 'shop' | 'gear' | 'inventory';
 }
 
 type TabKey = 'ALL' | ShopCategory;
@@ -46,7 +47,7 @@ const RANK_ORDER: Record<string, number> = {
 };
 
 // --- メインコンポーネント ---
-export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName }: ShopClientProps) {
+export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName, initialViewMode = 'shop' }: ShopClientProps) {
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
     const { success: toastSuccess, error: toastError } = useToast();
@@ -60,7 +61,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
     const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
-    const [viewMode, setViewMode] = useState<'shop' | 'gear' | 'inventory'>('shop');
+    const [viewMode, setViewMode] = useState<'shop' | 'gear' | 'inventory'>(initialViewMode);
 
     // フィルタされたアイテム
     const filteredItems = useMemo(
