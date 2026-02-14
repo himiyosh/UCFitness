@@ -164,19 +164,19 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
     const color = pct >= 1 ? '#22c55e' : 'var(--theme-primary)';
 
     return (
-        <div className="relative w-[80px] h-[80px] sm:w-[90px] sm:h-[90px]">
+        <div className="relative w-[100px] h-[100px] sm:w-[120px] sm:h-[120px]">
             <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-                <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="6" />
+                <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="5" />
                 <circle
                     cx="40" cy="40" r={r} fill="none"
-                    stroke={color} strokeWidth="6" strokeLinecap="round"
+                    stroke={color} strokeWidth="5" strokeLinecap="round"
                     strokeDasharray={circ} strokeDashoffset={offset}
                     className="transition-all duration-700 ease-out"
                 />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-sm sm:text-base font-black text-gray-800">{Math.round(pct * 100)}%</span>
-                <span className="text-[8px] text-gray-400">{goal.toLocaleString()}</span>
+                <span className="text-lg sm:text-xl font-black text-gray-800">{Math.round(pct * 100)}%</span>
+                <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{goal.toLocaleString()}</span>
             </div>
         </div>
     );
@@ -298,66 +298,55 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
                 <div className="mb-3 pb-3 border-b border-gray-100">
-                    {/* 今日の歩数 — メイン表示 */}
-                    <div className="flex items-start justify-between mb-2">
-                        <div>
+                    {/* 今日の歩数 + ゴールリング */}
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="min-w-0">
                             <div className="flex items-center gap-1.5 mb-1">
                                 <div className="p-1 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 </div>
                                 <h3 className="text-sm font-bold text-gray-900 tracking-tight">{dashT('yourActivity')}</h3>
                             </div>
-                            <div className="flex items-baseline gap-1">
+                            <div className="flex items-baseline gap-1.5">
                                 <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: '"Inter", sans-serif' }}>
                                     {activity.todaySteps.toLocaleString()}
                                 </span>
                                 <span className="text-xs font-semibold text-gray-400">{dashT('stepsToday')}</span>
                             </div>
                             <div className="mt-1 flex items-center gap-1.5">
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${
                                     activity.todaySteps - activity.yesterdaySteps >= 0
-                                        ? 'bg-green-100 text-green-700 border border-green-200'
-                                        : 'bg-red-50 text-red-600 border border-red-100'
+                                        ? 'text-green-600'
+                                        : 'text-red-500'
                                 }`}>
                                     {activity.todaySteps - activity.yesterdaySteps >= 0 ? '▲' : '▼'}
                                     {Math.abs(activity.todaySteps - activity.yesterdaySteps).toLocaleString()}
                                 </span>
-                                <span className="text-[10px] text-gray-400 font-medium">{dashT('vsYesterday')}</span>
+                                <span className="text-[10px] text-gray-400">{dashT('vsYesterday')}</span>
                             </div>
                         </div>
-                        {/* ゴール進捗リング */}
+                        {/* ゴール進捗リング — 大きめ表示 */}
                         <div className="flex-shrink-0">
                             <GoalRing current={activity.todaySteps} goal={activity.stepGoal} />
                         </div>
                     </div>
 
-                    {/* 週間・月間 サブ統計 */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                {dashT('thisWeek')}
-                            </p>
-                            <span className="text-lg font-black text-gray-800 tabular-nums">{activity.weeklySteps.toLocaleString()}</span>
-                            <div className="flex items-center gap-1 mt-0.5">
-                                <span className={`text-[10px] font-bold ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'} {Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
-                                </span>
-                                <span className="text-[9px] text-gray-400">{dashT('vsLastWeek')}</span>
-                            </div>
+                    {/* 週間・月間 — コンパクトインライン */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">{dashT('thisWeek')}</span>
+                            <span className="text-sm font-black text-gray-800 tabular-nums">{activity.weeklySteps.toLocaleString()}</span>
+                            <span className={`text-[10px] font-bold ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
+                            </span>
                         </div>
-                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                                {dashT('thisMonth')}
-                            </p>
-                            <span className="text-lg font-black text-gray-800 tabular-nums">{activity.monthlySteps.toLocaleString()}</span>
-                            <div className="flex items-center gap-1 mt-0.5">
-                                <span className={`text-[10px] font-bold ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'} {Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
-                                </span>
-                                <span className="text-[9px] text-gray-400">{dashT('vsLastMonth')}</span>
-                            </div>
+                        <div className="w-px h-4 bg-gray-200" />
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">{dashT('thisMonth')}</span>
+                            <span className="text-sm font-black text-gray-800 tabular-nums">{activity.monthlySteps.toLocaleString()}</span>
+                            <span className={`text-[10px] font-bold ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
+                            </span>
                         </div>
                     </div>
                 </div>
