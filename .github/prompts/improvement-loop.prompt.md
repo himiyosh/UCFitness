@@ -40,9 +40,11 @@ main には絶対に push/merge しないこと。
 
 ### Step 4: dev サーバー再起動
 
-- `.next` ディレクトリを削除: `Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue`
-- `npm run dev` をバックグラウンドで起動: `isBackground: true` で実行
-- サーバー起動を確認してユーザーに報告
+1. **不要ターミナルの削除**: `kill_terminal` で以前のバックグラウンドターミナルをすべて削除
+2. **ポート 3000 を確保**: `Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }` を実行
+3. **`.next` キャッシュ削除**: `Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue`
+4. **dev サーバー起動**: `npm run dev` を `isBackground: true` で実行
+5. **起動確認**: `get_terminal_output` でポート 3000 で起動したことを確認し、ユーザーに報告
 
 ---
 
