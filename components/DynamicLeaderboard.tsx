@@ -7,7 +7,6 @@ import GroupRankingPanel from '@/components/GroupRankingPanel';
 import GroupSettings from '@/components/GroupSettings';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
-import { Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
 
 // Helper to tabs
@@ -129,10 +128,9 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                     <span className="text-gray-400 text-xs tracking-widest">•••</span>
                                                 </div>
                                             )}
-                                            <li className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.id === userId ? 'bg-[var(--theme-primary-light)]' : ''}`}>
-                                                {entry.users.username ? (
-                                                    <Link href={`/user/${entry.users.username}`} className="absolute inset-0 z-20" aria-label={entry.users?.name || ''} />
-                                                ) : null}
+                                            <li className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.username ? 'cursor-pointer' : ''} ${entry.users.id === userId ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                                onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
+                                            >
                                                 <div className="flex items-center gap-4">
                                                     <span className={`
                                         flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold

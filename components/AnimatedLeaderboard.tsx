@@ -299,10 +299,10 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
-                                                                    {entry.users.username ? (
-                                                                        <Link href={`/user/${entry.users.username}`} className="absolute inset-0 z-20" aria-label={entry.users?.name || ''} />
-                                                                    ) : null}
+                                                                <li key={`${entry.users.id}-${period}`}
+                                                                    className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors overflow-hidden ${entry.users.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
+                                                                >
 
                                                                     {/* Content Wrapper */}
                                                                     <div className="relative z-10 flex items-center gap-3">
