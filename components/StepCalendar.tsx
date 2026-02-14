@@ -385,8 +385,8 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                             </div>
                         </div>
 
-                        {/* 週間・月間パネル（中央の空白エリアに配置） */}
-                        <div className="flex-1 grid grid-cols-2 gap-1.5 self-center mx-3 max-w-[280px]">
+                        {/* 週間・月間パネル（右寄せ配置） */}
+                        <div className="flex-1 grid grid-cols-2 gap-1.5 self-center ml-auto mr-3 max-w-[280px]">
                             <div className="bg-gray-50 rounded-lg py-2 text-center">
                                 <div className="text-[10px] text-gray-400 font-medium leading-none">{dashT('thisWeek')}</div>
                                 <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.weeklySteps.toLocaleString()}</div>
