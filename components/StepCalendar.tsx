@@ -385,21 +385,25 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                             </div>
                         </div>
 
-                        {/* 週間・月間（中央の空白エリアに配置） */}
-                        <div className="flex-1 flex flex-col items-end justify-center gap-1.5 px-2">
-                            <div className="flex items-center gap-1.5 bg-gray-50 rounded-full px-2.5 py-1">
-                                <span className="text-[10px] text-gray-400 font-medium">{dashT('thisWeek')}</span>
-                                <span className="text-[11px] font-bold text-gray-800 tabular-nums">{activity.weeklySteps.toLocaleString()}</span>
-                                <span className={`text-[10px] font-semibold ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
-                                </span>
+                        {/* 週間・月間（中央の空白エリアに大きく表示） */}
+                        <div className="flex-1 flex flex-col items-end justify-center gap-2 px-3">
+                            <div className="text-right">
+                                <div className="text-[10px] text-gray-400 font-medium">{dashT('thisWeek')}</div>
+                                <div className="flex items-baseline gap-1.5 justify-end">
+                                    <span className="text-lg font-black text-gray-800 tabular-nums">{activity.weeklySteps.toLocaleString()}</span>
+                                    <span className={`text-[10px] font-semibold ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                        {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-1.5 bg-gray-50 rounded-full px-2.5 py-1">
-                                <span className="text-[10px] text-gray-400 font-medium">{dashT('thisMonth')}</span>
-                                <span className="text-[11px] font-bold text-gray-800 tabular-nums">{activity.monthlySteps.toLocaleString()}</span>
-                                <span className={`text-[10px] font-semibold ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
-                                </span>
+                            <div className="text-right">
+                                <div className="text-[10px] text-gray-400 font-medium">{dashT('thisMonth')}</div>
+                                <div className="flex items-baseline gap-1.5 justify-end">
+                                    <span className="text-lg font-black text-gray-800 tabular-nums">{activity.monthlySteps.toLocaleString()}</span>
+                                    <span className={`text-[10px] font-semibold ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                        {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
