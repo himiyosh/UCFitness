@@ -321,7 +321,7 @@ export default async function Home() {
                   <RunnerAnimation userImage={userImage} />
                 </div>
 
-                <div className="relative z-10">
+                <div className="relative z-10 max-w-[55%] sm:max-w-none">
                   <div className="flex items-center gap-3 sm:block">
                     <div className="mb-0 sm:mb-4 inline-flex items-center justify-center p-1.5 sm:p-2 bg-white/20 backdrop-blur-sm rounded-lg">
                       <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
