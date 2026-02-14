@@ -102,6 +102,9 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
         return unearned?.itemCode || null;
     }, [items]);
 
+    const earnedCount = items.filter(i => i.earned).length;
+    const [expanded, setExpanded] = useState(false);
+
     if (loading) {
         return (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -143,9 +146,6 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
             </div>
         );
     }
-
-    const earnedCount = items.filter(i => i.earned).length;
-    const [expanded, setExpanded] = useState(false);
 
     const categories = [
         { key: 'steps' as const, label: t('stepMilestones'), items: grouped.steps },
