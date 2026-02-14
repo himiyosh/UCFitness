@@ -182,20 +182,13 @@ function HeatmapCell({
 }
 
 // ゴール進捗リング（軽量SVG）+ 100%達成時の紙吹雪＆アニメーション
-// リング中央に今日の歩数を表示
-function GoalRing({ current, goal, todaySteps }: { current: number; goal: number; todaySteps: number }) {
+function GoalRing({ current, goal }: { current: number; goal: number }) {
     const pct = Math.min(current / goal, 1);
     const isAchieved = pct >= 1;
     const r = 32;
     const circ = 2 * Math.PI * r;
     const offset = circ * (1 - pct);
     const color = isAchieved ? '#22c55e' : 'var(--theme-primary)';
-
-    // 歩数の表示フォーマット（リング内に収まるようコンパクト化）
-    const formatSteps = (steps: number) => {
-        if (steps >= 100000) return `${(steps / 1000).toFixed(0)}k`;
-        return steps.toLocaleString();
-    };
 
     // 🎉 紙吹雪: 初回100%達成時のみ発火
     const [hasTriggeredConfetti, setHasTriggeredConfetti] = useState(false);
@@ -238,14 +231,13 @@ function GoalRing({ current, goal, todaySteps }: { current: number; goal: number
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                     {isAchieved ? (
                         <>
-                            <span className="text-[10px]">🎉</span>
-                            <span className="text-sm sm:text-base font-black text-gray-800 tabular-nums leading-tight">{formatSteps(todaySteps)}</span>
-                            <span className="text-[8px] sm:text-[9px] font-bold text-green-600">100%</span>
+                            <span className="text-lg">🎉</span>
+                            <span className="text-xs font-bold text-green-600">100%</span>
                         </>
                     ) : (
                         <>
-                            <span className="text-sm sm:text-base font-black text-gray-800 tabular-nums leading-tight">{formatSteps(todaySteps)}</span>
-                            <span className="text-[9px] sm:text-[10px] font-semibold" style={{ color: 'var(--theme-primary)' }}>{Math.round(pct * 100)}%</span>
+                            <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(pct * 100)}%</span>
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{goal.toLocaleString()}</span>
                         </>
                     )}
                 </div>
@@ -365,16 +357,22 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
                 <div className="mb-3 pb-3 border-b border-gray-100">
-                    {/* 今日の歩数 + ゴールリング（歩数はリング内に表示） */}
+                    {/* 今日の歩数 + ゴールリング */}
                     <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-1.5">
                                 <div className="p-1.5 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 </div>
                                 <h3 className="text-sm font-bold text-gray-900">{dashT('yourActivity')}</h3>
                             </div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: '"Inter", sans-serif' }}>
+                                    {activity.todaySteps.toLocaleString()}
+                                </span>
+                                <span className="text-xs text-gray-400">{dashT('stepsToday')}</span>
+                            </div>
+                            <div className="mt-1.5 flex items-center gap-2">
                                 <span className={`text-xs font-semibold ${
                                     activity.todaySteps - activity.yesterdaySteps >= 0
                                         ? 'text-green-600'
@@ -387,7 +385,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                             </div>
                         </div>
                         <div className="flex-shrink-0">
-                            <GoalRing current={activity.todaySteps} goal={activity.stepGoal} todaySteps={activity.todaySteps} />
+                            <GoalRing current={activity.todaySteps} goal={activity.stepGoal} />
                         </div>
                     </div>
 
