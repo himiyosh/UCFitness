@@ -138,7 +138,7 @@ function HeatmapCell({
             onTouchEnd={() => setShowTooltip(false)}
         >
             <div
-                className={`w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]`}
+                className={`w-[9px] h-[9px] rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]`}
                 style={levelStyles[level]}
             />
             {showTooltip && (
@@ -294,35 +294,35 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
     }
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 h-full flex flex-col">
+        <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 h-full flex flex-col">
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
-                <div className="mb-2 pb-2 border-b border-gray-100">
+                <div className="mb-3 pb-3 border-b border-gray-100">
                     {/* 今日の歩数 + ゴールリング */}
                     <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 mb-1">
+                            <div className="flex items-center gap-2 mb-1.5">
                                 <div className="p-1.5 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 </div>
-                                <h3 className="text-sm font-bold text-gray-900 tracking-tight">{dashT('yourActivity')}</h3>
+                                <h3 className="text-sm font-bold text-gray-900">{dashT('yourActivity')}</h3>
                             </div>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: '"Inter", sans-serif' }}>
                                     {activity.todaySteps.toLocaleString()}
                                 </span>
-                                <span className="text-xs font-semibold text-gray-400">{dashT('stepsToday')}</span>
+                                <span className="text-xs text-gray-400">{dashT('stepsToday')}</span>
                             </div>
-                            <div className="mt-1 flex items-center gap-1.5">
-                                <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${
+                            <div className="mt-1.5 flex items-center gap-2">
+                                <span className={`text-xs font-semibold ${
                                     activity.todaySteps - activity.yesterdaySteps >= 0
                                         ? 'text-green-600'
                                         : 'text-red-500'
                                 }`}>
-                                    {activity.todaySteps - activity.yesterdaySteps >= 0 ? '\u25b2' : '\u25bc'}
+                                    {activity.todaySteps - activity.yesterdaySteps >= 0 ? '▲' : '▼'}
                                     {Math.abs(activity.todaySteps - activity.yesterdaySteps).toLocaleString()}
                                 </span>
-                                <span className="text-[10px] text-gray-400">{dashT('vsYesterday')}</span>
+                                <span className="text-xs text-gray-400">{dashT('vsYesterday')}</span>
                             </div>
                         </div>
                         <div className="flex-shrink-0">
@@ -330,51 +330,51 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         </div>
                     </div>
 
-                    {/* 週間・月間 — コンパクトインライン */}
-                    <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase">{dashT('thisWeek')}</span>
-                            <span className="text-sm font-black text-gray-800 tabular-nums">{activity.weeklySteps.toLocaleString()}</span>
-                            <span className={`text-[10px] font-bold ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                {activity.weeklySteps >= activity.lastWeekSteps ? '\u25b2' : '\u25bc'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
+                    {/* 週間・月間 */}
+                    <div className="flex items-center gap-5 mt-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">{dashT('thisWeek')}</span>
+                            <span className="text-sm font-bold text-gray-800 tabular-nums">{activity.weeklySteps.toLocaleString()}</span>
+                            <span className={`text-xs font-semibold ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
                             </span>
                         </div>
                         <div className="w-px h-4 bg-gray-200" />
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase">{dashT('thisMonth')}</span>
-                            <span className="text-sm font-black text-gray-800 tabular-nums">{activity.monthlySteps.toLocaleString()}</span>
-                            <span className={`text-[10px] font-bold ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                {activity.monthlySteps >= activity.lastMonthSteps ? '\u25b2' : '\u25bc'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">{dashT('thisMonth')}</span>
+                            <span className="text-sm font-bold text-gray-800 tabular-nums">{activity.monthlySteps.toLocaleString()}</span>
+                            <span className={`text-xs font-semibold ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
                             </span>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* カレンダーヘッダー: タイトル + 年ナビ（1行に統合） */}
-            <div className="flex items-center justify-between mb-1.5">
-                <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500">
-                    <span>\ud83d\udcc5</span>
+            {/* カレンダーヘッダー */}
+            <div className="flex items-center justify-between mb-2">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+                    <span>📅</span>
                     {t('title')}
                 </span>
-                <div className="flex items-center gap-0.5">
+                <div className="flex items-center gap-1">
                     <button
                         onClick={() => setYear((y) => y - 1)}
-                        className="p-0.5 rounded hover:bg-gray-100 text-gray-400 transition-colors"
+                        className="p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors"
                         aria-label="Previous year"
                     >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <span className="text-[11px] font-bold text-gray-500 tabular-nums min-w-[2.5rem] text-center">{year}</span>
+                    <span className="text-xs font-semibold text-gray-500 tabular-nums min-w-[2.5rem] text-center">{year}</span>
                     <button
                         onClick={() => setYear((y) => y + 1)}
                         disabled={year >= currentYear}
-                        className="p-0.5 rounded hover:bg-gray-100 text-gray-400 transition-colors disabled:opacity-30"
+                        className="p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors disabled:opacity-30"
                         aria-label="Next year"
                     >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                     </button>
@@ -382,23 +382,23 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             </div>
 
             {data.length === 0 ? (
-                <div className="text-center py-3 text-xs text-[var(--foreground-muted)]">
+                <div className="text-center py-4 text-xs text-[var(--foreground-muted)]">
                     {t('noData')}
                 </div>
             ) : (
-                /* ヒートマップ（セル8px、コンパクト） */
+                /* ヒートマップ */
                 <div className="overflow-x-auto flex-1">
                     <div className="inline-block">
                         {/* 月ラベル */}
                         <div
-                            className="grid gap-[2px] mb-0.5"
-                            style={{ gridTemplateColumns: `20px repeat(${maxCol}, 8px)` }}
+                            className="grid gap-[2px] mb-1"
+                            style={{ gridTemplateColumns: `22px repeat(${maxCol}, 9px)` }}
                         >
                             <div />
                             {Array.from({ length: maxCol }).map((_, colIdx) => {
                                 const label = monthLabels.find((ml) => ml.col === colIdx);
                                 return (
-                                    <div key={colIdx} className="text-[7px] sm:text-[8px] text-gray-400 font-medium leading-none">
+                                    <div key={colIdx} className="text-[8px] text-gray-400 leading-none">
                                         {label ? label.label : ''}
                                     </div>
                                 );
@@ -407,12 +407,12 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
 
                         {/* メイングリッド */}
                         <div className="flex gap-[2px]">
-                            <div className="grid gap-[2px]" style={{ gridTemplateRows: 'repeat(7, 8px)' }}>
+                            <div className="grid gap-[2px]" style={{ gridTemplateRows: 'repeat(7, 9px)' }}>
                                 {dayLabels.map((label, i) => (
                                     <div
                                         key={label}
-                                        className="text-[7px] sm:text-[8px] text-gray-400 font-medium leading-none flex items-center pr-0.5"
-                                        style={{ height: '8px' }}
+                                        className="text-[8px] text-gray-400 leading-none flex items-center pr-1"
+                                        style={{ height: '9px' }}
                                     >
                                         {i % 2 === 1 ? label.slice(0, 2) : ''}
                                     </div>
@@ -421,8 +421,8 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                             <div
                                 className="grid gap-[2px]"
                                 style={{
-                                    gridTemplateColumns: `repeat(${maxCol}, 8px)`,
-                                    gridTemplateRows: 'repeat(7, 8px)',
+                                    gridTemplateColumns: `repeat(${maxCol}, 9px)`,
+                                    gridTemplateRows: 'repeat(7, 9px)',
                                 }}
                             >
                                 {gridCells.map((cell) => (
