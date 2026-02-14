@@ -50,16 +50,16 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 #### ① ファイル先頭宣言
 
 ```ts
-export const runtime = 'edge';
+export const runtime = "edge";
 // ...imports...
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 ```
 
 #### ② 必須インポート
 
 ```ts
 import { auth } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabase";  // ※ supabase ではなく supabaseAdmin
+import { supabaseAdmin } from "@/lib/supabase"; // ※ supabase ではなく supabaseAdmin
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/navigation";
@@ -71,11 +71,11 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 
 ```tsx
 const session = await auth();
-const t = await getTranslations('PageName');
-const dashboardT = await getTranslations('Dashboard');
+const t = await getTranslations("PageName");
+const dashboardT = await getTranslations("Dashboard");
 
 if (!session?.user) {
-    redirect("/");
+  redirect("/");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,17 +83,18 @@ const userId = (session.user as any).id;
 
 // 必ず supabaseAdmin で DB からユーザー情報を取得する
 const { data: dbUser } = await supabaseAdmin
-    .from("users")
-    .select("name, image, username")  // ← 最低限この3つ。ページ固有のカラムは追加OK
-    .eq("id", userId)
-    .single();
+  .from("users")
+  .select("name, image, username") // ← 最低限この3つ。ページ固有のカラムは追加OK
+  .eq("id", userId)
+  .single();
 
 if (!dbUser?.username) {
-    redirect('/setup');
+  redirect("/setup");
 }
 ```
 
 **禁止事項:**
+
 - `session.user.image` / `session.user.name` を表示用に直接使用してはいけない（Fitbit OAuth の値のため）
 - `supabase`（非 admin）をサーバーコンポーネントで使用してはいけない（`supabaseAdmin` を使う）
 - username チェック・`/setup` リダイレクトを省略してはいけない
@@ -111,20 +112,25 @@ if (!dbUser?.username) {
   <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
     <div className="flex items-center gap-2">
       <Link href="/" className="flex items-center gap-2 group">
-        <h1 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
-          {dashboardT('title')}
+        <h1
+          className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity"
+          style={{ fontFamily: '"Inter", sans-serif' }}
+        >
+          {dashboardT("title")}
         </h1>
         <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20">
-          {dashboardT('beta')}
+          {dashboardT("beta")}
         </span>
       </Link>
     </div>
-    <UserMenu user={{
+    <UserMenu
+      user={{
         id: userId,
         name: dbUser?.name || session.user.name,
         email: session.user.email,
         image: dbUser?.image || session.user.image,
-    }} />
+      }}
+    />
   </div>
 </header>
 ```
@@ -165,6 +171,7 @@ if (!dbUser?.username) {
 #### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
 
 新規ページには最低限以下の翻訳キーを定義すること:
+
 ```json
 {
   "PageName": {

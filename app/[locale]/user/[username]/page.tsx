@@ -18,6 +18,9 @@ import { getTranslations } from "next-intl/server";
 import RecommendedItems from '@/components/RecommendedItems';
 import StepCalendar from '@/components/StepCalendar';
 import FollowButtonWrapper from '@/components/FollowButtonWrapper';
+import AchievementCard from '@/components/AchievementCard';
+import ShareMilestone from '@/components/ShareMilestone';
+import AdSlot from '@/components/AdSlot';
 
 
 
@@ -269,6 +272,16 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <AchievementProgress userId={user.id} />
                         </div>
 
+                        {/* 公開実績カード */}
+                        <div className="mt-2">
+                            <AchievementCard username={username} />
+                        </div>
+
+                        {/* マイルストーン共有ボタン */}
+                        <div className="mt-2">
+                            <ShareMilestone totalSteps={totalSteps} username={username} />
+                        </div>
+
                         {/* Recommended Items — オーナーには常時表示（アイテム追加を促す） */}
                         {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (
                             <RecommendedItems
@@ -454,6 +467,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         {/* Step Heatmap Calendar */}
                         <StepCalendar userId={user.id} />
+
+                        {/* 広告スロット（将来のAdSense用） */}
+                        <AdSlot slot="content-between" />
                     </div>
                 </div>
             </div>

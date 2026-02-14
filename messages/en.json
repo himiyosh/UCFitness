@@ -196,6 +196,8 @@
         "unlockDesc": "Unlock badges by ranking in groups or hitting personal milestones.",
         "noAchievements": "No achievements yet.",
         "keepWalking": "Keep walking to unlock!",
+        "share": "Share",
+        "copyLink": "Copy Link",
         "locked": "Locked",
         "howToUnlock": "How to Unlock",
         "streakDesc": "Reach step goal for consecutive days (Min: 3 Days).",
@@ -442,7 +444,12 @@
         "generateButton": "Generate",
         "linkReady": "Product found!",
         "linkGenerated": "Product found.",
-        "generateError": "Failed to generate link."
+        "generateError": "Failed to generate link.",
+        "personalizedTitle": "Recommended for You",
+        "personalizedDesc": "Perfect items for your {steps} daily average steps",
+        "rankRecommend": "Based on your rank",
+        "stepsRecommend": "Based on your steps",
+        "viewShop": "View in Shop"
     },
     "TrendingGear": {
         "title": "Trending Fitness Gear",
@@ -517,7 +524,12 @@
         "leaveFailed": "Failed to leave group",
         "errorOccurred": "An error occurred.",
         "memberRankings": "Member Rankings",
-        "pageInfo": "Page {current} of {total}"
+        "pageInfo": "Page {current} of {total}",
+        "weeklyReport": "Weekly Report",
+        "groupTotal": "Group Total",
+        "avgPerMember": "Avg per Member",
+        "showLess": "Show Less",
+        "showAll": "Show All ({count})"
     },
     "Calendar": {
         "title": "Step Calendar",
@@ -540,6 +552,14 @@
         "progress": "{current} / {target}",
         "nextGoal": "Next Goal",
         "noProgress": "Start walking to unlock achievements!",
+        "achievementTitle": "Public Achievements",
+        "totalSteps": "Total Steps",
+        "activeDays": "Active Days",
+        "goalDays": "Goal Days",
+        "bestStreak": "Best Streak",
+        "badges": "Badges",
+        "totalUc": "Total UC",
+        "days": "d",
         "names": {
             "firstStep": "First Step",
             "strollMaster": "Stroll Master",
@@ -623,7 +643,21 @@
         "noFollowing": "You're not following anyone yet.",
         "todaySteps": "today",
         "followingActivity": "Following Activity",
-        "more": "more"
+        "more": "more",
+        "stepComparison": "Step Comparison",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "dailyTrend": "Daily Trend",
+        "comparisonError": "Failed to load comparison data",
+        "retry": "Retry"
+    },
+    "Mission": {
+        "dailyMissions": "Daily Missions",
+        "allCompleted": "All Missions Complete!",
+        "loadError": "Failed to load missions",
+        "retry": "Retry",
+        "bonusHint": "Complete all for bonus",
+        "bonusReward": "Complete all missions for +100 UC bonus!"
     },
     "GroupEvent": {
         "title": "Group Events",

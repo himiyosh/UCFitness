@@ -17,6 +17,7 @@ import nextDynamic from 'next/dynamic';
 import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
 import { getTranslations } from 'next-intl/server';
 import GroupEventList from "@/components/GroupEventList";
+import GroupWeeklyReport from "@/components/GroupWeeklyReport";
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
@@ -260,6 +261,9 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         </section>
                     </div>
                 </div>
+
+                {/* ウィークリーレポート */}
+                <GroupWeeklyReport groupId={groupId} />
 
                 <div className="space-y-12">
                     {/* Main Content Area - Layout controlled by GroupAnalytics */}

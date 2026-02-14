@@ -25,6 +25,10 @@ const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast')
 const DashboardChallenges = nextDynamic(() => import('@/components/DashboardChallenges'));
 const DashboardFollowing = nextDynamic(() => import('@/components/DashboardFollowing'));
 const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'));
+const DailyMissions = nextDynamic(() => import('@/components/DailyMissions'));
+const FollowingComparison = nextDynamic(() => import('@/components/FollowingComparison'));
+const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear'));
+const AdSlot = nextDynamic(() => import('@/components/AdSlot'));
 
 export const dynamic = 'force-dynamic';
 
@@ -457,6 +461,18 @@ export default async function Home() {
             <DashboardChallenges />
           )}
 
+          {/* デイリーミッション + パーソナライズギア */}
+          {session && userId && (
+            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 gap-6 lg:items-stretch">
+              <div className="lg:col-span-8 flex [&>div]:w-full">
+                <div className="w-full"><DailyMissions /></div>
+              </div>
+              <div className="lg:col-span-4 flex [&>div]:w-full">
+                <div className="w-full"><PersonalizedGear /></div>
+              </div>
+            </div>
+          )}
+
           {/* Step Heatmap Calendar + コミュニティ人気ギア */}
           {session && userId && (
             <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 gap-6 lg:items-stretch">
@@ -472,6 +488,16 @@ export default async function Home() {
           {/* Following Activity */}
           {session && userId && (
             <DashboardFollowing />
+          )}
+
+          {/* フォロー中ユーザーとの歩数比較 */}
+          {session && userId && (
+            <FollowingComparison />
+          )}
+
+          {/* 広告スロット（将来のAdSense用） */}
+          {session && userId && (
+            <AdSlot slot="content-between" />
           )}
 
           {/* BOTTOM SECTION: Leaderboards */}

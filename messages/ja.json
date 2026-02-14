@@ -196,6 +196,8 @@
         "unlockDesc": "グループランキングや個人のマイルストーンでバッジを獲得しましょう。",
         "noAchievements": "まだ実績がありません。",
         "keepWalking": "歩き続けてロック解除しましょう！",
+        "share": "シェア",
+        "copyLink": "リンクをコピー",
         "locked": "未獲得",
         "howToUnlock": "獲得条件",
         "streakDesc": "目標歩数を連続で達成 (最低3日)",
@@ -442,7 +444,12 @@
         "generateButton": "生成",
         "linkReady": "商品が見つかりました！",
         "linkGenerated": "商品が見つかりました。",
-        "generateError": "リンク生成に失敗しました。"
+        "generateError": "リンク生成に失敗しました。",
+        "personalizedTitle": "あなたへのおすすめ",
+        "personalizedDesc": "1日平均 {steps} 歩のあなたにぴったりのアイテム",
+        "rankRecommend": "ランク別おすすめ",
+        "stepsRecommend": "歩数別おすすめ",
+        "viewShop": "ショップで見る"
     },
     "TrendingGear": {
         "title": "みんなの愛用ギア",
@@ -517,7 +524,12 @@
         "leaveFailed": "グループの退出に失敗しました",
         "errorOccurred": "エラーが発生しました。",
         "memberRankings": "メンバーランキング",
-        "pageInfo": "{current} / {total} ページ"
+        "pageInfo": "{current} / {total} ページ",
+        "weeklyReport": "ウィークリーレポート",
+        "groupTotal": "グループ合計",
+        "avgPerMember": "1人あたり平均",
+        "showLess": "閉じる",
+        "showAll": "全{count}人を表示"
     },
     "Calendar": {
         "title": "歩数カレンダー",
@@ -540,6 +552,14 @@
         "progress": "{current} / {target}",
         "nextGoal": "次の目標",
         "noProgress": "歩いて実績を解除しよう！",
+        "achievementTitle": "公開実績",
+        "totalSteps": "累計歩数",
+        "activeDays": "アクティブ日数",
+        "goalDays": "目標達成日数",
+        "bestStreak": "最長連続",
+        "badges": "バッジ",
+        "totalUc": "獲得UC",
+        "days": "日",
         "names": {
             "firstStep": "はじめの一歩",
             "strollMaster": "散歩マスター",
@@ -623,7 +643,21 @@
         "noFollowing": "まだ誰もフォローしていません。",
         "todaySteps": "今日",
         "followingActivity": "フォロー中のアクティビティ",
-        "more": "人"
+        "more": "人",
+        "stepComparison": "歩数比較",
+        "weekly": "週間",
+        "monthly": "月間",
+        "dailyTrend": "日別トレンド",
+        "comparisonError": "比較データの読み込みに失敗しました",
+        "retry": "再試行"
+    },
+    "Mission": {
+        "dailyMissions": "デイリーミッション",
+        "allCompleted": "全ミッション完了！",
+        "loadError": "ミッションの読み込みに失敗しました",
+        "retry": "再試行",
+        "bonusHint": "全クリアで追加ボーナス",
+        "bonusReward": "全ミッション完了で +100 UC ボーナス！"
     },
     "GroupEvent": {
         "title": "グループイベント",
