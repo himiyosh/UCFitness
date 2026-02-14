@@ -142,19 +142,38 @@ function HeatmapCell({
                 style={levelStyles[level]}
             />
             {showTooltip && (
-                <div className={`absolute z-[100] left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none ${
-                    row <= 1 ? 'top-full mt-2' : 'bottom-full mb-2'
-                }`}>
+                <div
+                    className={`absolute z-[100] px-2.5 py-1.5 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none ${
+                        row <= 1 ? 'top-full mt-2' : 'bottom-full mb-2'
+                    }`}
+                    style={{
+                        // 左端付近: 左寄せ、右端付近: 右寄せ、中央: センタリング
+                        ...(col <= 3
+                            ? { left: 0 }
+                            : col >= 49
+                                ? { right: 0 }
+                                : { left: '50%', transform: 'translateX(-50%)' }),
+                    }}
+                >
                     <div className="font-semibold">{formattedDate}</div>
                     <div className="tabular-nums">
                         {steps.toLocaleString()} {stepsLabel}
                     </div>
                     {/* ツールチップの矢印 */}
-                    <div className={`absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-transparent ${
-                        row <= 1
-                            ? 'bottom-full border-b-4 border-b-gray-900'
-                            : 'top-full border-t-4 border-t-gray-900'
-                    }`} />
+                    <div
+                        className={`absolute w-0 h-0 border-l-4 border-r-4 border-transparent ${
+                            row <= 1
+                                ? 'bottom-full border-b-4 border-b-gray-900'
+                                : 'top-full border-t-4 border-t-gray-900'
+                        }`}
+                        style={{
+                            ...(col <= 3
+                                ? { left: '5px' }
+                                : col >= 49
+                                    ? { right: '5px' }
+                                    : { left: '50%', transform: 'translateX(-50%)' }),
+                        }}
+                    />
                 </div>
             )}
         </div>
