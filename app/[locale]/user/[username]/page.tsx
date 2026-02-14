@@ -254,7 +254,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <h2 className="text-2xl font-bold text-gray-900 truncate">{t('profile')}</h2>
                         </div>
 
-                        <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji} />
+                        <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji}>
+                            <ShareMilestone totalSteps={totalSteps} username={username} />
+                        </ProfileHeader>
 
                         {/* フォローボタン（他ユーザーのプロフィール閲覧時のみ表示） */}
                         {session?.user && !isOwner && (
@@ -277,10 +279,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <AchievementCard username={username} />
                         </div>
 
-                        {/* マイルストーン共有ボタン */}
-                        <div className="mt-2">
-                            <ShareMilestone totalSteps={totalSteps} username={username} />
-                        </div>
+
 
                         {/* Lifetime Stats */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-200">
