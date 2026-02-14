@@ -294,7 +294,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
     }
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5">
+        <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5 h-full">
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
                 <div className="mb-3 pb-3 border-b border-gray-100">

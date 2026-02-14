@@ -113,9 +113,9 @@ export default function DailyMissions() {
     const progressPercent = (completedCount / missions.length) * 100;
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+        <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
             {/* ヘッダー */}
-            <div className="px-5 pt-5 pb-3">
+            <div className="px-5 pt-5 pb-3 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         🎯 {t('dailyMissions')}
@@ -145,7 +145,7 @@ export default function DailyMissions() {
             </div>
 
             {/* ミッションリスト */}
-            <div className="px-5 pb-5 space-y-2">
+            <div className="px-5 pb-5 space-y-2 flex-1">
                 {missions.map(mission => (
                     <div
                         key={mission.id}

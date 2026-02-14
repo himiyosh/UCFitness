@@ -62,8 +62,8 @@ export default function PersonalizedGear() {
         `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}&tag=${associateTag}`;
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="px-5 pt-5 pb-3">
+        <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+            <div className="px-5 pt-5 pb-3 flex-shrink-0">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         🎁 {t('personalizedTitle')}
@@ -77,7 +77,7 @@ export default function PersonalizedGear() {
                 </p>
             </div>
 
-            <div className="px-5 pb-5 space-y-2">
+            <div className="px-5 pb-5 space-y-2 flex-1">
                 {/* プライマリーキーワード（ランク別） */}
                 <a
                     href={makeSearchUrl(data.primaryKeyword)}
