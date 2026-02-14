@@ -546,6 +546,7 @@
     },
     "Analytics": {
         "title": "分析",
+        "headerDesc": "あなたの歩数データを分析して、トレンドやパターンを発見しよう！",
         "dailyAverage": "日平均",
         "bestDay": "ベストデー",
         "activeDays": "アクティブ日数",

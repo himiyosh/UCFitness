@@ -194,8 +194,7 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                                             </div>
 
                                             {/* プログレスバー */}
-                                            <div className="w-full h-1.5 rounded-full overflow-hidden"
-                                                style={{ backgroundColor: 'var(--theme-secondary, #e5e7eb)' }}>
+                                            <div className="w-full h-1.5 rounded-full overflow-hidden bg-gray-200">
                                                 <div
                                                     className="h-full rounded-full transition-all duration-500"
                                                     style={{

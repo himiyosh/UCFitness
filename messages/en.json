@@ -546,6 +546,7 @@
     },
     "Analytics": {
         "title": "Analytics",
+        "headerDesc": "Analyze your step data to discover trends and patterns!",
         "dailyAverage": "Daily Average",
         "bestDay": "Best Day",
         "activeDays": "Active Days",

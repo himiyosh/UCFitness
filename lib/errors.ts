@@ -31,7 +31,9 @@ export function reportError(
             stack: error.stack,
             ...(error instanceof AppError ? { code: error.code, errorContext: error.context } : {}),
         }
-        : { message: String(error) };
+        : typeof error === 'object' && error !== null
+            ? { message: JSON.stringify(error), ...error as Record<string, unknown> }
+            : { message: String(error) };
 
     const entry = {
         ...context,

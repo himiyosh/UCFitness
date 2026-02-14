@@ -3,9 +3,9 @@ export const runtime = 'edge';
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { Link } from "@/navigation";
 import UserMenu from "@/components/UserMenu";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import BackButton from "@/components/BackButton";
 import nextDynamic from 'next/dynamic';
 
 // ⚡ パフォーマンス: クライアントコンポーネントを遅延読み込み
@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 export default async function AnalyticsPage() {
     const session = await auth();
     const t = await getTranslations('Analytics');
+    const dashboardT = await getTranslations('Dashboard');
 
     if (!session?.user) {
         redirect("/");
@@ -26,13 +27,22 @@ export default async function AnalyticsPage() {
     const user = session.user;
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* ヘッダー */}
-            <header className="bg-white shadow-sm sticky top-0 z-30 border-b border-gray-100">
-                <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+        <main className="min-h-screen bg-[var(--theme-page-bg)]">
+            {/* ヘッダー: 他ページ共通パターン */}
+            <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <BackButton />
-                        <h1 className="text-lg font-bold text-gray-900">📊 {t('title')}</h1>
+                        <Link href="/" className="flex items-center gap-2 group">
+                            <h1
+                                className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity"
+                                style={{ fontFamily: '"Inter", sans-serif' }}
+                            >
+                                {dashboardT('title')}
+                            </h1>
+                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
+                                {dashboardT('beta')}
+                            </span>
+                        </Link>
                     </div>
                     <UserMenu user={{
                         id: userId,
@@ -43,18 +53,27 @@ export default async function AnalyticsPage() {
                 </div>
             </header>
 
-            {/* パンくずリスト */}
-            <div className="max-w-3xl mx-auto px-4 py-2">
-                <Breadcrumbs items={[
-                    { label: '🏠', href: '/' },
-                    { label: t('title') },
-                ]} />
-            </div>
-
             {/* コンテンツ */}
-            <main className="max-w-3xl mx-auto px-4 pb-8">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
+                {/* パンくずリスト */}
+                <div className="mb-6">
+                    <Breadcrumbs items={[{ label: t('title') }]} />
+                </div>
+
+                {/* ページタイトル */}
+                <div className="mb-8">
+                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
+                        <span>📊</span>
+                        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+                            {t('title')}
+                        </span>
+                    </h2>
+                    <p className="mt-2.5 text-base text-gray-500">{t('headerDesc')}</p>
+                    <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
+                </div>
+
                 <PersonalAnalytics userId={userId} />
-            </main>
-        </div>
+            </div>
+        </main>
     );
 }

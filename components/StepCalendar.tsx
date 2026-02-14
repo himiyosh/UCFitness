@@ -102,13 +102,13 @@ function HeatmapCell({
         gridRow: row + 1,
     };
 
-    // 各レベルに対応する色クラス
-    const levelColors = [
-        'bg-[var(--theme-secondary)]', // 0 steps
-        'bg-[var(--theme-primary)]/30', // < 3000
-        'bg-[var(--theme-primary)]/50', // < 7000
-        'bg-[var(--theme-primary)]/70', // < 10000
-        'bg-[var(--theme-primary)]',    // >= 10000
+    // 各レベルに対応する色（テーマカラー1色の濃淡、0=無色）
+    const levelStyles: React.CSSProperties[] = [
+        { backgroundColor: '#ebedf0' },
+        { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' },
+        { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' },
+        { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' },
+        { backgroundColor: 'var(--theme-primary)' },
     ];
 
     const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
@@ -127,7 +127,8 @@ function HeatmapCell({
             onTouchEnd={() => setShowTooltip(false)}
         >
             <div
-                className={`w-[10px] h-[10px] sm:w-[13px] sm:h-[13px] rounded-sm ${levelColors[level]} transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]`}
+                className={`w-[10px] h-[10px] sm:w-[13px] sm:h-[13px] rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]`}
+                style={levelStyles[level]}
             />
             {showTooltip && (
                 <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
@@ -332,11 +333,11 @@ export default function StepCalendar({ userId }: { userId: string }) {
                             {/* 凡例 */}
                             <div className="flex items-center gap-1.5 mt-3 justify-end text-[10px] text-gray-400">
                                 <span>{t('less')}</span>
-                                <div className="w-[10px] h-[10px] rounded-sm bg-[var(--theme-secondary)]" />
-                                <div className="w-[10px] h-[10px] rounded-sm bg-[var(--theme-primary)]/30" />
-                                <div className="w-[10px] h-[10px] rounded-sm bg-[var(--theme-primary)]/50" />
-                                <div className="w-[10px] h-[10px] rounded-sm bg-[var(--theme-primary)]/70" />
-                                <div className="w-[10px] h-[10px] rounded-sm bg-[var(--theme-primary)]" />
+                                <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: '#ebedf0' }} />
+                                <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
+                                <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
+                                <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />
+                                <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'var(--theme-primary)' }} />
                                 <span>{t('more')}</span>
                             </div>
                         </div>
