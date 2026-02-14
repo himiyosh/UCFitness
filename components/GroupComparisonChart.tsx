@@ -82,17 +82,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
         setIsMounted(true);
     }, []);
 
-    if (!isMounted) return <div className="h-full w-full bg-gray-50/50 rounded-xl animate-pulse" />;
-
-    if (!data || data.length === 0) {
-        return (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center h-[300px] text-gray-400">
-                No data available for comparison.
-            </div>
-        );
-    }
-
-    // Custom Tooltip Component — memoized via useCallback to avoid Recharts re-mount
+    // Custom Tooltip Component — memoized via useCallback（Hooks は早期 return の前に配置必須）
     const CustomTooltip = useCallback(({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadEntry[]; label?: string }) => {
         if (active && payload && payload.length) {
             // Sort payload by value desc
@@ -117,6 +107,16 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
         }
         return null;
     }, [activeUser]);
+
+    if (!isMounted) return <div className="h-full w-full bg-gray-50/50 rounded-xl animate-pulse" />;
+
+    if (!data || data.length === 0) {
+        return (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center h-[300px] text-gray-400">
+                No data available for comparison.
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 xl:h-full flex flex-col relative">

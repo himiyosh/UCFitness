@@ -358,7 +358,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             {activity && (
                 <div className="mb-3 pb-3 border-b border-gray-100">
                     {/* 今日の歩数 + ゴールリング */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-1.5">
                                 <div className="p-1.5 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
@@ -367,7 +367,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                                 <h3 className="text-sm font-bold text-gray-900">{dashT('yourActivity')}</h3>
                             </div>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: '"Inter", sans-serif' }}>
+                                <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: '"Inter", sans-serif' }}>
                                     {activity.todaySteps.toLocaleString()}
                                 </span>
                                 <span className="text-xs text-gray-400">{dashT('stepsToday')}</span>
@@ -385,26 +385,26 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                             </div>
                         </div>
 
-                        {/* 週間・月間パネル（右寄せ配置） */}
-                        <div className="flex-1 grid grid-cols-2 gap-1.5 self-center ml-auto mr-3 max-w-[280px]">
-                            <div className="bg-gray-50 rounded-lg py-2 text-center">
-                                <div className="text-[10px] text-gray-400 font-medium leading-none">{dashT('thisWeek')}</div>
-                                <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.weeklySteps.toLocaleString()}</div>
-                                <div className={`text-[10px] font-semibold leading-none ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
-                                </div>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg py-2 text-center">
-                                <div className="text-[10px] text-gray-400 font-medium leading-none">{dashT('thisMonth')}</div>
-                                <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.monthlySteps.toLocaleString()}</div>
-                                <div className={`text-[10px] font-semibold leading-none ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
-                                </div>
-                            </div>
-                        </div>
-
                         <div className="flex-shrink-0">
                             <GoalRing current={activity.todaySteps} goal={activity.stepGoal} />
+                        </div>
+                    </div>
+
+                    {/* 週間・月間パネル */}
+                    <div className="grid grid-cols-2 gap-1.5 mt-3">
+                        <div className="bg-gray-50 rounded-lg py-2 text-center">
+                            <div className="text-[10px] text-gray-400 font-medium leading-none">{dashT('thisWeek')}</div>
+                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.weeklySteps.toLocaleString()}</div>
+                            <div className={`text-[10px] font-semibold leading-none ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg py-2 text-center">
+                            <div className="text-[10px] text-gray-400 font-medium leading-none">{dashT('thisMonth')}</div>
+                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.monthlySteps.toLocaleString()}</div>
+                            <div className={`text-[10px] font-semibold leading-none ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
+                            </div>
                         </div>
                     </div>
                 </div>
