@@ -103,3 +103,29 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - `Breadcrumbs` は Home アイコンを自動付与するため、`🏠` を手動追加しない
 - ページタイトルはグラデーション + 絵文字 + 説明文 + 装飾線
 - 翻訳キーに `headerDesc` を必ず含める（ja/en 両方）
+
+### Cloudflare Pages デプロイ前チェック（必須）
+
+コードを push する前に、以下を必ず確認すること。
+
+#### Edge Runtime 宣言
+
+- **すべての `app/` 配下の非静的ルート**（`page.tsx`, `route.ts`）には、ファイル先頭に `export const runtime = 'edge';` を記載すること
+- Cloudflare Pages は Edge Runtime のみ対応。Node.js Runtime のままだとビルドが失敗する
+- `layout.tsx` には不要（ページとAPIルートのみ）
+- 新規ファイル作成時は最初の行に必ず追加すること
+
+```ts
+// ファイル先頭に必ず記載
+export const runtime = 'edge';
+```
+
+#### ビルド検証
+
+- push 前に `npx @cloudflare/next-on-pages` または `npm run pages:build` を実行してビルドが通ることを確認
+- 特に新規ページ・API ルート追加時は Edge Runtime 漏れが発生しやすいため注意
+
+#### Node.js 専用 API の使用禁止
+
+- Edge Runtime では `fs`, `path`, `child_process` 等の Node.js ネイティブモジュールは使用不可
+- `crypto` は Web Crypto API (`crypto.subtle`) を使用すること
