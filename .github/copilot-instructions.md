@@ -75,6 +75,45 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - ヘッダー左側は常にアプリロゴ（`UCFitness` グラデーション + beta バッジ）
 - `dashboardT = await getTranslations('Dashboard')` で取得
 
+#### UserMenu に渡すユーザー情報（必須）
+
+**`session.user.image` を直接使用してはいけない。**  
+`session.user.image` は Fitbit OAuth のプロフィール画像であり、ユーザーがアプリ内でカスタム画像を設定しても反映されない。  
+必ず **Supabase DB (`users` テーブル) から `image`, `name`, `username` を取得**し、DB の値を優先して `UserMenu` に渡すこと。
+
+```tsx
+// ✅ 正しいパターン: DB からユーザー情報を取得
+import { supabaseAdmin } from "@/lib/supabase";
+
+const { data: dbUser } = await supabaseAdmin
+    .from("users")
+    .select("name, image, username")
+    .eq("id", userId)
+    .single();
+
+if (!dbUser?.username) {
+    redirect('/setup');
+}
+
+// UserMenu に DB の値を優先して渡す
+<UserMenu user={{
+    id: userId,
+    name: dbUser?.name || user.name,
+    email: user.email,
+    image: dbUser?.image || user.image,
+}} />
+```
+
+```tsx
+// ❌ 禁止パターン: session の値をそのまま渡す
+<UserMenu user={{
+    id: userId,
+    name: user.name,        // ← Fitbit の名前
+    email: user.email,
+    image: user.image,      // ← Fitbit OAuth の画像が表示されてしまう
+}} />
+```
+
 #### コンテンツ領域
 
 ```tsx
