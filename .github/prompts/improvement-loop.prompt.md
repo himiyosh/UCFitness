@@ -35,8 +35,14 @@ main には絶対に push/merge しないこと。
 ### Step 3: 検証
 
 - 修正ごとにコミット (コミットメッセージは日本語)
-- 最後に `npx next build` で 0 エラーを確認
+- 最後に `npx tsc --noEmit` で型エラー 0 を確認（`next build` はキャッシュ破損するため原則使わない）
 - `git push` は明示的に許可があるまで実行しない
+
+### Step 4: dev サーバー再起動
+
+- `.next` ディレクトリを削除: `Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue`
+- `npm run dev` をバックグラウンドで起動: `isBackground: true` で実行
+- サーバー起動を確認してユーザーに報告
 
 ---
 
