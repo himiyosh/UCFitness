@@ -116,8 +116,8 @@ export default function DailyMissions() {
     return (
         <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
             {/* ヘッダー */}
-            <div className="px-5 pt-5 pb-3 flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
+            <div className="px-3 pt-3 pb-2 sm:px-5 sm:pt-5 sm:pb-3 flex-shrink-0">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                     <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         🎯 {t('dailyMissions')}
                     </h3>
@@ -161,11 +161,11 @@ export default function DailyMissions() {
             </div>
 
             {/* ミッションリスト */}
-            <div className="px-5 pb-5 space-y-2 flex-1">
+            <div className="px-3 pb-3 space-y-1.5 sm:px-5 sm:pb-5 sm:space-y-2 flex-1">
                 {missions.map(mission => (
                     <div
                         key={mission.id}
-                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all ${
                             mission.is_completed
                                 ? 'bg-emerald-50 border-emerald-200'
                                 : 'bg-gray-50 border-gray-100'
@@ -173,23 +173,23 @@ export default function DailyMissions() {
                     >
                         {/* ステータスアイコン（自動判定 — クリック不可） */}
                         {mission.is_completed ? (
-                            <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
                         ) : (
-                            <div className="w-8 h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs text-gray-300">○</span>
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center flex-shrink-0">
+                                <span className="text-[10px] sm:text-xs text-gray-300">○</span>
                             </div>
                         )}
 
                         {/* ミッション詳細 */}
                         <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-gray-800'}`}>
+                            <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-gray-800'}`}>
                                 {mission.title}
                             </p>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{mission.description}</p>
+                            <p className="text-[9px] sm:text-[10px] text-gray-400 mt-0 sm:mt-0.5">{mission.description}</p>
                         </div>
 
                         {/* 報酬 */}
