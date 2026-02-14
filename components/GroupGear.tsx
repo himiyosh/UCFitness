@@ -77,9 +77,9 @@ export default function GroupGear({ groupId }: GroupGearProps) {
     if (loading) return null;
 
     return (
-        <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 overflow-hidden">
+        <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 overflow-hidden h-full flex flex-col">
             {/* ヘッダー */}
-            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+            <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2.5">
                     <div className="p-2 bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/20">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

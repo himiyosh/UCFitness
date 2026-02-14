@@ -125,9 +125,9 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 h-full flex flex-col">
             {/* ヘッダー */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-shrink-0">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     🏆 {t('title')}
                 </h2>
@@ -167,7 +167,7 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
 
             {/* イベントリスト */}
             {displayEvents.length === 0 ? (
-                <div className="bg-white midnight-solid-panel rounded-xl border border-gray-200 p-8 text-center">
+                <div className="bg-white midnight-solid-panel rounded-xl border border-gray-200 p-8 text-center flex-1 flex flex-col items-center justify-center">
                     <p className="text-3xl mb-2">🏅</p>
                     <p className="text-sm text-[var(--foreground-muted)]">
                         {tab === 'active' ? t('noActiveEvents') : t('noPastEvents')}
