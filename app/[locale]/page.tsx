@@ -390,18 +390,6 @@ export default async function Home() {
             </div>
           )}
 
-          {/* あなたへのおすすめ + 愛用ギア */}
-          {session && userId && (
-            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-5 gap-4 lg:items-stretch">
-              <div className="lg:col-span-5 flex [&>div]:w-full">
-                <div className="w-full"><PersonalizedGear /></div>
-              </div>
-              <div className="lg:col-span-7 flex [&>div]:w-full">
-                <div className="w-full"><TrendingGear /></div>
-              </div>
-            </div>
-          )}
-
           {/* フォロー中ユーザー */}
           {session && userId && (
             <FollowingPanel />
@@ -414,6 +402,18 @@ export default async function Home() {
             allGroupRankings={enrichedGroupRankings}
             groupCompetitionRankings={groupCompetitionRankings}
           />
+
+          {/* あなたへのおすすめ + 愛用ギア */}
+          {session && userId && (
+            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-5 gap-4 lg:items-stretch">
+              <div className="lg:col-span-5 flex [&>div]:w-full">
+                <div className="w-full"><PersonalizedGear /></div>
+              </div>
+              <div className="lg:col-span-7 flex [&>div]:w-full">
+                <div className="w-full"><TrendingGear /></div>
+              </div>
+            </div>
+          )}
 
           {session && userId && <LoginBonusToast userId={userId} />}
 
