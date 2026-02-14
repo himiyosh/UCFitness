@@ -31,6 +31,14 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - 既存の関数・export は絶対に削除しない
 - ファイル末尾には必ず改行を入れる
 
+### React Hooks ルール（必須）
+
+- **すべての `useState`・`useMemo`・`useEffect`・`useCallback`・`useRef` 等の Hooks は、条件付き早期 `return` の前に配置すること**
+- React の Rules of Hooks: Hooks はコンポーネントのトップレベルで呼び出し、`if` / 早期 `return` の後に配置してはいけない
+- NG例: `if (loading) return <Skeleton />;` の後に `const [x, setX] = useState(false);`
+- OK例: `const [x, setX] = useState(false);` → `if (loading) return <Skeleton />;`
+- 新しい state や memo を追加する際は、既存の Hooks 群の直後（早期 return の前）に配置すること
+
 ### モバイルファースト設計（必須）
 
 UCFitness は PWA であり、**モバイル端末での利用が主要ユースケース**である。  
