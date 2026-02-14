@@ -24,6 +24,7 @@ const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast')
 const DashboardChallenges = nextDynamic(() => import('@/components/DashboardChallenges'));
 const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'));
 const DailyMissions = nextDynamic(() => import('@/components/DailyMissions'));
+const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear'));
 const FollowingPanel = nextDynamic(() => import('@/components/FollowingPanel'));
 
 export const dynamic = 'force-dynamic';
@@ -358,9 +359,9 @@ export default async function Home() {
             <DashboardChallenges />
           )}
 
-          {/* アクティビティ統計 + 歩数カレンダー（統合パネル） + フォロー中ユーザー */}
+          {/* アクティビティ + デイリーミッション */}
           {session && userId && (
-            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-6 gap-5 lg:items-stretch">
+            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-5 gap-4 lg:items-stretch">
               <div className="lg:col-span-8 flex [&>div]:w-full [&>div>div]:h-full">
                 <div className="w-full">
                   <StepCalendar
@@ -378,21 +379,26 @@ export default async function Home() {
                 </div>
               </div>
               <div className="lg:col-span-4 flex [&>div]:w-full">
-                <div className="w-full"><FollowingPanel /></div>
+                <div className="w-full"><DailyMissions /></div>
               </div>
             </div>
           )}
 
-          {/* デイリーミッション + ギアレコメンド統合パネル */}
+          {/* あなたへのおすすめ + 愛用ギア */}
           {session && userId && (
-            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-6 gap-5 lg:items-stretch">
+            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-5 gap-4 lg:items-stretch">
               <div className="lg:col-span-5 flex [&>div]:w-full">
-                <div className="w-full"><DailyMissions /></div>
+                <div className="w-full"><PersonalizedGear /></div>
               </div>
               <div className="lg:col-span-7 flex [&>div]:w-full">
                 <div className="w-full"><TrendingGear /></div>
               </div>
             </div>
+          )}
+
+          {/* フォロー中ユーザー */}
+          {session && userId && (
+            <FollowingPanel />
           )}
 
           {/* BOTTOM SECTION: Leaderboards */}

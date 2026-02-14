@@ -18,15 +18,6 @@ interface TrendingItem {
     users: { username: string; image: string | null }[];
 }
 
-interface PersonalizedData {
-    rank: string;
-    rankLabel: string;
-    rankIcon: string;
-    avgSteps: number;
-    primaryKeyword: string;
-    secondaryKeyword: string;
-}
-
 export default function TrendingGear() {
     const t = useTranslations('TrendingGear');
     const recT = useTranslations('Recommendations');
@@ -37,32 +28,23 @@ export default function TrendingGear() {
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
 
-    // パーソナライズドレコメンドデータ
-    const [personalData, setPersonalData] = useState<PersonalizedData | null>(null);
-
     useEffect(() => {
         let cancelled = false;
 
-        // トレンディングアイテムとパーソナライズドデータを並列取得
-        Promise.allSettled([
-            fetch('/api/amazon/trending').then(res => res.json()),
-            fetch('/api/amazon/personalized').then(res => {
-                if (!res.ok) throw new Error('fetch failed');
-                return res.json();
-            }),
-        ]).then(([trendResult, personalResult]) => {
-            if (cancelled) return;
-            if (trendResult.status === 'fulfilled' && trendResult.value.items?.length > 0) {
-                setItems(trendResult.value.items);
-            }
-            if (personalResult.status === 'fulfilled') {
-                setPersonalData(personalResult.value);
-            }
-        }).catch(() => {
-            if (!cancelled) setError(true);
-        }).finally(() => {
-            if (!cancelled) setLoading(false);
-        });
+        // トレンディングアイテムを取得
+        fetch('/api/amazon/trending')
+            .then(res => res.json())
+            .then(data => {
+                if (!cancelled && data.items?.length > 0) {
+                    setItems(data.items);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setError(true);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
 
         return () => { cancelled = true; };
     }, []);
@@ -112,12 +94,7 @@ export default function TrendingGear() {
             </div>
         );
     }
-    if (items.length === 0 && !personalData) return null;
-
-    // Amazon 検索URL生成
-    const associateTag = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG || 'ucfitness-22';
-    const makeSearchUrl = (keyword: string) =>
-        `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}&tag=${associateTag}`;
+    if (items.length === 0) return null;
 
     return (
         <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 overflow-hidden h-full flex flex-col">
@@ -164,46 +141,6 @@ export default function TrendingGear() {
                 </div>
                 )}
             </div>
-
-            {/* パーソナライズドレコメンド（ランク・歩数連動） */}
-            {personalData && (
-                <div className="px-4 pb-3 flex-shrink-0">
-                    <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-xs font-bold text-gray-500">🎁 {recT('personalizedTitle')}</span>
-                        <span className="text-[10px] text-gray-400">{personalData.rankIcon} {personalData.rankLabel}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <a
-                            href={makeSearchUrl(personalData.primaryKeyword)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-sm transition-all group"
-                        >
-                            <span className="text-lg flex-shrink-0">🏃</span>
-                            <div className="min-w-0">
-                                <p className="text-[11px] font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors truncate">
-                                    {personalData.primaryKeyword}
-                                </p>
-                                <p className="text-[9px] text-gray-400">{recT('rankRecommend')}</p>
-                            </div>
-                        </a>
-                        <a
-                            href={makeSearchUrl(personalData.secondaryKeyword)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-sm transition-all group"
-                        >
-                            <span className="text-lg flex-shrink-0">👟</span>
-                            <div className="min-w-0">
-                                <p className="text-[11px] font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors truncate">
-                                    {personalData.secondaryKeyword}
-                                </p>
-                                <p className="text-[9px] text-gray-400">{recT('stepsRecommend')}</p>
-                            </div>
-                        </a>
-                    </div>
-                </div>
-            )}
 
             {/* コミュニティ人気アイテムグリッド */}
             <div
