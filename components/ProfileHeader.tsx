@@ -57,7 +57,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
             />
 
             {/* Main Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8 hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-8 hover:shadow-lg transition-shadow overflow-visible relative z-10">
                 {/* Banner */}
                 <div
                     className={`h-32 sm:h-36 w-full rounded-t-xl bg-cover bg-center ${!user.banner_url ? 'bg-[var(--theme-primary)]' : 'cursor-pointer hover:opacity-90 transition-opacity'}`}
