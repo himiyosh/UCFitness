@@ -88,6 +88,22 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
         }
     }, [data, loading]);
 
+    // 曜日チャートの最大値（Hooks は早期 return の前に配置必須）
+    const maxWeekday = useMemo(() => data ? Math.max(...data.weekdayAverages, 1) : 1, [data]);
+
+    // 月別チャートの最大値
+    const maxMonthly = useMemo(() => data ? Math.max(...data.monthlyTotals.map(m => m.totalSteps), 1) : 1, [data]);
+
+    // 今月のデータ
+    const currentMonthData = useMemo(() => data ? data.monthlyTotals[data.monthlyTotals.length - 1] : undefined, [data]);
+
+    // 曜日の最高を特定
+    const { weekdayValues, bestWeekdayIdx } = useMemo(() => {
+        if (!data) return { weekdayValues: [] as number[], bestWeekdayIdx: 0 };
+        const vals = WEEKDAY_ORDER.map(i => data.weekdayAverages[i]);
+        return { weekdayValues: vals, bestWeekdayIdx: vals.indexOf(Math.max(...vals)) };
+    }, [data]);
+
     if (loading) return <Skeleton />;
 
     if (error) {
@@ -118,21 +134,6 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
             </div>
         );
     }
-
-    // 曜日チャートの最大値
-    const maxWeekday = useMemo(() => Math.max(...data.weekdayAverages, 1), [data.weekdayAverages]);
-
-    // 月別チャートの最大値
-    const maxMonthly = useMemo(() => Math.max(...data.monthlyTotals.map(m => m.totalSteps), 1), [data.monthlyTotals]);
-
-    // 今月のデータ
-    const currentMonthData = useMemo(() => data.monthlyTotals[data.monthlyTotals.length - 1], [data.monthlyTotals]);
-
-    // 曜日の最高を特定
-    const { weekdayValues, bestWeekdayIdx } = useMemo(() => {
-        const vals = WEEKDAY_ORDER.map(i => data.weekdayAverages[i]);
-        return { weekdayValues: vals, bestWeekdayIdx: vals.indexOf(Math.max(...vals)) };
-    }, [data.weekdayAverages]);
 
     return (
         <div className="space-y-5">
