@@ -120,7 +120,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 )}
             </div>
             <div className={`px-0 lg:grid lg:grid-cols-12 lg:items-start ${isMidnight ? 'bg-transparent' : 'bg-white'}`}>
-                <div className={`px-6 pt-6 lg:col-span-5 lg:border-r flex flex-col justify-center h-full ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
+                <div className={`px-3 pt-3 sm:px-6 sm:pt-6 lg:col-span-5 lg:border-r flex flex-col justify-center h-full ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
                     <TopUsersChart
                         data={neighbors}
                         userId={userId}
@@ -142,13 +142,13 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all overflow-hidden ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between transition-all overflow-hidden ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                             onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
                                         >
 
                                             {/* Content Wrapper */}
-                                            <div className="relative z-10 flex items-center gap-3">
-                                                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
+                                            <div className="relative z-10 flex items-center gap-2 sm:gap-3">
+                                                <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-xs font-bold"
                                                     style={entry.originalRank === 1 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                         color: '#ffffff',
@@ -169,7 +169,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                 >
                                                     {entry.originalRank}
                                                 </span>
-                                                <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users?.frameColor} borderClass="border-white" />
+                                                <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="sm" frameColor={entry.users?.frameColor} borderClass="border-white" />
                                                 <div className="flex flex-col min-w-0">
                                                     <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
                                                         <span className="truncate">
@@ -183,7 +183,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                 </div>
                                             </div>
                                             <div className="flex flex-col items-end relative z-10">
-                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg leaderboard-steps">
+                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
                                                     {(entry.steps ?? 0).toLocaleString()}
                                                 </div>
                                                 {entry.prevSteps !== undefined && (() => {

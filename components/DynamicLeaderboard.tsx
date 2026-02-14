@@ -100,7 +100,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                 </div>
 
                 <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[400px]">
-                    <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+                    <div className="px-4 py-3 sm:px-6 sm:py-5 border-b border-gray-100 flex justify-between items-center">
                         <h3 className="text-base font-bold text-gray-900">
                             {t('titleGlobal')}
                         </h3>
@@ -128,19 +128,19 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                     <span className="text-gray-400 text-xs tracking-widest">•••</span>
                                                 </div>
                                             )}
-                                            <li className={`relative px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.username ? 'cursor-pointer' : ''} ${entry.users.id === userId ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                            <li className={`relative px-3 py-2.5 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${entry.users.username ? 'cursor-pointer' : ''} ${entry.users.id === userId ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                                 onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                             >
-                                                <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2 sm:gap-4">
                                                     <span className={`
-                                        flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
+                                        flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full text-[10px] sm:text-sm font-bold
                                         ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
                                                             entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
                                                                 entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}
                                     `}>
                                                         {entry.originalRank}
                                                     </span>
-                                                    <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users?.frameColor} borderClass="border-gray-100" />
+                                                    <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="sm" frameColor={entry.users?.frameColor} borderClass="border-gray-100" />
                                                     <div>
                                                         <p className="text-sm font-medium text-gray-900">
                                                             {entry.users?.name || commonT('anonymous')}
@@ -152,7 +152,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end">
-                                                    <div className="font-mono font-semibold text-[var(--theme-primary)] text-lg leaderboard-steps">
+                                                    <div className="font-mono font-semibold text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
                                                         {entry.steps.toLocaleString()}
                                                     </div>
                                                     {entry.prevSteps !== undefined && (() => {

@@ -274,7 +274,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                         {leftTab === 'user' && (
                         <div className="px-0 relative overflow-hidden flex flex-col" style={{ background: isMidnight ? 'transparent' : '#fff' }}>
                             <FadeInWrapper key={period}>
-                                <div className="px-6 pt-6">
+                                <div className="px-3 pt-3 sm:px-6 sm:pt-6">
                                     <TopUsersChart
                                         data={chartData}
                                         userId={userId}
@@ -300,14 +300,14 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                             return (
                                                                 <li key={`${entry.users.id}-${period}`}
-                                                                    className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors overflow-hidden ${entry.users.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between transition-colors overflow-hidden ${entry.users.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                                                     onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                                                 >
 
                                                                     {/* Content Wrapper */}
-                                                                    <div className="relative z-10 flex items-center gap-3">
+                                                                    <div className="relative z-10 flex items-center gap-2 sm:gap-3">
                                                                         <div className="flex flex-col items-center gap-0.5">
-                                                                            <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
+                                                                            <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-xs font-bold"
                                                                                 style={entry.originalRank === 1 ? {
                                                                                     background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                                                     color: '#ffffff',
@@ -340,9 +340,9 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             })()}
                                                                         </div>
                                                                         {entry.users?.image ? (
-                                                                            <UserAvatar src={entry.users.image} name={entry.users.name} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
+                                                                            <UserAvatar src={entry.users.image} name={entry.users.name} size="sm" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         ) : (
-                                                                            <UserAvatar src={null} name={entry.users?.name || '?'} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
+                                                                            <UserAvatar src={null} name={entry.users?.name || '?'} size="sm" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         )}
                                                                         <div>
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
@@ -357,7 +357,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         </div>
                                                                     </div>
                                                                     <div className="flex flex-col items-end relative z-10">
-                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg leaderboard-steps">
+                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
                                                                             {entry.steps.toLocaleString()}
                                                                         </div>
                                                                         {/* Delta vs previous period */}
@@ -376,18 +376,18 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         })}
                                                         {/* 行数を常にITEMS_PER_PAGEに揃えるプレースホルダー */}
                                                         {paginatedItems.length < ITEMS_PER_PAGE && Array.from({ length: ITEMS_PER_PAGE - paginatedItems.length }).map((_, i) => (
-                                                            <li key={`placeholder-${i}`} className="px-4 sm:px-6 py-2.5 flex items-center justify-between overflow-hidden" aria-hidden="true">
+                                                            <li key={`placeholder-${i}`} className="px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between overflow-hidden" aria-hidden="true">
                                                                 <div className="relative z-10 flex items-center gap-3 invisible">
                                                                     <div className="flex flex-col items-center gap-0.5">
-                                                                        <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold">&nbsp;</span>
+                                                                        <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold">&nbsp;</span>
                                                                     </div>
-                                                                    <div className="w-11 h-11 rounded-full border-2 shrink-0" />
+                                                                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 shrink-0" />
                                                                     <div>
                                                                         <p className="text-sm font-bold">&nbsp;</p>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex flex-col items-end invisible">
-                                                                    <div className="tabular-nums font-black text-lg">&nbsp;</div>
+                                                                    <div className="tabular-nums font-black text-base sm:text-lg">&nbsp;</div>
                                                                 </div>
                                                             </li>
                                                         ))}
@@ -509,8 +509,8 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 const totalGroups = periodGroupRankings?.length || 0;
 
                                 return (
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-3 sm:gap-4" style={{ gridAutoRows: '140px' }}>
+                                    <div className="space-y-3 sm:space-y-4">
+                                        <div className="grid grid-cols-2 gap-2 sm:gap-4" style={{ gridAutoRows: 'auto' }}>
                                             {/* My Rank Display */}
                                             {myRankEntry && (
                                                 <Link href={`/groups/${groupData.groupId}`} className="relative rounded-xl overflow-hidden shadow-lg animate-in fade-in zoom-in duration-300 group block hover:ring-2 hover:ring-offset-2 hover:ring-[var(--theme-primary)] transition-all">
@@ -530,30 +530,30 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         )}
                                                     </div>
 
-                                                    <div className="relative z-10 p-3 sm:p-4 text-white flex items-center justify-between">
+                                                    <div className="relative z-10 p-2.5 sm:p-4 text-white flex items-center justify-between">
                                                         <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-2 mb-1">
+                                                            <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
                                                                 {groupData.image_url && (
-                                                                    <img src={groupData.image_url} alt="" className="w-4 h-4 rounded-full border border-white/30" />
+                                                                    <img src={groupData.image_url} alt="" className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border border-white/30" />
                                                                 )}
-                                                                <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">{t('yourRank')}</p>
+                                                                <p className="text-white/80 text-[9px] sm:text-xs font-bold uppercase tracking-wider truncate">{t('yourRank')}</p>
                                                             </div>
                                                             <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
-                                                                <span className="text-2xl sm:text-3xl font-black leading-none">#{myRank}</span>
-                                                                <span className="text-[10px] sm:text-sm font-medium opacity-90 line-clamp-1">{t('inGroup', { group: groupData.keyword })}</span>
+                                                                <span className="text-xl sm:text-3xl font-black leading-none">#{myRank}</span>
+                                                                <span className="text-[9px] sm:text-sm font-medium opacity-90 line-clamp-1">{t('inGroup', { group: groupData.keyword })}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="text-right ml-2 shrink-0">
-                                                            <div className="text-lg sm:text-2xl font-bold tracking-tight leading-none mb-1">{myRankEntry.steps.toLocaleString()}</div>
-                                                            <div className="text-[10px] sm:text-xs text-white/80 font-medium uppercase tracking-wide">{t('steps')}</div>
+                                                        <div className="text-right ml-1.5 sm:ml-2 shrink-0">
+                                                            <div className="text-base sm:text-2xl font-bold tracking-tight leading-none mb-0.5 sm:mb-1">{myRankEntry.steps.toLocaleString()}</div>
+                                                            <div className="text-[9px] sm:text-xs text-white/80 font-medium uppercase tracking-wide">{t('steps')}</div>
                                                         </div>
                                                     </div>
                                                 </Link>
                                             )}
 
                                             {/* Group Average Display */}
-                                            <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-3 sm:p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75 min-h-[120px]">
-                                                <div className="flex items-center gap-2 mb-2">
+                                            <div className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 bg-white p-2.5 sm:p-4 flex flex-col justify-center animate-in fade-in zoom-in duration-300 delay-75">
+                                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
                                                     <div className="p-1.5 bg-[var(--theme-primary)]/10 rounded-full text-[var(--theme-primary)] shrink-0">
                                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -571,7 +571,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         <span className="text-2xl sm:text-3xl font-black text-gray-400 tracking-tight leading-none">N/A</span>
                                                     )}
                                                 </div>
-                                                <div className="mt-2 flex items-center gap-2 pt-2 border-t border-gray-50">
+                                                <div className="mt-1.5 sm:mt-2 flex items-center gap-2 pt-1.5 sm:pt-2 border-t border-gray-50">
                                                     <div className="flex flex-col min-w-0">
                                                         <span className="text-[10px] uppercase text-gray-400 font-bold truncate">{t('average')}</span>
                                                         <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">{t('steps')}</span></span>

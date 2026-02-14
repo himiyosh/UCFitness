@@ -468,7 +468,8 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                 </div>
             ) : (
                 /* ヒートマップ（CSS 1fr で自動フィル） */
-                <div className={activity ? 'flex-1' : ''}>
+                <div className={`${activity ? 'flex-1' : ''} overflow-x-auto`}>
+                  <div style={{ minWidth: `${20 + maxCol * 10 + (maxCol - 1) * 2}px` }}>
                     {/* 月ラベル */}
                     <div
                         className="grid gap-[2px] mb-0.5"
@@ -523,6 +524,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'var(--theme-primary)' }} />
                         <span>{t('more')}</span>
                     </div>
+                  </div>
                 </div>
             )}
         </div>

@@ -13,6 +13,7 @@ import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-s
 import nextDynamic from 'next/dynamic';
 import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip } from '@/lib/ranking-utils';
 import AutoSync from '@/components/AutoSync';
+import Footer from '@/components/Footer';
 import LandingPage from '@/components/LandingPage';
 import { Period } from '@/components/LeaderboardTabs';
 
@@ -317,42 +318,46 @@ export default async function Home() {
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
 
                 {/* Animation */}
-                <div className="absolute top-1/2 -right-4 sm:right-2 transform -translate-y-1/2 opacity-100 pointer-events-none">
+                <div className="absolute top-1/2 -right-10 sm:right-2 transform -translate-y-1/2 opacity-100 pointer-events-none scale-75 sm:scale-100">
                   <RunnerAnimation userImage={userImage} />
                 </div>
 
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 sm:block">
-                    <div className="mb-0 sm:mb-4 inline-flex items-center justify-center p-1.5 sm:p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div className="relative z-10 flex flex-col h-full">
+                  {/* テキストエリア: アバターと重ならないよう幅制限 */}
+                  <div className="max-w-[55%] sm:max-w-[65%]">
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex items-center justify-center p-1 sm:p-2 bg-white/20 backdrop-blur-sm rounded-lg flex-shrink-0">
+                        <svg className="w-3.5 h-3.5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <h4 className="font-black text-base sm:text-2xl tracking-tight whitespace-nowrap">{t('keepStepping')}</h4>
                     </div>
-                    <h4 className="font-black text-lg sm:text-2xl mb-0 sm:mb-2 tracking-tight">{t('keepStepping')}</h4>
+
+                    <p className="opacity-90 text-[10px] sm:text-sm leading-snug font-medium text-indigo-50 mt-2 sm:mt-3 whitespace-nowrap">
+                      {t('joinGroups').split('\n').map((line, i, arr) => (
+                        <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+                      ))}
+                    </p>
                   </div>
 
-                  <p className="opacity-90 text-[10px] sm:text-sm leading-relaxed max-w-md font-medium text-indigo-50 mt-1 sm:mt-0">
-                    {t('joinGroups').split('\n').map((line, i, arr) => (
-                      <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
-                    ))}
-                  </p>
-
-                  <div className="mt-3 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
-                    <Link href={username ? `/user/${username}` : '/profile'} className="motivation-btn-primary px-3 py-1 sm:px-5 sm:py-2 bg-white text-[var(--theme-primary)] text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-[var(--theme-primary-light)] transition-colors inline-flex items-center gap-2">
+                  {/* ナビゲーションボタン: パネル下部に全幅で配置 */}
+                  <div className="mt-4 sm:mt-6 flex flex-wrap gap-1.5 sm:gap-3">
+                    <Link href={username ? `/user/${username}` : '/profile'} className="motivation-btn-primary px-2.5 py-1 sm:px-5 sm:py-2 bg-white text-[var(--theme-primary)] text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-[var(--theme-primary-light)] transition-colors inline-flex items-center gap-1">
                       {t('profile')}
                     </Link>
-                    <Link href="/groups" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-2">
+                    <Link href="/groups" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
                       {t('groups')}
                     </Link>
-                    <Link href="/wallet" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
-                      <span className="text-xs sm:text-sm">💰</span>{t('wallet')}
+                    <Link href="/wallet" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-[10px] sm:text-sm">💰</span>{t('wallet')}
                     </Link>
-                    <Link href="/challenges" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
-                      <span className="text-xs sm:text-sm">🏆</span>{t('challenges')}
+                    <Link href="/challenges" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-[10px] sm:text-sm">🏆</span>{t('challenges')}
                     </Link>
-                    <Link href="/analytics" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
-                      <span className="text-xs sm:text-sm">📊</span>{t('analytics')}
+                    <Link href="/analytics" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-[10px] sm:text-sm">📊</span>{t('analytics')}
                     </Link>
-                    <Link href="/shop" className="motivation-btn-secondary px-3 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1.5">
-                      <span className="text-xs sm:text-sm">🛍️</span>{t('shop')}
+                    <Link href="/shop" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-[10px] sm:text-sm">🛍️</span>{t('shop')}
                     </Link>
                   </div>
                 </div>
@@ -421,6 +426,7 @@ export default async function Home() {
 
         </div>
       </div>
+      <Footer />
     </main>
   );
 }

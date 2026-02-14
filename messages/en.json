@@ -1,4 +1,10 @@
 {
+    "Footer": {
+        "terms": "Terms of Service",
+        "privacy": "Privacy Policy",
+        "contact": "Contact",
+        "allRightsReserved": "All rights reserved."
+    },
     "Common": {
         "settings": "Settings",
         "profile": "Profile",
