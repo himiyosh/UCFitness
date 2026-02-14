@@ -86,6 +86,8 @@
         "groups": "Groups",
         "wallet": "Wallet",
         "shop": "Shop",
+        "challenges": "Challenges",
+        "analytics": "Analytics",
         "refreshSteps": "Sync Now",
         "refreshing": "Refreshing...",
         "refreshFailed": "Failed to refresh steps"

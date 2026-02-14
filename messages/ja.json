@@ -86,6 +86,8 @@
         "groups": "グループ",
         "wallet": "ウォレット",
         "shop": "ショップ",
+        "challenges": "チャレンジ",
+        "analytics": "分析",
         "refreshSteps": "今すぐ同期",
         "refreshing": "同期中...",
         "refreshFailed": "歩数の同期に失敗しました"
