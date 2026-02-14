@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Confetti from './Confetti';
 
 // 歩数データ型
@@ -139,7 +139,7 @@ function HeatmapCell({
             onTouchEnd={() => setShowTooltip(false)}
         >
             <div
-                className={`w-[10px] h-[10px] sm:w-[13px] sm:h-[13px] rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]`}
+                className="w-full h-full rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-[var(--foreground-muted)]"
                 style={levelStyles[level]}
             />
             {showTooltip && (
@@ -324,6 +324,25 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
     // 曜日ラベル
     const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+    // セルサイズをコンテナ幅に合わせて動的計算
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [cellSize, setCellSize] = useState(10);
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const compute = () => {
+            const w = el.clientWidth;
+            // 利用可能幅 = コンテナ幅 - 曜日ラベル(24px)
+            // セルサイズ = (利用可能幅 - gap合計) / 列数
+            const size = Math.floor((w - 24) / maxCol - 2);
+            setCellSize(Math.max(4, Math.min(13, size)));
+        };
+        const observer = new ResizeObserver(compute);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [maxCol]);
+
     if (loading) {
         return (
             <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -468,18 +487,18 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                 </div>
             ) : (
                 /* ヒートマップ */
-                <div className={`overflow-x-auto overflow-y-visible${activity ? ' flex-1' : ''}`}>
-                    <div className="inline-block">
+                <div ref={containerRef} className={`overflow-y-visible${activity ? ' flex-1' : ''}`}>
+                    <div>
                         {/* 月ラベル */}
                         <div
                             className="grid gap-[2px] mb-1"
-                            style={{ gridTemplateColumns: `24px repeat(${maxCol}, 10px)` }}
+                            style={{ gridTemplateColumns: `24px repeat(${maxCol}, ${cellSize}px)` }}
                         >
                             <div />
                             {Array.from({ length: maxCol }).map((_, colIdx) => {
                                 const label = monthLabels.find((ml) => ml.col === colIdx);
                                 return (
-                                    <div key={colIdx} className="text-[9px] sm:text-[10px] text-gray-400 font-medium leading-none">
+                                    <div key={colIdx} className="text-[9px] text-gray-400 font-medium leading-none truncate">
                                         {label ? label.label : ''}
                                     </div>
                                 );
@@ -488,12 +507,12 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
 
                         {/* メイングリッド */}
                         <div className="flex gap-[2px]">
-                            <div className="grid gap-[2px]" style={{ gridTemplateRows: 'repeat(7, 10px)' }}>
+                            <div className="grid gap-[2px]" style={{ gridTemplateRows: `repeat(7, ${cellSize}px)` }}>
                                 {dayLabels.map((label, i) => (
                                     <div
                                         key={label}
-                                        className="text-[9px] sm:text-[10px] text-gray-400 font-medium leading-none flex items-center pr-1"
-                                        style={{ height: '10px' }}
+                                        className="text-[9px] text-gray-400 font-medium leading-none flex items-center pr-1"
+                                        style={{ height: `${cellSize}px` }}
                                     >
                                         {i % 2 === 1 ? label.slice(0, 3) : ''}
                                     </div>
@@ -502,8 +521,8 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                             <div
                                 className="grid gap-[2px]"
                                 style={{
-                                    gridTemplateColumns: `repeat(${maxCol}, 10px)`,
-                                    gridTemplateRows: 'repeat(7, 10px)',
+                                    gridTemplateColumns: `repeat(${maxCol}, ${cellSize}px)`,
+                                    gridTemplateRows: `repeat(7, ${cellSize}px)`,
                                 }}
                             >
                                 {gridCells.map((cell) => (
@@ -522,11 +541,11 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         {/* 凡例 */}
                         <div className="flex items-center gap-1.5 mt-2 justify-end text-[10px] text-gray-400">
                             <span>{t('less')}</span>
-                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: '#ebedf0' }} />
-                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
-                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
-                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />
-                            <div className="w-[10px] h-[10px] rounded-sm" style={{ backgroundColor: 'var(--theme-primary)' }} />
+                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: '#ebedf0' }} />
+                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
+                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
+                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />
+                            <div className="rounded-sm" style={{ width: `${cellSize}px`, height: `${cellSize}px`, backgroundColor: 'var(--theme-primary)' }} />
                             <span>{t('more')}</span>
                         </div>
                     </div>
