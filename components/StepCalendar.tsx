@@ -353,7 +353,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
     }
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 h-full flex flex-col">
+        <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col">
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
                 <div className="mb-3 pb-3 border-b border-gray-100">
@@ -440,13 +440,35 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                 </div>
             </div>
 
+            {/* 年間サマリー統計（ユーザーページ用：activity非表示時） */}
+            {!activity && data.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                    <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+                        <div className="text-[10px] text-gray-400 font-medium">{t('totalSteps')}</div>
+                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.totalSteps.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+                        <div className="text-[10px] text-gray-400 font-medium">{t('activeDays')}</div>
+                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.activeDays}<span className="text-[10px] text-gray-400 ml-0.5">{t('days')}</span></div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+                        <div className="text-[10px] text-gray-400 font-medium">{t('averageSteps')}</div>
+                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.avg.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+                        <div className="text-[10px] text-gray-400 font-medium">{t('longestStreak')}</div>
+                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.longestStreak}<span className="text-[10px] text-gray-400 ml-0.5">{t('days')}</span></div>
+                    </div>
+                </div>
+            )}
+
             {data.length === 0 ? (
                 <div className="text-center py-4 text-xs text-[var(--foreground-muted)]">
                     {t('noData')}
                 </div>
             ) : (
                 /* ヒートマップ */
-                <div className="overflow-x-auto overflow-y-visible flex-1">
+                <div className={`overflow-x-auto overflow-y-visible${activity ? ' flex-1' : ''}`}>
                     <div className="inline-block">
                         {/* 月ラベル */}
                         <div
