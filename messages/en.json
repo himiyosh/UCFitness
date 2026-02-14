@@ -601,6 +601,7 @@
     },
     "Challenge": {
         "title": "Challenges",
+        "headerDesc": "Complete step challenges and earn UC rewards!",
         "subtitle": "Complete step challenges and earn UC rewards!",
         "active": "Active",
         "completed": "Completed",
