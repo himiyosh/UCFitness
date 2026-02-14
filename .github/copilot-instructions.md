@@ -41,17 +41,70 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - コードコメント: 日本語 OK
 - ユーザーへの応答: 日本語サマリー + 英語本文
 
-### ページレイアウト共通パターン（必ず統一すること）
+### ページ共通パターン（絶対統一）
 
-新規ページ作成・既存ページ修正時は、以下の共通パターンに従うこと。
+**新規ページ作成・既存ページ修正時は、以下のすべてのパターンに必ず従うこと。**  
+**既存ページを参照する場合は、ダッシュボード（`page.tsx`）ではなく `wallet/page.tsx` や `shop/page.tsx` を正規のリファレンスとすること。**  
+ダッシュボードは公開ランディングページ兼用のため、例外的な構造を持つ。
 
-#### ルート要素
+#### ① ファイル先頭宣言
+
+```ts
+export const runtime = 'edge';
+// ...imports...
+export const dynamic = 'force-dynamic';
+```
+
+#### ② 必須インポート
+
+```ts
+import { auth } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";  // ※ supabase ではなく supabaseAdmin
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/navigation";
+import UserMenu from "@/components/UserMenu";
+import Breadcrumbs from "@/components/Breadcrumbs";
+```
+
+#### ③ 認証チェック → userId 取得 → DB ユーザー情報取得
+
+```tsx
+const session = await auth();
+const t = await getTranslations('PageName');
+const dashboardT = await getTranslations('Dashboard');
+
+if (!session?.user) {
+    redirect("/");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const userId = (session.user as any).id;
+
+// 必ず supabaseAdmin で DB からユーザー情報を取得する
+const { data: dbUser } = await supabaseAdmin
+    .from("users")
+    .select("name, image, username")  // ← 最低限この3つ。ページ固有のカラムは追加OK
+    .eq("id", userId)
+    .single();
+
+if (!dbUser?.username) {
+    redirect('/setup');
+}
+```
+
+**禁止事項:**
+- `session.user.image` / `session.user.name` を表示用に直接使用してはいけない（Fitbit OAuth の値のため）
+- `supabase`（非 admin）をサーバーコンポーネントで使用してはいけない（`supabaseAdmin` を使う）
+- username チェック・`/setup` リダイレクトを省略してはいけない
+
+#### ④ ルート要素
 
 ```tsx
 <main className="min-h-screen bg-[var(--theme-page-bg)]">
 ```
 
-#### ヘッダー（アプリブランディング）
+#### ⑤ ヘッダー（アプリブランディング）
 
 ```tsx
 <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
@@ -66,7 +119,12 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
         </span>
       </Link>
     </div>
-    <UserMenu user={...} />
+    <UserMenu user={{
+        id: userId,
+        name: dbUser?.name || session.user.name,
+        email: session.user.email,
+        image: dbUser?.image || session.user.image,
+    }} />
   </div>
 </header>
 ```
@@ -75,7 +133,7 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - ヘッダー左側は常にアプリロゴ（`UCFitness` グラデーション + beta バッジ）
 - `dashboardT = await getTranslations('Dashboard')` で取得
 
-#### コンテンツ領域
+#### ⑥ コンテンツ領域
 
 ```tsx
 <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
@@ -103,6 +161,18 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - `Breadcrumbs` は Home アイコンを自動付与するため、`🏠` を手動追加しない
 - ページタイトルはグラデーション + 絵文字 + 説明文 + 装飾線
 - 翻訳キーに `headerDesc` を必ず含める（ja/en 両方）
+
+#### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
+
+新規ページには最低限以下の翻訳キーを定義すること:
+```json
+{
+  "PageName": {
+    "title": "ページ名",
+    "headerDesc": "ページの説明文"
+  }
+}
+```
 
 ### Cloudflare Pages デプロイ前チェック（必須）
 

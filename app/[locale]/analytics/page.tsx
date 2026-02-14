@@ -7,6 +7,7 @@ import { Link } from "@/navigation";
 import UserMenu from "@/components/UserMenu";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import nextDynamic from 'next/dynamic';
+import { supabaseAdmin } from "@/lib/supabase";
 
 // ⚡ パフォーマンス: クライアントコンポーネントを遅延読み込み
 const PersonalAnalytics = nextDynamic(() => import('@/components/PersonalAnalytics'));
@@ -25,6 +26,17 @@ export default async function AnalyticsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
     const user = session.user;
+
+    // DB からカスタムプロフィール画像を取得（Fitbit OAuth 画像ではなく）
+    const { data: dbUser } = await supabaseAdmin
+        .from("users")
+        .select("name, image, username")
+        .eq("id", userId)
+        .single();
+
+    if (!dbUser?.username) {
+        redirect('/setup');
+    }
 
     return (
         <main className="min-h-screen bg-[var(--theme-page-bg)]">
@@ -46,9 +58,9 @@ export default async function AnalyticsPage() {
                     </div>
                     <UserMenu user={{
                         id: userId,
-                        name: user.name,
+                        name: dbUser?.name || user.name,
                         email: user.email,
-                        image: user.image,
+                        image: dbUser?.image || user.image,
                     }} />
                 </div>
             </header>
