@@ -22,6 +22,7 @@ const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'));
 const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast'));
 const DashboardChallenges = nextDynamic(() => import('@/components/DashboardChallenges'));
 const DashboardFollowing = nextDynamic(() => import('@/components/DashboardFollowing'));
+const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'));
 
 export const dynamic = 'force-dynamic';
 
@@ -462,6 +463,11 @@ export default async function Home() {
           {/* Following Activity */}
           {session && userId && (
             <DashboardFollowing />
+          )}
+
+          {/* コミュニティ人気フィットネスギア（Amazon アフィリエイト） */}
+          {session && userId && (
+            <TrendingGear />
           )}
 
           {/* BOTTOM SECTION: Leaderboards */}

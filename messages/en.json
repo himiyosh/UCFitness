@@ -444,6 +444,10 @@
         "linkGenerated": "Product found.",
         "generateError": "Failed to generate link."
     },
+    "TrendingGear": {
+        "title": "Trending Fitness Gear",
+        "subtitle": "Popular picks from the community"
+    },
     "GroupAnalytics": {
         "noData": "No activity data yet",
         "noDataDesc": "Start walking to see your group analytics here!",

@@ -444,6 +444,10 @@
         "linkGenerated": "商品が見つかりました。",
         "generateError": "リンク生成に失敗しました。"
     },
+    "TrendingGear": {
+        "title": "みんなの愛用ギア",
+        "subtitle": "コミュニティで人気のフィットネスアイテム"
+    },
     "GroupAnalytics": {
         "noData": "アクティビティデータがまだありません",
         "noDataDesc": "歩き始めるとグループ分析がここに表示されます！",

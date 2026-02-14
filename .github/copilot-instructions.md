@@ -117,7 +117,7 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 
 ```ts
 // ファイル先頭に必ず記載
-export const runtime = 'edge';
+export const runtime = "edge";
 ```
 
 #### ビルド検証

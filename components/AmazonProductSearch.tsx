@@ -268,7 +268,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 onKeyDown={handleKeyDown}
                                 placeholder={t('directPlaceholder')}
                                 aria-label={t('directDescription')}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent pr-24"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent pr-24"
                             />
                             {/* 入力タイプバッジ */}
                             {input.trim() && (
@@ -280,7 +280,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                         <button
                             onClick={handleGenerate}
                             disabled={isGenerating || !input.trim()}
-                            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            className="px-6 py-3 bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                             {isGenerating ? <Spinner /> : t('generateButton')}
                         </button>
@@ -300,7 +300,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                     aria-checked={category === cat.key ? 'true' : 'false'}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                                         category === cat.key
-                                            ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                            ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/30'
                                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                                     }`}
                                 >
@@ -399,7 +399,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                         />
                                     </div>
                                     {selectedCandidate.title && (
-                                        <p className="text-sm text-gray-700 text-center line-clamp-2 group-hover:text-orange-600 transition-colors">
+                                        <p className="text-sm text-gray-700 text-center line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors">
                                             {selectedCandidate.title}
                                         </p>
                                     )}
@@ -439,11 +439,11 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 bg-white rounded-xl border border-green-100 p-3 hover:shadow-md transition-shadow group"
                         >
-                            <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br from-orange-400 to-amber-300 flex items-center justify-center text-2xl shadow-sm">
+                            <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] flex items-center justify-center text-2xl shadow-sm">
                                 🔍
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
+                                <p className="text-sm font-bold text-gray-900 group-hover:text-[var(--theme-primary)] transition-colors">
                                     &quot;{latestResult.keyword}&quot;
                                     {latestResult.category && latestResult.category !== 'All' && (
                                         <span className="ml-2 text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -465,7 +465,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             <button
                                 onClick={handleAddRecommended}
                                 disabled={isSavingRecommended}
-                                className="w-full px-4 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
+                                className="w-full px-4 py-3.5 bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white font-black rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
                             >
                                 {isSavingRecommended
                                     ? (locale === 'ja' ? '⏳ 保存中...' : '⏳ Saving...')
@@ -482,7 +482,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 href={displayLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-1 px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 active:scale-[0.98] transition-all text-center"
+                                className="flex-1 px-6 py-3 bg-[var(--theme-primary)] text-white font-bold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-center"
                             >
                                 🛒 {t('viewOnAmazon')}
                             </a>
@@ -574,7 +574,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                         href={item.affiliateLink}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-orange-100 text-orange-600 border border-orange-200 hover:bg-orange-200 transition-all"
+                                        className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/20 hover:opacity-80 transition-all"
                                         title={t('viewOnAmazon')}
                                     >
                                         🛒
