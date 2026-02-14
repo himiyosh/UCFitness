@@ -61,8 +61,8 @@ const SIZE_MAP = {
         titleText: 'text-[10px]',
     },
     'md-lg': {
-        container: 'w-12 h-12',
-        text: 'text-base',
+        container: 'w-9 h-9 sm:w-12 sm:h-12',
+        text: 'text-sm sm:text-base',
         frame: 3,
         titleText: 'text-[10px]',
     },
