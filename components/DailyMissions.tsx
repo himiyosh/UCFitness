@@ -24,7 +24,7 @@ export default function DailyMissions() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
     const [allCompleted, setAllCompleted] = useState(false);
-    const [completing, setCompleting] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
     const [showBonus, setShowBonus] = useState(false);
 
     const fetchMissions = useCallback(async () => {
@@ -46,31 +46,32 @@ export default function DailyMissions() {
         fetchMissions();
     }, [fetchMissions]);
 
-    const completeMission = useCallback(async (missionId: string) => {
-        setCompleting(missionId);
+    // 歩数同期後にミッション再チェック
+    const refreshMissions = useCallback(async () => {
+        setRefreshing(true);
         try {
             const res = await fetch('/api/user/missions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ missionId }),
+                body: JSON.stringify({ action: 'refresh' }),
             });
-            if (!res.ok) throw new Error('complete failed');
+            if (!res.ok) throw new Error('refresh failed');
             const result = await res.json();
 
-            // ミッションを完了に更新
-            setMissions(prev => prev.map(m =>
-                m.id === missionId ? { ...m, is_completed: true, completed_at: new Date().toISOString() } : m
-            ));
-
+            if (result.missions) {
+                setMissions(result.missions);
+            }
             if (result.allCompleted) {
                 setAllCompleted(true);
-                setShowBonus(true);
-                setTimeout(() => setShowBonus(false), 3000);
+                if (result.bonusAwarded) {
+                    setShowBonus(true);
+                    setTimeout(() => setShowBonus(false), 3000);
+                }
             }
         } catch {
             // サイレントフェイル
         } finally {
-            setCompleting(null);
+            setRefreshing(false);
         }
     }, []);
 
@@ -120,9 +121,24 @@ export default function DailyMissions() {
                     <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         🎯 {t('dailyMissions')}
                     </h3>
-                    <span className="text-xs font-bold text-[var(--theme-primary)] tabular-nums">
-                        {completedCount}/{missions.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[var(--theme-primary)] tabular-nums">
+                            {completedCount}/{missions.length}
+                        </span>
+                        {/* 再チェックボタン */}
+                        {!allCompleted && (
+                            <button
+                                onClick={refreshMissions}
+                                disabled={refreshing}
+                                className="p-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                title={t('refresh')}
+                            >
+                                <svg className={`w-3.5 h-3.5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* プログレスバー */}
@@ -152,10 +168,10 @@ export default function DailyMissions() {
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                             mission.is_completed
                                 ? 'bg-emerald-50 border-emerald-200'
-                                : 'bg-gray-50 border-gray-100 hover:border-[var(--theme-primary)]/30'
+                                : 'bg-gray-50 border-gray-100'
                         }`}
                     >
-                        {/* チェックマーク / ボタン */}
+                        {/* ステータスアイコン（自動判定 — クリック不可） */}
                         {mission.is_completed ? (
                             <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
                                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,15 +179,9 @@ export default function DailyMissions() {
                                 </svg>
                             </div>
                         ) : (
-                            <button
-                                onClick={() => completeMission(mission.id)}
-                                disabled={completing === mission.id}
-                                className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0 hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-colors disabled:opacity-50"
-                            >
-                                {completing === mission.id ? (
-                                    <span className="animate-spin inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full" />
-                                ) : null}
-                            </button>
+                            <div className="w-8 h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs text-gray-300">○</span>
+                            </div>
                         )}
 
                         {/* ミッション詳細 */}

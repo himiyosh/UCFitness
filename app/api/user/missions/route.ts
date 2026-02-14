@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/user/missions
  * 今日のデイリーミッション一覧を取得。未作成なら自動生成する。
+ * 歩数ミッションは自動判定する。
  */
 export async function GET() {
     const session = await auth();
@@ -21,43 +22,72 @@ export async function GET() {
     const today = getJSTDateString();
 
     // 今日のミッションが既にあるか確認
-    const { data: existingMissions } = await supabaseAdmin
+    let { data: missions } = await supabaseAdmin
         .from('daily_missions')
         .select('id, mission_type, title, description, reward_uc, is_completed, completed_at')
         .eq('user_id', userId)
         .eq('date', today)
         .order('mission_type', { ascending: true });
 
-    if (existingMissions && existingMissions.length > 0) {
-        const allCompleted = existingMissions.every(m => m.is_completed);
-        return NextResponse.json({ missions: existingMissions, date: today, allCompleted });
+    if (!missions || missions.length === 0) {
+        // 今日のミッションを生成（3つ）
+        const todayMissions = generateDailyMissions(today);
+        const { data: created, error } = await supabaseAdmin
+            .from('daily_missions')
+            .insert(todayMissions.map(m => ({
+                user_id: userId,
+                date: today,
+                mission_type: m.type,
+                title: m.title,
+                description: m.description,
+                reward_uc: m.rewardUc,
+                is_completed: false,
+            })))
+            .select('id, mission_type, title, description, reward_uc, is_completed, completed_at');
+
+        if (error) {
+            return NextResponse.json({ error: 'ミッション生成失敗' }, { status: 500 });
+        }
+        missions = created || [];
     }
 
-    // 今日のミッションを生成（3つ）
-    const todayMissions = generateDailyMissions(today);
-    const { data: created, error } = await supabaseAdmin
-        .from('daily_missions')
-        .insert(todayMissions.map(m => ({
-            user_id: userId,
-            date: today,
-            mission_type: m.type,
-            title: m.title,
-            description: m.description,
-            reward_uc: m.rewardUc,
-            is_completed: false,
-        })))
-        .select('id, mission_type, title, description, reward_uc, is_completed, completed_at');
+    // === 自動判定: 未完了ミッションを実データでチェック ===
+    const uncompletedMissions = missions.filter(m => !m.is_completed);
 
-    if (error) {
-        return NextResponse.json({ error: 'ミッション生成失敗' }, { status: 500 });
+    if (uncompletedMissions.length > 0) {
+        // 今日の歩数を取得
+        const { data: stepData } = await supabaseAdmin
+            .from('daily_steps')
+            .select('steps')
+            .eq('user_id', userId)
+            .eq('date', today)
+            .single();
+        const todaySteps = stepData?.steps ?? 0;
+
+        // 各ミッションを自動判定
+        for (const mission of uncompletedMissions) {
+            const achieved = evaluateMission(mission.mission_type, todaySteps);
+            if (achieved) {
+                // DB更新 + 報酬付与
+                await completeMissionAndReward(userId, mission.id, mission.reward_uc, today);
+                mission.is_completed = true;
+                mission.completed_at = new Date().toISOString();
+            }
+        }
+
+        // 全達成ボーナスチェック
+        if (missions.every(m => m.is_completed)) {
+            await awardAllCompletedBonus(userId, today);
+        }
     }
 
-    return NextResponse.json({ missions: created || [], date: today, allCompleted: false });
+    const allCompleted = missions.every(m => m.is_completed);
+    return NextResponse.json({ missions, date: today, allCompleted });
 }
 
 /**
  * POST /api/user/missions
- * ミッション達成報告 { missionId }
+ * ミッション再チェックをトリガー（手動完了は不可、自動判定のみ）
  */
 export async function POST(request: Request) {
     const session = await auth();
@@ -67,30 +97,105 @@ export async function POST(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
 
-    const body = await request.json();
-    const { missionId } = body;
+    const body = await request.json().catch(() => ({}));
+    const { action } = body as { action?: string };
 
-    if (!missionId || typeof missionId !== 'string') {
-        return NextResponse.json({ error: '無効なミッションID' }, { status: 400 });
+    // action: 'refresh' — ミッション状態を再評価
+    if (action !== 'refresh') {
+        return NextResponse.json({ error: '手動でのミッション完了は許可されていません' }, { status: 403 });
     }
 
-    // ミッションを取得して所有者確認
-    const { data: mission } = await supabaseAdmin
-        .from('daily_missions')
-        .select('id, user_id, is_completed, reward_uc, date')
-        .eq('id', missionId)
-        .single();
+    const today = getJSTDateString();
 
-    if (!mission || mission.user_id !== userId) {
+    // 今日のミッションを取得
+    const { data: missions } = await supabaseAdmin
+        .from('daily_missions')
+        .select('id, mission_type, title, description, reward_uc, is_completed, completed_at')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .order('mission_type', { ascending: true });
+
+    if (!missions || missions.length === 0) {
         return NextResponse.json({ error: 'ミッションが見つかりません' }, { status: 404 });
     }
 
-    if (mission.is_completed) {
-        return NextResponse.json({ error: '既に達成済みです' }, { status: 400 });
+    // 今日の歩数を取得
+    const { data: stepData } = await supabaseAdmin
+        .from('daily_steps')
+        .select('steps')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .single();
+    const todaySteps = stepData?.steps ?? 0;
+
+    let newlyCompleted = 0;
+
+    // 未完了ミッションを自動判定
+    for (const mission of missions) {
+        if (mission.is_completed) continue;
+
+        const achieved = evaluateMission(mission.mission_type, todaySteps);
+        if (achieved) {
+            await completeMissionAndReward(userId, mission.id, mission.reward_uc, today);
+            mission.is_completed = true;
+            mission.completed_at = new Date().toISOString();
+            newlyCompleted++;
+        }
     }
 
+    const allCompleted = missions.every(m => m.is_completed);
+
+    // 全達成ボーナス
+    if (allCompleted && newlyCompleted > 0) {
+        await awardAllCompletedBonus(userId, today);
+    }
+
+    return NextResponse.json({
+        success: true,
+        missions,
+        allCompleted,
+        newlyCompleted,
+        bonusAwarded: allCompleted && newlyCompleted > 0,
+        bonusUc: allCompleted && newlyCompleted > 0 ? 100 : 0,
+    });
+}
+
+// ============================================
+// ミッション自動判定ロジック
+// ============================================
+
+/** ミッションタイプごとの達成閾値 */
+const STEP_THRESHOLDS: Record<string, number> = {
+    WALK_3K: 3000,
+    WALK_5K: 5000,
+    WALK_8K: 8000,
+    WALK_10K: 10000,
+    WALK_1K: 1000,
+    WALK_15K: 15000,
+};
+
+/** ミッション達成判定 — 実データに基づいて評価 */
+function evaluateMission(missionType: string, todaySteps: number): boolean {
+    const threshold = STEP_THRESHOLDS[missionType];
+    if (threshold !== undefined) {
+        return todaySteps >= threshold;
+    }
+    // ログインミッション: GET時点で達成（ダッシュボードにアクセス＝ログイン済み）
+    if (missionType === 'LOGIN') {
+        return true;
+    }
+    return false;
+}
+
+/** ミッション完了処理 + 報酬UC付与 */
+async function completeMissionAndReward(
+    userId: string,
+    missionId: string,
+    rewardUc: number,
+    date: string,
+): Promise<void> {
     // ミッションを完了に更新
-    const { error: updateError } = await supabaseAdmin
+    await supabaseAdmin
         .from('daily_missions')
         .update({
             is_completed: true,
@@ -98,24 +203,19 @@ export async function POST(request: Request) {
         })
         .eq('id', missionId);
 
-    if (updateError) {
-        return NextResponse.json({ error: '更新失敗' }, { status: 500 });
-    }
-
-    // 報酬UCを付与
+    // 報酬UCを付与（冪等性キーで重複防止）
     const { error: txError } = await supabaseAdmin
         .from('coin_transactions')
         .insert({
             user_id: userId,
-            date: mission.date,
+            date,
             type: 'MISSION_REWARD',
-            amount: mission.reward_uc,
-            description: `デイリーミッション報酬`,
+            amount: rewardUc,
+            description: 'デイリーミッション報酬',
             idempotency_key: `mission:${missionId}`,
         });
 
     if (!txError) {
-        // coin_balances を更新
         const { data: balanceData } = await supabaseAdmin
             .from('coin_balances')
             .select('total_balance, total_bonus')
@@ -126,65 +226,46 @@ export async function POST(request: Request) {
             await supabaseAdmin
                 .from('coin_balances')
                 .update({
-                    total_balance: balanceData.total_balance + mission.reward_uc,
-                    total_bonus: balanceData.total_bonus + mission.reward_uc,
+                    total_balance: balanceData.total_balance + rewardUc,
+                    total_bonus: balanceData.total_bonus + rewardUc,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('user_id', userId);
         }
     }
+}
 
-    // 全ミッション達成チェック → ボーナス付与
-    const { data: allMissions } = await supabaseAdmin
-        .from('daily_missions')
-        .select('is_completed')
-        .eq('user_id', userId)
-        .eq('date', mission.date);
+/** 全達成ボーナス付与 */
+async function awardAllCompletedBonus(userId: string, date: string): Promise<void> {
+    const bonusKey = `mission-bonus:${userId}:${date}`;
+    const { error: bonusError } = await supabaseAdmin
+        .from('coin_transactions')
+        .insert({
+            user_id: userId,
+            date,
+            type: 'MISSION_REWARD',
+            amount: 100,
+            description: 'デイリーミッション全達成ボーナス',
+            idempotency_key: bonusKey,
+        });
 
-    const allCompleted = allMissions?.every(m => m.is_completed) || false;
-    let bonusAwarded = false;
-
-    if (allCompleted) {
-        // 全達成ボーナス: 100 UC
-        const bonusKey = `mission-bonus:${userId}:${mission.date}`;
-        const { error: bonusError } = await supabaseAdmin
-            .from('coin_transactions')
-            .insert({
-                user_id: userId,
-                date: mission.date,
-                type: 'MISSION_REWARD',
-                amount: 100,
-                description: 'デイリーミッション全達成ボーナス',
-                idempotency_key: bonusKey,
-            });
-
-        if (!bonusError) {
-            bonusAwarded = true;
-            const { data: bd } = await supabaseAdmin
+    if (!bonusError) {
+        const { data: bd } = await supabaseAdmin
+            .from('coin_balances')
+            .select('total_balance, total_bonus')
+            .eq('user_id', userId)
+            .single();
+        if (bd) {
+            await supabaseAdmin
                 .from('coin_balances')
-                .select('total_balance, total_bonus')
-                .eq('user_id', userId)
-                .single();
-            if (bd) {
-                await supabaseAdmin
-                    .from('coin_balances')
-                    .update({
-                        total_balance: bd.total_balance + 100,
-                        total_bonus: bd.total_bonus + 100,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq('user_id', userId);
-            }
+                .update({
+                    total_balance: bd.total_balance + 100,
+                    total_bonus: bd.total_bonus + 100,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('user_id', userId);
         }
     }
-
-    return NextResponse.json({
-        success: true,
-        rewardUc: mission.reward_uc,
-        allCompleted,
-        bonusAwarded,
-        bonusUc: bonusAwarded ? 100 : 0,
-    });
 }
 
 // ============================================
@@ -199,14 +280,13 @@ interface MissionTemplate {
 }
 
 const MISSION_POOL: MissionTemplate[] = [
+    { type: 'WALK_1K', title: '👣 1,000歩を歩こう', description: '今日1,000歩以上歩く', rewardUc: 15 },
     { type: 'WALK_3K', title: '🚶 3,000歩を歩こう', description: '今日3,000歩以上歩く', rewardUc: 30 },
     { type: 'WALK_5K', title: '🏃 5,000歩チャレンジ', description: '今日5,000歩以上歩く', rewardUc: 50 },
     { type: 'WALK_8K', title: '💪 8,000歩を目指せ', description: '今日8,000歩以上歩く', rewardUc: 80 },
     { type: 'WALK_10K', title: '🔥 10,000歩の壁を越えろ', description: '今日10,000歩以上歩く', rewardUc: 100 },
-    { type: 'CHECK_LEADERBOARD', title: '📊 ランキングを確認', description: 'ランキングページを閲覧する', rewardUc: 20 },
-    { type: 'VISIT_SHOP', title: '🛍️ ショップを訪問', description: 'ショップページを閲覧する', rewardUc: 20 },
-    { type: 'CHECK_PROFILE', title: '👤 プロフィールを確認', description: '自分のプロフィールを閲覧する', rewardUc: 20 },
-    { type: 'CHECK_WALLET', title: '💰 ウォレットを確認', description: 'ウォレットページを閲覧する', rewardUc: 20 },
+    { type: 'WALK_15K', title: '🏆 15,000歩マスター', description: '今日15,000歩以上歩く', rewardUc: 150 },
+    { type: 'LOGIN', title: '📱 ログインしよう', description: 'UCFitnessにログインする', rewardUc: 10 },
 ];
 
 function generateDailyMissions(date: string): MissionTemplate[] {
@@ -214,21 +294,25 @@ function generateDailyMissions(date: string): MissionTemplate[] {
     const seed = date.replace(/-/g, '');
     const numSeed = parseInt(seed, 10);
 
-    // 歩数系から1つ必ず選ぶ
+    // 歩数系ミッション（LOGIN以外）
     const walkMissions = MISSION_POOL.filter(m => m.type.startsWith('WALK_'));
-    const otherMissions = MISSION_POOL.filter(m => !m.type.startsWith('WALK_'));
+    const loginMission = MISSION_POOL.find(m => m.type === 'LOGIN')!;
 
-    const walkIndex = numSeed % walkMissions.length;
-    const selected: MissionTemplate[] = [walkMissions[walkIndex]];
+    // ログインミッションは常に含める（簡単なミッション1つは達成感のため）
+    const selected: MissionTemplate[] = [loginMission];
 
-    // 残り2つはその他から選ぶ（重複なし）
-    const shuffled = [...otherMissions].sort((a, b) => {
-        const hashA = (numSeed * 31 + a.type.charCodeAt(0)) % 1000;
-        const hashB = (numSeed * 31 + b.type.charCodeAt(0)) % 1000;
-        return hashA - hashB;
-    });
+    // 歩数系から難易度の異なる2つを選ぶ
+    // まず難易度順にソート
+    const sorted = [...walkMissions].sort((a, b) => a.rewardUc - b.rewardUc);
+    // 簡単な方（1K/3K/5K）から1つ、難しい方（8K/10K/15K）から1つ
+    const easy = sorted.filter(m => m.rewardUc <= 50);
+    const hard = sorted.filter(m => m.rewardUc > 50);
 
-    selected.push(shuffled[0], shuffled[1]);
+    const easyIndex = numSeed % easy.length;
+    const hardIndex = (numSeed * 7) % hard.length;
+
+    selected.push(easy[easyIndex]);
+    selected.push(hard[hardIndex]);
 
     return selected;
 }

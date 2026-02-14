@@ -660,6 +660,7 @@
         "allCompleted": "全ミッション完了！",
         "loadError": "ミッションの読み込みに失敗しました",
         "retry": "再試行",
+        "refresh": "ミッション再チェック",
         "bonusHint": "全クリアで追加ボーナス",
         "bonusReward": "全ミッション完了で +100 UC ボーナス！"
     },

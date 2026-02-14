@@ -660,6 +660,7 @@
         "allCompleted": "All Missions Complete!",
         "loadError": "Failed to load missions",
         "retry": "Retry",
+        "refresh": "Refresh missions",
         "bonusHint": "Complete all for bonus",
         "bonusReward": "Complete all missions for +100 UC bonus!"
     },
