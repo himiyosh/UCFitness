@@ -217,6 +217,16 @@ export const runtime = "edge";
 - push 前に `npx @cloudflare/next-on-pages` または `npm run pages:build` を実行してビルドが通ることを確認
 - 特に新規ページ・API ルート追加時は Edge Runtime 漏れが発生しやすいため注意
 
+#### `.next` キャッシュ破損の防止（必須）
+
+- **`npx next build` を実行した後は、必ず `.next` ディレクトリを削除すること**
+  ```powershell
+  Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+  ```
+- `next build` は `.next` 内のファイルを本番用に上書きするため、`next dev` で使うキャッシュと不整合が起き、`routes-manifest.json` や WASM ファイルが見つからず 500 エラーになる
+- ビルド検証の最後のステップとして `.next` 削除を必ず実行し、ユーザーが `npm run dev` を再起動すれば正常に動作する状態にすること
+- **TypeScript 型チェック (`npx tsc --noEmit`) はキャッシュを破損しないため、ビルド検証にはこちらを優先使用すること**
+
 #### Node.js 専用 API の使用禁止
 
 - Edge Runtime では `fs`, `path`, `child_process` 等の Node.js ネイティブモジュールは使用不可
