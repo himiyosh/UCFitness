@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
+import { useRouter } from '@/navigation';
 import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/GroupRankingPanel';
@@ -90,6 +91,7 @@ function FadeInWrapper({ children, className = "" }: { children: ReactNode, clas
 
 export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGroupRankings, groupCompetitionRankings }: AnimatedLeaderboardProps) {
     const locale = useLocale();
+    const router = useRouter();
     const [period, setPeriod] = useState<Period>('DAILY');
     const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
     const [leftTab, setLeftTab] = useState<'user' | 'group'>('user');
@@ -299,7 +301,9 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
-                                                                <li key={`${entry.users.id}-${period}`} className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors cursor-pointer overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}>
+                                                                <li key={`${entry.users.id}-${period}`} className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-colors cursor-pointer overflow-hidden ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    onClick={() => entry.users.username && router.push(`/user/${entry.users.username}`)}
+                                                                >
 
                                                                     {/* Content Wrapper */}
                                                                     <div className="relative z-10 flex items-center gap-3">
@@ -343,13 +347,9 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         )}
                                                                         <div>
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                                                                                {entry.users.username ? (
-                                                                                    <Link href={`/user/${entry.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
-                                                                                        {entry.users?.name || commonT('anonymous')}
-                                                                                    </Link>
-                                                                                ) : (
-                                                                                    <span>{entry.users?.name || commonT('anonymous')}</span>
-                                                                                )}
+                                                                                <span className={entry.users.username ? 'hover:text-[var(--theme-primary)] hover:underline' : ''}>
+                                                                                    {entry.users?.name || commonT('anonymous')}
+                                                                                </span>
                                                                                 {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">{commonT('you')}</span>}
                                                                             </p>
                                                                             {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
