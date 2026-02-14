@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast';
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 import Spinner from '@/components/ui/Spinner';
+import ShopRecommendations from '@/components/ShopRecommendations';
 
 /** item_code → アプリテーマのマッピング */
 const THEME_MAP: Record<string, Theme> = {
@@ -314,6 +315,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             {/* --- ショップビュー --- */}
             {viewMode === 'shop' && (
                 <>
+                    {/* おすすめ + 愛用ギア */}
+                    <ShopRecommendations />
+
                     {/* カテゴリタブ */}
                     <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
                         {TABS.map(tab => (
