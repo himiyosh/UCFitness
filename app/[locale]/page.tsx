@@ -317,7 +317,7 @@ export default async function Home() {
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
 
                 {/* Animation */}
-                <div className="absolute top-1/2 -right-4 sm:right-2 transform -translate-y-1/2 opacity-100 pointer-events-none">
+                <div className="absolute top-1/2 -right-10 sm:right-2 transform -translate-y-1/2 opacity-100 pointer-events-none scale-75 sm:scale-100">
                   <RunnerAnimation userImage={userImage} />
                 </div>
 
