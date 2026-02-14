@@ -144,97 +144,135 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
         );
     }
 
+    const earnedCount = items.filter(i => i.earned).length;
+    const [expanded, setExpanded] = useState(false);
+
     const categories = [
         { key: 'steps' as const, label: t('stepMilestones'), items: grouped.steps },
         { key: 'streak' as const, label: t('streakAchievements'), items: grouped.streak },
         { key: 'special' as const, label: t('specialAchievements'), items: grouped.special },
     ];
 
+    // 次の目標アイテム（未達成の最初のもの）
+    const nextGoalItem = items.find(i => i.itemCode === nextGoalCode);
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100">
+            {/* ヘッダー: タイトル + 達成数サマリー */}
+            <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
                     🏅 {t('title')}
                 </h3>
+                <span className="text-[10px] font-semibold text-gray-400 tabular-nums">
+                    {earnedCount} / {items.length}
+                </span>
             </div>
 
-            <div className="divide-y divide-gray-100">
-                {categories.map(cat => (
-                    cat.items.length > 0 && (
-                        <div key={cat.key} className="px-4 py-3">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                                {cat.label}
-                            </p>
-                            <div className="space-y-3">
-                                {cat.items.map(item => {
-                                    const isNext = item.itemCode === nextGoalCode;
-                                    const emoji = ACHIEVEMENT_EMOJI[item.itemCode] || '🏆';
-                                    const nameKey = ACHIEVEMENT_NAME_KEY[item.itemCode] || item.itemCode;
+            {/* 全体プログレスバー */}
+            <div className="px-4 py-2 border-b border-gray-50">
+                <div className="w-full h-1.5 rounded-full overflow-hidden bg-gray-100">
+                    <div
+                        className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)]"
+                        style={{ width: `${items.length > 0 ? Math.round((earnedCount / items.length) * 100) : 0}%` }}
+                    />
+                </div>
+            </div>
 
-                                    return (
+            {/* 次の目標（常時表示） */}
+            {nextGoalItem && (() => {
+                const emoji = ACHIEVEMENT_EMOJI[nextGoalItem.itemCode] || '🏆';
+                const nameKey = ACHIEVEMENT_NAME_KEY[nextGoalItem.itemCode] || nextGoalItem.itemCode;
+                return (
+                    <div className="px-4 py-2.5 bg-[var(--theme-primary-light)]/50">
+                        <div className="flex items-center gap-2">
+                            <span className="text-lg flex-shrink-0">{emoji}</span>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className="text-[9px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary)]/10 px-1.5 py-0.5 rounded-full">
+                                        {t('nextGoal')}
+                                    </span>
+                                    <span className="text-xs font-semibold text-gray-800 truncate">
+                                        {t(`names.${nameKey}`)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-gray-200">
                                         <div
-                                            key={item.itemCode}
-                                            className={`rounded-lg px-3 py-2 transition-colors ${
-                                                item.earned
-                                                    ? 'bg-gray-50/60 opacity-75'
-                                                    : isNext
-                                                        ? 'bg-[var(--theme-primary-light)] ring-1 ring-[var(--theme-primary)]/20'
-                                                        : ''
-                                            }`}
-                                        >
-                                            {/* ヘッダー: アイコン + 名前 + ステータス */}
-                                            <div className="flex items-center justify-between mb-1">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="text-base flex-shrink-0">{emoji}</span>
-                                                    <span className={`text-xs font-semibold truncate ${
-                                                        item.earned ? 'text-gray-500' : 'text-gray-800'
-                                                    }`}>
-                                                        {t(`names.${nameKey}`)}
-                                                    </span>
-                                                    {isNext && !item.earned && (
-                                                        <span className="text-[9px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary)]/10 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                                                            {t('nextGoal')}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex-shrink-0 ml-2">
-                                                    {item.earned ? (
-                                                        <span className="text-[10px] font-bold text-green-600">
-                                                            {t('achieved')} ✅
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] font-semibold text-gray-400 tabular-nums">
-                                                            {item.percentage}%
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* プログレスバー */}
-                                            <div className="w-full h-1.5 rounded-full overflow-hidden bg-gray-200">
-                                                <div
-                                                    className="h-full rounded-full transition-all duration-500"
-                                                    style={{
-                                                        width: `${item.percentage}%`,
-                                                        backgroundColor: item.earned
-                                                            ? '#22c55e'
-                                                            : 'var(--theme-primary)',
-                                                    }}
-                                                />
-                                            </div>
-
-                                            {/* 進捗テキスト */}
-                                            <p className="text-[10px] text-gray-400 mt-0.5 tabular-nums">
-                                                {formatNumber(Math.min(item.current, item.target))} / {formatNumber(item.target)}
-                                            </p>
-                                        </div>
-                                    );
-                                })}
+                                            className="h-full rounded-full transition-all duration-500"
+                                            style={{ width: `${nextGoalItem.percentage}%`, backgroundColor: 'var(--theme-primary)' }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] font-semibold text-gray-500 tabular-nums flex-shrink-0">
+                                        {formatNumber(Math.min(nextGoalItem.current, nextGoalItem.target))} / {formatNumber(nextGoalItem.target)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    )
-                ))}
-            </div>
+                    </div>
+                );
+            })()}
+
+            {/* 展開時: カテゴリ別コンパクトリスト */}
+            {expanded && (
+                <div className="divide-y divide-gray-50">
+                    {categories.map(cat => (
+                        cat.items.length > 0 && (
+                            <div key={cat.key} className="px-4 py-2">
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                                    {cat.label}
+                                </p>
+                                <div className="space-y-1">
+                                    {cat.items.map(item => {
+                                        const isNext = item.itemCode === nextGoalCode;
+                                        const emoji = ACHIEVEMENT_EMOJI[item.itemCode] || '🏆';
+                                        const nameKey = ACHIEVEMENT_NAME_KEY[item.itemCode] || item.itemCode;
+
+                                        return (
+                                            <div
+                                                key={item.itemCode}
+                                                className={`flex items-center gap-2 rounded-md px-2 py-1 ${
+                                                    isNext ? 'bg-[var(--theme-primary-light)]/30' : ''
+                                                }`}
+                                            >
+                                                <span className="text-sm flex-shrink-0">{emoji}</span>
+                                                <span className={`text-[11px] font-medium truncate flex-1 ${
+                                                    item.earned ? 'text-gray-400' : 'text-gray-700'
+                                                }`}>
+                                                    {t(`names.${nameKey}`)}
+                                                </span>
+                                                {item.earned ? (
+                                                    <span className="text-xs text-green-500 flex-shrink-0">✅</span>
+                                                ) : (
+                                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                        <div className="w-12 h-1 rounded-full overflow-hidden bg-gray-200">
+                                                            <div
+                                                                className="h-full rounded-full"
+                                                                style={{ width: `${item.percentage}%`, backgroundColor: 'var(--theme-primary)' }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-[9px] text-gray-400 tabular-nums w-7 text-right">{item.percentage}%</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )
+                    ))}
+                </div>
+            )}
+
+            {/* 展開/折りたたみボタン */}
+            <button
+                onClick={() => setExpanded(prev => !prev)}
+                className="w-full px-4 py-2 text-[11px] font-semibold text-[var(--theme-primary)] hover:bg-gray-50 transition-colors border-t border-gray-100 flex items-center justify-center gap-1"
+            >
+                {expanded ? t('hideDetails') : t('showDetails')}
+                <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
         </div>
     );
 }

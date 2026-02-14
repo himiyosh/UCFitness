@@ -557,6 +557,8 @@
         "progress": "{current} / {target}",
         "nextGoal": "Next Goal",
         "noProgress": "Start walking to unlock achievements!",
+        "showDetails": "Show All",
+        "hideDetails": "Collapse",
         "achievementTitle": "Public Achievements",
         "totalSteps": "Total Steps",
         "activeDays": "Active Days",

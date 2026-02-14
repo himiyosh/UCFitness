@@ -557,6 +557,8 @@
         "progress": "{current} / {target}",
         "nextGoal": "次の目標",
         "noProgress": "歩いて実績を解除しよう！",
+        "showDetails": "すべて表示",
+        "hideDetails": "閉じる",
         "achievementTitle": "公開実績",
         "totalSteps": "累計歩数",
         "activeDays": "アクティブ日数",
