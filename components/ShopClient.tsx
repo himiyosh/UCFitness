@@ -60,7 +60,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     const [isLoading, setIsLoading] = useState<string | null>(null);
     const [confirmDialog, setConfirmDialog] = useState<{ item: ShopItem } | null>(null);
     const [previewItem, setPreviewItem] = useState<ShopItem | null>(null);
-    const [viewMode, setViewMode] = useState<'shop' | 'inventory'>('shop');
+    const [viewMode, setViewMode] = useState<'shop' | 'gear' | 'inventory'>('shop');
 
     // フィルタされたアイテム
     const filteredItems = useMemo(
@@ -288,36 +288,35 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 )}
             </div>
 
-            {/* ショップ / インベントリ切り替え */}
+            {/* ショップ / ギア / インベントリ切り替え */}
             <div className="flex bg-gray-100/80 rounded-lg p-1 mb-4">
-                <button
-                    onClick={() => setViewMode('shop')}
-                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
-                        viewMode === 'shop'
-                            ? 'bg-white text-amber-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                >
-                    🛍️ {t('shopTab')}
-                </button>
-                <button
-                    onClick={() => setViewMode('inventory')}
-                    className={`flex-1 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
-                        viewMode === 'inventory'
-                            ? 'bg-white text-amber-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                >
-                    📦 {t('inventoryTab')}
-                </button>
+                {[
+                    { key: 'shop' as const, icon: '🛍️', label: t('shopTab') },
+                    { key: 'gear' as const, icon: '🏋️', label: t('gearTab') },
+                    { key: 'inventory' as const, icon: '📦', label: t('inventoryTab') },
+                ].map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setViewMode(tab.key)}
+                        className={`flex-1 px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${
+                            viewMode === tab.key
+                                ? 'bg-white text-amber-600 shadow-sm'
+                                : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                    >
+                        {tab.icon} {tab.label}
+                    </button>
+                ))}
             </div>
+
+            {/* --- ギアビュー --- */}
+            {viewMode === 'gear' && (
+                <ShopRecommendations />
+            )}
 
             {/* --- ショップビュー --- */}
             {viewMode === 'shop' && (
                 <>
-                    {/* おすすめ + 愛用ギア */}
-                    <ShopRecommendations />
-
                     {/* カテゴリタブ */}
                     <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
                         {TABS.map(tab => (
