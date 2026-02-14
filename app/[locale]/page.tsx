@@ -34,7 +34,9 @@ export default async function Home() {
     return <LandingPage />;
   }
 
-  let groupKeywords: string[] = [];
+  const groupKeywords: string[] = [];
+  const groupMetadataMap = new Map<string, { id: string; header_image_url: string | null; image_url: string | null }>();
+  const validGroupIds: string[] = [];
   let username: string | undefined;
   let mySteps = 0;
   let yesterdaySteps = 0;
@@ -79,7 +81,7 @@ export default async function Home() {
         .single(),
       supabase
         .from('group_members')
-        .select('groups(keyword)')
+        .select('groups(id, keyword, header_image_url, image_url)')
         .eq('user_id', userId),
       supabase
         .from('daily_steps')
@@ -96,8 +98,16 @@ export default async function Home() {
     username = userData?.username;
     bannerUrl = userData?.banner_url;
 
+    // ⚡ Bolt Optimization: Process memberships to extract group data without extra query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    groupKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+    memberships?.forEach((m: any) => {
+      const g = m.groups;
+      if (g && g.keyword) {
+        groupKeywords.push(g.keyword);
+        groupMetadataMap.set(g.keyword, g);
+        if (g.id) validGroupIds.push(g.id);
+      }
+    });
 
     // レガシー users.group_keyword をサイレント同期 (他機能の整合性維持)
     supabaseAdmin
@@ -155,21 +165,6 @@ export default async function Home() {
   const myMonthlyEntry = userId ? allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.id === userId) : undefined;
   const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
-  // ⚡ Bolt Optimization: Bulk fetch group metadata to avoid N+1 queries
-  const groupMetadataMap = new Map<string, { id: string; header_image_url: string | null; image_url: string | null }>();
-  const validGroupIds: string[] = [];
-
-  if (groupKeywords.length > 0) {
-    const { data: groupsData } = await supabase
-      .from('groups')
-      .select('id, keyword, header_image_url, image_url')
-      .in('keyword', groupKeywords);
-
-    groupsData?.forEach(g => {
-      groupMetadataMap.set(g.keyword, g);
-      validGroupIds.push(g.id);
-    });
-  }
 
   // ⚡ Bolt Optimization: Batch fetch rankings for all groups to avoid N+1 queries
   // ⚡ Bolt Optimization: Use cached global rankings to derive group rankings (Avoids heavy DB query)
