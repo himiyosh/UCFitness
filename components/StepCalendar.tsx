@@ -387,14 +387,14 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
 
                         {/* 週間・月間パネル（中央の空白エリアに配置） */}
                         <div className="flex-1 grid grid-cols-2 gap-1.5 px-2 self-center">
-                            <div className="bg-gray-50 rounded-lg px-2.5 py-2 text-center">
+                            <div className="bg-gray-50 rounded-lg px-1.5 py-1 text-center">
                                 <div className="text-[10px] text-gray-400 font-medium">{dashT('thisWeek')}</div>
                                 <div className="text-base font-black text-gray-800 tabular-nums leading-tight">{activity.weeklySteps.toLocaleString()}</div>
                                 <div className={`text-[10px] font-semibold ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
                                     {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
                                 </div>
                             </div>
-                            <div className="bg-gray-50 rounded-lg px-2.5 py-2 text-center">
+                            <div className="bg-gray-50 rounded-lg px-1.5 py-1 text-center">
                                 <div className="text-[10px] text-gray-400 font-medium">{dashT('thisMonth')}</div>
                                 <div className="text-base font-black text-gray-800 tabular-nums leading-tight">{activity.monthlySteps.toLocaleString()}</div>
                                 <div className={`text-[10px] font-semibold ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
