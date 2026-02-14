@@ -282,15 +282,6 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <ShareMilestone totalSteps={totalSteps} username={username} />
                         </div>
 
-                        {/* Recommended Items — オーナーには常時表示（アイテム追加を促す） */}
-                        {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (
-                            <RecommendedItems
-                                items={recommendedItems || []}
-                                isOwner={isOwner}
-                                locale={locale}
-                            />
-                        )}
-
                         {/* Lifetime Stats */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-200">
                             <div className="flex items-center justify-between px-4 py-2.5">
@@ -467,6 +458,15 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         {/* Step Heatmap Calendar */}
                         <StepCalendar userId={user.id} />
+
+                        {/* Recommended Items — 愛用アイテム */}
+                        {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (
+                            <RecommendedItems
+                                items={recommendedItems || []}
+                                isOwner={isOwner}
+                                locale={locale}
+                            />
+                        )}
 
                         {/* 広告スロット（将来のAdSense用） */}
                         <AdSlot slot="content-between" />
