@@ -4,42 +4,23 @@ import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 
 // ============================================
-// ShareMilestone — 歩数マイルストーン SNS シェアボタン
-// Twitter / LINE でマイルストーン達成をシェア
+// ShareMilestone — プロフィール SNS シェアボタン
+// Twitter / LINE でプロフィールをシェア
 // ============================================
 
 interface ShareMilestoneProps {
     totalSteps: number;
-    bestStreak?: number;
-    badgeCount?: number;
     username: string;
 }
 
-const MILESTONES = [
-    { steps: 1000000, emoji: '🏆', label: '100万歩', labelEn: '1M Steps' },
-    { steps: 500000, emoji: '💎', label: '50万歩', labelEn: '500K Steps' },
-    { steps: 100000, emoji: '⭐', label: '10万歩', labelEn: '100K Steps' },
-    { steps: 50000, emoji: '🎯', label: '5万歩', labelEn: '50K Steps' },
-    { steps: 10000, emoji: '🚶', label: '1万歩', labelEn: '10K Steps' },
-];
-
-export default function ShareMilestone({ totalSteps, bestStreak, badgeCount, username }: ShareMilestoneProps) {
+export default function ShareMilestone({ totalSteps, username }: ShareMilestoneProps) {
     const t = useTranslations('Profile');
     const [showMenu, setShowMenu] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    // 達成済みマイルストーンのうち最高のもの
-    const milestone = MILESTONES.find(m => totalSteps >= m.steps);
-
     const shareText = useCallback(() => {
-        const streakLine = bestStreak ? `\n🔥 ${t('shareStreak', { days: bestStreak })}` : '';
-        const badgeLine = badgeCount ? `\n🏅 ${t('shareBadges', { count: badgeCount })}` : '';
-        const text = milestone
-            ? `${milestone.emoji} ${t('shareMilestone', { label: t('locale') === 'ja' ? milestone.label : milestone.labelEn })}🎉${streakLine}${badgeLine}\n#UCFitness`
-            : `🏃 ${t('shareTracking', { steps: totalSteps.toLocaleString() })}${streakLine}\n#UCFitness`;
-
-        return text;
-    }, [milestone, totalSteps, bestStreak, badgeCount, t]);
+        return `${t('shareProfile', { steps: totalSteps.toLocaleString() })}\n#UCFitness`;
+    }, [totalSteps, t]);
 
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/user/${username}` : '';
 
@@ -65,8 +46,6 @@ export default function ShareMilestone({ totalSteps, bestStreak, badgeCount, use
             // サイレントフェイル
         }
     }, [shareText, shareUrl]);
-
-    if (!milestone && totalSteps < 10000) return null; // 1万歩未満は非表示
 
     return (
         <div className="relative">
