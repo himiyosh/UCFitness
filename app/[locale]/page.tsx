@@ -280,7 +280,7 @@ export default async function Home() {
               </span>
             </Link>
           </div>
-          <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-1">
             <RefreshButton />
             {session?.user ? (
               <UserMenu user={session.user} />

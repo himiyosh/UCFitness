@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation"; // Standard redirect works fine for root
 import UserMenu from "@/components/UserMenu";
+import RefreshButton from '@/components/RefreshButton';
 import { Link } from "@/navigation"; // Localized Link
 import Breadcrumbs from "@/components/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
@@ -88,10 +89,13 @@ export default async function SettingsPage() {
                             </span>
                         </Link>
                     </div>
-                    <UserMenu user={{
-                        ...session.user,
-                        image: user?.image || session.user.image
-                    }} />
+                    <div className="flex items-center gap-1">
+                        <RefreshButton />
+                        <UserMenu user={{
+                            ...session.user,
+                            image: user?.image || session.user.image
+                        }} />
+                    </div>
                 </div>
             </header>
 

@@ -8,7 +8,7 @@ import UserMenu from '@/components/UserMenu';
 import ProfileHeader from '@/components/ProfileHeader';
 import ProfileBadges from '@/components/ProfileBadges';
 import AchievementProgress from '@/components/AchievementProgress';
-import SyncHistoryButton from '@/components/SyncHistoryButton';
+import RefreshButton from '@/components/RefreshButton';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
@@ -236,7 +236,10 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </Link>
                     </div>
                     {/* Use updated viewerUser for correct image */}
-                    {session?.user && viewerUser && <UserMenu user={viewerUser} />}
+                    <div className="flex items-center gap-1">
+                        {session?.user && <RefreshButton />}
+                        {session?.user && viewerUser && <UserMenu user={viewerUser} />}
+                    </div>
                 </div>
             </header>
 
@@ -339,7 +342,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                                 {isOwner ? t('activityTitle') : t('activityTitleOther')}
                             </h2>
-                            {isOwner && <SyncHistoryButton />}
+
                         </div>
 
 

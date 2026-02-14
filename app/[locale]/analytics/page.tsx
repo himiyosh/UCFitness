@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/navigation";
 import UserMenu from "@/components/UserMenu";
+import RefreshButton from '@/components/RefreshButton';
 import Breadcrumbs from "@/components/Breadcrumbs";
 import nextDynamic from 'next/dynamic';
 import { supabaseAdmin } from "@/lib/supabase";
@@ -56,12 +57,15 @@ export default async function AnalyticsPage() {
                             </span>
                         </Link>
                     </div>
-                    <UserMenu user={{
-                        id: userId,
-                        name: dbUser?.name || user.name,
-                        email: user.email,
-                        image: dbUser?.image || user.image,
-                    }} />
+                    <div className="flex items-center gap-1">
+                        <RefreshButton />
+                        <UserMenu user={{
+                            id: userId,
+                            name: dbUser?.name || user.name,
+                            email: user.email,
+                            image: dbUser?.image || user.image,
+                        }} />
+                    </div>
                 </div>
             </header>
 

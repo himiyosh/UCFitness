@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import GroupList from "@/components/GroupList";
 import UserMenu from "@/components/UserMenu";
+import RefreshButton from '@/components/RefreshButton';
 import GroupSettings from "@/components/GroupSettings";
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/ranking-service";
@@ -125,7 +126,8 @@ export default async function MyGroupsPage() {
                             </span>
                         </Link>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-1">
+                        <RefreshButton />
                         <UserMenu user={finalUser} />
                     </div>
                 </div>

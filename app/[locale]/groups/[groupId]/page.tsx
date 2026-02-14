@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
 import UserMenu from "@/components/UserMenu";
+import RefreshButton from '@/components/RefreshButton';
 import GroupHeaderActions from "@/components/GroupHeaderActions";
 import GroupSettingsLayout from "@/components/GroupSettingsLayout";
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -99,7 +100,8 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                                 </span>
                             </Link>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1">
+                            <RefreshButton />
                             <UserMenu user={currentUser} />
                         </div>
                     </div>
@@ -180,7 +182,8 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             </span>
                         </Link>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-1">
+                        <RefreshButton />
                         <UserMenu user={currentUser} />
                     </div>
                 </div>
