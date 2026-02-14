@@ -455,19 +455,21 @@ export default async function Home() {
             <DashboardChallenges />
           )}
 
-          {/* Step Heatmap Calendar */}
+          {/* Step Heatmap Calendar + コミュニティ人気ギア */}
           {session && userId && (
-            <StepCalendar userId={userId} />
+            <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 gap-6 lg:items-stretch">
+              <div className="lg:col-span-8 flex">
+                <div className="w-full"><StepCalendar userId={userId} /></div>
+              </div>
+              <div className="lg:col-span-4 flex">
+                <div className="w-full"><TrendingGear /></div>
+              </div>
+            </div>
           )}
 
           {/* Following Activity */}
           {session && userId && (
             <DashboardFollowing />
-          )}
-
-          {/* コミュニティ人気フィットネスギア（Amazon アフィリエイト） */}
-          {session && userId && (
-            <TrendingGear />
           )}
 
           {/* BOTTOM SECTION: Leaderboards */}
