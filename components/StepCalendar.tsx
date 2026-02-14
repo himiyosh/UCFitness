@@ -326,7 +326,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
 
     // セルサイズをコンテナ幅に合わせて動的計算
     const containerRef = useRef<HTMLDivElement>(null);
-    const [cellSize, setCellSize] = useState(10);
+    const [cellSize, setCellSize] = useState(4); // 初期値は小さく（ResizeObserver で即補正）
 
     useEffect(() => {
         const el = containerRef.current;
@@ -487,7 +487,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                 </div>
             ) : (
                 /* ヒートマップ */
-                <div ref={containerRef} className={`overflow-y-visible${activity ? ' flex-1' : ''}`}>
+                <div ref={containerRef} className={`w-full${activity ? ' flex-1' : ''}`}>
                     <div>
                         {/* 月ラベル */}
                         <div
