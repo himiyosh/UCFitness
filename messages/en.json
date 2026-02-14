@@ -649,7 +649,8 @@
         "monthly": "Monthly",
         "dailyTrend": "Daily Trend",
         "comparisonError": "Failed to load comparison data",
-        "retry": "Retry"
+        "retry": "Retry",
+        "noComparisonData": "Follow more users to compare steps"
     },
     "Mission": {
         "dailyMissions": "Daily Missions",
