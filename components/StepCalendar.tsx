@@ -463,8 +463,14 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             )}
 
             {data.length === 0 ? (
-                <div className="text-center py-4 text-xs text-[var(--foreground-muted)]">
-                    {t('noData')}
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <span className="text-4xl mb-3">📊</span>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--theme-primary)' }}>
+                        {t('noData')}
+                    </p>
+                    <p className="text-xs mt-1.5 text-[var(--foreground-muted)]">
+                        {t('syncHint')}
+                    </p>
                 </div>
             ) : (
                 /* ヒートマップ（CSS 1fr で自動フィル） */

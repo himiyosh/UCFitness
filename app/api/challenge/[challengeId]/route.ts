@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
@@ -14,7 +15,17 @@ export async function GET(
     { params }: { params: Promise<{ challengeId: string }> }
 ) {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { challengeId } = await params;
+
+        // UUID形式バリデーション
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(challengeId)) {
+            return NextResponse.json({ error: 'Invalid challenge ID' }, { status: 400 });
+        }
 
         const { data: challenge, error } = await supabaseAdmin
             .from('challenges')

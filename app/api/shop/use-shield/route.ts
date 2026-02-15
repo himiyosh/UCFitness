@@ -45,8 +45,8 @@ export async function POST() {
             );
         }
 
-        // シールドを使用: 残数を減らし、使用日を記録
-        const { error: updateError } = await supabaseAdmin
+        // シールドを使用: 残数を減らし、使用日を記録（アトミックガード付き）
+        const { data: updated, error: updateError } = await supabaseAdmin
             .from('user_streak_shields')
             .update({
                 remaining_uses: shield.remaining_uses - 1,
@@ -54,16 +54,23 @@ export async function POST() {
                 updated_at: new Date().toISOString(),
             })
             .eq('id', shield.id)
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .gt('remaining_uses', 0)
+            .neq('last_used_date', today)
+            .select('remaining_uses')
+            .single();
 
-        if (updateError) {
-            reportError('use-shield:update', updateError, { userId });
-            return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        if (updateError || !updated) {
+            // 競合状態で別リクエストに先越された場合
+            return NextResponse.json(
+                { error: 'shield_unavailable', message: 'Shield is no longer available' },
+                { status: 409 },
+            );
         }
 
         return NextResponse.json({
             success: true,
-            remaining: shield.remaining_uses - 1,
+            remaining: updated.remaining_uses,
             usedDate: today,
         });
     } catch (error: unknown) {

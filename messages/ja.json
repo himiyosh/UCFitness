@@ -550,6 +550,7 @@
         "days": "日",
         "steps": "歩",
         "noData": "この年の歩数データはありません",
+        "syncHint": "歩数を同期してカレンダーを埋めましょう！",
         "less": "少ない",
         "more": "多い",
         "showCalendar": "カレンダーを表示",
@@ -638,7 +639,8 @@
         "activeChallenges": "\u30a2\u30af\u30c6\u30a3\u30d6\u30c1\u30e3\u30ec\u30f3\u30b8",
         "viewAll": "\u3059\u3079\u3066\u898b\u308b",
         "backToHome": "\u30db\u30fc\u30e0\u306b\u623b\u308b",
-        "retry": "\u518d\u8a66\u884c"
+        "retry": "\u518d\u8a66\u884c",
+        "createNewHint": "\u65b0\u3057\u3044\u30c1\u30e3\u30ec\u30f3\u30b8\u3092\u4f5c\u6210\u3057\u3066\u59cb\u3081\u307e\u3057\u3087\u3046\uff01"
     },
     "Shield": {
         "title": "ストリークシールド",
@@ -656,6 +658,7 @@
         "followCount": "{count}人をフォロー中",
         "followerCount": "{count}人のフォロワー",
         "noFollowing": "まだ誰もフォローしていません。",
+        "loadError": "データの読み込みに失敗しました",
         "todaySteps": "今日",
         "followingActivity": "フォロー中のアクティビティ",
         "more": "人",

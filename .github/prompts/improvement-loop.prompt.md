@@ -195,10 +195,10 @@ if (error)
 
 ### 収益化チャネル
 
-| チャネル | 状態 | 概要 |
-|---|---|---|
+| チャネル                  | 状態        | 概要                                                                    |
+| ------------------------- | ----------- | ----------------------------------------------------------------------- |
 | **Amazon アフィリエイト** | ✅ 実装済み | `RecommendedItems` コンポーネント、`AmazonProductSearch` コンポーネント |
-| **Google AdSense** | 🔜 準備中 | 将来的にバナー広告・ネイティブ広告を設置予定 |
+| **Google AdSense**        | 🔜 準備中   | 将来的にバナー広告・ネイティブ広告を設置予定                            |
 
 ### チェック項目
 
@@ -214,11 +214,13 @@ if (error)
 - **ショップ (`/shop`)**: 商品リスト間（ただしショップ自体の UX を阻害しない）
 
 ```tsx
-{/* 広告スロット例: コンテンツセクション間 */}
+{
+  /* 広告スロット例: コンテンツセクション間 */
+}
 <div className="my-6">
   {/* AdSense バナー (将来挿入) or アフィリエイトウィジェット */}
   <AdSlot slot="content-between" />
-</div>
+</div>;
 ```
 
 #### 2. Amazon アフィリエイトの自然な統合
@@ -244,7 +246,7 @@ if (error)
 ```tsx
 // 広告スロット共通コンポーネント (将来実装)
 interface AdSlotProps {
-  slot: 'header-banner' | 'content-between' | 'sidebar' | 'footer';
+  slot: "header-banner" | "content-between" | "sidebar" | "footer";
   className?: string;
 }
 function AdSlot({ slot, className }: AdSlotProps) {

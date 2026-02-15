@@ -550,6 +550,7 @@
         "days": "days",
         "steps": "steps",
         "noData": "No step data for this year",
+        "syncHint": "Sync your steps to fill up the calendar!",
         "less": "Less",
         "more": "More",
         "showCalendar": "Show Calendar",
@@ -638,7 +639,8 @@
         "activeChallenges": "Active Challenges",
         "viewAll": "View All",
         "backToHome": "Back to Home",
-        "retry": "Retry"
+        "retry": "Retry",
+        "createNewHint": "Create a new challenge to get started!"
     },
     "Shield": {
         "title": "Streak Shield",
@@ -656,6 +658,7 @@
         "followCount": "{count} following",
         "followerCount": "{count} followers",
         "noFollowing": "You're not following anyone yet.",
+        "loadError": "Failed to load data",
         "todaySteps": "today",
         "followingActivity": "Following Activity",
         "more": "more",

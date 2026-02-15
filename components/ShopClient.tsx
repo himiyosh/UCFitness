@@ -187,8 +187,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             if (!picked.includes(item)) picked.push(item);
         }
         return picked;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [items.length, ownedItemIds.size]);
+    }, [items, ownedItemIds]);
 
     // カテゴリ別の未所持アイテム数
     const categoryStats = useMemo(() => {
