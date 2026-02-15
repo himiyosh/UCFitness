@@ -90,6 +90,16 @@ const themeStyles: Record<string, {
         btnText: '#A78BFA',
         btnHover: 'rgba(124,58,237,0.35)',
     },
+    galaxy: {
+        bg: '#f5f3ff',
+        border: '#ddd6fe',
+        title: '#8B5CF6',
+        desc: '#6b7280',
+        shadow: 'rgba(139,92,246,0.1)',
+        btnBg: 'rgba(139,92,246,0.12)',
+        btnText: '#8B5CF6',
+        btnHover: 'rgba(139,92,246,0.22)',
+    },
 };
 
 /**

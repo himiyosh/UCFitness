@@ -170,6 +170,20 @@ html {
   --theme-header-bg: #F5F3FF;
 }
 
+/* Galaxy Theme - Deep Space Purple */
+[data-theme="galaxy"] {
+  --theme-primary: #8B5CF6;
+  --theme-primary-light: #EDE9FE;
+  --theme-secondary: #A78BFA;
+  --theme-accent: #C4B5FD;
+  --theme-gradient-from: #7C3AED;
+  --theme-gradient-to: #4F46E5;
+  --theme-badge-bg: #EDE9FE;
+  --theme-badge-text: #7C3AED;
+  --theme-page-bg: transparent;
+  --theme-header-bg: #EDE9FE;
+}
+
 /* Midnight Theme (Dark) - Light Frosted Glass (Lighter & Richer) */
 [data-theme="midnight"] {
   /* Light Gradient Background - Slate-500 to Slate-600 */

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-export type Theme = 'classic' | 'pop' | 'midnight' | 'sakura' | 'ocean' | 'forest' | 'sunset' | 'cyberpunk';
+export type Theme = 'classic' | 'pop' | 'midnight' | 'sakura' | 'ocean' | 'forest' | 'sunset' | 'cyberpunk' | 'galaxy';
 
 interface ThemeContextType {
     theme: Theme;
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         // Load theme from localStorage
         const saved = localStorage.getItem(THEME_KEY) as Theme | null;
-        const validThemes: Theme[] = ['classic', 'pop', 'midnight', 'sakura', 'ocean', 'forest', 'sunset', 'cyberpunk'];
+        const validThemes: Theme[] = ['classic', 'pop', 'midnight', 'sakura', 'ocean', 'forest', 'sunset', 'cyberpunk', 'galaxy'];
         if (saved && validThemes.includes(saved)) {
             setThemeState(saved);
         }

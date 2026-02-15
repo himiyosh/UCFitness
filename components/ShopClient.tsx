@@ -19,6 +19,7 @@ const THEME_MAP: Record<string, Theme> = {
     theme_forest: 'forest',
     theme_sunset: 'sunset',
     theme_cyberpunk: 'cyberpunk',
+    theme_galaxy: 'galaxy',
 };
 
 // --- 型定義 ---
