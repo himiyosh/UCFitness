@@ -187,8 +187,8 @@ html {
 /* Midnight Theme (Dark) - Light Frosted Glass (Lighter & Richer) */
 [data-theme="midnight"] {
   /* Light Gradient Background - Slate-500 to Slate-600 */
-  --background: linear-gradient(135deg, #64748b 0%, #475569 50%, #334155 100%);
-  --foreground: #e2e8f0;
+  --background: linear-gradient(135deg, #475569 0%, #334155 50%, #1e293b 100%);
+  --foreground: #b0bec5;
 
   --theme-primary: #6366f1;
   --theme-primary-light: rgba(255, 255, 255, 0.15);
@@ -246,7 +246,7 @@ html {
   color: var(--theme-primary);
 }
 [data-theme="midnight"] .account-stat-number {
-  color: #a5b4fc !important; /* indigo-300 — ダーク背景で視認性UP */
+  color: #818cf8 !important; /* indigo-400 — 視認性を維持しつつ抑えめ */
 }
 
 /* --- 1. Frosted Glass Cards (bg-white + high-opacity variants) --- */
@@ -262,7 +262,7 @@ html {
     linear-gradient(135deg, rgba(41, 55, 75, 0.62) 0%, rgba(25, 35, 52, 0.58) 50%, rgba(30, 40, 58, 0.62) 100%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(150%) brightness(0.88) !important;
   backdrop-filter: blur(24px) saturate(150%) brightness(0.88) !important;
-  color: #c9d1d9 !important;
+  color: #9aa5b4 !important;
   border: 1px solid rgba(148, 163, 184, 0.14) !important;
   border-top: 1px solid rgba(165, 180, 252, 0.15) !important;
   border-left: 1px solid rgba(165, 180, 252, 0.10) !important;
@@ -306,7 +306,7 @@ html {
   background:
     linear-gradient(170deg, rgba(71, 85, 105, 0.12) 0%, rgba(30, 41, 59, 0) 50%),
     linear-gradient(160deg, rgba(15, 23, 42, 0.65) 0%, rgba(10, 15, 30, 0.55) 100%) !important;
-  color: #c9d1d9 !important;
+  color: #8b949e !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   border-top: 1px solid rgba(148, 163, 184, 0.22) !important;
   box-shadow:
@@ -319,7 +319,7 @@ html {
   background:
     linear-gradient(170deg, rgba(71, 85, 105, 0.14) 0%, rgba(30, 41, 59, 0) 50%),
     linear-gradient(160deg, rgba(15, 23, 42, 0.70) 0%, rgba(10, 15, 30, 0.60) 100%) !important;
-  color: #a8b3bf !important;
+  color: #7d8590 !important;
   border: 1px solid rgba(148, 163, 184, 0.14) !important;
   box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.25) !important;
 }
@@ -346,27 +346,27 @@ html {
 /* --- 3. Text Hierarchy (soft whites — 目に優しい階層) --- */
 [data-theme="midnight"] .text-gray-900,
 [data-theme="midnight"] .text-gray-800 {
-  color: #e2e8f0 !important;  /* slate-200 — 見出し用。純白ではなくソフトホワイト */
+  color: #b0bec5 !important;  /* 見出し — 抑えたライトグレー */
 }
 
 [data-theme="midnight"] .text-gray-700 {
-  color: #c9d1d9 !important;  /* 本文テキスト */
+  color: #9aa5b4 !important;  /* 本文テキスト */
 }
 
 [data-theme="midnight"] .text-gray-600 {
-  color: #a8b3bf !important;  /* セカンダリテキスト */
+  color: #7d8590 !important;  /* セカンダリテキスト */
 }
 
 [data-theme="midnight"] .text-gray-500 {
-  color: #8b949e !important;  /* キャプション・補足 */
+  color: #6e7681 !important;  /* キャプション・補足 */
 }
 
 [data-theme="midnight"] .text-gray-400 {
-  color: #6e7681 !important;  /* ヒント・薄い情報 */
+  color: #525a65 !important;  /* ヒント・薄い情報 */
 }
 
 [data-theme="midnight"] .text-gray-300 {
-  color: #525a65 !important;  /* 非常に薄い要素 */
+  color: #3d4450 !important;  /* 非常に薄い要素 */
 }
 
 /* --- 4. Borders (all gray shades + border-gray-50) --- */
@@ -437,7 +437,7 @@ html {
 [data-theme="midnight"] .hover\:bg-white:hover {
   background:
     linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(99, 102, 241, 0.08) 100%) !important;
-  color: #e2e8f0 !important;
+  color: #b0bec5 !important;
   border-color: rgba(165, 180, 252, 0.22) !important;
   box-shadow:
     inset 0 0 30px rgba(99, 102, 241, 0.06),
@@ -676,19 +676,19 @@ html {
 }
 /* 11d duplicate text overrides — セクション3と統一 */
 [data-theme="midnight"] .text-gray-900 {
-  color: #e2e8f0 !important;
+  color: #b0bec5 !important;
 }
 [data-theme="midnight"] .text-gray-700 {
-  color: #c9d1d9 !important;
+  color: #9aa5b4 !important;
 }
 [data-theme="midnight"] .text-gray-600 {
-  color: #a8b3bf !important;
+  color: #7d8590 !important;
 }
 [data-theme="midnight"] .text-gray-500 {
-  color: #8b949e !important;
+  color: #6e7681 !important;
 }
 [data-theme="midnight"] .text-gray-400 {
-  color: #6e7681 !important;
+  color: #525a65 !important;
 }
 [data-theme="midnight"] .hover\:bg-gray-50:hover {
   background-color: rgba(51, 65, 85, 0.5) !important;
@@ -739,8 +739,8 @@ html {
 
 /* --- 11g. Gradient text vivid for midnight (main step count etc.) --- */
 [data-theme="midnight"] .text-transparent.bg-clip-text {
-  --theme-gradient-from: #818cf8;
-  --theme-gradient-to: #c084fc;
+  --theme-gradient-from: #6366f1;
+  --theme-gradient-to: #a78bfa;
 }
 
 /* --- 11g. CoinBalanceCard: ゴールドカード midnight テキスト視認性改善 --- */
@@ -781,7 +781,7 @@ html {
 
 /* --- 14. Buttons --- */
 [data-theme="midnight"] button {
-  color: #e2e8f0 !important;
+  color: #b0bec5 !important;
 }
 
 /* Primary buttons (theme-primary bg) — use vivid saturated indigo, not pastel */
@@ -848,7 +848,7 @@ html {
 [data-theme="midnight"] button[class*="bg-white"]:hover {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.18) 100%) !important;
   border-color: rgba(165, 180, 252, 0.45) !important;
-  color: #e2e8f0 !important;
+  color: #b0bec5 !important;
   box-shadow:
     0 4px 16px -3px rgba(99, 102, 241, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
@@ -858,13 +858,13 @@ html {
 [data-theme="midnight"] input,
 [data-theme="midnight"] textarea {
   background: linear-gradient(180deg, rgba(10, 15, 30, 0.7) 0%, rgba(15, 23, 42, 0.6) 100%) !important;
-  color: #e2e8f0 !important;
+  color: #b0bec5 !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }
 [data-theme="midnight"] select {
   background: rgba(30, 41, 59, 0.85) !important;
-  color: #e2e8f0 !important;
+  color: #b0bec5 !important;
   border: 1px solid rgba(148, 163, 184, 0.25) !important;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
@@ -939,30 +939,35 @@ html {
   ) !important;
 }
 
-/* Profile button — bright and visible on dark banner */
+/* Profile button — visible on dark banner, softer than pure white */
 [data-theme="midnight"] .motivation-btn-primary {
-  background: rgba(255, 255, 255, 0.95) !important;
-  color: #4338ca !important;
-  border: none !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(165, 180, 252, 0.2) !important;
+  background: rgba(165, 180, 252, 0.25) !important;
+  color: #c7d2fe !important;
+  border: 1px solid rgba(165, 180, 252, 0.35) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(165, 180, 252, 0.1) !important;
   text-shadow: none !important;
 }
 [data-theme="midnight"] .motivation-btn-primary:hover {
-  background: #ffffff !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(165, 180, 252, 0.3) !important;
+  background: rgba(165, 180, 252, 0.4) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(165, 180, 252, 0.15) !important;
 }
 
 /* Groups button — glass effect on dark banner */
 [data-theme="midnight"] .motivation-btn-secondary {
-  background: rgba(165, 180, 252, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  background: rgba(165, 180, 252, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
   -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 [data-theme="midnight"] .motivation-btn-secondary:hover {
-  background: rgba(165, 180, 252, 0.35) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
+  background: rgba(165, 180, 252, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Motivation panel text — softer white on dark overlay */
+[data-theme="midnight"] .motivation-panel .text-indigo-50 {
+  color: #a5b4fc !important;
 }
 
 /* --- 21. TopUsersChart bar gradients (non-top-3) --- */
