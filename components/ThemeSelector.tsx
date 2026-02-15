@@ -152,7 +152,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
     const t = useTranslations('Settings');
     const locale = useLocale();
     const { theme, setTheme } = useTheme();
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
 
     // 所持テーマの item_code セット（高速ルックアップ用）
     const ownedCodes = new Set(ownedThemes.map(item => item.itemCode));
@@ -165,190 +165,185 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
     const handleSelect = (meta: ThemeMeta) => {
         if (!isOwned(meta)) return;
         setTheme(meta.name);
-        // テーマ選択後、折りたたむ
-        setIsExpanded(false);
+        setIsOpen(false);
     };
 
     // 現在アクティブなテーマのメタデータ
     const activeMeta = THEME_LIST.find(m => m.name === theme) || THEME_LIST[0];
-    // アクティブ以外のテーマリスト（所持済み → 未所持の順）
-    const otherThemes = [
-        ...THEME_LIST.filter(m => m.name !== activeMeta.name && (m.isFree || isOwned(m))),
-        ...THEME_LIST.filter(m => m.name !== activeMeta.name && !m.isFree && !isOwned(m)),
-    ];
 
     return (
-        <div className="flex flex-col gap-3">
-            {/* 現在のテーマ（常に表示） */}
-            <ThemeCard
-                meta={activeMeta}
-                isActive={true}
-                owned={isOwned(activeMeta)}
-                onSelect={() => {}}
-                t={t}
-            />
-
-            {/* 展開/折りたたみトグル */}
+        <>
+            {/* 現在のテーマ表示 + 変更ボタン */}
             <button
                 type="button"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-gray-200 hover:border-[var(--theme-primary)]/30 hover:bg-[var(--theme-primary-light)] text-sm font-medium text-gray-600 hover:text-[var(--theme-primary)] transition-all cursor-pointer"
-            >
-                <span>{isExpanded ? t('collapseThemes') : t('changeTheme')}</span>
-                <svg
-                    className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
-
-            {/* 折りたたみ部分 */}
-            {isExpanded && (
-                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                    {otherThemes.map(meta => (
-                        <ThemeCard
-                            key={meta.name}
-                            meta={meta}
-                            isActive={false}
-                            owned={isOwned(meta)}
-                            onSelect={() => handleSelect(meta)}
-                            t={t}
-                        />
-                    ))}
-
-                    <Link href="/shop" className="mt-1 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
-                        {t('moreThemes')} →
-                    </Link>
-                </div>
-            )}
-        </div>
-    );
-}
-
-// --- テーマカード ---
-function ThemeCard({
-    meta,
-    isActive,
-    owned,
-    onSelect,
-    t,
-}: {
-    meta: ThemeMeta;
-    isActive: boolean;
-    owned: boolean;
-    onSelect: () => void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
-}) {
-    const isSelectable = owned;
-
-    return (
-        <button
-            type="button"
-            onClick={isSelectable ? onSelect : undefined}
-            disabled={!isSelectable}
-            className={`relative overflow-hidden rounded-xl border-2 p-4 transition-all text-left group ${
-                isSelectable ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
-            }`}
-            style={{
-                borderColor: isActive ? meta.accentColor : '#e5e7eb',
-                boxShadow: isActive
-                    ? `0 4px 14px -3px ${meta.ringColor}, 0 0 0 3px ${meta.ringColor}`
-                    : undefined,
-                backgroundColor: isActive && meta.isDark ? '#0f172a' : undefined,
-            }}
-        >
-            {/* 背景グラデーション */}
-            <div
-                className="absolute inset-0 pointer-events-none opacity-[0.06]"
+                onClick={() => setIsOpen(true)}
+                className="w-full relative overflow-hidden rounded-xl border-2 p-4 transition-all text-left cursor-pointer hover:shadow-md group"
                 style={{
-                    background: `linear-gradient(135deg, ${meta.gradientFrom}, ${meta.gradientTo})`,
+                    borderColor: activeMeta.accentColor,
+                    boxShadow: `0 4px 14px -3px ${activeMeta.ringColor}, 0 0 0 3px ${activeMeta.ringColor}`,
+                    backgroundColor: activeMeta.isDark ? '#0f172a' : undefined,
                 }}
-            />
-
-            <div className="relative flex items-center gap-3">
-                {/* テーマアイコン */}
+            >
                 <div
-                    className="w-12 h-12 rounded-xl shadow-md flex items-center justify-center text-white shrink-0"
-                    style={{
-                        background: `linear-gradient(135deg, ${meta.gradientFrom}, ${meta.gradientTo})`,
-                    }}
-                >
-                    <span className="text-lg">{meta.emoji}</span>
-                </div>
-
-                {/* テーマ名 + 説明 */}
-                <div className="min-w-0 flex-1">
+                    className="absolute inset-0 pointer-events-none opacity-[0.06]"
+                    style={{ background: `linear-gradient(135deg, ${activeMeta.gradientFrom}, ${activeMeta.gradientTo})` }}
+                />
+                <div className="relative flex items-center gap-3">
                     <div
-                        className="font-bold text-sm"
-                        style={{
-                            color: isActive && meta.isDark ? '#a5b4fc' : '#111827',
-                        }}
+                        className="w-12 h-12 rounded-xl shadow-md flex items-center justify-center text-white shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${activeMeta.gradientFrom}, ${activeMeta.gradientTo})` }}
                     >
-                        {meta.label}
+                        <span className="text-lg">{activeMeta.emoji}</span>
                     </div>
-                    <div
-                        className="text-xs"
-                        style={{
-                            color: isActive && meta.isDark
-                                ? 'rgba(165,180,252,0.7)'
-                                : '#6b7280',
-                        }}
-                    >
-                        {t(meta.descKey)}
+                    <div className="min-w-0 flex-1">
+                        <div className="font-bold text-sm" style={{ color: activeMeta.isDark ? '#a5b4fc' : '#111827' }}>
+                            {activeMeta.label}
+                        </div>
+                        <div className="text-xs" style={{ color: activeMeta.isDark ? 'rgba(165,180,252,0.7)' : '#6b7280' }}>
+                            {t(activeMeta.descKey)}
+                        </div>
                     </div>
-                </div>
-
-                {/* 右側バッジ */}
-                <div className="ml-auto shrink-0 flex items-center gap-2">
-                    {isActive && owned && (
+                    <div className="ml-auto shrink-0 flex items-center gap-2">
                         <span
                             className="w-6 h-6 rounded-full text-white flex items-center justify-center text-xs font-bold"
-                            style={{
-                                backgroundColor: meta.accentColor,
-                                boxShadow: meta.isDark
-                                    ? `0 0 8px ${meta.ringColor}`
-                                    : undefined,
-                            }}
+                            style={{ backgroundColor: activeMeta.accentColor }}
                         >
                             ✓
                         </span>
-                    )}
-                    {owned && !isActive && !meta.isFree && (
-                        <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200">
-                            Premium
+                        <span className="text-xs text-gray-400 group-hover:text-[var(--theme-primary)] transition-colors">
+                            {t('changeTheme')}
                         </span>
-                    )}
-                    {!owned && (
-                        <Link
-                            href="/shop"
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-200 hover:bg-amber-100 transition-colors"
-                        >
-                            🔒 {t('goToShop')}
-                        </Link>
-                    )}
+                    </div>
                 </div>
-            </div>
+            </button>
 
-            {/* ミニプレビューバー */}
-            <div className="mt-3 flex gap-1.5">
+            {/* テーマ選択モーダル */}
+            {isOpen && (
                 <div
-                    className="h-1.5 flex-1 rounded-full"
-                    style={{ backgroundColor: `${meta.gradientFrom}30` }}
-                />
-                <div
-                    className="h-1.5 w-8 rounded-full"
-                    style={{ backgroundColor: `${meta.gradientTo}30` }}
-                />
-                <div
-                    className="h-1.5 w-6 rounded-full"
-                    style={{ backgroundColor: `${meta.gradientFrom}20` }}
-                />
-            </div>
-        </button>
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                    onClick={() => setIsOpen(false)}
+                >
+                    {/* 背景オーバーレイ */}
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+                    {/* モーダル本体 */}
+                    <div
+                        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* ヘッダー */}
+                        <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 px-5 pt-5 pb-3 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <span>🎨</span> {t('changeTheme')}
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">{t('themeDescription')}</p>
+                        </div>
+
+                        {/* テーマグリッド */}
+                        <div className="p-5 grid grid-cols-3 gap-3">
+                            {THEME_LIST.map(meta => {
+                                const owned = isOwned(meta);
+                                const isActive = theme === meta.name;
+
+                                return (
+                                    <button
+                                        key={meta.name}
+                                        type="button"
+                                        onClick={() => owned && handleSelect(meta)}
+                                        disabled={!owned}
+                                        className={`relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all min-h-[44px] ${
+                                            owned ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+                                        } ${
+                                            isActive
+                                                ? 'shadow-lg scale-[1.02]'
+                                                : 'hover:shadow-md hover:scale-[1.01]'
+                                        }`}
+                                        style={{
+                                            borderColor: isActive ? meta.accentColor : '#e5e7eb',
+                                            boxShadow: isActive ? `0 0 0 3px ${meta.ringColor}` : undefined,
+                                            backgroundColor: isActive && meta.isDark ? '#0f172a' : undefined,
+                                        }}
+                                    >
+                                        {/* テーマアイコン */}
+                                        <div
+                                            className="w-12 h-12 rounded-xl shadow-md flex items-center justify-center text-white shrink-0"
+                                            style={{ background: `linear-gradient(135deg, ${meta.gradientFrom}, ${meta.gradientTo})` }}
+                                        >
+                                            <span className="text-lg">{meta.emoji}</span>
+                                        </div>
+
+                                        {/* テーマ名 */}
+                                        <div className="text-center w-full">
+                                            <div
+                                                className="font-bold text-xs leading-tight truncate"
+                                                style={{ color: isActive && meta.isDark ? '#a5b4fc' : '#111827' }}
+                                            >
+                                                {meta.label}
+                                            </div>
+                                        </div>
+
+                                        {/* チェックマーク（アクティブ） */}
+                                        {isActive && (
+                                            <span
+                                                className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold shadow-md"
+                                                style={{ backgroundColor: meta.accentColor }}
+                                            >
+                                                ✓
+                                            </span>
+                                        )}
+
+                                        {/* ロック表示（未所持） */}
+                                        {!owned && (
+                                            <span className="absolute inset-0 rounded-xl flex items-center justify-center bg-white/60">
+                                                <span className="text-lg">🔒</span>
+                                            </span>
+                                        )}
+
+                                        {/* Premium バッジ（所持済みプレミアム） */}
+                                        {owned && !isActive && !meta.isFree && (
+                                            <span className="absolute -top-1 -right-1 bg-amber-100 text-amber-700 text-[8px] px-1 py-0.5 rounded border border-amber-200 font-bold">
+                                                P
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* フッター */}
+                        <div className="px-5 pb-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                            <Link
+                                href="/shop"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline"
+                            >
+                                {t('moreThemes')} →
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => setIsOpen(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                            >
+                                {t('collapseThemes')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
+
+// --- テーマカード（未使用だが将来のために残さない） ---
+// ThemeCard は不要になったため削除
