@@ -206,6 +206,7 @@
         "copyLink": "リンクをコピー",
         "linkCopied": "リンクをコピーしました",
         "shareProfile": "🚶 UCFitness で {steps} 歩歩きました！プロフィールをチェック！",
+        "shareOtherProfile": "🚶 {username} さんは UCFitness で {steps} 歩歩いています！プロフィールをチェック！",
         "locale": "ja",
         "locked": "未獲得",
         "howToUnlock": "獲得条件",

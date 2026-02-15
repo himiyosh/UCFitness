@@ -206,6 +206,7 @@
         "copyLink": "Copy Link",
         "linkCopied": "Link copied!",
         "shareProfile": "🚶 Walked {steps} steps on UCFitness! Check out my profile!",
+        "shareOtherProfile": "🚶 {username} has walked {steps} steps on UCFitness! Check out their profile!",
         "locale": "en",
         "locked": "Locked",
         "howToUnlock": "How to Unlock",
