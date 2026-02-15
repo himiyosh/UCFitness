@@ -48,8 +48,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         notFound();
     }
 
-    // ⚡ パフォーマンス: 6つの独立クエリを並列実行（逐次→並列で大幅高速化）
-    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, historyResult] = await Promise.all([
+    // ⚡ パフォーマンス: 独立クエリを並列実行
+    // 📊 歩数データは Supabase PostgREST 1000行制限回避のため、直近400日 + 集計クエリに分割
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 400);
+    const recentDateStr = recentDate.toISOString().split('T')[0];
+
+    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, recentHistoryResult, statsResult] = await Promise.all([
         supabaseAdmin
             .from('group_members')
             .select('groups!inner(keyword, is_public, name, header_image_url, image_url)')
@@ -63,12 +68,16 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             .eq('user_id', user.id)
             .order('display_order', { ascending: true })
             .limit(6),
+        // 直近400日分の歩数データ（グラフ表示 + 今日/今週/今月の計算用）
         supabaseAdmin
             .from('daily_steps')
             .select('steps, date, updated_at')
             .eq("user_id", user.id)
-            .order('date', { ascending: true })
-            .limit(10000),
+            .gte('date', recentDateStr)
+            .order('date', { ascending: true }),
+        // 全期間の集計データ（totalSteps, bestDay, lastSynced）
+        supabaseAdmin
+            .rpc('get_user_step_stats', { p_user_id: user.id }),
     ]);
 
     let primaryGroup: any = undefined;
@@ -110,24 +119,21 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     let allHistoryData: any[] = [];
     let lastSyncedAt: string | null = null;
 
-    // Use history from parallel fetch
-    const allHistory = historyResult.data;
-
-    if (allHistory && allHistory.length > 0) {
-        allHistoryData = allHistory;
-        totalSteps = allHistory.reduce((acc, curr) => acc + curr.steps, 0);
-        const best = allHistory.reduce((max, curr) => curr.steps > max.steps ? curr : max, { steps: 0, date: '' });
+    // 集計データ（RPC から取得 — PostgREST 1000行制限を回避）
+    const statsData = statsResult.data;
+    if (statsData) {
+        totalSteps = statsData.total_steps || 0;
         bestDay = {
-            date: new Date(best.date).toLocaleDateString(),
-            steps: best.steps
+            date: statsData.best_date ? new Date(statsData.best_date).toLocaleDateString() : '-',
+            steps: statsData.best_steps || 0
         };
-        // 最終同期日時: updated_at の最新値
-        const latestSync = allHistory.reduce((latest: string | null, curr: any) => {
-            if (!curr.updated_at) return latest;
-            if (!latest) return curr.updated_at;
-            return curr.updated_at > latest ? curr.updated_at : latest;
-        }, null as string | null);
-        lastSyncedAt = latestSync;
+        lastSyncedAt = statsData.last_synced || null;
+    }
+
+    // 直近の歩数データ（グラフ + 今日/今週/今月の計算用）
+    const recentHistory = recentHistoryResult.data;
+    if (recentHistory && recentHistory.length > 0) {
+        allHistoryData = recentHistory;
     }
 
     // ランキング順位を取得
@@ -198,13 +204,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             };
         }
 
-        // グラフ比較に必要なため、閲覧者の全履歴も取得
+        // グラフ比較に必要なため、閲覧者の直近400日分を取得（PostgREST 1000行制限回避）
         const { data: vData } = await supabaseAdmin
             .from('daily_steps')
             .select('steps, date')
             .eq('user_id', viewerId)
-            .order('date', { ascending: true })
-            .limit(10000);
+            .gte('date', recentDateStr)
+            .order('date', { ascending: true });
 
         if (vData) {
             viewerHistoryData = vData;
