@@ -236,28 +236,30 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                     {/* 背景オーバーレイ */}
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-                    {/* モーダル本体 */}
+                    {/* モーダル本体 — テーマの !important override を回避するためインラインスタイルを使用 */}
                     <div
-                        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col"
+                        className="relative rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col"
+                        style={{ background: '#ffffff', color: '#111827' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* ヘッダー */}
-                        <div className="px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
+                        <div className="px-5 pt-5 pb-3 shrink-0" style={{ borderBottom: '1px solid #f3f4f6' }}>
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: '#111827' }}>
                                     <span>🎨</span> {t('changeTheme')}
                                 </h3>
                                 <button
                                     type="button"
                                     onClick={() => setIsOpen(false)}
-                                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
+                                    className="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
+                                    style={{ background: '#f3f4f6', color: '#6b7280' }}
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">{t('themeDescription')}</p>
+                            <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{t('themeDescription')}</p>
                         </div>
 
                         {/* テーマグリッド（スクロール可能） */}
@@ -283,7 +285,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                                             style={{
                                                 borderColor: isActive ? meta.accentColor : '#e5e7eb',
                                                 boxShadow: isActive ? `0 4px 20px -4px ${meta.ringColor}, 0 0 0 3px ${meta.ringColor}` : undefined,
-                                                backgroundColor: isActive && meta.isDark ? '#0f172a' : undefined,
+                                                backgroundColor: isActive && meta.isDark ? '#0f172a' : '#ffffff',
                                             }}
                                         >
                                             {/* 背景グラデーション */}
@@ -337,7 +339,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
 
                                             {/* ロック表示（未所持） */}
                                             {!owned && (
-                                                <span className="absolute inset-0 rounded-2xl flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+                                                <span className="absolute inset-0 rounded-2xl flex items-center justify-center backdrop-blur-[1px]" style={{ background: 'rgba(255,255,255,0.7)' }}>
                                                     <span className="text-2xl drop-shadow-sm">🔒</span>
                                                 </span>
                                             )}
@@ -355,18 +357,20 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                         </div>
 
                         {/* フッター */}
-                        <div className="px-5 py-3 flex items-center justify-between border-t border-gray-100 shrink-0 bg-gray-50/80">
+                        <div className="px-5 py-3 flex items-center justify-between shrink-0" style={{ borderTop: '1px solid #f3f4f6', background: 'rgba(249,250,251,0.8)' }}>
                             <Link
                                 href="/shop"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline"
+                                className="flex items-center gap-1 text-xs font-medium hover:underline"
+                                style={{ color: 'var(--theme-primary)' }}
                             >
                                 🛍️ {t('moreThemes')} →
                             </Link>
                             <button
                                 type="button"
                                 onClick={() => setIsOpen(false)}
-                                className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer min-h-[44px]"
+                                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer min-h-[44px]"
+                                style={{ color: '#6b7280' }}
                             >
                                 {t('collapseThemes')}
                             </button>
