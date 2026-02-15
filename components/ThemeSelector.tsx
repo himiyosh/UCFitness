@@ -195,10 +195,10 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                         <span className="text-lg">{activeMeta.emoji}</span>
                     </div>
                     <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="font-bold text-sm truncate" style={{ color: activeMeta.isDark ? '#a5b4fc' : '#111827' }}>
+                        <div className="font-bold text-sm truncate text-gray-900" style={activeMeta.isDark ? { color: '#a5b4fc' } : undefined}>
                             {activeMeta.label}
                         </div>
-                        <div className="text-xs truncate" style={{ color: activeMeta.isDark ? 'rgba(165,180,252,0.7)' : '#6b7280' }}>
+                        <div className="text-xs truncate text-gray-500" style={activeMeta.isDark ? { color: 'rgba(165,180,252,0.7)' } : undefined}>
                             {t(activeMeta.descKey)}
                         </div>
                     </div>
@@ -237,29 +237,28 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
                     {/* モーダル本体 — テーマの !important override を回避するためインラインスタイルを使用 */}
+                    {/* モーダル本体 — bg-white で Midnight テーマのフロストガラスを活かす。文字色のみインラインで可読性確保 */}
                     <div
-                        className="relative rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col"
-                        style={{ background: '#ffffff', color: '#111827' }}
+                        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* ヘッダー */}
-                        <div className="px-5 pt-5 pb-3 shrink-0" style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <div className="px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: '#111827' }}>
+                                <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
                                     <span>🎨</span> {t('changeTheme')}
                                 </h3>
                                 <button
                                     type="button"
                                     onClick={() => setIsOpen(false)}
-                                    className="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
-                                    style={{ background: '#f3f4f6', color: '#6b7280' }}
+                                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer min-h-[44px] min-w-[44px] text-gray-500"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
-                            <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{t('themeDescription')}</p>
+                            <p className="text-xs mt-1 text-gray-500">{t('themeDescription')}</p>
                         </div>
 
                         {/* テーマグリッド（スクロール可能） */}
@@ -285,7 +284,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                                             style={{
                                                 borderColor: isActive ? meta.accentColor : '#e5e7eb',
                                                 boxShadow: isActive ? `0 4px 20px -4px ${meta.ringColor}, 0 0 0 3px ${meta.ringColor}` : undefined,
-                                                backgroundColor: isActive && meta.isDark ? '#0f172a' : '#ffffff',
+                                                backgroundColor: isActive && meta.isDark ? '#0f172a' : undefined,
                                             }}
                                         >
                                             {/* 背景グラデーション */}
@@ -304,17 +303,17 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                                                 <span className="text-2xl">{meta.emoji}</span>
                                             </div>
 
-                                            {/* テーマ名 + 説明 */}
+                                            {/* テーマ名 + 説明 — Tailwind クラスで Midnight CSS が自動で白文字化 */}
                                             <div className="relative text-center w-full">
                                                 <div
-                                                    className="font-bold text-sm leading-tight"
-                                                    style={{ color: isActive && meta.isDark ? '#a5b4fc' : '#111827' }}
+                                                    className="font-bold text-sm leading-tight text-gray-900"
+                                                    style={isActive && meta.isDark ? { color: '#a5b4fc' } : undefined}
                                                 >
                                                     {meta.label}
                                                 </div>
                                                 <div
-                                                    className="text-[10px] mt-0.5 leading-snug"
-                                                    style={{ color: isActive && meta.isDark ? 'rgba(165,180,252,0.6)' : '#9ca3af' }}
+                                                    className="text-[10px] mt-0.5 leading-snug text-gray-400"
+                                                    style={isActive && meta.isDark ? { color: 'rgba(165,180,252,0.6)' } : undefined}
                                                 >
                                                     {t(meta.descKey)}
                                                 </div>
@@ -339,7 +338,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
 
                                             {/* ロック表示（未所持） */}
                                             {!owned && (
-                                                <span className="absolute inset-0 rounded-2xl flex items-center justify-center backdrop-blur-[1px]" style={{ background: 'rgba(255,255,255,0.7)' }}>
+                                                <span className="absolute inset-0 rounded-2xl flex items-center justify-center backdrop-blur-[1px] bg-white/70">
                                                     <span className="text-2xl drop-shadow-sm">🔒</span>
                                                 </span>
                                             )}
@@ -357,20 +356,18 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                         </div>
 
                         {/* フッター */}
-                        <div className="px-5 py-3 flex items-center justify-between shrink-0" style={{ borderTop: '1px solid #f3f4f6', background: 'rgba(249,250,251,0.8)' }}>
+                        <div className="px-5 py-3 flex items-center justify-between border-t border-gray-100 shrink-0 bg-gray-50/80">
                             <Link
                                 href="/shop"
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-1 text-xs font-medium hover:underline"
-                                style={{ color: 'var(--theme-primary)' }}
+                                className="flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline"
                             >
                                 🛍️ {t('moreThemes')} →
                             </Link>
                             <button
                                 type="button"
                                 onClick={() => setIsOpen(false)}
-                                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer min-h-[44px]"
-                                style={{ color: '#6b7280' }}
+                                className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors cursor-pointer min-h-[44px] text-gray-500"
                             >
                                 {t('collapseThemes')}
                             </button>
