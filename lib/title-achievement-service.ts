@@ -116,7 +116,7 @@ async function buildContext(userId: string): Promise<AchievementContext> {
 
     // 並列取得
     const [
-        stepsResult,
+        statsResult,
         todayResult,
         userResult,
         balanceResult,
@@ -125,11 +125,8 @@ async function buildContext(userId: string): Promise<AchievementContext> {
         createdGroupResult,
         streakResult,
     ] = await Promise.all([
-        // 累計歩数
-        supabaseAdmin
-            .from('daily_steps')
-            .select('steps')
-            .eq('user_id', userId),
+        // 累計歩数 — PostgREST 1000行制限回避: RPC でDB側集計
+        supabaseAdmin.rpc('get_user_step_stats', { p_user_id: userId }),
         // 今日の歩数
         supabaseAdmin
             .from('daily_steps')
@@ -173,7 +170,9 @@ async function buildContext(userId: string): Promise<AchievementContext> {
             .limit(400),
     ]);
 
-    const totalSteps = (stepsResult.data || []).reduce((sum, r) => sum + (r.steps || 0), 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const statsData = statsResult.data as any;
+    const totalSteps = statsData?.total_steps ?? 0;
     const stepsToday = todayResult.data?.steps || 0;
     const stepGoal = userResult.data?.step_goal || 10000;
     const ucBalance = balanceResult.data?.total_balance || 0;

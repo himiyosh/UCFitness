@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { fetchAllWithPagination } from '@/lib/supabase-utils';
 import { reportError } from '@/lib/errors';
 import { Period } from '@/components/LeaderboardTabs';
 import { sendBadgeNotification } from './teams';
@@ -83,16 +84,32 @@ const assignPersonalBadges = async (dateStr: string) => {
 
         const goalMap = new Map(usersData?.map(u => [u.id, u.step_goal]) || []);
 
-        // 2. Fetch full history for batch
-        // We fetch all history to support both Streak (last 30 days) and Milestone (total) badges
-        // This trades memory for DB calls.
-        const { data: historyData } = await supabaseAdmin
-            .from('daily_steps')
-            .select('user_id, date, steps')
-            .in('user_id', userIds);
+        // 2. PostgREST 1000行制限回避:
+        //    - 累計歩数/日数: RPC でDB側集計（マイルストーン/タイトルバッジ用）
+        //    - 直近30日履歴: 日付フィルタ付きクエリ（ストリークバッジ用）
+        const thirtyDaysAgo = new Date(dateStr);
+        thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+        const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
+        const [totalsResult, recentHistoryResult] = await Promise.all([
+            supabaseAdmin.rpc('get_batch_user_step_totals', { p_user_ids: userIds }),
+            supabaseAdmin
+                .from('daily_steps')
+                .select('user_id, date, steps')
+                .in('user_id', userIds)
+                .gte('date', thirtyDaysAgoStr),
+        ]);
+
+        // 累計マップ: userId -> { total_steps, total_days }
+        const totalsMap = new Map<string, { total_steps: number; total_days: number }>();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (totalsResult.data as any[] || []).forEach((row: any) => {
+            totalsMap.set(row.user_id, { total_steps: Number(row.total_steps), total_days: Number(row.total_days) });
+        });
+
+        // 直近履歴マップ: userId -> { date, steps }[]
         const historyMap = new Map<string, { date: string, steps: number }[]>();
-        historyData?.forEach(row => {
+        recentHistoryResult.data?.forEach(row => {
             if (!historyMap.has(row.user_id)) {
                 historyMap.set(row.user_id, []);
             }
@@ -105,11 +122,12 @@ const assignPersonalBadges = async (dateStr: string) => {
 
             const history = historyMap.get(user.user_id) || [];
             const goal = goalMap.get(user.user_id) || 10000;
+            const userTotals = totalsMap.get(user.user_id) || { total_steps: 0, total_days: 0 };
 
             await Promise.all([
                 assignStreakBadges(user.user_id, dateStr, history, goal),
-                assignMilestoneBadges(user.user_id, history),
-                assignTitleBadges(user.user_id, dateStr, history),
+                assignMilestoneBadges(user.user_id, userTotals.total_steps),
+                assignTitleBadges(user.user_id, dateStr, userTotals.total_steps, userTotals.total_days),
                 assignLifestyleBadges(user.user_id, dateStr, user.steps),
             ]);
         }));
@@ -150,23 +168,18 @@ const assignStreakBadges = async (userId: string, dateStr: string, history: { da
     if (streak >= 3) await awardBadge(userId, 'STREAK_3', dateStr, null);
 }
 
-const assignMilestoneBadges = async (userId: string, history: { date: string, steps: number }[]) => {
-    // Calculate total in memory
-    const total = history.reduce((acc, curr) => acc + curr.steps, 0);
+const assignMilestoneBadges = async (userId: string, totalSteps: number) => {
     const dateStr = new Date().toISOString().split('T')[0];
 
-    if (total >= 1000000) await awardBadge(userId, 'MILESTONE_1M', dateStr, null);
-    if (total >= 500000) await awardBadge(userId, 'MILESTONE_500K', dateStr, null);
-    if (total >= 100000) await awardBadge(userId, 'MILESTONE_100K', dateStr, null);
+    if (totalSteps >= 1000000) await awardBadge(userId, 'MILESTONE_1M', dateStr, null);
+    if (totalSteps >= 500000) await awardBadge(userId, 'MILESTONE_500K', dateStr, null);
+    if (totalSteps >= 100000) await awardBadge(userId, 'MILESTONE_100K', dateStr, null);
 }
 
-const assignTitleBadges = async (userId: string, dateStr: string, history: { date: string, steps: number }[]) => {
-    if (!history || history.length === 0) return;
+const assignTitleBadges = async (userId: string, dateStr: string, totalSteps: number, totalDays: number) => {
+    if (totalDays === 0) return;
 
-    const totalSteps = history.reduce((acc, curr) => acc + curr.steps, 0);
-    const totalDays = history.length;
-
-    const average = totalDays > 0 ? totalSteps / totalDays : 0;
+    const average = totalSteps / totalDays;
 
     if (average >= 20000) await awardBadge(userId, 'TITLE_AVGST_20K', dateStr, null);
     if (average >= 15000) await awardBadge(userId, 'TITLE_AVGST_15K', dateStr, null);
@@ -211,20 +224,22 @@ const assignGlobalBadges = async (period: Period, dateStr: string) => {
 };
 
 const getRankingsForRange = async (startDate: string, endDate: string, userIds?: string[]) => {
-    let query = supabaseAdmin
-        .from('daily_steps')
-        .select(`
-            steps,
-            user_id
-        `)
-        .gte('date', startDate)
-        .lte('date', endDate);
+    // PostgREST 1000行制限回避: ページネーション付き取得
+    const { data, error } = await fetchAllWithPagination(
+        (from, to) => {
+            let q = supabaseAdmin
+                .from('daily_steps')
+                .select('steps, user_id')
+                .gte('date', startDate)
+                .lte('date', endDate);
 
-    if (userIds && userIds.length > 0) {
-        query = query.in('user_id', userIds);
-    }
+            if (userIds && userIds.length > 0) {
+                q = q.in('user_id', userIds);
+            }
 
-    const { data, error } = await query;
+            return q.range(from, to);
+        }
+    );
     if (error) {
         reportError('getRankingsForRange', error, { startDate, endDate });
         return [];

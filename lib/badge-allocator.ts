@@ -25,7 +25,7 @@ export async function checkAndAwardBadges(userId: string) {
     // 1. Fetch badge definitions, user badges, today's steps in parallel
     const today = getJSTDateString();
 
-    const [badgeResult, userBadgeResult, dailyResult, historyResult] = await Promise.all([
+    const [badgeResult, userBadgeResult, dailyResult, statsResult] = await Promise.all([
         supabaseAdmin
             .from('badges')
             .select('id, code, name, category, type, rank'),
@@ -39,10 +39,8 @@ export async function checkAndAwardBadges(userId: string) {
             .eq('user_id', userId)
             .eq('date', today)
             .single(),
-        supabaseAdmin
-            .from('daily_steps')
-            .select('steps')
-            .eq('user_id', userId),
+        // PostgREST 1000行制限回避: RPC でDB側集計
+        supabaseAdmin.rpc('get_user_step_stats', { p_user_id: userId }),
     ]);
 
     const { data: allBadges, error: badgeError } = badgeResult;
@@ -60,7 +58,9 @@ export async function checkAndAwardBadges(userId: string) {
     const earnedBadgeIds = new Set(userBadges?.map(ub => ub.badge_code));
 
     const stepsToday = dailyResult.data?.steps ?? 0;
-    const totalSteps = historyResult.data?.reduce((acc: number, curr: { steps: number }) => acc + curr.steps, 0) ?? 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const statsData = statsResult.data as any;
+    const totalSteps = statsData?.total_steps ?? 0;
 
     // 4. Evaluate Badges
     const newBadges: { user_id: string; badge_code: string; awarded_at: string; period_date: string }[] = [];
