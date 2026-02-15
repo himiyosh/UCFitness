@@ -6,6 +6,7 @@ import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
+import GroupReactions, { type Reaction } from '@/components/GroupReactions';
 
 function FadeInWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {
     const [show, setShow] = useState(false);
@@ -28,13 +29,15 @@ export default function GroupDetailLeaderboard({
     userId,
     period,
     currentPage,
-    onPageChange
+    onPageChange,
+    groupId,
 }: {
     rankings: Record<Period, RankingEntry[]>,
     userId?: string | null,
     period: Period,
     currentPage: number,
-    onPageChange: (page: number) => void
+    onPageChange: (page: number) => void,
+    groupId?: string,
 }) {
     const locale = useLocale();
     const ga = useTranslations('GroupDetail');
@@ -45,6 +48,84 @@ export default function GroupDetailLeaderboard({
     const isMidnight = theme === 'midnight';
     const ITEMS_PER_PAGE = 5;
     const totalPages = useMemo(() => Math.ceil(allData.length / ITEMS_PER_PAGE), [allData.length]);
+
+    // --- リアクション管理 ---
+    const [reactions, setReactions] = useState<Reaction[]>([]);
+
+    // リアクション取得
+    useEffect(() => {
+        if (!groupId || !userId) return;
+        const fetchReactions = async () => {
+            try {
+                const res = await fetch(`/api/group/${groupId}/reactions?period=${period}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setReactions(data.reactions || []);
+                }
+            } catch {
+                // サイレント失敗 — リアクションは必須機能ではない
+            }
+        };
+        fetchReactions();
+    }, [groupId, userId, period]);
+
+    // リアクショントグル（楽観的更新）
+    const handleReactionToggle = useCallback(async (toUserId: string, emoji: string, isAdding: boolean) => {
+        if (!groupId || !userId) return;
+
+        if (isAdding) {
+            // 楽観的追加
+            const tempReaction: Reaction = {
+                id: `temp-${Date.now()}`,
+                from_user_id: userId,
+                to_user_id: toUserId,
+                emoji,
+                period,
+            };
+            setReactions(prev => [...prev, tempReaction]);
+
+            try {
+                const res = await fetch(`/api/group/${groupId}/reactions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ toUserId, emoji, period }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // temp を実データに置換
+                    setReactions(prev =>
+                        prev.map(r => r.id === tempReaction.id ? data.reaction : r)
+                    );
+                } else {
+                    // ロールバック
+                    setReactions(prev => prev.filter(r => r.id !== tempReaction.id));
+                }
+            } catch {
+                setReactions(prev => prev.filter(r => r.id !== tempReaction.id));
+            }
+        } else {
+            // 楽観的削除
+            const removed = reactions.find(
+                r => r.from_user_id === userId && r.to_user_id === toUserId && r.emoji === emoji
+            );
+            setReactions(prev => prev.filter(r => r !== removed));
+
+            try {
+                const res = await fetch(
+                    `/api/group/${groupId}/reactions?toUserId=${toUserId}&emoji=${encodeURIComponent(emoji)}&period=${period}`,
+                    { method: 'DELETE' }
+                );
+                if (!res.ok && removed) {
+                    // ロールバック
+                    setReactions(prev => [...prev, removed]);
+                }
+            } catch {
+                if (removed) {
+                    setReactions(prev => [...prev, removed]);
+                }
+            }
+        }
+    }, [groupId, userId, period, reactions]);
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const displayData = useMemo(() => allData.slice(startIndex, startIndex + ITEMS_PER_PAGE), [allData, startIndex]);
@@ -142,6 +223,18 @@ export default function GroupDetailLeaderboard({
                                                         <p className="text-[10px] text-gray-400 font-medium">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
+                                                    )}
+                                                    {/* リアクションボタン */}
+                                                    {groupId && userId && (
+                                                        <GroupReactions
+                                                            groupId={groupId}
+                                                            toUserId={entry.users.id}
+                                                            currentUserId={userId}
+                                                            period={period}
+                                                            reactions={reactions}
+                                                            onReactionToggle={handleReactionToggle}
+                                                            isSelf={isCurrentUser}
+                                                        />
                                                     )}
                                                 </div>
                                             </div>

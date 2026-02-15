@@ -543,6 +543,11 @@
         "showLess": "閉じる",
         "showAll": "全{count}人を表示"
     },
+    "GroupReactions": {
+        "addReaction": "リアクションする",
+        "removeReaction": "リアクションを取り消す",
+        "receivedCount": "{count}件のリアクション"
+    },
     "Calendar": {
         "title": "歩数カレンダー",
         "totalSteps": "合計歩数",

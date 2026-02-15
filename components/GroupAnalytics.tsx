@@ -181,6 +181,7 @@ export default function GroupAnalytics({
                         period={period}
                         currentPage={currentPage}
                         onPageChange={setCurrentPage}
+                        groupId={currentGroupId}
                     />
                 </div>
 

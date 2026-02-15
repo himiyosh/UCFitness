@@ -542,8 +542,11 @@
         "avgPerMember": "Avg per Member",
         "showLess": "Show Less",
         "showAll": "Show All ({count})"
-    },
-    "Calendar": {
+    },    "GroupReactions": {
+        "addReaction": "React",
+        "removeReaction": "Remove reaction",
+        "receivedCount": "{count} reactions"
+    },    "Calendar": {
         "title": "Step Calendar",
         "totalSteps": "Total Steps",
         "activeDays": "Active Days",
