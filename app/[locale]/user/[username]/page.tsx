@@ -267,7 +267,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
                         <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji}>
-                            <ShareMilestone totalSteps={totalSteps} username={username} />
+                            <ShareMilestone totalSteps={totalSteps} username={username} isOwner={isOwner} />
                         </ProfileHeader>
 
                         {/* フォローボタン（他ユーザーのプロフィール閲覧時のみ表示） */}

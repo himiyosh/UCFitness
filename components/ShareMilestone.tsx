@@ -11,16 +11,20 @@ import { useTranslations } from 'next-intl';
 interface ShareMilestoneProps {
     totalSteps: number;
     username: string;
+    isOwner?: boolean;
 }
 
-export default function ShareMilestone({ totalSteps, username }: ShareMilestoneProps) {
+export default function ShareMilestone({ totalSteps, username, isOwner = true }: ShareMilestoneProps) {
     const t = useTranslations('Profile');
     const [showMenu, setShowMenu] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const shareText = useCallback(() => {
-        return `${t('shareProfile', { steps: totalSteps.toLocaleString() })}\n#UCFitness`;
-    }, [totalSteps, t]);
+        if (isOwner) {
+            return `${t('shareProfile', { steps: totalSteps.toLocaleString() })}\n#UCFitness`;
+        }
+        return `${t('shareOtherProfile', { username, steps: totalSteps.toLocaleString() })}\n#UCFitness`;
+    }, [totalSteps, username, isOwner, t]);
 
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/user/${username}` : '';
 
