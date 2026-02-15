@@ -62,6 +62,8 @@
         "equipped": "Active",
         "moreTitles": "Browse more titles",
         "moreThemes": "Browse more themes",
+        "changeTheme": "Change theme",
+        "collapseThemes": "Collapse",
         "profileCompletion": "Profile Completion",
         "profileComplete": "Your profile is complete! 🎉",
         "classicDesc": "Clean & professional",

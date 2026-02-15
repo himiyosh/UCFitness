@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import { Link } from '@/navigation';
@@ -151,6 +152,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
     const t = useTranslations('Settings');
     const locale = useLocale();
     const { theme, setTheme } = useTheme();
+    const [isExpanded, setIsExpanded] = useState(false);
 
     // 所持テーマの item_code セット（高速ルックアップ用）
     const ownedCodes = new Set(ownedThemes.map(item => item.itemCode));
@@ -163,49 +165,65 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
     const handleSelect = (meta: ThemeMeta) => {
         if (!isOwned(meta)) return;
         setTheme(meta.name);
+        // テーマ選択後、折りたたむ
+        setIsExpanded(false);
     };
+
+    // 現在アクティブなテーマのメタデータ
+    const activeMeta = THEME_LIST.find(m => m.name === theme) || THEME_LIST[0];
+    // アクティブ以外のテーマリスト（所持済み → 未所持の順）
+    const otherThemes = [
+        ...THEME_LIST.filter(m => m.name !== activeMeta.name && (m.isFree || isOwned(m))),
+        ...THEME_LIST.filter(m => m.name !== activeMeta.name && !m.isFree && !isOwned(m)),
+    ];
 
     return (
         <div className="flex flex-col gap-3">
-            {/* 無料テーマ */}
-            {THEME_LIST.filter(m => m.isFree).map(meta => (
-                <ThemeCard
-                    key={meta.name}
-                    meta={meta}
-                    isActive={theme === meta.name}
-                    owned={true}
-                    onSelect={() => handleSelect(meta)}
-                    t={t}
-                />
-            ))}
+            {/* 現在のテーマ（常に表示） */}
+            <ThemeCard
+                meta={activeMeta}
+                isActive={true}
+                owned={isOwned(activeMeta)}
+                onSelect={() => {}}
+                t={t}
+            />
 
-            {/* プレミアムテーマ（所持済み） */}
-            {THEME_LIST.filter(m => !m.isFree && isOwned(m)).map(meta => (
-                <ThemeCard
-                    key={meta.name}
-                    meta={meta}
-                    isActive={theme === meta.name}
-                    owned={true}
-                    onSelect={() => handleSelect(meta)}
-                    t={t}
-                />
-            ))}
+            {/* 展開/折りたたみトグル */}
+            <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-gray-200 hover:border-[var(--theme-primary)]/30 hover:bg-[var(--theme-primary-light)] text-sm font-medium text-gray-600 hover:text-[var(--theme-primary)] transition-all cursor-pointer"
+            >
+                <span>{isExpanded ? t('collapseThemes') : t('changeTheme')}</span>
+                <svg
+                    className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
 
-            {/* プレミアムテーマ（未所持） */}
-            {THEME_LIST.filter(m => !m.isFree && !isOwned(m)).map(meta => (
-                <ThemeCard
-                    key={meta.name}
-                    meta={meta}
-                    isActive={false}
-                    owned={false}
-                    onSelect={() => {}}
-                    t={t}
-                />
-            ))}
+            {/* 折りたたみ部分 */}
+            {isExpanded && (
+                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {otherThemes.map(meta => (
+                        <ThemeCard
+                            key={meta.name}
+                            meta={meta}
+                            isActive={false}
+                            owned={isOwned(meta)}
+                            onSelect={() => handleSelect(meta)}
+                            t={t}
+                        />
+                    ))}
 
-            <Link href="/shop" className="mt-1 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
-                {t('moreThemes')} →
-            </Link>
+                    <Link href="/shop" className="mt-1 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
+                        {t('moreThemes')} →
+                    </Link>
+                </div>
+            )}
         </div>
     );
 }
