@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
 import { Link } from '@/navigation';
@@ -226,8 +227,8 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                 <span>{t('changeTheme')}</span>
             </button>
 
-            {/* テーマ選択モーダル */}
-            {isOpen && (
+            {/* テーマ選択モーダル — Portal で body 直下にレンダリングし、親の overflow/transform を回避 */}
+            {isOpen && createPortal(
                 <div
                     className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
                     onClick={() => setIsOpen(false)}
@@ -371,7 +372,8 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
