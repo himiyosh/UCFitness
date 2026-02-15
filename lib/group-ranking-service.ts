@@ -1,4 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
 import { Period } from '@/components/LeaderboardTabs';
 import { unstable_cache } from 'next/cache';
 
@@ -44,7 +45,7 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         startDate = `${y}-01-01`;
     }
 
-    // 1-3. グループ・メンバー・歩数データを並列取得
+    // 1-3. グループ・メンバー・歩数データを並列取得 + PostgREST 1000行制限回避
     const [groupsRes, membersRes, stepsRes] = await Promise.all([
         supabase
             .from('groups')
@@ -53,10 +54,10 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         supabase
             .from('group_members')
             .select('group_id, user_id'),
-        supabase
-            .from('daily_steps')
-            .select('user_id, steps')
-            .gte('date', startDate),
+        fetchDailyStepsPaginated({
+            startDate,
+            selectFields: 'user_id, steps',
+        }),
     ]);
 
     const groups = groupsRes.data;
@@ -156,7 +157,7 @@ export const getCombinedGroupCompetitionRankings = async () => {
     // Yearly Start
     const yearlyStart = `${y}-01-01`;
 
-    // ⚡ 全データを並列取得（グループ・メンバー・歩数）
+    // ⚡ 全データを並列取得（グループ・メンバー・歩数）+ PostgREST 1000行制限回避
     const [groupsRes, membersRes, stepsRes] = await Promise.all([
         supabase
             .from('groups')
@@ -165,10 +166,9 @@ export const getCombinedGroupCompetitionRankings = async () => {
         supabase
             .from('group_members')
             .select('group_id, user_id'),
-        supabase
-            .from('daily_steps')
-            .select('user_id, steps, date')
-            .gte('date', yearlyStart),
+        fetchDailyStepsPaginated({
+            startDate: yearlyStart,
+        }),
     ]);
 
     const groups = groupsRes.data || [];

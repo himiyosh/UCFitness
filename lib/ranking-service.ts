@@ -1,4 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
 import { Period } from '@/components/LeaderboardTabs';
 import { unstable_cache } from 'next/cache';
 import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
@@ -42,16 +43,11 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
         members.forEach((m: any) => { if (m.users) usersMap.set(m.users.id, m.users); });
     }
 
-    let query = supabase
-        .from('daily_steps')
-        .select('steps, date, user_id') // No join
-        .gte('date', startDate);
-
-    if (userIds) {
-        query = query.in('user_id', userIds);
-    }
-
-    const { data: rawSteps, error } = await query;
+    // PostgREST 1000行制限回避: ページネーション付き取得
+    const { data: rawSteps, error } = await fetchDailyStepsPaginated({
+        startDate,
+        userIds: userIds || undefined,
+    });
 
     if (error) {
         console.error(`Error fetching ${scope} rankings`);
@@ -167,17 +163,11 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         members.forEach((m: any) => { if (m.users) usersMap.set(m.users.id, m.users); });
     }
 
-    let query = supabase
-        .from('daily_steps')
-        .select('steps, date, user_id') // No join
-        // Performance: This range query relies on idx_daily_steps_date
-        .gte('date', queryStartStr);
-
-    if (userIds) {
-        query = query.in('user_id', userIds);
-    }
-
-    const { data: rawSteps, error } = await query;
+    // PostgREST 1000行制限回避: ページネーション付き取得
+    const { data: rawSteps, error } = await fetchDailyStepsPaginated({
+        startDate: queryStartStr,
+        userIds: userIds || undefined,
+    });
 
     if (error) {
         console.error(`Error fetching ${scope} all rankings`);
@@ -345,13 +335,12 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
 
     if (userIds.length === 0) return [];
 
-    // ⚡ Performance: JOIN を分割して並列取得
+    // ⭐ Performance: JOIN を分割して並列取得 + PostgREST 1000行制限回避
     const [stepsResult, usersResult] = await Promise.all([
-        supabase
-            .from('daily_steps')
-            .select('steps, date, user_id')
-            .in('user_id', userIds)
-            .gte('date', startDate),
+        fetchDailyStepsPaginated({
+            startDate,
+            userIds,
+        }),
         supabase
             .from('users')
             .select('id, name, image, username')
@@ -448,13 +437,12 @@ export const getAllGroupRankings = async (groupId: string) => {
     const userIds = groupMembers?.map(m => m.user_id) || [];
     if (userIds.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
-    // ⚡ Performance: ステップとユーザー情報を並列取得
+    // ⚡ Performance: ステップとユーザー情報を並列取得 + PostgREST 1000行制限回避
     const [stepsResult, usersResult] = await Promise.all([
-        supabase
-            .from('daily_steps')
-            .select('steps, date, user_id')
-            .in('user_id', userIds)
-            .gte('date', queryStartStr),
+        fetchDailyStepsPaginated({
+            startDate: queryStartStr,
+            userIds,
+        }),
         supabase
             .from('users')
             .select('id, name, image, username')
@@ -596,13 +584,12 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     // 2. Get unique User IDs
     const uniqueUserIds = Array.from(new Set(groupMembers.map(m => m.user_id)));
 
-    // 3. ⚡ Performance: ステップとユーザー情報を並列取得
+    // 3. ⚡ Performance: ステップとユーザー情報を並列取得 + PostgREST 1000行制限回避
     const [stepsResult, usersResult] = await Promise.all([
-        supabase
-            .from('daily_steps')
-            .select('steps, date, user_id')
-            .in('user_id', uniqueUserIds)
-            .gte('date', queryStartStr),
+        fetchDailyStepsPaginated({
+            startDate: queryStartStr,
+            userIds: uniqueUserIds,
+        }),
         supabase
             .from('users')
             .select('id, name, image, username')
