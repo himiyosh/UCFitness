@@ -605,6 +605,21 @@
             "ucMillionaire": "UCミリオネア",
             "shopaholic": "買い物マスター",
             "teamPlayer": "チームプレイヤー"
+        },
+        "descriptions": {
+            "firstStep": "累計 1,000 歩を達成",
+            "strollMaster": "累計 100,000 歩を達成",
+            "marathonRunner": "累計 500,000 歩を達成",
+            "globeTrotter": "累計 1,000,000 歩を達成",
+            "moonWalker": "累計 5,000,000 歩を達成",
+            "galaxyVoyager": "累計 10,000,000 歩を達成",
+            "beyondThree": "7 日連続で目標達成",
+            "ironWill": "30 日連続で目標達成",
+            "unbreakable": "100 日連続で目標達成",
+            "legendaryStreaker": "365 日連続で目標達成",
+            "ucMillionaire": "UC 残高 100,000 に到達",
+            "shopaholic": "ショップで 5 個アイテムを購入",
+            "teamPlayer": "3 つのグループに参加"
         }
     },
     "Analytics": {

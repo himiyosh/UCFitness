@@ -163,8 +163,18 @@ const assignMilestoneBadges = async (userId: string, history: { date: string, st
 const assignTitleBadges = async (userId: string, dateStr: string, history: { date: string, steps: number }[]) => {
     if (!history || history.length === 0) return;
 
-    const totalSteps = history.reduce((acc, curr) => acc + curr.steps, 0);
-    const totalDays = history.length;
+    // 直近30日間のデータのみ使用（短期間の突発的な歩数で称号が付与されるのを防ぐ）
+    const thirtyDaysAgo = new Date(dateStr);
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+    const cutoffDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const recentHistory = history.filter(h => h.date >= cutoffDate && h.date <= dateStr);
+
+    // 最低30日間のデータが必要（計測期間の信頼性を確保）
+    if (recentHistory.length < 30) return;
+
+    const totalSteps = recentHistory.reduce((acc, curr) => acc + curr.steps, 0);
+    const totalDays = recentHistory.length;
 
     const average = totalDays > 0 ? totalSteps / totalDays : 0;
 

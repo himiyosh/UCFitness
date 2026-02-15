@@ -183,11 +183,13 @@ function HeatmapCell({
 
 // ゴール進捗リング（軽量SVG）+ 100%達成時の紙吹雪＆アニメーション
 function GoalRing({ current, goal }: { current: number; goal: number }) {
-    const pct = Math.min(current / goal, 1);
-    const isAchieved = pct >= 1;
+    const rawPct = goal > 0 ? current / goal : 0;
+    const isAchieved = rawPct >= 1;
+    // リングの塗りは最大1周（100%）に制限。表示テキストは実際の%を表示
+    const ringPct = Math.min(rawPct, 1);
     const r = 32;
     const circ = 2 * Math.PI * r;
-    const offset = circ * (1 - pct);
+    const offset = circ * (1 - ringPct);
     const color = isAchieved ? '#22c55e' : 'var(--theme-primary)';
 
     // 🎉 紙吹雪: 初回100%達成時のみ発火
@@ -232,11 +234,11 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                     {isAchieved ? (
                         <>
                             <span className="text-lg">🎉</span>
-                            <span className="text-xs font-bold text-green-600">100%</span>
+                            <span className="text-xs font-bold text-green-600">{Math.round(rawPct * 100)}%</span>
                         </>
                     ) : (
                         <>
-                            <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(pct * 100)}%</span>
+                            <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(rawPct * 100)}%</span>
                             <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{goal.toLocaleString()}</span>
                         </>
                     )}
