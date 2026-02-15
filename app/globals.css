@@ -100,6 +100,76 @@ html {
   --theme-header-bg: #FFF5F5;
 }
 
+/* 🌸 Sakura Theme — 桜ピンク × 和風 */
+[data-theme="sakura"] {
+  --theme-primary: #EC4899;
+  --theme-primary-light: #FDF2F8;
+  --theme-secondary: #F472B6;
+  --theme-accent: #DB2777;
+  --theme-gradient-from: #EC4899;
+  --theme-gradient-to: #F472B6;
+  --theme-badge-bg: #FDF2F8;
+  --theme-badge-text: #EC4899;
+  --theme-page-bg: transparent;
+  --theme-header-bg: #FDF2F8;
+}
+
+/* 🌊 Ocean Theme — 深海ブルー × アクア */
+[data-theme="ocean"] {
+  --theme-primary: #0891B2;
+  --theme-primary-light: #ECFEFF;
+  --theme-secondary: #06B6D4;
+  --theme-accent: #0E7490;
+  --theme-gradient-from: #0891B2;
+  --theme-gradient-to: #06B6D4;
+  --theme-badge-bg: #ECFEFF;
+  --theme-badge-text: #0891B2;
+  --theme-page-bg: transparent;
+  --theme-header-bg: #ECFEFF;
+}
+
+/* 🌲 Forest Theme — 深緑 × ナチュラル */
+[data-theme="forest"] {
+  --theme-primary: #059669;
+  --theme-primary-light: #ECFDF5;
+  --theme-secondary: #10B981;
+  --theme-accent: #047857;
+  --theme-gradient-from: #059669;
+  --theme-gradient-to: #10B981;
+  --theme-badge-bg: #ECFDF5;
+  --theme-badge-text: #059669;
+  --theme-page-bg: transparent;
+  --theme-header-bg: #ECFDF5;
+}
+
+/* 🌅 Sunset Theme — オレンジ × ゴールド */
+[data-theme="sunset"] {
+  --theme-primary: #EA580C;
+  --theme-primary-light: #FFF7ED;
+  --theme-secondary: #F97316;
+  --theme-accent: #C2410C;
+  --theme-gradient-from: #EA580C;
+  --theme-gradient-to: #FBBF24;
+  --theme-badge-bg: #FFF7ED;
+  --theme-badge-text: #EA580C;
+  --theme-page-bg: transparent;
+  --theme-header-bg: #FFF7ED;
+}
+
+/* 💜 Cyberpunk Theme — ネオンパープル × エレクトリック */
+[data-theme="cyberpunk"] {
+  --theme-primary: #7C3AED;
+  --theme-primary-light: #F5F3FF;
+  --theme-secondary: #8B5CF6;
+  --theme-accent: #A78BFA;
+  --theme-gradient-from: #7C3AED;
+  --theme-gradient-to: #EC4899;
+  --theme-badge-bg: #F5F3FF;
+  --theme-badge-text: #7C3AED;
+  --theme-page-bg: transparent;
+  --theme-header-bg: #F5F3FF;
+}
+
 /* Midnight Theme (Dark) - Light Frosted Glass (Lighter & Richer) */
 [data-theme="midnight"] {
   /* Light Gradient Background - Slate-500 to Slate-600 */

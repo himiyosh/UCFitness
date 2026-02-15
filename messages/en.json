@@ -428,7 +428,9 @@
         "rankLocked": "Requires {rank}",
         "featured": "Featured",
         "itemCount": "{count} items",
-        "canAfford": "Affordable!"
+        "canAfford": "Affordable!",
+        "tryTheme": "Try this theme",
+        "revertPreview": "Revert to original"
     },
     "Splash": {
         "loading": "Loading Steps...",

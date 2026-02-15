@@ -428,7 +428,9 @@
         "rankLocked": "{rank}が必要",
         "featured": "おすすめ",
         "itemCount": "{count}個",
-        "canAfford": "購入可能！"
+        "canAfford": "購入可能！",
+        "tryTheme": "このテーマを試着する",
+        "revertPreview": "元のテーマに戻す"
     },
     "Splash": {
         "loading": "歩数を読み込み中...",
