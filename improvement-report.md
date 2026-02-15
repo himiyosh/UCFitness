@@ -475,14 +475,14 @@
 | 5 | 🎯 **フレンドチャレンジ（1対1対決）** | フォロー中ユーザーを指名して期間限定の歩数対決。既存 `challenges` テーブルに `type='DUEL'` を追加し、`challenge_participants` を2名に制限。勝者にUC報酬 | 🟡 Medium | `challenges`、`challenge_participants`、`user_follows`、`coin_transactions`、`push_subscriptions` | ソーシャルエンゲージメント +25%, チャレンジ利用率 +40% |
 | 6 | 📅 **ストリークリカバリー（24時間復活）** | ストリーク途切れから24時間以内にUCを支払って復活。`user_streak_shields` の `last_used_date` で直前日を検知、`deduct_balance` でUC消費 | 🟢 Easy | `user_streak_shields`、`coin_balances`、`deduct_balance` PG関数、`coin-service.ts` `calculateCurrentStreak` | UC消費促進、ストリーク維持率 +20%、離脱防止 |
 | 7 | 🏅 **グループ内ミニリーグ** | グループ内で毎週自動的に4-6人の小グループ（リーグ）に振り分け。上位2名が昇格、下位2名が降格する「昇降格リーグ」方式。`group_members` + `daily_steps` の集計で実現 | 🟡 Medium | `group_members`、`daily_steps`、`GroupRankingPanel`、`cron/badges`、`push_subscriptions` | グループ内競争激化、少人数が「勝てる」仕組みでモチベ向上 |
-| 8 | 🎨 **テーマカラー拡張 + プレビュー** | 現在 `THEME_COLOR` カテゴリがショップに存在するが商品数が少ない。グラデーション系テーマ（桜、オーシャン、サイバーパンク等）を10種追加 + ショップ内プレビュー機能 | 🟢 Easy | `shop_items` THEME_COLOR カテゴリ、`ThemeProvider.tsx`、`ShopClient.tsx` | ショップ売上 +30%、プロフィール差別化 |
+| 8 | ✅ **テーマカラー拡張 + プレビュー** | **実装済み** — 5新テーマ（橜・オーシャン・フォレスト・サンセット・サイバーパンク）追加、ショップ内試着機能実装 | ✅ Done | `ThemeProvider.tsx`, `ShopClient.tsx`, `globals.css`, `UCHintBalloon.tsx` | ショップ売上 +30%、プロフィール差別化 |
 
 ### 💡 優先度 Low (バックログ)
 
 | # | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
 |---|--------|------|--------|----------|----------|
 | 9 | 🌸 **季節イベント・限定バッジ** | 花見(3月)、夏祭り(8月)、ハロウィン(10月)、正月(1月) の4シーズン限定チャレンジ。期間限定フレーム + バッジ報酬 | 🟡 Medium | `challenges` (is_system)、`badges`、`shop_items` ICON_FRAME、`cron/weekly-challenge` パターン | 季節的DAUスパイク +40%、限定品による購買意欲 |
-| 10 | 💬 **グループ内リアクション** | グループメンバーの歩数に対して絵文字リアクション（👏🔥💪🎉）を送信。新テーブル `step_reactions` で管理、`FloatingEmojis.tsx` パターンを拡張 | 🟡 Medium | `group_members`、`daily_steps`、`FloatingEmojis.tsx`、`push_subscriptions` | ソーシャルインタラクション多様化、グループ活性化 +20% |
+| 10 | ✅ **グループ内リアクション** | **実装済み** — グループメンバーの歩数に対して絵文字リアクション（👏🔥💪👍）を送信 | ✅ Done | `GroupReactions.tsx`, `GroupDetailLeaderboard.tsx`, `/api/group/[groupId]/reactions` | ソーシャルインタラクション多様化、グループ活性化 +20% |
 | 11 | 📈 **歩数予測ウィジェット** | 過去4週の曜日別平均から今週の歩数目標達成確率を算出。Edge Functionで軽量統計処理（外部AI不要、線形回帰のみ） | 🟡 Medium | `daily_steps`、`PersonalAnalytics`、Recharts | 差別化、週始めのモチベーション向上 |
 | 12 | 🔗 **招待リンク + リファラルボーナス** | グループ固有の招待URL生成（`/invite/[code]`）。招待されたユーザーが初回同期完了時に、招待者・被招待者双方にUCボーナス付与 | 🟡 Medium | `groups`、`group_members`、`coin_transactions` (新type: REFERRAL)、`credit_balance` PG関数 | オーガニック流入 +20%, ユーザー獲得コスト削減 |
 
