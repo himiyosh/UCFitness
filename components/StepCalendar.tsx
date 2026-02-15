@@ -116,7 +116,7 @@ function HeatmapCell({
 
     // 各レベルに対応する色（テーマカラー1色の濃淡、0=無色）
     const levelStyles: React.CSSProperties[] = [
-        { backgroundColor: '#ebedf0' },
+        { backgroundColor: 'var(--heatmap-empty, #ebedf0)' },
         { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' },
         { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' },
         { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' },
@@ -222,7 +222,7 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                             style={{ transformOrigin: '40px 40px' }}
                         />
                     )}
-                    <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="5" />
+                    <circle cx="40" cy="40" r={r} fill="none" stroke="var(--ring-track, #e5e7eb)" strokeWidth="5" />
                     <circle
                         cx="40" cy="40" r={r} fill="none"
                         stroke={color} strokeWidth="5" strokeLinecap="round"
@@ -525,7 +525,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     {/* 凡例 */}
                     <div className="flex items-center gap-1.5 mt-2 justify-end text-[10px] text-gray-400">
                         <span>{t('less')}</span>
-                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#ebedf0' }} />
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'var(--heatmap-empty, #ebedf0)' }} />
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />

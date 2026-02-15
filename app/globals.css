@@ -188,7 +188,7 @@ html {
 [data-theme="midnight"] {
   /* Light Gradient Background - Slate-500 to Slate-600 */
   --background: linear-gradient(135deg, #475569 0%, #334155 50%, #1e293b 100%);
-  --foreground: #b0bec5;
+  --foreground: #e2e8f0;
 
   --theme-primary: #6366f1;
   --theme-primary-light: rgba(255, 255, 255, 0.15);
@@ -203,6 +203,10 @@ html {
   --frame-preview-bg: #1e293b;
   --theme-badge-bg: rgba(255, 255, 255, 0.2);
   --theme-badge-text: #ffffff;
+
+  /* ヒートマップ・リング用カラー */
+  --heatmap-empty: rgba(51, 65, 85, 0.45);
+  --ring-track: rgba(100, 116, 139, 0.3);
 
   /* Glass Page Background */
   --theme-page-bg: rgba(0, 0, 0, 0.1);
@@ -262,7 +266,7 @@ html {
     linear-gradient(135deg, rgba(41, 55, 75, 0.62) 0%, rgba(25, 35, 52, 0.58) 50%, rgba(30, 40, 58, 0.62) 100%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(150%) brightness(0.88) !important;
   backdrop-filter: blur(24px) saturate(150%) brightness(0.88) !important;
-  color: #9aa5b4 !important;
+  color: #c9d1d9 !important;
   border: 1px solid rgba(148, 163, 184, 0.14) !important;
   border-top: 1px solid rgba(165, 180, 252, 0.15) !important;
   border-left: 1px solid rgba(165, 180, 252, 0.10) !important;
@@ -306,7 +310,7 @@ html {
   background:
     linear-gradient(170deg, rgba(71, 85, 105, 0.12) 0%, rgba(30, 41, 59, 0) 50%),
     linear-gradient(160deg, rgba(15, 23, 42, 0.65) 0%, rgba(10, 15, 30, 0.55) 100%) !important;
-  color: #8b949e !important;
+  color: #c9d1d9 !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   border-top: 1px solid rgba(148, 163, 184, 0.22) !important;
   box-shadow:
@@ -319,7 +323,7 @@ html {
   background:
     linear-gradient(170deg, rgba(71, 85, 105, 0.14) 0%, rgba(30, 41, 59, 0) 50%),
     linear-gradient(160deg, rgba(15, 23, 42, 0.70) 0%, rgba(10, 15, 30, 0.60) 100%) !important;
-  color: #7d8590 !important;
+  color: #a8b3bf !important;
   border: 1px solid rgba(148, 163, 184, 0.14) !important;
   box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.25) !important;
 }
@@ -346,27 +350,27 @@ html {
 /* --- 3. Text Hierarchy (soft whites — 目に優しい階層) --- */
 [data-theme="midnight"] .text-gray-900,
 [data-theme="midnight"] .text-gray-800 {
-  color: #b0bec5 !important;  /* 見出し — 抑えたライトグレー */
+  color: #e2e8f0 !important;  /* 見出し — 明るめライトグレー */
 }
 
 [data-theme="midnight"] .text-gray-700 {
-  color: #9aa5b4 !important;  /* 本文テキスト */
+  color: #c9d1d9 !important;  /* 本文テキスト */
 }
 
 [data-theme="midnight"] .text-gray-600 {
-  color: #7d8590 !important;  /* セカンダリテキスト */
+  color: #a8b3bf !important;  /* セカンダリテキスト */
 }
 
 [data-theme="midnight"] .text-gray-500 {
-  color: #6e7681 !important;  /* キャプション・補足 */
+  color: #8b949e !important;  /* キャプション・補足 */
 }
 
 [data-theme="midnight"] .text-gray-400 {
-  color: #525a65 !important;  /* ヒント・薄い情報 */
+  color: #6e7681 !important;  /* ヒント・薄い情報 */
 }
 
 [data-theme="midnight"] .text-gray-300 {
-  color: #3d4450 !important;  /* 非常に薄い要素 */
+  color: #525a65 !important;  /* 非常に薄い要素 */
 }
 
 /* --- 4. Borders (all gray shades + border-gray-50) --- */
@@ -437,7 +441,7 @@ html {
 [data-theme="midnight"] .hover\:bg-white:hover {
   background:
     linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(99, 102, 241, 0.08) 100%) !important;
-  color: #b0bec5 !important;
+  color: #e2e8f0 !important;
   border-color: rgba(165, 180, 252, 0.22) !important;
   box-shadow:
     inset 0 0 30px rgba(99, 102, 241, 0.06),
@@ -676,19 +680,19 @@ html {
 }
 /* 11d duplicate text overrides — セクション3と統一 */
 [data-theme="midnight"] .text-gray-900 {
-  color: #b0bec5 !important;
+  color: #e2e8f0 !important;
 }
 [data-theme="midnight"] .text-gray-700 {
-  color: #9aa5b4 !important;
+  color: #c9d1d9 !important;
 }
 [data-theme="midnight"] .text-gray-600 {
-  color: #7d8590 !important;
+  color: #a8b3bf !important;
 }
 [data-theme="midnight"] .text-gray-500 {
-  color: #6e7681 !important;
+  color: #8b949e !important;
 }
 [data-theme="midnight"] .text-gray-400 {
-  color: #525a65 !important;
+  color: #6e7681 !important;
 }
 [data-theme="midnight"] .hover\:bg-gray-50:hover {
   background-color: rgba(51, 65, 85, 0.5) !important;
@@ -781,7 +785,7 @@ html {
 
 /* --- 14. Buttons --- */
 [data-theme="midnight"] button {
-  color: #b0bec5 !important;
+  color: #e2e8f0 !important;
 }
 
 /* Primary buttons (theme-primary bg) — use vivid saturated indigo, not pastel */
@@ -848,7 +852,7 @@ html {
 [data-theme="midnight"] button[class*="bg-white"]:hover {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.18) 100%) !important;
   border-color: rgba(165, 180, 252, 0.45) !important;
-  color: #b0bec5 !important;
+  color: #e2e8f0 !important;
   box-shadow:
     0 4px 16px -3px rgba(99, 102, 241, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
@@ -858,13 +862,13 @@ html {
 [data-theme="midnight"] input,
 [data-theme="midnight"] textarea {
   background: linear-gradient(180deg, rgba(10, 15, 30, 0.7) 0%, rgba(15, 23, 42, 0.6) 100%) !important;
-  color: #b0bec5 !important;
+  color: #e2e8f0 !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }
 [data-theme="midnight"] select {
   background: rgba(30, 41, 59, 0.85) !important;
-  color: #b0bec5 !important;
+  color: #e2e8f0 !important;
   border: 1px solid rgba(148, 163, 184, 0.25) !important;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
@@ -979,6 +983,14 @@ html {
 }
 [data-theme="midnight"] [class*="from-gray-100"] {
   --tw-gradient-from: rgba(148, 163, 184, 0.15) !important;
+}
+
+/* --- 22. 商品カードのグラデーション (from-white to-gray-50) --- */
+[data-theme="midnight"] [class*="from-white"] {
+  --tw-gradient-from: rgba(41, 55, 75, 0.62) !important;
+}
+[data-theme="midnight"] [class*="to-gray-50"] {
+  --tw-gradient-to: rgba(25, 35, 52, 0.58) !important;
 }
 
 @theme inline {
