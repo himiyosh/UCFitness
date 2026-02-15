@@ -67,7 +67,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             .from('daily_steps')
             .select('steps, date, updated_at')
             .eq("user_id", user.id)
-            .order('date', { ascending: true }),
+            .order('date', { ascending: true })
+            .limit(10000),
     ]);
 
     let primaryGroup: any = undefined;
@@ -202,7 +203,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             .from('daily_steps')
             .select('steps, date')
             .eq('user_id', viewerId)
-            .order('date', { ascending: true });
+            .order('date', { ascending: true })
+            .limit(10000);
 
         if (vData) {
             viewerHistoryData = vData;
