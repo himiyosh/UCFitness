@@ -266,7 +266,7 @@ html {
     linear-gradient(135deg, rgba(41, 55, 75, 0.62) 0%, rgba(25, 35, 52, 0.58) 50%, rgba(30, 40, 58, 0.62) 100%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(150%) brightness(0.88) !important;
   backdrop-filter: blur(24px) saturate(150%) brightness(0.88) !important;
-  color: #c9d1d9 !important;
+  color: #cbd5e1 !important;
   border: 1px solid rgba(148, 163, 184, 0.14) !important;
   border-top: 1px solid rgba(165, 180, 252, 0.15) !important;
   border-left: 1px solid rgba(165, 180, 252, 0.10) !important;
@@ -310,7 +310,7 @@ html {
   background:
     linear-gradient(170deg, rgba(71, 85, 105, 0.12) 0%, rgba(30, 41, 59, 0) 50%),
     linear-gradient(160deg, rgba(15, 23, 42, 0.65) 0%, rgba(10, 15, 30, 0.55) 100%) !important;
-  color: #c9d1d9 !important;
+  color: #b0bcca !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
   border-top: 1px solid rgba(148, 163, 184, 0.22) !important;
   box-shadow:
@@ -323,7 +323,7 @@ html {
   background:
     linear-gradient(170deg, rgba(71, 85, 105, 0.14) 0%, rgba(30, 41, 59, 0) 50%),
     linear-gradient(160deg, rgba(15, 23, 42, 0.70) 0%, rgba(10, 15, 30, 0.60) 100%) !important;
-  color: #a8b3bf !important;
+  color: #94a3b8 !important;
   border: 1px solid rgba(148, 163, 184, 0.14) !important;
   box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.25) !important;
 }
@@ -347,30 +347,30 @@ html {
   color: rgba(255, 255, 255, 0.6) !important;
 }
 
-/* --- 3. Text Hierarchy (soft whites — 目に優しい階層) --- */
+/* --- 3. Text Hierarchy (slate-tinted — 彩度ありで鮮明) --- */
 [data-theme="midnight"] .text-gray-900,
 [data-theme="midnight"] .text-gray-800 {
-  color: #e2e8f0 !important;  /* 見出し — 明るめライトグレー */
+  color: #e2e8f0 !important;  /* 見出し — slate-200 */
 }
 
 [data-theme="midnight"] .text-gray-700 {
-  color: #c9d1d9 !important;  /* 本文テキスト */
+  color: #cbd5e1 !important;  /* 本文テキスト — slate-300 */
 }
 
 [data-theme="midnight"] .text-gray-600 {
-  color: #a8b3bf !important;  /* セカンダリテキスト */
+  color: #94a3b8 !important;  /* セカンダリ — slate-400 */
 }
 
 [data-theme="midnight"] .text-gray-500 {
-  color: #8b949e !important;  /* キャプション・補足 */
+  color: #8896a5 !important;  /* キャプション — ブルーティント */
 }
 
 [data-theme="midnight"] .text-gray-400 {
-  color: #6e7681 !important;  /* ヒント・薄い情報 */
+  color: #768494 !important;  /* ヒント — ブルーティント・鮮明 */
 }
 
 [data-theme="midnight"] .text-gray-300 {
-  color: #525a65 !important;  /* 非常に薄い要素 */
+  color: #5a6577 !important;  /* 薄い要素 — ブルーティント */
 }
 
 /* --- 4. Borders (all gray shades + border-gray-50) --- */
@@ -683,16 +683,16 @@ html {
   color: #e2e8f0 !important;
 }
 [data-theme="midnight"] .text-gray-700 {
-  color: #c9d1d9 !important;
+  color: #cbd5e1 !important;
 }
 [data-theme="midnight"] .text-gray-600 {
-  color: #a8b3bf !important;
+  color: #94a3b8 !important;
 }
 [data-theme="midnight"] .text-gray-500 {
-  color: #8b949e !important;
+  color: #8896a5 !important;
 }
 [data-theme="midnight"] .text-gray-400 {
-  color: #6e7681 !important;
+  color: #768494 !important;
 }
 [data-theme="midnight"] .hover\:bg-gray-50:hover {
   background-color: rgba(51, 65, 85, 0.5) !important;
@@ -943,17 +943,17 @@ html {
   ) !important;
 }
 
-/* Profile button — visible on dark banner, softer than pure white */
+/* Profile button — visible on dark banner, crisp on glass */
 [data-theme="midnight"] .motivation-btn-primary {
-  background: rgba(165, 180, 252, 0.25) !important;
-  color: #c7d2fe !important;
-  border: 1px solid rgba(165, 180, 252, 0.35) !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(165, 180, 252, 0.1) !important;
-  text-shadow: none !important;
+  background: rgba(165, 180, 252, 0.30) !important;
+  color: #e0e7ff !important;
+  border: 1px solid rgba(165, 180, 252, 0.45) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(165, 180, 252, 0.15) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 [data-theme="midnight"] .motivation-btn-primary:hover {
-  background: rgba(165, 180, 252, 0.4) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(165, 180, 252, 0.15) !important;
+  background: rgba(165, 180, 252, 0.45) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(165, 180, 252, 0.2) !important;
 }
 
 /* Groups button — glass effect on dark banner */
