@@ -33,7 +33,14 @@ export async function POST(request: Request) {
         }
 
         // 2. Validate File MIME Type
-        const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        const MIME_TO_EXT: Record<string, string> = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'image/gif': 'gif'
+        };
+        const ALLOWED_MIME_TYPES = Object.keys(MIME_TO_EXT);
+
         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
              return NextResponse.json({ error: "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed." }, { status: 400 });
         }
@@ -60,8 +67,8 @@ export async function POST(request: Request) {
 
         // Prepare path
         // Path: public/[groupId]/[type]-[timestamp].ext
-        // 🛡️ Sentinel: Sanitize extension and filename
-        const fileExt = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+        // 🛡️ Sentinel: Use extension from validated MIME type (ignore user-provided extension)
+        const fileExt = MIME_TO_EXT[file.type];
         const fileName = `${type}-${Date.now()}.${fileExt}`;
         const filePath = `public/${groupId}/${fileName}`;
 
