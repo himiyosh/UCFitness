@@ -476,8 +476,8 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                 </div>
             ) : (
                 /* ヒートマップ（CSS 1fr で自動フィル） */
-                <div className={`${activity ? 'flex-1' : ''} overflow-x-auto`}>
-                  <div style={{ minWidth: `${20 + maxCol * 10 + (maxCol - 1) * 2}px` }}>
+                <div className={`${activity ? 'flex-1' : ''}`}>
+                  <div>
                     {/* 月ラベル */}
                     <div
                         className="grid gap-[2px] mb-0.5"
