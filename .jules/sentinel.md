@@ -47,3 +47,8 @@
 **Vulnerability:** `app/api/user/group/route.ts` validated unique group keywords but failed to validate group names (length) and image URLs (protocol). This allowed creation of groups with excessively long names (DoS/UI break) or potentially malicious image URLs.
 **Learning:** Partial validation is dangerous. Validating the "key" (keyword) but not the "value" (name, metadata) leaves the application exposed. All user inputs, especially those stored and displayed to other users, must be validated.
 **Prevention:** Implement comprehensive input validation for all fields in a request payload, not just the unique identifiers. Use strict length limits and protocol allowlists for URLs.
+
+## 2025-05-18 - File Extension Spoofing in Uploads
+**Vulnerability:** `app/api/upload/group/route.ts` used the user-provided filename extension to determine the file type, allowing attackers to upload malicious files (e.g., `.php`) with a valid image MIME type.
+**Learning:** Never trust `file.name` for determining file type or extension, as it is completely client-controlled.
+**Prevention:** Always derive the file extension from the validated MIME type on the server side.
