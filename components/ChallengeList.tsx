@@ -148,7 +148,7 @@ export default function ChallengeList() {
                 <div className="text-center py-16">
                     <div className="text-5xl mb-4">🎯</div>
                     <p className="text-gray-500 text-sm mb-4">{t('noActive')}</p>
-                    <p className="text-xs text-gray-400">{tab === 'active' ? '新しいチャレンジを作成して始めましょう！' : ''}</p>
+                    <p className="text-xs text-gray-400">{tab === 'active' ? t('createNewHint') : ''}</p>
                 </div>
             )}
 

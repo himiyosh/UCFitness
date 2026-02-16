@@ -6,7 +6,10 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
 
 // テーマ別スタイル定義
-const themeStyles = {
+const themeStyles: Record<string, {
+    bg: string; border: string; title: string; desc: string;
+    shadow: string; btnBg: string; btnText: string; btnHover: string;
+}> = {
     classic: {
         bg: '#ffffff',
         border: '#e2e8f0',
@@ -36,6 +39,66 @@ const themeStyles = {
         btnBg: 'rgba(165,180,252,0.2)',
         btnText: '#a5b4fc',
         btnHover: 'rgba(165,180,252,0.35)',
+    },
+    sakura: {
+        bg: '#fff5f8',
+        border: '#fbcfe8',
+        title: '#EC4899',
+        desc: '#6b7280',
+        shadow: 'rgba(236,72,153,0.1)',
+        btnBg: 'rgba(236,72,153,0.12)',
+        btnText: '#EC4899',
+        btnHover: 'rgba(236,72,153,0.22)',
+    },
+    ocean: {
+        bg: '#f0fdfa',
+        border: '#a5f3fc',
+        title: '#0891B2',
+        desc: '#6b7280',
+        shadow: 'rgba(8,145,178,0.1)',
+        btnBg: 'rgba(8,145,178,0.12)',
+        btnText: '#0891B2',
+        btnHover: 'rgba(8,145,178,0.22)',
+    },
+    forest: {
+        bg: '#f0fdf4',
+        border: '#bbf7d0',
+        title: '#059669',
+        desc: '#6b7280',
+        shadow: 'rgba(5,150,105,0.1)',
+        btnBg: 'rgba(5,150,105,0.12)',
+        btnText: '#059669',
+        btnHover: 'rgba(5,150,105,0.22)',
+    },
+    sunset: {
+        bg: '#fff7ed',
+        border: '#fed7aa',
+        title: '#EA580C',
+        desc: '#6b7280',
+        shadow: 'rgba(234,88,12,0.1)',
+        btnBg: 'rgba(234,88,12,0.12)',
+        btnText: '#EA580C',
+        btnHover: 'rgba(234,88,12,0.22)',
+    },
+    cyberpunk: {
+        bg: '#1a1025',
+        border: 'rgba(124,58,237,0.5)',
+        title: '#A78BFA',
+        desc: '#c4b5fd',
+        shadow: 'rgba(124,58,237,0.3)',
+        btnBg: 'rgba(124,58,237,0.2)',
+        btnText: '#A78BFA',
+        btnHover: 'rgba(124,58,237,0.35)',
+    },
+    galaxy: {
+        bg: '#f5f3ff',
+        border: '#ddd6fe',
+        title: '#8B5CF6',
+        desc: '#6b7280',
+        shadow: 'rgba(139,92,246,0.1)',
+        btnBg: 'rgba(139,92,246,0.12)',
+        btnText: '#8B5CF6',
+        btnHover: 'rgba(139,92,246,0.22)',
     },
 };
 

@@ -51,6 +51,7 @@ export default function GroupMembersPanel({
     const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
+    const [selectedImage, setSelectedImage] = useState<{ src: string, alt: string } | null>(null);
     const router = useRouter();
     const { success: toastSuccess, error: toastError } = useToast();
     const detailT = useTranslations('GroupDetail');
@@ -267,7 +268,6 @@ export default function GroupMembersPanel({
     }, [groupKeyword, groupName, router, toastError, detailT]);
 
     const ownerCount = useMemo(() => members.filter(m => m.role === 'OWNER').length, [members]);
-    const [selectedImage, setSelectedImage] = useState<{ src: string, alt: string } | null>(null);
 
     // デバウンスタイマーのクリーンアップ
     useEffect(() => {

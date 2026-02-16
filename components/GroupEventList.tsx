@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import GroupEventCard from './GroupEventCard';
 import CreateGroupEventModal from './CreateGroupEventModal';
@@ -88,15 +88,19 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
         fetchEvents();
     }, [fetchEvents]);
 
-    const now = new Date();
-    const activeEvents = events.filter((e) => {
-        const endDate = new Date(e.end_date + 'T23:59:59');
-        return endDate >= now && e.is_active;
-    });
-    const pastEvents = events.filter((e) => {
-        const endDate = new Date(e.end_date + 'T23:59:59');
-        return endDate < now || !e.is_active;
-    });
+    const { activeEvents, pastEvents } = useMemo(() => {
+        const now = new Date();
+        return {
+            activeEvents: events.filter((e) => {
+                const endDate = new Date(e.end_date + 'T23:59:59');
+                return endDate >= now && e.is_active;
+            }),
+            pastEvents: events.filter((e) => {
+                const endDate = new Date(e.end_date + 'T23:59:59');
+                return endDate < now || !e.is_active;
+            }),
+        };
+    }, [events]);
 
     const displayEvents = tab === 'active' ? activeEvents : pastEvents;
 

@@ -120,7 +120,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     let lastSyncedAt: string | null = null;
 
     // 集計データ（RPC から取得 — PostgREST 1000行制限を回避）
-    const statsData = statsResult.data;
+    // RPC が配列で返る場合と直接オブジェクトで返る場合の両方に対応
+    const rawStats = statsResult.data;
+    const statsData = Array.isArray(rawStats) ? rawStats[0] : rawStats;
     if (statsData) {
         totalSteps = statsData.total_steps || 0;
         bestDay = {

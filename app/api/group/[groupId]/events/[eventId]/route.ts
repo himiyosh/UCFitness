@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { reportError } from '@/lib/errors';
 
 interface RouteParams {
     params: Promise<{ groupId: string; eventId: string }>;
@@ -109,7 +110,7 @@ export async function GET(
             percentage,
         });
     } catch (err) {
-        console.error('GET /api/group/[groupId]/events/[eventId] error:', err);
+        reportError('group/events/detail:unexpected', err);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

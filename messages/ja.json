@@ -62,14 +62,23 @@
         "equipped": "設定中",
         "moreTitles": "もっと称号を見る",
         "moreThemes": "もっとテーマを見る",
+        "changeTheme": "テーマを変更する",
+        "collapseThemes": "閉じる",
         "profileCompletion": "プロフィール完成度",
         "profileComplete": "プロフィール完成！🎉",
         "classicDesc": "シンプル＆プロフェッショナル",
         "popDesc": "ポップ＆カラフル",
         "midnightDesc": "ダーク＆エレガント",
+        "sakuraDesc": "桜のような柔らかなピンク",
+        "oceanDesc": "海のように深く落ち着いたブルー",
+        "forestDesc": "森林の癒しのグリーン",
+        "sunsetDesc": "夕焼けの温かいオレンジ",
+        "cyberpunkDesc": "近未来的なネオンパープル",
+        "galaxyDesc": "銀河のような神秘的なバイオレット",
         "accountStats": "アカウント統計",
         "titlesOwned": "所持称号",
         "framesOwned": "所持フレーム",
+        "themesOwned": "所持テーマ",
         "currentTheme": "現在のテーマ",
         "shopCta": "UCショップ",
         "shopCtaDescription": "称号・フレーム・テーマでプロフィールをカスタマイズしよう！",
@@ -429,7 +438,9 @@
         "rankLocked": "{rank}が必要",
         "featured": "おすすめ",
         "itemCount": "{count}個",
-        "canAfford": "購入可能！"
+        "canAfford": "購入可能！",
+        "tryTheme": "このテーマを試着する",
+        "revertPreview": "元のテーマに戻す"
     },
     "Splash": {
         "loading": "歩数を読み込み中...",
@@ -542,6 +553,11 @@
         "showLess": "閉じる",
         "showAll": "全{count}人を表示"
     },
+    "GroupReactions": {
+        "addReaction": "リアクションする",
+        "removeReaction": "リアクションを取り消す",
+        "receivedCount": "{count}件のリアクション"
+    },
     "Calendar": {
         "title": "歩数カレンダー",
         "totalSteps": "合計歩数",
@@ -551,6 +567,7 @@
         "days": "日",
         "steps": "歩",
         "noData": "この年の歩数データはありません",
+        "syncHint": "歩数を同期してカレンダーを埋めましょう！",
         "less": "少ない",
         "more": "多い",
         "showCalendar": "カレンダーを表示",
@@ -589,6 +606,21 @@
             "ucMillionaire": "UCミリオネア",
             "shopaholic": "買い物マスター",
             "teamPlayer": "チームプレイヤー"
+        },
+        "descriptions": {
+            "firstStep": "累計 1,000 歩を達成",
+            "strollMaster": "累計 100,000 歩を達成",
+            "marathonRunner": "累計 500,000 歩を達成",
+            "globeTrotter": "累計 1,000,000 歩を達成",
+            "moonWalker": "累計 5,000,000 歩を達成",
+            "galaxyVoyager": "累計 10,000,000 歩を達成",
+            "beyondThree": "7 日連続で目標達成",
+            "ironWill": "30 日連続で目標達成",
+            "unbreakable": "100 日連続で目標達成",
+            "legendaryStreaker": "365 日連続で目標達成",
+            "ucMillionaire": "UC 残高 100,000 に到達",
+            "shopaholic": "ショップで 5 個アイテムを購入",
+            "teamPlayer": "3 つのグループに参加"
         }
     },
     "Analytics": {
@@ -639,7 +671,8 @@
         "activeChallenges": "\u30a2\u30af\u30c6\u30a3\u30d6\u30c1\u30e3\u30ec\u30f3\u30b8",
         "viewAll": "\u3059\u3079\u3066\u898b\u308b",
         "backToHome": "\u30db\u30fc\u30e0\u306b\u623b\u308b",
-        "retry": "\u518d\u8a66\u884c"
+        "retry": "\u518d\u8a66\u884c",
+        "createNewHint": "\u65b0\u3057\u3044\u30c1\u30e3\u30ec\u30f3\u30b8\u3092\u4f5c\u6210\u3057\u3066\u59cb\u3081\u307e\u3057\u3087\u3046\uff01"
     },
     "Shield": {
         "title": "ストリークシールド",
@@ -657,6 +690,7 @@
         "followCount": "{count}人をフォロー中",
         "followerCount": "{count}人のフォロワー",
         "noFollowing": "まだ誰もフォローしていません。",
+        "loadError": "データの読み込みに失敗しました",
         "todaySteps": "今日",
         "followingActivity": "フォロー中のアクティビティ",
         "more": "人",

@@ -45,8 +45,11 @@ export async function GET(req: NextRequest) {
 
             const challengeIds = participations?.map(p => p.challenge_id) || [];
 
-            query = query.or(`created_by.eq.${userId},id.in.(${challengeIds.join(',')})`);
-        }
+            if (challengeIds.length > 0) {
+                query = query.or(`created_by.eq.${userId},id.in.(${challengeIds.join(',')})`);
+            } else {
+                query = query.eq('created_by', userId);
+            }        }
 
         // タイプフィルタ
         if (type) {
@@ -58,22 +61,25 @@ export async function GET(req: NextRequest) {
             query = query.eq('group_id', groupId);
         }
 
-        const { data, error } = await query.limit(50);
+        // メインクエリと参加状況を並列取得
+        const [queryResult, participationsResult] = await Promise.all([
+            query.limit(50),
+            userId
+                ? supabaseAdmin
+                    .from('challenge_participants')
+                    .select('challenge_id')
+                    .eq('user_id', userId)
+                : Promise.resolve({ data: [] as { challenge_id: string }[] }),
+        ]);
+
+        const { data, error } = queryResult;
 
         if (error) {
             reportError('challenge:list', error);
             return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
         }
 
-        // 参加状況を付与
-        let participatedIds: string[] = [];
-        if (userId) {
-            const { data: myParticipations } = await supabaseAdmin
-                .from('challenge_participants')
-                .select('challenge_id')
-                .eq('user_id', userId);
-            participatedIds = myParticipations?.map(p => p.challenge_id) || [];
-        }
+        const participatedIds = participationsResult.data?.map(p => p.challenge_id) || [];
 
         const challenges = (data || []).map(challenge => ({
             ...challenge,

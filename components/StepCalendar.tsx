@@ -116,7 +116,7 @@ function HeatmapCell({
 
     // 各レベルに対応する色（テーマカラー1色の濃淡、0=無色）
     const levelStyles: React.CSSProperties[] = [
-        { backgroundColor: '#ebedf0' },
+        { backgroundColor: 'var(--heatmap-empty, #ebedf0)' },
         { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' },
         { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' },
         { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' },
@@ -183,11 +183,13 @@ function HeatmapCell({
 
 // ゴール進捗リング（軽量SVG）+ 100%達成時の紙吹雪＆アニメーション
 function GoalRing({ current, goal }: { current: number; goal: number }) {
-    const pct = Math.min(current / goal, 1);
-    const isAchieved = pct >= 1;
+    const rawPct = goal > 0 ? current / goal : 0;
+    const isAchieved = rawPct >= 1;
+    // リングの塗りは最大1周（100%）に制限。表示テキストは実際の%を表示
+    const ringPct = Math.min(rawPct, 1);
     const r = 32;
     const circ = 2 * Math.PI * r;
-    const offset = circ * (1 - pct);
+    const offset = circ * (1 - ringPct);
     const color = isAchieved ? '#22c55e' : 'var(--theme-primary)';
 
     // 🎉 紙吹雪: 初回100%達成時のみ発火
@@ -220,7 +222,7 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                             style={{ transformOrigin: '40px 40px' }}
                         />
                     )}
-                    <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="5" />
+                    <circle cx="40" cy="40" r={r} fill="none" stroke="var(--ring-track, #e5e7eb)" strokeWidth="5" />
                     <circle
                         cx="40" cy="40" r={r} fill="none"
                         stroke={color} strokeWidth="5" strokeLinecap="round"
@@ -232,11 +234,11 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                     {isAchieved ? (
                         <>
                             <span className="text-lg">🎉</span>
-                            <span className="text-xs font-bold text-green-600">100%</span>
+                            <span className="text-xs font-bold text-green-600">{Math.round(rawPct * 100)}%</span>
                         </>
                     ) : (
                         <>
-                            <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(pct * 100)}%</span>
+                            <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(rawPct * 100)}%</span>
                             <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{goal.toLocaleString()}</span>
                         </>
                     )}
@@ -463,13 +465,19 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             )}
 
             {data.length === 0 ? (
-                <div className="text-center py-4 text-xs text-[var(--foreground-muted)]">
-                    {t('noData')}
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <span className="text-4xl mb-3">📊</span>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--theme-primary)' }}>
+                        {t('noData')}
+                    </p>
+                    <p className="text-xs mt-1.5 text-[var(--foreground-muted)]">
+                        {t('syncHint')}
+                    </p>
                 </div>
             ) : (
                 /* ヒートマップ（CSS 1fr で自動フィル） */
-                <div className={`${activity ? 'flex-1' : ''} overflow-x-auto`}>
-                  <div style={{ minWidth: `${20 + maxCol * 10 + (maxCol - 1) * 2}px` }}>
+                <div className={`${activity ? 'flex-1' : ''}`}>
+                  <div>
                     {/* 月ラベル */}
                     <div
                         className="grid gap-[2px] mb-0.5"
@@ -517,7 +525,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     {/* 凡例 */}
                     <div className="flex items-center gap-1.5 mt-2 justify-end text-[10px] text-gray-400">
                         <span>{t('less')}</span>
-                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#ebedf0' }} />
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'var(--heatmap-empty, #ebedf0)' }} />
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 45%, transparent)' }} />
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 70%, transparent)' }} />

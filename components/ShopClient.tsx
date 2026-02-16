@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useTheme, type Theme } from '@/components/ThemeProvider';
@@ -12,7 +12,14 @@ import ShopRecommendations from '@/components/ShopRecommendations';
 
 /** item_code → アプリテーマのマッピング */
 const THEME_MAP: Record<string, Theme> = {
+    theme_pop: 'pop',
     theme_midnight: 'midnight',
+    theme_sakura: 'sakura',
+    theme_ocean: 'ocean',
+    theme_forest: 'forest',
+    theme_sunset: 'sunset',
+    theme_cyberpunk: 'cyberpunk',
+    theme_galaxy: 'galaxy',
 };
 
 // --- 型定義 ---
@@ -187,8 +194,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             if (!picked.includes(item)) picked.push(item);
         }
         return picked;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [items.length, ownedItemIds.size]);
+    }, [items, ownedItemIds]);
 
     // カテゴリ別の未所持アイテム数
     const categoryStats = useMemo(() => {
@@ -639,6 +645,61 @@ function InventoryView({
 }
 
 // ============================================
+// サブコンポーネント: テーマ試着ボタン
+// ============================================
+function ThemeTryOnButton({ itemCode, t }: { itemCode: string; t: (key: string) => string }) {
+    const { theme, setTheme } = useTheme();
+    const [originalTheme, setOriginalTheme] = useState<Theme | null>(null);
+    const targetTheme = THEME_MAP[itemCode];
+    const isTrying = originalTheme !== null;
+
+    const handleTryOn = useCallback(() => {
+        if (!targetTheme) return;
+        setOriginalTheme(theme);
+        setTheme(targetTheme);
+    }, [theme, setTheme, targetTheme]);
+
+    const handleRevert = useCallback(() => {
+        if (originalTheme) {
+            setTheme(originalTheme);
+            setOriginalTheme(null);
+        }
+    }, [originalTheme, setTheme]);
+
+    // ダイアログが閉じられた時に自動で元に戻す
+    useEffect(() => {
+        return () => {
+            if (originalTheme) {
+                // unmount時にrevertする（setThemeはコンテキスト経由なので安全）
+                // ただし状態更新はrenderサイクル外なのでsetTimeoutで遅延
+                const revertTo = originalTheme;
+                setTimeout(() => {
+                    document.documentElement.setAttribute('data-theme', revertTo === 'classic' ? '' : revertTo);
+                    if (revertTo === 'classic') document.documentElement.removeAttribute('data-theme');
+                    localStorage.setItem('ucfitness-theme', revertTo);
+                }, 0);
+            }
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    if (!targetTheme) return null;
+
+    return (
+        <button
+            onClick={isTrying ? handleRevert : handleTryOn}
+            className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all mb-3 ${
+                isTrying
+                    ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] hover:opacity-80 border border-[var(--theme-primary)]/20'
+            }`}
+        >
+            {isTrying ? `↩ ${t('revertPreview')}` : `👁️ ${t('tryTheme')}`}
+        </button>
+    );
+}
+
+// ============================================
 // サブコンポーネント: アイテムプレビューダイアログ
 // ============================================
 function ItemPreviewDialog({
@@ -720,7 +781,22 @@ function ItemPreviewDialog({
                         <span className="text-7xl drop-shadow-lg">{item.preview_value}</span>
                     )}
                     {item.category === 'THEME_COLOR' && (
-                        <div className="w-24 h-24 rounded-full shadow-xl border-4 border-white/50" style={{ backgroundColor: item.preview_value }} />
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-20 h-20 rounded-full shadow-xl border-4 border-white/50" style={{ backgroundColor: item.preview_value }} />
+                            {/* ライブプレビュー: テーマ適用時のミニUI */}
+                            <div className="bg-white/90 rounded-xl px-4 py-2.5 shadow-lg w-56">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                    <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.preview_value }} />
+                                    <span className="text-xs font-bold" style={{ color: item.preview_value }}>UCFitness</span>
+                                </div>
+                                <div className="h-1.5 rounded-full w-full" style={{ background: `linear-gradient(90deg, ${item.preview_value}, ${item.preview_value}88)` }} />
+                                <div className="flex gap-1 mt-1.5">
+                                    <div className="h-2 rounded w-8" style={{ backgroundColor: `${item.preview_value}33` }} />
+                                    <div className="h-2 rounded w-12" style={{ backgroundColor: `${item.preview_value}22` }} />
+                                    <div className="h-2 rounded w-6" style={{ backgroundColor: `${item.preview_value}33` }} />
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
 
@@ -744,6 +820,12 @@ function ItemPreviewDialog({
                     </div>
 
                     {/* ステータス / アクション */}
+                    {item.category === 'THEME_COLOR' && item.item_code && THEME_MAP[item.item_code] && !isEquipped && (
+                        <ThemeTryOnButton
+                            itemCode={item.item_code}
+                            t={t}
+                        />
+                    )}
                     {isComingSoon ? (
                         <div className="text-center py-3 rounded-xl bg-gray-100 text-gray-400 font-bold text-sm whitespace-nowrap">
                             🚧 {t('comingSoon')}

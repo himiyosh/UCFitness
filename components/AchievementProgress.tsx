@@ -53,6 +53,9 @@ const ACHIEVEMENT_NAME_KEY: Record<string, string> = {
     title_team_player: 'teamPlayer',
 };
 
+/** アチーブメント説明の i18n キー（名前キーと同じマッピング） */
+const ACHIEVEMENT_DESC_KEY = ACHIEVEMENT_NAME_KEY;
+
 /** 数値をフォーマット（1,000 / 1M など） */
 function formatNumber(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
@@ -182,6 +185,7 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
             {nextGoalItem && (() => {
                 const emoji = ACHIEVEMENT_EMOJI[nextGoalItem.itemCode] || '🏆';
                 const nameKey = ACHIEVEMENT_NAME_KEY[nextGoalItem.itemCode] || nextGoalItem.itemCode;
+                const descKey = ACHIEVEMENT_DESC_KEY[nextGoalItem.itemCode] || nextGoalItem.itemCode;
                 return (
                     <div className="px-4 py-2.5 bg-[var(--theme-primary-light)]/50">
                         <div className="flex items-center gap-2">
@@ -195,6 +199,7 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                                         {t(`names.${nameKey}`)}
                                     </span>
                                 </div>
+                                <p className="text-[9px] text-gray-500 truncate mb-0.5">{t(`descriptions.${descKey}`)}</p>
                                 <div className="flex items-center gap-2">
                                     <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-gray-200">
                                         <div
@@ -226,20 +231,27 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                                         const isNext = item.itemCode === nextGoalCode;
                                         const emoji = ACHIEVEMENT_EMOJI[item.itemCode] || '🏆';
                                         const nameKey = ACHIEVEMENT_NAME_KEY[item.itemCode] || item.itemCode;
+                                        const descKey = ACHIEVEMENT_DESC_KEY[item.itemCode] || item.itemCode;
 
                                         return (
                                             <div
                                                 key={item.itemCode}
-                                                className={`flex items-center gap-2 rounded-md px-2 py-1 ${
+                                                title={t(`descriptions.${descKey}`)}
+                                                className={`flex items-center gap-2 rounded-md px-2 py-1 cursor-default ${
                                                     isNext ? 'bg-[var(--theme-primary-light)]/30' : ''
                                                 }`}
                                             >
                                                 <span className="text-sm flex-shrink-0">{emoji}</span>
-                                                <span className={`text-[11px] font-medium truncate flex-1 ${
-                                                    item.earned ? 'text-gray-400' : 'text-gray-700'
-                                                }`}>
-                                                    {t(`names.${nameKey}`)}
-                                                </span>
+                                                <div className="flex-1 min-w-0">
+                                                    <span className={`text-[11px] font-medium truncate block ${
+                                                        item.earned ? 'text-gray-400' : 'text-gray-700'
+                                                    }`}>
+                                                        {t(`names.${nameKey}`)}
+                                                    </span>
+                                                    <span className="text-[9px] text-gray-400 truncate block">
+                                                        {t(`descriptions.${descKey}`)}
+                                                    </span>
+                                                </div>
                                                 {item.earned ? (
                                                     <span className="text-xs text-green-500 flex-shrink-0">✅</span>
                                                 ) : (

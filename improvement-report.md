@@ -447,3 +447,103 @@
 ---
 
 *レビュー: GitHub Copilot (Claude Opus 4.6) | 2026-02-14*
+
+---
+
+## 🔍 新機能提案 — Cycle 1 (2026-02-15)
+
+> **調査対象:** 全マイグレーション40件、APIルート30+、コンポーネント70+、ライブラリ24件
+> **DBテーブル確認済:** `users`, `daily_steps`, `groups`, `group_members`, `badges`, `user_badges`, `coin_transactions`, `coin_balances`, `shop_items`, `user_items`, `push_subscriptions`, `challenges`, `challenge_participants`, `daily_missions`, `user_streak_shields`, `user_follows`, `group_events`, `recommended_items`, `cron_logs`
+> **前回提案からの実装済み確認:** StepCalendar ✅, DailyMissions ✅, FollowingComparison ✅, LoginBonus ✅, PersonalizedGear ✅, ShareMilestone ✅, GroupWeeklyReport ✅, StreakShield ✅, AchievementProgress ✅, AdSlot ✅, Challenges ✅, WeeklyChallenge ✅
+> **分析手法:** 未実装のバックエンドインフラ発掘 + ユーザージャーニーギャップ分析 + UC経済圏深化
+
+---
+
+### 🏆 優先度 High (すぐに着手すべき)
+
+| # | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+|---|--------|------|--------|----------|----------|
+| 1 | 💸 **UCギフト送信UI** | `deductBalance(GIFT_SEND)` / `creditBalance(GIFT_RECEIVE)` が**DB関数として既に完成**しているがUIが存在しない。フォロー中ユーザーにUCチップを送れるモーダルを追加するだけ | 🟢 Easy | `deduct_balance`/`credit_balance` PG関数、`coin_transactions` GIFT_SEND/GIFT_RECEIVE型、`user_follows`、`user/search` API | DAU +15%, ソーシャル粘着度向上、UC流通量増加 |
+| 2 | 📊 **歩数データエクスポート (CSV)** | 自分の `daily_steps` + `coin_transactions` 履歴をCSVダウンロード。Edge Runtimeで動的CSV生成可能（外部ライブラリ不要、`Response` ヘッダーのみ） | 🟢 Easy | `daily_steps`、`coin_transactions`、`coin_balances`、Settings ページ | ユーザー信頼度向上、データポータビリティ、GDPR準拠の基盤 |
+| 3 | 🔔 **ランク抜き返し通知** | グループ内で自分のランクが抜かれた時にプッシュ通知。`cron/update-steps` の既存同期ループ内でランク変動を検知し `web-push.ts` で配信 | 🟡 Medium | `push_subscriptions`、`web-push.ts`、`ranking-service.ts`、`group-ranking-service.ts`、`cron/update-steps` | 競争意欲 +30%, DAU +20%（通知経由の復帰） |
+| 4 | 🏦 **UCステーキング（定期預金）** | UCを7/30/90日間ロックし利息（年利5-15%日割り）を得る「投資家」テーマ強化。`coin_transactions` に `STAKING_LOCK`/`STAKING_UNLOCK`/`STAKING_REWARD` 型を追加。投資家ランクとの親和性が高い | 🟡 Medium | `coin_transactions`、`coin_balances`、`INVESTOR_RANKS`、`deduct_balance` PG関数、WalletページUI | UC経済の深化、ログイン後の「利息確認」習慣でDAU +15% |
+
+### 📋 優先度 Medium (次スプリントで検討)
+
+| # | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+|---|--------|------|--------|----------|----------|
+| 5 | 🎯 **フレンドチャレンジ（1対1対決）** | フォロー中ユーザーを指名して期間限定の歩数対決。既存 `challenges` テーブルに `type='DUEL'` を追加し、`challenge_participants` を2名に制限。勝者にUC報酬 | 🟡 Medium | `challenges`、`challenge_participants`、`user_follows`、`coin_transactions`、`push_subscriptions` | ソーシャルエンゲージメント +25%, チャレンジ利用率 +40% |
+| 6 | 📅 **ストリークリカバリー（24時間復活）** | ストリーク途切れから24時間以内にUCを支払って復活。`user_streak_shields` の `last_used_date` で直前日を検知、`deduct_balance` でUC消費 | 🟢 Easy | `user_streak_shields`、`coin_balances`、`deduct_balance` PG関数、`coin-service.ts` `calculateCurrentStreak` | UC消費促進、ストリーク維持率 +20%、離脱防止 |
+| 7 | 🏅 **グループ内ミニリーグ** | グループ内で毎週自動的に4-6人の小グループ（リーグ）に振り分け。上位2名が昇格、下位2名が降格する「昇降格リーグ」方式。`group_members` + `daily_steps` の集計で実現 | 🟡 Medium | `group_members`、`daily_steps`、`GroupRankingPanel`、`cron/badges`、`push_subscriptions` | グループ内競争激化、少人数が「勝てる」仕組みでモチベ向上 |
+| 8 | ✅ **テーマカラー拡張 + プレビュー** | **実装済み** — 5新テーマ（橜・オーシャン・フォレスト・サンセット・サイバーパンク）追加、ショップ内試着機能実装 | ✅ Done | `ThemeProvider.tsx`, `ShopClient.tsx`, `globals.css`, `UCHintBalloon.tsx` | ショップ売上 +30%、プロフィール差別化 |
+
+### 💡 優先度 Low (バックログ)
+
+| # | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+|---|--------|------|--------|----------|----------|
+| 9 | 🌸 **季節イベント・限定バッジ** | 花見(3月)、夏祭り(8月)、ハロウィン(10月)、正月(1月) の4シーズン限定チャレンジ。期間限定フレーム + バッジ報酬 | 🟡 Medium | `challenges` (is_system)、`badges`、`shop_items` ICON_FRAME、`cron/weekly-challenge` パターン | 季節的DAUスパイク +40%、限定品による購買意欲 |
+| 10 | ✅ **グループ内リアクション** | **実装済み** — グループメンバーの歩数に対して絵文字リアクション（👏🔥💪👍）を送信 | ✅ Done | `GroupReactions.tsx`, `GroupDetailLeaderboard.tsx`, `/api/group/[groupId]/reactions` | ソーシャルインタラクション多様化、グループ活性化 +20% |
+| 11 | 📈 **歩数予測ウィジェット** | 過去4週の曜日別平均から今週の歩数目標達成確率を算出。Edge Functionで軽量統計処理（外部AI不要、線形回帰のみ） | 🟡 Medium | `daily_steps`、`PersonalAnalytics`、Recharts | 差別化、週始めのモチベーション向上 |
+| 12 | 🔗 **招待リンク + リファラルボーナス** | グループ固有の招待URL生成（`/invite/[code]`）。招待されたユーザーが初回同期完了時に、招待者・被招待者双方にUCボーナス付与 | 🟡 Medium | `groups`、`group_members`、`coin_transactions` (新type: REFERRAL)、`credit_balance` PG関数 | オーガニック流入 +20%, ユーザー獲得コスト削減 |
+
+---
+
+### 📐 実装設計メモ (High 項目のみ)
+
+#### 1. 💸 UCギフト送信UI
+- **DB変更:** なし。`deduct_balance`/`credit_balance` PG関数が既にGIFT_SEND/GIFT_RECEIVE型をサポート済み
+- **API:** `POST /api/user/gift` — `{ recipientId: UUID, amount: number, message?: string }` → 送信者に`deduct_balance(GIFT_SEND)` + 受信者に`credit_balance(GIFT_RECEIVE)` をトランザクション内で実行。べき等性キー `gift:{senderId}:{recipientId}:{timestamp}`
+- **コンポーネント:**
+  - `GiftModal.tsx` (新規) — 金額入力（最低100UC、最大残高の50%）+ 確認ダイアログ + 送信アニメーション
+  - `FollowButtonWrapper.tsx` に「💰 チップ」ボタン追加（フォロー中ユーザーのプロフィールで表示）
+  - `TransactionHistory.tsx` — GIFT_SEND/GIFT_RECEIVE の表示ラベル・アイコン追加
+- **既存ファイルへの影響:** `FollowButtonWrapper.tsx`, `TransactionHistory.tsx`, `messages/ja.json`, `messages/en.json`
+- **セキュリティ:** 自分自身への送信禁止、1日の送信上限（10回 or 総額50,000UC）、レートリミット
+
+#### 2. 📊 歩数データエクスポート (CSV)
+- **DB変更:** なし（`daily_steps`, `coin_transactions` から READ-ONLY で取得）
+- **API:** `GET /api/user/export?type=steps&from=2026-01-01&to=2026-02-15` — `auth()` で認証後、`supabaseAdmin` で `daily_steps` を取得し、カンマ区切り文字列を生成。`Response` の `Content-Type: text/csv` + `Content-Disposition: attachment` ヘッダーで返却（外部ライブラリ不要）
+- **コンポーネント:** `ExportButton.tsx` (新規) — ドロップダウンで期間選択 + CSV/JSON切り替え
+- **既存ファイルへの影響:** `app/[locale]/settings/page.tsx` に「データエクスポート」セクション追加
+- **Edge Runtime互換:** `fs` 不使用、純粋な文字列操作のみ
+
+#### 3. 🔔 ランク抜き返し通知
+- **DB変更:** `users` テーブルに `notification_preferences JSONB DEFAULT '{}'` カラム追加（通知ON/OFF制御用）
+- **API:**
+  - `cron/update-steps` 内で各ユーザーのステップ更新後、グループ別ランキングの変動を検知
+  - ランク変動があったユーザーに `web-push.ts` の `sendWebPushNotification()` で通知配信
+  - 通知テキスト例: 「🔥 @taro があなたのランクを抜きました！今日あと2,340歩で逆転可能」
+- **コンポーネント:**
+  - `SettingsForm.tsx` に通知設定トグル追加（ランク変動通知ON/OFF）
+- **既存ファイルへの影響:** `cron/update-steps/route.ts`、`lib/web-push.ts`（既存関数をそのまま使用）、`SettingsForm.tsx`
+- **パフォーマンス:** ランク変動チェックは `Map` で前後比較（O(n)）。通知は `Promise.allSettled` で並列送信
+
+#### 4. 🏦 UCステーキング（定期預金）
+- **DB変更:**
+  - 新テーブル `uc_stakes`: `(id UUID PK, user_id UUID FK, amount INT, lock_days INT, interest_rate DECIMAL, locked_at TIMESTAMPTZ, unlocks_at TIMESTAMPTZ, is_matured BOOLEAN DEFAULT false, matured_at TIMESTAMPTZ)`
+  - `coin_transactions` の型制約に `STAKING_LOCK`, `STAKING_UNLOCK`, `STAKING_REWARD` を追加
+- **API:**
+  - `POST /api/user/staking` — `{ amount, lockDays: 7|30|90 }` → `deduct_balance(STAKING_LOCK)` でUCロック + `uc_stakes` INSERT
+  - `GET /api/user/staking` — アクティブなステーキング一覧 + 利息プレビュー
+  - `POST /api/cron/staking-maturity` — 満期到達ステーキングを検出し `credit_balance(STAKING_REWARD)` で利息付き返却
+- **コンポーネント:**
+  - `StakingPanel.tsx` (新規) — 投資家ランクカード近くに配置、利率表示 + ロック期間選択 + 現在のアクティブステーキング一覧
+- **既存ファイルへの影響:** `app/[locale]/wallet/page.tsx` に StakingPanel 追加、`lib/constants.ts` に利率定数追加
+- **利率設計:** 7日 = 年利5% (日割0.0137%), 30日 = 年利10% (日割0.0274%), 90日 = 年利15% (日割0.0411%)。最低ステーキング額: 10,000 UC
+
+---
+
+### 🔎 調査結果サマリー
+
+| 観点 | 発見事項 |
+|------|---------|
+| **最大の未使用インフラ** | `deduct_balance(GIFT_SEND)` / `credit_balance(GIFT_RECEIVE)` のPG関数が完全実装済みだがUIなし。**最小工数で最大効果を得られる機能**。API + UI の約200行で完成 |
+| **前回提案の実装率** | Cycle 2/5 で提案した15件中 **12件が実装済み** (80%)。StepCalendar, DailyMissions, FollowingComparison, LoginBonus, PersonalizedGear, ShareMilestone, GroupWeeklyReport, StreakShield, AchievementProgress, AdSlot, Challenges, WeeklyChallenge |
+| **UC経済圏の課題** | UC の「消費先」がショップ購入とストリークシールドのみ。ギフト送信 + ステーキングで循環を生み、INVESTOR_RANKS の意味を深化させる余地が大きい |
+| **通知基盤の活用度** | `push_subscriptions` + `web-push.ts` が稼働中だが、現在は手動同期の結果通知のみ。ランク変動・チャレンジ進捗などのイベント駆動通知が未活用 |
+| **ソーシャル機能のギャップ** | フォロー + グループはあるが「ユーザー間インタラクション」が歩数比較に限定。ギフト・リアクション・1対1チャレンジで双方向性を追加可能 |
+| **データ活用余地** | `daily_steps` の長期履歴データが蓄積中。予測・トレンド分析・エクスポートなどの READ-ONLY 機能はリスク最小 |
+
+---
+
+*提案: GitHub Copilot (Claude Opus 4.6) | 🔍 New Feature Discovery Agent | Cycle 1 | 2026-02-15*

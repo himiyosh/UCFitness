@@ -29,7 +29,8 @@ export async function GET(request: Request) {
     }
 
     // 実績データを並列取得
-    const [balanceResult, badgesResult, stepsResult, goalResult] = await Promise.all([
+    // 📊 daily_steps は PostgREST の 1000行制限を回避するため RPC + count を使用
+    const [balanceResult, badgesResult, statsResult, goalResult, activeDaysResult, totalDaysResult] = await Promise.all([
         supabaseAdmin
             .from('coin_balances')
             .select('total_balance, total_earned, current_streak, best_streak, investor_rank')
@@ -39,24 +40,45 @@ export async function GET(request: Request) {
             .from('user_badges')
             .select('id')
             .eq('user_id', user.id),
+        // 全期間の集計（RPC — 1000行制限なし）
         supabaseAdmin
-            .from('daily_steps')
-            .select('steps')
-            .eq('user_id', user.id),
+            .rpc('get_user_step_stats', { p_user_id: user.id }),
         supabaseAdmin
             .from('users')
             .select('step_goal')
             .eq('id', user.id)
             .single(),
+        // アクティブ日数（steps > 0 の行数）
+        supabaseAdmin
+            .from('daily_steps')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .gt('steps', 0),
+        // 全記録日数（合計行数）
+        supabaseAdmin
+            .from('daily_steps')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id),
     ]);
 
     const balance = balanceResult.data;
     const badges = badgesResult.data || [];
-    const stepsData = stepsResult.data || [];
 
-    const totalSteps = stepsData.reduce((sum, row) => sum + (row.steps || 0), 0);
-    const activeDays = stepsData.filter(row => row.steps > 0).length;
-    const goalAchievedDays = stepsData.filter(row => row.steps >= (goalResult.data?.step_goal || 10000)).length;
+    // RPC 結果の解析（配列 or オブジェクト両対応）
+    const rawStats = statsResult.data;
+    const statsData = Array.isArray(rawStats) ? rawStats[0] : rawStats;
+    const totalSteps = statsData?.total_steps || 0;
+
+    const activeDays = activeDaysResult.count || 0;
+
+    // 目標達成日数は step_goal でフィルタ
+    const stepGoal = goalResult.data?.step_goal || 10000;
+    const { count: goalCount } = await supabaseAdmin
+        .from('daily_steps')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('steps', stepGoal);
+    const goalAchievedDays = goalCount || 0;
 
     return NextResponse.json({
         username: user.username,

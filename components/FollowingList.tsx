@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import UserAvatar from '@/components/UserAvatar';
 import { Link } from '@/navigation';
@@ -34,24 +34,27 @@ export default function FollowingList({ limit, compact = false, className = '' }
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
 
-    useEffect(() => {
-        const fetchFollowing = async () => {
-            try {
-                const res = await fetch('/api/user/following');
-                if (res.ok) {
-                    const data = await res.json();
-                    setFollowing(data.following || []);
-                } else {
-                    setError(true);
-                }
-            } catch {
+    const fetchFollowing = useCallback(async () => {
+        setIsLoading(true);
+        setError(false);
+        try {
+            const res = await fetch('/api/user/following');
+            if (res.ok) {
+                const data = await res.json();
+                setFollowing(data.following || []);
+            } else {
                 setError(true);
-            } finally {
-                setIsLoading(false);
             }
-        };
-        fetchFollowing();
+        } catch {
+            setError(true);
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchFollowing();
+    }, [fetchFollowing]);
 
     // ローディングスケルトン
     if (isLoading) {
@@ -75,9 +78,9 @@ export default function FollowingList({ limit, compact = false, className = '' }
         return (
             <div className={`text-center py-6 ${className}`}>
                 <div className="text-3xl mb-2">⚠️</div>
-                <p className="text-sm text-[var(--foreground-muted)] mb-2">{t('noFollowing')}</p>
+                <p className="text-sm text-[var(--foreground-muted)] mb-2">{t('loadError')}</p>
                 <button
-                    onClick={() => { setError(false); setIsLoading(true); window.location.reload(); }}
+                    onClick={() => fetchFollowing()}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:scale-105 active:scale-95 transition-all"
                     style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
                 >

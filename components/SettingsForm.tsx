@@ -14,6 +14,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { getFrameColor } from '@/components/UserAvatar';
 import TitleSelector, { type OwnedTitle } from '@/components/TitleSelector';
 import FrameSelector, { type OwnedFrame } from '@/components/FrameSelector';
+import ThemeSelector, { type OwnedTheme } from '@/components/ThemeSelector';
 import StepGoalForm from '@/components/StepGoalForm';
 
 
@@ -26,7 +27,7 @@ interface UserData {
     banner_url?: string | null;
 }
 
-export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [], ownedFrames = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[]; ownedFrames?: OwnedFrame[] }) {
+export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [], ownedFrames = [], ownedThemes = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[]; ownedFrames?: OwnedFrame[]; ownedThemes?: OwnedTheme[] }) {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -61,12 +62,28 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
         [completionItems]
     );
 
-    // Midnight を所有していないのに適用中の場合、classic にリセット
+    // 所有していないプレミアムテーマが適用中の場合、classic にリセット
     useEffect(() => {
-        if (theme === 'midnight' && !ownsMidnight) {
-            setTheme('classic');
+        const freeThemes: Theme[] = ['classic', 'pop'];
+        if (freeThemes.includes(theme)) return;
+        // プレミアムテーマの場合、所持チェック
+        const themeItemCodeMap: Record<string, string> = {
+            midnight: 'theme_midnight',
+            sakura: 'theme_sakura',
+            ocean: 'theme_ocean',
+            forest: 'theme_forest',
+            sunset: 'theme_sunset',
+            cyberpunk: 'theme_cyberpunk',
+            galaxy: 'theme_galaxy',
+        };
+        const requiredCode = themeItemCodeMap[theme];
+        if (requiredCode) {
+            const owned = ownsMidnight || ownedThemes.some(t => t.itemCode === requiredCode);
+            if (!owned) {
+                setTheme('classic');
+            }
         }
-    }, [theme, ownsMidnight, setTheme]);
+    }, [theme, ownsMidnight, ownedThemes, setTheme]);
 
     const handleLanguageChange = useCallback(async (newLocale: string) => {
         if (switchingLocale) return;
@@ -406,115 +423,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         {t('theme')}
                     </h2>
                     <p className="text-xs text-gray-500 mb-4 font-medium">{t('themeDescription')}</p>
-                    <div className="flex flex-col gap-3">
-                        {/* Classic */}
-                        <button
-                            onClick={() => setTheme('classic')}
-                            className={`relative overflow-hidden rounded-xl border-2 p-4 transition-all cursor-pointer text-left group ${
-                                theme === 'classic'
-                                    ? 'border-indigo-500 shadow-lg ring-2 ring-indigo-200'
-                                    : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'
-                            }`}
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/8 via-purple-500/5 to-transparent pointer-events-none" />
-                            <div className="relative flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-md flex items-center justify-center text-white shrink-0">
-                                    <span className="text-lg">💎</span>
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="font-bold text-sm text-gray-900">Classic</div>
-                                    <div className="text-xs text-gray-500">{t('classicDesc')}</div>
-                                </div>
-                                {theme === 'classic' && (
-                                    <span className="ml-auto shrink-0 w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold">✓</span>
-                                )}
-                            </div>
-                            {/* ミニプレビューバー */}
-                            <div className="mt-3 flex gap-1.5">
-                                <div className="h-1.5 flex-1 rounded-full bg-indigo-500/30" />
-                                <div className="h-1.5 w-8 rounded-full bg-purple-500/30" />
-                                <div className="h-1.5 w-6 rounded-full bg-indigo-300/30" />
-                            </div>
-                        </button>
-
-                        {/* Pop & Fun */}
-                        <button
-                            onClick={() => setTheme('pop')}
-                            className={`relative overflow-hidden rounded-xl border-2 p-4 transition-all cursor-pointer text-left group ${
-                                theme === 'pop'
-                                    ? 'border-pink-500 shadow-lg ring-2 ring-pink-200'
-                                    : 'border-gray-200 hover:border-pink-300 hover:shadow-md'
-                            }`}
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-coral)]/8 via-[var(--accent-pink)]/5 to-transparent pointer-events-none" />
-                            <div className="relative flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--accent-coral)] via-[var(--accent-pink)] to-[var(--accent-purple)] shadow-md flex items-center justify-center text-white shrink-0">
-                                    <span className="text-lg">🎨</span>
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="font-bold text-sm text-gray-900">Pop & Fun</div>
-                                    <div className="text-xs text-gray-500">{t('popDesc')}</div>
-                                </div>
-                                {theme === 'pop' && (
-                                    <span className="ml-auto shrink-0 w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-bold">✓</span>
-                                )}
-                            </div>
-                            <div className="mt-3 flex gap-1.5">
-                                <div className="h-1.5 flex-1 rounded-full bg-pink-400/30" />
-                                <div className="h-1.5 w-8 rounded-full bg-orange-400/30" />
-                                <div className="h-1.5 w-6 rounded-full bg-purple-400/30" />
-                            </div>
-                        </button>
-
-                        {/* Midnight */}
-                        <button
-                            onClick={() => ownsMidnight && setTheme('midnight')}
-                            disabled={!ownsMidnight}
-                            className={`relative overflow-hidden rounded-xl border-2 p-4 transition-all text-left group ${
-                                ownsMidnight ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
-                            } ${
-                                theme === 'midnight'
-                                    ? 'border-indigo-400 shadow-lg ring-2 ring-indigo-300/50 bg-slate-900'
-                                    : 'border-gray-200 hover:border-slate-400 hover:shadow-md'
-                            }`}
-                        >
-                            <div className={`absolute inset-0 pointer-events-none ${
-                                theme === 'midnight'
-                                    ? 'bg-gradient-to-br from-indigo-600/20 via-slate-900/50 to-slate-950/80'
-                                    : 'bg-gradient-to-br from-slate-800/8 via-indigo-900/5 to-transparent'
-                            }`} />
-                            <div className="relative flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 via-slate-900 to-slate-950 shadow-md border border-indigo-400/30 flex items-center justify-center text-white shrink-0">
-                                    <span className="text-lg">🌙</span>
-                                </div>
-                                <div className="min-w-0">
-                                    <div className={`font-bold text-sm ${theme === 'midnight' ? 'text-indigo-300' : 'text-gray-900'}`}>Midnight</div>
-                                    <div className={`text-xs ${theme === 'midnight' ? 'text-indigo-400/70' : 'text-gray-500'}`}>{t('midnightDesc')}</div>
-                                </div>
-                                <div className="ml-auto shrink-0 flex items-center gap-2">
-                                    {theme === 'midnight' && ownsMidnight && (
-                                        <span className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-[0_0_8px_rgba(99,102,241,0.5)]">✓</span>
-                                    )}
-                                    {ownsMidnight && theme !== 'midnight' && (
-                                        <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded border border-amber-200">Premium</span>
-                                    )}
-                                    {!ownsMidnight && (
-                                        <Link href="/shop" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-200 hover:bg-amber-100 transition-colors">
-                                            🔒 30,000 UC
-                                        </Link>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="mt-3 flex gap-1.5">
-                                <div className={`h-1.5 flex-1 rounded-full ${theme === 'midnight' ? 'bg-indigo-500/40' : 'bg-slate-700/20'}`} />
-                                <div className={`h-1.5 w-8 rounded-full ${theme === 'midnight' ? 'bg-indigo-400/30' : 'bg-slate-600/15'}`} />
-                                <div className={`h-1.5 w-6 rounded-full ${theme === 'midnight' ? 'bg-slate-500/30' : 'bg-slate-500/10'}`} />
-                            </div>
-                        </button>
-                    </div>
-                    <Link href="/shop" className="mt-3 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
-                        {t('moreThemes')} →
-                    </Link>
+                    <ThemeSelector ownedThemes={ownedThemes} />
                 </section>
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
                     <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-[var(--theme-primary)]/5 to-transparent rounded-full translate-y-14 translate-x-14 pointer-events-none" />
@@ -534,7 +443,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         <span className="text-xl">📈</span>
                         {t('accountStats')}
                     </h2>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-2xl font-black account-stat-number">{ownedTitles.length}</div>
                             <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('titlesOwned')}</div>
@@ -543,9 +452,13 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                             <div className="text-2xl font-black account-stat-number">{ownedFrames.length}</div>
                             <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('framesOwned')}</div>
                         </div>
-                        <div className="col-span-2 bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                        <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                            <div className="text-2xl font-black account-stat-number">{ownedThemes.length}</div>
+                            <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('themesOwned')}</div>
+                        </div>
+                        <div className="col-span-3 bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-sm font-bold text-gray-700 flex items-center justify-center gap-2">
-                                <span className="text-lg">{theme === 'classic' ? '💎' : theme === 'pop' ? '🎨' : '🌙'}</span>
+                                <span className="text-lg">🎨</span>
                                 {t('currentTheme')}: <span className="account-stat-number capitalize">{theme}</span>
                             </div>
                         </div>

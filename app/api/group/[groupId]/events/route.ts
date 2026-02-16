@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { reportError } from '@/lib/errors';
 
 interface RouteParams {
     params: Promise<{ groupId: string }>;
@@ -52,13 +53,13 @@ export async function GET(
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Failed to fetch group events:', error);
+            reportError('group/events:list', error, { groupId });
             return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
         }
 
         return NextResponse.json({ events: events || [] });
     } catch (err) {
-        console.error('GET /api/group/[groupId]/events error:', err);
+        reportError('group/events:list:unexpected', err);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -127,13 +128,13 @@ export async function POST(
             .single();
 
         if (error) {
-            console.error('Failed to create group event:', error);
+            reportError('group/events:create', error, { groupId });
             return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
         }
 
         return NextResponse.json({ event }, { status: 201 });
     } catch (err) {
-        console.error('POST /api/group/[groupId]/events error:', err);
+        reportError('group/events:create:unexpected', err);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

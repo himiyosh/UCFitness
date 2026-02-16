@@ -45,13 +45,20 @@ export default function AchievementCard({ username }: { username: string }) {
         return () => { cancelled = true; };
     }, [username]);
 
+    // 大きい数値を省略表記にする (例: 6,814,935 → 6.81M, 44,659 → 44.7K)
+    const formatCompact = (n: number): string => {
+        if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+        if (n >= 10_000) return `${(n / 1_000).toFixed(1)}K`;
+        return n.toLocaleString();
+    };
+
     const stats = useMemo(() => {
         if (!data) return [];
         return [
             {
                 icon: '👣',
                 label: t('totalSteps'),
-                value: data.totalSteps.toLocaleString(),
+                value: formatCompact(data.totalSteps),
             },
             {
                 icon: '📅',
@@ -76,7 +83,7 @@ export default function AchievementCard({ username }: { username: string }) {
             {
                 icon: getRankIcon(data.investorRank),
                 label: t('totalUc'),
-                value: `${data.totalUc.toLocaleString()} UC`,
+                value: `${formatCompact(data.totalUc)} UC`,
             },
         ];
     }, [data, t]);
@@ -106,17 +113,17 @@ export default function AchievementCard({ username }: { username: string }) {
                 </h3>
             </div>
 
-            <div className="px-5 pb-5 grid grid-cols-3 gap-2.5">
+            <div className="px-5 pb-5 grid grid-cols-3 gap-2">
                 {stats.map((stat, index) => (
                     <div
                         key={index}
-                        className="bg-gray-50 rounded-xl p-3 text-center hover:bg-[var(--theme-primary-light)] transition-colors group"
+                        className="bg-gray-50 rounded-xl p-2 sm:p-3 text-center hover:bg-[var(--theme-primary-light)] transition-colors group min-w-0"
                     >
-                        <span className="text-xl">{stat.icon}</span>
-                        <p className="text-sm font-black text-gray-900 mt-1 tabular-nums group-hover:text-[var(--theme-primary)] transition-colors">
+                        <span className="text-lg sm:text-xl">{stat.icon}</span>
+                        <p className="text-xs sm:text-sm font-black text-gray-900 mt-1 tabular-nums group-hover:text-[var(--theme-primary)] transition-colors truncate">
                             {stat.value}
                         </p>
-                        <p className="text-[9px] text-gray-400 font-medium mt-0.5 leading-tight">
+                        <p className="text-[8px] sm:text-[9px] text-gray-400 font-medium mt-0.5 leading-tight truncate">
                             {stat.label}
                         </p>
                     </div>

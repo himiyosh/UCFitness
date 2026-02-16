@@ -62,14 +62,23 @@
         "equipped": "Active",
         "moreTitles": "Browse more titles",
         "moreThemes": "Browse more themes",
+        "changeTheme": "Change theme",
+        "collapseThemes": "Collapse",
         "profileCompletion": "Profile Completion",
         "profileComplete": "Your profile is complete! 🎉",
         "classicDesc": "Clean & professional",
         "popDesc": "Bold & colorful",
         "midnightDesc": "Dark & elegant",
+        "sakuraDesc": "Soft cherry blossom pink",
+        "oceanDesc": "Deep & calming ocean blue",
+        "forestDesc": "Soothing forest green",
+        "sunsetDesc": "Warm sunset orange",
+        "cyberpunkDesc": "Futuristic neon purple",
+        "galaxyDesc": "Mystical galaxy violet",
         "accountStats": "Account Stats",
         "titlesOwned": "Titles Owned",
         "framesOwned": "Frames Owned",
+        "themesOwned": "Themes Owned",
         "currentTheme": "Current Theme",
         "shopCta": "UC Shop",
         "shopCtaDescription": "Customize your profile with titles, frames & themes!",
@@ -429,7 +438,9 @@
         "rankLocked": "Requires {rank}",
         "featured": "Featured",
         "itemCount": "{count} items",
-        "canAfford": "Affordable!"
+        "canAfford": "Affordable!",
+        "tryTheme": "Try this theme",
+        "revertPreview": "Revert to original"
     },
     "Splash": {
         "loading": "Loading Steps...",
@@ -541,8 +552,11 @@
         "avgPerMember": "Avg per Member",
         "showLess": "Show Less",
         "showAll": "Show All ({count})"
-    },
-    "Calendar": {
+    },    "GroupReactions": {
+        "addReaction": "React",
+        "removeReaction": "Remove reaction",
+        "receivedCount": "{count} reactions"
+    },    "Calendar": {
         "title": "Step Calendar",
         "totalSteps": "Total Steps",
         "activeDays": "Active Days",
@@ -551,6 +565,7 @@
         "days": "days",
         "steps": "steps",
         "noData": "No step data for this year",
+        "syncHint": "Sync your steps to fill up the calendar!",
         "less": "Less",
         "more": "More",
         "showCalendar": "Show Calendar",
@@ -589,6 +604,21 @@
             "ucMillionaire": "UC Millionaire",
             "shopaholic": "Shopaholic",
             "teamPlayer": "Team Player"
+        },
+        "descriptions": {
+            "firstStep": "Walk a total of 1,000 steps",
+            "strollMaster": "Walk a total of 100,000 steps",
+            "marathonRunner": "Walk a total of 500,000 steps",
+            "globeTrotter": "Walk a total of 1,000,000 steps",
+            "moonWalker": "Walk a total of 5,000,000 steps",
+            "galaxyVoyager": "Walk a total of 10,000,000 steps",
+            "beyondThree": "Reach your goal 7 days in a row",
+            "ironWill": "Reach your goal 30 days in a row",
+            "unbreakable": "Reach your goal 100 days in a row",
+            "legendaryStreaker": "Reach your goal 365 days in a row",
+            "ucMillionaire": "Accumulate 100,000 UC balance",
+            "shopaholic": "Purchase 5 items from the shop",
+            "teamPlayer": "Join 3 groups"
         }
     },
     "Analytics": {
@@ -639,7 +669,8 @@
         "activeChallenges": "Active Challenges",
         "viewAll": "View All",
         "backToHome": "Back to Home",
-        "retry": "Retry"
+        "retry": "Retry",
+        "createNewHint": "Create a new challenge to get started!"
     },
     "Shield": {
         "title": "Streak Shield",
@@ -657,6 +688,7 @@
         "followCount": "{count} following",
         "followerCount": "{count} followers",
         "noFollowing": "You're not following anyone yet.",
+        "loadError": "Failed to load data",
         "todaySteps": "today",
         "followingActivity": "Following Activity",
         "more": "more",
