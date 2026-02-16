@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Period } from '@/components/LeaderboardTabs';
@@ -12,6 +12,8 @@ import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
+import GroupReactions from '@/components/GroupReactions';
+import { useGroupReactions } from '@/hooks/useGroupReactions';
 
 
 const TABS: { key: Period; labelKey: string }[] = [
@@ -98,6 +100,31 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
+
+    // グローバルリーダーボード用リアクション
+    const { reactions: globalReactions, handleReactionToggle: handleGlobalReactionToggle } = useGroupReactions('__global__', userId, period);
+
+    // モバイル長押しリアクション
+    const [longPressUserId, setLongPressUserId] = useState<string | null>(null);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // デスクトップホバー検出
+    const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
+
+    // 長押し解除: 外部タップ or スクロールで閉じる
+    useEffect(() => {
+        if (!longPressUserId) return;
+        const dismiss = () => setLongPressUserId(null);
+        const timer = setTimeout(() => {
+            document.addEventListener('touchstart', dismiss, { once: true });
+            window.addEventListener('scroll', dismiss, { once: true });
+        }, 100);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('touchstart', dismiss);
+            window.removeEventListener('scroll', dismiss);
+        };
+    }, [longPressUserId]);
 
     // Guard: clamp selectedGroupIndex when allGroupRankings shrinks
     useEffect(() => {
@@ -300,7 +327,22 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                             return (
                                                                 <li key={`${entry.users.id}-${period}`}
-                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between transition-colors overflow-hidden ${entry.users.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 transition-colors overflow-visible ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    onMouseEnter={() => setHoveredUserId(entry.users.id)}
+                                                                    onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
+                                                                    onTouchStart={(e) => {
+                                                                        if (entry.users.id === userId) return;
+                                                                        const timer = setTimeout(() => {
+                                                                            e.preventDefault();
+                                                                            setLongPressUserId(entry.users.id);
+                                                                        }, 500);
+                                                                        longPressTimerRef.current = timer;
+                                                                    }}
+                                                                    onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
+                                                                    onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
+                                                                >
+                                                                <div
+                                                                    className={`flex items-center justify-between ${entry.users.username ? 'cursor-pointer' : ''}`}
                                                                     onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                                                 >
 
@@ -356,21 +398,42 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex flex-col items-end relative z-10">
-                                                                        <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
-                                                                            {entry.steps.toLocaleString()}
+                                                                    {/* リアクション + 歩数 — 右寄せグループ */}
+                                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                                        {/* リアクション — 歩数の左、溢れたら非表示 */}
+                                                                        {userId && (
+                                                                            <div className="relative z-10 min-w-0" onClick={(e) => e.stopPropagation()}>
+                                                                                <GroupReactions
+                                                                                    groupId="__global__"
+                                                                                    toUserId={entry.users.id}
+                                                                                    currentUserId={userId}
+                                                                                    period={period}
+                                                                                    reactions={globalReactions}
+                                                                                    onReactionToggle={handleGlobalReactionToggle}
+                                                                                    isSelf={entry.users.id === userId}
+                                                                                    compact
+                                                                                    forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                        {/* 歩数 — 固定幅で常に表示 */}
+                                                                        <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10 shrink-0">
+                                                                            <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
+                                                                                {entry.steps.toLocaleString()}
+                                                                            </div>
+                                                                            {/* Delta vs previous period */}
+                                                                            {entry.prevSteps !== undefined && (() => {
+                                                                                const delta = entry.steps - entry.prevSteps!;
+                                                                                if (delta === 0) return null;
+                                                                                return (
+                                                                                    <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                                                        {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
+                                                                                    </span>
+                                                                                );
+                                                                            })()}
                                                                         </div>
-                                                                        {/* Delta vs previous period */}
-                                                                        {entry.prevSteps !== undefined && (() => {
-                                                                            const delta = entry.steps - entry.prevSteps!;
-                                                                            if (delta === 0) return null;
-                                                                            return (
-                                                                                <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
-                                                                                    {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
-                                                                                </span>
-                                                                            );
-                                                                        })()}
                                                                     </div>
+                                                                </div>
                                                                 </li>
                                                             );
                                                         })}
@@ -588,6 +651,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                 userId={userId}
                                                 index={0}
                                                 totalCount={1}
+                                                period={period}
                                             />
                                         </FadeInWrapper>
                                     </div>

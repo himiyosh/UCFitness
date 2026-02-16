@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import GroupReactions from '@/components/GroupReactions';
+import { useGearReactions } from '@/hooks/useGearReactions';
 
 // ============================================
 // GroupGear — グループメンバーの愛用ギア
@@ -20,15 +22,39 @@ interface GearItem {
 
 interface GroupGearProps {
     groupId: string;
+    userId?: string | null;
 }
 
-export default function GroupGear({ groupId }: GroupGearProps) {
+export default function GroupGear({ groupId, userId }: GroupGearProps) {
     const t = useTranslations('GroupGear');
     const [items, setItems] = useState<GearItem[]>([]);
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
+
+    // ギアリアクション管理
+    const { reactions, handleReactionToggle } = useGearReactions(groupId, userId);
+
+    // ホバー / ロングプレスでリアクション ➕ ボタンを表示
+    const [hoveredAsin, setHoveredAsin] = useState<string | null>(null);
+    const [longPressAsin, setLongPressAsin] = useState<string | null>(null);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ロングプレス解除: 外部タップ or スクロールで閉じる
+    useEffect(() => {
+        if (!longPressAsin) return;
+        const dismiss = () => setLongPressAsin(null);
+        const timer = setTimeout(() => {
+            document.addEventListener('touchstart', dismiss, { once: true });
+            window.addEventListener('scroll', dismiss, { once: true });
+        }, 100);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('touchstart', dismiss);
+            window.removeEventListener('scroll', dismiss);
+        };
+    }, [longPressAsin]);
 
     useEffect(() => {
         let cancelled = false;
@@ -100,7 +126,7 @@ export default function GroupGear({ groupId }: GroupGearProps) {
     }
 
     return (
-        <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 overflow-hidden h-full flex flex-col">
+        <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 h-full flex flex-col">
             {/* ヘッダー */}
             <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2.5">
@@ -146,15 +172,46 @@ export default function GroupGear({ groupId }: GroupGearProps) {
             {/* アイテムカルーセル */}
             <div
                 ref={scrollRef}
-                className="flex gap-3 overflow-x-auto overflow-y-hidden px-5 pb-5 scroll-smooth scrollbar-hide"
+                className="flex gap-3 overflow-x-auto px-5 pb-14 pt-1 scroll-smooth scrollbar-hide"
             >
                 {items.map(item => (
-                    <a
+                    <div
                         key={item.asin}
+                        className="relative flex-shrink-0 w-36 pt-9"
+                        onMouseEnter={() => setHoveredAsin(item.asin)}
+                        onMouseLeave={() => setHoveredAsin(prev => prev === item.asin ? null : prev)}
+                        onTouchStart={() => {
+                            const timer = setTimeout(() => {
+                                setLongPressAsin(item.asin);
+                            }, 500);
+                            longPressTimerRef.current = timer;
+                        }}
+                        onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
+                        onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
+                    >
+                    {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
+                    {(() => {
+                        const commented = item.users.find(u => u.comment);
+                        return commented ? (
+                            <div
+                                className="absolute top-0 left-1/2 z-20 w-[130px] pointer-events-none"
+                                style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%)' }}
+                            >
+                                <div className="bg-[var(--theme-primary)] rounded-lg px-2 py-1.5">
+                                    <p className="text-[10px] text-white leading-snug line-clamp-2 break-words text-center">
+                                        {commented.comment}
+                                    </p>
+                                </div>
+                                {/* 吹き出し三角（下向き） */}
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[var(--theme-primary)] transform rotate-45" />
+                            </div>
+                        ) : null;
+                    })()}
+                    <a
                         href={item.affiliate_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-shrink-0 w-36 rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 hover:shadow-lg hover:border-[var(--theme-primary)]/20 hover:scale-[1.03] p-2.5 transition-all duration-200 group"
+                        className="block w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 hover:shadow-lg hover:border-[var(--theme-primary)]/20 hover:scale-[1.03] p-2.5 transition-all duration-200 group"
                     >
                         {/* 商品画像 */}
                         <div className="w-full aspect-square rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-2">
@@ -175,41 +232,54 @@ export default function GroupGear({ groupId }: GroupGearProps) {
                             {cleanTitle(item.title)}
                         </p>
 
-                        {/* ユーザーコメント（最初のコメント付きユーザーを表示） */}
-                        {(() => {
-                            const commented = item.users.find(u => u.comment);
-                            return commented ? (
-                                <p className="text-xs text-gray-400 leading-snug line-clamp-1 italic mb-1.5" title={`${commented.username}: ${commented.comment}`}>
-                                    &ldquo;{commented.comment}&rdquo;
-                                </p>
-                            ) : <div className="mb-1.5" />;
-                        })()}
+                        {/* スペーサー（コメントは吹き出しで表示するため不要） */}
+                        <div className="mb-1.5" />
 
                         {/* 愛用者アバター */}
-                        <div className="flex items-center">
-                            <div className="flex items-center -space-x-1.5">
-                                {item.users.slice(0, 3).map((u, i) => (
-                                    <div
-                                        key={i}
-                                        className="w-4.5 h-4.5 rounded-full border-2 border-white overflow-hidden bg-gray-200 shadow-sm"
-                                        title={u.username}
-                                    >
-                                        {u.image ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img src={u.image} alt="" className="w-full h-full object-cover" loading="lazy" />
-                                        ) : (
-                                            <span className="flex items-center justify-center w-full h-full text-[7px] font-bold text-gray-400">
-                                                {u.username.charAt(0).toUpperCase()}
-                                            </span>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="flex items-center -space-x-1.5 mb-1">
+                            {item.users.slice(0, 3).map((u, i) => (
+                                <div
+                                    key={i}
+                                    className="w-4.5 h-4.5 rounded-full border-2 border-white overflow-hidden bg-gray-200 shadow-sm"
+                                    title={u.username}
+                                >
+                                    {u.image ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={u.image} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                    ) : (
+                                        <span className="flex items-center justify-center w-full h-full text-[7px] font-bold text-gray-400">
+                                            {u.username.charAt(0).toUpperCase()}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
                             {item.count > 3 && (
                                 <span className="text-xs text-gray-400 font-medium ml-1">+{item.count - 3}</span>
                             )}
                         </div>
                     </a>
+                    {/* ギアリアクション — カード下に absolute 配置（コメントバルーンと同じパターン） */}
+                    {userId && (
+                        <div
+                            className="relative z-30 flex justify-center mt-1"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        >
+                            <GroupReactions
+                                groupId={groupId}
+                                toUserId={item.asin}
+                                currentUserId={userId}
+                                period="GEAR"
+                                reactions={reactions}
+                                onReactionToggle={handleReactionToggle}
+                                isSelf={false}
+                                compact
+                                forceShow={hoveredAsin === item.asin || longPressAsin === item.asin}
+                                maxVisibleBadges={2}
+                                pickerPosition="below"
+                            />
+                        </div>
+                    )}
+                    </div>
                 ))}
             </div>
         </div>

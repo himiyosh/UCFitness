@@ -5,25 +5,23 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
+// ギアアイテム（ASIN）へのリアクションAPI
+// group_reactions テーブルを再利用: to_user_id に ASIN を格納、period='GEAR'
+
 interface RouteParams {
     params: Promise<{ groupId: string }>;
 }
 
 const VALID_EMOJIS = [
-    // デフォルト
     '👏', '🔥', '💪', '👍',
-    // 拡張: 表情
     '😊', '😂', '🤣', '😍', '🥳', '😎', '🤩', '🥺',
-    // 拡張: ジェスチャー
     '🙌', '✌️', '🤝', '🫡',
-    // 拡張: シンボル
     '❤️', '💯', '⭐', '🏆', '🎉', '🎊', '💎', '👑',
-    // 拡張: スポーツ・アクション
     '🏃', '🚀', '⚡', '💨', '🏅', '🥇', '🥈', '🥉',
 ] as const;
-const VALID_PERIODS = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
+const GEAR_PERIOD = 'GEAR';
 
-// GET: グループ内リアクション一覧を取得
+// GET: グループ内ギアリアクション一覧を取得
 export async function GET(
     request: NextRequest,
     context: RouteParams
@@ -35,12 +33,6 @@ export async function GET(
         }
 
         const { groupId } = await context.params;
-        const { searchParams } = new URL(request.url);
-        const period = searchParams.get('period') || 'DAILY';
-
-        if (!VALID_PERIODS.includes(period as typeof VALID_PERIODS[number])) {
-            return NextResponse.json({ error: 'Invalid period' }, { status: 400 });
-        }
 
         // メンバーシップ確認
         const { data: membership } = await supabaseAdmin
@@ -54,26 +46,26 @@ export async function GET(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        // リアクション取得
+        // ギアリアクション取得（period='GEAR'）
         const { data: reactions, error } = await supabaseAdmin
             .from('group_reactions')
             .select('id, from_user_id, to_user_id, emoji, period')
             .eq('group_id', groupId)
-            .eq('period', period);
+            .eq('period', GEAR_PERIOD);
 
         if (error) {
-            reportError('group/reactions:list', error, { groupId });
+            reportError('group/gear-reactions:list', error, { groupId });
             return NextResponse.json({ error: 'Failed to fetch reactions' }, { status: 500 });
         }
 
         return NextResponse.json({ reactions: reactions || [] });
     } catch (err) {
-        reportError('group/reactions:list', err);
+        reportError('group/gear-reactions:list', err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }
 
-// POST: リアクションを追加
+// POST: ギアリアクションを追加
 export async function POST(
     request: NextRequest,
     context: RouteParams
@@ -86,43 +78,37 @@ export async function POST(
 
         const { groupId } = await context.params;
         const body = await request.json();
-        const { toUserId, emoji, period } = body;
+        const { toUserId: asin, emoji } = body;
 
         // バリデーション
-        if (!toUserId || typeof toUserId !== 'string') {
-            return NextResponse.json({ error: 'toUserId is required' }, { status: 400 });
+        if (!asin || typeof asin !== 'string') {
+            return NextResponse.json({ error: 'ASIN is required' }, { status: 400 });
         }
         if (!VALID_EMOJIS.includes(emoji)) {
             return NextResponse.json({ error: 'Invalid emoji' }, { status: 400 });
         }
-        if (!VALID_PERIODS.includes(period)) {
-            return NextResponse.json({ error: 'Invalid period' }, { status: 400 });
-        }
-        // 自分自身にはリアクションできない
-        if (toUserId === session.user.id) {
-            return NextResponse.json({ error: 'Cannot react to yourself' }, { status: 400 });
-        }
 
-        // メンバーシップ確認（送信者 + 受信者の両方がグループメンバーであること）
-        const { data: members } = await supabaseAdmin
+        // メンバーシップ確認（送信者のみ）
+        const { data: membership } = await supabaseAdmin
             .from('group_members')
             .select('user_id')
             .eq('group_id', groupId)
-            .in('user_id', [session.user.id, toUserId]);
+            .eq('user_id', session.user.id)
+            .single();
 
-        if (!members || members.length < 2) {
-            return NextResponse.json({ error: 'Both users must be group members' }, { status: 403 });
+        if (!membership) {
+            return NextResponse.json({ error: 'Must be a group member' }, { status: 403 });
         }
 
-        // リアクション挿入（重複は UNIQUE 制約で弾く）
+        // リアクション挿入（to_user_id にASINを格納）
         const { data: reaction, error } = await supabaseAdmin
             .from('group_reactions')
             .upsert({
                 group_id: groupId,
                 from_user_id: session.user.id,
-                to_user_id: toUserId,
+                to_user_id: asin,
                 emoji,
-                period,
+                period: GEAR_PERIOD,
             }, {
                 onConflict: 'group_id,from_user_id,to_user_id,emoji,period',
             })
@@ -130,18 +116,18 @@ export async function POST(
             .single();
 
         if (error) {
-            reportError('group/reactions:create', error, { groupId });
+            reportError('group/gear-reactions:create', error, { groupId });
             return NextResponse.json({ error: 'Failed to add reaction' }, { status: 500 });
         }
 
         return NextResponse.json({ reaction }, { status: 201 });
     } catch (err) {
-        reportError('group/reactions:create', err);
+        reportError('group/gear-reactions:create', err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }
 
-// DELETE: リアクションを削除
+// DELETE: ギアリアクションを削除
 export async function DELETE(
     request: NextRequest,
     context: RouteParams
@@ -154,12 +140,11 @@ export async function DELETE(
 
         const { groupId } = await context.params;
         const { searchParams } = new URL(request.url);
-        const toUserId = searchParams.get('toUserId');
+        const asin = searchParams.get('toUserId');
         const emoji = searchParams.get('emoji');
-        const period = searchParams.get('period');
 
-        if (!toUserId || !emoji || !period) {
-            return NextResponse.json({ error: 'toUserId, emoji, period are required' }, { status: 400 });
+        if (!asin || !emoji) {
+            return NextResponse.json({ error: 'ASIN and emoji are required' }, { status: 400 });
         }
 
         const { error } = await supabaseAdmin
@@ -167,18 +152,18 @@ export async function DELETE(
             .delete()
             .eq('group_id', groupId)
             .eq('from_user_id', session.user.id)
-            .eq('to_user_id', toUserId)
+            .eq('to_user_id', asin)
             .eq('emoji', emoji)
-            .eq('period', period);
+            .eq('period', GEAR_PERIOD);
 
         if (error) {
-            reportError('group/reactions:delete', error, { groupId });
+            reportError('group/gear-reactions:delete', error, { groupId });
             return NextResponse.json({ error: 'Failed to remove reaction' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
     } catch (err) {
-        reportError('group/reactions:delete', err);
+        reportError('group/gear-reactions:delete', err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }

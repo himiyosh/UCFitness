@@ -555,7 +555,8 @@
     },    "GroupReactions": {
         "addReaction": "React",
         "removeReaction": "Remove reaction",
-        "receivedCount": "{count} reactions"
+        "receivedCount": "{count} reactions",
+        "moreReactions": "More reactions"
     },    "Calendar": {
         "title": "Step Calendar",
         "totalSteps": "Total Steps",

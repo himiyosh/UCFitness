@@ -105,9 +105,9 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                         <p className="text-lg font-black text-gray-900 tabular-nums">{data.groupAvg.toLocaleString()}</p>
                     </div>
                     {data.mvp && (
-                        <div className="flex-1 bg-[var(--theme-primary-light)] rounded-xl p-3 text-center">
-                            <p className="text-xs text-[var(--theme-primary)] font-bold uppercase">🏆 MVP</p>
-                            <p className="text-sm font-bold text-[var(--theme-primary)] truncate">{data.mvp.name}</p>
+                        <div className="flex-1 bg-[var(--theme-primary)] rounded-xl p-3 text-center">
+                            <p className="text-xs text-white/80 font-bold uppercase">🏆 MVP</p>
+                            <p className="text-lg font-black text-white truncate">{data.mvp.name}</p>
                         </div>
                     )}
                 </div>
