@@ -108,7 +108,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                 </header>
 
-                <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
                     <div className="mb-6">
                         <Breadcrumbs
                             items={[
@@ -191,7 +191,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 </div>
             </header>
 
-            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
                 {/* Back Nav & Badges */}
                 <div className="flex items-center justify-between">
