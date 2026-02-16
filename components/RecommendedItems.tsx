@@ -157,7 +157,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
         title.replace(/【.*?】/g, '').trim() || 'Item', []);
 
     // --- カルーセル: カード幅 + gap ---
-    const CARD_W = 142; // 130px + 12px gap
+    const CARD_W = 167; // 155px + 12px gap
     // +ボタンを含めた全カード数
     const totalCards = items.length + (isOwner && items.length < 6 ? 1 : 0);
     // 画面に見えるカード数（概算2.5枚）
@@ -223,7 +223,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         }}
                     >
                 {items.map(item => (
-                    <div key={item.id} className="flex-shrink-0 w-[130px] relative group">
+                    <div key={item.id} className="flex-shrink-0 w-[155px] relative group">
                     <a
                         href={item.affiliate_link}
                         target="_blank"
@@ -231,7 +231,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         className="recommended-card block rounded-xl border border-black/[0.06] bg-white overflow-hidden relative hover:shadow-md hover:-translate-y-0.5 transition-all"
                     >
                         {/* 商品画像 */}
-                        <div className="w-[130px] h-[110px] bg-gray-50 flex items-center justify-center overflow-hidden">
+                        <div className="w-[155px] h-[130px] bg-gray-50 flex items-center justify-center overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={item.image_url}
@@ -245,11 +245,11 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         </div>
 
                         {/* タイトル＋リンクラベル */}
-                        <div className="px-2.5 py-2">
-                            <p className="text-[11px] font-medium text-gray-800 leading-[1.4] line-clamp-2 min-h-[30px]">
+                        <div className="px-3 py-2.5">
+                            <p className="text-xs font-medium text-gray-800 leading-[1.4] line-clamp-2 min-h-[34px]">
                                 {cleanTitle(item.title)}
                             </p>
-                            <p className="text-[10px] text-gray-400 mt-1">
+                            <p className="text-[11px] text-gray-400 mt-1">
                                 Amazon.co.jp →
                             </p>
                         </div>
@@ -289,12 +289,12 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
                     {editingCommentId !== item.id && item.comment && (
                         <div
-                            className={`absolute -top-2 left-1/2 z-20 w-[120px] ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
+                            className={`absolute -top-2 left-1/2 z-20 w-[145px] ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
                             onClick={isOwner ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
                             style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%) translateY(-100%)' }}
                         >
-                            <div className="bg-[var(--theme-primary)] rounded-lg px-2 py-1.5">
-                                <p className="text-[9px] text-white leading-snug line-clamp-3 break-words text-center">
+                            <div className="bg-[var(--theme-primary)] rounded-lg px-2.5 py-2">
+                                <p className="text-[10px] text-white leading-snug line-clamp-3 break-words text-center">
                                     {item.comment}
                                 </p>
                             </div>
@@ -309,7 +309,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {isOwner && items.length < 6 && (
                     <button
                         onClick={() => setShowModal(true)}
-                        className="flex-shrink-0 w-[130px] h-[168px] rounded-xl border-2 border-dashed border-gray-200 hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] flex flex-col items-center justify-center gap-2 transition-all group"
+                        className="flex-shrink-0 w-[155px] h-[195px] rounded-xl border-2 border-dashed border-gray-200 hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] flex flex-col items-center justify-center gap-2 transition-all group"
                     >
                         <div className="w-10 h-10 rounded-full bg-gray-100 group-hover:bg-[var(--theme-primary)]/10 flex items-center justify-center transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-gray-400 group-hover:text-[var(--theme-primary)] transition-colors">
