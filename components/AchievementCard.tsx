@@ -106,17 +106,17 @@ export default function AchievementCard({ username }: { username: string }) {
                 </h3>
             </div>
 
-            <div className="px-5 pb-5 grid grid-cols-3 gap-2.5">
+            <div className="px-5 pb-5 grid grid-cols-3 gap-2">
                 {stats.map((stat, index) => (
                     <div
                         key={index}
-                        className="bg-gray-50 rounded-xl p-3 text-center hover:bg-[var(--theme-primary-light)] transition-colors group"
+                        className="bg-gray-50 rounded-xl p-2 sm:p-3 text-center hover:bg-[var(--theme-primary-light)] transition-colors group min-w-0"
                     >
-                        <span className="text-xl">{stat.icon}</span>
-                        <p className="text-sm font-black text-gray-900 mt-1 tabular-nums group-hover:text-[var(--theme-primary)] transition-colors">
+                        <span className="text-lg sm:text-xl">{stat.icon}</span>
+                        <p className="text-xs sm:text-sm font-black text-gray-900 mt-1 tabular-nums group-hover:text-[var(--theme-primary)] transition-colors truncate">
                             {stat.value}
                         </p>
-                        <p className="text-[9px] text-gray-400 font-medium mt-0.5 leading-tight">
+                        <p className="text-[8px] sm:text-[9px] text-gray-400 font-medium mt-0.5 leading-tight truncate">
                             {stat.label}
                         </p>
                     </div>
