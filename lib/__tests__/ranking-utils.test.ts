@@ -55,10 +55,10 @@ describe('enrichCombinedRankings', () => {
         expect(calledIds).toContain('u3');
 
         // Check if equipment was applied
-        expect(globalRankings.DAILY[0].users.frameColor).toBe('red');
-        expect(globalRankings.DAILY[1].users.frameColor).toBe('blue');
-        expect(groupRankings[0].neighbors.DAILY[0].users.frameColor).toBe('blue');
-        expect(groupRankings[0].neighbors.DAILY[1].users.frameColor).toBe('green');
+        expect((globalRankings.DAILY[0].users as any).frameColor).toBe('red');
+        expect((globalRankings.DAILY[1].users as any).frameColor).toBe('blue');
+        expect((groupRankings[0].neighbors.DAILY[0].users as any).frameColor).toBe('blue');
+        expect((groupRankings[0].neighbors.DAILY[1].users as any).frameColor).toBe('green');
     });
 
     it('should handle empty rankings gracefully', async () => {
