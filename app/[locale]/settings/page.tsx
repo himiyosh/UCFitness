@@ -111,7 +111,7 @@ export default async function SettingsPage() {
                 </div>
             </header>
 
-            <div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mx-auto max-w-[1400px] w-full px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
                     <Breadcrumbs items={[{ label: t('title') }]} />
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">{t('title')}</h1>

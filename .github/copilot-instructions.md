@@ -193,7 +193,7 @@ if (!dbUser?.username) {
 #### ⑥ コンテンツ領域
 
 ```tsx
-<div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8 py-8">
+<div className="mx-auto max-w-[1400px] w-full px-4 sm:px-6 lg:px-8 py-8">
   {/* パンくずリスト */}
   <div className="mb-6">
     <Breadcrumbs items={[{ label: t("title") }]} />

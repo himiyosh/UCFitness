@@ -292,7 +292,7 @@ export default async function Home() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mx-auto max-w-[1400px] w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* MAIN LAYOUT CONTAINER */}
         <div className="flex flex-col gap-6">
 
