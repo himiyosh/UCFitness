@@ -222,7 +222,7 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
             `}
         >
             {/* Header Label */}
-            <div className={`text-[11px] font-bold uppercase tracking-wide mb-1 text-center ${slot.color} h-6 flex items-center justify-center leading-none`}>
+            <div className={`text-xs font-bold uppercase tracking-wide mb-1 text-center ${slot.color} h-6 flex items-center justify-center leading-none`}>
                 {t(`badges.${slot.label}`)}
             </div>
 
@@ -252,7 +252,7 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
                         <p className="font-semibold leading-tight">{getEarnedDescription(slot, t)}</p>
                     ) : (
                         <div className="space-y-1">
-                            <p className="font-bold text-gray-300 uppercase tracking-wider text-[11px] border-b border-gray-700 pb-1 mb-1">{t('howToUnlock')}</p>
+                            <p className="font-bold text-gray-300 uppercase tracking-wider text-xs border-b border-gray-700 pb-1 mb-1">{t('howToUnlock')}</p>
                             <p className="leading-tight text-gray-200">
                                 {slot.category === 'STREAK' && t('streakDesc')}
                                 {slot.category === 'MILESTONE' && t('milestoneDesc')}
@@ -261,8 +261,8 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
                                 {['DAILY', 'WEEKLY', 'MONTHLY'].includes(slot.category) && (
                                     <>
                                         {t('rankDesc', { label: t(`badges.${slot.label}`) })}
-                                        {slot.type === 'GROUP' && <span className="block text-gray-400 text-[11px] mt-0.5">{t('minMembers')}</span>}
-                                        {slot.type === 'GLOBAL' && <span className="block text-gray-400 text-[11px] mt-0.5">{t('minUsers')}</span>}
+                                        {slot.type === 'GROUP' && <span className="block text-gray-400 text-xs mt-0.5">{t('minMembers')}</span>}
+                                        {slot.type === 'GLOBAL' && <span className="block text-gray-400 text-xs mt-0.5">{t('minUsers')}</span>}
                                     </>
                                 )}
                             </p>
@@ -275,11 +275,11 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
             {/* Footer: Date instead of Name */}
             <div className="text-center w-full mt-1 h-3">
                 {hasBadge ? (
-                    <p className="text-[11px] font-semibold text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <p className="text-xs font-semibold text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
                         {slot.badge!.period_date}
                     </p>
                 ) : (
-                    <p className="text-[11px] font-medium text-gray-400">
+                    <p className="text-xs font-medium text-gray-400">
                         {t('locked')}
                     </p>
                 )}

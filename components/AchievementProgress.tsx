@@ -192,14 +192,14 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                             <span className="text-lg flex-shrink-0">{emoji}</span>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 mb-0.5">
-                                    <span className="text-[11px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary)]/10 px-1.5 py-0.5 rounded-full">
+                                    <span className="text-xs font-bold text-[var(--theme-primary)] bg-[var(--theme-primary)]/10 px-1.5 py-0.5 rounded-full">
                                         {t('nextGoal')}
                                     </span>
                                     <span className="text-xs font-semibold text-gray-800 truncate">
                                         {t(`names.${nameKey}`)}
                                     </span>
                                 </div>
-                                <p className="text-[11px] text-gray-500 truncate mb-0.5">{t(`descriptions.${descKey}`)}</p>
+                                <p className="text-xs text-gray-500 truncate mb-0.5">{t(`descriptions.${descKey}`)}</p>
                                 <div className="flex items-center gap-2">
                                     <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-gray-200">
                                         <div
@@ -223,7 +223,7 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                     {categories.map(cat => (
                         cat.items.length > 0 && (
                             <div key={cat.key} className="px-4 py-2">
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                                     {cat.label}
                                 </p>
                                 <div className="space-y-1">
@@ -248,7 +248,7 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                                                     }`}>
                                                         {t(`names.${nameKey}`)}
                                                     </span>
-                                                    <span className="text-[11px] text-gray-400 truncate block">
+                                                    <span className="text-xs text-gray-400 truncate block">
                                                         {t(`descriptions.${descKey}`)}
                                                     </span>
                                                 </div>
@@ -262,7 +262,7 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                                                                 style={{ width: `${item.percentage}%`, backgroundColor: 'var(--theme-primary)' }}
                                                             />
                                                         </div>
-                                                        <span className="text-[11px] text-gray-400 tabular-nums w-7 text-right">{item.percentage}%</span>
+                                                        <span className="text-xs text-gray-400 tabular-nums w-7 text-right">{item.percentage}%</span>
                                                     </div>
                                                 )}
                                             </div>

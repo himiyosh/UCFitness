@@ -440,19 +440,19 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.daily.toLocaleString()}</p>
-                                            <p className={`text-[11px] sm:text-xs tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/50' : 'text-red-400/50'}`}>
+                                            <p className={`text-xs sm:text-sm tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.daily - targetStats.daily >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.daily - targetStats.daily).toLocaleString()})
                                             </p>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.weekly.toLocaleString()}</p>
-                                            <p className={`text-[11px] sm:text-xs tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/50' : 'text-red-400/50'}`}>
+                                            <p className={`text-xs sm:text-sm tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.weekly - targetStats.weekly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.weekly - targetStats.weekly).toLocaleString()})
                                             </p>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.monthly.toLocaleString()}</p>
-                                            <p className={`text-[11px] sm:text-xs tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/50' : 'text-red-400/50'}`}>
+                                            <p className={`text-xs sm:text-sm tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.monthly - targetStats.monthly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.monthly - targetStats.monthly).toLocaleString()})
                                             </p>
                                         </div>

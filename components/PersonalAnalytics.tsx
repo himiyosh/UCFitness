@@ -176,7 +176,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                         ].map((stat, i) => (
                             <div key={i} className="bg-white/[0.12] backdrop-blur-md rounded-2xl p-3 sm:p-4 text-center border border-white/[0.08] hover:bg-white/[0.18] transition-colors">
                                 <div className="text-lg mb-1">{stat.icon}</div>
-                                <p className="text-white/50 text-[11px] sm:text-xs font-bold uppercase tracking-wider">{stat.label}</p>
+                                <p className="text-white/50 text-xs sm:text-sm font-bold uppercase tracking-wider">{stat.label}</p>
                                 <p className="text-xl sm:text-2xl font-black tabular-nums mt-0.5 leading-tight">
                                     {stat.value}
                                     {stat.suffix && <span className="text-xs font-normal text-white/50 ml-0.5">{stat.suffix}</span>}

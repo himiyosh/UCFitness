@@ -123,7 +123,7 @@ export default function AchievementCard({ username }: { username: string }) {
                         <p className="text-xs sm:text-sm font-black text-gray-900 mt-1 tabular-nums group-hover:text-[var(--theme-primary)] transition-colors truncate">
                             {stat.value}
                         </p>
-                        <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium mt-0.5 leading-tight truncate">
+                        <p className="text-xs sm:text-sm text-gray-400 font-medium mt-0.5 leading-tight truncate">
                             {stat.label}
                         </p>
                     </div>

@@ -249,7 +249,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             <p className="text-xs font-medium text-gray-800 leading-[1.4] line-clamp-2 min-h-[34px]">
                                 {cleanTitle(item.title)}
                             </p>
-                            <p className="text-[11px] text-gray-400 mt-1">
+                            <p className="text-xs text-gray-400 mt-1">
                                 Amazon.co.jp →
                             </p>
                         </div>
@@ -260,7 +260,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         <button
                             onClick={(e) => handleDelete(item.id, e)}
                             disabled={deletingId === item.id}
-                            className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-red-500/90 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
+                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/90 text-white text-[11px] flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
                             aria-label={locale === 'ja' ? '削除' : 'Remove'}
                             title={locale === 'ja' ? '削除' : 'Remove'}
                         >
@@ -294,7 +294,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%) translateY(-100%)' }}
                         >
                             <div className="bg-[var(--theme-primary)] rounded-lg px-2.5 py-2">
-                                <p className="text-[10px] text-white leading-snug line-clamp-3 break-words text-center">
+                                <p className="text-xs text-white leading-snug line-clamp-3 break-words text-center">
                                     {item.comment}
                                 </p>
                             </div>
@@ -316,7 +316,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                             </svg>
                         </div>
-                        <span className="text-[11px] text-gray-400 group-hover:text-[var(--theme-primary)] transition-colors font-medium">
+                        <span className="text-xs text-gray-400 group-hover:text-[var(--theme-primary)] transition-colors font-medium">
                             {locale === 'ja' ? '追加' : 'Add'}
                         </span>
                     </button>
@@ -391,7 +391,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-[var(--theme-primary)]">
                                     <path fillRule="evenodd" d="M3.43 2.524A41.29 41.29 0 0110 2c2.236 0 4.43.18 6.57.524 1.437.231 2.43 1.49 2.43 2.902v5.148c0 1.413-.993 2.67-2.43 2.902a41.202 41.202 0 01-5.183.501l-2.9 2.748A.75.75 0 017 16.153V14.12a41.618 41.618 0 01-3.57-.524C2.007 13.365 1 12.106 1 10.694V5.426c0-1.413.993-2.67 2.43-2.902z" clipRule="evenodd" />
                                 </svg>
-                                <span className="text-[11px] font-semibold text-gray-700">
+                                <span className="text-xs font-semibold text-gray-700">
                                     {locale === 'ja' ? '一言コメント' : 'Comment'}
                                 </span>
                             </div>
@@ -402,7 +402,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 onChange={(e) => setCommentDraft(e.target.value)}
                                 maxLength={100}
                                 placeholder={locale === 'ja' ? 'おすすめポイントなど…' : 'Why you love it…'}
-                                className="w-full text-[11px] px-2.5 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/40 text-gray-700 placeholder-gray-300"
+                                className="w-full text-xs px-2.5 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/40 text-gray-700 placeholder-gray-300"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') saveComment(editingCommentId);
                                     if (e.key === 'Escape') cancelEditComment();
@@ -412,17 +412,17 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 <button
                                     onClick={() => saveComment(editingCommentId)}
                                     disabled={savingCommentId === editingCommentId}
-                                    className="text-[10px] px-3 py-1 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
+                                    className="text-xs px-3 py-1 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
                                 >
                                     {savingCommentId === editingCommentId ? '…' : (locale === 'ja' ? '保存' : 'Save')}
                                 </button>
                                 <button
                                     onClick={cancelEditComment}
-                                    className="text-[10px] px-2 py-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                    className="text-xs px-2 py-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                                 >
                                     {locale === 'ja' ? '取消' : 'Cancel'}
                                 </button>
-                                <span className="text-[9px] text-gray-300 ml-auto">{commentDraft.length}/100</span>
+                                <span className="text-xs text-gray-300 ml-auto">{commentDraft.length}/100</span>
                             </div>
                         </div>
                         {/* 吹き出し三角（下向き） */}

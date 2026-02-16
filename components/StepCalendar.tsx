@@ -239,7 +239,7 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                     ) : (
                         <>
                             <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(rawPct * 100)}%</span>
-                            <span className="text-[11px] sm:text-xs text-gray-400 font-medium">{goal.toLocaleString()}</span>
+                            <span className="text-xs sm:text-sm text-gray-400 font-medium">{goal.toLocaleString()}</span>
                         </>
                     )}
                 </div>
