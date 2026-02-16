@@ -44,7 +44,7 @@ export default async function AnalyticsPage() {
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
             {/* ヘッダー: 他ページ共通パターン */}
             <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-                <div className="w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
+                <div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1
@@ -71,7 +71,7 @@ export default async function AnalyticsPage() {
             </header>
 
             {/* コンテンツ */}
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8 py-8">
                 {/* パンくずリスト */}
                 <div className="mb-6">
                     <Breadcrumbs items={[{ label: t('title') }]} />
