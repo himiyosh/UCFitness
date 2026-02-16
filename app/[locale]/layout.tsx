@@ -86,7 +86,7 @@ export default async function LocaleLayout({
 
                 <LanguageSyncer user={session?.user as any} />
                 {session && <FloatingEmojis />}
-                <div id="main-content" className="relative flex flex-col min-h-screen" style={{ zIndex: 20 }}>
+                <div id="main-content" className="relative flex flex-col" style={{ zIndex: 20 }}>
                   {children}
                 </div>
               </ThemeProvider>
