@@ -1,7 +1,13 @@
 export const runtime = 'edge';
 
 import CreateGroupClient from '@/components/CreateGroupClient';
+import Footer from '@/components/Footer';
 
 export default function CreateGroupPage() {
-  return <CreateGroupClient />;
+  return (
+    <>
+      <CreateGroupClient />
+      <Footer />
+    </>
+  );
 }
