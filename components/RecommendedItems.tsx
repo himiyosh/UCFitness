@@ -27,6 +27,7 @@ export interface RecommendedItem {
     image_url: string;
     affiliate_link: string;
     display_order: number;
+    comment?: string | null;
 }
 
 interface RecommendedItemsProps {
@@ -40,9 +41,13 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [slideIndex, setSlideIndex] = useState(0);
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+    const [commentDraft, setCommentDraft] = useState('');
+    const [savingCommentId, setSavingCommentId] = useState<string | null>(null);
     const { success: toastSuccess, error: toastError } = useToast();
     const modalRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
+    const commentInputRef = useRef<HTMLInputElement>(null);
 
     // --- 削除 ---
     const handleDelete = useCallback(async (itemId: string, e: React.MouseEvent) => {
@@ -65,6 +70,48 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
             setDeletingId(null);
         }
     }, [locale, toastSuccess, toastError]);
+
+    // --- コメント編集開始 ---
+    const startEditComment = useCallback((item: RecommendedItem, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setEditingCommentId(item.id);
+        setCommentDraft(item.comment || '');
+        // フォーカスは次のレンダーで
+        setTimeout(() => commentInputRef.current?.focus(), 50);
+    }, []);
+
+    // --- コメント保存 ---
+    const saveComment = useCallback(async (itemId: string) => {
+        const trimmed = commentDraft.trim();
+        setSavingCommentId(itemId);
+        try {
+            const res = await fetch('/api/amazon/recommended', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: itemId, comment: trimmed || null }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Update failed');
+            }
+            setItems(prev => prev.map(i =>
+                i.id === itemId ? { ...i, comment: trimmed || null } : i
+            ));
+            toastSuccess(locale === 'ja' ? 'コメントを保存しました' : 'Comment saved');
+        } catch {
+            toastError(locale === 'ja' ? '保存に失敗しました' : 'Failed to save');
+        } finally {
+            setSavingCommentId(null);
+            setEditingCommentId(null);
+        }
+    }, [commentDraft, locale, toastSuccess, toastError]);
+
+    // --- コメント編集キャンセル ---
+    const cancelEditComment = useCallback(() => {
+        setEditingCommentId(null);
+        setCommentDraft('');
+    }, []);
 
     // --- モーダルから追加時のコールバック ---
     const handleItemAdded = useCallback((item: RecommendedItem) => {
@@ -166,12 +213,12 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         }}
                     >
                 {items.map(item => (
+                    <div key={item.id} className="flex-shrink-0 w-[130px]">
                     <a
-                        key={item.id}
                         href={item.affiliate_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="recommended-card flex-shrink-0 w-[130px] rounded-xl border border-black/[0.06] bg-white overflow-hidden group relative hover:shadow-md hover:-translate-y-0.5 transition-all"
+                        className="recommended-card block rounded-xl border border-black/[0.06] bg-white overflow-hidden group relative hover:shadow-md hover:-translate-y-0.5 transition-all"
                     >
                         {/* 商品画像 */}
                         <div className="w-[130px] h-[110px] bg-gray-50 flex items-center justify-center overflow-hidden">
@@ -210,6 +257,62 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             </button>
                         )}
                     </a>
+
+                    {/* コメント表示・編集エリア */}
+                    {editingCommentId === item.id ? (
+                        /* オーナー: コメント編集中 */
+                        <div className="mt-1.5 px-0.5">
+                            <input
+                                ref={commentInputRef}
+                                type="text"
+                                value={commentDraft}
+                                onChange={(e) => setCommentDraft(e.target.value)}
+                                maxLength={100}
+                                placeholder={locale === 'ja' ? '一言コメント…' : 'Comment…'}
+                                className="w-full text-[10px] px-2 py-1 rounded-md border border-[var(--theme-primary)]/30 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--theme-primary)]/50 text-gray-700 placeholder-gray-300"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveComment(item.id);
+                                    if (e.key === 'Escape') cancelEditComment();
+                                }}
+                            />
+                            <div className="flex items-center gap-1 mt-1">
+                                <button
+                                    onClick={() => saveComment(item.id)}
+                                    disabled={savingCommentId === item.id}
+                                    className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--theme-primary)] text-white hover:opacity-80 transition-opacity disabled:opacity-50"
+                                >
+                                    {savingCommentId === item.id ? '…' : (locale === 'ja' ? '保存' : 'Save')}
+                                </button>
+                                <button
+                                    onClick={cancelEditComment}
+                                    className="text-[9px] px-1.5 py-0.5 rounded text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    {locale === 'ja' ? '取消' : 'Cancel'}
+                                </button>
+                                <span className="text-[8px] text-gray-300 ml-auto">{commentDraft.length}/100</span>
+                            </div>
+                        </div>
+                    ) : item.comment ? (
+                        /* コメント表示（全ユーザーに見える） */
+                        <div
+                            className={`mt-1.5 px-1 ${isOwner ? 'cursor-pointer' : ''}`}
+                            onClick={isOwner ? (e) => startEditComment(item, e) : undefined}
+                            title={isOwner ? (locale === 'ja' ? 'クリックして編集' : 'Click to edit') : undefined}
+                        >
+                            <p className="text-[10px] text-gray-500 leading-snug line-clamp-2 italic">
+                                &ldquo;{item.comment}&rdquo;
+                            </p>
+                        </div>
+                    ) : isOwner ? (
+                        /* オーナー: コメント未設定 → 追加ボタン */
+                        <button
+                            onClick={(e) => startEditComment(item, e)}
+                            className="mt-1.5 w-full text-[9px] text-gray-300 hover:text-[var(--theme-primary)] transition-colors text-center py-0.5"
+                        >
+                            {locale === 'ja' ? '＋ コメント追加' : '+ Add comment'}
+                        </button>
+                    ) : null}
+                    </div>
                 ))}
 
                 {/* オーナー: ＋ボタン（6件未満のとき） */}

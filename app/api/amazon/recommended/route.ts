@@ -9,11 +9,15 @@ export const dynamic = 'force-dynamic';
 // ============================================
 // おすすめアイテム CRUD API
 // POST   : アイテム追加
+// PATCH  : コメント更新
 // DELETE : アイテム削除
 // ============================================
 
 /** おすすめアイテムの最大登録数 */
 const MAX_RECOMMENDED_ITEMS = 6;
+
+/** コメントの最大文字数 */
+const MAX_COMMENT_LENGTH = 100;
 
 // --- POST: アイテム追加 ---
 interface AddItemRequest {
@@ -21,6 +25,7 @@ interface AddItemRequest {
     title: string;
     imageUrl: string;
     affiliateLink: string;
+    comment?: string;
 }
 
 export async function POST(request: Request) {
@@ -67,6 +72,15 @@ export async function POST(request: Request) {
         const nextOrder = (maxOrder?.display_order ?? -1) + 1;
 
         // 挿入（重複ASIN は conflict で上書き）
+        // コメントの長さチェック
+        const comment = body.comment?.trim() || null;
+        if (comment && comment.length > MAX_COMMENT_LENGTH) {
+            return NextResponse.json(
+                { error: `コメントは${MAX_COMMENT_LENGTH}文字以内です` },
+                { status: 400 }
+            );
+        }
+
         const { data, error } = await supabaseAdmin
             .from('recommended_items')
             .upsert({
@@ -76,6 +90,7 @@ export async function POST(request: Request) {
                 image_url: body.imageUrl,
                 affiliate_link: body.affiliateLink,
                 display_order: nextOrder,
+                comment,
                 updated_at: new Date().toISOString(),
             }, {
                 onConflict: 'user_id,asin',
@@ -92,6 +107,54 @@ export async function POST(request: Request) {
     } catch (error: unknown) {
         reportError('[API] おすすめアイテム追加エラー', error);
         return NextResponse.json({ error: '保存に失敗しました' }, { status: 500 });
+    }
+}
+
+// --- PATCH: コメント更新 ---
+export async function PATCH(request: Request) {
+    const session = await auth();
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = (session.user as { id: string }).id;
+
+    try {
+        const body: { id: string; comment: string | null } = await request.json();
+
+        if (!body.id) {
+            return NextResponse.json({ error: 'id が必要です' }, { status: 400 });
+        }
+
+        // コメントの長さチェック
+        const comment = body.comment?.trim() || null;
+        if (comment && comment.length > MAX_COMMENT_LENGTH) {
+            return NextResponse.json(
+                { error: `コメントは${MAX_COMMENT_LENGTH}文字以内です` },
+                { status: 400 }
+            );
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('recommended_items')
+            .update({
+                comment,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', body.id)
+            .eq('user_id', userId) // 本人のみ更新可能
+            .select()
+            .single();
+
+        if (error) {
+            reportError('[API] コメント更新エラー', error);
+            return NextResponse.json({ error: '更新に失敗しました' }, { status: 500 });
+        }
+
+        return NextResponse.json({ item: data, message: 'コメントを更新しました' });
+    } catch (error: unknown) {
+        reportError('[API] コメント更新エラー', error);
+        return NextResponse.json({ error: '更新に失敗しました' }, { status: 500 });
     }
 }
 

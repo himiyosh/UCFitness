@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     // メンバーの recommended_items を取得（ユーザー情報付き）
     const { data: rawItems } = await supabaseAdmin
         .from('recommended_items')
-        .select('asin, title, image_url, affiliate_link, user_id, users (username, image)')
+        .select('asin, title, image_url, affiliate_link, comment, user_id, users (username, image)')
         .in('user_id', memberIds)
         .order('updated_at', { ascending: false })
         .limit(100);
@@ -53,13 +53,13 @@ export async function GET(request: NextRequest) {
         image_url: string;
         affiliate_link: string;
         count: number;
-        users: { username: string; image: string | null }[];
+        users: { username: string; image: string | null; comment?: string | null }[];
     }>();
 
     for (const item of rawItems) {
         const existing = asinMap.get(item.asin);
         const user = item.users as unknown as { username: string; image: string | null } | null;
-        const userInfo = user ? { username: user.username || 'User', image: user.image } : null;
+        const userInfo = user ? { username: user.username || 'User', image: user.image, comment: item.comment || null } : null;
 
         if (existing) {
             existing.count++;

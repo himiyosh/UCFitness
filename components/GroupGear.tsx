@@ -15,7 +15,7 @@ interface GearItem {
     image_url: string;
     affiliate_link: string;
     count: number;
-    users: { username: string; image: string | null }[];
+    users: { username: string; image: string | null; comment?: string | null }[];
 }
 
 interface GroupGearProps {
@@ -171,9 +171,19 @@ export default function GroupGear({ groupId }: GroupGearProps) {
                         </div>
 
                         {/* タイトル */}
-                        <p className="text-[11px] font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1.5 h-8">
+                        <p className="text-[11px] font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1 h-8">
                             {cleanTitle(item.title)}
                         </p>
+
+                        {/* ユーザーコメント（最初のコメント付きユーザーを表示） */}
+                        {(() => {
+                            const commented = item.users.find(u => u.comment);
+                            return commented ? (
+                                <p className="text-[9px] text-gray-400 leading-snug line-clamp-1 italic mb-1.5" title={`${commented.username}: ${commented.comment}`}>
+                                    &ldquo;{commented.comment}&rdquo;
+                                </p>
+                            ) : <div className="mb-1.5" />;
+                        })()}
 
                         {/* 愛用者アバター */}
                         <div className="flex items-center">

@@ -64,7 +64,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         getEquippedItems(user.id),
         supabaseAdmin
             .from('recommended_items')
-            .select('id, asin, title, image_url, affiliate_link, display_order')
+            .select('id, asin, title, image_url, affiliate_link, display_order, comment')
             .eq('user_id', user.id)
             .order('display_order', { ascending: true })
             .limit(6),
