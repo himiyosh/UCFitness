@@ -329,7 +329,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                                             {/* チェックマーク（アクティブ） */}
                                             {isActive && (
                                                 <span
-                                                    className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full text-white flex items-center justify-center text-[11px] font-bold shadow-lg"
+                                                    className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full text-white flex items-center justify-center text-xs font-bold shadow-lg"
                                                     style={{ backgroundColor: meta.accentColor }}
                                                 >
                                                     ✓

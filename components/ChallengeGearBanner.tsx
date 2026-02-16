@@ -54,7 +54,7 @@ export default function ChallengeGearBanner() {
                 <span className="text-lg">🏆</span>
                 <div>
                     <h4 className="text-sm font-bold text-gray-900">{t('title')}</h4>
-                    <p className="text-[11px] text-gray-500">{t('subtitle')}</p>
+                    <p className="text-xs text-gray-500">{t('subtitle')}</p>
                 </div>
             </div>
 
@@ -83,7 +83,7 @@ export default function ChallengeGearBanner() {
                         </div>
                         {/* タイトル */}
                         <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-amber-700 transition-colors">
+                            <p className="text-xs font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-amber-700 transition-colors">
                                 {cleanTitle(item.title)}
                             </p>
                             <span className="text-[9px] text-amber-600 font-semibold mt-0.5 inline-block">

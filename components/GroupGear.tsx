@@ -113,7 +113,7 @@ export default function GroupGear({ groupId }: GroupGearProps) {
                         <h3 className="text-sm font-bold text-gray-900 tracking-tight">
                             {t('title')}
                         </h3>
-                        <p className="text-[11px] text-gray-400 font-medium">
+                        <p className="text-xs text-gray-400 font-medium">
                             {t('subtitle')}
                         </p>
                     </div>
@@ -171,7 +171,7 @@ export default function GroupGear({ groupId }: GroupGearProps) {
                         </div>
 
                         {/* タイトル */}
-                        <p className="text-[11px] font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1 h-8">
+                        <p className="text-xs font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1 h-8">
                             {cleanTitle(item.title)}
                         </p>
 

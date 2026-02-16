@@ -302,7 +302,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                             <button
                                 key={m}
                                 onClick={() => setViewMode(m)}
-                                className={`px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-medium rounded-md transition-colors ${viewMode === m
+                                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md transition-colors ${viewMode === m
                                     ? 'bg-white text-gray-900 shadow-sm'
                                     : 'text-gray-500 hover:text-gray-900'
                                     }`}

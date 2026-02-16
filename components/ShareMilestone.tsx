@@ -70,7 +70,7 @@ export default function ShareMilestone({ totalSteps, username, isOwner = true }:
 
             {/* コピー成功トースト */}
             {copied && (
-                <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
                     ✅ {t('linkCopied')}
                 </div>
             )}

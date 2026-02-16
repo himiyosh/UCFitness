@@ -222,7 +222,7 @@ export default function ShopRecommendations() {
                                     </div>
 
                                     {/* タイトル */}
-                                    <p className="text-[11px] font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1.5 h-[30px]">
+                                    <p className="text-xs font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1.5 h-[30px]">
                                         {cleanTitle(item.title)}
                                     </p>
 
