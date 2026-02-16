@@ -11,7 +11,7 @@ import { auth } from "@/lib/auth";
 import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
 import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import nextDynamic from 'next/dynamic';
-import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip } from '@/lib/ranking-utils';
+import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip, enrichCombinedRankings } from '@/lib/ranking-utils';
 import AutoSync from '@/components/AutoSync';
 import Footer from '@/components/Footer';
 import LandingPage from '@/components/LandingPage';
@@ -158,15 +158,15 @@ export default async function Home() {
   // ⚡ Bolt Optimization: Truncate rankings to reduce HTML payload size (Top 100 + You)
   const optimizedRankings = optimizeRankingsForPayload(rawGlobalRankings, (session?.user as any)?.id, 100);
 
-  // 装備アイテム情報を注入（フレーム・称号）
-  const allGlobalRankings = await enrichRankingsWithEquip(optimizedRankings) as Record<string, RankingEntry[]>;
+  // ⚡ Bolt Optimization: Delay enrichment until Group Rankings are ready to batch fetch equipment
+  // const allGlobalRankings = await enrichRankingsWithEquip(optimizedRankings) as Record<string, RankingEntry[]>;
 
-  // Extract Stats for Current User
+  // Extract Stats for Current User (Use optimizedRankings directly as it has steps info)
   const userId = (session?.user as any)?.id;
-  const myWeeklyEntry = userId ? allGlobalRankings['WEEKLY'].find((r: RankingEntry) => r.users.id === userId) : undefined;
+  const myWeeklyEntry = userId ? optimizedRankings['WEEKLY'].find((r: RankingEntry) => r.users.id === userId) : undefined;
   const myWeeklySteps = myWeeklyEntry?.steps || 0;
 
-  const myMonthlyEntry = userId ? allGlobalRankings['MONTHLY'].find((r: RankingEntry) => r.users.id === userId) : undefined;
+  const myMonthlyEntry = userId ? optimizedRankings['MONTHLY'].find((r: RankingEntry) => r.users.id === userId) : undefined;
   const myMonthlySteps = myMonthlyEntry?.steps || 0;
 
 
@@ -208,7 +208,7 @@ export default async function Home() {
           if (!inList) {
             // User missing! We must inject them to ensure UI doesn't break.
             // Try to find real stats from Global Ranking
-            const globalEntry = allGlobalRankings[periodKey].find(r => r.users.id === myId);
+            const globalEntry = optimizedRankings[periodKey].find(r => r.users.id === myId);
 
             const injectedEntry: RankingEntry = globalEntry ? { ...globalEntry } : {
               steps: 0,
@@ -238,8 +238,12 @@ export default async function Home() {
     })
   ));
 
-  // ⚡ Bolt Optimization: Enrich Group Rankings with equipment info (Fix regression from truncating global)
-  const enrichedGroupRankings = await enrichAllGroupRankingsWithEquip(allGroupRankings);
+  // ⚡ Bolt Optimization: Batch fetch equipment for BOTH Global and Group rankings (1 Query vs 2)
+  await enrichCombinedRankings(optimizedRankings, allGroupRankings);
+
+  // Re-assign for clarity (they are mutated in place)
+  const allGlobalRankings = optimizedRankings;
+  const enrichedGroupRankings = allGroupRankings;
 
   // Fetch Group Competition Rankings
   // ⚡ Bolt Optimization: Combined call to reduce DB queries (12 -> 3)

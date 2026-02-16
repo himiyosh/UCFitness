@@ -1,4 +1,4 @@
-import { getEquippedItemsForUsers, type UserEquipSummary } from './shop-service';
+import { getEquippedItemsForUsers } from './shop-service';
 
 export type RankingEntry = {
     steps: number;
@@ -199,4 +199,66 @@ export function optimizeRankingsForPayload(
     }
 
     return optimized;
+}
+
+/**
+ * ⚡ Bolt Optimization:
+ * グローバルランキングとグループランキングを一括で処理し、装備アイテム情報を注入する
+ * これにより、重複ユーザーのクエリを統合し、DB呼び出し回数を削減する
+ */
+export async function enrichCombinedRankings<T extends { neighbors: Record<string, RankingEntry[]> }>(
+    globalRankings: Record<string, RankingEntry[]>,
+    groupRankings: T[]
+): Promise<void> {
+    const userIdSet = new Set<string>();
+
+    // Collect IDs from Global Rankings
+    for (const period of Object.keys(globalRankings)) {
+        for (const entry of globalRankings[period]) {
+            if (entry.users?.id) userIdSet.add(entry.users.id);
+        }
+    }
+
+    // Collect IDs from Group Rankings
+    for (const group of groupRankings) {
+        for (const period of Object.keys(group.neighbors)) {
+            for (const entry of group.neighbors[period]) {
+                if (entry.users?.id) userIdSet.add(entry.users.id);
+            }
+        }
+    }
+
+    const userIds = Array.from(userIdSet);
+    if (userIds.length === 0) return;
+
+    // Bulk fetch equipment
+    const equipMap = await getEquippedItemsForUsers(userIds);
+
+    // Apply to Global Rankings
+    for (const period of Object.keys(globalRankings)) {
+        for (const entry of globalRankings[period]) {
+            const equip = equipMap[entry.users.id];
+            if (equip) {
+                entry.users.frameColor = equip.frameColor;
+                entry.users.titleNameJa = equip.titleNameJa;
+                entry.users.titleNameEn = equip.titleNameEn;
+                entry.users.titleEmoji = equip.titleEmoji;
+            }
+        }
+    }
+
+    // Apply to Group Rankings
+    for (const group of groupRankings) {
+        for (const period of Object.keys(group.neighbors)) {
+            for (const entry of group.neighbors[period]) {
+                const equip = equipMap[entry.users.id];
+                if (equip) {
+                    entry.users.frameColor = equip.frameColor;
+                    entry.users.titleNameJa = equip.titleNameJa;
+                    entry.users.titleNameEn = equip.titleNameEn;
+                    entry.users.titleEmoji = equip.titleEmoji;
+                }
+            }
+        }
+    }
 }
