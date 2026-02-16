@@ -90,7 +90,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
             <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
                 {/* Header */}
                 <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
+                    <div className="w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Link href="/" className="flex items-center gap-2 group">
                                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
@@ -108,7 +108,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                 </header>
 
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
                     <div className="mb-6">
                         <Breadcrumbs
                             items={[
@@ -173,7 +173,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
             {/* Header */}
             <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
+                <div className="w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
                             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
@@ -191,7 +191,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 </div>
             </header>
 
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
                 {/* Back Nav & Badges */}
                 <div className="flex items-center justify-between">
