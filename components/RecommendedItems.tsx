@@ -223,12 +223,12 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         }}
                     >
                 {items.map(item => (
-                    <div key={item.id} className="flex-shrink-0 w-[130px] relative">
+                    <div key={item.id} className="flex-shrink-0 w-[130px] relative group">
                     <a
                         href={item.affiliate_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="recommended-card block rounded-xl border border-black/[0.06] bg-white overflow-hidden group relative hover:shadow-md hover:-translate-y-0.5 transition-all"
+                        className="recommended-card block rounded-xl border border-black/[0.06] bg-white overflow-hidden relative hover:shadow-md hover:-translate-y-0.5 transition-all"
                     >
                         {/* 商品画像 */}
                         <div className="w-[130px] h-[110px] bg-gray-50 flex items-center justify-center overflow-hidden">
@@ -253,61 +253,61 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 Amazon.co.jp →
                             </p>
                         </div>
-
-                        {/* オーナー: 削除ボタン */}
-                        {isOwner && (
-                            <button
-                                onClick={(e) => handleDelete(item.id, e)}
-                                disabled={deletingId === item.id}
-                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
-                                aria-label={locale === 'ja' ? '削除' : 'Remove'}
-                                title={locale === 'ja' ? '削除' : 'Remove'}
-                            >
-                                ✕
-                            </button>
-                        )}
-
-                        {/* コメント吹き出しアイコン（コメントあり時 or オーナー時） */}
-                        {(item.comment || isOwner) && editingCommentId !== item.id && (
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (isOwner) {
-                                        startEditComment(item, e);
-                                    }
-                                }}
-                                className={`absolute top-1 ${isOwner ? 'left-1' : 'right-1'} w-5 h-5 rounded-full flex items-center justify-center transition-all shadow-sm backdrop-blur-sm ${
-                                    item.comment
-                                        ? 'bg-[var(--theme-primary)]/90 text-white opacity-100 hover:bg-[var(--theme-primary)]'
-                                        : 'bg-gray-400/70 text-white opacity-0 group-hover:opacity-70 hover:!opacity-100'
-                                } ${!isOwner ? 'pointer-events-none' : 'cursor-pointer'}`}
-                                aria-label={locale === 'ja' ? 'コメント' : 'Comment'}
-                                title={item.comment || (locale === 'ja' ? 'コメントを追加' : 'Add comment')}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-2.5 h-2.5">
-                                    <path fillRule="evenodd" d="M3.43 2.524A41.29 41.29 0 0110 2c2.236 0 4.43.18 6.57.524 1.437.231 2.43 1.49 2.43 2.902v5.148c0 1.413-.993 2.67-2.43 2.902a41.202 41.202 0 01-5.183.501l-2.9 2.748A.75.75 0 017 16.153V14.12a41.618 41.618 0 01-3.57-.524C2.007 13.365 1 12.106 1 10.694V5.426c0-1.413.993-2.67 2.43-2.902z" clipRule="evenodd" />
-                                </svg>
-                            </button>
-                        )}
-
-                        {/* 吹き出しコメント表示 — 画像エリアにオーバーレイ */}
-                        {editingCommentId !== item.id && item.comment && (
-                            <div
-                                className={`absolute top-7 left-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-all duration-200 ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
-                                onClick={isOwner ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
-                                style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.1))' }}
-                            >
-                                <div className="bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1.5 border border-gray-100/80">
-                                    <p className="text-[9px] text-gray-600 leading-snug line-clamp-3 break-words">
-                                        {item.comment}
-                                    </p>
-                                </div>
-                                {/* 吹き出し三角（上向き） */}
-                                <div className="absolute -top-1 right-2 w-2 h-2 bg-white/95 border-l border-t border-gray-100/80 transform rotate-45" />
-                            </div>
-                        )}
                     </a>
+
+                    {/* オーナー: 削除ボタン（カード外に配置してクリップされない） */}
+                    {isOwner && (
+                        <button
+                            onClick={(e) => handleDelete(item.id, e)}
+                            disabled={deletingId === item.id}
+                            className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-red-500/90 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
+                            aria-label={locale === 'ja' ? '削除' : 'Remove'}
+                            title={locale === 'ja' ? '削除' : 'Remove'}
+                        >
+                            ✕
+                        </button>
+                    )}
+
+                    {/* コメント吹き出しアイコン（常時表示：コメントありはテーマカラー、なしはオーナーのみホバーで表示） */}
+                    {(item.comment || isOwner) && editingCommentId !== item.id && (
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (isOwner) {
+                                    startEditComment(item, e);
+                                }
+                            }}
+                            className={`absolute top-1 left-1 z-10 w-5 h-5 rounded-full flex items-center justify-center transition-all shadow-sm backdrop-blur-sm ${
+                                item.comment
+                                    ? 'bg-[var(--theme-primary)] text-white'
+                                    : 'bg-gray-400/70 text-white opacity-0 group-hover:opacity-70 hover:!opacity-100'
+                            } ${!isOwner ? 'pointer-events-none' : 'cursor-pointer hover:scale-110'}`}
+                            aria-label={locale === 'ja' ? 'コメント' : 'Comment'}
+                            title={item.comment || (locale === 'ja' ? 'コメントを追加' : 'Add comment')}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-2.5 h-2.5">
+                                <path fillRule="evenodd" d="M3.43 2.524A41.29 41.29 0 0110 2c2.236 0 4.43.18 6.57.524 1.437.231 2.43 1.49 2.43 2.902v5.148c0 1.413-.993 2.67-2.43 2.902a41.202 41.202 0 01-5.183.501l-2.9 2.748A.75.75 0 017 16.153V14.12a41.618 41.618 0 01-3.57-.524C2.007 13.365 1 12.106 1 10.694V5.426c0-1.413.993-2.67 2.43-2.902z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    )}
+
+                    {/* 吹き出しコメント表示 — 画像エリアにオーバーレイ */}
+                    {editingCommentId !== item.id && item.comment && (
+                        <div
+                            className={`absolute top-7 left-1 right-1 z-20 opacity-0 group-hover:opacity-100 transition-all duration-200 ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
+                            onClick={isOwner ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
+                            style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.1))' }}
+                        >
+                            <div className="bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1.5 border border-gray-100/80">
+                                <p className="text-[9px] text-gray-600 leading-snug line-clamp-3 break-words">
+                                    {item.comment}
+                                </p>
+                            </div>
+                            {/* 吹き出し三角（上向き） */}
+                            <div className="absolute -top-1 left-3 w-2 h-2 bg-white/95 border-l border-t border-gray-100/80 transform rotate-45" />
+                        </div>
+                    )}
                     </div>
                 ))}
 
