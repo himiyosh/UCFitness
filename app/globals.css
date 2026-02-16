@@ -1103,6 +1103,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  zoom: 0.9;
 }
 
 /* スティッキーフッター: コンテンツが少ない場合もフッターをビューポート最下部に固定 */
