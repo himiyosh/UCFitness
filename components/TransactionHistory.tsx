@@ -107,7 +107,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                                         {t(config.key)}
                                     </span>
                                     {tx.type === 'PURCHASE' && tx.description && (
-                                        <span className="text-[10px] text-gray-400 truncate block">
+                                        <span className="text-xs text-gray-400 truncate block">
                                             {getPurchaseItemName(tx.description)}
                                         </span>
                                     )}

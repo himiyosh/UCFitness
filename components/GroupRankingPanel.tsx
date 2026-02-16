@@ -73,7 +73,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 <span className={`text-sm ${isMidnight ? 'opacity-90' : ''}`}>👥</span>
                 <span className={`text-xs font-bold tracking-wide ${isMidnight ? 'text-emerald-300' : 'text-emerald-700'}`}>Group Ranking</span>
                 <span
-                    className="ml-auto truncate py-0.5 px-2 rounded-full text-[10px] font-bold"
+                    className="ml-auto truncate py-0.5 px-2 rounded-full text-xs font-bold"
                     style={isMidnight
                         ? { background: 'rgba(52,211,153,0.15)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.3)' }
                         : { background: '#d1fae5', color: '#047857', border: '1px solid #a7f3d0' }
@@ -82,7 +82,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
             </div>
             <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
                 {moveError && (
-                    <span className="text-[10px] text-red-500 font-bold animate-pulse mr-1">Error</span>
+                    <span className="text-xs text-red-500 font-bold animate-pulse mr-1">Error</span>
                 )}
                 {!isFirst && (
                     <button
@@ -148,7 +148,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
 
                                             {/* Content Wrapper */}
                                             <div className="relative z-10 flex items-center gap-2 sm:gap-3">
-                                                <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-xs font-bold"
+                                                <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold"
                                                     style={entry.originalRank === 1 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                         color: '#ffffff',
@@ -175,10 +175,10 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                         <span className="truncate">
                                                             {entry.users?.name || commonT('anonymous')}
                                                         </span>
-                                                        {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">{commonT('you')}</span>}
+                                                        {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-xs bg-[var(--theme-primary)] text-white font-bold leading-none">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
-                                                        <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
+                                                        <span className="text-xs text-gray-400 font-medium truncate">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -190,7 +190,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     const delta = entry.steps - entry.prevSteps!;
                                                     if (delta === 0) return null;
                                                     return (
-                                                        <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                        <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
                                                             {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
                                                         </span>
                                                     );

@@ -179,7 +179,7 @@ export default function GroupGear({ groupId }: GroupGearProps) {
                         {(() => {
                             const commented = item.users.find(u => u.comment);
                             return commented ? (
-                                <p className="text-[9px] text-gray-400 leading-snug line-clamp-1 italic mb-1.5" title={`${commented.username}: ${commented.comment}`}>
+                                <p className="text-xs text-gray-400 leading-snug line-clamp-1 italic mb-1.5" title={`${commented.username}: ${commented.comment}`}>
                                     &ldquo;{commented.comment}&rdquo;
                                 </p>
                             ) : <div className="mb-1.5" />;
@@ -206,7 +206,7 @@ export default function GroupGear({ groupId }: GroupGearProps) {
                                 ))}
                             </div>
                             {item.count > 3 && (
-                                <span className="text-[9px] text-gray-400 font-medium ml-1">+{item.count - 3}</span>
+                                <span className="text-xs text-gray-400 font-medium ml-1">+{item.count - 3}</span>
                             )}
                         </div>
                     </a>

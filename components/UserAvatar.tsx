@@ -44,33 +44,33 @@ export interface UserAvatarProps {
 const SIZE_MAP = {
     xs: {
         container: 'w-6 h-6',
-        text: 'text-[9px]',
+        text: 'text-xs',
         frame: 3,      // border width px
-        titleText: 'text-[9px]',
+        titleText: 'text-xs',
     },
     sm: {
         container: 'w-8 h-8',
-        text: 'text-[10px]',
+        text: 'text-xs',
         frame: 3,
-        titleText: 'text-[9px]',
+        titleText: 'text-xs',
     },
     md: {
         container: 'w-11 h-11',
         text: 'text-sm',
         frame: 3,
-        titleText: 'text-[10px]',
+        titleText: 'text-xs',
     },
     'md-lg': {
         container: 'w-9 h-9 sm:w-12 sm:h-12',
         text: 'text-sm sm:text-base',
         frame: 3,
-        titleText: 'text-[10px]',
+        titleText: 'text-xs',
     },
     lg: {
         container: 'w-16 h-16 sm:w-24 sm:h-24',
         text: 'text-2xl sm:text-3xl',
         frame: 4,
-        titleText: 'text-[10px] sm:text-xs',
+        titleText: 'text-xs',
     },
     xl: {
         container: 'w-24 h-24',

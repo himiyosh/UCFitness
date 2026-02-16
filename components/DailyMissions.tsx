@@ -154,7 +154,7 @@ export default function DailyMissions() {
                     />
                 </div>
                 {allCompleted && (
-                    <p className="text-[10px] font-bold text-emerald-600 mt-1">
+                    <p className="text-xs font-bold text-emerald-600 mt-1">
                         ✨ {t('allCompleted')}
                     </p>
                 )}
@@ -180,7 +180,7 @@ export default function DailyMissions() {
                             </div>
                         ) : (
                             <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center flex-shrink-0">
-                                <span className="text-[10px] sm:text-xs text-gray-300">○</span>
+                                <span className="text-xs text-gray-300">○</span>
                             </div>
                         )}
 
@@ -189,7 +189,7 @@ export default function DailyMissions() {
                             <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-gray-800'}`}>
                                 {mission.title}
                             </p>
-                            <p className="text-[9px] sm:text-[10px] text-gray-400 mt-0 sm:mt-0.5">{mission.description}</p>
+                            <p className="text-xs text-gray-400 mt-0 sm:mt-0.5">{mission.description}</p>
                         </div>
 
                         {/* 報酬 */}
@@ -202,7 +202,7 @@ export default function DailyMissions() {
                 {/* 全達成ボーナス表示 */}
                 {!allCompleted && (
                     <div className="text-center py-2">
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-xs text-gray-400">
                             🎁 {t('bonusHint')}
                         </p>
                     </div>

@@ -81,7 +81,7 @@ export default function GroupReactions({
                     return (
                         <span
                             key={emoji}
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[10px]"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-xs"
                             title={t('receivedCount', { count })}
                         >
                             <span>{emoji}</span>
@@ -107,7 +107,7 @@ export default function GroupReactions({
                             handleToggle(emoji);
                         }}
                         disabled={isLoading}
-                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] transition-all duration-200 min-h-[22px] cursor-pointer
+                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs transition-all duration-200 min-h-[22px] cursor-pointer
                             ${reacted
                                 ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-105'
                                 : 'bg-gray-100 hover:bg-[var(--theme-primary-light)] text-gray-600 hover:text-[var(--theme-primary)]'

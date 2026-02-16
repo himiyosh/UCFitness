@@ -114,7 +114,7 @@ export default function DashboardFollowing() {
                             <p className="text-sm font-bold text-gray-900 tabular-nums">
                                 {user.todaySteps.toLocaleString()}
                             </p>
-                            <p className="text-[9px] text-[var(--foreground-muted)]">{t('todaySteps')}</p>
+                            <p className="text-xs text-[var(--foreground-muted)]">{t('todaySteps')}</p>
                         </div>
                     </Link>
                 ))}

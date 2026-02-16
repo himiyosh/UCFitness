@@ -106,7 +106,7 @@ export default function ShopRecommendations() {
                             {personalData.rankIcon} {personalData.rankLabel}
                         </span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mb-3">
+                    <p className="text-xs text-gray-400 mb-3">
                         {t('personalizedDesc', { steps: personalData.avgSteps.toLocaleString() })}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -123,7 +123,7 @@ export default function ShopRecommendations() {
                                 <p className="text-sm font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors truncate">
                                     {personalData.primaryKeyword}
                                 </p>
-                                <p className="text-[10px] text-gray-400">{t('rankRecommend')}</p>
+                                <p className="text-xs text-gray-400">{t('rankRecommend')}</p>
                             </div>
                             <svg className="w-4 h-4 text-gray-300 group-hover:text-[var(--theme-primary)] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -142,7 +142,7 @@ export default function ShopRecommendations() {
                                 <p className="text-sm font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors truncate">
                                     {personalData.secondaryKeyword}
                                 </p>
-                                <p className="text-[10px] text-gray-400">{t('stepsRecommend')}</p>
+                                <p className="text-xs text-gray-400">{t('stepsRecommend')}</p>
                             </div>
                             <svg className="w-4 h-4 text-gray-300 group-hover:text-[var(--theme-primary)] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -164,7 +164,7 @@ export default function ShopRecommendations() {
                             </div>
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 tracking-tight">{tGear('title')}</h3>
-                                <p className="text-[10px] text-gray-400">{tGear('subtitle')}</p>
+                                <p className="text-xs text-gray-400">{tGear('subtitle')}</p>
                             </div>
                         </div>
                         {trendingItems.length > 3 && (
@@ -247,7 +247,7 @@ export default function ShopRecommendations() {
                                             ))}
                                         </div>
                                         {item.count > 3 && (
-                                            <span className="text-[9px] text-gray-400 font-medium ml-1">+{item.count - 3}</span>
+                                            <span className="text-xs text-gray-400 font-medium ml-1">+{item.count - 3}</span>
                                         )}
                                     </div>
                                 </a>

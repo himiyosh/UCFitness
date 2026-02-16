@@ -55,7 +55,7 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
                             aria-label={`Rank ${rank}: ${user.name || 'Unknown'}, ${entry.steps.toLocaleString()} steps`}
                         >
                             {/* Tooltip - visible on hover and focus */}
-                            <div className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute -top-10 bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 transition-opacity pointer-events-none" role="tooltip">
+                            <div className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute -top-10 bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 transition-opacity pointer-events-none" role="tooltip">
                                 {entry.steps.toLocaleString()} steps
                             </div>
 

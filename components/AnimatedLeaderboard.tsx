@@ -307,7 +307,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                     {/* Content Wrapper */}
                                                                     <div className="relative z-10 flex items-center gap-2 sm:gap-3">
                                                                         <div className="flex flex-col items-center gap-0.5">
-                                                                            <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-xs font-bold"
+                                                                            <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold"
                                                                                 style={entry.originalRank === 1 ? {
                                                                                     background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                                                     color: '#ffffff',
@@ -333,7 +333,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 const change = rankChanges[period]?.[entry.users.id];
                                                                                 if (!change || change === 0) return null;
                                                                                 return (
-                                                                                    <span className={`text-[9px] font-bold leading-none ${change > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                                                    <span className={`text-xs font-bold leading-none ${change > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                                         {change > 0 ? '▲' : '▼'}{Math.abs(change)}
                                                                                     </span>
                                                                                 );
@@ -349,10 +349,10 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 <span>
                                                                                     {entry.users?.name || commonT('anonymous')}
                                                                                 </span>
-                                                                                {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold">{commonT('you')}</span>}
+                                                                                {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-xs bg-[var(--theme-primary)] text-white font-bold">{commonT('you')}</span>}
                                                                             </p>
                                                                             {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
-                                                                                <p className="text-[10px] text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
+                                                                                <p className="text-xs text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                                             )}
                                                                         </div>
                                                                     </div>
@@ -365,7 +365,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             const delta = entry.steps - entry.prevSteps!;
                                                                             if (delta === 0) return null;
                                                                             return (
-                                                                                <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                                                <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                                     {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
                                                                                 </span>
                                                                             );
@@ -536,16 +536,16 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                 {groupData.image_url && (
                                                                     <img src={groupData.image_url} alt="" className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border border-white/30" />
                                                                 )}
-                                                                <p className="text-white/80 text-[9px] sm:text-xs font-bold uppercase tracking-wider truncate">{t('yourRank')}</p>
+                                                                <p className="text-white/80 text-xs font-bold uppercase tracking-wider truncate">{t('yourRank')}</p>
                                                             </div>
                                                             <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
                                                                 <span className="text-xl sm:text-3xl font-black leading-none">#{myRank}</span>
-                                                                <span className="text-[9px] sm:text-sm font-medium opacity-90 line-clamp-1">{t('inGroup', { group: groupData.keyword })}</span>
+                                                                <span className="text-xs sm:text-sm font-medium opacity-90 line-clamp-1">{t('inGroup', { group: groupData.keyword })}</span>
                                                             </div>
                                                         </div>
                                                         <div className="text-right ml-1.5 sm:ml-2 shrink-0">
                                                             <div className="text-base sm:text-2xl font-bold tracking-tight leading-none mb-0.5 sm:mb-1">{myRankEntry.steps.toLocaleString()}</div>
-                                                            <div className="text-[9px] sm:text-xs text-white/80 font-medium uppercase tracking-wide">{t('steps')}</div>
+                                                            <div className="text-xs text-white/80 font-medium uppercase tracking-wide">{t('steps')}</div>
                                                         </div>
                                                     </div>
                                                 </Link>
@@ -559,7 +559,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                                         </svg>
                                                     </div>
-                                                    <p className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">{t('groupRank')}</p>
+                                                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider truncate">{t('groupRank')}</p>
                                                 </div>
                                                 <div className="flex items-baseline gap-2 flex-wrap">
                                                     {groupRank ? (
@@ -573,8 +573,8 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                 </div>
                                                 <div className="mt-1.5 sm:mt-2 flex items-center gap-2 pt-1.5 sm:pt-2 border-t border-gray-50">
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="text-[10px] uppercase text-gray-400 font-bold truncate">{t('average')}</span>
-                                                        <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">{t('steps')}</span></span>
+                                                        <span className="text-xs uppercase text-gray-400 font-bold truncate">{t('average')}</span>
+                                                        <span className="text-xs sm:text-sm font-bold text-gray-700 truncate">{averageSteps.toLocaleString()} <span className="text-xs font-normal text-gray-400">{t('steps')}</span></span>
                                                     </div>
                                                 </div>
                                             </div>

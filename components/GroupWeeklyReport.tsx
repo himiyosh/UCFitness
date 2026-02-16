@@ -89,7 +89,7 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                     <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         📊 {t('weeklyReport')}
                     </h3>
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="text-xs text-gray-400 font-medium">
                         {data.weekStart} ~ {data.weekEnd}
                     </span>
                 </div>
@@ -97,16 +97,16 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                 {/* グループサマリー */}
                 <div className="flex gap-4 mt-3">
                     <div className="flex-1 bg-gray-50 rounded-xl p-3 text-center">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase">{t('groupTotal')}</p>
+                        <p className="text-xs text-gray-400 font-bold uppercase">{t('groupTotal')}</p>
                         <p className="text-lg font-black text-gray-900 tabular-nums">{data.groupTotal.toLocaleString()}</p>
                     </div>
                     <div className="flex-1 bg-gray-50 rounded-xl p-3 text-center">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase">{t('avgPerMember')}</p>
+                        <p className="text-xs text-gray-400 font-bold uppercase">{t('avgPerMember')}</p>
                         <p className="text-lg font-black text-gray-900 tabular-nums">{data.groupAvg.toLocaleString()}</p>
                     </div>
                     {data.mvp && (
                         <div className="flex-1 bg-[var(--theme-primary-light)] rounded-xl p-3 text-center">
-                            <p className="text-[10px] text-[var(--theme-primary)] font-bold uppercase">🏆 MVP</p>
+                            <p className="text-xs text-[var(--theme-primary)] font-bold uppercase">🏆 MVP</p>
                             <p className="text-sm font-bold text-[var(--theme-primary)] truncate">{data.mvp.name}</p>
                         </div>
                     )}

@@ -86,7 +86,7 @@ export default function ChallengeGearBanner() {
                             <p className="text-xs font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-amber-700 transition-colors">
                                 {cleanTitle(item.title)}
                             </p>
-                            <span className="text-[9px] text-amber-600 font-semibold mt-0.5 inline-block">
+                            <span className="text-xs text-amber-600 font-semibold mt-0.5 inline-block">
                                 Amazon →
                             </span>
                         </div>

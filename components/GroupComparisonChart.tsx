@@ -68,7 +68,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                 style={{ backgroundColor: entry.color }}
                                 className="w-2 h-2 rounded-full"
                             />
-                            <span className="text-[10px] sm:text-xs text-gray-600 font-medium truncate max-w-[80px] sm:max-w-[120px]">
+                            <span className="text-xs text-gray-600 font-medium truncate max-w-[80px] sm:max-w-[120px]">
                                 {entry.value}
                             </span>
                         </div>

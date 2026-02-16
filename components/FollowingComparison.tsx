@@ -184,7 +184,7 @@ export default function FollowingComparison() {
             {/* 日別トレンド（コンパクト版） */}
             {dates.length > 0 && dates.length <= 7 && (
                 <div className="px-5 pb-5 border-t border-gray-100 pt-4">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">{t('dailyTrend')}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{t('dailyTrend')}</p>
                     <div className="flex gap-1 items-end h-20">
                         {dates.map((date) => {
                             const dayMax = Math.max(1, ...data.map(u => {
@@ -216,7 +216,7 @@ export default function FollowingComparison() {
                                             );
                                         })}
                                     </div>
-                                    <span className="text-[9px] text-gray-400">{dayLabel}</span>
+                                    <span className="text-xs text-gray-400">{dayLabel}</span>
                                 </div>
                             );
                         })}

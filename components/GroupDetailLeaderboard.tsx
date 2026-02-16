@@ -217,10 +217,10 @@ export default function GroupDetailLeaderboard({
                                                         <span>
                                                             {entry.users?.name || commonT('anonymous')}
                                                         </span>
-                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--theme-primary)] text-white">{commonT('you')}</span>}
+                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-[var(--theme-primary)] text-white">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) ? (
-                                                        <p className="text-[10px] text-gray-400 font-medium">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
+                                                        <p className="text-xs text-gray-400 font-medium">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
@@ -247,7 +247,7 @@ export default function GroupDetailLeaderboard({
                                                         const delta = entry.steps - entry.prevSteps!;
                                                         if (delta === 0) return null;
                                                         return (
-                                                            <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                            <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                 {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
                                                             </span>
                                                         );

@@ -559,7 +559,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                                 {/* Step Count Label (Weekly View) */}
                                                 {viewMode === 'WEEKLY' && (
                                                     <div className="absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 text-center pointer-events-none z-10">
-                                                        <span className="text-[10px] font-semibold text-gray-500 bg-white/80 px-1 rounded shadow-sm whitespace-nowrap">
+                                                        <span className="text-xs font-semibold text-gray-500 bg-white/80 px-1 rounded shadow-sm whitespace-nowrap">
                                                             {day.value.toLocaleString()}
                                                         </span>
                                                     </div>
@@ -567,7 +567,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
                                                 {showLabel ? (
                                                     <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 text-center pointer-events-none">
-                                                        <span className={`text-[10px] whitespace-nowrap block ${day.isToday ? 'font-bold text-[var(--theme-primary)]' : 'text-gray-400'}`}>
+                                                        <span className={`text-xs whitespace-nowrap block ${day.isToday ? 'font-bold text-[var(--theme-primary)]' : 'text-gray-400'}`}>
                                                             {day.label}
                                                         </span>
                                                     </div>

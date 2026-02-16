@@ -133,7 +133,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                         <div className="w-20 sm:w-full h-auto sm:h-24 bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-r sm:border-r-0 border-gray-100">
                             {/* Rank Badge */}
                             {m.rank && (
-                                <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
+                                <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
                                     ${m.rank === 1 ? 'bg-yellow-300 text-yellow-900' :
                                         m.rank === 2 ? 'bg-gray-300 text-gray-900' :
                                             m.rank === 3 ? 'bg-orange-300 text-orange-900' : 'bg-black/50 text-white sm:bg-white/90 sm:text-[var(--theme-primary)]'}
@@ -180,7 +180,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1">
                                     {m.role === 'OWNER' && (
-                                        <span className="shrink-0 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wide rounded">
+                                        <span className="shrink-0 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold uppercase tracking-wide rounded">
                                             {t('owner')}
                                         </span>
                                     )}

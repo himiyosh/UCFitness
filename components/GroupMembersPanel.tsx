@@ -405,7 +405,7 @@ export default function GroupMembersPanel({
                                 <Link href={member.users.username ? `/user/${member.users.username}` : '#'} className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2" aria-label={`View profile of ${member.users.name || detailT('unknownUser')}`}>
                                     <span>{member.users.name || detailT('unknownUser')}</span>
                                     {member.user_id === currentUserId && (
-                                        <span className="text-[10px] font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">{commonT('you')}</span>
+                                        <span className="text-xs font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">{commonT('you')}</span>
                                     )}
                                 </Link>
                                 <p className="text-xs text-gray-500 truncate">

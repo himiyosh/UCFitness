@@ -221,7 +221,7 @@ export default function CreateGroupClient() {
             {/* プレビューカード */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--theme-primary)]/5 to-[var(--theme-gradient-to)]/10 border border-[var(--theme-primary)]/10 p-5">
               <div className="absolute -top-6 -right-6 text-8xl opacity-10 select-none">🏆</div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">{t('previewLabel')}</p>
+              <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-2">{t('previewLabel')}</p>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--theme-primary)] to-[var(--theme-gradient-to)] flex items-center justify-center text-white text-lg font-bold shadow-md">
                   {(groupName || groupId || 'G').charAt(0).toUpperCase()}
@@ -468,7 +468,7 @@ export default function CreateGroupClient() {
                         {user.image ? (
                           <img src={user.image} alt="" className="w-6 h-6 rounded-full object-cover" />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-green-200 flex items-center justify-center text-[10px] font-bold text-green-700">
+                          <div className="w-6 h-6 rounded-full bg-green-200 flex items-center justify-center text-xs font-bold text-green-700">
                             {(user.name || user.username || '?').charAt(0).toUpperCase()}
                           </div>
                         )}

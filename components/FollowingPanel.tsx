@@ -202,7 +202,7 @@ export default function FollowingPanel() {
                                     <p className="text-sm font-bold text-gray-900 tabular-nums">
                                         {user.todaySteps.toLocaleString()}
                                     </p>
-                                    <p className="text-[9px] text-[var(--foreground-muted)]">{t('todaySteps')}</p>
+                                    <p className="text-xs text-[var(--foreground-muted)]">{t('todaySteps')}</p>
                                 </div>
                             </Link>
                         ))}
@@ -296,7 +296,7 @@ export default function FollowingPanel() {
                                 {/* 日別トレンド（コンパクト版） */}
                                 {dates.length > 0 && dates.length <= 7 && (
                                     <div className="border-t border-gray-100 pt-3 mt-3">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{t('dailyTrend')}</p>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{t('dailyTrend')}</p>
                                         <div className="flex gap-1 items-end h-16">
                                             {dates.map((date) => {
                                                 const dayMax = Math.max(1, ...compData.map(u => {

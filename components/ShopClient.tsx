@@ -237,7 +237,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     {/* Featured アイテム */}
                     {featuredItems.length > 0 && (
                         <div className="w-full sm:w-1/2 min-w-0">
-                            <p className="text-[10px] font-bold text-white/90 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
+                            <p className="text-xs font-bold text-white/90 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
                             <div className="flex flex-col gap-1.5">
                                 {featuredItems.map(item => {
                                     const name = locale === 'ja' ? item.name_ja : item.name_en;
@@ -263,7 +263,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-bold text-white truncate group-hover:text-yellow-100 transition-colors">{name}</p>
-                                                <p className="text-[10px] text-white/80 font-medium">{item.price.toLocaleString()} UC</p>
+                                                <p className="text-xs text-white/80 font-medium">{item.price.toLocaleString()} UC</p>
                                             </div>
                                             <span className="text-white/60 group-hover:text-white/90 group-hover:translate-x-0.5 transition-all text-xs">→</span>
                                         </button>
@@ -496,7 +496,7 @@ function ShopItemCard({
             {/* 情報 + アクション */}
             <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
                 <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
-                <p className={`text-[10px] sm:text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-600'}`}>{desc}</p>
+                <p className={`text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-600'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                         <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-700'}`}>{item.price.toLocaleString()}</span>

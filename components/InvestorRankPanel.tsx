@@ -113,7 +113,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
                                         {t(`ranks.${rank.rank}`)}
                                     </span>
                                     {isCurrentRank && (
-                                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${rank.text} ${rank.bg} border ${rank.border}`}>
+                                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${rank.text} ${rank.bg} border ${rank.border}`}>
                                             {t('currentLabel')}
                                         </span>
                                     )}
@@ -141,7 +141,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
                                                 style={{ width: `${progressPercent}%` }}
                                             />
                                         </div>
-                                        <span className="text-[10px]" style={{ color: 'var(--foreground-muted)' }}>
+                                        <span className="text-xs" style={{ color: 'var(--foreground-muted)' }}>
                                             {Math.round(progressPercent)}%
                                         </span>
                                     </div>

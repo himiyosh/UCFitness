@@ -133,7 +133,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                             >
                                                 <div className="flex items-center gap-2 sm:gap-4">
                                                     <span className={`
-                                        flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full text-[10px] sm:text-sm font-bold
+                                        flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full text-xs sm:text-sm font-bold
                                         ${entry.originalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
                                                             entry.originalRank === 2 ? 'bg-gray-100 text-gray-700' :
                                                                 entry.originalRank === 3 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}
@@ -147,7 +147,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                             {entry.users.id === userId && <span className="ml-2 text-xs text-[var(--theme-primary)] font-bold">({commonT('you')})</span>}
                                                         </p>
                                                         {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
-                                                            <span className="text-[10px] text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleNameEn}</span>
+                                                            <span className="text-xs text-gray-400 font-medium truncate">{entry.users.titleEmoji} {entry.users.titleNameEn}</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -159,7 +159,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                                         const delta = entry.steps - entry.prevSteps!;
                                                         if (delta === 0) return null;
                                                         return (
-                                                            <span className={`text-[9px] font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                            <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
                                                                 {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
                                                             </span>
                                                         );

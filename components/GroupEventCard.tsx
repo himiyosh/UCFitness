@@ -141,7 +141,7 @@ export default function GroupEventCard({
                                             className="w-5 h-5 rounded-full object-cover"
                                         />
                                     ) : (
-                                        <div className="w-5 h-5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] flex items-center justify-center text-[10px] font-bold">
+                                        <div className="w-5 h-5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] flex items-center justify-center text-xs font-bold">
                                             {(contributor.name || '?')[0].toUpperCase()}
                                         </div>
                                     )}

@@ -332,7 +332,7 @@ export default async function Home() {
                       <h4 className="font-black text-base sm:text-2xl tracking-tight whitespace-nowrap">{t('keepStepping')}</h4>
                     </div>
 
-                    <p className="opacity-90 text-[10px] sm:text-sm leading-snug font-medium text-indigo-50 mt-2 sm:mt-3 whitespace-nowrap">
+                    <p className="opacity-90 text-xs sm:text-sm leading-snug font-medium text-indigo-50 mt-2 sm:mt-3 whitespace-nowrap">
                       {t('joinGroups').split('\n').map((line, i, arr) => (
                         <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
                       ))}
@@ -341,23 +341,23 @@ export default async function Home() {
 
                   {/* ナビゲーションボタン: パネル下部に全幅で配置 */}
                   <div className="mt-4 sm:mt-6 flex flex-wrap gap-1.5 sm:gap-3">
-                    <Link href={username ? `/user/${username}` : '/profile'} className="motivation-btn-primary px-2.5 py-1 sm:px-5 sm:py-2 bg-white text-[var(--theme-primary)] text-[10px] sm:text-sm font-bold rounded-full shadow-lg hover:bg-[var(--theme-primary-light)] transition-colors inline-flex items-center gap-1">
+                    <Link href={username ? `/user/${username}` : '/profile'} className="motivation-btn-primary px-2.5 py-1 sm:px-5 sm:py-2 bg-white text-[var(--theme-primary)] text-xs sm:text-sm font-bold rounded-full shadow-lg hover:bg-[var(--theme-primary-light)] transition-colors inline-flex items-center gap-1">
                       {t('profile')}
                     </Link>
-                    <Link href="/groups" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                    <Link href="/groups" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-xs sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
                       {t('groups')}
                     </Link>
-                    <Link href="/wallet" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
-                      <span className="text-[10px] sm:text-sm">💰</span>{t('wallet')}
+                    <Link href="/wallet" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-xs sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-xs sm:text-sm">💰</span>{t('wallet')}
                     </Link>
-                    <Link href="/challenges" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
-                      <span className="text-[10px] sm:text-sm">🏆</span>{t('challenges')}
+                    <Link href="/challenges" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-xs sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-xs sm:text-sm">🏆</span>{t('challenges')}
                     </Link>
-                    <Link href="/analytics" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
-                      <span className="text-[10px] sm:text-sm">📊</span>{t('analytics')}
+                    <Link href="/analytics" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-xs sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-xs sm:text-sm">📊</span>{t('analytics')}
                     </Link>
-                    <Link href="/shop" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-[10px] sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
-                      <span className="text-[10px] sm:text-sm">🛍️</span>{t('shop')}
+                    <Link href="/shop" className="motivation-btn-secondary px-2.5 py-1 sm:px-5 sm:py-2 bg-[var(--theme-primary)]/30 backdrop-blur-md text-white border border-white/20 text-xs sm:text-sm font-bold rounded-full hover:bg-[var(--theme-primary)]/50 transition-colors inline-flex items-center gap-1">
+                      <span className="text-xs sm:text-sm">🛍️</span>{t('shop')}
                     </Link>
                   </div>
                 </div>

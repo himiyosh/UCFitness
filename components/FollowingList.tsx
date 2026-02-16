@@ -127,7 +127,7 @@ export default function FollowingList({ limit, compact = false, className = '' }
                         <p className="text-sm font-bold text-gray-900 tabular-nums">
                             {user.todaySteps.toLocaleString()}
                         </p>
-                        <p className="text-[10px] text-[var(--foreground-muted)]">{t('todaySteps')}</p>
+                        <p className="text-xs text-[var(--foreground-muted)]">{t('todaySteps')}</p>
                     </div>
                 </Link>
             ))}

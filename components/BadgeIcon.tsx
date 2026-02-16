@@ -111,7 +111,7 @@ export default function BadgeIcon({ type, category, rank, className = "w-10 h-10
                 {/* Rank Number Overlay (Optional, maybe specific for ranks?) */}
                 {rank <= 3 && (
                     <div className={`absolute inset-0 flex items-center justify-center pt-2`}>
-                        <span className={`text-[10px] font-black ${s.text} opacity-90 drop-shadow-sm brightness-50`}>
+                        <span className={`text-xs font-black ${s.text} opacity-90 drop-shadow-sm brightness-50`}>
                             {rank}
                         </span>
                     </div>

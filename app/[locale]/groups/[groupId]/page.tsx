@@ -238,7 +238,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             <div className={`flex-1 ${group.header_image_url ? "text-white text-shadow-sm" : "text-gray-900"}`}>
                                 <h1 className="text-2xl sm:text-4xl font-black tracking-tight mb-1 sm:mb-2 line-clamp-1">{group.name}</h1>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <div className={`px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs font-mono select-all flex items-center gap-2 ${group.header_image_url ? 'bg-white/20 text-white backdrop-blur-sm border border-white/30' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+                                    <div className={`px-2 py-0.5 sm:py-1 rounded text-xs font-mono select-all flex items-center gap-2 ${group.header_image_url ? 'bg-white/20 text-white backdrop-blur-sm border border-white/30' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
                                         <span className="opacity-70">ID:</span>
                                         <span className="font-bold">{group.keyword}</span>
                                     </div>

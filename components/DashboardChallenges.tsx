@@ -94,7 +94,7 @@ export default function DashboardChallenges() {
                                     </div>
                                 </div>
                                 {challenge.is_joined && (
-                                    <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200 flex-shrink-0">
+                                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200 flex-shrink-0">
                                         ✅
                                     </span>
                                 )}

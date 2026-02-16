@@ -294,7 +294,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                     className="absolute top-0 left-0 right-0 bg-black/50 pointer-events-none z-10 flex items-center justify-center"
                                                     style={{ height: `${getBleed()}px` }}
                                                 >
-                                                    <span className="text-white/60 text-[10px] font-medium tracking-wide">拡大で表示される領域</span>
+                                                    <span className="text-white/60 text-xs font-medium tracking-wide">拡大で表示される領域</span>
                                                 </div>
 
                                                 {/* クロップ領域外オーバーレイ（下） */}
@@ -302,7 +302,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                     className="absolute bottom-0 left-0 right-0 bg-black/50 pointer-events-none z-10 flex items-center justify-center"
                                                     style={{ height: `${getBleed()}px` }}
                                                 >
-                                                    <span className="text-white/60 text-[10px] font-medium tracking-wide">拡大で表示される領域</span>
+                                                    <span className="text-white/60 text-xs font-medium tracking-wide">拡大で表示される領域</span>
                                                 </div>
 
                                                 {/* クロップ枠 */}
@@ -311,7 +311,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                     style={{ top: `${getBleed()}px`, height: `${getCropHeight()}px` }}
                                                 >
                                                     <div className="absolute inset-0 border-2 border-dashed border-white/70 rounded-sm" />
-                                                    <span className="absolute top-1 left-2 text-white/80 text-[10px] font-bold drop-shadow bg-black/30 px-1.5 py-0.5 rounded">バナー表示領域</span>
+                                                    <span className="absolute top-1 left-2 text-white/80 text-xs font-bold drop-shadow bg-black/30 px-1.5 py-0.5 rounded">バナー表示領域</span>
                                                 </div>
                                             </>
                                         )}

@@ -450,15 +450,15 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     <div className="grid grid-cols-3 gap-3">
                         <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-2xl font-black account-stat-number">{ownedTitles.length}</div>
-                            <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('titlesOwned')}</div>
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('titlesOwned')}</div>
                         </div>
                         <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-2xl font-black account-stat-number">{ownedFrames.length}</div>
-                            <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('framesOwned')}</div>
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('framesOwned')}</div>
                         </div>
                         <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-2xl font-black account-stat-number">{ownedThemes.length}</div>
-                            <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{t('themesOwned')}</div>
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('themesOwned')}</div>
                         </div>
                         <div className="col-span-3 bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-sm font-bold text-gray-700 flex items-center justify-center gap-2">

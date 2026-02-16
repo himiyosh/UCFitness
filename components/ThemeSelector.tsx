@@ -312,7 +312,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                                                     {meta.label}
                                                 </div>
                                                 <div
-                                                    className="text-[10px] mt-0.5 leading-snug text-gray-400"
+                                                    className="text-xs mt-0.5 leading-snug text-gray-400"
                                                     style={isActive && meta.isDark ? { color: 'rgba(165,180,252,0.6)' } : undefined}
                                                 >
                                                     {t(meta.descKey)}

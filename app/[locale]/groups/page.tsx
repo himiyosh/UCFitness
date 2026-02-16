@@ -199,17 +199,17 @@ export default async function MyGroupsPage() {
                                 <div className="grid grid-cols-3 gap-2">
                                     <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
                                         <div className="text-xl font-black text-[var(--theme-primary)]">{sortedMemberships.length}</div>
-                                        <div className="text-[9px] font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('groupsJoined')}</div>
+                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('groupsJoined')}</div>
                                     </div>
                                     <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
                                         <div className="text-xl font-black text-[var(--theme-primary)]">{totalMembers}</div>
-                                        <div className="text-[9px] font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('totalGroupMembers')}</div>
+                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('totalGroupMembers')}</div>
                                     </div>
                                     <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
                                         <div className="text-xl font-black text-[var(--theme-primary)]">
                                             {bestRank ? `#${bestRank}` : '—'}
                                         </div>
-                                        <div className="text-[9px] font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('bestRank')}</div>
+                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('bestRank')}</div>
                                     </div>
                                 </div>
                             </div>

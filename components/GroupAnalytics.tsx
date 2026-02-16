@@ -138,13 +138,13 @@ export default function GroupAnalytics({
                         {userEntry && (
                             <div className="bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg px-3 py-2 sm:px-4 sm:py-2 text-white shadow-md flex items-center gap-3 sm:gap-4 w-fit">
                                 <div className="flex items-baseline gap-1.5">
-                                    <span className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{ga('yourRank')}</span>
+                                    <span className="text-white/80 text-xs font-bold uppercase tracking-wider">{ga('yourRank')}</span>
                                     <span className="text-lg sm:text-xl font-black leading-none">#{userRank}</span>
-                                    <span className="text-[10px] sm:text-xs font-medium opacity-80">{ga('inGroup')}</span>
+                                    <span className="text-xs font-medium opacity-80">{ga('inGroup')}</span>
                                 </div>
                                 <div className="border-l border-white/30 pl-3">
                                     <span className="text-sm sm:text-base font-bold">{userEntry.steps.toLocaleString()}</span>
-                                    <span className="text-[10px] sm:text-xs text-white/80 font-medium ml-1">{ga('steps')}</span>
+                                    <span className="text-xs text-white/80 font-medium ml-1">{ga('steps')}</span>
                                 </div>
                             </div>
                         )}
@@ -199,7 +199,7 @@ export default function GroupAnalytics({
                                                 <svg className="w-3.5 h-3.5 text-[var(--theme-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                                 </svg>
-                                                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[var(--theme-primary)]">{ga('groupRank')}</span>
+                                                <span className="text-xs font-bold uppercase tracking-wider text-[var(--theme-primary)]">{ga('groupRank')}</span>
                                             </div>
                                             {groupRank ? (
                                                 <div className="flex items-baseline gap-1">
@@ -209,7 +209,7 @@ export default function GroupAnalytics({
                                             ) : (
                                                 <span className="text-sm font-bold text-gray-400">N/A</span>
                                             )}
-                                            <span className="text-[10px] text-gray-400 border-l border-gray-200 pl-2 ml-1">
+                                            <span className="text-xs text-gray-400 border-l border-gray-200 pl-2 ml-1">
                                                 {ga('average')} {averageSteps.toLocaleString()} {ga('steps')}
                                             </span>
                                         </div>

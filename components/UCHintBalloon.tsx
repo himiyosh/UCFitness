@@ -155,7 +155,7 @@ export default function UCHintBalloon({ size = 'sm' }: { size?: 'sm' | 'md' }) {
         if (isOpen) updatePosition();
     }, [isOpen, updatePosition]);
 
-    const iconSize = size === 'md' ? 'w-5 h-5 text-xs' : 'w-4 h-4 text-[10px]';
+    const iconSize = size === 'md' ? 'w-5 h-5 text-xs' : 'w-4 h-4 text-xs';
 
     return (
         <span className="relative inline-flex items-center">

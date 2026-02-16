@@ -74,7 +74,7 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                                 )}
                                                 <div className="min-w-0 flex-1">
                                                     <div className="font-medium text-xs truncate group-hover:text-[var(--theme-primary)] transition-colors" style={{ color: 'var(--foreground, #111827)' }} title={group.groupName}>{group.groupName}</div>
-                                                    <div className="text-[10px] truncate" style={{ color: 'var(--foreground-muted, #9ca3af)' }}>{group.keyword}</div>
+                                                    <div className="text-xs truncate" style={{ color: 'var(--foreground-muted, #9ca3af)' }}>{group.keyword}</div>
                                                 </div>
                                             </Link>
                                         </td>
