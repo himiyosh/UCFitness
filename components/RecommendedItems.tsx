@@ -216,7 +216,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={trackRef}
-                        className="flex gap-3 pt-14 pb-1"
+                        className="flex gap-3 pt-16 pb-1"
                         style={{
                             transform: `translateX(-${slideIndex * CARD_W}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
@@ -289,7 +289,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
                     {editingCommentId !== item.id && item.comment && (
                         <div
-                            className={`absolute -top-4 left-1/2 z-20 w-[145px] ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
+                            className={`absolute -top-6 left-1/2 z-20 w-[145px] ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
                             onClick={isOwner ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
                             style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%) translateY(-100%)' }}
                         >
