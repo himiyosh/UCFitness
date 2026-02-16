@@ -207,7 +207,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
             <div className="relative">
                 {/* ビューポート */}
                 <div
-                    className="overflow-hidden"
+                    className="overflow-x-hidden overflow-y-visible"
                     role="region"
                     aria-roledescription="carousel"
                     aria-label={locale === 'ja' ? '愛用アイテム' : 'My Picks'}
@@ -216,7 +216,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={trackRef}
-                        className="flex gap-3 py-1"
+                        className="flex gap-3 pt-10 pb-1"
                         style={{
                             transform: `translateX(-${slideIndex * CARD_W}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
@@ -286,17 +286,20 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         </button>
                     )}
 
-                    {/* 吹き出しコメント表示 — カード画像上にオーバーレイで常時表示 */}
+                    {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
                     {editingCommentId !== item.id && item.comment && (
                         <div
-                            className={`absolute top-0 left-0 right-0 z-20 ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
+                            className={`absolute -top-2 left-1/2 z-20 w-[120px] ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
                             onClick={isOwner ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
+                            style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%) translateY(-100%)' }}
                         >
-                            <div className="bg-[var(--theme-primary)]/90 backdrop-blur-sm rounded-t-xl px-2.5 py-1.5">
-                                <p className="text-[9px] text-white leading-snug line-clamp-2 break-words">
-                                    💬 {item.comment}
+                            <div className="bg-[var(--theme-primary)] rounded-lg px-2 py-1.5">
+                                <p className="text-[9px] text-white leading-snug line-clamp-3 break-words text-center">
+                                    {item.comment}
                                 </p>
                             </div>
+                            {/* 吹き出し三角（下向き） */}
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[var(--theme-primary)] transform rotate-45" />
                         </div>
                     )}
                     </div>
