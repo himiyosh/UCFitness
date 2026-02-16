@@ -268,7 +268,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         </button>
                     )}
 
-                    {/* コメント吹き出しアイコン（常時表示：コメントありはテーマカラー、なしはオーナーのみホバーで表示） */}
+                    {/* コメント吹き出しアイコン（オーナーは常時表示、閲覧者はコメントありの場合のみ） */}
                     {(item.comment || isOwner) && editingCommentId !== item.id && (
                         <button
                             onClick={(e) => {
@@ -278,15 +278,15 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                     startEditComment(item, e);
                                 }
                             }}
-                            className={`absolute top-1 left-1 z-10 w-5 h-5 rounded-full flex items-center justify-center transition-all shadow-sm backdrop-blur-sm ${
+                            className={`absolute top-1 left-1 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-sm backdrop-blur-sm ${
                                 item.comment
                                     ? 'bg-[var(--theme-primary)] text-white'
-                                    : 'bg-gray-400/70 text-white opacity-0 group-hover:opacity-70 hover:!opacity-100'
+                                    : 'bg-white/80 text-gray-400 border border-dashed border-gray-300 hover:border-[var(--theme-primary)] hover:text-[var(--theme-primary)]'
                             } ${!isOwner ? 'pointer-events-none' : 'cursor-pointer hover:scale-110'}`}
                             aria-label={locale === 'ja' ? 'コメント' : 'Comment'}
                             title={item.comment || (locale === 'ja' ? 'コメントを追加' : 'Add comment')}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-2.5 h-2.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                                 <path fillRule="evenodd" d="M3.43 2.524A41.29 41.29 0 0110 2c2.236 0 4.43.18 6.57.524 1.437.231 2.43 1.49 2.43 2.902v5.148c0 1.413-.993 2.67-2.43 2.902a41.202 41.202 0 01-5.183.501l-2.9 2.748A.75.75 0 017 16.153V14.12a41.618 41.618 0 01-3.57-.524C2.007 13.365 1 12.106 1 10.694V5.426c0-1.413.993-2.67 2.43-2.902z" clipRule="evenodd" />
                             </svg>
                         </button>
