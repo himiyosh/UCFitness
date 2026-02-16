@@ -331,20 +331,19 @@ html {
 /* --- 2b. Option button states (Language/Theme選択ボタン) --- */
 [data-theme="midnight"] .midnight-option-selected {
   background:
-    linear-gradient(135deg, rgba(129, 140, 248, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%) !important;
-  border: 1px solid rgba(129, 140, 248, 0.35) !important;
+    linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.06) 100%) !important;
+  border: 2px solid rgba(129, 140, 248, 0.7) !important;
   box-shadow:
-    0 0 20px -5px rgba(99, 102, 241, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
-  color: #a5b4fc !important;
+    0 4px 14px -3px rgba(99, 102, 241, 0.4),
+    0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+  color: #c7d2fe !important;
 }
 
 [data-theme="midnight"] .midnight-option-default {
-  background:
-    linear-gradient(160deg, rgba(15, 23, 42, 0.6) 0%, rgba(10, 15, 30, 0.5) 100%) !important;
-  border: 1px solid rgba(148, 163, 184, 0.18) !important;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
-  color: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+  border: 1px solid rgba(100, 116, 139, 0.2) !important;
+  box-shadow: none !important;
+  color: rgba(203, 213, 225, 0.5) !important;
 }
 
 /* --- 3. Text Hierarchy (輝度アップ済みニュートラルグレー) --- */
@@ -583,6 +582,73 @@ html {
 [data-theme="midnight"] .shadow-green-200 {
   box-shadow: 0 0 16px rgba(74, 222, 128, 0.25) !important;
 }
+
+/* --- 10c. Investor Rank Panel: Midnight 全体スタイリング --- */
+/* パネル背景をダークに（inline var(--theme-secondary) をオーバーライド） */
+[data-theme="midnight"] .investor-rank-panel {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  border-color: rgba(100, 116, 139, 0.3) !important;
+}
+
+/* コネクティングライン: bg-gray-200 のカード用グラデーション上書きをリセット */
+[data-theme="midnight"] .investor-rank-panel .w-0\.5 {
+  background: rgba(100, 116, 139, 0.25) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ロックアイコン: bg-gray-200 のカード用グラデーション上書きをリセット */
+[data-theme="midnight"] .investor-rank-panel .w-10.h-10.bg-gray-200 {
+  background: rgba(51, 65, 85, 0.6) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* プログレスバートラック */
+[data-theme="midnight"] .investor-rank-panel .h-1.bg-gray-200 {
+  background: rgba(51, 65, 85, 0.6) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 達成済みランク行の border-gray-200 */
+[data-theme="midnight"] .investor-rank-panel .border-gray-200 {
+  border-color: rgba(100, 116, 139, 0.15) !important;
+}
+
+/* 現在のランク: 強化グロー（各色対応） */
+[data-theme="midnight"] .investor-rank-panel .border-2.border-amber-400 {
+  background: rgba(251, 191, 36, 0.2) !important;
+  box-shadow: 0 0 24px rgba(251, 191, 36, 0.4), inset 0 0 12px rgba(251, 191, 36, 0.08) !important;
+  border-color: rgba(251, 191, 36, 0.7) !important;
+}
+[data-theme="midnight"] .investor-rank-panel .border-2.border-blue-400 {
+  background: rgba(96, 165, 250, 0.2) !important;
+  box-shadow: 0 0 24px rgba(96, 165, 250, 0.4), inset 0 0 12px rgba(96, 165, 250, 0.08) !important;
+  border-color: rgba(96, 165, 250, 0.7) !important;
+}
+[data-theme="midnight"] .investor-rank-panel .border-2.border-purple-400 {
+  background: rgba(192, 132, 252, 0.2) !important;
+  box-shadow: 0 0 24px rgba(192, 132, 252, 0.4), inset 0 0 12px rgba(192, 132, 252, 0.08) !important;
+  border-color: rgba(192, 132, 252, 0.7) !important;
+}
+[data-theme="midnight"] .investor-rank-panel .border-2.border-green-400 {
+  background: rgba(74, 222, 128, 0.2) !important;
+  box-shadow: 0 0 24px rgba(74, 222, 128, 0.4), inset 0 0 12px rgba(74, 222, 128, 0.08) !important;
+  border-color: rgba(74, 222, 128, 0.7) !important;
+}
+[data-theme="midnight"] .investor-rank-panel .border-2.border-gray-300 {
+  background: rgba(148, 163, 184, 0.15) !important;
+  box-shadow: 0 0 24px rgba(148, 163, 184, 0.3), inset 0 0 12px rgba(148, 163, 184, 0.06) !important;
+  border-color: rgba(148, 163, 184, 0.5) !important;
+}
+
+/* 未達成ランク: ダーク背景 + 破線ボーダー */
+[data-theme="midnight"] .investor-rank-panel .border-dashed {
+  background: rgba(30, 41, 59, 0.5) !important;
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+
 /* Stat card value colors */
 [data-theme="midnight"] .text-purple-600 {
   color: #c084fc !important;
@@ -618,6 +684,30 @@ html {
   background: rgba(15, 23, 42, 0.85) !important;
   backdrop-filter: blur(12px);
   border-bottom-color: rgba(100, 116, 139, 0.3) !important;
+}
+
+/* --- 11c-2. User dropdown menu: 不透明なダーク背景 --- */
+[data-theme="midnight"] .user-dropdown-menu.bg-white {
+  background: rgba(15, 23, 42, 0.97) !important;
+  background-color: rgba(15, 23, 42, 0.97) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(100, 116, 139, 0.35) !important;
+  border-top: 1px solid rgba(100, 116, 139, 0.35) !important;
+  border-left: 1px solid rgba(100, 116, 139, 0.35) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(100, 116, 139, 0.15) !important;
+}
+[data-theme="midnight"] .user-dropdown-menu a:hover,
+[data-theme="midnight"] .user-dropdown-menu button:hover {
+  background: rgba(51, 65, 85, 0.5) !important;
+}
+
+/* --- 11c-3. 同期ボタン: Midnight で明るいアクセントカラー --- */
+[data-theme="midnight"] .refresh-sync-btn {
+  color: #38bdf8 !important;
+}
+[data-theme="midnight"] .refresh-sync-btn:hover {
+  background: rgba(56, 189, 248, 0.15) !important;
 }
 
 /* --- 11d. Leaderboard card midnight override --- */
@@ -1013,6 +1103,34 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+}
+
+/* スティッキーフッター: コンテンツが少ない場合もフッターをビューポート最下部に固定 */
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#main-content {
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+}
+
+#main-content > main {
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+}
+
+#main-content > main > footer {
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 /* 全ボタン要素にポインターカーソルをデフォルト適用 */

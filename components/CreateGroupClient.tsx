@@ -185,7 +185,7 @@ export default function CreateGroupClient() {
   ), [step, t]);
 
   return (
-    <main className="min-h-screen bg-[var(--theme-page-bg)]">
+    <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
         {/* パンくずリスト */}
