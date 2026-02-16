@@ -207,7 +207,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
             <div className="relative">
                 {/* ビューポート */}
                 <div
-                    className="overflow-x-hidden overflow-y-visible"
+                    className="overflow-x-clip overflow-y-visible"
                     role="region"
                     aria-roledescription="carousel"
                     aria-label={locale === 'ja' ? '愛用アイテム' : 'My Picks'}
