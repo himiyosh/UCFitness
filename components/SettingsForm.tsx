@@ -394,7 +394,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     <Spinner size="xs" className="text-[var(--theme-primary)]" />
                                 )}
                             </span>
-                            {locale === 'ja' && !switchingLocale && <span className="text-[var(--theme-primary)]">✓</span>}
+                            {locale === 'ja' && !switchingLocale && (
+                                <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }}>✓</span>
+                            )}
                         </button>
                         <button
                             onClick={() => handleLanguageChange('en')}
@@ -410,7 +412,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     <Spinner size="xs" className="text-[var(--theme-primary)]" />
                                 )}
                             </span>
-                            {locale === 'en' && !switchingLocale && <span className="text-[var(--theme-primary)]">✓</span>}
+                            {locale === 'en' && !switchingLocale && (
+                                <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }}>✓</span>
+                            )}
                         </button>
                     </div>
                 </section>

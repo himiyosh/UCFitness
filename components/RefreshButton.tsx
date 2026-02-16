@@ -36,7 +36,7 @@ export default function RefreshButton() {
             disabled={loading}
             aria-label={loading ? t('refreshing') : t('refreshSteps')}
             title={loading ? t('refreshing') : t('refreshSteps')}
-            className="cursor-pointer inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] disabled:opacity-50 transition-all active:scale-90"
+            className="refresh-sync-btn cursor-pointer inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] disabled:opacity-50 transition-all active:scale-90"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

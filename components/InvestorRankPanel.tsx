@@ -57,7 +57,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
 
     return (
         <div
-            className="rounded-xl p-4 shadow-sm border h-full hover:shadow-lg transition-shadow"
+            className="investor-rank-panel rounded-xl p-4 shadow-sm border h-full hover:shadow-lg transition-shadow"
             style={{
                 backgroundColor: 'var(--theme-secondary)',
                 borderColor: 'var(--foreground-muted, rgba(0,0,0,0.1))',

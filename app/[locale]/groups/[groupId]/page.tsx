@@ -87,7 +87,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     // 3. Handle Non-Members -> Show Join Screen
     if (!isMember) {
         return (
-            <main className="min-h-screen bg-[var(--theme-page-bg)]">
+            <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
                 {/* Header */}
                 <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
@@ -170,7 +170,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     };
 
     return (
-        <main className="min-h-screen bg-[var(--theme-page-bg)]">
+        <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
             {/* Header */}
             <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
