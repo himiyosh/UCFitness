@@ -48,6 +48,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     const modalRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
     const commentInputRef = useRef<HTMLInputElement>(null);
+    const [editPopupPos, setEditPopupPos] = useState<{ top: number; left: number } | null>(null);
 
     // --- 削除 ---
     const handleDelete = useCallback(async (itemId: string, e: React.MouseEvent) => {
@@ -75,6 +76,13 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     const startEditComment = useCallback((item: RecommendedItem, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        // クリック位置からポップアップ位置を算出
+        const target = (e.currentTarget as HTMLElement).closest('.recommended-card') || e.currentTarget;
+        const rect = target.getBoundingClientRect();
+        setEditPopupPos({
+            top: rect.top + window.scrollY,
+            left: rect.left + rect.width / 2,
+        });
         setEditingCommentId(item.id);
         setCommentDraft(item.comment || '');
         // フォーカスは次のレンダーで
@@ -104,6 +112,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
         } finally {
             setSavingCommentId(null);
             setEditingCommentId(null);
+            setEditPopupPos(null);
         }
     }, [commentDraft, locale, toastSuccess, toastError]);
 
@@ -111,6 +120,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     const cancelEditComment = useCallback(() => {
         setEditingCommentId(null);
         setCommentDraft('');
+        setEditPopupPos(null);
     }, []);
 
     // --- モーダルから追加時のコールバック ---
@@ -213,7 +223,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         }}
                     >
                 {items.map(item => (
-                    <div key={item.id} className="flex-shrink-0 w-[130px]">
+                    <div key={item.id} className="flex-shrink-0 w-[130px] relative">
                     <a
                         href={item.affiliate_link}
                         target="_blank"
@@ -256,62 +266,48 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 ✕
                             </button>
                         )}
-                    </a>
 
-                    {/* コメント表示・編集エリア */}
-                    {editingCommentId === item.id ? (
-                        /* オーナー: コメント編集中 */
-                        <div className="mt-1.5 px-0.5">
-                            <input
-                                ref={commentInputRef}
-                                type="text"
-                                value={commentDraft}
-                                onChange={(e) => setCommentDraft(e.target.value)}
-                                maxLength={100}
-                                placeholder={locale === 'ja' ? '一言コメント…' : 'Comment…'}
-                                className="w-full text-[10px] px-2 py-1 rounded-md border border-[var(--theme-primary)]/30 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--theme-primary)]/50 text-gray-700 placeholder-gray-300"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveComment(item.id);
-                                    if (e.key === 'Escape') cancelEditComment();
+                        {/* コメント吹き出しアイコン（コメントあり時 or オーナー時） */}
+                        {(item.comment || isOwner) && editingCommentId !== item.id && (
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (isOwner) {
+                                        startEditComment(item, e);
+                                    }
                                 }}
-                            />
-                            <div className="flex items-center gap-1 mt-1">
-                                <button
-                                    onClick={() => saveComment(item.id)}
-                                    disabled={savingCommentId === item.id}
-                                    className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--theme-primary)] text-white hover:opacity-80 transition-opacity disabled:opacity-50"
-                                >
-                                    {savingCommentId === item.id ? '…' : (locale === 'ja' ? '保存' : 'Save')}
-                                </button>
-                                <button
-                                    onClick={cancelEditComment}
-                                    className="text-[9px] px-1.5 py-0.5 rounded text-gray-400 hover:text-gray-600 transition-colors"
-                                >
-                                    {locale === 'ja' ? '取消' : 'Cancel'}
-                                </button>
-                                <span className="text-[8px] text-gray-300 ml-auto">{commentDraft.length}/100</span>
+                                className={`absolute top-1 ${isOwner ? 'left-1' : 'right-1'} w-5 h-5 rounded-full flex items-center justify-center transition-all shadow-sm backdrop-blur-sm ${
+                                    item.comment
+                                        ? 'bg-[var(--theme-primary)]/90 text-white opacity-100 hover:bg-[var(--theme-primary)]'
+                                        : 'bg-gray-400/70 text-white opacity-0 group-hover:opacity-70 hover:!opacity-100'
+                                } ${!isOwner ? 'pointer-events-none' : 'cursor-pointer'}`}
+                                aria-label={locale === 'ja' ? 'コメント' : 'Comment'}
+                                title={item.comment || (locale === 'ja' ? 'コメントを追加' : 'Add comment')}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-2.5 h-2.5">
+                                    <path fillRule="evenodd" d="M3.43 2.524A41.29 41.29 0 0110 2c2.236 0 4.43.18 6.57.524 1.437.231 2.43 1.49 2.43 2.902v5.148c0 1.413-.993 2.67-2.43 2.902a41.202 41.202 0 01-5.183.501l-2.9 2.748A.75.75 0 017 16.153V14.12a41.618 41.618 0 01-3.57-.524C2.007 13.365 1 12.106 1 10.694V5.426c0-1.413.993-2.67 2.43-2.902z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        )}
+
+                        {/* 吹き出しコメント表示 — 画像エリアにオーバーレイ */}
+                        {editingCommentId !== item.id && item.comment && (
+                            <div
+                                className={`absolute top-7 left-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-all duration-200 ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
+                                onClick={isOwner ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
+                                style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.1))' }}
+                            >
+                                <div className="bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1.5 border border-gray-100/80">
+                                    <p className="text-[9px] text-gray-600 leading-snug line-clamp-3 break-words">
+                                        {item.comment}
+                                    </p>
+                                </div>
+                                {/* 吹き出し三角（上向き） */}
+                                <div className="absolute -top-1 right-2 w-2 h-2 bg-white/95 border-l border-t border-gray-100/80 transform rotate-45" />
                             </div>
-                        </div>
-                    ) : item.comment ? (
-                        /* コメント表示（全ユーザーに見える） */
-                        <div
-                            className={`mt-1.5 px-1 ${isOwner ? 'cursor-pointer' : ''}`}
-                            onClick={isOwner ? (e) => startEditComment(item, e) : undefined}
-                            title={isOwner ? (locale === 'ja' ? 'クリックして編集' : 'Click to edit') : undefined}
-                        >
-                            <p className="text-[10px] text-gray-500 leading-snug line-clamp-2 italic">
-                                &ldquo;{item.comment}&rdquo;
-                            </p>
-                        </div>
-                    ) : isOwner ? (
-                        /* オーナー: コメント未設定 → 追加ボタン */
-                        <button
-                            onClick={(e) => startEditComment(item, e)}
-                            className="mt-1.5 w-full text-[9px] text-gray-300 hover:text-[var(--theme-primary)] transition-colors text-center py-0.5"
-                        >
-                            {locale === 'ja' ? '＋ コメント追加' : '+ Add comment'}
-                        </button>
-                    ) : null}
+                        )}
+                    </a>
                     </div>
                 ))}
 
@@ -378,6 +374,70 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     </div>
                 )}
             </div>
+
+            {/* ===== コメント編集吹き出し（fixed ポジション） ===== */}
+            {editingCommentId && editPopupPos && (
+                <>
+                    {/* 背景オーバーレイ（クリックでキャンセル） */}
+                    <div
+                        className="fixed inset-0 z-[90]"
+                        onClick={cancelEditComment}
+                    />
+                    {/* 吹き出しポップアップ */}
+                    <div
+                        className="fixed z-[91] w-[220px] sm:w-[240px]"
+                        style={{
+                            top: `${editPopupPos.top - 8}px`,
+                            left: `${editPopupPos.left}px`,
+                            transform: 'translate(-50%, -100%)',
+                        }}
+                    >
+                        <div className="bg-white rounded-xl shadow-2xl border border-[var(--theme-primary)]/20 p-3">
+                            <div className="flex items-center gap-1.5 mb-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-[var(--theme-primary)]">
+                                    <path fillRule="evenodd" d="M3.43 2.524A41.29 41.29 0 0110 2c2.236 0 4.43.18 6.57.524 1.437.231 2.43 1.49 2.43 2.902v5.148c0 1.413-.993 2.67-2.43 2.902a41.202 41.202 0 01-5.183.501l-2.9 2.748A.75.75 0 017 16.153V14.12a41.618 41.618 0 01-3.57-.524C2.007 13.365 1 12.106 1 10.694V5.426c0-1.413.993-2.67 2.43-2.902z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-[11px] font-semibold text-gray-700">
+                                    {locale === 'ja' ? '一言コメント' : 'Comment'}
+                                </span>
+                            </div>
+                            <input
+                                ref={commentInputRef}
+                                type="text"
+                                value={commentDraft}
+                                onChange={(e) => setCommentDraft(e.target.value)}
+                                maxLength={100}
+                                placeholder={locale === 'ja' ? 'おすすめポイントなど…' : 'Why you love it…'}
+                                className="w-full text-[11px] px-2.5 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/40 text-gray-700 placeholder-gray-300"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveComment(editingCommentId);
+                                    if (e.key === 'Escape') cancelEditComment();
+                                }}
+                            />
+                            <div className="flex items-center gap-1.5 mt-2">
+                                <button
+                                    onClick={() => saveComment(editingCommentId)}
+                                    disabled={savingCommentId === editingCommentId}
+                                    className="text-[10px] px-3 py-1 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
+                                >
+                                    {savingCommentId === editingCommentId ? '…' : (locale === 'ja' ? '保存' : 'Save')}
+                                </button>
+                                <button
+                                    onClick={cancelEditComment}
+                                    className="text-[10px] px-2 py-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                >
+                                    {locale === 'ja' ? '取消' : 'Cancel'}
+                                </button>
+                                <span className="text-[9px] text-gray-300 ml-auto">{commentDraft.length}/100</span>
+                            </div>
+                        </div>
+                        {/* 吹き出し三角（下向き） */}
+                        <div className="flex justify-center">
+                            <div className="w-3 h-3 bg-white border-r border-b border-[var(--theme-primary)]/20 transform rotate-45 -mt-[7px]" />
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* ===== 検索モーダル ===== */}
             {showModal && (
