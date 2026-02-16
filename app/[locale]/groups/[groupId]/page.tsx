@@ -253,18 +253,14 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                 </section>
 
-                {/* グループイベント + メンバーの愛用ギア（横並び） */}
-                <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-8 gap-6 lg:items-stretch">
-                    <div className="lg:col-span-8 flex [&>section]:w-full [&>section>div]:h-full">
-                        <section>
-                            <GroupEventList groupId={groupId} isOwnerOrAdmin={isOwnerOrAdmin} />
-                        </section>
-                    </div>
-                    <div className="lg:col-span-4 flex [&>section]:w-full [&>section>div]:h-full">
-                        <section>
-                            <GroupGear groupId={groupId} />
-                        </section>
-                    </div>
+                {/* グループイベント + メンバーの愛用ギア */}
+                <div className="flex flex-col gap-6">
+                    <section>
+                        <GroupEventList groupId={groupId} isOwnerOrAdmin={isOwnerOrAdmin} />
+                    </section>
+                    <section>
+                        <GroupGear groupId={groupId} />
+                    </section>
                 </div>
 
                 {/* ウィークリーレポート */}
