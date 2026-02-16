@@ -259,7 +259,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         <GroupEventList groupId={groupId} isOwnerOrAdmin={isOwnerOrAdmin} />
                     </section>
                     <section>
-                        <GroupGear groupId={groupId} />
+                        <GroupGear groupId={groupId} userId={userId} />
                     </section>
                 </div>
 

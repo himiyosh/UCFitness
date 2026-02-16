@@ -16,7 +16,7 @@ export async function GET() {
         // 全ユーザーのおすすめアイテムを取得
         const { data, error } = await supabaseAdmin
             .from('recommended_items')
-            .select('asin, title, image_url, affiliate_link, user_id, users!inner(username, image)')
+            .select('asin, title, image_url, affiliate_link, comment, user_id, users!inner(username, image)')
             .order('updated_at', { ascending: false })
             .limit(200);
 
@@ -36,7 +36,7 @@ export async function GET() {
             image_url: string;
             affiliate_link: string;
             count: number;
-            users: { username: string; image: string | null }[];
+            users: { username: string; image: string | null; comment?: string | null }[];
         }>();
 
         const currentTag = process.env.AMAZON_PARTNER_TAG || 'studio344-22';
@@ -48,7 +48,7 @@ export async function GET() {
             if (existing) {
                 existing.count += 1;
                 if (user?.username && existing.users.length < 3) {
-                    existing.users.push({ username: user.username, image: user.image });
+                    existing.users.push({ username: user.username, image: user.image, comment: item.comment || null });
                 }
             } else {
                 asinMap.set(item.asin, {
@@ -57,7 +57,7 @@ export async function GET() {
                     image_url: item.image_url.replace(/tag=[^&]+/, `tag=${currentTag}`),
                     affiliate_link: item.affiliate_link.replace(/tag=[^&]+/, `tag=${currentTag}`),
                     count: 1,
-                    users: user?.username ? [{ username: user.username, image: user.image }] : [],
+                    users: user?.username ? [{ username: user.username, image: user.image, comment: item.comment || null }] : [],
                 });
             }
         }

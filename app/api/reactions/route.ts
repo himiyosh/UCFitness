@@ -5,9 +5,8 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
-interface RouteParams {
-    params: Promise<{ groupId: string }>;
-}
+// グローバルリーダーボード用リアクションAPI
+// group_reactions テーブルを group_id='__global__' で再利用
 
 const VALID_EMOJIS = [
     // デフォルト
@@ -22,19 +21,16 @@ const VALID_EMOJIS = [
     '🏃', '🚀', '⚡', '💨', '🏅', '🥇', '🥈', '🥉',
 ] as const;
 const VALID_PERIODS = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
+const GLOBAL_GROUP_ID = '__global__';
 
-// GET: グループ内リアクション一覧を取得
-export async function GET(
-    request: NextRequest,
-    context: RouteParams
-) {
+// GET: グローバルリアクション一覧を取得
+export async function GET(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { groupId } = await context.params;
         const { searchParams } = new URL(request.url);
         const period = searchParams.get('period') || 'DAILY';
 
@@ -42,49 +38,32 @@ export async function GET(
             return NextResponse.json({ error: 'Invalid period' }, { status: 400 });
         }
 
-        // メンバーシップ確認
-        const { data: membership } = await supabaseAdmin
-            .from('group_members')
-            .select('user_id')
-            .eq('group_id', groupId)
-            .eq('user_id', session.user.id)
-            .single();
-
-        if (!membership) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-
-        // リアクション取得
         const { data: reactions, error } = await supabaseAdmin
             .from('group_reactions')
             .select('id, from_user_id, to_user_id, emoji, period')
-            .eq('group_id', groupId)
+            .eq('group_id', GLOBAL_GROUP_ID)
             .eq('period', period);
 
         if (error) {
-            reportError('group/reactions:list', error, { groupId });
+            reportError('reactions/global:list', error);
             return NextResponse.json({ error: 'Failed to fetch reactions' }, { status: 500 });
         }
 
         return NextResponse.json({ reactions: reactions || [] });
     } catch (err) {
-        reportError('group/reactions:list', err);
+        reportError('reactions/global:list', err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }
 
-// POST: リアクションを追加
-export async function POST(
-    request: NextRequest,
-    context: RouteParams
-) {
+// POST: グローバルリアクションを追加
+export async function POST(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { groupId } = await context.params;
         const body = await request.json();
         const { toUserId, emoji, period } = body;
 
@@ -103,22 +82,11 @@ export async function POST(
             return NextResponse.json({ error: 'Cannot react to yourself' }, { status: 400 });
         }
 
-        // メンバーシップ確認（送信者 + 受信者の両方がグループメンバーであること）
-        const { data: members } = await supabaseAdmin
-            .from('group_members')
-            .select('user_id')
-            .eq('group_id', groupId)
-            .in('user_id', [session.user.id, toUserId]);
-
-        if (!members || members.length < 2) {
-            return NextResponse.json({ error: 'Both users must be group members' }, { status: 403 });
-        }
-
-        // リアクション挿入（重複は UNIQUE 制約で弾く）
+        // グローバルはメンバーシップ不要 — 認証済みユーザーなら誰でもリアクション可能
         const { data: reaction, error } = await supabaseAdmin
             .from('group_reactions')
             .upsert({
-                group_id: groupId,
+                group_id: GLOBAL_GROUP_ID,
                 from_user_id: session.user.id,
                 to_user_id: toUserId,
                 emoji,
@@ -130,29 +98,25 @@ export async function POST(
             .single();
 
         if (error) {
-            reportError('group/reactions:create', error, { groupId });
+            reportError('reactions/global:create', error);
             return NextResponse.json({ error: 'Failed to add reaction' }, { status: 500 });
         }
 
         return NextResponse.json({ reaction }, { status: 201 });
     } catch (err) {
-        reportError('group/reactions:create', err);
+        reportError('reactions/global:create', err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }
 
-// DELETE: リアクションを削除
-export async function DELETE(
-    request: NextRequest,
-    context: RouteParams
-) {
+// DELETE: グローバルリアクションを削除
+export async function DELETE(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { groupId } = await context.params;
         const { searchParams } = new URL(request.url);
         const toUserId = searchParams.get('toUserId');
         const emoji = searchParams.get('emoji');
@@ -165,20 +129,20 @@ export async function DELETE(
         const { error } = await supabaseAdmin
             .from('group_reactions')
             .delete()
-            .eq('group_id', groupId)
+            .eq('group_id', GLOBAL_GROUP_ID)
             .eq('from_user_id', session.user.id)
             .eq('to_user_id', toUserId)
             .eq('emoji', emoji)
             .eq('period', period);
 
         if (error) {
-            reportError('group/reactions:delete', error, { groupId });
+            reportError('reactions/global:delete', error);
             return NextResponse.json({ error: 'Failed to remove reaction' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
     } catch (err) {
-        reportError('group/reactions:delete', err);
+        reportError('reactions/global:delete', err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }

@@ -415,7 +415,7 @@ export default async function Home() {
                 <div className="w-full"><PersonalizedGear /></div>
               </div>
               <div className="lg:col-span-7 flex [&>div]:w-full">
-                <div className="w-full"><TrendingGear /></div>
+                <div className="w-full"><TrendingGear userId={userId} /></div>
               </div>
             </div>
           )}

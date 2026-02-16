@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import { RankingEntry } from '@/lib/ranking-utils';
+import GroupReactions from '@/components/GroupReactions';
+import { useGroupReactions } from '@/hooks/useGroupReactions';
 
 type Props = {
     keyword: string;
@@ -15,11 +17,12 @@ type Props = {
     index: number;
     totalCount: number;
     groupId?: string;
+    period?: string;
 };
 
 import { useTranslations } from 'next-intl';
 
-export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId, period = 'DAILY' }: Props) {
     const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
     const [moveDirection, setMoveDirection] = useState<'up' | 'down' | null>(null);
@@ -29,6 +32,31 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
     const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
+
+    // リアクション管理
+    const { reactions, handleReactionToggle } = useGroupReactions(groupId, userId, period);
+
+    // モバイル長押しリアクション
+    const [longPressUserId, setLongPressUserId] = useState<string | null>(null);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // デスクトップホバー検出
+    const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
+
+    // 長押し解除: 外部タップ or スクロールで閉じる
+    useEffect(() => {
+        if (!longPressUserId) return;
+        const dismiss = () => setLongPressUserId(null);
+        const timer = setTimeout(() => {
+            document.addEventListener('touchstart', dismiss, { once: true });
+            window.addEventListener('scroll', dismiss, { once: true });
+        }, 100);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('touchstart', dismiss);
+            window.removeEventListener('scroll', dismiss);
+        };
+    }, [longPressUserId]);
 
     const handleMove = useCallback(async (direction: 'up' | 'down') => {
         setIsMoving(true);
@@ -131,7 +159,8 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                     {neighbors.length > 0 ? (
                         (() => {
                             return neighbors.map((entry, i: number) => {
-                                const isMe = entry.users?.id === userId;
+                                const entryId = entry.users?.id ?? '';
+                                const isMe = entryId === userId;
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
 
                                 return (
@@ -142,13 +171,24 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between transition-all overflow-hidden ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between transition-all overflow-visible ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                             onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
+                                            onMouseEnter={() => setHoveredUserId(entryId)}
+                                            onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}
+                                            onTouchStart={() => {
+                                                if (isMe) return;
+                                                const timer = setTimeout(() => {
+                                                    setLongPressUserId(entryId);
+                                                }, 500);
+                                                longPressTimerRef.current = timer;
+                                            }}
+                                            onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
+                                            onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
 
                                             {/* Content Wrapper */}
-                                            <div className="relative z-10 flex items-center gap-2 sm:gap-3">
-                                                <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold"
+                                            <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                                <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold shrink-0"
                                                     style={entry.originalRank === 1 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                         color: '#ffffff',
@@ -182,19 +222,40 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-end relative z-10">
-                                                <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
-                                                    {(entry.steps ?? 0).toLocaleString()}
+                                            {/* リアクション + 歩数 — 右寄せグループ */}
+                                            <div className="flex items-center gap-1.5 shrink min-w-0">
+                                                {/* リアクション — 歩数の左 */}
+                                                {groupId && userId && (
+                                                    <div className="relative z-10 min-w-0" onClick={(e) => e.stopPropagation()}>
+                                                        <GroupReactions
+                                                            groupId={groupId}
+                                                            toUserId={entryId}
+                                                            currentUserId={userId}
+                                                            period={period}
+                                                            reactions={reactions}
+                                                            onReactionToggle={handleReactionToggle}
+                                                            isSelf={isMe}
+                                                            compact
+                                                            forceShow={hoveredUserId === entryId || longPressUserId === entryId}
+                                                            maxVisibleBadges={2}
+                                                        />
+                                                    </div>
+                                                )}
+                                                {/* 歩数 — 固定幅で常に表示 */}
+                                                <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10 shrink-0">
+                                                    <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
+                                                        {(entry.steps ?? 0).toLocaleString()}
+                                                    </div>
+                                                    {entry.prevSteps !== undefined && (() => {
+                                                        const delta = entry.steps - entry.prevSteps!;
+                                                        if (delta === 0) return null;
+                                                        return (
+                                                            <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
+                                                                {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
-                                                {entry.prevSteps !== undefined && (() => {
-                                                    const delta = entry.steps - entry.prevSteps!;
-                                                    if (delta === 0) return null;
-                                                    return (
-                                                        <span className={`text-xs font-bold tabular-nums leading-tight ${delta > 0 ? 'delta-up' : 'delta-down'}`}>
-                                                            {delta > 0 ? '▲' : '▼'}{Math.abs(delta).toLocaleString()}
-                                                        </span>
-                                                    );
-                                                })()}
                                             </div>
                                         </div>
                                     </div>

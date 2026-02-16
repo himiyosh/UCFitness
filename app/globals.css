@@ -12,6 +12,15 @@ html {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
 }
+
+/* ==== SCROLLBAR HIDE ==== */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
 .styled-scrollbar:hover {
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
 }

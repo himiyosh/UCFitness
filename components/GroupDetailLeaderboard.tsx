@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
@@ -51,6 +51,26 @@ export default function GroupDetailLeaderboard({
 
     // --- リアクション管理 ---
     const [reactions, setReactions] = useState<Reaction[]>([]);
+
+    // ホバー / ロングプレスでリアクション ➕ ボタンを表示
+    const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
+    const [longPressUserId, setLongPressUserId] = useState<string | null>(null);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ロングプレス解除: 外部タップ or スクロールで閉じる
+    useEffect(() => {
+        if (!longPressUserId) return;
+        const dismiss = () => setLongPressUserId(null);
+        const timer = setTimeout(() => {
+            document.addEventListener('touchstart', dismiss, { once: true });
+            window.addEventListener('scroll', dismiss, { once: true });
+        }, 100);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('touchstart', dismiss);
+            window.removeEventListener('scroll', dismiss);
+        };
+    }, [longPressUserId]);
 
     // リアクション取得
     useEffect(() => {
@@ -182,8 +202,19 @@ export default function GroupDetailLeaderboard({
 
                                     return (
                                         <li key={entry.users.id}
-                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 hover:shadow-sm ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 hover:shadow-sm overflow-visible ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                             onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
+                                            onMouseEnter={() => setHoveredUserId(entry.users.id)}
+                                            onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
+                                            onTouchStart={() => {
+                                                if (isCurrentUser) return;
+                                                const timer = setTimeout(() => {
+                                                    setLongPressUserId(entry.users.id);
+                                                }, 500);
+                                                longPressTimerRef.current = timer;
+                                            }}
+                                            onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
+                                            onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
@@ -224,8 +255,13 @@ export default function GroupDetailLeaderboard({
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
-                                                    {/* リアクションボタン */}
-                                                    {groupId && userId && (
+                                                </div>
+                                            </div>
+                                            {/* リアクション + 歩数 — 右寄せグループ */}
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                {/* リアクション — 歩数の左 */}
+                                                {groupId && userId && (
+                                                    <div className="relative z-10 min-w-0" onClick={(e) => e.stopPropagation()}>
                                                         <GroupReactions
                                                             groupId={groupId}
                                                             toUserId={entry.users.id}
@@ -234,12 +270,14 @@ export default function GroupDetailLeaderboard({
                                                             reactions={reactions}
                                                             onReactionToggle={handleReactionToggle}
                                                             isSelf={isCurrentUser}
+                                                            compact
+                                                            forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
+                                                            maxVisibleBadges={2}
                                                         />
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="flex flex-col items-end">
+                                                    </div>
+                                                )}
+                                                {/* 歩数 — 固定幅で常に表示 */}
+                                                <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10 shrink-0">
                                                     <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg leaderboard-steps">
                                                         {entry.steps.toLocaleString()}
                                                     </div>
