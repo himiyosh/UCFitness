@@ -37,3 +37,7 @@
 ## 2025-06-01 - Payload Size Optimization via Truncation
 **Learning:** Passing the full global leaderboard (thousands of users) to the client component bloated the HTML payload significantly, causing slow hydration. However, simpler truncating broke rank logic and downstream components that relied on full lists (e.g., finding group members or calculating ranks).
 **Action:** Truncate the list to a "Top N + User" view for client consumption to reduce payload, but ensure `originalRank` is explicitly preserved on the server before truncation. Also, be careful to use the *full* list for server-side derivations (like Group Rankings) while sending only the *optimized* list to the client.
+
+## 2025-06-02 - Nested Query Optimization in Supabase
+**Learning:** Supabase/PostgREST allows fetching related data in a single query using nested select syntax (e.g., `groups(id, keyword)`), which avoids N+1 queries or subsequent batch queries for related entities.
+**Action:** Always check if related data can be fetched via nested select in the initial query before implementing a separate "fetch by IDs" step.
