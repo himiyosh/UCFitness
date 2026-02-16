@@ -144,7 +144,7 @@ function HeatmapCell({
             />
             {showTooltip && (
                 <div
-                    className={`absolute z-[100] px-2.5 py-1.5 bg-gray-900 text-white text-[10px] sm:text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none ${
+                    className={`absolute z-[100] px-2.5 py-1.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none ${
                         row <= 1 ? 'top-full mt-2' : 'bottom-full mb-2'
                     }`}
                     style={{
@@ -239,7 +239,7 @@ function GoalRing({ current, goal }: { current: number; goal: number }) {
                     ) : (
                         <>
                             <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(rawPct * 100)}%</span>
-                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">{goal.toLocaleString()}</span>
+                            <span className="text-[11px] sm:text-xs text-gray-400 font-medium">{goal.toLocaleString()}</span>
                         </>
                     )}
                 </div>
@@ -395,16 +395,16 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     {/* 週間・月間パネル */}
                     <div className="grid grid-cols-2 gap-1.5 mt-3">
                         <div className="bg-gray-50 rounded-lg py-2 text-center">
-                            <div className="text-[10px] text-gray-400 font-medium leading-none">{dashT('thisWeek')}</div>
+                            <div className="text-xs text-gray-400 font-medium leading-none">{dashT('thisWeek')}</div>
                             <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.weeklySteps.toLocaleString()}</div>
-                            <div className={`text-[10px] font-semibold leading-none ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
+                            <div className={`text-xs font-semibold leading-none ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
                                 {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
                             </div>
                         </div>
                         <div className="bg-gray-50 rounded-lg py-2 text-center">
-                            <div className="text-[10px] text-gray-400 font-medium leading-none">{dashT('thisMonth')}</div>
+                            <div className="text-xs text-gray-400 font-medium leading-none">{dashT('thisMonth')}</div>
                             <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.monthlySteps.toLocaleString()}</div>
-                            <div className={`text-[10px] font-semibold leading-none ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
+                            <div className={`text-xs font-semibold leading-none ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
                                 {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
                             </div>
                         </div>
@@ -446,20 +446,20 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             {!activity && data.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                     <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
-                        <div className="text-[10px] text-gray-400 font-medium">{t('totalSteps')}</div>
+                        <div className="text-xs text-gray-400 font-medium">{t('totalSteps')}</div>
                         <div className="text-sm font-black text-gray-800 tabular-nums">{stats.totalSteps.toLocaleString()}</div>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
-                        <div className="text-[10px] text-gray-400 font-medium">{t('activeDays')}</div>
-                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.activeDays}<span className="text-[10px] text-gray-400 ml-0.5">{t('days')}</span></div>
+                        <div className="text-xs text-gray-400 font-medium">{t('activeDays')}</div>
+                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.activeDays}<span className="text-xs text-gray-400 ml-0.5">{t('days')}</span></div>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
-                        <div className="text-[10px] text-gray-400 font-medium">{t('averageSteps')}</div>
+                        <div className="text-xs text-gray-400 font-medium">{t('averageSteps')}</div>
                         <div className="text-sm font-black text-gray-800 tabular-nums">{stats.avg.toLocaleString()}</div>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
-                        <div className="text-[10px] text-gray-400 font-medium">{t('longestStreak')}</div>
-                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.longestStreak}<span className="text-[10px] text-gray-400 ml-0.5">{t('days')}</span></div>
+                        <div className="text-xs text-gray-400 font-medium">{t('longestStreak')}</div>
+                        <div className="text-sm font-black text-gray-800 tabular-nums">{stats.longestStreak}<span className="text-xs text-gray-400 ml-0.5">{t('days')}</span></div>
                     </div>
                 </div>
             )}
@@ -523,7 +523,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     </div>
 
                     {/* 凡例 */}
-                    <div className="flex items-center gap-1.5 mt-2 justify-end text-[10px] text-gray-400">
+                    <div className="flex items-center gap-1.5 mt-2 justify-end text-xs text-gray-400">
                         <span>{t('less')}</span>
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'var(--heatmap-empty, #ebedf0)' }} />
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 20%, transparent)' }} />

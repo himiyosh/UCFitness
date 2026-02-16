@@ -305,7 +305,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 <span className="text-xs font-medium text-gray-500">{t('allTimeBestDay')}</span>
                                 <div className="text-right">
                                     <span className="text-sm font-bold text-green-600 tabular-nums">{bestDay.steps.toLocaleString()}</span>
-                                    {bestDay.date !== '-' && <span className="text-[10px] text-gray-400 ml-1.5">{bestDay.date}</span>}
+                                    {bestDay.date !== '-' && <span className="text-xs text-gray-400 ml-1.5">{bestDay.date}</span>}
                                 </div>
                             </div>
                             {userWeeklyRank && (
@@ -317,7 +317,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             {lastSyncedAt && (
                                 <div className="flex items-center justify-between px-4 py-2.5">
                                     <span className="text-xs font-medium text-gray-500">{t('lastSynced')}</span>
-                                    <span className="text-[11px] text-gray-400">{(() => {
+                                    <span className="text-xs text-gray-400">{(() => {
                                         const diff = Date.now() - new Date(lastSyncedAt).getTime();
                                         const mins = Math.floor(diff / 60000);
                                         if (mins < 1) return 'Just now';
@@ -380,8 +380,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 {(user.step_goal || 10000) > 0 && (
                                     <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/40">
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('goalProgress', { goal: (user.step_goal || 10000).toLocaleString() })}</span>
-                                            <span className="text-[10px] font-bold text-gray-500 tabular-nums">{Math.min(100, Math.round((targetStats.daily / (user.step_goal || 10000)) * 100))}%</span>
+                                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('goalProgress', { goal: (user.step_goal || 10000).toLocaleString() })}</span>
+                                            <span className="text-xs font-bold text-gray-500 tabular-nums">{Math.min(100, Math.round((targetStats.daily / (user.step_goal || 10000)) * 100))}%</span>
                                         </div>
                                         <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                             <div
@@ -399,13 +399,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                     <div className="grid grid-cols-[auto_1fr_1fr_1fr] border-b border-gray-200 bg-gray-50/60">
                                         <div className="w-20 sm:w-28" />
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
-                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
-                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
-                                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
                                         </div>
                                     </div>
                                     {/* Target User Row */}
@@ -415,7 +415,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                                 {user.image && (
                                                     <img src={user.image} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover flex-shrink-0" />
                                                 )}
-                                                <p className="text-[10px] sm:text-xs font-bold text-gray-900 leading-tight text-center min-w-0">{t('thisUser')}</p>
+                                                <p className="text-xs font-bold text-gray-900 leading-tight text-center min-w-0">{t('thisUser')}</p>
                                             </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
@@ -435,24 +435,24 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                                 {viewerUser?.image && (
                                                     <img src={viewerUser.image} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0 opacity-70" />
                                                 )}
-                                                <p className="text-[9px] sm:text-xs font-semibold text-gray-400 leading-tight text-center min-w-0">{t('yourSteps')}</p>
+                                                <p className="text-xs font-semibold text-gray-400 leading-tight text-center min-w-0">{t('yourSteps')}</p>
                                             </div>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.daily.toLocaleString()}</p>
-                                            <p className={`text-[9px] sm:text-[10px] tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/50' : 'text-red-400/50'}`}>
+                                            <p className={`text-[11px] sm:text-xs tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.daily - targetStats.daily >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.daily - targetStats.daily).toLocaleString()})
                                             </p>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.weekly.toLocaleString()}</p>
-                                            <p className={`text-[9px] sm:text-[10px] tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/50' : 'text-red-400/50'}`}>
+                                            <p className={`text-[11px] sm:text-xs tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.weekly - targetStats.weekly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.weekly - targetStats.weekly).toLocaleString()})
                                             </p>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.monthly.toLocaleString()}</p>
-                                            <p className={`text-[9px] sm:text-[10px] tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/50' : 'text-red-400/50'}`}>
+                                            <p className={`text-[11px] sm:text-xs tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/50' : 'text-red-400/50'}`}>
                                                 ({viewerStats.monthly - targetStats.monthly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.monthly - targetStats.monthly).toLocaleString()})
                                             </p>
                                         </div>

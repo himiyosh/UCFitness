@@ -195,11 +195,11 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
         <div>
             {/* セクションラベル */}
             <div className="flex items-center justify-between mb-2 px-1">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     {locale === 'ja' ? '愛用アイテム' : 'My Picks'}
                 </p>
                 {isOwner && items.length > 0 && (
-                    <span className="text-[10px] text-gray-400">{items.length}/6</span>
+                    <span className="text-xs text-gray-400">{items.length}/6</span>
                 )}
             </div>
 

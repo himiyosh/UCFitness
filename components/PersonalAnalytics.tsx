@@ -160,7 +160,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                         <span className="text-white/50 text-xs font-bold uppercase tracking-widest">
                             {currentMonthData ? formatMonth(currentMonthData.month) : ''}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/70 text-[10px] font-bold uppercase tracking-wider">
+                        <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/70 text-xs font-bold uppercase tracking-wider">
                             {t('totalSteps')}
                         </span>
                     </div>
@@ -176,7 +176,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                         ].map((stat, i) => (
                             <div key={i} className="bg-white/[0.12] backdrop-blur-md rounded-2xl p-3 sm:p-4 text-center border border-white/[0.08] hover:bg-white/[0.18] transition-colors">
                                 <div className="text-lg mb-1">{stat.icon}</div>
-                                <p className="text-white/50 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">{stat.label}</p>
+                                <p className="text-white/50 text-[11px] sm:text-xs font-bold uppercase tracking-wider">{stat.label}</p>
                                 <p className="text-xl sm:text-2xl font-black tabular-nums mt-0.5 leading-tight">
                                     {stat.value}
                                     {stat.suffix && <span className="text-xs font-normal text-white/50 ml-0.5">{stat.suffix}</span>}
@@ -209,7 +209,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                         isBest ? 'bg-[var(--theme-primary-light)]' : i % 2 === 0 ? 'bg-gray-50/50' : ''
                                     }`}
                                 >
-                                    <span className={`text-[11px] w-10 font-black tracking-wide ${
+                                    <span className={`text-xs w-10 font-black tracking-wide ${
                                         isBest ? 'text-[var(--theme-primary)]' : 'text-gray-400'
                                     }`}>
                                         {WEEKDAY_KEYS[i].toUpperCase()}
@@ -270,7 +270,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                                 {formatMonth(m.month)}
                                             </span>
                                             {delta !== null && (
-                                                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                                                <span className={`px-1.5 py-0.5 rounded-md text-xs font-bold ${
                                                     delta >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
                                                 }`}>
                                                     {delta >= 0 ? '↑' : '↓'}{Math.abs(Math.round(delta))}%
@@ -281,7 +281,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                             <span className={`text-sm font-black tabular-nums ${isLatest ? 'text-gray-900' : 'text-gray-600'}`}>
                                                 {formatNumber(m.totalSteps)}
                                             </span>
-                                            <span className="text-[10px] text-gray-400 ml-1.5 font-medium">
+                                            <span className="text-xs text-gray-400 ml-1.5 font-medium">
                                                 ({formatNumber(m.avgSteps)}/day)
                                             </span>
                                         </div>
@@ -299,7 +299,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                         />
                                     </div>
                                     <div className="mt-1.5">
-                                        <span className="text-[10px] text-gray-400 font-medium">
+                                        <span className="text-xs text-gray-400 font-medium">
                                             🔥 {m.activeDays} {t('days')} active
                                         </span>
                                     </div>
@@ -330,7 +330,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                 }}
                             >
                                 <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 bg-white -translate-y-6 translate-x-6" />
-                                <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{t('totalSteps')}</p>
+                                <p className="text-white/60 text-xs font-bold uppercase tracking-wider">{t('totalSteps')}</p>
                                 <p className="text-3xl sm:text-4xl font-black tabular-nums mt-2 leading-none">
                                     {formatNumber(data.currentMonthVsPrev.current)}
                                 </p>
@@ -362,7 +362,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                         {Math.abs(data.currentMonthVsPrev.changePercent)}%
                                     </span>
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-2 font-bold text-center">
+                                <p className="text-xs text-gray-400 mt-2 font-bold text-center">
                                     {data.currentMonthVsPrev.changePercent >= 0 ? t('changeUp') : t('changeDown')}
                                 </p>
                             </div>
@@ -370,7 +370,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                             {/* 先月 */}
                             <div className="flex-1 rounded-2xl bg-gray-100/80 p-5 text-center relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-5 bg-gray-400 -translate-y-6 translate-x-6" />
-                                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">PREV</p>
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">PREV</p>
                                 <p className="text-3xl sm:text-4xl font-black text-gray-400 tabular-nums mt-2 leading-none">
                                     {formatNumber(data.currentMonthVsPrev.previous)}
                                 </p>
