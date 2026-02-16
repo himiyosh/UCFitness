@@ -15,6 +15,7 @@ const { mockSupabase, mockSelect, mockIn, mockFrom } = vi.hoisted(() => {
 });
 
 vi.mock('@/lib/supabase', () => ({
+    supabaseAdmin: mockSupabase,
     supabase: mockSupabase
 }));
 

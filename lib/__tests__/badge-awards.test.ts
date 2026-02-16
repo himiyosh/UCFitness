@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { assignBadges } from '../badge-awards';
 
-const { mockFrom } = vi.hoisted(() => ({
+const { mockFrom, mockRpc } = vi.hoisted(() => ({
     mockFrom: vi.fn(),
+    mockRpc: vi.fn(),
 }));
 
 // Mocks for Supabase chain
@@ -19,12 +20,15 @@ const mockInsert = vi.fn();
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: {
         from: mockFrom,
+        rpc: mockRpc,
     }
 }));
 
 describe('assignBadges Performance Test', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+
+        mockRpc.mockResolvedValue({ data: [], error: null });
 
         // Setup default chain behavior
         mockSelect.mockReturnThis();
@@ -52,6 +56,7 @@ describe('assignBadges Performance Test', () => {
                 single: mockSingle,
                 in: mockIn,
                 insert: mockInsert,
+                range: vi.fn().mockReturnThis(), // Added range
                 then: (resolve: any) => resolve({ data: [], error: null }) // Default empty
             };
 

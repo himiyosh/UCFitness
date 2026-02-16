@@ -173,29 +173,36 @@ export function optimizeRankingsForPayload(
 
     for (const period of Object.keys(rankings)) {
         const fullList = rankings[period];
+        const topList = fullList.slice(0, limit);
 
-        // Map full list to objects with explicit rank
+        // Map ONLY the top N items
         // Shallow clone user object to avoid side effects if enriched later
-        const withRank: RankingEntry[] = fullList.map((entry, idx) => ({
+        const resultList: RankingEntry[] = topList.map((entry, idx) => ({
             ...entry,
             originalRank: entry.originalRank ?? (idx + 1),
             users: { ...entry.users }
         }));
 
-        const topN = withRank.slice(0, limit);
-
-        // If user is not in top N, find them and add them
+        // If user is not in top N, find them in the original list and add them
         if (userId) {
-            const userInTopN = topN.find(r => r.users.id === userId);
+            const userInTopN = resultList.find(r => r.users.id === userId);
             if (!userInTopN) {
-                const userEntry = withRank.find(r => r.users.id === userId);
-                if (userEntry) {
-                    topN.push(userEntry);
+                // Optimization: Search only if not found in top N.
+                // findIndex is O(N) but avoids allocating objects for the whole list.
+                const userIndex = fullList.findIndex(r => r.users.id === userId);
+                if (userIndex !== -1) {
+                    // Create entry only for the user found
+                    const entry = fullList[userIndex];
+                    resultList.push({
+                        ...entry,
+                        originalRank: entry.originalRank ?? (userIndex + 1),
+                        users: { ...entry.users }
+                    });
                 }
             }
         }
 
-        optimized[period] = topN;
+        optimized[period] = resultList;
     }
 
     return optimized;
