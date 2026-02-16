@@ -45,13 +45,20 @@ export default function AchievementCard({ username }: { username: string }) {
         return () => { cancelled = true; };
     }, [username]);
 
+    // 大きい数値を省略表記にする (例: 6,814,935 → 6.81M, 44,659 → 44.7K)
+    const formatCompact = (n: number): string => {
+        if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+        if (n >= 10_000) return `${(n / 1_000).toFixed(1)}K`;
+        return n.toLocaleString();
+    };
+
     const stats = useMemo(() => {
         if (!data) return [];
         return [
             {
                 icon: '👣',
                 label: t('totalSteps'),
-                value: data.totalSteps.toLocaleString(),
+                value: formatCompact(data.totalSteps),
             },
             {
                 icon: '📅',
@@ -76,7 +83,7 @@ export default function AchievementCard({ username }: { username: string }) {
             {
                 icon: getRankIcon(data.investorRank),
                 label: t('totalUc'),
-                value: `${data.totalUc.toLocaleString()} UC`,
+                value: `${formatCompact(data.totalUc)} UC`,
             },
         ];
     }, [data, t]);
