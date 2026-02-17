@@ -442,21 +442,18 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                     </p>
                     <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="w-5 text-center">🔍</span>
-                            <span className="font-medium text-gray-600">{locale === 'ja' ? 'キーワード' : 'Keyword'}</span>
-                            <span className="text-gray-300">—</span>
+                            <span className="w-5 text-center shrink-0">🔍</span>
+                            <span className="w-[5.5rem] shrink-0 font-medium text-gray-600">{locale === 'ja' ? 'キーワード' : 'Keyword'}</span>
                             <span className="font-mono text-gray-400">{locale === 'ja' ? 'ランニングシューズ' : 'running shoes'}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="w-5 text-center">🔗</span>
-                            <span className="font-medium text-gray-600">{locale === 'ja' ? 'Amazon URL' : 'Amazon URL'}</span>
-                            <span className="text-gray-300">—</span>
+                            <span className="w-5 text-center shrink-0">🔗</span>
+                            <span className="w-[5.5rem] shrink-0 font-medium text-gray-600">Amazon URL</span>
                             <span className="font-mono text-gray-400">amazon.co.jp/dp/...</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="w-5 text-center">📦</span>
-                            <span className="font-medium text-gray-600">ASIN</span>
-                            <span className="text-gray-300">—</span>
+                            <span className="w-5 text-center shrink-0">📦</span>
+                            <span className="w-[5.5rem] shrink-0 font-medium text-gray-600">ASIN</span>
                             <span className="font-mono text-gray-400">B0DGJCRNY3</span>
                         </div>
                     </div>
