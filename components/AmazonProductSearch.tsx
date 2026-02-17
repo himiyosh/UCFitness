@@ -308,7 +308,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                     rel="noopener noreferrer"
                                     className="flex-1 flex flex-col items-center gap-2 bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
                                 >
-                                    <div className="w-32 h-32 flex items-center justify-center">
+                                    <div className="w-44 h-44 flex items-center justify-center">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={selectedCandidate.imageUrl}
