@@ -385,7 +385,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             value={commentDraft}
                             onChange={e => setCommentDraft(e.target.value)}
                             maxLength={100}
-                            placeholder={locale === 'ja' ? '💬 一言コメント（任意）' : '💬 Comment (optional)'}
+                            placeholder={locale === 'ja' ? '💬 例: 毎日愛用してます！' : '💬 e.g. My daily essential!'}
                             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent focus:bg-white transition-colors"
                         />
                     )}
