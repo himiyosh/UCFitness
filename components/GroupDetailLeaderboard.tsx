@@ -216,8 +216,8 @@ export default function GroupDetailLeaderboard({
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
-                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0"
+                                            <div className="flex items-stretch gap-3 min-w-0 flex-1">
+                                                <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 self-center"
                                                     style={rank === 1 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                         color: '#ffffff',
@@ -239,7 +239,7 @@ export default function GroupDetailLeaderboard({
                                                     {rank}
                                                 </div>
 
-                                                <div className="relative shrink-0">
+                                                <div className="relative shrink-0 self-center">
                                                     <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                 </div>
 
@@ -274,8 +274,7 @@ export default function GroupDetailLeaderboard({
                                                     )}
                                                 </div>
                                             </div>
-                                            {/* 歩数 — 右寄せ固定幅 */}
-                                            <div className="flex items-center shrink-0">
+                                            <div className="flex items-center shrink-0 self-center">
                                                 <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10">
                                                     <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg leaderboard-steps">
                                                         {entry.steps.toLocaleString()}
