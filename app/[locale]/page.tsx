@@ -8,7 +8,7 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
-import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings } from '@/lib/ranking-service';
+import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings, getCachedGlobalRankingMap, transformRankingMapToLists } from '@/lib/ranking-service';
 import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import nextDynamic from 'next/dynamic';
 import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip, enrichCombinedRankings } from '@/lib/ranking-utils';
@@ -153,7 +153,10 @@ export default async function Home() {
   }
 
   // Pre-load ALL rankings (Optimization: Single query per scope)
-  const rawGlobalRankings = await getCachedGlobalRankings();
+  // ⚡ Bolt Optimization: Use Compact Map Cache (2.5MB) instead of huge Lists Cache (10MB)
+  // This reduces memory usage and transfer size significantly
+  const rankingMap = await getCachedGlobalRankingMap();
+  const rawGlobalRankings = transformRankingMapToLists(rankingMap);
 
   // ⚡ Bolt Optimization: Truncate rankings to reduce HTML payload size (Top 100 + You)
   const optimizedRankings = optimizeRankingsForPayload(rawGlobalRankings, (session?.user as any)?.id, 100);
@@ -173,8 +176,8 @@ export default async function Home() {
 
   // ⚡ Bolt Optimization: Batch fetch rankings for all groups to avoid N+1 queries
   // ⚡ Bolt Optimization: Use cached global rankings to derive group rankings (Avoids heavy DB query)
-  // Use rawGlobalRankings (full list) to ensure we find all group members
-  const batchGroupRankings = await deriveBatchGroupRankings(validGroupIds, rawGlobalRankings);
+  // Use rankingMap (compact) instead of rawGlobalRankings (lists) for O(M) lookup vs O(N) iteration
+  const batchGroupRankings = await deriveBatchGroupRankings(validGroupIds, rankingMap);
 
   const allGroupRankings = (await Promise.all(
     groupKeywords
