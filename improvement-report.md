@@ -89,6 +89,9 @@
 | コミット | 内容 | 対象ファイル数 |
 |----------|------|---------------|
 | `d5dd534` | select(*)排除、/setupリダイレクト追加、Recharts SSR無効化、エラー状態追加、セキュリティ修正、hover効果追加 | 16 |
+| `adcfc49` | プロンプト自己学習 + レポート更新 + 新機能提案15件 | 2 (docs) |
+
+**変更規模:** 16 ファイル / +99 行 / -37 行（コード変更のみ、ドキュメント除く）
 
 **主な改善:**
 
@@ -111,6 +114,55 @@
 
 🧠 **プロンプト自己学習:**
 - `improvement-loop.prompt.md` に Recharts `ssr: false` 必須ルールを強化（過去11回修正した問題）
+
+#### 📏 効果測定
+
+| カテゴリ | 指標 | Before (Cycle 5 終了時) | After (Cycle 6) | 改善 |
+|----------|------|------------------------|-----------------|------|
+| **型安全性** | `select('*')` 残存数 | 7 箇所 | **0** | ✅ 全排除 |
+| **セキュリティ** | `/setup` リダイレクト漏れ | 3 ページ | **0** | ✅ 全修正 |
+| **セキュリティ** | `session.user.name` 直接参照 | 2 箇所 | **0** | ✅ DB参照に統一 |
+| **セキュリティ** | エラーメッセージリーク | 1 箇所 | **0** | ✅ 修正 |
+| **パフォーマンス** | Recharts `ssr:false` 漏れ | 2 箇所 | **0** | ✅ SSR エラー防止 |
+| **パフォーマンス** | 並列化可能な直列 await | 1 箇所 | **0** | ✅ Promise.all() 化 |
+| **UX** | エラー状態なしコンポーネント | 2 箇所 | **0** | ✅ リトライ UI 追加 |
+| **UX** | hover フィードバックなしカード | 3 箇所 | **0** | ✅ shadow 追加 |
+| **ビルド** | TypeScript エラー | 0 | **0** | ✅ 維持 |
+| **ビルド** | IDE エラー (全変更ファイル) | 0 | **0** | ✅ 維持 |
+
+#### 📊 Cycle 6 変更ファイル一覧
+
+| ファイル | サブエージェント | 変更内容 |
+|----------|----------------|---------|
+| `lib/shop-service.ts` | 🔨 Build | `select('*')` → 明示カラム指定 ×2 |
+| `app/[locale]/user/[username]/page.tsx` | 🔨⚡ Build+Perf | `select('*')` 修正 + `Promise.all()` 並列化 |
+| `app/[locale]/debug/session/page.tsx` | 🔨 Build | `select('*')` × 2 修正 + runtime 宣言位置修正 |
+| `app/api/group/[groupId]/events/route.ts` | 🔨 Build | `select('*')` → 明示カラム指定 |
+| `app/api/group/[groupId]/events/[eventId]/route.ts` | 🔨 Build | `select('*')` → 明示カラム指定 |
+| `app/[locale]/groups/page.tsx` | 🔨 Build | username select 追加 + `/setup` リダイレクト |
+| `app/[locale]/groups/[groupId]/page.tsx` | 🔨 Build | `/setup` リダイレクト + `session.user.name` 修正 |
+| `app/[locale]/settings/page.tsx` | 🔨 Build | username チェック + `/setup` リダイレクト + UserMenu 修正 |
+| `app/[locale]/wallet/page.tsx` | ⚡ Perf | CoinGrowthChart dynamic import に `ssr: false` |
+| `components/GroupAnalytics.tsx` | ⚡ Perf | GroupComparisonChart dynamic import に `ssr: false` |
+| `components/DashboardChallenges.tsx` | ✨ Feature | エラー状態 + リトライボタン UI |
+| `components/DashboardFollowing.tsx` | ✨ Feature | エラー状態 + リトライボタン UI |
+| `components/ActivityGraph.tsx` | ✨ Feature | `hover:shadow-lg transition-shadow` |
+| `components/CoinGrowthChart.tsx` | ✨ Feature | `hover:shadow-lg transition-shadow` |
+| `components/GroupComparisonChart.tsx` | ✨ Feature | `hover:shadow-lg transition-shadow` |
+| `app/api/debug/db-check/route.ts` | 🔒 Security | エラーメッセージリーク修正 |
+
+#### 🔍 スキャン対象 vs 修正対象
+
+| 分析対象 | スキャン数 | 問題検出 | 修正 |
+|---------|-----------|---------|------|
+| `select('*')` 全検索 | 全 `.ts` / `.tsx` | 7 箇所 | 7 |
+| Hooks 違反チェック | 全コンポーネント | 0 | 0 |
+| Edge Runtime 宣言 | 全 `page.tsx` / `route.ts` | 1 (位置不正) | 1 |
+| 翻訳キー同期 (ja/en) | `messages/*.json` | 0 | 0 |
+| `/setup` リダイレクト | 全ページ | 3 | 3 |
+| `session.user.*` 直接参照 | 全ページ | 2 | 2 |
+| エラーメッセージリーク | 全 API ルート | 1 | 1 |
+| Recharts `ssr: false` 漏れ | 全 dynamic import | 2 | 2 |
 
 ---
 
@@ -214,13 +266,17 @@
 
 ## ✅ 検証結果
 
-| チェック | 結果 |
-|---------|------|
-| `npx tsc --noEmit` | **0 errors** ✅ |
-| `npx next build` | **44 routes, 0 errors** ✅ |
-| React Hooks 違反 | **0 (全 62 コンポーネント検証済)** ✅ |
-| レンダリングエラー | **0** ✅ |
-| 翻訳キー同期 (ja/en) | **完全同期** ✅ |
+| チェック | Cycle 1-5 | Cycle 6 |
+|---------|-----------|---------|
+| `npx tsc --noEmit` | **0 errors** ✅ | **0 errors** ✅ |
+| `npx next build` | **44 routes, 0 errors** ✅ | — (tsc で代替) |
+| React Hooks 違反 | **0 (全 62 コンポーネント検証済)** ✅ | **0** ✅ |
+| レンダリングエラー | **0** ✅ | **0** ✅ |
+| 翻訳キー同期 (ja/en) | **完全同期** ✅ | **完全同期** ✅ |
+| IDE エラー (変更ファイル) | — | **0 (16ファイル全確認)** ✅ |
+| `select('*')` 残存 | 7 箇所 | **0** ✅ |
+| `/setup` リダイレクト漏れ | 3 ページ | **0** ✅ |
+| エラーメッセージリーク | 1 箇所 | **0** ✅ |
 
 ---
 
