@@ -210,39 +210,40 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     {entry.originalRank}
                                                 </span>
                                                 <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="sm" frameColor={entry.users?.frameColor} borderClass="border-white" />
-                                                <div className="flex flex-col min-w-0">
+                                                <div className="flex flex-col min-w-0 flex-1">
                                                     <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
                                                         <span className="truncate">
                                                             {entry.users?.name || commonT('anonymous')}
                                                         </span>
                                                         {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-xs bg-[var(--theme-primary)] text-white font-bold leading-none">{commonT('you')}</span>}
                                                     </p>
-                                                    {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
-                                                        <span className="text-xs text-gray-400 font-medium truncate">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
-                                                    )}
+                                                    <div className="flex items-center gap-1.5 min-w-0 ml-3 leading-none">
+                                                        {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
+                                                            <span className="text-xs text-gray-400 font-medium truncate">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
+                                                        )}
+                                                        {/* リアクション — 称号行に表示 */}
+                                                        {groupId && userId && (
+                                                            <div className="relative z-10 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                <GroupReactions
+                                                                    groupId={groupId}
+                                                                    toUserId={entryId}
+                                                                    currentUserId={userId}
+                                                                    period={period}
+                                                                    reactions={reactions}
+                                                                    onReactionToggle={handleReactionToggle}
+                                                                    isSelf={isMe}
+                                                                    compact
+                                                                    forceShow={hoveredUserId === entryId || longPressUserId === entryId}
+                                                                    maxVisibleBadges={2}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {/* リアクション + 歩数 — 右寄せグループ */}
-                                            <div className="flex items-center gap-1.5 shrink min-w-0">
-                                                {/* リアクション — 歩数の左 */}
-                                                {groupId && userId && (
-                                                    <div className="relative z-10 min-w-0" onClick={(e) => e.stopPropagation()}>
-                                                        <GroupReactions
-                                                            groupId={groupId}
-                                                            toUserId={entryId}
-                                                            currentUserId={userId}
-                                                            period={period}
-                                                            reactions={reactions}
-                                                            onReactionToggle={handleReactionToggle}
-                                                            isSelf={isMe}
-                                                            compact
-                                                            forceShow={hoveredUserId === entryId || longPressUserId === entryId}
-                                                            maxVisibleBadges={2}
-                                                        />
-                                                    </div>
-                                                )}
-                                                {/* 歩数 — 固定幅で常に表示 */}
-                                                <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10 shrink-0">
+                                            {/* 歩数 — 右寄せ固定幅 */}
+                                            <div className="flex items-center shrink-0">
+                                                <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10">
                                                     <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
                                                         {(entry.steps ?? 0).toLocaleString()}
                                                     </div>
