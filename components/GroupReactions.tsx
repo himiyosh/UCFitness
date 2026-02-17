@@ -130,7 +130,7 @@ export default function GroupReactions({
     }, [showExtended]);
 
     // forceShow に連動してピッカーの開閉を制御
-    // forceShow が false になってもピッカー操作のためディレイ付きで閉じる
+    // forceShow が false になったら即座に閉じる（複数ピッカー同時表示を防止）
     useEffect(() => {
         if (forceShow) {
             if (hideTimeout.current) {
@@ -139,19 +139,14 @@ export default function GroupReactions({
             }
             setShowPicker(true);
         } else {
-            // ディレイ付きクローズ（ユーザーがピッカーに移動する猶予）
-            hideTimeout.current = setTimeout(() => {
-                setShowPicker(false);
-                setShowExtended(false);
-                hideTimeout.current = null;
-            }, 400);
-        }
-        return () => {
+            // 即座にクローズ — 他の行に移動した際に前の行のピッカーが残らないようにする
+            setShowPicker(false);
+            setShowExtended(false);
             if (hideTimeout.current) {
                 clearTimeout(hideTimeout.current);
                 hideTimeout.current = null;
             }
-        };
+        }
     }, [forceShow]);
 
     // 自分自身の行にはリアクションボタンを表示しない（受信カウントのみ表示）
@@ -181,6 +176,10 @@ export default function GroupReactions({
     // バッジが多い場合は MAX_VISIBLE_BADGES 個まで表示し、残りは "+N" で省略
     if (compact) {
         const isActive = forceShow;
+
+        // リアクションもアクティブ状態もない場合、何もレンダリングしない（垂直中央揃えのため）
+        if (!hasAnyReactions && !isActive) return null;
+
         const visibleEmojis = activeEmojis.slice(0, maxVisibleBadges);
         const hiddenCount = activeEmojis.length - visibleEmojis.length;
         return (
@@ -237,22 +236,16 @@ export default function GroupReactions({
                     </svg>
                 </button>
 
-                {/* クイックリアクションピッカー */}
+                {/* クイックリアクションピッカー — ＋ボタン下に吹き出しで表示 */}
                 {showPicker && !showExtended && (
                     <div
-                        className={`absolute z-[9999] flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel ${
-                            pickerPosition === 'below'
-                                ? 'left-1/2 -translate-x-1/2 top-full mt-2'
-                                : 'right-0 bottom-full mb-1'
-                        }`}
+                        className="absolute z-[9999] flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel left-0 top-full mt-1.5"
                         style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {/* 吹き出し三角（上向き） — below モード時のみ */}
-                        {pickerPosition === 'below' && (
-                            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
-                        )}
+                        {/* 吹き出し三角（上向き） */}
+                        <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
                         {DEFAULT_EMOJIS.map(emoji => {
                             const reacted = reactionCounts[emoji]?.reacted ?? false;
                             const isLoading = loading === emoji;
@@ -295,23 +288,17 @@ export default function GroupReactions({
                     </div>
                 )}
 
-                {/* 拡張絵文字ピッカー */}
+                {/* 拡張絵文字ピッカー — ＋ボタン下に吹き出しで表示 */}
                 {showExtended && (
                     <div
-                        className={`absolute z-[9999] w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible ${
-                            pickerPosition === 'below'
-                                ? 'left-1/2 -translate-x-1/2 bottom-full mb-2'
-                                : 'right-0 bottom-full mb-1'
-                        }`}
+                        className="absolute z-[9999] w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible left-0 top-full mt-1.5"
                         style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.2))' }}
                         onClick={(e) => e.stopPropagation()}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {/* 吹き出し三角（上向き） — below モード時のみ */}
-                        {pickerPosition === 'below' && (
-                            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50" />
-                        )}
+                        {/* 吹き出し三角（上向き） */}
+                        <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50" />
                         <div className="flex items-center border-b border-gray-100 px-1 pt-1">
                             {EXTENDED_EMOJI_CATEGORIES.map((cat, idx) => (
                                 <button

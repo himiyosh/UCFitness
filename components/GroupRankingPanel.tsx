@@ -171,7 +171,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-all overflow-visible ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-all overflow-visible ${(hoveredUserId === entryId || longPressUserId === entryId) ? 'z-50' : ''} ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                             onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
                                             onMouseEnter={() => setHoveredUserId(entryId)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}
@@ -222,7 +222,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     )}
                                                     {/* リアクション — 称号の下に独立行で表示 */}
                                                     {groupId && userId && (
-                                                        <div className="relative z-10 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="relative mt-0.5 empty:hidden" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entryId}
