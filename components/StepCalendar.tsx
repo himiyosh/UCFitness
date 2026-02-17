@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Confetti from './Confetti';
 
 // 歩数データ型
@@ -263,10 +263,14 @@ function CalendarSkeleton() {
                 <div className="h-6 w-40 bg-gray-200 rounded" />
                 <div className="h-8 w-24 bg-gray-200 rounded" />
             </div>
-            <div className="grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(53, 1fr)' }}>
-                {Array.from({ length: 53 * 7 }).map((_, i) => (
-                    <div key={i} className="aspect-square bg-gray-100 rounded-sm" />
-                ))}
+            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                <div style={{ minWidth: '640px' }}>
+                    <div className="grid gap-[2px]" style={{ gridTemplateColumns: 'repeat(53, 1fr)' }}>
+                        {Array.from({ length: 53 * 7 }).map((_, i) => (
+                            <div key={i} className="aspect-square bg-gray-100 rounded-sm" />
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -328,11 +332,34 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
         return { totalSteps, activeDays, avg, longestStreak };
     }, [data, stepsMap, year]);
 
-    // 最大列数
+    // 最大列数（常に年全体を表示）
     const maxCol = gridCells.length > 0 ? Math.max(...gridCells.map((c) => c.col)) + 1 : 53;
+
+    // 今日の列位置（スクロール計算用）
+    const todayCol = useMemo(() => {
+        if (year !== currentYear) return maxCol; // 過去年は右端
+        const todayCell = gridCells.find((c) => c.date === todayStr);
+        return todayCell ? todayCell.col : maxCol;
+    }, [gridCells, year, currentYear, todayStr, maxCol]);
 
     // 曜日ラベル
     const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // ヒートマップのスクロールコンテナ ref（直近の記録を表示するため今日の位置にスクロール）
+    const heatmapScrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!loading && data.length > 0 && heatmapScrollRef.current) {
+            const el = heatmapScrollRef.current;
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    // 各列の幅を計算し、今日の列が右端に見えるようスクロール
+                    const colWidth = el.scrollWidth / maxCol;
+                    const targetScroll = Math.max(0, (todayCol + 1) * colWidth - el.clientWidth);
+                    el.scrollLeft = targetScroll;
+                });
+            });
+        }
+    }, [loading, data, todayCol, maxCol]);
 
 
 
@@ -487,7 +514,12 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
             ) : (
                 /* ヒートマップ（CSS 1fr で自動フィル） */
                 <div className={`${activity ? 'flex-1' : ''}`}>
-                  <div>
+                  {/* モバイルでは横スクロール可能にし、セルの最小サイズを確保。直近の記録が見えるよう右端にスクロール */}
+                  <div
+                    ref={heatmapScrollRef}
+                    className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide"
+                  >
+                    <div style={{ minWidth: '640px' }}>
                     {/* 月ラベル */}
                     <div
                         className="grid gap-[2px] mb-0.5"
@@ -497,7 +529,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         {Array.from({ length: maxCol }).map((_, colIdx) => {
                             const label = monthLabels.find((ml) => ml.col === colIdx);
                             return (
-                                <div key={colIdx} className="text-[8px] text-gray-400 font-medium leading-none truncate">
+                                <div key={colIdx} className="text-[8px] sm:text-[9px] text-gray-400 font-medium leading-none truncate">
                                     {label ? label.label : ''}
                                 </div>
                             );
@@ -513,7 +545,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         {dayLabels.map((label, i) => (
                             <div
                                 key={label}
-                                className="text-[8px] text-gray-400 font-medium leading-none flex items-center justify-end pr-0.5"
+                                className="text-[8px] sm:text-[9px] text-gray-400 font-medium leading-none flex items-center justify-end pr-0.5"
                                 style={{ gridColumn: 1, gridRow: i + 1 }}
                             >
                                 {i % 2 === 1 ? label.slice(0, 3) : ''}
@@ -532,6 +564,8 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                             />
                         ))}
                     </div>
+                    </div>
+                  </div>
 
                     {/* 凡例 */}
                     <div className="flex items-center gap-1.5 mt-2 justify-end text-xs text-gray-400">
@@ -543,7 +577,6 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'var(--theme-primary)' }} />
                         <span>{t('more')}</span>
                     </div>
-                  </div>
                 </div>
             )}
         </div>
