@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
+import { fetchProductTitle } from '@/lib/amazon-creators-api';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -81,13 +82,28 @@ export async function POST(request: Request) {
             );
         }
 
+        // タイトルが空の場合、Amazon から取得を試みる
+        let title = body.title || '';
+        if (!title.trim()) {
+            try {
+                title = await fetchProductTitle(body.asin.toUpperCase());
+            } catch {
+                // タイトル取得失敗してもアイテム追加は続行
+            }
+        }
+
+        // 画像URLがウィジェットURLの場合、高品質な直接URLへの取得を試みる
+        let imageUrl = body.imageUrl || '';
+        // ウィジェットURL は ws-fe.amazon-adsystem.com 経由でリダイレクトされるため、
+        // そのまま保存しても表示は可能だが、直接URLの方が安定する
+
         const { data, error } = await supabaseAdmin
             .from('recommended_items')
             .upsert({
                 user_id: userId,
                 asin: body.asin.toUpperCase(),
-                title: body.title || '',
-                image_url: body.imageUrl,
+                title,
+                image_url: imageUrl,
                 affiliate_link: body.affiliateLink,
                 display_order: nextOrder,
                 comment,

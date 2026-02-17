@@ -197,10 +197,10 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
 
     // --- おすすめアイテムに追加 ---
     const handleAddRecommended = useCallback(async () => {
-        // ASIN付き商品を決定
+        // ASIN付き商品を決定（候補がない場合は latestResult から情報を引き継ぐ）
         const target = selectedCandidate || (latestResult?.asin ? {
             asin: latestResult.asin,
-            title: '',
+            title: '', // タイトルはサーバー側で自動取得される
             imageUrl: latestResult.imageUrl || '',
             affiliateLink: latestResult.affiliateLink,
         } : null);
