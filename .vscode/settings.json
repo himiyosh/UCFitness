@@ -1,4 +1,25 @@
 {
   "github.copilot.chat.terminalChatAutoRun": true,
-  "chat.agent.autoApprove": true
+  "chat.agent.autoApprove": true,
+  "chat.tools.terminal.autoApprove": {
+    "*": true
+  },
+  "chat.tools.terminal.autoApproveRules": [
+    {
+      "command": "Stop-Process",
+      "approve": true
+    },
+    {
+      "command": "taskkill",
+      "approve": true
+    },
+    {
+      "command": "Remove-Item",
+      "approve": true
+    },
+    {
+      "command": "rm",
+      "approve": true
+    }
+  ]
 }
