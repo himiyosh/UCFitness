@@ -313,7 +313,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                         <img
                                             src={selectedCandidate.imageUrl}
                                             alt={selectedCandidate.title || selectedCandidate.asin}
-                                            className="max-w-full max-h-full object-contain"
+                                            className="w-full h-full object-contain"
                                             loading="lazy"
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${selectedCandidate.asin}&Format=_SL250_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=${encodeURIComponent('studio344-22')}`;
