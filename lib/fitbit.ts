@@ -121,7 +121,7 @@ export async function refreshFitbitToken(refreshToken: string): Promise<FitbitTo
         throw new Error('Fitbit client credentials are not configured');
     }
 
-    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const basicAuth = btoa(`${clientId}:${clientSecret}`);
 
     const response = await fetch('https://api.fitbit.com/oauth2/token', {
         method: 'POST',

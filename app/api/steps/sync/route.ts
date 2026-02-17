@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
 import { auth } from "@/lib/auth";
 import { updateUserSteps, backfillUserSteps } from '@/lib/step-manager';
@@ -26,5 +28,3 @@ export async function POST() {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-export const runtime = 'edge';
