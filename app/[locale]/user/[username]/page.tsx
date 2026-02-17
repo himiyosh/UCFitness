@@ -64,7 +64,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         getEquippedItems(user.id),
         supabaseAdmin
             .from('recommended_items')
-            .select('*')
+            .select('id, asin, title, image_url, affiliate_link, display_order, comment')
             .eq('user_id', user.id)
             .order('display_order', { ascending: true })
             .limit(6),
@@ -189,12 +189,22 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     if (session?.user && !isOwner) {
         const viewerId = (session.user as any).id;
 
-        // Fetch viewer's fresh data (image) to ensure header is correct
-        const { data: vUser } = await supabaseAdmin
-            .from("users")
-            .select("name, image, username")
-            .eq("id", viewerId)
-            .single();
+        // ⚡ パフォーマンス: 閲覧者データとステップデータを並列取得
+        const [vUserResult, vDataResult] = await Promise.all([
+            supabaseAdmin
+                .from("users")
+                .select("name, image, username")
+                .eq("id", viewerId)
+                .single(),
+            supabaseAdmin
+                .from('daily_steps')
+                .select('steps, date')
+                .eq('user_id', viewerId)
+                .gte('date', recentDateStr)
+                .order('date', { ascending: true }),
+        ]);
+
+        const vUser = vUserResult.data;
 
         if (vUser) {
             viewerUser = {
@@ -206,13 +216,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             };
         }
 
-        // グラフ比較に必要なため、閲覧者の直近400日分を取得（PostgREST 1000行制限回避）
-        const { data: vData } = await supabaseAdmin
-            .from('daily_steps')
-            .select('steps, date')
-            .eq('user_id', viewerId)
-            .gte('date', recentDateStr)
-            .order('date', { ascending: true });
+        const vData = vDataResult.data;
 
         if (vData) {
             viewerHistoryData = vData;

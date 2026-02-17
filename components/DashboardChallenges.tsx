@@ -23,19 +23,23 @@ export default function DashboardChallenges() {
     const t = useTranslations('Challenge');
     const [challenges, setChallenges] = useState<DashboardChallenge[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
         async function fetchChallenges() {
             try {
                 const res = await fetch('/api/challenge?status=active');
-                if (!res.ok) return;
+                if (!res.ok) {
+                    if (!cancelled) setError(true);
+                    return;
+                }
                 const data = await res.json();
                 if (!cancelled) {
                     setChallenges((data.challenges || []).slice(0, 2));
                 }
             } catch {
-                // サイレントフェイル — ダッシュボードウィジェットなのでエラーは非表示
+                if (!cancelled) setError(true);
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -58,6 +62,24 @@ export default function DashboardChallenges() {
     }
 
     if (challenges.length === 0) return null;
+
+    if (error) {
+        return (
+            <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex flex-col items-center py-6 text-center">
+                    <span className="text-3xl mb-2">⚠️</span>
+                    <p className="text-sm font-semibold text-gray-600">{t('activeChallenges')}</p>
+                    <button
+                        onClick={() => { setError(false); setLoading(true); window.location.reload(); }}
+                        className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:scale-105 transition-transform"
+                        style={{ background: 'var(--theme-primary)' }}
+                    >
+                        {t('retry') || '再試行'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow p-5">

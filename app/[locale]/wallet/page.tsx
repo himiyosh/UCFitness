@@ -15,7 +15,7 @@ import { getTranslations } from "next-intl/server";
 import Footer from '@/components/Footer';
 
 // ⚡ パフォーマンス: Recharts系の重いチャートコンポーネントを遅延読み込み
-const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart'));
+const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart'), { ssr: false });
 const TransactionHistory = nextDynamic(() => import('@/components/TransactionHistory'));
 const InvestorRankPanel = nextDynamic(() => import('@/components/InvestorRankPanel'));
 

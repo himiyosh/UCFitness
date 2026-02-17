@@ -124,7 +124,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     }
 
     return (
-        <div className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100">
+        <div className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                     📈 {t('assetGrowth')}

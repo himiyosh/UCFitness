@@ -48,7 +48,7 @@ export async function GET(
         // イベント一覧取得
         const { data: events, error } = await supabaseAdmin
             .from('group_events')
-            .select('*')
+            .select('id, group_id, title, description, target_steps, start_date, end_date, reward_uc, is_active, created_at')
             .eq('group_id', groupId)
             .order('created_at', { ascending: false });
 

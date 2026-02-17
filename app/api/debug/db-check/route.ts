@@ -28,17 +28,17 @@ export async function GET(request: Request) {
     // Check Users Table
     try {
         const { data, error } = await supabaseAdmin.from('users').select('count', { count: 'exact', head: true });
-        results.users_table = { ok: !error, error: error?.message || null };
+        results.users_table = { ok: !error, error: error ? 'Query failed' : null };
     } catch (e: any) {
-        results.users_table = { ok: false, error: e.message };
+        results.users_table = { ok: false, error: 'Query failed' };
     }
 
     // Check Daily Steps Table
     try {
         const { data, error } = await supabaseAdmin.from('daily_steps').select('count', { count: 'exact', head: true });
-        results.daily_steps_table = { ok: !error, error: error?.message || null };
+        results.daily_steps_table = { ok: !error, error: error ? 'Query failed' : null };
     } catch (e: any) {
-        results.daily_steps_table = { ok: false, error: e.message };
+        results.daily_steps_table = { ok: false, error: 'Query failed' };
     }
 
     return NextResponse.json(results);

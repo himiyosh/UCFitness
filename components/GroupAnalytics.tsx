@@ -10,6 +10,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
 
 const GroupComparisonChart = dynamic(() => import('@/components/GroupComparisonChart'), {
+    ssr: false,
     loading: () => <div className="w-full h-64 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--theme-secondary)' }} />,
 });
 const GroupDetailLeaderboard = dynamic(() => import('@/components/GroupDetailLeaderboard'), {

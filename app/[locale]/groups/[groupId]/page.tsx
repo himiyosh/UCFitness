@@ -67,6 +67,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const groupError = groupResult.error;
     const membership = membershipResult.data;
 
+    if (!dbUser?.username) {
+        redirect('/setup');
+    }
+
     // Construct user object for menu, preferring DB data
     const currentUser = dbUser ? {
         ...session.user,
@@ -275,7 +279,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             groupCompetitionRankings={groupCompetitionRankings}
                             userId={userId}
                             currentGroupId={groupId}
-                            currentUsername={session.user.name || undefined}
+                            currentUsername={dbUser?.name || session.user.name || undefined}
                             isPublic={group.is_public}
                             groupName={group.name}
                             groupImage={group.image_url}
