@@ -436,11 +436,31 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
 
             {/* ========== 初期状態のヒント ========== */}
             {!latestResult && history.length === 0 && (
-                <p className="text-center text-xs text-gray-400 py-4">
-                    {locale === 'ja'
-                        ? '例: 「ランニングシューズ」「プロテイン」など'
-                        : 'e.g. "running shoes", "protein" etc.'}
-                </p>
+                <div className="space-y-2 pt-2">
+                    <p className="text-xs font-semibold text-gray-500">
+                        {locale === 'ja' ? '💡 こんな入力ができます' : '💡 You can enter'}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="w-5 text-center">🔍</span>
+                            <span className="font-medium text-gray-600">{locale === 'ja' ? 'キーワード' : 'Keyword'}</span>
+                            <span className="text-gray-300">—</span>
+                            <span className="font-mono text-gray-400">{locale === 'ja' ? 'ランニングシューズ' : 'running shoes'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="w-5 text-center">🔗</span>
+                            <span className="font-medium text-gray-600">{locale === 'ja' ? 'Amazon URL' : 'Amazon URL'}</span>
+                            <span className="text-gray-300">—</span>
+                            <span className="font-mono text-gray-400">amazon.co.jp/dp/...</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="w-5 text-center">📦</span>
+                            <span className="font-medium text-gray-600">ASIN</span>
+                            <span className="text-gray-300">—</span>
+                            <span className="font-mono text-gray-400">B0DGJCRNY3</span>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* ========== 生成履歴 ========== */}
