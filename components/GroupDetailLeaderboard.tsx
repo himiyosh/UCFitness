@@ -202,7 +202,7 @@ export default function GroupDetailLeaderboard({
 
                                     return (
                                         <li key={entry.users.id}
-                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 min-h-[4.5rem] flex items-center justify-between transition-all duration-200 hover:shadow-sm overflow-visible ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-all duration-200 hover:shadow-sm overflow-visible ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                             onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                             onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
@@ -216,6 +216,7 @@ export default function GroupDetailLeaderboard({
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
+                                          <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0"
                                                     style={rank === 1 ? {
@@ -290,6 +291,7 @@ export default function GroupDetailLeaderboard({
                                                     })()}
                                                 </div>
                                             </div>
+                                          </div>
                                         </li>
                                     );
                                 })

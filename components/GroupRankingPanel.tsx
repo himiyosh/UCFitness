@@ -171,7 +171,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex items-center justify-between transition-all overflow-visible ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-all overflow-visible ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                             onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
                                             onMouseEnter={() => setHoveredUserId(entryId)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}
@@ -185,7 +185,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
-
+                                          <div className="flex items-center justify-between">
                                             {/* Content Wrapper */}
                                             <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                                                 <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold shrink-0"
@@ -256,6 +256,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     })()}
                                                 </div>
                                             </div>
+                                          </div>
                                         </div>
                                     </div>
                                 );

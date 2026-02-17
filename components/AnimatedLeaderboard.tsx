@@ -327,7 +327,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                             return (
                                                                 <li key={`${entry.users.id}-${period}`}
-                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 min-h-[4.5rem] flex items-center transition-colors overflow-visible ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                                                     onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                                                     onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                                                     onTouchStart={(e) => {
@@ -342,7 +342,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                     onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                                                 >
                                                                 <div
-                                                                    className={`flex items-center justify-between flex-1 ${entry.users.username ? 'cursor-pointer' : ''}`}
+                                                                    className={`flex items-center justify-between ${entry.users.username ? 'cursor-pointer' : ''}`}
                                                                     onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                                                 >
 
