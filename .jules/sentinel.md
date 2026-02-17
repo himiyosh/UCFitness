@@ -52,3 +52,8 @@
 **Vulnerability:** `app/api/upload/group/route.ts` used the user-provided filename extension to determine the file type, allowing attackers to upload malicious files (e.g., `.php`) with a valid image MIME type.
 **Learning:** Never trust `file.name` for determining file type or extension, as it is completely client-controlled.
 **Prevention:** Always derive the file extension from the validated MIME type on the server side.
+
+## 2026-05-24 - Unrestricted Group Invites
+**Vulnerability:** `app/api/user/group/route.ts` allowed group owners to forcibly add any user to their group without the user's consent or prior relationship. This created a potential for spam and harassment.
+**Learning:** Authorization checks often focus on the *initiator's* permissions (e.g., "Is this user the owner?"), but fail to consider the *recipient's* consent. Actions that modify another user's state (like group membership) require mutual agreement or a trust relationship.
+**Prevention:** Enforce a trust relationship check (e.g., "Does the target user follow the initiator?") before allowing unilateral actions like invites.

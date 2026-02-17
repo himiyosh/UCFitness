@@ -371,6 +371,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "User is already a member" }, { status: 400 });
       }
 
+      // 🛡️ Sentinel: Security Check (Anti-Abuse)
+      // Require target user to follow the inviter (Group Owner) before allowing an invite.
+      // This prevents spam/harassment by forcing users into groups.
+      const { data: followRelationship } = await supabaseAdmin
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', targetUserId)
+        .eq('following_id', userId)
+        .single();
+
+      if (!followRelationship) {
+        return NextResponse.json({ error: "User must follow you to be invited." }, { status: 403 });
+      }
+
       // Add Member
       await supabaseAdmin
         .from('group_members')
