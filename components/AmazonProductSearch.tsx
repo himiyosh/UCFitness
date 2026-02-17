@@ -38,31 +38,11 @@ interface LinkHistoryItem extends GenerateResult {
     createdAt: Date;
 }
 
-type SearchCategory =
-    | 'All'
-    | 'SportingGoods'
-    | 'HealthPersonalCare'
-    | 'Shoes'
-    | 'Apparel'
-    | 'Electronics'
-    | 'Books';
-
 interface AmazonProductSearchProps {
     locale: string;
     /** モーダルから追加した際にアイテムリストを更新するコールバック */
     onItemAdded?: (item: { id: string; asin: string; title: string; image_url: string; affiliate_link: string; display_order: number }) => void;
 }
-
-// --- カテゴリ定義 ---
-const CATEGORIES: { key: SearchCategory; icon: string; labelKey: string }[] = [
-    { key: 'All', icon: '🔍', labelKey: 'categoryAll' },
-    { key: 'SportingGoods', icon: '🏃', labelKey: 'categorySports' },
-    { key: 'HealthPersonalCare', icon: '💊', labelKey: 'categoryHealth' },
-    { key: 'Shoes', icon: '👟', labelKey: 'categoryShoes' },
-    { key: 'Apparel', icon: '👕', labelKey: 'categoryApparel' },
-    { key: 'Electronics', icon: '📱', labelKey: 'categoryElectronics' },
-    { key: 'Books', icon: '📚', labelKey: 'categoryBooks' },
-];
 
 // --- 入力タイプ判定（クライアント側プレビュー用） ---
 function detectInputType(input: string): { type: AffiliateLinkType; label: string; icon: string } {
@@ -107,7 +87,6 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const { success: toastSuccess, error: toastError } = useToast();
 
     const [input, setInput] = useState('');
-    const [category, setCategory] = useState<SearchCategory>('All');
     const [isGenerating, setIsGenerating] = useState(false);
     const [latestResult, setLatestResult] = useState<GenerateResult | null>(null);
     const [history, setHistory] = useState<LinkHistoryItem[]>([]);
@@ -135,7 +114,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     input: input.trim(),
-                    category: isKeyword ? category : undefined,
+                    category: isKeyword ? 'All' : undefined,
                     withCandidates: isKeyword,
                 }),
             });
@@ -163,7 +142,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
         } finally {
             setIsGenerating(false);
         }
-    }, [input, category, inputInfo.type, t, toastSuccess, toastError]);
+    }, [input, inputInfo.type, t, toastSuccess, toastError]);
 
     // --- Enter キーで生成 ---
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -250,66 +229,30 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const canAddRecommended = useMemo(() => !!currentAsin && !isAlreadySaved, [currentAsin, isAlreadySaved]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {/* ========== 入力エリア ========== */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
-                {/* 入力フィールド */}
-                <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">
-                        {t('directDescription')}
-                    </label>
-                    <div className="flex gap-2">
-                        <div className="flex-1 relative">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={t('directPlaceholder')}
-                                aria-label={t('directDescription')}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent pr-24"
-                            />
-                            {/* 入力タイプバッジ */}
-                            {input.trim() && (
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-                                    {inputInfo.icon} {inputInfo.label}
-                                </span>
-                            )}
-                        </div>
-                        <button
-                            onClick={handleGenerate}
-                            disabled={isGenerating || !input.trim()}
-                            className="px-6 py-3 bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        >
-                            {isGenerating ? <Spinner /> : t('generateButton')}
-                        </button>
-                    </div>
-                </div>
-
-                {/* カテゴリ選択（常に表示） */}
-                <div className="flex items-center gap-2 flex-wrap" role="radiogroup" aria-label={locale === 'ja' ? 'カテゴリ' : 'Category'}>
-                    <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
-                        {locale === 'ja' ? '📂 カテゴリ' : '📂 Category'}
-                    </span>
-                            {CATEGORIES.map(cat => (
-                                <button
-                                    key={cat.key}
-                                    onClick={() => setCategory(cat.key)}
-                                    role="radio"
-                                    aria-checked={category === cat.key ? 'true' : 'false'}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                                        category === cat.key
-                                            ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/30'
-                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    <span>{cat.icon}</span>
-                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                    {t(cat.labelKey as any)}
-                                </button>
-                            ))}
-                    </div>
+            <div className="flex gap-2">
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={locale === 'ja' ? '商品名や Amazon URL を入力' : 'Product name or Amazon URL'}
+                    aria-label={t('directDescription')}
+                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent focus:bg-white transition-colors"
+                />
+                <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !input.trim()}
+                    className="px-5 py-3 bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-w-[60px] flex items-center justify-center"
+                >
+                    {isGenerating ? <Spinner /> : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                            <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                        </svg>
+                    )}
+                </button>
             </div>
 
             {/* ========== 生成結果 ========== */}
@@ -491,33 +434,13 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                 </div>
             )}
 
-            {/* ========== 使い方ヒント ========== */}
+            {/* ========== 初期状態のヒント ========== */}
             {!latestResult && history.length === 0 && (
-                <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-5">
-                    <h4 className="font-bold text-amber-800 mb-3">
-                        {locale === 'ja' ? '💡 使い方' : '💡 How to use'}
-                    </h4>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                        <HintCard
-                            icon={"🔍"}
-                            title={locale === 'ja' ? 'キーワード' : 'Keyword'}
-                            example={locale === 'ja' ? 'ランニングシューズ' : 'running shoes'}
-                            desc={locale === 'ja' ? '商品名やキーワードで検索リンク生成' : 'Generate search link by keyword'}
-                        />
-                        <HintCard
-                            icon={"🔗"}
-                            title={locale === 'ja' ? 'URLを貼付' : 'Paste URL'}
-                            example="amazon.co.jp/dp/B0DG..."
-                            desc={locale === 'ja' ? 'Amazon商品ページのURLを貼付' : 'Paste Amazon product URL'}
-                        />
-                        <HintCard
-                            icon={"📦"}
-                            title="ASIN"
-                            example="B0DGJCRNY3"
-                            desc={locale === 'ja' ? '10桁の商品コードを入力' : 'Enter 10-char product code'}
-                        />
-                    </div>
-                </div>
+                <p className="text-center text-xs text-gray-400 py-4">
+                    {locale === 'ja'
+                        ? '例: 「ランニングシューズ」「プロテイン」など'
+                        : 'e.g. "running shoes", "protein" etc.'}
+                </p>
             )}
 
             {/* ========== 生成履歴 ========== */}
@@ -589,21 +512,4 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     );
 }
 
-// ============================================
-// ヒントカード サブコンポーネント
-// ============================================
 
-function HintCard({ icon, title, example, desc }: { icon: string; title: string; example: string; desc: string }) {
-    return (
-        <div className="bg-white rounded-xl border border-amber-100 p-3 space-y-1">
-            <div className="flex items-center gap-1.5">
-                <span className="text-lg">{icon}</span>
-                <span className="text-sm font-bold text-gray-800">{title}</span>
-            </div>
-            <div className="text-xs font-mono text-amber-700 bg-amber-50 px-2 py-1 rounded truncate">
-                {example}
-            </div>
-            <div className="text-xs text-gray-500">{desc}</div>
-        </div>
-    );
-}

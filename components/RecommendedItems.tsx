@@ -216,7 +216,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={trackRef}
-                        className="flex gap-3 pt-16 pb-1"
+                        className="flex gap-3 pt-24 pb-1"
                         style={{
                             transform: `translateX(-${slideIndex * CARD_W}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
