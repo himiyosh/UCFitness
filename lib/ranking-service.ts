@@ -4,6 +4,21 @@ import { Period } from '@/components/LeaderboardTabs';
 import { unstable_cache } from 'next/cache';
 import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
 
+// Define type for User Stats Map
+export type UserStats = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    users: any;
+    DAILY: number;
+    WEEKLY: number;
+    MONTHLY: number;
+    YEARLY: number;
+    PREV_DAILY: number;
+    PREV_WEEKLY: number;
+    PREV_MONTHLY: number;
+};
+
+export type GlobalRankingMap = Record<string, UserStats>;
+
 export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, groupKeyword?: string) => {
     const jstDateStr = getJSTDateString();
 
@@ -92,7 +107,192 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
 
     return sortedRankings;
 };
+
+// Internal function to fetch and aggregate global stats into a Map
+const fetchGlobalRankingMap = async (): Promise<GlobalRankingMap> => {
+    // JST Calculation (Robust)
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const todayStr = formatter.format(now); // YYYY-MM-DD (JST)
+
+    // Yesterday
+    const todayDate = new Date(`${todayStr}T00:00:00Z`);
+    const yesterdayDate = new Date(todayDate);
+    yesterdayDate.setUTCDate(todayDate.getUTCDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+    // Weekly Start (This Week Monday)
+    const utcDay = todayDate.getUTCDay();
+    const daysToSubtract = (utcDay + 6) % 7;
+    const monday = new Date(todayDate);
+    monday.setUTCDate(todayDate.getUTCDate() - daysToSubtract);
+    const weeklyStartStr = monday.toISOString().split('T')[0];
+
+    // Last Week Start (Monday - 7)
+    const lastWeekMonday = new Date(monday);
+    lastWeekMonday.setUTCDate(monday.getUTCDate() - 7);
+    const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
+
+    // Monthly Start
+    const [y, m] = todayStr.split('-');
+    const monthlyStartStr = `${y}-${m}-01`;
+
+    // Last Month Start
+    const thisMonthDate = new Date(`${monthlyStartStr}T00:00:00Z`);
+    const lastMonthDate = new Date(thisMonthDate);
+    lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
+    const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
+
+    // Yearly Start
+    const yearlyStartStr = `${y}-01-01`;
+
+    // Query start: earlier of last month or year start
+    const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
+
+    // PostgREST 1000行制限回避: ページネーション付き取得
+    const { data: rawSteps, error } = await fetchDailyStepsPaginated({
+        startDate: queryStartStr,
+        userIds: undefined, // All users
+    });
+
+    if (error) {
+        console.error(`Error fetching GLOBAL all rankings`);
+        return {};
+    }
+
+    const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
+    const usersMap = new Map<string, any>();
+
+    if (uniqueUserIds.length > 0) {
+        const { data: users } = await supabase
+            .from('users')
+            .select('id, name, image, username, group_keyword')
+            .in('id', uniqueUserIds);
+
+        users?.forEach((u: any) => usersMap.set(u.id, u));
+    }
+
+    // Aggregate
+    // structure: Map<userId, UserStats>
+    const aggMap: GlobalRankingMap = {};
+
+    rawSteps?.forEach((row: any) => {
+        const userId = row.user_id;
+        const user = usersMap.get(userId);
+
+        if (!user) return; // Skip if user details missing
+
+        if (!aggMap[userId]) {
+            aggMap[userId] = {
+                users: user,
+                DAILY: 0,
+                WEEKLY: 0,
+                MONTHLY: 0,
+                YEARLY: 0,
+                PREV_DAILY: 0,
+                PREV_WEEKLY: 0,
+                PREV_MONTHLY: 0
+            };
+        }
+        const entry = aggMap[userId];
+        const steps = Number(row.steps);
+        const date = row.date;
+
+        // Yearly (date >= yearlyStartStr always true since queryStartStr <= yearlyStartStr)
+        if (date >= yearlyStartStr) {
+            entry.YEARLY += steps;
+        }
+
+        // Monthly
+        if (date >= monthlyStartStr) {
+            entry.MONTHLY += steps;
+        }
+
+        // Weekly
+        if (date >= weeklyStartStr) {
+            entry.WEEKLY += steps;
+        }
+
+        // Daily
+        if (date === todayStr) {
+            entry.DAILY += steps;
+        }
+
+        // Previous period aggregation
+        // PREV_DAILY: yesterday only
+        if (date === yesterdayStr) {
+            entry.PREV_DAILY += steps;
+        }
+
+        // PREV_WEEKLY: last week (lastWeekStartStr <= date < weeklyStartStr)
+        if (date >= lastWeekStartStr && date < weeklyStartStr) {
+            entry.PREV_WEEKLY += steps;
+        }
+
+        // PREV_MONTHLY: last month (lastMonthStartStr <= date < monthlyStartStr)
+        if (date >= lastMonthStartStr && date < monthlyStartStr) {
+            entry.PREV_MONTHLY += steps;
+        }
+    });
+
+    return aggMap;
+};
+
+// ⚡ Bolt Optimization: Cache the compact map structure to save memory and avoid redundant processing
+export const getCachedGlobalRankingMap = unstable_cache(
+    async () => fetchGlobalRankingMap(),
+    ['global-ranking-map'],
+    { revalidate: 60, tags: ['rankings'] }
+);
+
+// Helper to transform the map into sorted lists (for UI consumption)
+export const transformRankingMapToLists = (aggMap: GlobalRankingMap): Record<Period, any[]> => {
+    const result: Record<string, any[]> = {
+        DAILY: [],
+        WEEKLY: [],
+        MONTHLY: [],
+        YEARLY: []
+    };
+
+    const allEntries = Object.values(aggMap);
+
+    const prevKeyMap: Record<string, keyof UserStats | null> = {
+        DAILY: 'PREV_DAILY',
+        WEEKLY: 'PREV_WEEKLY',
+        MONTHLY: 'PREV_MONTHLY',
+        YEARLY: null
+    };
+
+    (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
+        const prevKey = prevKeyMap[key];
+        // Create ranking entries for this key
+        const list = allEntries.map(e => {
+            return {
+                steps: e[key],
+                users: e.users,
+                ...(prevKey ? { prevSteps: e[prevKey] } : {})
+            };
+        })
+            .sort((a, b) => b.steps - a.steps);
+
+        result[key] = list;
+    });
+
+    return result as Record<Period, any[]>;
+};
+
 export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
+    // ⚡ Bolt Optimization: Use the new cached map for GLOBAL scope
+    if (scope === 'GLOBAL') {
+        const rankingMap = await getCachedGlobalRankingMap();
+        return transformRankingMapToLists(rankingMap);
+    }
+
     // JST Calculation (Robust)
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -137,7 +337,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     // クエリ開始日: 先月1日 or 年初の早い方（1月の場合は先月=昨年12月）
     const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
-    // ⚡ Bolt Optimization: Split user and step fetching to avoid heavy joins
+    // GROUP Logic (retained)
     let userIds: string[] | null = null;
     const usersMap = new Map<string, any>();
 
@@ -174,8 +374,8 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     }
 
-    // If GLOBAL (userIds was null), we need to fetch users now based on the steps we got
-    if (!userIds) {
+    // If GLOBAL (should be caught by optimization above, but fallback for safety/completeness if scope logic changes)
+    if (!userIds && scope !== 'GLOBAL') {
         const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
 
         if (uniqueUserIds.length > 0) {
@@ -604,8 +804,6 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
         return {};
     }
 
-    const usersMap = new Map(users?.map(u => [u.id, u]));
-
     // 4. Aggregate Steps per User
     // Map<UserId, { user: User, DAILY: number, ... }>
     const userStats = new Map<string, any>();
@@ -699,7 +897,8 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 // ⚡ Bolt Optimization: Derive group rankings from cached global rankings to avoid expensive DB calls
 export const deriveBatchGroupRankings = async (
     groupIds: string[],
-    globalRankings: Record<Period, any[]>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalRankings: Record<Period, any[]> | GlobalRankingMap
 ) => {
     if (groupIds.length === 0) return {};
 
@@ -718,37 +917,57 @@ export const deriveBatchGroupRankings = async (
     // Optimization: Filter for target users immediately
     const targetUserIds = new Set(groupMembers.map(m => m.user_id));
 
-    const prevFieldMap: Record<string, string> = {
-        DAILY: 'PREV_DAILY',
-        WEEKLY: 'PREV_WEEKLY',
-        MONTHLY: 'PREV_MONTHLY'
+    // Check if input is Map or Record<Period, Array>
+    // If it has 'DAILY' as an array property, it's the old format
+    // But wait, GlobalRankingMap is Record<string, UserStats>. UserStats has DAILY as number.
+    // We can check type of 'DAILY'.
+
+    const isLegacyFormat = (input: any): input is Record<Period, any[]> => {
+        return Array.isArray(input.DAILY);
     };
 
-    (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
-        const list = globalRankings[period];
-        if (list) {
-            list.forEach((entry: any) => {
-                const userId = entry.users.id;
+    if (isLegacyFormat(globalRankings)) {
+        const prevFieldMap: Record<string, string> = {
+            DAILY: 'PREV_DAILY',
+            WEEKLY: 'PREV_WEEKLY',
+            MONTHLY: 'PREV_MONTHLY'
+        };
 
-                // ⚡ Bolt Optimization: Only process users relevant to the requested groups
-                if (!targetUserIds.has(userId)) return;
+        (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
+            const list = globalRankings[period];
+            if (list) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                list.forEach((entry: any) => {
+                    const userId = entry.users.id;
 
-                if (!userStats.has(userId)) {
-                    userStats.set(userId, {
-                        users: entry.users,
-                        DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
-                        PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
-                    });
-                }
-                userStats.get(userId)[period] = entry.steps;
-                // Carry prevSteps from global rankings
-                const prevField = prevFieldMap[period];
-                if (prevField && entry.prevSteps !== undefined) {
-                    userStats.get(userId)[prevField] = entry.prevSteps;
-                }
-            });
-        }
-    });
+                    // ⚡ Bolt Optimization: Only process users relevant to the requested groups
+                    if (!targetUserIds.has(userId)) return;
+
+                    if (!userStats.has(userId)) {
+                        userStats.set(userId, {
+                            users: entry.users,
+                            DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
+                            PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
+                        });
+                    }
+                    userStats.get(userId)[period] = entry.steps;
+                    // Carry prevSteps from global rankings
+                    const prevField = prevFieldMap[period];
+                    if (prevField && entry.prevSteps !== undefined) {
+                        userStats.get(userId)[prevField] = entry.prevSteps;
+                    }
+                });
+            }
+        });
+    } else {
+        // New Optimized Path: Direct Map Lookup O(M)
+        const rankingMap = globalRankings as GlobalRankingMap;
+        targetUserIds.forEach(userId => {
+            if (rankingMap[userId]) {
+                userStats.set(userId, rankingMap[userId]);
+            }
+        });
+    }
 
     // 3. Identify Missing Users (who have 0 steps across all periods, so not in global rankings)
     const missingUserIds: string[] = [];
@@ -798,6 +1017,7 @@ export const deriveBatchGroupRankings = async (
 
     groupIds.forEach(gid => {
         const memberIds = groupUsersMap.get(gid) || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const groupEntries: any[] = [];
 
         memberIds.forEach(uid => {
@@ -811,7 +1031,7 @@ export const deriveBatchGroupRankings = async (
             const prevKey = prevKeyMap[key];
             result[gid][key] = groupEntries.map(e => ({
                 steps: e[key],
-                users: e.users,
+                users: { ...e.users }, // Clone to avoid mutating shared/cached objects
                 ...(prevKey ? { prevSteps: e[prevKey] } : {})
             })).sort((a, b) => b.steps - a.steps);
         });
