@@ -216,8 +216,8 @@ export default function GroupDetailLeaderboard({
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold"
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0"
                                                     style={rank === 1 ? {
                                                         background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
                                                         color: '#ffffff',
@@ -239,45 +239,44 @@ export default function GroupDetailLeaderboard({
                                                     {rank}
                                                 </div>
 
-                                                <div className="relative">
+                                                <div className="relative shrink-0">
                                                     <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                 </div>
 
-                                                <div>
+                                                <div className="flex flex-col min-w-0 flex-1 justify-center">
                                                     <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                         <span>
                                                             {entry.users?.name || commonT('anonymous')}
                                                         </span>
-                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-[var(--theme-primary)] text-white">{commonT('you')}</span>}
+                                                        {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-[var(--theme-primary)] text-white shrink-0">{commonT('you')}</span>}
                                                     </p>
                                                     {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) ? (
-                                                        <p className="text-xs text-gray-400 font-medium">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
+                                                        <p className="text-xs text-gray-400 font-medium whitespace-nowrap">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
+                                                    {/* リアクション — 称号の下に独立行で表示 */}
+                                                    {groupId && userId && (
+                                                        <div className="relative z-10 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                            <GroupReactions
+                                                                groupId={groupId}
+                                                                toUserId={entry.users.id}
+                                                                currentUserId={userId}
+                                                                period={period}
+                                                                reactions={reactions}
+                                                                onReactionToggle={handleReactionToggle}
+                                                                isSelf={isCurrentUser}
+                                                                compact
+                                                                forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
+                                                                maxVisibleBadges={5}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                            {/* リアクション + 歩数 — 右寄せグループ */}
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                {/* リアクション — 歩数の左 */}
-                                                {groupId && userId && (
-                                                    <div className="relative z-10 min-w-0" onClick={(e) => e.stopPropagation()}>
-                                                        <GroupReactions
-                                                            groupId={groupId}
-                                                            toUserId={entry.users.id}
-                                                            currentUserId={userId}
-                                                            period={period}
-                                                            reactions={reactions}
-                                                            onReactionToggle={handleReactionToggle}
-                                                            isSelf={isCurrentUser}
-                                                            compact
-                                                            forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
-                                                            maxVisibleBadges={5}
-                                                        />
-                                                    </div>
-                                                )}
-                                                {/* 歩数 — 固定幅で常に表示 */}
-                                                <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10 shrink-0">
+                                            {/* 歩数 — 右寄せ固定幅 */}
+                                            <div className="flex items-center shrink-0">
+                                                <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10">
                                                     <div className="tabular-nums font-black text-[var(--theme-primary)] text-lg leaderboard-steps">
                                                         {entry.steps.toLocaleString()}
                                                     </div>

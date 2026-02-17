@@ -210,7 +210,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     {entry.originalRank}
                                                 </span>
                                                 <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="sm" frameColor={entry.users?.frameColor} borderClass="border-white" />
-                                                <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="flex flex-col min-w-0 flex-1 justify-center">
                                                     <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
                                                         <span className="truncate">
                                                             {entry.users?.name || commonT('anonymous')}

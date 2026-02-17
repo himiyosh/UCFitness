@@ -347,7 +347,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                 >
 
                                                                     {/* Content Wrapper */}
-                                                                    <div className="relative z-10 flex items-center gap-2 sm:gap-3">
+                                                                    <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                                                                         <div className="flex flex-col items-center gap-0.5">
                                                                             <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold"
                                                                                 style={entry.originalRank === 1 ? {
@@ -386,7 +386,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         ) : (
                                                                             <UserAvatar src={null} name={entry.users?.name || '?'} size="sm" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         )}
-                                                                        <div>
+                                                                        <div className="flex flex-col min-w-0 flex-1 justify-center">
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 <span>
                                                                                     {entry.users?.name || commonT('anonymous')}
@@ -394,31 +394,30 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-xs bg-[var(--theme-primary)] text-white font-bold">{commonT('you')}</span>}
                                                                             </p>
                                                                             {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
-                                                                                <p className="text-xs text-gray-400 font-medium leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
+                                                                                <p className="text-xs text-gray-400 font-medium leading-tight whitespace-nowrap">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
+                                                                            )}
+                                                                            {/* リアクション — 称号の下に独立行で表示 */}
+                                                                            {userId && (
+                                                                                <div className="relative z-10 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                                                    <GroupReactions
+                                                                                        groupId="__global__"
+                                                                                        toUserId={entry.users.id}
+                                                                                        currentUserId={userId}
+                                                                                        period={period}
+                                                                                        reactions={globalReactions}
+                                                                                        onReactionToggle={handleGlobalReactionToggle}
+                                                                                        isSelf={entry.users.id === userId}
+                                                                                        compact
+                                                                                        forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
+                                                                                        maxVisibleBadges={5}
+                                                                                    />
+                                                                                </div>
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    {/* リアクション + 歩数 — 右寄せグループ */}
-                                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                                        {/* リアクション — 歩数の左、溢れたら非表示 */}
-                                                                        {userId && (
-                                                                            <div className="relative z-10 min-w-0" onClick={(e) => e.stopPropagation()}>
-                                                                                <GroupReactions
-                                                                                    groupId="__global__"
-                                                                                    toUserId={entry.users.id}
-                                                                                    currentUserId={userId}
-                                                                                    period={period}
-                                                                                    reactions={globalReactions}
-                                                                                    onReactionToggle={handleGlobalReactionToggle}
-                                                                                    isSelf={entry.users.id === userId}
-                                                                                    compact
-                                                                                    forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
-                                                                                    maxVisibleBadges={5}
-                                                                                />
-                                                                            </div>
-                                                                        )}
-                                                                        {/* 歩数 — 固定幅で常に表示 */}
-                                                                        <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10 shrink-0">
+                                                                    {/* 歩数 — 右寄せ固定幅 */}
+                                                                    <div className="flex items-center shrink-0">
+                                                                        <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10">
                                                                             <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
                                                                                 {entry.steps.toLocaleString()}
                                                                             </div>
