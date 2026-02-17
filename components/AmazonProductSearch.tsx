@@ -438,21 +438,21 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
             {!latestResult && history.length === 0 && (
                 <div className="space-y-2 pt-2">
                     <p className="text-xs font-semibold text-gray-500">
-                        {locale === 'ja' ? '💡 こんな入力ができます' : '💡 You can enter'}
+                        {locale === 'ja' ? '💡 こんな風に入力してください' : '💡 How to enter'}
                     </p>
                     <div className="flex flex-col gap-1.5 pl-4">
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="w-5 text-center shrink-0">🔍</span>
+                            <span className="w-4 text-center shrink-0 text-sm">🔍</span>
                             <span className="w-[5.5rem] shrink-0 font-medium text-gray-600">{locale === 'ja' ? 'キーワード' : 'Keyword'}</span>
                             <span className="font-mono text-gray-400">{locale === 'ja' ? 'ランニングシューズ' : 'running shoes'}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="w-5 text-center shrink-0">🔗</span>
+                            <span className="w-4 text-center shrink-0 text-sm">🔗</span>
                             <span className="w-[5.5rem] shrink-0 font-medium text-gray-600">Amazon URL</span>
                             <span className="font-mono text-gray-400">amazon.co.jp/dp/...</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="w-5 text-center shrink-0">📦</span>
+                            <span className="w-4 text-center shrink-0 text-sm">📦</span>
                             <span className="w-[5.5rem] shrink-0 font-medium text-gray-600">ASIN</span>
                             <span className="font-mono text-gray-400">B0DGJCRNY3</span>
                         </div>
