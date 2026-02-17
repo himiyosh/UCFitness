@@ -413,6 +413,7 @@ const options = useMemo(
 #### 2. 重いコンポーネントの遅延ロード
 
 - Recharts チャート、モーダル等を `dynamic(() => import(...), { ssr: false })` で遅延
+- **⚠️ `{ ssr: false }` の付け忘れに注意**（過去11回修正した問題）: Recharts を dynamic import する際は `{ ssr: false }` を**必ず**含めること。`ssr: false` なしの `dynamic(() => import(...))` は Recharts の SSR エラーを引き起こす
 
 #### 3. 計算量の削減
 

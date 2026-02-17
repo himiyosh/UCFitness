@@ -1,9 +1,9 @@
 # 🤖 UCFitness AI 改善ループ レポート
 
 > **ブランチ:** `copilot/improvement-loop-1` (PR #80)
-> **期間:** 2026-02-13 〜 2026-02-14
+> **期間:** 2026-02-13 〜 2026-02-18
 > **実行方法:** GitHub Copilot (Claude) + 6 サブエージェント構成
-> **最終更新:** 2026-02-14
+> **最終更新:** 2026-02-18
 
 ---
 
@@ -11,11 +11,11 @@
 
 | 項目 | 値 |
 |------|------|
-| 総コミット数 | 24 |
-| 変更ファイル数 | **179** |
-| 総追加行 | **+4,979** |
-| 総削除行 | **-2,363** |
-| サイクル数 | 5 |
+| 総コミット数 | 26 |
+| 変更ファイル数 | **195** |
+| 総追加行 | **+5,150** |
+| 総削除行 | **-2,430** |
+| サイクル数 | 6 |
 | ビルドエラー | **0** ✅ |
 | 型エラー | **0** ✅ |
 
@@ -84,6 +84,33 @@
 | 🔨 Build Validation (components) | 62 components | 0 | 0 |
 
 **結論:** Cycle 1-3 の改善で大半の問題が解消済み。残り 1 件の `select('*')` を修正。
+
+### Cycle 6 — 残存パターン再スキャン + 品質改善 (2026-02-18)
+| コミット | 内容 | 対象ファイル数 |
+|----------|------|---------------|
+| `d5dd534` | select(*)排除、/setupリダイレクト追加、Recharts SSR無効化、エラー状態追加、セキュリティ修正、hover効果追加 | 16 |
+
+**主な改善:**
+
+🔨 **Build Validation:**
+- `select('*')` → 明示カラム指定 (7箇所: shop-service.ts×2, user/[username], debug/session, group events×2, runtime位置修正)
+- `session.user.name` 直接参照の排除 → DB (`dbUser`) から取得 (2箇所)
+- `/setup` リダイレクト未実装ページの修正 (groups, groups/[groupId], settings)
+- Edge Runtime 宣言位置修正 (debug/session — ファイル末尾→先頭)
+
+⚡ **Performance:**
+- Recharts dynamic import に `{ ssr: false }` 追加 (wallet/CoinGrowthChart, GroupAnalytics/GroupComparisonChart)
+- `Promise.all()` による DB クエリ並列化 (user/[username] — vUser+vData)
+
+🔒 **Security:**
+- debug/db-check API のエラーメッセージリーク修正 (`error.message` → `'Query failed'`)
+
+✨ **Feature Enhancement:**
+- DashboardChallenges / DashboardFollowing にエラー状態 + リトライボタン UI 追加
+- ActivityGraph / CoinGrowthChart / GroupComparisonChart に `hover:shadow-lg transition-shadow` 追加
+
+🧠 **プロンプト自己学習:**
+- `improvement-loop.prompt.md` に Recharts `ssr: false` 必須ルールを強化（過去11回修正した問題）
 
 ---
 
@@ -547,3 +574,73 @@
 ---
 
 *提案: GitHub Copilot (Claude Opus 4.6) | 🔍 New Feature Discovery Agent | Cycle 1 | 2026-02-15*
+
+---
+
+## 🔍 新機能提案 — Cycle 6 (2026-02-18)
+
+### 🏆 優先度 High (すぐに着手すべき)
+
+| # | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+|---|--------|------|--------|----------|----------|
+| 1 | **UC ギフト送信** | フォロー中のユーザーにUCを送れる機能。`deductBalance`/`creditBalance` の GIFT_SEND/GIFT_RECEIVE が既に実装済だが UI がない | 🟢 Easy | `coin-service.ts` (deductBalance/creditBalance), `user_follows`, `coin_transactions` | ソーシャル粘着性↑、UC消費先の多様化、フォロー動機↑ |
+| 2 | **ソーシャルミッション拡張** | 「誰かにリアクションを送ろう」「フォロワーを1人増やそう」等の非歩数系デイリーミッションを追加。現在 LOGIN + 歩数2種のみ | 🟢 Easy | `daily_missions`, `MISSION_POOL` in missions/route.ts, `group_reactions`, `user_follows` | DAU↑、ソーシャル機能利用率↑、ミッション多様性 |
+| 3 | **ストリーク危機アラート** | 目標未達の日に夕方プッシュ通知「今日まだ6,000/10,000歩！あと4,000歩で🛡️不要」。既存 push_subscriptions + cron 活用 | 🟡 Medium | `push_subscriptions`, `daily_steps`, `users.step_goal`, `web-push.ts`, cron infrastructure | 目標達成率↑、ストリーク維持率↑、DAU↑ |
+| 4 | **ウィークリーサマリーページ** | プッシュ通知でしか見られない週次サマリーをアプリ内ページ化。前週 vs 前々週比較、ベストデイ、曜日パターン分析 | 🟡 Medium | `daily_steps`, `PersonalAnalytics`, `cron/weekly-summary`, Recharts | リテンション↑、振り返り習慣化、セッション時間↑ |
+| 5 | **バッジ・称号ギャラリー** | 全バッジ・全称号を一覧表示し、未取得は条件と進捗を表示。コレクション欲を刺激 | 🟡 Medium | `badges`, `user_badges`, `shop_items` (TITLE), `title-achievement-service.ts` (TITLE_RULES), `AchievementProgress` | コレクション欲→歩数モチベ↑、ショップ誘導、長期リテンション↑ |
+
+### 📋 優先度 Medium (次スプリントで検討)
+
+| # | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+|---|--------|------|--------|----------|----------|
+| 6 | **1v1 フォロワー対決** | フォロー中ユーザーに1週間の歩数バトルを申し込む。勝者にUCボーナス。`challenges` テーブルの type に `DUEL` を追加 | 🟡 Medium | `challenges`, `challenge_participants`, `user_follows`, `FollowingComparison`, `coin_transactions` | エンゲージメント↑、フォロー価値↑、競争心 |
+| 7 | **グループ招待リンク** | ワンタイム or 永続的な招待リンクを生成し、URLでグループ参加可能に。現在は keyword 検索のみ | 🟡 Medium | `groups`, `group_members`, `JoinGroupPreview` | グループ参加率↑、オンボーディング改善、口コミ拡散 |
+| 8 | **シーズンイベント** | 期間限定チャレンジ + 限定バッジ + 限定ショップアイテム。is_system チャレンジの拡張で実現 | 🟡 Medium | `challenges` (is_system), `badges`, `shop_items`, `cron/weekly-challenge` | 期間限定性→FOMO、復帰ユーザー獲得、季節感 |
+| 9 | **フォロー通知** | 「◯◯さんがフォローしました」「◯◯さんがリアクション🔥を送りました」をプッシュ通知 | 🟢 Easy | `push_subscriptions`, `web-push.ts`, `user_follows`, `group_reactions` | ソーシャル認知↑、再訪問↑、フォロー返し率↑ |
+| 10 | **パーソナルレコードボード** | 自己ベスト一覧（1日最高歩数、最長ストリーク、月間最高、累計マイルストーン）をプロフィールに表示 | 🟢 Easy | `daily_steps`, `coin_balances` (best_streak), `ProfileHeader`, `PersonalAnalytics` | 自己成長実感↑、プロフィール充実、シェア動機 |
+
+### 💡 優先度 Low (バックログ)
+
+| # | 機能名 | 概要 | 難易度 | 既存活用 | 期待効果 |
+|---|--------|------|--------|----------|----------|
+| 11 | **コインリーダーボード** | UC資産ランキング（投資家ランク別 or 全体）。`getCoinLeaderboard` 関数が既に存在するがUI未実装 | 🟢 Easy | `coin_balances`, `getCoinLeaderboard()` in coin-service.ts, `LeaderboardTabs`, `DynamicLeaderboard` | ランクアップ動機↑、歩数→UC重要性↑ |
+| 12 | **スマートゴール提案** | 過去30日の平均歩数を基に、最適な step_goal を3段階提案。「チャレンジ」「バランス」「リラックス」 | 🟢 Easy | `daily_steps`, `users.step_goal`, `PersonalAnalytics`, /api/user/step-goal | 目標設定最適化→ストリーク維持率↑、初心者離脱防止 |
+| 13 | **グループイベント参加者追跡** | group_events に参加者テーブルを追加し、個人進捗を追跡・表示。現在はイベント作成のみで進捗追跡なし | 🔴 Hard | `group_events`, `daily_steps`, `GroupEventList`, `GroupEventCard` | グループイベント活性化、グループ内協力感↑ |
+| 14 | **リファラルボーナス** | 紹介用コードを発行 → 新規ユーザー登録時に紹介者と被紹介者の両方にUCボーナス | 🟡 Medium | `users`, `coin_transactions`, `coin_balances`, onboarding flow | ユーザー獲得コスト↓、口コミ成長、UC消費機会 |
+| 15 | **歩数シェアカード生成** | 日/週/月の歩数実績をOGP画像風のシェアカードとして生成。Canvas API で Edge Runtime 対応 | 🔴 Hard | `daily_steps`, `ShareMilestone`, `ActivityGraph`, Canvas API (Edge互換) | SNS拡散↑、ブランド認知、新規ユーザー獲得 |
+
+### 📐 実装設計メモ (High 項目のみ)
+
+#### 1. UC ギフト送信
+- **DB変更**: 不要（`coin_transactions` の GIFT_SEND/GIFT_RECEIVE タイプ + `deduct_balance`/`credit_balance` RPC 関数は既に存在）
+- **API**: `POST /api/user/gift` — 新規作成。送信先 userId + 金額を受取。内部で `deductBalance(GIFT_SEND)` → `creditBalance(GIFT_RECEIVE)` を呼ぶ。最小送金額・1日上限のバリデーション付き
+- **コンポーネント**: `GiftModal.tsx`（新規）— フォロー中ユーザー選択 + 金額入力 + 確認ダイアログ。`FollowingList` のユーザーカード or プロフィールページにギフトボタンを追加
+- **既存ファイルへの影響**: ProfileHeader.tsx にギフトボタン追加、TransactionHistory.tsx で GIFT_SEND/GIFT_RECEIVE の表示対応（アイコン・色分け）
+
+#### 2. ソーシャルミッション拡張
+- **DB変更**: 不要（`daily_missions` テーブルは汎用的。mission_type に新タイプ追加のみ）
+- **API**: missions/route.ts の `MISSION_POOL` に `SEND_REACTION`, `FOLLOW_USER` 等を追加。`evaluateMission()` で `group_reactions` / `user_follows` テーブルのその日の件数をチェック
+- **コンポーネント**: DailyMissions.tsx — ミッションタイプごとのアイコン分岐を追加（🤝社交系 vs 🚶歩数系）
+- **既存ファイルへの影響**: missions/route.ts の `generateDailyMissions()` — カテゴリバランス（歩数1 + 社交1 + ログイン1）に変更
+
+#### 3. ストリーク危機アラート
+- **DB変更**: 不要（既存テーブルで完結）
+- **API**: `GET /api/cron/streak-alert` — 新規 cron エンドポイント。JST 18:00 頃に実行。`daily_steps` で今日の歩数 < `users.step_goal` のユーザーを抽出 → `push_subscriptions` で通知送信
+- **コンポーネント**: 不要（プッシュ通知のみ）
+- **既存ファイルへの影響**: `web-push.ts` の `sendWebPushNotification` を再利用。Cloudflare Workers Cron or 外部 cron サービスでスケジュール設定
+
+#### 4. ウィークリーサマリーページ
+- **DB変更**: 不要（`daily_steps` からの集計で完結）
+- **API**: `GET /api/user/weekly-summary` — 新規。前週・前々週の歩数を `daily_steps` から集計。曜日別平均、ベストデイ、目標達成日数、前週比を返す
+- **コンポーネント**: `WeeklySummaryCard.tsx`（新規）— サマリーカード + 比較バー。ダッシュボードに追加 or analytics ページ内に新タブ
+- **既存ファイルへの影響**: PersonalAnalytics.tsx を拡張 or 独立コンポーネントとしてダッシュボードに追加。既存の `cron/weekly-summary` のロジックを API 用に関数化して共有可能
+
+#### 5. バッジ・称号ギャラリー
+- **DB変更**: 不要（`badges`, `user_badges`, `shop_items`(TITLE), `user_items` で完結）
+- **API**: `GET /api/user/badge-gallery` — 新規。全バッジ定義 + ユーザーの獲得状況 + 各称号の進捗率を返す。`title-achievement-service.ts` の `TITLE_RULES` から進捗計算ロジックを抽出
+- **コンポーネント**: `BadgeGallery.tsx`（新規）— グリッド表示。獲得済み=カラー表示、未獲得=グレーアウト+条件テキスト+プログレスバー。カテゴリフィルタ（歩数/ストリーク/ソーシャル/ランキング）付き
+- **既存ファイルへの影響**: ProfileBadges.tsx からギャラリーへのリンクを追加。AchievementProgress.tsx のデータを再利用可能
+
+---
+
+*提案: GitHub Copilot (Claude Opus 4.6) | 🔍 New Feature Discovery Agent | Cycle 6 | 2026-02-18*
