@@ -327,7 +327,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                             return (
                                                                 <li key={`${entry.users.id}-${period}`}
-                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 min-h-[4.5rem] flex items-stretch transition-colors overflow-visible ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 min-h-[4.5rem] flex items-center transition-colors overflow-visible ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                                                     onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                                                     onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                                                     onTouchStart={(e) => {
@@ -342,13 +342,13 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                     onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                                                 >
                                                                 <div
-                                                                    className={`flex items-stretch justify-between flex-1 ${entry.users.username ? 'cursor-pointer' : ''}`}
+                                                                    className={`flex items-center justify-between flex-1 ${entry.users.username ? 'cursor-pointer' : ''}`}
                                                                     onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                                                 >
 
                                                                     {/* Content Wrapper */}
-                                                                    <div className="relative z-10 flex items-stretch gap-2 sm:gap-3 min-w-0 flex-1">
-                                                                        <div className="flex flex-col items-center gap-0.5 self-center">
+                                                                    <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                                                        <div className="flex flex-col items-center gap-0.5">
                                                                             <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold"
                                                                                 style={entry.originalRank === 1 ? {
                                                                                     background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
@@ -381,14 +381,14 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                 );
                                                                             })()}
                                                                         </div>
-                                                                        <div className="self-center">
+                                                                        <div>
                                                                         {entry.users?.image ? (
                                                                             <UserAvatar src={entry.users.image} name={entry.users.name} size="sm" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         ) : (
                                                                             <UserAvatar src={null} name={entry.users?.name || '?'} size="sm" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         )}
                                                                         </div>
-                                                                        <div className="flex flex-col min-w-0 flex-1 justify-center">
+                                                                        <div className="flex flex-col min-w-0 flex-1">
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 <span>
                                                                                     {entry.users?.name || commonT('anonymous')}
@@ -418,7 +418,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         </div>
                                                                     </div>
                                                                     {/* 歩数 — 右寄せ固定幅 */}
-                                                                    <div className="flex items-center shrink-0 self-center">
+                                                                    <div className="flex items-center shrink-0">
                                                                         <div className="flex flex-col items-end min-w-[3rem] sm:min-w-[4rem] relative z-10">
                                                                             <div className="tabular-nums font-black text-[var(--theme-primary)] text-base sm:text-lg leaderboard-steps">
                                                                                 {entry.steps.toLocaleString()}
