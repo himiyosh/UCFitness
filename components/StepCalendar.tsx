@@ -98,15 +98,22 @@ function HeatmapCell({
     col,
     row,
     stepsLabel,
+    isFuture,
 }: {
     date: string;
     steps: number;
     col: number;
     row: number;
     stepsLabel: string;
+    isFuture: boolean;
 }) {
     const [showTooltip, setShowTooltip] = useState(false);
     const level = getIntensityLevel(steps);
+
+    // 未来の日付は非表示
+    if (isFuture) {
+        return null;
+    }
 
     // 統合グリッド内の位置（列1は曜日ラベル用のため +2）
     const colorStyle: React.CSSProperties = {
@@ -304,6 +311,9 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
         data.forEach((d) => map.set(d.date, d.steps));
         return map;
     }, [data]);
+
+    // 今日の日付文字列（未来日非表示判定用）
+    const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     // グリッドデータ生成
     const gridCells = useMemo(() => buildGridData(year, stepsMap), [year, stepsMap]);
@@ -509,7 +519,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                                 {i % 2 === 1 ? label.slice(0, 3) : ''}
                             </div>
                         ))}
-                        {/* データセル */}
+                        {/* データセル（未来の日付は非表示） */}
                         {gridCells.map((cell) => (
                             <HeatmapCell
                                 key={cell.date}
@@ -518,6 +528,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                                 col={cell.col}
                                 row={cell.row}
                                 stepsLabel={t('steps')}
+                                isFuture={cell.date > todayStr}
                             />
                         ))}
                     </div>
