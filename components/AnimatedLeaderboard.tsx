@@ -327,7 +327,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                                             return (
                                                                 <li key={`${entry.users.id}-${period}`}
-                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 transition-colors overflow-visible ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                                                    className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-3 min-h-[4.5rem] transition-colors overflow-visible ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                                                     onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                                                     onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                                                     onTouchStart={(e) => {
@@ -413,6 +413,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                                     isSelf={entry.users.id === userId}
                                                                                     compact
                                                                                     forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
+                                                                                    maxVisibleBadges={5}
                                                                                 />
                                                                             </div>
                                                                         )}

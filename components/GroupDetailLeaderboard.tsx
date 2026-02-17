@@ -202,7 +202,7 @@ export default function GroupDetailLeaderboard({
 
                                     return (
                                         <li key={entry.users.id}
-                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 flex items-center justify-between transition-all duration-200 hover:shadow-sm overflow-visible ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 min-h-[4.5rem] flex items-center justify-between transition-all duration-200 hover:shadow-sm overflow-visible ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                             onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                             onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
@@ -272,7 +272,7 @@ export default function GroupDetailLeaderboard({
                                                             isSelf={isCurrentUser}
                                                             compact
                                                             forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
-                                                            maxVisibleBadges={2}
+                                                            maxVisibleBadges={5}
                                                         />
                                                     </div>
                                                 )}
