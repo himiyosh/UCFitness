@@ -440,7 +440,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                     <p className="text-xs font-semibold text-gray-500">
                         {locale === 'ja' ? '💡 こんな入力ができます' : '💡 You can enter'}
                     </p>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 pl-4">
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                             <span className="w-5 text-center shrink-0">🔍</span>
                             <span className="w-[5.5rem] shrink-0 font-medium text-gray-600">{locale === 'ja' ? 'キーワード' : 'Keyword'}</span>
