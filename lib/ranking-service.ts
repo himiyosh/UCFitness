@@ -374,8 +374,8 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     }
 
-    // If GLOBAL (should be caught by optimization above, but fallback for safety/completeness if scope logic changes)
-    if (!userIds && scope !== 'GLOBAL') {
+    // GROUP scope: userIds が null の場合（安全策フォールバック）
+    if (!userIds) {
         const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
 
         if (uniqueUserIds.length > 0) {
