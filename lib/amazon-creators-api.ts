@@ -548,3 +548,47 @@ function decodeHtmlEntities(text: string): string {
         .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
         .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec)));
 }
+
+/**
+ * ASIN から商品タイトルを取得（商品ページをスクレイピング）
+ * タイトルが取得できない場合は空文字を返す
+ */
+export async function fetchProductTitle(asin: string): Promise<string> {
+    if (!asin || !/^[A-Z0-9]{10}$/i.test(asin)) return '';
+
+    try {
+        const url = `https://www.amazon.co.jp/dp/${asin.toUpperCase()}`;
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'ja-JP,ja;q=0.9,en;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+        });
+
+        if (!response.ok) return '';
+
+        const html = await response.text();
+
+        // <title> タグからタイトルを取得（最も信頼性が高い）
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) {
+            let title = decodeHtmlEntities(titleMatch[1].trim());
+            // Amazon のページタイトルは「商品名 | Amazon」形式なのでサフィックスを除去
+            title = title.replace(/\s*[|]\s*Amazon.*$/i, '').trim();
+            if (title && title !== 'Amazon' && title !== 'Amazon.co.jp') {
+                return title;
+            }
+        }
+
+        // id="productTitle" からフォールバック取得
+        const prodTitleMatch = html.match(/id="productTitle"[^>]*>([^<]+)</);
+        if (prodTitleMatch) {
+            return decodeHtmlEntities(prodTitleMatch[1].trim());
+        }
+
+        return '';
+    } catch {
+        return '';
+    }
+}

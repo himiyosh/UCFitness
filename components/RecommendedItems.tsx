@@ -216,7 +216,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={trackRef}
-                        className="flex gap-3 pt-16 pb-1"
+                        className="flex gap-3 pt-24 pb-1"
                         style={{
                             transform: `translateX(-${slideIndex * CARD_W}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
@@ -444,7 +444,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={modalRef}
-                        className="bg-white w-full sm:w-[560px] sm:max-w-[90vw] max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300 overflow-hidden"
+                        className="bg-white w-full sm:w-[720px] sm:max-w-[90vw] max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300 overflow-hidden"
                     >
                         {/* モーダルヘッダー */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">

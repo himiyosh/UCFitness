@@ -130,7 +130,7 @@ export default function GroupReactions({
     }, [showExtended]);
 
     // forceShow に連動してピッカーの開閉を制御
-    // forceShow が false になってもピッカー操作のためディレイ付きで閉じる
+    // forceShow が false になったら即座に閉じる（複数ピッカー同時表示を防止）
     useEffect(() => {
         if (forceShow) {
             if (hideTimeout.current) {
@@ -139,19 +139,14 @@ export default function GroupReactions({
             }
             setShowPicker(true);
         } else {
-            // ディレイ付きクローズ（ユーザーがピッカーに移動する猶予）
-            hideTimeout.current = setTimeout(() => {
-                setShowPicker(false);
-                setShowExtended(false);
-                hideTimeout.current = null;
-            }, 400);
-        }
-        return () => {
+            // 即座にクローズ — 他の行に移動した際に前の行のピッカーが残らないようにする
+            setShowPicker(false);
+            setShowExtended(false);
             if (hideTimeout.current) {
                 clearTimeout(hideTimeout.current);
                 hideTimeout.current = null;
             }
-        };
+        }
     }, [forceShow]);
 
     // 自分自身の行にはリアクションボタンを表示しない（受信カウントのみ表示）
@@ -164,7 +159,7 @@ export default function GroupReactions({
                     return (
                         <span
                             key={emoji}
-                            className={`inline-flex items-center gap-0.5 rounded-full bg-[var(--theme-primary-light)] ${compact ? 'px-1 py-0 text-[10px]' : 'px-1.5 py-0.5 text-xs'}`}
+                            className={`inline-flex items-center gap-0.5 rounded-full bg-[var(--theme-primary-light)] ${compact ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-0.5 text-sm'}`}
                             title={t('receivedCount', { count })}
                         >
                             <span>{emoji}</span>
@@ -181,6 +176,10 @@ export default function GroupReactions({
     // バッジが多い場合は MAX_VISIBLE_BADGES 個まで表示し、残りは "+N" で省略
     if (compact) {
         const isActive = forceShow;
+
+        // リアクションもアクティブ状態もない場合、何もレンダリングしない（垂直中央揃えのため）
+        if (!hasAnyReactions && !isActive) return null;
+
         const visibleEmojis = activeEmojis.slice(0, maxVisibleBadges);
         const hiddenCount = activeEmojis.length - visibleEmojis.length;
         return (
@@ -200,10 +199,10 @@ export default function GroupReactions({
                                 handleToggle(emoji);
                             }}
                             disabled={loading === emoji}
-                            className={`inline-flex items-center gap-0.5 px-1 py-0 text-[10px] min-h-[18px] rounded-full transition-all duration-200 cursor-pointer
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-xs min-h-[22px] rounded-full transition-all duration-200 cursor-pointer
                                 ${reacted
-                                    ? 'bg-gray-200/60 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 ring-1 ring-gray-300/40 dark:ring-gray-600/40'
-                                    : 'bg-gray-100/60 dark:bg-gray-800/40 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 text-gray-500 dark:text-gray-400'
+                                    ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] ring-1 ring-[var(--theme-primary)]/30'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                                 }
                                 ${loading === emoji ? 'opacity-50' : ''}
                             `}
@@ -216,7 +215,7 @@ export default function GroupReactions({
                 })}
                 {/* 省略表示 — 表示しきれないバッジ数を "+N" で表示 */}
                 {hiddenCount > 0 && (
-                    <span className="inline-flex items-center px-1 py-0 text-[10px] min-h-[18px] rounded-full bg-gray-100 text-gray-500 font-bold">
+                    <span className="inline-flex items-center px-1.5 py-0.5 text-xs min-h-[22px] rounded-full bg-gray-100 text-gray-600 font-bold">
                         +{hiddenCount}
                     </span>
                 )}
@@ -228,31 +227,25 @@ export default function GroupReactions({
                         e.stopPropagation();
                         setShowPicker(prev => !prev);
                     }}
-                    className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all duration-200 cursor-pointer"
+                    className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all duration-200 cursor-pointer"
                     aria-label={t('addReaction')}
                     style={{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'auto' : 'none', transition: 'opacity 200ms ease' }}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                         <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                     </svg>
                 </button>
 
-                {/* クイックリアクションピッカー */}
+                {/* クイックリアクションピッカー — ＋ボタン下に吹き出しで表示 */}
                 {showPicker && !showExtended && (
                     <div
-                        className={`absolute z-[9999] flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel ${
-                            pickerPosition === 'below'
-                                ? 'left-1/2 -translate-x-1/2 top-full mt-2'
-                                : 'right-0 bottom-full mb-1'
-                        }`}
+                        className="absolute z-[9999] flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel left-0 top-full mt-1.5"
                         style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {/* 吹き出し三角（上向き） — below モード時のみ */}
-                        {pickerPosition === 'below' && (
-                            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
-                        )}
+                        {/* 吹き出し三角（上向き） */}
+                        <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
                         {DEFAULT_EMOJIS.map(emoji => {
                             const reacted = reactionCounts[emoji]?.reacted ?? false;
                             const isLoading = loading === emoji;
@@ -295,23 +288,17 @@ export default function GroupReactions({
                     </div>
                 )}
 
-                {/* 拡張絵文字ピッカー */}
+                {/* 拡張絵文字ピッカー — ＋ボタン下に吹き出しで表示 */}
                 {showExtended && (
                     <div
-                        className={`absolute z-[9999] w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible ${
-                            pickerPosition === 'below'
-                                ? 'left-1/2 -translate-x-1/2 bottom-full mb-2'
-                                : 'right-0 bottom-full mb-1'
-                        }`}
+                        className="absolute z-[9999] w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible left-0 top-full mt-1.5"
                         style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.2))' }}
                         onClick={(e) => e.stopPropagation()}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {/* 吹き出し三角（上向き） — below モード時のみ */}
-                        {pickerPosition === 'below' && (
-                            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50" />
-                        )}
+                        {/* 吹き出し三角（上向き） */}
+                        <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50" />
                         <div className="flex items-center border-b border-gray-100 px-1 pt-1">
                             {EXTENDED_EMOJI_CATEGORIES.map((cat, idx) => (
                                 <button
@@ -381,11 +368,11 @@ export default function GroupReactions({
                             handleToggle(emoji);
                         }}
                         disabled={loading === emoji}
-                        className={`inline-flex items-center gap-0.5 rounded-full transition-all duration-200 cursor-pointer
-                            ${compact ? 'px-1 py-0 text-[10px] min-h-[18px]' : 'px-1.5 py-0.5 text-xs min-h-[22px]'}
+                        className={`inline-flex items-center gap-1 rounded-full transition-all duration-200 cursor-pointer
+                            ${compact ? 'px-1.5 py-0.5 text-xs min-h-[22px]' : 'px-2 py-0.5 text-sm min-h-[26px]'}
                             ${reacted
-                                ? 'bg-gray-200/60 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 ring-1 ring-gray-300/40 dark:ring-gray-600/40 scale-105'
-                                : 'bg-gray-100/60 dark:bg-gray-800/40 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 text-gray-500 dark:text-gray-400'
+                                ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] ring-1 ring-[var(--theme-primary)]/30 scale-105'
+                                : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                             }
                             ${loading === emoji ? 'opacity-50' : ''}
                         `}
@@ -405,11 +392,11 @@ export default function GroupReactions({
                     setShowPicker(prev => !prev);
                 }}
                 className={`inline-flex items-center justify-center rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all duration-200 cursor-pointer
-                    ${compact ? 'w-[18px] h-[18px]' : 'w-[22px] h-[22px]'}
+                    ${compact ? 'w-[22px] h-[22px]' : 'w-[26px] h-[26px]'}
                 `}
                 aria-label={t('addReaction')}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'}>
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.536-4.464a.75.75 0 10-1.06-1.06 3.5 3.5 0 01-4.95 0 .75.75 0 00-1.06 1.06 5 5 0 007.07 0zM9 8.5c0 .828-.448 1.5-1 1.5s-1-.672-1-1.5S7.448 7 8 7s1 .672 1 1.5zm3 1.5c.552 0 1-.672 1-1.5S12.552 7 12 7s-1 .672-1 1.5.448 1.5 1 1.5z" clipRule="evenodd" />
                 </svg>
             </button>
