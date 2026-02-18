@@ -261,7 +261,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         <button
                             onClick={(e) => handleDelete(item.id, e)}
                             disabled={deletingId === item.id}
-                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/90 text-white text-xs flex items-center justify-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
+                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/70 text-white text-xs flex items-center justify-center hover:bg-red-600 hover:scale-110 focus:bg-red-600 transition-all disabled:opacity-50 shadow-sm"
                             aria-label={locale === 'ja' ? '削除' : 'Remove'}
                             title={locale === 'ja' ? '削除' : 'Remove'}
                         >
