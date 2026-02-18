@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useToast } from '@/components/Toast';
 
@@ -260,7 +261,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         <button
                             onClick={(e) => handleDelete(item.id, e)}
                             disabled={deletingId === item.id}
-                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/90 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
+                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/90 text-white text-xs flex items-center justify-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
                             aria-label={locale === 'ja' ? '削除' : 'Remove'}
                             title={locale === 'ja' ? '削除' : 'Remove'}
                         >
@@ -433,10 +434,10 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 </>
             )}
 
-            {/* ===== 検索モーダル ===== */}
-            {showModal && (
+            {/* ===== 検索モーダル（viewport中央に表示するため createPortal で body 直下にレンダリング） ===== */}
+            {showModal && createPortal(
                 <div
-                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
                     onClick={handleBackdropClick}
                     role="dialog"
                     aria-modal="true"
@@ -444,7 +445,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={modalRef}
-                        className="bg-white w-full sm:w-[720px] sm:max-w-[90vw] max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300 overflow-hidden"
+                        className="bg-white w-full sm:w-[720px] sm:max-w-[90vw] max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
                     >
                         {/* モーダルヘッダー */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -471,7 +472,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             />
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
