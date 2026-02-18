@@ -28,7 +28,7 @@ export default async function MyGroupsPage() {
     const [userResult, membershipResult] = await Promise.all([
         supabaseAdmin
             .from('users')
-            .select('name, group_keyword, image')
+            .select('name, group_keyword, image, username')
             .eq('id', userId)
             .single(),
         supabaseAdmin
@@ -49,6 +49,10 @@ export default async function MyGroupsPage() {
 
     const userData = userResult.data;
     const memberships = membershipResult.data;
+
+    if (!userData?.username) {
+        redirect('/setup');
+    }
 
     // Ensure it's an array
     const groupOrder = Array.isArray(userData?.group_keyword)

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useToast } from '@/components/Toast';
 
@@ -39,6 +40,7 @@ interface RecommendedItemsProps {
 export default function RecommendedItems({ items: initialItems, isOwner, locale }: RecommendedItemsProps) {
     const [items, setItems] = useState<RecommendedItem[]>(initialItems);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [slideIndex, setSlideIndex] = useState(0);
     const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -50,27 +52,32 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     const commentInputRef = useRef<HTMLInputElement>(null);
     const [editPopupPos, setEditPopupPos] = useState<{ top: number; left: number } | null>(null);
 
-    // --- 削除 ---
-    const handleDelete = useCallback(async (itemId: string, e: React.MouseEvent) => {
+    // --- 削除確認ダイアログを表示 ---
+    const requestDelete = useCallback((itemId: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!confirm(locale === 'ja' ? 'このアイテムを削除しますか？' : 'Remove this item?')) return;
+        setConfirmDeleteId(itemId);
+    }, []);
 
-        setDeletingId(itemId);
+    // --- 削除実行 ---
+    const executeDelete = useCallback(async () => {
+        if (!confirmDeleteId) return;
+        setDeletingId(confirmDeleteId);
         try {
-            const res = await fetch(`/api/amazon/recommended?id=${itemId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/amazon/recommended?id=${confirmDeleteId}`, { method: 'DELETE' });
             if (!res.ok) {
                 const err = await res.json();
                 throw new Error(err.error || 'Delete failed');
             }
-            setItems(prev => prev.filter(item => item.id !== itemId));
+            setItems(prev => prev.filter(item => item.id !== confirmDeleteId));
             toastSuccess(locale === 'ja' ? '削除しました' : 'Removed');
         } catch {
             toastError(locale === 'ja' ? '削除に失敗しました' : 'Failed to remove');
         } finally {
             setDeletingId(null);
+            setConfirmDeleteId(null);
         }
-    }, [locale, toastSuccess, toastError]);
+    }, [confirmDeleteId, locale, toastSuccess, toastError]);
 
     // --- コメント編集開始 ---
     const startEditComment = useCallback((item: RecommendedItem, e: React.MouseEvent) => {
@@ -258,9 +265,9 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     {/* オーナー: 削除ボタン（カード外に配置してクリップされない） */}
                     {isOwner && (
                         <button
-                            onClick={(e) => handleDelete(item.id, e)}
+                            onClick={(e) => requestDelete(item.id, e)}
                             disabled={deletingId === item.id}
-                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/90 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm backdrop-blur-sm"
+                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/70 text-white text-xs flex items-center justify-center hover:bg-red-600 hover:scale-110 focus:bg-red-600 transition-all disabled:opacity-50 shadow-sm"
                             aria-label={locale === 'ja' ? '削除' : 'Remove'}
                             title={locale === 'ja' ? '削除' : 'Remove'}
                         >
@@ -433,10 +440,70 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 </>
             )}
 
-            {/* ===== 検索モーダル ===== */}
-            {showModal && (
+            {/* ===== 削除確認ダイアログ（カスタム） ===== */}
+            {confirmDeleteId && createPortal(
                 <div
-                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                    onClick={() => !deletingId && setConfirmDeleteId(null)}
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-label={locale === 'ja' ? '削除の確認' : 'Confirm deletion'}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl p-6 mx-4 w-full max-w-[340px] text-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* アイコン */}
+                        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-red-500">
+                                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+
+                        {/* メッセージ */}
+                        <h3 className="text-base font-bold text-gray-900 mb-1">
+                            {locale === 'ja' ? 'アイテムを削除' : 'Remove Item'}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-5">
+                            {locale === 'ja' ? 'この愛用アイテムを削除しますか？' : 'Remove this item from your picks?'}
+                        </p>
+
+                        {/* ボタン群 */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmDeleteId(null)}
+                                disabled={!!deletingId}
+                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50"
+                            >
+                                {locale === 'ja' ? 'キャンセル' : 'Cancel'}
+                            </button>
+                            <button
+                                onClick={executeDelete}
+                                disabled={!!deletingId}
+                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {deletingId ? (
+                                    <>
+                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        {locale === 'ja' ? '削除中…' : 'Removing…'}
+                                    </>
+                                ) : (
+                                    locale === 'ja' ? '削除する' : 'Remove'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* ===== 検索モーダル（viewport中央に表示するため createPortal で body 直下にレンダリング） ===== */}
+            {showModal && createPortal(
+                <div
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
                     onClick={handleBackdropClick}
                     role="dialog"
                     aria-modal="true"
@@ -444,7 +511,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={modalRef}
-                        className="bg-white w-full sm:w-[720px] sm:max-w-[90vw] max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-300 overflow-hidden"
+                        className="bg-white w-full sm:w-[720px] sm:max-w-[90vw] max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
                     >
                         {/* モーダルヘッダー */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -471,7 +538,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             />
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

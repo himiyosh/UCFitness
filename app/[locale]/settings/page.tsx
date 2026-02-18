@@ -34,6 +34,10 @@ export default async function SettingsPage() {
         return <div className="flex items-center justify-center min-h-screen text-[var(--foreground-muted)]">{commonT('userNotFound')}</div>;
     }
 
+    if (!user.username) {
+        redirect('/setup');
+    }
+
     // ⚡ パフォーマンス: Midnight テーマチェックと所持アイテムを並列取得
     const userId = (session.user as any).id;
     const [midnightResult, ownedItemsResult] = await Promise.all([
@@ -104,7 +108,9 @@ export default async function SettingsPage() {
                     <div className="flex items-center gap-1">
                         <RefreshButton />
                         <UserMenu user={{
-                            ...session.user,
+                            id: (session.user as any).id,
+                            name: user?.name || session.user.name,
+                            email: session.user.email,
                             image: user?.image || session.user.image
                         }} />
                     </div>

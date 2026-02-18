@@ -248,7 +248,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
     }, [isSharing]);
 
     return (
-        <div ref={containerRef} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative">
+        <div ref={containerRef} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative hover:shadow-lg transition-shadow">
             {/* Anchors for scrolling (positioned with offset for sticky header) */}
             <div id="weekly-graph" className="absolute -top-32 invisible pointer-events-none" />
             <div id="monthly-graph" className="absolute -top-32 invisible pointer-events-none" />

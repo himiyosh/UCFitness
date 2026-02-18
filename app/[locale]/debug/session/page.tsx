@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -14,7 +16,7 @@ export default async function SessionDebugPage() {
         // 1. Fetch DB User
         const { data: user } = await supabaseAdmin
             .from('users')
-            .select('*')
+            .select('id, name, email, image, username, provider')
             .eq('email', session.user.email)
             .single();
         dbUser = user;
@@ -23,7 +25,7 @@ export default async function SessionDebugPage() {
         if (user) {
             const { data: steps } = await supabaseAdmin
                 .from('daily_steps')
-                .select('*')
+                .select('user_id, steps, date')
                 .eq('user_id', user.id)
                 .eq('date', today)
                 .single();
@@ -91,5 +93,3 @@ export default async function SessionDebugPage() {
         </div>
     );
 }
-
-export const runtime = 'edge';

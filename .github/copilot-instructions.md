@@ -31,6 +31,14 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - 既存の関数・export は絶対に削除しない
 - ファイル末尾には必ず改行を入れる
 
+### 確認ダイアログ・ローディング表示ルール
+
+- **`window.confirm()` / `window.alert()` 等のブラウザ標準ダイアログは使用禁止** — 必ずアプリ内にカスタム確認ダイアログを実装すること
+- 確認ダイアログは `createPortal(…, document.body)` で viewport 中央に表示する
+- 破壊的操作（削除等）は赤いアクションボタン + キャンセルボタンの 2 択構成にする
+- **処理中はスピナー（`animate-spin`）付きのローディングインジケーターを表示**し、ボタンを `disabled` にする
+- 参考実装: `LeaveGroupButton.tsx`（インライン確認）、`RecommendedItems.tsx`（モーダル確認）
+
 ### React Hooks ルール（最重要 — 違反すると本番クラッシュ）
 
 **⚠️ React Error #310 が頻発した経緯あり。以下を厳守すること。**
@@ -47,14 +55,17 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 // ❌ NG: useMemo が早期 return の後にある → 本番クラッシュ
 if (loading) return <Skeleton />;
 if (!data) return null;
-const processed = useMemo(() => transform(data), [data]);  // ← CRASH
+const processed = useMemo(() => transform(data), [data]); // ← CRASH
 ```
 
 #### OK パターン
 
 ```tsx
 // ✅ OK: すべての Hooks を早期 return の前に配置し、null-safe にする
-const processed = useMemo(() => data ? transform(data) : defaultValue, [data]);
+const processed = useMemo(
+  () => (data ? transform(data) : defaultValue),
+  [data],
+);
 if (loading) return <Skeleton />;
 if (!data) return null;
 // ここ以降は data が確実に存在する

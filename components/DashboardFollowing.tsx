@@ -23,6 +23,7 @@ export default function DashboardFollowing() {
     const [following, setFollowing] = useState<FollowingUser[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasData, setHasData] = useState(false);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
         const fetchFollowing = async () => {
@@ -33,9 +34,11 @@ export default function DashboardFollowing() {
                     const list = data.following || [];
                     setFollowing(list.slice(0, 5));
                     setHasData(list.length > 0);
+                } else {
+                    setError(true);
                 }
             } catch {
-                // エラー時は非表示
+                setError(true);
             } finally {
                 setIsLoading(false);
             }
@@ -64,8 +67,26 @@ export default function DashboardFollowing() {
     }
 
     // フォロー0件の場合は表示しない
-    if (!hasData) {
+    if (!hasData && !error) {
         return null;
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+                <div className="flex flex-col items-center py-6 text-center">
+                    <span className="text-3xl mb-2">⚠️</span>
+                    <p className="text-sm font-semibold text-gray-600">{t('following')}</p>
+                    <button
+                        onClick={() => { setError(false); setIsLoading(true); window.location.reload(); }}
+                        className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:scale-105 transition-transform"
+                        style={{ background: 'var(--theme-primary)' }}
+                    >
+                        {t('retry') || '再試行'}
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     return (

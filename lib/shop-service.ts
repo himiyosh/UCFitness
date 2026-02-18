@@ -60,7 +60,7 @@ export interface PurchaseResult {
 export async function getShopItems(category?: ShopCategory): Promise<ShopItem[]> {
     let query = supabaseAdmin
         .from('shop_items')
-        .select('*')
+        .select('id, category, item_code, name_en, name_ja, description_en, description_ja, price, rank_required, preview_value, is_active, sort_order, created_at')
         .or('category.neq.TITLE,is_active.eq.true')
         .order('is_active', { ascending: false })
         .order('price', { ascending: true })
@@ -84,7 +84,7 @@ export async function getShopItem(itemId: string): Promise<ShopItem | null> {
 
     const { data, error } = await supabaseAdmin
         .from('shop_items')
-        .select('*')
+        .select('id, category, item_code, name_en, name_ja, description_en, description_ja, price, rank_required, preview_value, is_active, sort_order, created_at')
         .eq('id', itemId)
         .single();
 
