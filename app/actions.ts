@@ -17,7 +17,13 @@ function getSessionUserId(session: { user?: { id?: string } | null } | null): st
 }
 
 // 🛡️ セキュリティ: 許可されたファイルタイプとサイズ制限
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MIME_TO_EXT: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif'
+};
+const ALLOWED_IMAGE_TYPES = new Set(Object.keys(MIME_TO_EXT));
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 function validateImageFile(file: File): void {
@@ -93,7 +99,7 @@ export async function updateProfileImage(imageUrl: string | null) {
                     // Retry fetch
                     const profile = await getFitbitProfile(accessToken);
                     fitbitImage = profile.avatar;
-                } catch (refreshError: unknown) {
+                } catch (_refreshError: unknown) {
                     console.error("Failed to refresh token during reset");
                     // Fallback
                     await supabaseAdmin.from("users").update({ is_custom_image: false }).eq("id", userId);
@@ -140,7 +146,11 @@ export async function uploadProfileImage(formData: FormData) {
     // 🛡️ セキュリティ: ファイル検証
     validateImageFile(file);
 
-    const fileExt = file.name.split('.').pop();
+    // 🛡️ Sentinel: Use extension from validated MIME type (ignore user-provided extension)
+    // This prevents extension spoofing (e.g. uploading .html as .png)
+    const fileExt = MIME_TO_EXT[file.type];
+    if (!fileExt) throw new Error("Invalid file type");
+
     const filePath = `${userId}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseAdmin
