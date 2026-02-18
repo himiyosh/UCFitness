@@ -80,7 +80,7 @@ export default async function Home() {
     const [userResult, membershipResult, stepsResult] = await Promise.all([
       supabaseAdmin
         .from('users')
-        .select('username, step_goal, banner_url, image, name')
+        .select('username, step_goal, banner_url, image, name, group_keyword')
         .eq('id', userId)
         .single(),
       supabaseAdmin
@@ -114,14 +114,34 @@ export default async function Home() {
     });
 
     // レガシー users.group_keyword をサイレント同期 (他機能の整合性維持)
-    supabaseAdmin
-      .from('users')
-      .update({ group_keyword: groupKeywords })
-      .eq('id', userId)
-      .then(
-        () => {/* fire-and-forget */},
-        (err: unknown) => console.error('[group_keyword sync]', err)
-      );
+    // ⚡ Bolt Optimization: Only update if the list has actually changed to save DB writes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currentGroupKeywords = (userData as any)?.group_keyword || [];
+    const currentSet = new Set(currentGroupKeywords);
+    const newSet = new Set(groupKeywords);
+    let needsUpdate = false;
+
+    if (currentSet.size !== newSet.size) {
+      needsUpdate = true;
+    } else {
+      for (const k of newSet) {
+        if (!currentSet.has(k as string)) {
+          needsUpdate = true;
+          break;
+        }
+      }
+    }
+
+    if (needsUpdate) {
+      supabaseAdmin
+        .from('users')
+        .update({ group_keyword: groupKeywords })
+        .eq('id', userId)
+        .then(
+          () => {/* fire-and-forget */},
+          (err: unknown) => console.error('[group_keyword sync]', err)
+        );
+    }
 
     // Override session image with fresh DB image if available
     if (userData) {
