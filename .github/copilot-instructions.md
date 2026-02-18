@@ -278,3 +278,13 @@ export const runtime = "edge";
 
 - Edge Runtime では `fs`, `path`, `child_process` 等の Node.js ネイティブモジュールは使用不可
 - `crypto` は Web Crypto API (`crypto.subtle`) を使用すること
+
+#### `next/dynamic` の `ssr: false` 制約（ビルドエラー防止）
+
+- **Server Component（`'use client'` 宣言がないファイル）では `dynamic(() => import(...), { ssr: false })` は使用禁止**
+  - Next.js 15 では Server Component 内の `ssr: false` でビルドエラーになる
+  - `ssr: false` は `'use client'` 宣言のある Client Component 内でのみ使用可能
+- **Recharts 等の SSR 非対応ライブラリを Server Component のページから使う場合:**
+  - 対象コンポーネント自体を `'use client'` にし、その中で `import` する（通常はこれで十分）
+  - または中間の Client Component ラッパーを作り、そこで `dynamic(() => import(...), { ssr: false })` する
+- 参考: `GroupAnalytics.tsx`（Client Component 内で `ssr: false`）✅ / `wallet/page.tsx`（Server Component で `ssr: false` → ビルドエラー）❌

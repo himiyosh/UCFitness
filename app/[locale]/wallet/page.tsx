@@ -15,7 +15,10 @@ import { getTranslations } from "next-intl/server";
 import Footer from '@/components/Footer';
 
 // ⚡ パフォーマンス: Recharts系の重いチャートコンポーネントを遅延読み込み
-const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart'), { ssr: false });
+// ※ Server Component では ssr: false は使用不可 — Client Component 内でのみ使用可能
+const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart'), {
+    loading: () => <div className="w-full h-64 rounded-xl bg-gray-100 animate-pulse" />,
+});
 const TransactionHistory = nextDynamic(() => import('@/components/TransactionHistory'));
 const InvestorRankPanel = nextDynamic(() => import('@/components/InvestorRankPanel'));
 
