@@ -55,14 +55,17 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 // ❌ NG: useMemo が早期 return の後にある → 本番クラッシュ
 if (loading) return <Skeleton />;
 if (!data) return null;
-const processed = useMemo(() => transform(data), [data]);  // ← CRASH
+const processed = useMemo(() => transform(data), [data]); // ← CRASH
 ```
 
 #### OK パターン
 
 ```tsx
 // ✅ OK: すべての Hooks を早期 return の前に配置し、null-safe にする
-const processed = useMemo(() => data ? transform(data) : defaultValue, [data]);
+const processed = useMemo(
+  () => (data ? transform(data) : defaultValue),
+  [data],
+);
 if (loading) return <Skeleton />;
 if (!data) return null;
 // ここ以降は data が確実に存在する
