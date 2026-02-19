@@ -6,27 +6,29 @@ UCFitness プロジェクトのコード品質改善ループを **複数の専�
 ## アーキテクチャ
 
 ```
+
 ┌─────────────────────────────────────────────────────┐
-│         🎯 オーケストレーター (このファイル)            │
-│  事前チェック → ファイルルーティング → 検証 → 報告      │
+│ 🎯 オーケストレーター (このファイル) │
+│ 事前チェック → ファイルルーティング → 検証 → 報告 │
 └────────────┬────────────────────────────────────┬────┘
-             │  runSubagent で各エージェントを起動  │
-   ┌─────────▼──────────┐              ┌─────────▼──────────┐
-   │ 🔨 Build Validation│              │ 🎨 UI/UX           │
-   │ 型・ビルド・i18n    │              │ 操作性・視覚品質    │
-   └────────────────────┘              └─────────────────────┘
-   ┌─────────────────────┐             ┌─────────────────────┐
-   │ 💰 Monetization     │              │ ⚡ Performance       │
-   │ 広告・収益チャネル   │              │ レンダリング・API    │
-   └─────────────────────┘             └─────────────────────┘
-   ┌─────────────────────┐             ┌─────────────────────┐
-   │ 🔒 Security         │              │ ✨ Feature Enhance  │
-   │ API・入力検証        │              │ 機能完成度向上      │
-   └─────────────────────┘             └─────────────────────┘
-   ┌─────────────────────────────────────────────────────────┐
-   │ 🔍 New Feature Discovery (サイクル末に1回)               │
-   │ 新機能提案・レポート出力                                  │
-   └─────────────────────────────────────────────────────────┘
+│ runSubagent で各エージェントを起動 │
+┌─────────▼──────────┐ ┌─────────▼──────────┐
+│ 🔨 Build Validation│ │ 🎨 UI/UX │
+│ 型・ビルド・i18n │ │ 操作性・視覚品質 │
+└────────────────────┘ └─────────────────────┘
+┌─────────────────────┐ ┌─────────────────────┐
+│ 💰 Monetization │ │ ⚡ Performance │
+│ 広告・収益チャネル │ │ レンダリング・API │
+└─────────────────────┘ └─────────────────────┘
+┌─────────────────────┐ ┌─────────────────────┐
+│ 🔒 Security │ │ ✨ Feature Enhance │
+│ API・入力検証 │ │ 機能完成度向上 │
+└─────────────────────┘ └─────────────────────┘
+┌─────────────────────┐ ┌─────────────────────────────────────────────┐
+│ 🧪 Testing │ │ 🔍 New Feature Discovery (サイクル末に1回) │
+│ テストカバレッジ確認 │ │ 新機能提案・レポート出力 │
+└─────────────────────┘ └─────────────────────────────────────────────┘
+
 ```
 
 ## 作業ブランチ
@@ -54,6 +56,18 @@ main には絶対に push/merge しないこと。
 大量変更はレビュー困難・リグレッションの原因になるため、優先度の高いファイルから着手し、
 残りは次のサイクルに回すこと。
 
+#### 推奨実行順序
+
+依存関係に基づき、以下の順序で実行すること（並列実行可の組はまとめて起動してよい）:
+
+1. **🔨 Build Validation** — ビルドが通らなければ他の改善は無意味
+2. **🔒 Security** — セキュリティ修正は機能変更より優先
+3. **⚡ Performance** — パフォーマンス改善は UI/機能変更の前に
+4. **🎨 UI/UX + ✨ Feature Enhancement** ← 並列実行可
+5. **💰 Monetization** — UI/機能が固まった後に収益チャネル確認
+6. **🧪 Testing** — 変更が確定した後にテストカバレッジ確認
+7. **🔍 New Feature Discovery** — サイクル末に1回実行
+
 #### エージェント一覧とプロンプトファイル
 
 | # | エージェント名 | プロンプトファイル | 役割 |
@@ -64,7 +78,8 @@ main には絶対に push/merge しないこと。
 | 4 | ⚡ Performance | `.github/prompts/agents/performance.prompt.md` | レンダリング・API・バンドル最適化 |
 | 5 | 🔒 Security | `.github/prompts/agents/security.prompt.md` | API・入力検証・セキュリティ脆弱性検出 |
 | 6 | ✨ Feature Enhancement | `.github/prompts/agents/feature-enhancement.prompt.md` | 既存機能の完成度向上 |
-| 7 | 🔍 New Feature Discovery | `.github/prompts/agents/new-feature-discovery.prompt.md` | 新機能提案（実装はしない） |
+| 7 | 🧪 Testing | `.github/prompts/agents/testing.prompt.md` | テストカバレッジ確認・テスト提案 |
+| 8 | 🔍 New Feature Discovery | `.github/prompts/agents/new-feature-discovery.prompt.md` | 新機能提案（実装はしない） |
 
 #### ファイル種別 → エージェント・ルーティング
 
@@ -72,8 +87,8 @@ main には絶対に push/merge しないこと。
 
 | ファイル種別 | 適用エージェント |
 |------------|-----------------|
-| `.tsx` / `.jsx` | 🔨Build + 🎨UI/UX + 💰Monetization + ⚡Performance + ✨FeatureEnhancement |
-| `.ts` / `.js` (API routes, lib/) | 🔨Build + ⚡Performance + 🔒Security |
+| `.tsx` / `.jsx` | 🔨Build + 🎨UI/UX + 💰Monetization + ⚡Performance + ✨FeatureEnhancement + 🧪Testing |
+| `.ts` / `.js` (API routes, lib/) | 🔨Build + ⚡Performance + 🔒Security + 🧪Testing |
 | `.css` / `.scss` | 🎨UI/UX |
 | `.json` (messages/) | 🔨Build (i18n キー検証) |
 
@@ -83,13 +98,16 @@ main には絶対に push/merge しないこと。
 `runSubagent` の `prompt` パラメーターにその内容 + 対象ファイル情報を渡す。
 
 ```
+
 手順:
-1. read_file で該当する agents/*.prompt.md を読み込む
+
+1. read_file で該当する agents/\*.prompt.md を読み込む
 2. runSubagent を呼び出し:
    - prompt: 読み込んだプロンプト内容 + "対象ファイル: [ファイルパス]" + "共通禁止事項" (後述)
    - description: エージェント名 (例: "Build Validation")
 3. エージェントの結果を受け取り、修正内容を確認
 4. 修正ごとにコミット
+
 ```
 
 **各 Cycle の最後に** 🔍 New Feature Discovery をプロジェクト全体に対して1回実行する。
@@ -101,6 +119,17 @@ main には絶対に push/merge しないこと。
 - 変更したファイルに対して `get_errors` で IDE エラーがないことを確認
 - `git push` は明示的に許可があるまで実行しない
 - **改善レポート更新**: 各サイクルで行った改善内容を `improvement-report.md` に追記する（全サブエージェントの結果を含む）
+
+### Step 3.5: エラーリカバリ
+
+Step 3 の検証で問題が発生した場合、以下の手順で対処する:
+
+1. **変更の一時退避**: `git stash` で作業中の変更を退避
+2. **特定ファイルの復元**: `git checkout -- <file>` で問題のあるファイルを変更前に戻す
+3. **エージェント再試行**: 同一エージェントが3回連続で失敗した場合はスキップし、次のエージェントに進む
+4. **全体ロールバック**: 複数ファイルにまたがる問題の場合は `git stash` で全変更を退避し、ユーザーに報告
+
+> **原則:** エラーが解消できない場合は無理に修正を続けず、クリーンな状態をキープしてユーザーに判断を委ねる。
 
 ### Step 4: dev サーバー再起動
 
@@ -131,12 +160,16 @@ main には絶対に push/merge しないこと。
 
 1. **同一パターンの修正を2回以上行った場合**
    - 例: 同じ種類の CSS バグを複数ファイルで修正 → `agents/ui-ux.prompt.md` にルール追加
+   - 例: `supabaseAdmin` を `supabase` と書いてしまう間違いが2回 → `agents/build-validation.prompt.md` に追加
 2. **ユーザーからの指示・修正フィードバックがあった場合**
    - 例: 「この書き方はやめて」「こっちのパターンを使って」→ 対応エージェントファイルに禁止/推奨パターン追加
+   - 例: 「モーダルは `createPortal` で実装して」→ `agents/feature-enhancement.prompt.md` に追加
 3. **copilot-instructions.md に記載があるがプロンプトに反映されていないルールを発見した場合**
    - 例: copilot-instructions にモバイルファーストの詳細ルールがあるが prompt に未記載 → 追加
+   - 例: コミットメッセージフォーマットのルールが prompt 側に未反映 → オーケストレーターに追加
 4. **新しい技術的制約を発見した場合**
    - 例: Edge Runtime で使えない API を発見 → `agents/build-validation.prompt.md` に追加
+   - 例: Tailwind CSS v4 で廃止されたクラスを発見 → `agents/ui-ux.prompt.md` に追加
 
 #### 追記の方法
 
@@ -185,4 +218,3 @@ main には絶対に push/merge しないこと。
 - 修正が別の箇所を壊している場合 → 元に戻して別アプローチを検討
 - 3回以上同じファイルを再修正している場合 → 根本原因を見直す
 ```
-

@@ -21,7 +21,7 @@ const handleClick = () => doSomething(id);
 // ✅ OK: useMemo / useCallback でメモ化
 const filtered = useMemo(
   () => (items ? items.filter((i) => i.active) : []),
-  [items]
+  [items],
 );
 const handleClick = useCallback(() => doSomething(id), [id]);
 ```
@@ -45,6 +45,7 @@ const HeavyChart = dynamic(() => import("./HeavyChart"), {
 **実績:** GroupAnalytics で `dynamic` + `ssr: false` 適用により初期ロードサイズ 11 倍改善。
 
 **注意事項:**
+
 - `ssr: false` は `'use client'` 宣言のある Client Component 内でのみ使用可能
 - Server Component では `ssr: false` はビルドエラーになる（Next.js 15 制約）
 
@@ -79,3 +80,33 @@ const [users, groups] = await Promise.all([
 - 大きなライブラリの部分 import（`import { specific } from 'lib'`）
 - 不要な依存関係の特定
 - `'use client'` の範囲を最小限に保つ（Server Component 優先）
+
+#### 6. 計測方法ガイド
+
+パフォーマンス改善の効果を定量的に示すため、以下の計測手法を活用:
+
+| 計測対象 | 手法 | 使用場面 |
+|---------|------|----------|
+| 関数実行時間 | `console.time()` / `console.timeEnd()` | APIルート・重い計算 |
+| コンポーネント描画 | React DevTools Profiler | 再レンダリング調査 |
+| バンドルサイズ | `@next/bundle-analyzer` | 依存関係の肌叫感 |
+| Web Vitals | Lighthouse / `next/web-vitals` | LCP・CLS・FID 総合評価 |
+
+```tsx
+// ✅ API ルートの応答時間計測例
+console.time('[API] /api/steps/sync');
+const result = await supabaseAdmin.from('steps').upsert(data);
+console.timeEnd('[API] /api/steps/sync');
+// → 「[API] /api/steps/sync: 42ms」と出力
+```
+
+**改善提案時の必須記載:** `improvement-report.md` に「改善前: Xms → 改善後: Yms」の形式で before/after を記載すること
+
+### スキップ条件
+
+以下の場合、このエージェントの実行をスキップしてよい:
+
+- ドキュメント（`.md`）のみの変更
+- 翻訳ファイル（`messages/*.json`）のみの変更
+- CSS / スタイルのみの変更
+- プロンプトファイル（`.github/prompts/`）のみの変更
