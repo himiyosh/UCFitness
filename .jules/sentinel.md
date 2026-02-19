@@ -57,3 +57,8 @@
 **Vulnerability:** `app/api/user/group/route.ts` allowed group owners to forcibly add any user to their group without the user's consent or prior relationship. This created a potential for spam and harassment.
 **Learning:** Authorization checks often focus on the *initiator's* permissions (e.g., "Is this user the owner?"), but fail to consider the *recipient's* consent. Actions that modify another user's state (like group membership) require mutual agreement or a trust relationship.
 **Prevention:** Enforce a trust relationship check (e.g., "Does the target user follow the initiator?") before allowing unilateral actions like invites.
+
+## 2026-06-25 - Authorization Bypass in Private Group Join
+**Vulnerability:** `app/api/user/group/route.ts` allowed any authenticated user to join a private group (`is_public: false`) simply by knowing its keyword, bypassing the invite-only restriction.
+**Learning:** Checks for resource existence often miss state-dependent authorization rules (e.g., "Group exists" vs "Group exists AND is joinable"). Relying on "secret" identifiers (keywords) is not security; if the ID leaks, the resource is exposed.
+**Prevention:** Explicitly check the state of the resource (`is_public`) and enforce access control policies (must be member/invited) before allowing actions like "join".
