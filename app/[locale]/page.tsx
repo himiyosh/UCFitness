@@ -8,10 +8,10 @@ import AuthButtons from '@/components/AuthButtons';
 import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import { auth } from "@/lib/auth";
-import { getAllRankings, getAllGroupRankings, getCachedGlobalRankings, deriveBatchGroupRankings, getCachedGlobalRankingMap, transformRankingMapToLists } from '@/lib/ranking-service';
+import { getAllRankings, getAllGroupRankings, deriveBatchGroupRankings, getCachedGlobalRankingMap, transformRankingMapToLists } from '@/lib/ranking-service';
 import { getCachedCombinedGroupCompetitionRankings } from '@/lib/group-ranking-service';
 import nextDynamic from 'next/dynamic';
-import { RankingEntry, enrichRankingsWithEquip, optimizeRankingsForPayload, enrichAllGroupRankingsWithEquip, enrichCombinedRankings } from '@/lib/ranking-utils';
+import { RankingEntry, optimizeRankingsForPayload, enrichCombinedRankings } from '@/lib/ranking-utils';
 import AutoSync from '@/components/AutoSync';
 import Footer from '@/components/Footer';
 import LandingPage from '@/components/LandingPage';
@@ -32,11 +32,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const session = await auth();
-  const t = await getTranslations('Dashboard');
 
   if (!session?.user) {
     return <LandingPage />;
   }
+
+  // ⚡ Bolt Optimization: Start background tasks early (Parallelize translation & data fetching)
+  const tPromise = getTranslations('Dashboard');
+  const rankingMapPromise = getCachedGlobalRankingMap();
+  const groupCompetitionPromise = getCachedCombinedGroupCompetitionRankings();
 
   const groupKeywords: string[] = [];
   const groupMetadataMap = new Map<string, { id: string; header_image_url: string | null; image_url: string | null }>();
@@ -155,7 +159,7 @@ export default async function Home() {
   // Pre-load ALL rankings (Optimization: Single query per scope)
   // ⚡ Bolt Optimization: Use Compact Map Cache (2.5MB) instead of huge Lists Cache (10MB)
   // This reduces memory usage and transfer size significantly
-  const rankingMap = await getCachedGlobalRankingMap();
+  const rankingMap = await rankingMapPromise;
   const rawGlobalRankings = transformRankingMapToLists(rankingMap);
 
   // ⚡ Bolt Optimization: Truncate rankings to reduce HTML payload size (Top 100 + You)
@@ -255,7 +259,7 @@ export default async function Home() {
     WEEKLY: compWeekly,
     MONTHLY: compMonthly,
     YEARLY: compYearly
-  } = await getCachedCombinedGroupCompetitionRankings();
+  } = await groupCompetitionPromise;
 
   const groupCompetitionRankings = {
     DAILY: compDaily,
@@ -268,6 +272,8 @@ export default async function Home() {
   const userDataBanner = bannerUrl;
   const primaryGroupBanner = userDataBanner || (allGroupRankings.length > 0 ? allGroupRankings[0].header_image_url : null);
   const userImage = session?.user?.image;
+
+  const t = await tPromise;
 
   return (
     <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
