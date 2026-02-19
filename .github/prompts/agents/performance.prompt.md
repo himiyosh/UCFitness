@@ -85,18 +85,18 @@ const [users, groups] = await Promise.all([
 
 パフォーマンス改善の効果を定量的に示すため、以下の計測手法を活用:
 
-| 計測対象 | 手法 | 使用場面 |
-|---------|------|----------|
-| 関数実行時間 | `console.time()` / `console.timeEnd()` | APIルート・重い計算 |
-| コンポーネント描画 | React DevTools Profiler | 再レンダリング調査 |
-| バンドルサイズ | `@next/bundle-analyzer` | 依存関係の肌叫感 |
-| Web Vitals | Lighthouse / `next/web-vitals` | LCP・CLS・FID 総合評価 |
+| 計測対象           | 手法                                   | 使用場面               |
+| ------------------ | -------------------------------------- | ---------------------- |
+| 関数実行時間       | `console.time()` / `console.timeEnd()` | APIルート・重い計算    |
+| コンポーネント描画 | React DevTools Profiler                | 再レンダリング調査     |
+| バンドルサイズ     | `@next/bundle-analyzer`                | 依存関係の肌叫感       |
+| Web Vitals         | Lighthouse / `next/web-vitals`         | LCP・CLS・FID 総合評価 |
 
 ```tsx
 // ✅ API ルートの応答時間計測例
-console.time('[API] /api/steps/sync');
-const result = await supabaseAdmin.from('steps').upsert(data);
-console.timeEnd('[API] /api/steps/sync');
+console.time("[API] /api/steps/sync");
+const result = await supabaseAdmin.from("steps").upsert(data);
+console.timeEnd("[API] /api/steps/sync");
 // → 「[API] /api/steps/sync: 42ms」と出力
 ```
 

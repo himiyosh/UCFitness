@@ -17,12 +17,12 @@
 
 変更されたファイルごとに、対応するテストファイルが存在するか確認する。
 
-| 対象ファイル | 期待するテストファイル |
-|---|---|
-| `lib/foo.ts` | `lib/foo.test.ts` または `lib/__tests__/foo.test.ts` |
-| `components/Bar.tsx` | `components/Bar.test.tsx` または `components/__tests__/Bar.test.tsx` |
-| `app/api/xxx/route.ts` | `app/api/xxx/route.test.ts` |
-| `hooks/useXxx.ts` | `hooks/useXxx.test.ts` |
+| 対象ファイル           | 期待するテストファイル                                               |
+| ---------------------- | -------------------------------------------------------------------- |
+| `lib/foo.ts`           | `lib/foo.test.ts` または `lib/__tests__/foo.test.ts`                 |
+| `components/Bar.tsx`   | `components/Bar.test.tsx` または `components/__tests__/Bar.test.tsx` |
+| `app/api/xxx/route.ts` | `app/api/xxx/route.test.ts`                                          |
+| `hooks/useXxx.ts`      | `hooks/useXxx.test.ts`                                               |
 
 ### 2. テストケースの網羅性
 
@@ -57,17 +57,20 @@
 ### テストカバレッジ確認結果
 
 #### テストなし（要追加）
-| ファイル | 推奨テスト | 優先度 |
-|---|---|---|
-| `lib/rewards.ts` | 報酬計算の正常系・異常系 | 🔴 高 |
-| `app/api/sync/route.ts` | 同期 API のレスポンス検証 | 🔴 高 |
+
+| ファイル                | 推奨テスト                | 優先度 |
+| ----------------------- | ------------------------- | ------ |
+| `lib/rewards.ts`        | 報酬計算の正常系・異常系  | 🔴 高  |
+| `app/api/sync/route.ts` | 同期 API のレスポンス検証 | 🔴 高  |
 
 #### テスト不足（追加推奨）
-| ファイル | 不足しているケース | 優先度 |
-|---|---|---|
-| `lib/utils.test.ts` | `formatDate` の境界値テスト | 🟡 中 |
+
+| ファイル            | 不足しているケース          | 優先度 |
+| ------------------- | --------------------------- | ------ |
+| `lib/utils.test.ts` | `formatDate` の境界値テスト | 🟡 中  |
 
 #### テスト十分 ✅
+
 - `lib/coins.ts` — 主要パスがカバー済み
 ```
 
