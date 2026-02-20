@@ -76,17 +76,27 @@ export default async function Home() {
     lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
     const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
 
-    // ⚡ パフォーマンス: 3つの独立クエリを並列実行（逐次→並列で ~3x 高速化）
-    const [userResult, membershipResult, stepsResult] = await Promise.all([
+    // ⚡ パフォーマンス: ユーザー情報とグループ所属を1つのクエリに結合し、日次ステップと並列実行 (3クエリ -> 2クエリ)
+    const [userResult, stepsResult] = await Promise.all([
       supabaseAdmin
         .from('users')
-        .select('username, step_goal, banner_url, image, name')
+        .select(`
+          username,
+          step_goal,
+          banner_url,
+          image,
+          name,
+          group_members (
+            groups (
+              id,
+              keyword,
+              header_image_url,
+              image_url
+            )
+          )
+        `)
         .eq('id', userId)
         .single(),
-      supabaseAdmin
-        .from('group_members')
-        .select('groups(id, keyword, header_image_url, image_url)')
-        .eq('user_id', userId),
       supabaseAdmin
         .from('daily_steps')
         .select('steps, date')
@@ -95,8 +105,9 @@ export default async function Home() {
     ]);
 
     const userData = userResult.data;
-    const memberships = membershipResult.data;
-    const userStepsData = stepsResult.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const memberships = (userData as any)?.group_members;
+    const userStepsData = stepsResult.data as { date: string; steps: number }[] | null;
 
     stepGoal = userData?.step_goal || 10000;
     username = userData?.username;
@@ -138,17 +149,17 @@ export default async function Home() {
 
     // Process results in memory
     const stepsMap = new Map<string, number>();
-    userStepsData?.forEach(row => {
+    userStepsData?.forEach((row) => {
       stepsMap.set(row.date, row.steps);
     });
 
     mySteps = stepsMap.get(today) || 0;
     yesterdaySteps = stepsMap.get(yesterday) || 0;
 
-    lastWeekSteps = (userStepsData ?? []).filter(row => row.date >= lastWeekStartStr && row.date < thisWeekStartStr)
+    lastWeekSteps = (userStepsData ?? []).filter((row) => row.date >= lastWeekStartStr && row.date < thisWeekStartStr)
       .reduce((sum, row) => sum + row.steps, 0) || 0;
 
-    lastMonthSteps = (userStepsData ?? []).filter(row => row.date >= lastMonthStartStr && row.date < thisMonthStartStr)
+    lastMonthSteps = (userStepsData ?? []).filter((row) => row.date >= lastMonthStartStr && row.date < thisMonthStartStr)
       .reduce((sum, row) => sum + row.steps, 0) || 0;
   }
 
