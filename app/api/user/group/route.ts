@@ -33,13 +33,27 @@ export async function POST(request: Request) {
       // Check if group exists
       const { data: existingGroup } = await supabaseAdmin
         .from('groups')
-        .select('id')
+        .select('id, is_public')
         .eq('keyword', target)
         .single();
 
       let groupId = existingGroup?.id;
 
-      if (!groupId) {
+      if (groupId) {
+        // 🛡️ Sentinel: Block unauthorized access to private groups
+        if (existingGroup.is_public === false) {
+          const { data: member } = await supabaseAdmin
+            .from('group_members')
+            .select('id')
+            .eq('group_id', groupId)
+            .eq('user_id', userId)
+            .single();
+
+          if (!member) {
+            return NextResponse.json({ error: "Cannot join private group without invitation" }, { status: 403 });
+          }
+        }
+      } else {
         // 🛡️ Sentinel: Validate Keyword before creation
         // Enforce: 3-50 chars, alphanumeric, underscores, hyphens only
         const KEYWORD_REGEX = /^[a-zA-Z0-9_-]{3,50}$/;
