@@ -57,3 +57,8 @@
 **Vulnerability:** `app/api/user/group/route.ts` allowed group owners to forcibly add any user to their group without the user's consent or prior relationship. This created a potential for spam and harassment.
 **Learning:** Authorization checks often focus on the *initiator's* permissions (e.g., "Is this user the owner?"), but fail to consider the *recipient's* consent. Actions that modify another user's state (like group membership) require mutual agreement or a trust relationship.
 **Prevention:** Enforce a trust relationship check (e.g., "Does the target user follow the initiator?") before allowing unilateral actions like invites.
+
+## 2026-05-25 - Private Group Join Bypass
+**Vulnerability:** `app/api/user/group/route.ts` relied on the `is_public` flag solely for hiding groups from rankings but failed to enforce this access control during the join process (`action: 'add'`). This allowed any user knowing the keyword of a private group to join it without an invitation.
+**Learning:** Privacy flags often control visibility (Listing) but must also be explicitly checked at access points (Join/Read). "Hidden" is not the same as "Restricted". Security controls must be implemented at the resource access level, not just the discovery level.
+**Prevention:** When implementing "private" resources, ensure that all access methods (join, read, update) verify the privacy status and membership/permission before proceeding. Don't rely on the secrecy of an identifier (keyword) for security.
