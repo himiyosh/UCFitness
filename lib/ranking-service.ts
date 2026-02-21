@@ -1015,6 +1015,20 @@ export const deriveBatchGroupRankings = async (
         YEARLY: null
     };
 
+    // ⚡ Bolt Optimization: Reuse user objects across groups to reduce memory allocation
+    // We clone once per user for this request, instead of once per group * per period
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const requestScopeUsersMap = new Map<string, any>();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getClonedUser = (originalUser: any) => {
+        const uid = originalUser.id;
+        if (!requestScopeUsersMap.has(uid)) {
+            requestScopeUsersMap.set(uid, { ...originalUser });
+        }
+        return requestScopeUsersMap.get(uid);
+    };
+
     groupIds.forEach(gid => {
         const memberIds = groupUsersMap.get(gid) || [];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1031,7 +1045,7 @@ export const deriveBatchGroupRankings = async (
             const prevKey = prevKeyMap[key];
             result[gid][key] = groupEntries.map(e => ({
                 steps: e[key],
-                users: { ...e.users }, // Clone to avoid mutating shared/cached objects
+                users: getClonedUser(e.users), // Reuse cloned user object
                 ...(prevKey ? { prevSteps: e[prevKey] } : {})
             })).sort((a, b) => b.steps - a.steps);
         });

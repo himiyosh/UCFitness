@@ -65,7 +65,7 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
     // Assign original ranks manually since we're filtering
     const rankedItems: RankingEntry[] = allRankings.map((r, i) => ({
         ...r,
-        originalRank: i + 1
+        originalRank: r.originalRank ?? (i + 1)
     }));
 
     if (!userId) {
@@ -191,12 +191,24 @@ export function optimizeRankingsForPayload(
                 // findIndex is O(N) but avoids allocating objects for the whole list.
                 const userIndex = fullList.findIndex(r => r.users.id === userId);
                 if (userIndex !== -1) {
-                    // Create entry only for the user found
-                    const entry = fullList[userIndex];
-                    resultList.push({
-                        ...entry,
-                        originalRank: entry.originalRank ?? (userIndex + 1),
-                        users: { ...entry.users }
+                    // Create entry for the user found AND neighbors (User-1, User, User+1)
+                    // This ensures client-side display logic has enough context (top 3 + user + neighbors)
+                    const indicesToAdd = [userIndex - 1, userIndex, userIndex + 1];
+
+                    indicesToAdd.forEach(idx => {
+                        if (idx >= 0 && idx < fullList.length) {
+                            const entry = fullList[idx];
+                            const rank = entry.originalRank ?? (idx + 1);
+
+                            // Avoid duplicates (e.g. if neighbor is already in top N)
+                            if (!resultList.find(r => r.originalRank === rank)) {
+                                resultList.push({
+                                    ...entry,
+                                    originalRank: rank,
+                                    users: { ...entry.users }
+                                });
+                            }
+                        }
                     });
                 }
             }

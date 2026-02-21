@@ -198,6 +198,11 @@ export default async function Home() {
         neighbors = await getAllRankings('GROUP', keyword);
       }
 
+      // ⚡ Bolt Optimization: Truncate group rankings to reduce payload size (Top 100 + User)
+      // This massively reduces JSON size for large groups (e.g. 1000+ members)
+      // Also ensures neighbors are included for display logic
+      neighbors = optimizeRankingsForPayload(neighbors, (session?.user as any)?.id, 100);
+
       // Robustness: Ensure *Current User* is in the list
       // This handles cases where `group_members` table is out of sync with `users.group_keyword`
       // or if the user has 0 steps and was excluded by some upstream logic.
