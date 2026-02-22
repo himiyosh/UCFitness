@@ -174,11 +174,9 @@ export default function GroupReactions({
     // compact モード: バッジは常時表示、追加ボタン+ピッカーはホバー/長押しで表示
     // forceShow が唯一の開閉トリガー（onMouseEnter/Leave 不要）
     // バッジが多い場合は MAX_VISIBLE_BADGES 個まで表示し、残りは "+N" で省略
+    // 常にインラインコンテナをレンダリングし、ユーザー名と同じ行に表示する
     if (compact) {
         const isActive = forceShow;
-
-        // リアクションもアクティブ状態もない場合、何もレンダリングしない（垂直中央揃えのため）
-        if (!hasAnyReactions && !isActive) return null;
 
         const visibleEmojis = activeEmojis.slice(0, maxVisibleBadges);
         const hiddenCount = activeEmojis.length - visibleEmojis.length;

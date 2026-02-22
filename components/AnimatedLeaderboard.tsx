@@ -334,31 +334,31 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                         )}
                                                                         </div>
                                                                         <div className="relative flex flex-col min-w-0 flex-1">
-                                                                            <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                                                            <div className="text-sm font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
                                                                                 <span>
                                                                                     {entry.users?.name || commonT('anonymous')}
                                                                                 </span>
                                                                                 {entry.users.id === userId && <span className="px-1.5 py-0.5 rounded text-xs bg-[var(--theme-primary)] text-white font-bold">{commonT('you')}</span>}
-                                                                            </p>
+                                                                                {/* リアクション — ユーザー名と同じ行にインライン表示 */}
+                                                                                {userId && (
+                                                                                    <span className="inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+                                                                                        <GroupReactions
+                                                                                            groupId="__global__"
+                                                                                            toUserId={entry.users.id}
+                                                                                            currentUserId={userId}
+                                                                                            period={period}
+                                                                                            reactions={globalReactions}
+                                                                                            onReactionToggle={handleGlobalReactionToggle}
+                                                                                            isSelf={entry.users.id === userId}
+                                                                                            compact
+                                                                                            forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
+                                                                                            maxVisibleBadges={5}
+                                                                                        />
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
                                                                             {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
                                                                                 <p className="text-xs text-gray-400 font-medium leading-tight whitespace-nowrap">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
-                                                                            )}
-                                                                            {/* リアクション — 称号の下に固定高さで行内表示 */}
-                                                                            {userId && (
-                                                                                <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
-                                                                                    <GroupReactions
-                                                                                        groupId="__global__"
-                                                                                        toUserId={entry.users.id}
-                                                                                        currentUserId={userId}
-                                                                                        period={period}
-                                                                                        reactions={globalReactions}
-                                                                                        onReactionToggle={handleGlobalReactionToggle}
-                                                                                        isSelf={entry.users.id === userId}
-                                                                                        compact
-                                                                                        forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
-                                                                                        maxVisibleBadges={5}
-                                                                                    />
-                                                                                </div>
                                                                             )}
                                                                         </div>
                                                                     </div>
