@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     // ⚡ パフォーマンス: supabaseAdmin を使用し必要なカラムのみ取得
     const { data: user } = await supabaseAdmin
         .from("users")
-        .select("name, image, username, is_custom_image, step_goal, banner_url, notification_reactions, notification_gear_reactions")
+        .select("name, image, username, is_custom_image, step_goal, banner_url")
         .eq("id", (session.user as any).id)
         .single();
 
@@ -41,6 +41,13 @@ export default async function SettingsPage() {
     if (!user.username) {
         redirect('/setup');
     }
+
+    // 通知設定カラム（DB にカラムが未追加の場合でもエラーにならないよう別クエリで安全に取得）
+    const { data: notifySettings } = await supabaseAdmin
+        .from("users")
+        .select("notification_reactions, notification_gear_reactions")
+        .eq("id", (session.user as any).id)
+        .single();
 
     // ⚡ パフォーマンス: Midnight テーマチェックと所持アイテムを並列取得
     const userId = (session.user as any).id;
@@ -128,7 +135,7 @@ export default async function SettingsPage() {
                     <p className="text-gray-500">{t('description')}</p>
                 </div>
 
-                <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} ownedThemes={ownedThemes} />
+                <SettingsForm user={{ ...user, notification_reactions: notifySettings?.notification_reactions ?? null, notification_gear_reactions: notifySettings?.notification_gear_reactions ?? null }} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} ownedThemes={ownedThemes} />
 
                 {/* データエクスポート */}
                 <div className="mt-8 max-w-sm">

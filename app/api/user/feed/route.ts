@@ -68,12 +68,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // 2. ユーザー情報を一括取得（N+1防止）
         const { data: usersData } = await supabaseAdmin
             .from('users')
-            .select('id, name, image, username, notification_reactions, notification_gear_reactions')
+            .select('id, name, image, username')
             .in('id', targetIds);
+
+        // 通知設定（カラムが未追加の場合でもエラーにならないよう別クエリで取得）
+        const { data: notifyData } = await supabaseAdmin
+            .from('users')
+            .select('id, notification_reactions, notification_gear_reactions')
+            .eq('id', userId)
+            .single();
 
         const userMap = new Map<string, { name: string | null; image: string | null; username: string | null; notification_reactions: boolean | null; notification_gear_reactions: boolean | null }>();
         (usersData || []).forEach((u) => {
-            userMap.set(u.id, { name: u.name, image: u.image, username: u.username, notification_reactions: u.notification_reactions, notification_gear_reactions: u.notification_gear_reactions });
+            const isCurrentUser = u.id === userId;
+            userMap.set(u.id, {
+                name: u.name, image: u.image, username: u.username,
+                notification_reactions: isCurrentUser ? (notifyData?.notification_reactions ?? null) : null,
+                notification_gear_reactions: isCurrentUser ? (notifyData?.notification_gear_reactions ?? null) : null,
+            });
         });
 
         // 3. 複数ソースから並列でデータ取得（過去7日分に限定してパフォーマンス確保）
