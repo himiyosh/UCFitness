@@ -266,6 +266,7 @@ export default function GroupReactions({
                                         ${isLoading ? 'opacity-50 animate-pulse' : ''}
                                     `}
                                     title={reacted ? t('removeReaction') : t('addReaction')}
+                                    aria-label={`${reacted ? t('removeReaction') : t('addReaction')} ${emoji}`}
                                 >
                                     {emoji}
                                 </button>
@@ -337,6 +338,7 @@ export default function GroupReactions({
                                             ${isLoading ? 'opacity-50 animate-pulse' : ''}
                                         `}
                                         title={reacted ? t('removeReaction') : t('addReaction')}
+                                        aria-label={`${reacted ? t('removeReaction') : t('addReaction')} ${emoji}`}
                                     >
                                         {emoji}
                                     </button>

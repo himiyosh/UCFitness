@@ -24,8 +24,8 @@ export default async function MyGroupsPage() {
 
     const userId = (session.user as any).id;
 
-    // ⚡ パフォーマンス: ユーザーデータとメンバーシップを並列取得
-    const [userResult, membershipResult] = await Promise.all([
+    // ⚡ パフォーマンス: ユーザーデータ、メンバーシップ、翻訳を並列取得
+    const [userResult, membershipResult, t, dashboardT] = await Promise.all([
         supabaseAdmin
             .from('users')
             .select('name, group_keyword, image, username')
@@ -45,6 +45,8 @@ export default async function MyGroupsPage() {
       )
     `)
             .eq('user_id', userId),
+        getTranslations('Groups'),
+        getTranslations('Dashboard'),
     ]);
 
     const userData = userResult.data;
@@ -96,9 +98,6 @@ export default async function MyGroupsPage() {
         // If neither, sort by join date (newest first)
         return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
     });
-
-    const t = await getTranslations('Groups');
-    const dashboardT = await getTranslations('Dashboard');
 
     // G1/G8: グループサマリーデータの計算
     const totalMembers = membershipsWithRank.reduce((sum: number, m: any) => sum + (m.totalMembers || 0), 0);

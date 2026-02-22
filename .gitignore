@@ -45,3 +45,6 @@ migrations/
 others/
 improvement-report.json
 improvement-report.md
+
+# playwright MCP テスト出力
+.playwright-mcp/

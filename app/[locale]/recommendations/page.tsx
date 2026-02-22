@@ -14,10 +14,13 @@ import Footer from '@/components/Footer';
 export const dynamic = 'force-dynamic';
 
 export default async function RecommendationsPage() {
-    const session = await auth();
-    const t = await getTranslations('Recommendations');
-    const dashboardT = await getTranslations('Dashboard');
-    const locale = await getLocale();
+    // ⭐ パフォーマンス: 認証と翻訳を並列取得
+    const [session, t, dashboardT, locale] = await Promise.all([
+        auth(),
+        getTranslations('Recommendations'),
+        getTranslations('Dashboard'),
+        getLocale(),
+    ]);
 
     if (!session || !session.user) {
         redirect("/");

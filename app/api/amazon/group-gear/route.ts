@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // メンバーの recommended_items を取得（ユーザー情報付き）
     const { data: rawItems } = await supabaseAdmin
         .from('recommended_items')
-        .select('*, users (username, image)')
+        .select('id, asin, title, image_url, affiliate_link, user_id, comment, updated_at, users (username, image)')
         .in('user_id', memberIds)
         .order('updated_at', { ascending: false })
         .limit(100);

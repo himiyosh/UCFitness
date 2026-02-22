@@ -111,7 +111,7 @@ export async function POST(request: Request) {
             }, {
                 onConflict: 'user_id,asin',
             })
-            .select()
+            .select('id, user_id, asin, title, image_url, affiliate_link, display_order, comment, updated_at')
             .single();
 
         if (error) {
@@ -159,7 +159,7 @@ export async function PATCH(request: Request) {
             })
             .eq('id', body.id)
             .eq('user_id', userId) // 本人のみ更新可能
-            .select()
+            .select('id, user_id, asin, title, image_url, affiliate_link, display_order, comment, updated_at')
             .single();
 
         if (error) {

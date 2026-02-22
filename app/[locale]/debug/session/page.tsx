@@ -8,16 +8,30 @@ export const dynamic = 'force-dynamic';
 export default async function SessionDebugPage() {
     const session = await auth();
 
+    // セキュリティ: 本番環境ではデバッグページを無効化
+    if (process.env.NODE_ENV === 'production') {
+        return (
+            <div className="p-8">
+                <h1 className="text-2xl font-bold mb-4">Debug Page Disabled</h1>
+                <p className="text-red-500">This debug page is not available in production.</p>
+            </div>
+        );
+    }
+
     let dbUser = null;
     let stepsRecord = null;
     const today = new Date().toISOString().split('T')[0];
 
-    if (session?.user?.email) {
+    if (session?.user) {
+        // セキュリティ: userIdで検索（emailではなくIDOR防止）
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const userId = (session.user as any).id;
+
         // 1. Fetch DB User
         const { data: user } = await supabaseAdmin
             .from('users')
             .select('id, name, email, image, username, provider')
-            .eq('email', session.user.email)
+            .eq('id', userId)
             .single();
         dbUser = user;
 
@@ -41,7 +55,15 @@ export default async function SessionDebugPage() {
                 <div className="border p-4 rounded bg-gray-50">
                     <h2 className="font-bold border-b pb-2 mb-2">1. NextAuth Session Data</h2>
                     <pre className="text-xs overflow-auto">
-                        {JSON.stringify(session, null, 2)}
+                        {JSON.stringify({
+                            user: {
+                                id: (session?.user as any)?.id || 'UNDEFINED',
+                                email: session?.user?.email || 'UNDEFINED',
+                                name: session?.user?.name || 'UNDEFINED',
+                                // セキュリティ: トークン等の機密情報はリダクト
+                            },
+                            expires: (session as any)?.expires || 'UNDEFINED',
+                        }, null, 2)}
                     </pre>
                     <div className="mt-2 text-sm">
                         <p><strong>User ID in Session:</strong> {(session?.user as any)?.id || 'UNDEFINED'}</p>

@@ -19,9 +19,12 @@ import Footer from '@/components/Footer';
 export const dynamic = 'force-dynamic';
 
 export default async function ChallengesPage() {
-    const session = await auth();
-    const t = await getTranslations('Challenge');
-    const dashboardT = await getTranslations('Dashboard');
+    // ⭐ パフォーマンス: 認証と翻訳を並列取得
+    const [session, t, dashboardT] = await Promise.all([
+        auth(),
+        getTranslations('Challenge'),
+        getTranslations('Dashboard'),
+    ]);
 
     if (!session?.user) {
         redirect('/');
