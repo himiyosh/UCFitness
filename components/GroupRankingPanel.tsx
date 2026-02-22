@@ -195,7 +195,6 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             onMouseEnter={() => setHoveredUserId(entryId)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}
                                             onTouchStart={() => {
-                                                if (isMe) return;
                                                 const timer = setTimeout(() => {
                                                     setLongPressUserId(entryId);
                                                 }, 500);

@@ -207,7 +207,6 @@ export default function GroupDetailLeaderboard({
                                             onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                             onTouchStart={() => {
-                                                if (isCurrentUser) return;
                                                 const timer = setTimeout(() => {
                                                     setLongPressUserId(entry.users.id);
                                                 }, 500);

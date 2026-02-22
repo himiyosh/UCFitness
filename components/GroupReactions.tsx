@@ -149,28 +149,6 @@ export default function GroupReactions({
         }
     }, [forceShow]);
 
-    // 自分自身の行にはリアクションボタンを表示しない（受信カウントのみ表示）
-    if (isSelf) {
-        if (!hasAnyReactions) return null;
-        return (
-            <div className={`flex items-center gap-0.5 ${compact ? '' : 'mt-0.5'} flex-wrap`}>
-                {activeEmojis.map(emoji => {
-                    const { count } = reactionCounts[emoji];
-                    return (
-                        <span
-                            key={emoji}
-                            className={`inline-flex items-center gap-0.5 rounded-full bg-[var(--theme-primary-light)] ${compact ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-0.5 text-sm'}`}
-                            title={t('receivedCount', { count })}
-                        >
-                            <span>{emoji}</span>
-                            <span className="font-bold text-[var(--theme-primary)]">{count}</span>
-                        </span>
-                    );
-                })}
-            </div>
-        );
-    }
-
     // compact モード: バッジは常時表示、追加ボタン+ピッカーはホバー/長押しで表示
     // forceShow が唯一の開閉トリガー（onMouseEnter/Leave 不要）
     // バッジが多い場合は MAX_VISIBLE_BADGES 個まで表示し、残りは "+N" で省略

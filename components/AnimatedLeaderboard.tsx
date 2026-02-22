@@ -292,7 +292,6 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                     onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                                                     onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                                                     onTouchStart={(e) => {
-                                                                        if (entry.users.id === userId) return;
                                                                         const timer = setTimeout(() => {
                                                                             e.preventDefault();
                                                                             setLongPressUserId(entry.users.id);
