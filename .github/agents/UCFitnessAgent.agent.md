@@ -23,7 +23,7 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 | エラー、バグ修正、クラッシュ、動かない、原因調査  | **Debug Mode**           |
 | UI、UX、ユーザー体験、レイアウト、デザイン        | **UX Designer**          |
 | アクセシビリティ、WCAG、a11y、スクリーンリーダー  | **Accessibility Expert** |
-| E2E テスト、ブラウザテスト、Playwright            | **Playwright Tester**    |
+| E2E テスト、ブラウザテスト、Playwright、表示確認、モバイル表示、画面チェック | **Playwright Tester** |
 | 計画、設計、アーキテクチャ、見積もり、要件整理    | **Plan Mode**            |
 | クリーンアップ、リファクタリング、技術負債、整理  | **Universal Janitor**    |
 | 改善ループ、品質改善、全体チェック、ループ回して  | **🔄 Improvement Loop**  |
@@ -119,12 +119,141 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 
 ### 🔵 Playwright Tester
 
-**専門**: E2E テスト作成・実行・デバッグ
+**専門**: MCP Playwright を使った実ブラウザ E2E テスト・表示/動作バグ検知
 
-- セレクタ優先順位: `getByRole` > `getByText` > `getByLabel` > `getByTestId`
-- テスト構造: Arrange / Act / Assert パターン
-- フレーキー対策: `expect().toBeVisible()` > `waitForSelector`、ネットワークは `page.route()` モック
-- テストシナリオ: 認証フロー、ダッシュボード、リーダーボード、グループ、ショップ、プロフィール
+#### ツールロード（必須）
+
+Playwright MCP ツールは遅延ロードのため、使用前に必ず以下を実行:
+```
+tool_search_tool_regex(pattern="mcp_playwright", limit=30)
+```
+
+#### ビューポート定義
+
+| デバイス | 幅 × 高 | 用途 |
+|---------|---------|------|
+| 📱 iPhone SE | `375 × 667` | モバイル最小幅テスト |
+| 📱 iPhone 14 Pro | `393 × 852` | 標準モバイルテスト |
+| 📱 Android (Pixel 7) | `412 × 915` | Android 標準テスト |
+| 💻 Tablet | `768 × 1024` | タブレットブレークポイント |
+| 🖥️ Desktop | `1280 × 800` | PC 標準テスト |
+| 🖥️ Desktop Wide | `1920 × 1080` | ワイドスクリーンテスト |
+
+**テスト時は最低限「📱 iPhone SE (375)」と「🖥️ Desktop (1280)」の 2 パターンを実行する。**
+
+#### テスト実行フロー
+
+```
+1. dev サーバー起動確認（localhost:3000 が応答するか）
+2. browser_navigate → 対象ページに遷移
+3. browser_resize → ビューポート設定
+4. browser_snapshot → DOM 構造・アクセシビリティツリー取得
+5. browser_take_screenshot → ビジュアルキャプチャ
+6. browser_console_messages → JS エラー・警告チェック
+7. browser_network_requests → API エラー (4xx/5xx) チェック
+8. インタラクション検証（click / type / hover）
+9. ビューポート切替 → 3-8 を繰り返し
+```
+
+#### 検出対象バグカテゴリ
+
+##### 🖥️ レイアウト・表示バグ
+- **横スクロール発生** — `browser_evaluate` で `document.documentElement.scrollWidth > document.documentElement.clientWidth` を検査
+- **要素のはみ出し** — スナップショットで `overflow` / 切れたテキスト確認
+- **モバイルでの崩れ** — 375px 幅でカード・テーブル・グラフが見切れないか
+- **z-index 競合** — ヘッダー・モーダル・ドロップダウンの重なり順が正しいか
+- **空白の巨大領域** — ファーストビュー以降に不自然な余白がないか
+- **テキスト切り詰め** — 長い名前やデータで `truncate` が正しく効いているか
+
+##### ⚙️ 動作・インタラクションバグ
+- **ボタン無反応** — `browser_click` 後に期待する状態変化が発生するか
+- **リンク切れ** — ナビゲーション後に 404 ページに遷移しないか
+- **フォーム送信** — 入力 → 送信 → 結果表示の一連フローが動作するか
+- **モーダル** — 開閉・背景クリック・Escape キーで閉じるか
+- **タッチターゲット不足** — モバイルでボタン/リンクが小さすぎないか（44×44px 未満）
+
+##### 🔴 JavaScript エラー
+- **未捕捉例外** — `browser_console_messages` で `error` レベルのログ
+- **React ハイドレーションエラー** — "Hydration failed" / "Text content does not match"
+- **React Hooks エラー** — "Rendered more hooks" / Error #310
+- **チャンクロードエラー** — "Loading chunk X failed"
+
+##### 🌐 API / ネットワークエラー
+- **4xx/5xx レスポンス** — `browser_network_requests` で失敗リクエスト検知
+- **CORS エラー** — コンソールの CORS 関連メッセージ
+- **タイムアウト** — 応答なしでスピナーが止まらないケース
+
+#### テスト対象ページ一覧（優先順）
+
+| 優先度 | ページ | パス | 主な検証ポイント |
+|--------|--------|------|----------------|
+| P0 | ダッシュボード | `/` | ヘッダー、リーダーボード、チャレンジ、フォロー比較 |
+| P0 | グループ詳細 | `/groups/{id}` | メンバー一覧、ランキング、リアクション |
+| P0 | プロフィール | `/user/{username}` | バッジ、歩数カレンダー、アチーブメント |
+| P1 | ウォレット | `/wallet` | 残高表示、取引履歴、コイン成長チャート |
+| P1 | ショップ | `/shop` | アイテム一覧、購入フロー、装備切替 |
+| P1 | チャレンジ | `/challenges` | チャレンジ一覧、参加、進捗表示 |
+| P2 | 設定 | `/settings` | フォーム入力、言語切替、プロフィール編集 |
+| P2 | グループ作成 | `/groups/create` | フォーム入力、バリデーション |
+| P2 | ランキング | `/recommendations` | おすすめアイテム、Amazon リンク |
+
+#### 結果レポートフォーマット
+
+```markdown
+## 🧪 Playwright ブラウザテスト結果
+
+### テスト環境
+- dev サーバー: localhost:3000
+- テスト日時: YYYY-MM-DD
+- テストページ数: X
+
+### 📱 モバイル (375×667)
+| ページ | 表示 | 動作 | JSエラー | APIエラー | 備考 |
+|--------|------|------|---------|----------|------|
+| / | ✅/⚠️/❌ | ✅/⚠️/❌ | 0/N件 | 0/N件 | 詳細 |
+
+### 🖥️ デスクトップ (1280×800)
+| ページ | 表示 | 動作 | JSエラー | APIエラー | 備考 |
+|--------|------|------|---------|----------|------|
+| / | ✅/⚠️/❌ | ✅/⚠️/❌ | 0/N件 | 0/N件 | 詳細 |
+
+### 🐛 検出バグ一覧
+| # | 重要度 | ページ | ビューポート | カテゴリ | 説明 | スクリーンショット |
+|---|--------|--------|-------------|---------|------|-------------------|
+
+### 📸 スクリーンショット
+- [ファイル名]: 説明
+```
+
+#### サブエージェント委任テンプレート
+
+Playwright テストを `runSubagent` で委任する際は以下のプロンプト構造を使用:
+
+```
+あなたは UCFitness の Playwright ブラウザテストエージェントです。
+
+**必須: ツールロード**
+最初に `tool_search_tool_regex(pattern="mcp_playwright", limit=30)` を実行してください。
+
+**テスト対象:** [ページ名] (localhost:3000/[パス])
+**テストビューポート:** モバイル (375×667) + デスクトップ (1280×800)
+
+**手順:**
+1. `browser_navigate` で対象ページに遷移
+2. `browser_resize` でモバイルビューポートに設定
+3. `browser_take_screenshot` でビジュアルキャプチャ
+4. `browser_snapshot` で DOM 構造確認
+5. `browser_console_messages` で JS エラー確認
+6. `browser_network_requests` で API エラー確認
+7. `browser_evaluate` で横スクロール検査:
+   `() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth, hasOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth })`
+8. 主要なボタン・リンクをクリックして動作確認
+9. `browser_resize` でデスクトップビューポートに切替
+10. 3-8 を繰り返し
+
+**レポート:** 
+検出した全バグを重要度付きでリスト化し、スクリーンショットのファイル名と対応付けて報告。
+```
 
 ### 🔷 Plan Mode
 
@@ -173,12 +302,27 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 - `.json` (messages/) → Build (i18n キー検証)
 
 各 Cycle の最後に NewFeatureDiscovery をプロジェクト全体に 1 回実行。
+各 Cycle の最後に **PlaywrightBrowserValidation** で変更ページの PC/モバイル表示・動作を実ブラウザ検証。
+
+#### Step 2.5: Playwright ブラウザ検証（各 Cycle の最後）
+
+コード変更後、実ブラウザで表示・動作バグがないことを検証する。
+
+1. dev サーバーが起動中であることを確認
+2. `tool_search_tool_regex(pattern="mcp_playwright", limit=30)` でツールをロード
+3. 変更が影響するページを特定し、以下を実行:
+   - **モバイル (375×667)** — `browser_resize` → `browser_navigate` → `browser_take_screenshot` → `browser_snapshot` → `browser_console_messages` → `browser_network_requests`
+   - **デスクトップ (1280×800)** — 同上
+4. 横スクロール検査: `browser_evaluate` で `scrollWidth > clientWidth` をチェック
+5. 主要なインタラクション（ボタンクリック・ナビゲーション）を検証
+6. 検出バグがあれば修正 → 再検証 → コミット
 
 #### Step 3: 検証
 
 - 修正ごとにコミット（日本語メッセージ）
 - `npx tsc --noEmit` で型エラー 0 確認
 - `get_errors` で IDE エラーなし確認
+- Playwright ブラウザ検証で表示・動作バグなし確認（Step 2.5 参照）
 - `git push` はユーザー許可後のみ
 - `improvement-report.md` に改善内容を追記
 
@@ -276,6 +420,42 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 4. 技術的フィージビリティ（🟢 Easy / 🟡 Medium / 🔴 Hard）
 
 最低 5 件、最大 15 件の提案。
+
+### 🧪 サブエージェント: Playwright Browser Validation
+
+MCP Playwright を使い、変更されたページの PC・モバイル表示と動作を実ブラウザで検証する。
+
+**実行条件:** dev サーバー（localhost:3000）が起動中であること。
+
+**検証フロー:**
+
+1. `tool_search_tool_regex(pattern="mcp_playwright", limit=30)` でツールロード
+2. 変更の影響を受けるページを特定
+3. 各ページについて:
+   a. **モバイル検証 (375×667):**
+      - `browser_resize` → `browser_navigate` → `browser_take_screenshot`
+      - `browser_snapshot` で DOM 構造の整合性確認
+      - `browser_console_messages` で JS エラー検出
+      - `browser_network_requests` で API 4xx/5xx 検出
+      - `browser_evaluate` で横スクロール検査
+   b. **デスクトップ検証 (1280×800):**
+      - 同上のフローを実行
+4. インタラクション検証:
+   - メインボタン / リンク / タブのクリック
+   - フォーム入力（該当する場合）
+   - モーダル開閉（該当する場合）
+5. 検出バグの分類と報告
+
+**バグ判定基準:**
+
+| 重要度 | 条件 |
+|--------|------|
+| 🔴 Critical | JS エラーでページがクラッシュ / 白画面 / 主要機能が動作しない |
+| 🟠 High | レイアウト崩壊 / 横スクロール発生 / モーダルが閉じない |
+| 🟡 Medium | 軽微な表示ずれ / テキスト切れ / タッチターゲット不足 |
+| 🟢 Low | スタイル不整合 / アニメーション欠如 / 軽微なUI改善点 |
+
+**レポート:** `improvement-report.md` の該当 Cycle に Playwright 検証結果セクションを追記。
 
 ### ⚠️ リグレッション防止ルール
 
