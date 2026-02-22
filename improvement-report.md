@@ -3,7 +3,7 @@
 > **ブランチ:** `copilot/improvement-loop-1` (PR #80)
 > **期間:** 2026-02-13 〜 2026-02-18
 > **実行方法:** GitHub Copilot (Claude) + 6 サブエージェント構成
-> **最終更新:** 2025-07-18
+> **最終更新:** 2025-07-19
 
 ---
 
@@ -11,11 +11,11 @@
 
 | 項目 | 値 |
 |------|------|
-| 総コミット数 | 28 |
-| 変更ファイル数 | **212** |
-| 総追加行 | **+5,277** |
-| 総削除行 | **-2,481** |
-| サイクル数 | 8 |
+| 総コミット数 | 29 |
+| 変更ファイル数 | **223** |
+| 総追加行 | **+6,200** |
+| 総削除行 | **-3,279** |
+| サイクル数 | 9 |
 | ビルドエラー | **0** ✅ |
 | 型エラー | **0** ✅ |
 
@@ -805,12 +805,49 @@
 
 ### 📌 次回 Cycle で対応予定
 
-| 優先度 | 項目 | 詳細 |
-|--------|------|------|
-| 🟠 High | N+1 クエリ修正 | `groups/page.tsx` で `getAllGroupRankings` がグループごとにループ呼び出し |
-| 🟡 Medium | 巨大コンポーネント分割 | `ShopClient.tsx` (916行), `AnimatedLeaderboard.tsx` (625行) |
-| 🟡 Medium | ハードコード色修正 | `GroupComparisonChart.tsx` に 15+ のハードコード色 |
-| 🟢 Low | useMemo 追加 | `AchievementProgress.tsx` の filter が未メモ化 |
+（Cycle 8 の全項目は Cycle 9 で完了済み）
+
+---
+
+## 🔄 Cycle 9 — N+1修正・大コンポーネント分割・テーマ対応・メモ化
+
+> **日時:** 2025-07-19
+> **対象:** Cycle 8 で「次回対応予定」とした 4 項目の完了
+
+### ⚡ Performance (2件)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `app/[locale]/groups/page.tsx` | N+1 クエリ修正: `getAllGroupRankings` ループ → `getCachedGlobalRankings` + `deriveBatchGroupRankings` バッチ処理に置換（N\*2 DB クエリ → 1-2 クエリ） |
+| `components/AchievementProgress.tsx` | `earnedCount`（`items.filter`）と `categories` 配列を `useMemo` で安定化。早期 return の前に Hooks 配置ルール順守 |
+
+### ♻️ Refactor (2件)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `components/ShopClient.tsx` | 976 → 400 行に分割。3 ファイル抽出: `shop/ShopItemCard.tsx` (117行), `shop/ShopInventoryView.tsx` (107行), `shop/ShopPreviewDialog.tsx` (328行) |
+| `components/AnimatedLeaderboard.tsx` | 676 → 479 行に分割。3 ファイル抽出: `leaderboard/FadeInWrapper.tsx` (23行), `leaderboard/Sparkline.tsx` (36行), `leaderboard/LeaderboardGroupSection.tsx` (196行) |
+
+### 🎨 UI/UX (1件)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `components/GroupComparisonChart.tsx` | `useTheme()` 導入でテーマ対応。Recharts SVG カラー (`#f3f4f6`, `#9ca3af`, `#e5e7eb`) を `chartColors` 定数に抽出。コンテナ / ツールチップ / 凡例の Tailwind 色を midnight テーマ対応（`bg-slate-800/50` / `text-slate-200` 等）。シェアカード（静的画像出力用）のカラーは意図的に維持 |
+
+### 📊 Cycle 9 統計
+
+| 項目 | 値 |
+|------|------|
+| コミット数 | 1 |
+| 変更ファイル数 | 11 (5 modified + 6 new) |
+| 追加行 | +923 |
+| 削除行 | -798 |
+| 型エラー | **0** ✅ |
+| React Hooks 違反 | **0** ✅ |
+
+### 📌 次回 Cycle で対応予定
+
+（現時点で特記事項なし — 新たな改善項目が発見された場合に追記）
 
 ---
 
