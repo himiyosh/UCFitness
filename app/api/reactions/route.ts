@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
+// UUID形式バリデーション（IDOR攻撃防止）
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // グローバルリーダーボード用リアクションAPI
 // group_reactions テーブルを group_id='__global__' で再利用
 
@@ -68,7 +71,7 @@ export async function POST(request: NextRequest) {
         const { toUserId, emoji, period } = body;
 
         // バリデーション
-        if (!toUserId || typeof toUserId !== 'string') {
+        if (!toUserId || typeof toUserId !== 'string' || !UUID_REGEX.test(toUserId)) {
             return NextResponse.json({ error: 'toUserId is required' }, { status: 400 });
         }
         if (!VALID_EMOJIS.includes(emoji)) {

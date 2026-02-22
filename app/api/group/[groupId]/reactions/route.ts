@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
+// UUID形式バリデーション（IDOR攻撃防止）
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface RouteParams {
     params: Promise<{ groupId: string }>;
 }
@@ -89,7 +92,7 @@ export async function POST(
         const { toUserId, emoji, period } = body;
 
         // バリデーション
-        if (!toUserId || typeof toUserId !== 'string') {
+        if (!toUserId || typeof toUserId !== 'string' || !UUID_REGEX.test(toUserId)) {
             return NextResponse.json({ error: 'toUserId is required' }, { status: 400 });
         }
         if (!VALID_EMOJIS.includes(emoji)) {

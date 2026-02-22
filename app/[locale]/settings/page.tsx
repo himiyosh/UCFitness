@@ -15,9 +15,12 @@ export const runtime = 'edge';
 
 export default async function SettingsPage() {
     const session = await auth();
-    const t = await getTranslations('Settings');
-    const commonT = await getTranslations('Common');
-    const dashboardT = await getTranslations('Dashboard');
+    // ⚡ パフォーマンス: 翻訳取得を並列化
+    const [t, commonT, dashboardT] = await Promise.all([
+        getTranslations('Settings'),
+        getTranslations('Common'),
+        getTranslations('Dashboard'),
+    ]);
 
     if (!session || !session.user) {
         redirect("/");

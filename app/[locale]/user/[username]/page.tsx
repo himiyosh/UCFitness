@@ -32,9 +32,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const params = await props.params;
     const session = await auth();
     const { username, locale } = params;
-    const t = await getTranslations('Profile');
-    const commonT = await getTranslations('Common');
-    const dashboardT = await getTranslations('Dashboard');
+    // ⚡ パフォーマンス: 翻訳取得を並列化
+    const [t, commonT, dashboardT] = await Promise.all([
+        getTranslations('Profile'),
+        getTranslations('Common'),
+        getTranslations('Dashboard'),
+    ]);
 
     // Fetch target user data
     // 🛡️ Sentinel: email を除外して PII 漏洩を防止

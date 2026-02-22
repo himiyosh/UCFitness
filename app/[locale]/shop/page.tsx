@@ -19,9 +19,12 @@ export const dynamic = 'force-dynamic';
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
     const resolvedParams = await searchParams;
     const session = await auth();
-    const t = await getTranslations('Shop');
-    const dashboardT = await getTranslations('Dashboard');
-    const locale = await getLocale();
+    // ⚡ パフォーマンス: 翻訳取得を並列化
+    const [t, dashboardT, locale] = await Promise.all([
+        getTranslations('Shop'),
+        getTranslations('Dashboard'),
+        getLocale(),
+    ]);
 
     if (!session || !session.user) {
         redirect("/");

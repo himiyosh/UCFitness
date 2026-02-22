@@ -3,6 +3,9 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { reportError } from "@/lib/errors";
 
+// UUID形式バリデーション（IDOR攻撃防止）
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(request: Request) {
   const session = await auth();
 
@@ -112,7 +115,7 @@ export async function POST(request: Request) {
       }
     } else if (action === 'kick') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
@@ -162,7 +165,7 @@ export async function POST(request: Request) {
 
     } else if (action === 'transfer_ownership') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
@@ -212,7 +215,7 @@ export async function POST(request: Request) {
 
     } else if (action === 'demote') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
@@ -356,7 +359,7 @@ export async function POST(request: Request) {
 
     } else if (action === 'invite') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
