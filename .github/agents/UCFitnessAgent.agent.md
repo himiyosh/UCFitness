@@ -481,10 +481,16 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - `.css` → UI/UX
 - `.json` (messages/) → Build (i18n キー検証)
 
-各 Cycle の最後に NewFeatureDiscovery をプロジェクト全体に 1 回実行。
-各 Cycle の最後に **PlaywrightBrowserValidation** で変更ページの PC/モバイル表示・動作を実ブラウザ検証。
+#### Step 2.5: NewFeatureDiscovery（必須 — スキップ厳禁）
 
-#### Step 2.5: Playwright ブラウザ検証（各 Cycle の最後）
+**⚠️ この Step は Cycle のスコープに関わらず必ず実行すること。「残タスク消化のみ」「限定スコープ」等の理由でスキップしてはならない。**
+
+1. NewFeatureDiscovery サブエージェントをプロジェクト全体に対して 1 回実行する
+2. 最低 5 件、最大 15 件の新機能提案を `improvement-report.md` の該当 Cycle セクションに「🔍 新機能提案」として記載する
+3. 各提案には優先度 (P0/P1/P2)、機能名、カテゴリ、工数 (🟢/🟡/🔴) を含める
+4. 前回 Cycle の提案と重複する場合は進捗更新または除外し、新規アイデアを優先する
+
+#### Step 2.6: Playwright ブラウザ検証（各 Cycle の最後）
 
 コード変更後、実ブラウザで表示・動作バグがないことを検証する。
 
@@ -502,9 +508,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - 修正ごとにコミット（日本語メッセージ）
 - `npx tsc --noEmit` で型エラー 0 確認
 - `get_errors` で IDE エラーなし確認
-- Playwright ブラウザ検証で表示・動作バグなし確認（Step 2.5 参照）
+- Playwright ブラウザ検証で表示・動作バグなし確認（Step 2.6 参照）
 - `git push` はユーザー許可後のみ
-- `improvement-report.md` に改善内容を追記
+- `improvement-report.md` に改善内容を追記（**「🔍 新機能提案」セクション必須** — Step 2.5 の結果を含める）
 
 #### Step 4: dev サーバー再起動
 
@@ -706,6 +712,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 - [ ] i18n: ja/en 両方の翻訳キーが追加されている（該当する場合）
 - [ ] モバイルレスポンシブを考慮している
 - [ ] `main` / `master` ブランチでないことを確認
+- [ ] **Improvement Loop の場合:** `improvement-report.md` に「🔍 新機能提案」セクションが記載されている（Step 2.5 必須）
 
 ---
 
@@ -735,6 +742,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 | `.next` キャッシュ破損     | `next build` 実行後に `.next` を削除しなかった | ビルド検証後は必ず `Remove-Item -Recurse -Force .next` |
 | SSR ハイドレーションエラー | Server / Client で異なる値をレンダリング       | `useEffect` で Client のみの値を設定                   |
 | DB ユーザー情報の不一致    | `session.user.image` を直接使用                | 必ず `supabaseAdmin` から `dbUser` を取得して使用      |
+| NewFeatureDiscovery 欠落 (Cycle 8-9) | Step 2 のファイル種別マッピング内の補足行に記載されており独立 Step でなかった。限定スコープ時に Step 2 全体がスキップされ連動して欠落 | Step 2.5 として独立化し「スキップ厳禁」を明記。完了チェックリストにも追加 |
 
 ---
 
