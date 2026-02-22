@@ -3,7 +3,7 @@
 > **ブランチ:** `copilot/improvement-loop-1` (PR #80)
 > **期間:** 2026-02-13 〜 2026-02-18
 > **実行方法:** GitHub Copilot (Claude) + 6 サブエージェント構成
-> **最終更新:** 2025-07-19
+> **最終更新:** 2025-07-20
 
 ---
 
@@ -11,11 +11,11 @@
 
 | 項目 | 値 |
 |------|------|
-| 総コミット数 | 29 |
-| 変更ファイル数 | **223** |
-| 総追加行 | **+6,200** |
-| 総削除行 | **-3,279** |
-| サイクル数 | 9 |
+| 総コミット数 | 30 |
+| 変更ファイル数 | **239** |
+| 総追加行 | **+6,263** |
+| 総削除行 | **-3,315** |
+| サイクル数 | 10 |
 | ビルドエラー | **0** ✅ |
 | 型エラー | **0** ✅ |
 
@@ -848,6 +848,96 @@
 ### 📌 次回 Cycle で対応予定
 
 （現時点で特記事項なし — 新たな改善項目が発見された場合に追記）
+
+---
+
+## 🔄 Cycle 10 — Edge Runtime 整理・並列化・UUID バリデーション
+
+> **日時:** 2025-07-19
+> **対象:** Build+Performance + Security+UI/UX サブエージェントスキャン結果に基づく改善
+
+### 🔒 Security (3件 — UUID バリデーション追加)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `app/api/user/group/route.ts` | 4 箇所の `targetUserId` に UUID 形式バリデーション追加（kick/transfer_ownership/demote/invite）。IDOR 攻撃防止 |
+| `app/api/reactions/route.ts` | `toUserId` に UUID 形式バリデーション追加。`UUID_REGEX` 定数を追加 |
+| `app/api/group/[groupId]/reactions/route.ts` | `toUserId` に UUID 形式バリデーション追加。`UUID_REGEX` 定数を追加 |
+
+### ⚡ Performance (6件 — getTranslations 並列化)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `app/[locale]/groups/[groupId]/page.tsx` | 3 つの逐次 `getTranslations` → `Promise.all()` で並列化 |
+| `app/[locale]/user/[username]/page.tsx` | 3 つの逐次 `getTranslations` → `Promise.all()` で並列化 |
+| `app/[locale]/wallet/page.tsx` | 2 つの逐次 `getTranslations` → `Promise.all()` で並列化 |
+| `app/[locale]/shop/page.tsx` | 3 つの逐次呼び出し (`getTranslations` × 2 + `getLocale`) → `Promise.all()` で並列化 |
+| `app/[locale]/settings/page.tsx` | 3 つの逐次 `getTranslations` → `Promise.all()` で並列化 |
+| `app/[locale]/analytics/page.tsx` | 2 つの逐次 `getTranslations` → `Promise.all()` で並列化 |
+
+### 🔧 Build (7件 — Edge Runtime 宣言統一)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `app/api/user/analytics/route.ts` | `runtime` 宣言をファイル先頭に統一（末尾の重複を削除） |
+| `app/api/user/follow/route.ts` | 同上 |
+| `app/api/user/follow/status/route.ts` | 同上 |
+| `app/api/user/followers/route.ts` | 同上 |
+| `app/api/user/following/route.ts` | 同上 |
+| `app/api/user/login-bonus/route.ts` | 同上 |
+| `app/api/user/step-calendar/route.ts` | 同上 |
+
+### 📊 Cycle 10 統計
+
+| 項目 | 値 |
+|------|------|
+| コミット数 | 1 |
+| 変更ファイル数 | 16 |
+| 追加行 | +63 |
+| 削除行 | -36 |
+| 型エラー | **0** ✅ |
+| React Hooks 違反 | **0** ✅ |
+
+### 🔍 新機能提案 (12 件)
+
+#### 🔴 P0 — 即実装すべき
+
+| # | 機能名 | カテゴリ | 工数 | 新規/再提案 | 説明 |
+|---|--------|---------|------|-----------|------|
+| 1 | 💸 UC ギフト送信 | ソーシャル | 🟢 1-2d | 再提案 (5回目) | `deductBalance('GIFT_SEND')` / `creditBalance('GIFT_RECEIVE')` PG 関数が完成済み。API + モーダル 1 個で完成 |
+| 2 | 🏦 UC コインリーダーボード | ゲーミフィケーション | 🟢 1d | 再提案 (4回目) | `getCoinLeaderboard()` 関数が実装済み。`LeaderboardTabs` にタブ追加のみ |
+| 3 | 🎮 ステップベット（自己賭け） | ゲーミフィケーション / リテンション | 🟡 3-4d | **新規** | StepBet の「損失回避」モデルを UC 経済圏に導入。賭け金ロック → 目標達成で 1.5-2.0 倍リターン |
+
+#### 🟡 P1 — 次回サイクル以降
+
+| # | 機能名 | カテゴリ | 工数 | 新規/再提案 | 説明 |
+|---|--------|---------|------|-----------|------|
+| 4 | 📢 アクティビティフィード | ソーシャル / リテンション | 🟡 3-5d | 再提案 (2回目) | フォロー中ユーザーのバッジ獲得・チャレンジ達成をタイムライン表示 |
+| 5 | 🎯 ソーシャルミッション拡張 | リテンション / ソーシャル | 🟢 1-2d | 再提案 (2回目) | デイリーミッションにリアクション送信・フォロー等のソーシャルアクションを追加 |
+| 6 | 🌍 ウォーキングチャリティ | ソーシャル / バイラル | 🟡 3-4d | **新規** | コミュニティ全体の累計歩数でマイルストーン達成。「月まで歩こう」等のバーチャルチャリティ |
+| 7 | 📊 データエクスポート | UX / ヘルス | 🟢 1d | 再提案 (3回目) | 歩数データ・UC 取引を CSV/JSON でダウンロード。GDPR データポータビリティ対応 |
+| 8 | 📱 PWA オフラインビュー | UX / PWA | 🟡 3-5d | **新規** | Service Worker にオフラインキャッシュ追加。現在は Push 通知のみでオフライン非対応 |
+
+#### 🔵 P2 — 長期検討
+
+| # | 機能名 | カテゴリ | 工数 | 新規/再提案 | 説明 |
+|---|--------|---------|------|-----------|------|
+| 9 | 🏆 ミニリーグ（昇降格） | ゲーミフィケーション | 🟡 4-5d | 再提案 (2回目) | 大規模グループを 4-6 人のミニリーグに自動分割。週次昇降格で少人数勝利体験 |
+| 10 | 🔗 リファラルボーナス | バイラル / マネタイズ | 🟡 3-4d | 再提案 (3回目) | 個人招待コード生成 + 双方ボーナス。バイラル係数 1.2→1.5x |
+| 11 | 🌸 シーズンイベント | リテンション | 🟡 4-5d | 再提案 (4回目) | 四季限定チャレンジ + 限定バッジ + 限定ショップアイテム。FOMO 活用 |
+| 12 | 💎 UC ステーキング | ゲーミフィケーション / マネタイズ | 🟡 4-5d | 再提案 (3回目) | UC を 7/30/90 日ロックで利息付与。投資家ランクと連動した利率設計 |
+
+#### 🔑 最重要アクション
+- **#1 UC ギフト送信** — 5 サイクル連続 P0 提案。バックエンド完成済み。実装しない理由がない
+- **#3 ステップベット** — 競合 StepBet の「損失回避」を UC 経済圏に導入。新規提案で最大インパクト
+- **#8 PWA オフライン** — PWA アプリとして sw.js を持ちながらオフラインキャッシュなしは品質欠陥
+
+### 📌 次回 Cycle で対応予定
+
+- サブエージェントスキャンで検出された残項目:
+  - 大規模コンポーネント分割の継続（9 ファイルが 400 行超: GroupSettings, ChallengesPageClient, CreateGroupClient, GroupList, GroupWeeklyReport, ProfileBadges, StepCalendar, SettingsForm, RecommendedItems）
+  - 空状態 / エラー状態 / ローディング状態の追加（複数コンポーネント）
+  - `app/api/user/group/route.ts` の `groupId` パスパラメータ UUID バリデーション（GET リクエスト）
 
 ---
 
