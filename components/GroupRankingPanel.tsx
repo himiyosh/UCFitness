@@ -100,15 +100,15 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
 
     return (
         <div
-            className={`overflow-hidden rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
+            className={`rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
             style={isMidnight
                 ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
                 : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
             }
         >
-            {/* Header */}
+            {/* Header — overflow-hidden + rounded-t-xl でヘッダー角丸を維持 */}
             <div
-                className="px-4 py-2.5 flex items-center gap-2"
+                className="px-4 py-2.5 flex items-center gap-2 overflow-hidden rounded-t-xl"
                 style={isMidnight
                     ? { borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(16,185,129,0.08)' }
                     : { borderBottom: '1px solid #d1fae5', background: 'rgba(236,253,245,0.5)' }
@@ -174,7 +174,10 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 <div role="list" className={`divide-y lg:border-t-0 lg:col-span-7 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                     {neighbors.length > 0 ? (
                         (() => {
-                            return neighbors.map((entry, i: number) => {
+                            // メンバー数に関わらず常に5人分の高さを確保するための空行数
+                            const MIN_ROWS = 5;
+                            const emptyRowCount = Math.max(0, MIN_ROWS - neighbors.length);
+                            return (<>{neighbors.map((entry, i: number) => {
                                 const entryId = entry.users?.id ?? '';
                                 const isMe = entryId === userId;
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
@@ -260,7 +263,11 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                         </div>
                                     </div>
                                 );
-                            });
+                            })}{/* 5人分の高さを埋めるプレースホルダー行 */}
+                            {Array.from({ length: emptyRowCount }).map((_, i) => (
+                                <div key={`empty-${i}`} role="listitem" className="min-h-[4.5rem]" />
+                            ))}
+                            </>);
                         })()
                     ) : (
                         <p className={`text-center py-8 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
