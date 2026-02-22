@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     LineChart,
     Line,
@@ -11,6 +11,8 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
+
+import { useTheme } from '@/components/ThemeProvider';
 
 interface ChartDataPoint {
     label: string;
@@ -45,6 +47,16 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     const [copySuccess, setCopySuccess] = useState(false);
     const shareCardRef = useRef<HTMLDivElement>(null);
 
+    const { theme } = useTheme();
+    const isMidnight = theme === 'midnight';
+
+    // テーマに応じたチャート色定数（Recharts SVG props は CSS 変数を解決できないため値で指定）
+    const chartColors = useMemo(() => ({
+        grid: isMidnight ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+        axis: isMidnight ? 'rgba(255,255,255,0.5)' : '#9ca3af',
+        cursor: isMidnight ? 'rgba(255,255,255,0.2)' : '#e5e7eb',
+    }), [isMidnight]);
+
     // Custom Legend Component — must be declared before conditional returns (Rules of Hooks)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const renderLegend = useCallback((props: any) => {
@@ -68,7 +80,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                 style={{ backgroundColor: entry.color }}
                                 className="w-2 h-2 rounded-full"
                             />
-                            <span className="text-xs text-gray-600 font-medium truncate max-w-[80px] sm:max-w-[120px]">
+                            <span className={`text-xs font-medium truncate max-w-[80px] sm:max-w-[120px] ${isMidnight ? 'text-slate-400' : 'text-gray-600'}`}>
                                 {entry.value}
                             </span>
                         </div>
@@ -76,7 +88,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                 })}
             </div>
         );
-    }, [activeUser]);
+    }, [activeUser, isMidnight]);
 
     useEffect(() => {
         setIsMounted(true);
@@ -88,8 +100,8 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             // Sort payload by value desc
             const sortedPayload = [...payload].sort((a, b) => b.value - a.value);
             return (
-                <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-100 text-xs z-50">
-                    <p className="font-bold text-gray-900 mb-1.5">{label}</p>
+                <div className={`backdrop-blur-sm p-2 rounded-lg shadow-lg text-xs z-50 ${isMidnight ? 'bg-slate-800/95 border border-slate-600/30' : 'bg-white/95 border border-gray-100'}`}>
+                    <p className={`font-bold mb-1.5 ${isMidnight ? 'text-slate-200' : 'text-gray-900'}`}>{label}</p>
                     {sortedPayload.map((entry) => {
                         const isHidden = activeUser && activeUser !== entry.name;
                         if (isHidden) return null;
@@ -97,8 +109,8 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         return (
                             <div key={entry.name} className="flex items-center gap-2 mb-0.5">
                                 <div style={{ backgroundColor: entry.color }} className="w-1.5 h-1.5 rounded-full" />
-                                <span className="text-gray-600 truncate max-w-[60px]">{entry.name}:</span>
-                                <span className="font-semibold text-gray-900 ml-auto">{entry.value.toLocaleString()}</span>
+                                <span className={`truncate max-w-[60px] ${isMidnight ? 'text-slate-400' : 'text-gray-600'}`}>{entry.name}:</span>
+                                <span className={`font-semibold ml-auto ${isMidnight ? 'text-slate-200' : 'text-gray-900'}`}>{entry.value.toLocaleString()}</span>
                             </div>
                         );
                     })}
@@ -106,22 +118,22 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             );
         }
         return null;
-    }, [activeUser]);
+    }, [activeUser, isMidnight]);
 
-    if (!isMounted) return <div className="h-full w-full bg-gray-50/50 rounded-xl animate-pulse" />;
+    if (!isMounted) return <div className={`h-full w-full rounded-xl animate-pulse ${isMidnight ? 'bg-slate-700/50' : 'bg-gray-50/50'}`} />;
 
     if (!data || data.length === 0) {
         return (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center h-[300px] text-gray-400">
+            <div className={`p-6 rounded-2xl shadow-sm flex items-center justify-center h-[300px] ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30 text-slate-500' : 'bg-white border border-gray-100 text-gray-400'}`}>
                 No data available for comparison.
             </div>
         );
     }
 
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 xl:h-full flex flex-col relative hover:shadow-lg transition-shadow">
+        <div className={`p-4 sm:p-6 rounded-2xl shadow-sm xl:h-full flex flex-col relative hover:shadow-lg transition-shadow ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}>
             <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 flex-none">
+                <h3 className={`text-lg font-bold flex items-center gap-2 flex-none ${isMidnight ? 'text-slate-200' : 'text-gray-900'}`}>
                     <svg className="w-5 h-5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
                     {title || 'Comparison'}
                 </h3>
@@ -192,7 +204,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         }
                     }}
                     disabled={isSharing}
-                    className={`p-1.5 rounded-full transition-all ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] cursor-wait' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'}`}
+                    className={`p-1.5 rounded-full transition-all ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] cursor-wait' : `${isMidnight ? 'text-slate-500' : 'text-gray-400'} hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]`}`}
                     aria-label="Share Group Stats"
                     title="Share Group Stats"
                 >
@@ -221,24 +233,24 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         data={data}
                         margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
                     >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                         <XAxis
                             dataKey="label"
-                            stroke="#9ca3af"
+                            stroke={chartColors.axis}
                             fontSize={10}
                             tickLine={false}
                             axisLine={false}
                             tickMargin={10}
                         />
                         <YAxis
-                            stroke="#9ca3af"
+                            stroke={chartColors.axis}
                             fontSize={10}
                             tickLine={false}
                             axisLine={false}
                             width={40}
                             tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e5e7eb', strokeWidth: 1 }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: chartColors.cursor, strokeWidth: 1 }} />
                         <Legend content={renderLegend} />
                         {users.map((user) => {
                             const isCurrentUser = user.username === currentUsername;

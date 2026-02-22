@@ -9,7 +9,7 @@ import UserMenu from "@/components/UserMenu";
 import RefreshButton from '@/components/RefreshButton';
 import GroupSettings from "@/components/GroupSettings";
 import Breadcrumbs from '@/components/Breadcrumbs';
-import { getAllGroupRankings } from "@/lib/ranking-service";
+import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
 import Footer from '@/components/Footer';
 
@@ -67,12 +67,14 @@ export default async function MyGroupsPage() {
         groups: Array.isArray(m.groups) ? m.groups[0] : m.groups
     }));
 
-    // Fetch Rankings for each group to get "My Rank"
-    const membershipsWithRank = await Promise.all(normalizedMemberships.map(async (m: any) => {
-        // Optimization: We could perhaps fetch only WEEKLY but the service fetches all.
-        // Ideally we cache this or use a lighter query, but for now we follow the plan.
-        const rankings = await getAllGroupRankings(m.groups.id);
-        const weeklyRankings = rankings['WEEKLY'];
+    // ⚡ N+1 解消: グローバルランキングキャッシュからバッチで全グループのランキングを導出
+    const groupIds = normalizedMemberships.map((m: any) => m.groups.id);
+    const globalRankings = await getCachedGlobalRankings();
+    const batchRankings = await deriveBatchGroupRankings(groupIds, globalRankings);
+
+    const membershipsWithRank = normalizedMemberships.map((m: any) => {
+        const groupRankings = batchRankings[m.groups.id];
+        const weeklyRankings = groupRankings?.WEEKLY || [];
         const myRankIndex = weeklyRankings.findIndex((r: any) => r.users.id === userId);
 
         return {
@@ -80,7 +82,7 @@ export default async function MyGroupsPage() {
             rank: myRankIndex !== -1 ? myRankIndex + 1 : null,
             totalMembers: weeklyRankings.length
         };
-    }));
+    });
 
     // Sort memberships based on groupOrder
     const sortedMemberships = membershipsWithRank.sort((a: any, b: any) => {
