@@ -256,9 +256,9 @@ export default function GroupDetailLeaderboard({
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
-                                                    {/* リアクション — 称号の下に絶対配置で表示（行高さに影響しない） */}
+                                                    {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="absolute left-0 top-full mt-0.5 z-20" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entry.users.id}

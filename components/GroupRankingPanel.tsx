@@ -220,9 +220,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
                                                         <span className="text-xs text-gray-400 font-medium whitespace-nowrap leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
                                                     )}
-                                                    {/* リアクション — 称号の下に絶対配置で表示（行高さに影響しない） */}
+                                                    {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="absolute left-0 top-full mt-0.5 z-20" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entryId}
