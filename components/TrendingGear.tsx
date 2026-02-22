@@ -174,7 +174,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
             {/* 横カルーセル */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-x-auto px-4 pb-14 pt-1 scrollbar-hide"
+                className="flex-1 overflow-x-auto px-4 pb-4 pt-1 scrollbar-hide"
             >
               <div className="flex gap-2.5" style={{ minWidth: 'min-content' }}>
                 {items.map(item => (
