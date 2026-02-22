@@ -1,0 +1,65 @@
+# UCFitness
+
+> Fitbit 連携の歩数トラッキング・フィットネス競争 PWA アプリケーション
+
+## 概要
+
+UCFitness は Fitbit API と連携し、歩数を自動トラッキングするフィットネスアプリです。
+グループ競争、チャレンジ、コインシステムによるゲーミフィケーションを通じて、
+日常的な運動習慣の形成を支援します。
+
+## 技術スタック
+
+- フレームワーク: Next.js 15 (App Router)
+- UI: React 19, TypeScript, Tailwind CSS v4
+- 認証: NextAuth v5 (Fitbit OAuth)
+- データベース: Supabase (PostgreSQL)
+- 国際化: next-intl (日本語 / 英語)
+- デプロイ: Cloudflare Pages (Edge Runtime)
+- チャート: Recharts
+
+## ディレクトリ構成
+
+```
+app/              Next.js App Router (ページ & API ルート)
+  [locale]/       ロケール別ページ
+  api/            API エンドポイント
+components/       React コンポーネント
+hooks/            カスタム React フック
+lib/              ユーティリティ、認証、DB ヘルパー
+messages/         翻訳ファイル (ja.json, en.json)
+public/           静的アセット
+types/            TypeScript 型定義
+docs/             プロジェクトドキュメント
+migrations/       DBマイグレーション
+scripts/          ユーティリティスクリプト
+```
+
+## 主要機能
+
+- 歩数自動同期 (Fitbit API)
+- グループ作成 & 招待
+- ランキング (デイリー / ウィークリー / マンスリー)
+- チャレンジ機能
+- コイン & ショップシステム
+- フォロー & SNS 機能
+- プッシュ通知 (PWA)
+- ダークテーマ対応 (CSS カスタムプロパティ)
+
+## 開発ルール
+
+- Edge Runtime 必須 (全 page.tsx / route.ts)
+- `framer-motion` 使用禁止
+- `window.confirm()` / `window.alert()` 使用禁止
+- CSS テーマは `var(--theme-*)` を使用
+- `dark:` クラスは使用しない
+- サーバーコンポーネントでは `supabaseAdmin` を使用
+- React Hooks は全て早期 return の前に配置
+
+## コンテキストファイル
+
+- `.github/copilot-instructions.md` — Copilot 統合指示
+- `.github/instructions/` — ファイルパターン別の指示
+- `.github/agents/` — カスタム Copilot エージェント
+- `.github/prompts/` — 再利用可能なプロンプト
+- `docs/` — プロジェクトドキュメント
