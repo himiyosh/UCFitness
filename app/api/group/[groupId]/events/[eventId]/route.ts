@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { isValidUUID } from '@/lib/validation';
 
 interface RouteParams {
     params: Promise<{ groupId: string; eventId: string }>;
@@ -21,6 +22,10 @@ export async function GET(
         }
 
         const { groupId, eventId } = await context.params;
+
+        if (!isValidUUID(groupId) || !isValidUUID(eventId)) {
+            return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+        }
 
         // メンバーシップ確認
         const { data: membership } = await supabaseAdmin

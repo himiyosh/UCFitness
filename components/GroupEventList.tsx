@@ -143,7 +143,7 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
                     <p className="text-sm text-red-500 mb-3">{error}</p>
                     <button
                         onClick={fetchEvents}
-                        className="text-sm font-semibold text-[var(--theme-primary)] hover:underline"
+                        className="px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg bg-[var(--theme-primary)] text-white hover:scale-105 active:scale-95 transition-transform"
                     >
                         🔄 {t('retry') || 'Retry'}
                     </button>
@@ -162,7 +162,7 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
                 {isOwnerOrAdmin && (
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
+                        className="px-3 py-2.5 min-h-[44px] text-xs font-semibold rounded-lg bg-[var(--theme-primary)] text-white hover:scale-105 active:scale-95 transition-transform"
                     >
                         + {t('createEvent')}
                     </button>
@@ -173,7 +173,7 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
                 <button
                     onClick={() => setTab('active')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    className={`px-3 py-2.5 min-h-[44px] text-xs font-semibold rounded-md transition-colors ${
                         tab === 'active'
                             ? 'bg-white text-gray-900 shadow-sm'
                             : 'text-[var(--foreground-muted)] hover:text-gray-700'
@@ -183,7 +183,7 @@ export default function GroupEventList({ groupId, isOwnerOrAdmin }: GroupEventLi
                 </button>
                 <button
                     onClick={() => setTab('past')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    className={`px-3 py-2.5 min-h-[44px] text-xs font-semibold rounded-md transition-colors ${
                         tab === 'past'
                             ? 'bg-white text-gray-900 shadow-sm'
                             : 'text-[var(--foreground-muted)] hover:text-gray-700'

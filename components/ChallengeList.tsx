@@ -135,12 +135,13 @@ export default function ChallengeList() {
             {/* エラー */}
             {error && !loading && (
                 <div className="text-center py-12">
-                    <p className="text-red-500 text-sm">{error}</p>
+                    <span className="text-3xl block mb-2">⚠️</span>
+                    <p className="text-red-500 text-sm mb-3">{error}</p>
                     <button
                         onClick={() => fetchChallenges(tab)}
-                        className="mt-2 text-sm text-[var(--theme-primary)] hover:underline"
+                        className="mt-2 px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg bg-[var(--theme-primary)] text-white hover:scale-105 active:scale-95 transition-transform"
                     >
-                        {t('retry')}
+                        🔄 {t('retry')}
                     </button>
                 </div>
             )}
@@ -149,8 +150,10 @@ export default function ChallengeList() {
             {!loading && !error && challenges.length === 0 && (
                 <div className="text-center py-16">
                     <div className="text-5xl mb-4">🎯</div>
-                    <p className="text-gray-500 text-sm mb-4">{t('noActive')}</p>
-                    <p className="text-xs text-gray-400">{tab === 'active' ? t('createNewHint') : ''}</p>
+                    <p className="text-gray-500 text-sm mb-2">{t('noActive')}</p>
+                    {tab === 'active' && (
+                        <p className="text-xs text-gray-400">{t('createNewHint')}</p>
+                    )}
                 </div>
             )}
 

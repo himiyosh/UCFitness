@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { isValidUUID } from '@/lib/validation';
 
 interface RouteParams {
     params: Promise<{ groupId: string }>;
@@ -21,6 +22,10 @@ export async function GET(
         }
 
         const { groupId } = await context.params;
+
+        if (!isValidUUID(groupId)) {
+            return NextResponse.json({ error: 'Invalid group ID format' }, { status: 400 });
+        }
 
         // グループの存在確認
         const { data: group, error: groupError } = await supabaseAdmin
@@ -76,6 +81,10 @@ export async function POST(
         }
 
         const { groupId } = await context.params;
+
+        if (!isValidUUID(groupId)) {
+            return NextResponse.json({ error: 'Invalid group ID format' }, { status: 400 });
+        }
 
         // メンバーシップ＆ロール確認
         const { data: membership } = await supabaseAdmin
