@@ -137,6 +137,7 @@
         "copyright": "Studio344"
     },
     "Leaderboard": {
+        "leaderboard": "Leaderboard",
         "titleGlobal": "Global Leaderboard",
         "tabUser": "User (Global)",
         "titleTop10": "Top 10 Leaders",

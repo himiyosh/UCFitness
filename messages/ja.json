@@ -137,6 +137,7 @@
         "copyright": "Studio344"
     },
     "Leaderboard": {
+        "leaderboard": "ランキング",
         "titleGlobal": "グローバルランキング",
         "tabUser": "ユーザー (全体)",
         "titleTop10": "トップ10",
