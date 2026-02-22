@@ -38,7 +38,7 @@ interface GroupReactionsProps {
     /** compact時に表示するバッジの最大数（デフォルト3） */
     maxVisibleBadges?: number;
     /** ピッカー表示位置（デフォルト: above） */
-    pickerPosition?: 'above' | 'below';
+    pickerPosition?: 'above' | 'below' | 'center';
 }
 
 /**
@@ -129,8 +129,8 @@ export default function GroupReactions({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showExtended]);
 
-    // forceShow に連動して＋ボタンの表示を制御
-    // forceShow が true → ＋ボタンを表示（ピッカーはクリックで開閉）
+    // forceShow に連動してピッカーの自動表示を制御
+    // forceShow が true → ＋ボタン表示 + ピッカーも自動オープン
     // forceShow が false → ＋ボタン非表示 + ピッカーも閉じる
     useEffect(() => {
         if (forceShow) {
@@ -138,7 +138,7 @@ export default function GroupReactions({
                 clearTimeout(hideTimeout.current);
                 hideTimeout.current = null;
             }
-            // ピッカーは自動表示しない — クリックで開閉する
+            setShowPicker(true);
         } else {
             // 即座にクローズ — 他の行に移動した際に前の行のピッカーが残らないようにする
             setShowPicker(false);
@@ -218,13 +218,21 @@ export default function GroupReactions({
                 {/* クイックリアクションピッカー — ＋ボタン下に吹き出しで表示 */}
                 {showPicker && !showExtended && (
                     <div
-                        className="absolute z-[9999] flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel left-0 top-full mt-1.5"
+                        className={`absolute z-[9999] flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel ${
+                            pickerPosition === 'center'
+                                ? 'left-1/2 -translate-x-1/2 bottom-full mb-2'
+                                : 'left-0 top-full mt-1.5'
+                        }`}
                         style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {/* 吹き出し三角（上向き） */}
-                        <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
+                        {/* 吹き出し三角 */}
+                        {pickerPosition === 'center' ? (
+                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-200 transform rotate-45" />
+                        ) : (
+                            <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
+                        )}
                         {DEFAULT_EMOJIS.map(emoji => {
                             const reacted = reactionCounts[emoji]?.reacted ?? false;
                             const isLoading = loading === emoji;
@@ -271,14 +279,22 @@ export default function GroupReactions({
                 {/* 拡張絵文字ピッカー — ＋ボタン下に吹き出しで表示 */}
                 {showExtended && (
                     <div
-                        className="absolute z-[9999] w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible left-0 top-full mt-1.5"
+                        className={`absolute z-[9999] w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible ${
+                            pickerPosition === 'center'
+                                ? 'left-1/2 -translate-x-1/2 bottom-full mb-2'
+                                : 'left-0 top-full mt-1.5'
+                        }`}
                         style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.2))' }}
                         onClick={(e) => e.stopPropagation()}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {/* 吹き出し三角（上向き） */}
-                        <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50" />
+                        {/* 吹き出し三角 */}
+                        {pickerPosition === 'center' ? (
+                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-200 transform rotate-45 z-50" />
+                        ) : (
+                            <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50" />
+                        )}
                         <div className="flex items-center border-b border-gray-100 px-1 pt-1">
                             {EXTENDED_EMOJI_CATEGORIES.map((cat, idx) => (
                                 <button

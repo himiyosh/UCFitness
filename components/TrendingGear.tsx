@@ -275,7 +275,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                                 compact
                                 forceShow={hoveredAsin === item.asin || longPressAsin === item.asin}
                                 maxVisibleBadges={2}
-                                pickerPosition="below"
+                                pickerPosition="center"
                             />
                         </div>
                     )}
