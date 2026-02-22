@@ -55,6 +55,7 @@ export default function ShareMilestone({ totalSteps, username, isOwner = true }:
         <div className="relative">
             <button
                 onClick={() => setShowMenu(!showMenu)}
+                aria-label={t('share')}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all hover:scale-105"
                 style={{
                     borderColor: 'var(--theme-primary)',
