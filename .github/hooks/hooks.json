@@ -1,0 +1,19 @@
+{
+  "hooks": [
+    {
+      "event": "sessionEnd",
+      "script": ".github/hooks/session-auto-commit.sh",
+      "enabled": true
+    },
+    {
+      "event": "sessionStart",
+      "script": ".github/hooks/session-logger.sh",
+      "enabled": true
+    },
+    {
+      "event": "sessionEnd",
+      "script": ".github/hooks/session-logger-end.sh",
+      "enabled": true
+    }
+  ]
+}
