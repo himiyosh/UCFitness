@@ -50,7 +50,8 @@ migrations/
 .jules/
 others/
 improvement-report.json
-improvement-report.md
+/improvement-report.md
+!docs/improvement-report.md
 
 # playwright MCP テスト出力
 .playwright-mcp/
