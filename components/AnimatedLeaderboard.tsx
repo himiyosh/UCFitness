@@ -333,7 +333,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             <UserAvatar src={null} name={entry.users?.name || '?'} size="sm" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                                         )}
                                                                         </div>
-                                                                        <div className="flex flex-col min-w-0 flex-1">
+                                                                        <div className="relative flex flex-col min-w-0 flex-1">
                                                                             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                                                 <span>
                                                                                     {entry.users?.name || commonT('anonymous')}
@@ -343,9 +343,9 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                             {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) && (
                                                                                 <p className="text-xs text-gray-400 font-medium leading-tight whitespace-nowrap">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                                             )}
-                                                                            {/* リアクション — 称号の下に独立行で表示 */}
+                                                                            {/* リアクション — 称号の下に絶対配置で表示（行高さに影響しない） */}
                                                                             {userId && (
-                                                                                <div className="relative mt-0.5 empty:hidden" onClick={(e) => e.stopPropagation()}>
+                                                                                <div className="absolute left-0 top-full mt-0.5 z-20" onClick={(e) => e.stopPropagation()}>
                                                                                     <GroupReactions
                                                                                         groupId="__global__"
                                                                                         toUserId={entry.users.id}

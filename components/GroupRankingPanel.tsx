@@ -210,7 +210,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     {entry.originalRank}
                                                 </span>
                                                 <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="sm" frameColor={entry.users?.frameColor} borderClass="border-white" />
-                                                <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="relative flex flex-col min-w-0 flex-1">
                                                     <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
                                                         <span className="truncate">
                                                             {entry.users?.name || commonT('anonymous')}
@@ -220,9 +220,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
                                                         <span className="text-xs text-gray-400 font-medium whitespace-nowrap leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
                                                     )}
-                                                    {/* リアクション — 称号の下に独立行で表示 */}
+                                                    {/* リアクション — 称号の下に絶対配置で表示（行高さに影響しない） */}
                                                     {groupId && userId && (
-                                                        <div className="relative mt-0.5 empty:hidden" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="absolute left-0 top-full mt-0.5 z-20" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entryId}

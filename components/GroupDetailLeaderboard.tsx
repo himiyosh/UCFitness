@@ -244,7 +244,7 @@ export default function GroupDetailLeaderboard({
                                                     <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                 </div>
 
-                                                <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="relative flex flex-col min-w-0 flex-1">
                                                     <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                         <span>
                                                             {entry.users?.name || commonT('anonymous')}
@@ -256,9 +256,9 @@ export default function GroupDetailLeaderboard({
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
-                                                    {/* リアクション — 称号の下に独立行で表示 */}
+                                                    {/* リアクション — 称号の下に絶対配置で表示（行高さに影響しない） */}
                                                     {groupId && userId && (
-                                                        <div className="relative z-10 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="absolute left-0 top-full mt-0.5 z-20" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entry.users.id}
