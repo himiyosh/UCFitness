@@ -80,12 +80,8 @@ export async function POST(request: NextRequest) {
         if (!VALID_PERIODS.includes(period)) {
             return NextResponse.json({ error: 'Invalid period' }, { status: 400 });
         }
-        // 自分自身にはリアクションできない
-        if (toUserId === session.user.id) {
-            return NextResponse.json({ error: 'Cannot react to yourself' }, { status: 400 });
-        }
 
-        // グローバルはメンバーシップ不要 — 認証済みユーザーなら誰でもリアクション可能
+        // グローバルはメンバーシップ不要 — 認証済みユーザーなら誰でもリアクション可能（セルフリアクションも許可）
         const { data: reaction, error } = await supabaseAdmin
             .from('group_reactions')
             .upsert({
