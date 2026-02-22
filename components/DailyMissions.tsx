@@ -26,6 +26,7 @@ export default function DailyMissions() {
     const [allCompleted, setAllCompleted] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [showBonus, setShowBonus] = useState(false);
+    const [streak, setStreak] = useState(0);
 
     const fetchMissions = useCallback(async () => {
         setError(false);
@@ -35,6 +36,7 @@ export default function DailyMissions() {
             const data = await res.json();
             setMissions(data.missions || []);
             setAllCompleted(data.allCompleted || false);
+            setStreak(data.streak || 0);
         } catch {
             setError(true);
         } finally {
@@ -216,6 +218,23 @@ export default function DailyMissions() {
                         <p className="text-xs text-gray-400">
                             🎁 {t('bonusHint')}
                         </p>
+                    </div>
+                )}
+
+                {/* ミッションストリーク — 連続全達成日数 */}
+                {streak > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-center gap-2 py-1.5">
+                            <span className="text-lg">{streak >= 7 ? '🌟' : '🔥'}</span>
+                            <p className="text-sm font-bold text-gray-700">
+                                {t('streak', { days: streak })}
+                            </p>
+                            {streak >= 3 && (
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                    {streak >= 7 ? t('streakAmazing') : t('streakGreat')}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

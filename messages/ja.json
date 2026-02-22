@@ -715,7 +715,10 @@
         "refresh": "ミッション再チェック",
         "noMissions": "今日のミッションはまだありません",
         "bonusHint": "全クリアで追加ボーナス",
-        "bonusReward": "全ミッション完了で +100 UC ボーナス！"
+        "bonusReward": "全ミッション完了で +100 UC ボーナス！",
+        "streak": "{days}日連続クリア中！",
+        "streakGreat": "いい調子！",
+        "streakAmazing": "絶好調！"
     },
     "GroupEvent": {
         "title": "グループイベント",

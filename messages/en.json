@@ -713,7 +713,10 @@
         "refresh": "Refresh missions",
         "noMissions": "No missions available today",
         "bonusHint": "Complete all for bonus",
-        "bonusReward": "Complete all missions for +100 UC bonus!"
+        "bonusReward": "Complete all missions for +100 UC bonus!",
+        "streak": "{days}-day streak!",
+        "streakGreat": "Great!",
+        "streakAmazing": "Amazing!"
     },
     "GroupEvent": {
         "title": "Group Events",
