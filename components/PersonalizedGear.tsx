@@ -137,8 +137,8 @@ export default function PersonalizedGear() {
                         />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors line-clamp-2 leading-snug">
-                            {product.title || keyword}
+                        <p className="text-sm font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors truncate">
+                            {keyword}
                         </p>
                         <p className="text-[10px] text-gray-400 mt-1">{emoji} {label}</p>
                     </div>
