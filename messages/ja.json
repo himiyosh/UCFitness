@@ -742,5 +742,38 @@
         "targetRequired": "目標歩数は0より大きい必要があります",
         "dateRequired": "開始日と終了日は必須です",
         "dateInvalid": "終了日は開始日以降にしてください"
+    },
+    "Export": {
+        "title": "📥 データエクスポート",
+        "description": "歩数データやUCコイン取引履歴をダウンロードできます。",
+        "dataType": "データの種類",
+        "steps": "歩数データ",
+        "transactions": "UC取引履歴",
+        "period": "期間",
+        "last30days": "30日",
+        "last90days": "90日",
+        "last365days": "1年",
+        "format": "形式",
+        "exportButton": "エクスポート",
+        "exporting": "エクスポート中...",
+        "exportSuccess": "ダウンロードが完了しました！",
+        "exportError": "エクスポートに失敗しました。もう一度お試しください。"
+    },
+    "Feed": {
+        "title": "アクティビティ",
+        "earnedBadge": "がバッジを獲得",
+        "reachedMilestone": "が {milestone} 歩を達成",
+        "streakRecord": "が {days} 日連続記録を達成",
+        "stepsUnit": "歩",
+        "emptyMessage": "まだアクティビティがありません",
+        "emptyHint": "ユーザーをフォローすると、ここに活動が表示されます",
+        "loadMore": "もっと見る",
+        "loading": "読み込み中...",
+        "errorMessage": "フィードの読み込みに失敗しました",
+        "retry": "再試行",
+        "justNow": "たった今",
+        "minutesAgo": "{count}分前",
+        "hoursAgo": "{count}時間前",
+        "daysAgo": "{count}日前"
     }
 }

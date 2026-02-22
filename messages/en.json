@@ -740,5 +740,38 @@
         "targetRequired": "Target steps must be greater than 0",
         "dateRequired": "Start date and end date are required",
         "dateInvalid": "End date must be on or after start date"
+    },
+    "Export": {
+        "title": "📥 Data Export",
+        "description": "Download your step data and UC coin transaction history.",
+        "dataType": "Data Type",
+        "steps": "Step Data",
+        "transactions": "UC Transactions",
+        "period": "Period",
+        "last30days": "30 days",
+        "last90days": "90 days",
+        "last365days": "1 year",
+        "format": "Format",
+        "exportButton": "Export",
+        "exporting": "Exporting...",
+        "exportSuccess": "Download complete!",
+        "exportError": "Export failed. Please try again."
+    },
+    "Feed": {
+        "title": "Activity",
+        "earnedBadge": "earned a badge",
+        "reachedMilestone": "reached {milestone} steps",
+        "streakRecord": "achieved a {days}-day streak",
+        "stepsUnit": "steps",
+        "emptyMessage": "No activity yet",
+        "emptyHint": "Follow users to see their activities here",
+        "loadMore": "Load More",
+        "loading": "Loading...",
+        "errorMessage": "Failed to load feed",
+        "retry": "Retry",
+        "justNow": "just now",
+        "minutesAgo": "{count}m ago",
+        "hoursAgo": "{count}h ago",
+        "daysAgo": "{count}d ago"
     }
 }

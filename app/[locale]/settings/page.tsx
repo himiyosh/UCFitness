@@ -6,6 +6,7 @@ import RefreshButton from '@/components/RefreshButton';
 import { Link } from "@/navigation"; // Localized Link
 import Breadcrumbs from "@/components/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
+import ExportButton from "@/components/ExportButton";
 import { getTranslations } from 'next-intl/server';
 import Footer from '@/components/Footer';
 
@@ -128,6 +129,11 @@ export default async function SettingsPage() {
                 </div>
 
                 <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} ownedThemes={ownedThemes} />
+
+                {/* データエクスポート */}
+                <div className="mt-8 max-w-sm">
+                    <ExportButton />
+                </div>
             </div>
             <Footer />
         </main>
