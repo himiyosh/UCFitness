@@ -40,11 +40,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+
+# プロジェクト固有の除外
 migrations/
-.jules
+.jules/
 others/
 improvement-report.json
 improvement-report.md
 
 # playwright MCP テスト出力
 .playwright-mcp/
+screenshots/
