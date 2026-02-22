@@ -245,33 +245,33 @@ export default function GroupDetailLeaderboard({
                                                 </div>
 
                                                 <div className="relative flex flex-col min-w-0 flex-1">
-                                                    <div className="text-sm font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                                    <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                         <span>
                                                             {entry.users?.name || commonT('anonymous')}
                                                         </span>
                                                         {isCurrentUser && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-[var(--theme-primary)] text-white shrink-0">{commonT('you')}</span>}
-                                                        {/* リアクション — ユーザー名と同じ行にインライン表示 */}
-                                                        {groupId && userId && (
-                                                            <span className="inline-flex items-center" onClick={(e) => e.stopPropagation()}>
-                                                                <GroupReactions
-                                                                    groupId={groupId}
-                                                                    toUserId={entry.users.id}
-                                                                    currentUserId={userId}
-                                                                    period={period}
-                                                                    reactions={reactions}
-                                                                    onReactionToggle={handleReactionToggle}
-                                                                    isSelf={isCurrentUser}
-                                                                    compact
-                                                                    forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
-                                                                    maxVisibleBadges={5}
-                                                                />
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    </p>
                                                     {entry.users.titleEmoji && (entry.users.titleNameJa || entry.users.titleNameEn) ? (
                                                         <p className="text-xs text-gray-400 font-medium whitespace-nowrap">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</p>
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
+                                                    )}
+                                                    {/* リアクション — 称号の下に固定高さで行内表示 */}
+                                                    {groupId && userId && (
+                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                            <GroupReactions
+                                                                groupId={groupId}
+                                                                toUserId={entry.users.id}
+                                                                currentUserId={userId}
+                                                                period={period}
+                                                                reactions={reactions}
+                                                                onReactionToggle={handleReactionToggle}
+                                                                isSelf={isCurrentUser}
+                                                                compact
+                                                                forceShow={hoveredUserId === entry.users.id || longPressUserId === entry.users.id}
+                                                                maxVisibleBadges={5}
+                                                            />
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

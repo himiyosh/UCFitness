@@ -211,31 +211,31 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                 </span>
                                                 <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="sm" frameColor={entry.users?.frameColor} borderClass="border-white" />
                                                 <div className="relative flex flex-col min-w-0 flex-1">
-                                                    <div className={`text-sm font-bold flex items-center gap-1.5 flex-wrap ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
+                                                    <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
                                                         <span className="truncate">
                                                             {entry.users?.name || commonT('anonymous')}
                                                         </span>
                                                         {isMe && <span className="shrink-0 px-1.5 py-0.5 rounded text-xs bg-[var(--theme-primary)] text-white font-bold leading-none">{commonT('you')}</span>}
-                                                        {/* リアクション — ユーザー名と同じ行にインライン表示 */}
-                                                        {groupId && userId && (
-                                                            <span className="inline-flex items-center" onClick={(e) => e.stopPropagation()}>
-                                                                <GroupReactions
-                                                                    groupId={groupId}
-                                                                    toUserId={entryId}
-                                                                    currentUserId={userId}
-                                                                    period={period}
-                                                                    reactions={reactions}
-                                                                    onReactionToggle={handleReactionToggle}
-                                                                    isSelf={isMe}
-                                                                    compact
-                                                                    forceShow={hoveredUserId === entryId || longPressUserId === entryId}
-                                                                    maxVisibleBadges={5}
-                                                                />
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    </p>
                                                     {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
                                                         <span className="text-xs text-gray-400 font-medium whitespace-nowrap leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
+                                                    )}
+                                                    {/* リアクション — 称号の下に固定高さで行内表示 */}
+                                                    {groupId && userId && (
+                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                            <GroupReactions
+                                                                groupId={groupId}
+                                                                toUserId={entryId}
+                                                                currentUserId={userId}
+                                                                period={period}
+                                                                reactions={reactions}
+                                                                onReactionToggle={handleReactionToggle}
+                                                                isSelf={isMe}
+                                                                compact
+                                                                forceShow={hoveredUserId === entryId || longPressUserId === entryId}
+                                                                maxVisibleBadges={5}
+                                                            />
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
