@@ -309,20 +309,20 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                     />
                                 </div>
 
+                                {(() => {
+                                    const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+                                    const paginatedItems = currentGlobal.length > 0 ? currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
+                                        ...entry,
+                                        originalRank: entry.originalRank ?? (startIndex + idx + 1)
+                                    })) : [];
+
+                                    return (
+                                        <>
                                 <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                                     {currentGlobal.length === 0 ? (
                                         <li className="list-none"><p className="text-center py-8" style={{ color: 'var(--foreground-muted, #6b7280)' }}>{t('noData')}</p></li>
                                     ) : (
-                                        (() => {
-                                            const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
-                                            const paginatedItems = currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
-                                                ...entry,
-                                                originalRank: entry.originalRank ?? (startIndex + idx + 1)
-                                            }));
-
-                                            return (
-                                                <div className="flex flex-col">
-                                                    <div>
+                                        <>
                                                         {paginatedItems.map((entry) => {
 
                                                             return (
@@ -456,48 +456,49 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                                                 </div>
                                                             </li>
                                                         ))}
-                                                    </div>
-
-                                                    {/* Pagination Controls */}
-                                                    {totalPages > 1 && (
-                                                        <div className="px-5 py-3 flex items-center justify-between" style={{ background: isMidnight ? 'rgba(30,41,59,0.5)' : '#f9fafb', borderTop: isMidnight ? '1px solid rgba(129,140,248,0.15)' : '1px solid #f3f4f6' }}>
-                                                            <button
-                                                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                                                disabled={page === 1}
-                                                                className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${!isMidnight ? 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200' : ''}`}
-                                                                style={isMidnight ? {
-                                                                    background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
-                                                                    color: '#c7d2fe',
-                                                                    border: '1px solid rgba(165,180,252,0.3)',
-                                                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                                                                } : undefined}
-                                                            >
-                                                                {t('prev')}
-                                                            </button>
-                                                            <span className="text-xs font-medium text-gray-500">
-                                                                {t('pageInfo', { current: page, total: totalPages })}
-                                                            </span>
-                                                            <button
-                                                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                                                disabled={page === totalPages}
-                                                                className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${isMidnight ? 'midnight-vivid-btn' : 'bg-[var(--theme-primary)] text-white hover:opacity-80'}`}
-                                                                style={isMidnight ? {
-                                                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                                                    color: '#ffffff',
-                                                                    border: '1px solid rgba(165,180,252,0.3)',
-                                                                    boxShadow: '0 2px 10px -2px rgba(99,102,241,0.4)',
-                                                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                                                                } : undefined}
-                                                            >
-                                                                {t('next')}
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()
+                                        </>
                                     )}
                                 </ul>
+
+                                {/* ページネーション — <ul> の外に配置（ARIA 準拠） */}
+                                {totalPages > 1 && (
+                                    <div className="px-5 py-3 flex items-center justify-between" style={{ background: isMidnight ? 'rgba(30,41,59,0.5)' : '#f9fafb', borderTop: isMidnight ? '1px solid rgba(129,140,248,0.15)' : '1px solid #f3f4f6' }}>
+                                        <button
+                                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                                            disabled={page === 1}
+                                            className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${!isMidnight ? 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200' : ''}`}
+                                            style={isMidnight ? {
+                                                background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
+                                                color: '#c7d2fe',
+                                                border: '1px solid rgba(165,180,252,0.3)',
+                                                textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                            } : undefined}
+                                        >
+                                            {t('prev')}
+                                        </button>
+                                        <span className="text-xs font-medium text-gray-500">
+                                            {t('pageInfo', { current: page, total: totalPages })}
+                                        </span>
+                                        <button
+                                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={page === totalPages}
+                                            className={`px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${isMidnight ? 'midnight-vivid-btn' : 'bg-[var(--theme-primary)] text-white hover:opacity-80'}`}
+                                            style={isMidnight ? {
+                                                background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                                color: '#ffffff',
+                                                border: '1px solid rgba(165,180,252,0.3)',
+                                                boxShadow: '0 2px 10px -2px rgba(99,102,241,0.4)',
+                                                textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                            } : undefined}
+                                        >
+                                            {t('next')}
+                                        </button>
+                                    </div>
+                                )}
+                                        </>
+                                    );
+                                })()}
+
                             </FadeInWrapper>
                         </div>
                         )}

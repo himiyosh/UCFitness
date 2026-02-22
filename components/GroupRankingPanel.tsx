@@ -164,7 +164,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
 
                                 return (
-                                    <div key={entry.originalRank}>
+                                    <div key={entry.originalRank} role="listitem">
                                         {isGap && (
                                             <div className={`px-6 py-2 flex justify-center border-b ${isMidnight ? 'bg-slate-800/50 border-slate-600/20' : 'bg-gray-50 border-gray-50'}`}>
                                                 <span className={`text-xs tracking-widest ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>•••</span>
