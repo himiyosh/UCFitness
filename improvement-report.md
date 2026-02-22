@@ -649,4 +649,85 @@
 
 ---
 
+## 🔄 Cycle 7 — セキュリティ強化 + ARIA 修正 + UX/パフォーマンス改善 (2026-02-22)
+
+### 📋 実施内容
+
+#### 🔨 Build Validation
+- ✅ TypeScript 型チェック: エラー 0
+- ✅ React Hooks: 全 88 Client Component で違反なし
+- ✅ Edge Runtime: 全 page.tsx / route.ts で宣言あり
+- ✅ `select('*')`: アプリコードで使用なし
+
+#### 🛡️ ARIA アクセシビリティ修正 (WCAG 1.3.1)
+| ファイル | 修正内容 |
+|---------|---------|
+| `AnimatedLeaderboard.tsx` | `<ul>` 内の `<div>` ラッパーを除去、`<li>` を直接子要素に。ページネーションを `<ul>` 外に移動 |
+| `GroupRankingPanel.tsx` | `role="list"` の子要素に `role="listitem"` を追加 |
+
+#### 🔒 セキュリティ修正 (6件)
+| 重要度 | ファイル | 脆弱性 | 修正内容 |
+|--------|---------|--------|---------|
+| 🔴 High | `api/amazon/group-gear/route.ts` | IDOR（グループメンバーシップ未検証） | リクエスト元のグループ所属確認を追加 |
+| 🟡 Medium | `api/user/achievements/route.ts` | 認証なし — ユーザー列挙可能 | `auth()` チェック追加 |
+| 🟡 Medium | `api/amazon/trending/route.ts` | 認証なし — ユーザー情報漏洩 | `auth()` チェック追加 |
+| 🟡 Medium | `api/challenge/route.ts` | 認証なし — チャレンジ情報公開 | `auth()` 必須化 |
+| 🟡 Medium | `api/user/group/route.ts` | 唯一の OWNER 退出でグループ孤児化 | OWNER 数チェック + 退出拒否ロジック追加 |
+| 🟢 Low | `api/debug/db-check/route.ts` | dev モード バイパスで本番露出リスク | `isDev` バイパスを完全除去 |
+
+#### 🎨 UI/UX 改善 (5件)
+| ファイル | 改善内容 |
+|---------|---------|
+| `DashboardChallenges.tsx` | 状態チェック順序修正（loading → error → empty）+ `useCallback` リフェッチ |
+| `DashboardFollowing.tsx` | `window.location.reload()` → `useCallback` ベース再取得 |
+| `DailyMissions.tsx` | 空状態 UI 追加（アイコン + メッセージ） |
+| `FollowButton.tsx` | ローディング時のスピナーアニメーション追加 |
+| `DeleteGroupButton.tsx` | 冗長な `window.confirm()` 除去（カスタム UI が既にあるため） |
+
+#### ⚡ パフォーマンス改善 (4件)
+| ファイル | 改善内容 |
+|---------|---------|
+| `AnimatedLeaderboard.tsx` | ランクバッジスタイルオブジェクトを `useMemo` で抽出 |
+| `GroupRankingPanel.tsx` | 同上 |
+| `CoinGrowthChart.tsx` | Recharts の 6 個のプロップオブジェクトを `useMemo` 定数に抽出 |
+| `StepCalendar.tsx` | 月名ラベルの `Array.find()` → `Map` O(1) ルックアップに変換 |
+
+#### ✨ Feature Enhancement (3件)
+| ファイル | 改善内容 |
+|---------|---------|
+| `AchievementCard.tsx` | サイレントフェイル → エラー/空状態 UI に置換 |
+| `ProfileBadges.tsx` | モーダル閉じるボタンに `aria-label="Close"` 追加 |
+| `ShareMilestone.tsx` | シェアトグルボタンに `aria-label` 追加 |
+
+### 🔍 新機能提案 (12件)
+
+| 優先度 | 機能名 | カテゴリ | 工数 |
+|--------|--------|---------|------|
+| **P0** | 💸 UC ギフト送信（チップ機能） | Social | 🟢 Easy |
+| **P0** | 🏦 UC コインリーダーボード | Gamification | 🟢 Easy |
+| **P0** | 🔔 イベント駆動プッシュ通知拡張 | Retention | 🟡 Medium |
+| **P1** | 📊 歩数データエクスポート (CSV) | Health insights | 🟢 Easy |
+| **P1** | ⚔️ 1v1 フレンドチャレンジ | Social | 🟡 Medium |
+| **P1** | 📱 アクティビティフィード | Social | 🟡 Medium |
+| **P1** | 🏅 バッジ・称号ギャラリー | Gamification | 🟡 Medium |
+| **P1** | 🏆 グループ内ミニリーグ | Gamification | 🟡 Medium |
+| **P2** | 🌸 シーズンイベント & 限定バッジ | Retention | 🟡 Medium |
+| **P2** | 🔗 リファラルボーナス | Social | 🟡 Medium |
+| **P2** | 📈 歩数予測ウィジェット | Health insights | 🟡 Medium |
+| **P2** | 💎 UC ステーキング | Gamification | 🟡 Medium |
+
+**最重要発見:** `deductBalance('GIFT_SEND')` / `creditBalance('GIFT_RECEIVE')` PG 関数 + `getCoinLeaderboard()` が完全実装済みだが UI が存在しない。最小工数で最大効果。
+
+### 📊 Cycle 7 統計
+
+| 項目 | 値 |
+|------|------|
+| コミット数 | 4 |
+| 変更ファイル数 | 18 |
+| 型エラー | **0** ✅ |
+| React Hooks 違反 | **0** ✅ |
+| セキュリティ脆弱性残存 | **0** ✅ |
+
+---
+
 *レポート生成: GitHub Copilot (Claude) | ブランチ: copilot/improvement-loop-1*
