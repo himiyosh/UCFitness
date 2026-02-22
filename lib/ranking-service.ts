@@ -903,9 +903,10 @@ export const deriveBatchGroupRankings = async (
     if (groupIds.length === 0) return {};
 
     // 1. Fetch Members for ALL groups
+    // ⚡ Bolt Optimization: Fetch user details in the same query to avoid N+1 queries for missing users
     const { data: groupMembers } = await supabase
         .from('group_members')
-        .select('group_id, user_id')
+        .select('group_id, user_id, users(id, name, image, username)')
         .in('group_id', groupIds);
 
     if (!groupMembers || groupMembers.length === 0) return {};
@@ -916,6 +917,16 @@ export const deriveBatchGroupRankings = async (
 
     // Optimization: Filter for target users immediately
     const targetUserIds = new Set(groupMembers.map(m => m.user_id));
+
+    // Create a lookup for user details from group_members to handle missing users
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userDetailsMap = new Map<string, any>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    groupMembers.forEach((m: any) => {
+        if (m.users) {
+            userDetailsMap.set(m.user_id, m.users);
+        }
+    });
 
     // Check if input is Map or Record<Period, Array>
     // If it has 'DAILY' as an array property, it's the old format
@@ -969,30 +980,20 @@ export const deriveBatchGroupRankings = async (
         });
     }
 
-    // 3. Identify Missing Users (who have 0 steps across all periods, so not in global rankings)
-    const missingUserIds: string[] = [];
-
+    // 3. Fill in Missing Users (who have 0 steps across all periods, so not in global rankings)
+    // ⚡ Bolt Optimization: Use the pre-fetched user details from group_members
     targetUserIds.forEach(uid => {
         if (!userStats.has(uid)) {
-            missingUserIds.push(uid);
+            const userDetails = userDetailsMap.get(uid);
+            if (userDetails) {
+                userStats.set(uid, {
+                    users: userDetails,
+                    DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
+                    PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
+                });
+            }
         }
     });
-
-    // 4. Fetch Missing Users Profile Data
-    if (missingUserIds.length > 0) {
-        const { data: users } = await supabase
-            .from('users')
-            .select('id, name, image, username')
-            .in('id', missingUserIds);
-
-        users?.forEach(u => {
-            userStats.set(u.id, {
-                users: u,
-                DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
-                PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
-            });
-        });
-    }
 
     // 5. Distribute to Groups
     const result: Record<string, Record<Period, any[]>> = {};

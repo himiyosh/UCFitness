@@ -85,7 +85,7 @@ describe('Ranking Optimization', () => {
         const groupIds = ['g1'];
         // Mock group members
         mockIn.mockResolvedValueOnce({
-            data: [{ group_id: 'g1', user_id: 'u1' }],
+            data: [{ group_id: 'g1', user_id: 'u1', users: { id: 'u1', name: 'User 1' } }],
             error: null
         });
 
@@ -106,7 +106,7 @@ describe('Ranking Optimization', () => {
     it('deriveBatchGroupRankings works with Map input (optimized)', async () => {
         const groupIds = ['g1'];
         mockIn.mockResolvedValueOnce({
-            data: [{ group_id: 'g1', user_id: 'u1' }],
+            data: [{ group_id: 'g1', user_id: 'u1', users: { id: 'u1', name: 'User 1' } }],
             error: null
         });
 
@@ -129,5 +129,34 @@ describe('Ranking Optimization', () => {
         expect(result['g1'].DAILY).toHaveLength(1);
         expect(result['g1'].DAILY[0].users.id).toBe('u1');
         expect(result['g1'].DAILY[0].steps).toBe(1000);
+    });
+
+    it('deriveBatchGroupRankings does not fetch users table for missing users', async () => {
+        const groupIds = ['g1'];
+        // Mock group members with user details
+        mockIn.mockResolvedValueOnce({
+            data: [{ group_id: 'g1', user_id: 'u_missing', users: { id: 'u_missing', name: 'Missing User' } }],
+            error: null
+        });
+
+        const globalRankingMap = {}; // User is missing from global rankings
+
+        const result = await deriveBatchGroupRankings(groupIds, globalRankingMap as any);
+
+        // Should return the user with 0 steps
+        expect(result['g1'].DAILY).toHaveLength(1);
+        expect(result['g1'].DAILY[0].users.id).toBe('u_missing');
+        expect(result['g1'].DAILY[0].steps).toBe(0);
+        expect(result['g1'].DAILY[0].users.name).toBe('Missing User');
+
+        // Verification: ensure 'users' table was NOT queried separately
+        // We know 'from' is called for 'group_members'. If it was called for 'users', call count would be higher or with different args.
+        // Let's inspect calls to mockFrom
+        const calls = mockFrom.mock.calls;
+        // Expected calls:
+        // 1. from('group_members')
+        // It should NOT call from('users')
+        const usersTableCalls = calls.filter((call: any[]) => call[0] === 'users');
+        expect(usersTableCalls).toHaveLength(0);
     });
 });
