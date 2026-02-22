@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
         const status = searchParams.get('status') || 'active'; // 'active' | 'completed' | 'my'
 
         const session = await auth();
-        const userId = session?.user?.id;
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const userId = session.user.id;
 
         const today = new Date().toISOString().split('T')[0];
 

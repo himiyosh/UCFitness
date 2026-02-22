@@ -82,6 +82,28 @@ export async function POST(request: Request) {
         .single();
 
       if (group) {
+        // 🛡️ セキュリティ: 唯一のOWNERが退出するとグループ孤児化するため防止
+        const { data: myMembership } = await supabaseAdmin
+          .from('group_members')
+          .select('role')
+          .eq('group_id', group.id)
+          .eq('user_id', userId)
+          .single();
+
+        if (myMembership?.role === 'OWNER') {
+          const { count: ownerCount } = await supabaseAdmin
+            .from('group_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', group.id)
+            .eq('role', 'OWNER');
+
+          if ((ownerCount || 0) <= 1) {
+            return NextResponse.json({
+              error: 'Cannot leave group as the sole owner. Transfer ownership or delete the group first.'
+            }, { status: 400 });
+          }
+        }
+
         await supabaseAdmin
           .from('group_members')
           .delete()

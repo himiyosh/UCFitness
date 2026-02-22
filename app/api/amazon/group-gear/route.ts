@@ -16,9 +16,23 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userId = (session.user as any).id;
     const groupId = request.nextUrl.searchParams.get('groupId');
     if (!groupId) {
         return NextResponse.json({ error: 'groupId is required' }, { status: 400 });
+    }
+
+    // 🛡️ セキュリティ: リクエスト元がグループメンバーであることを確認（IDOR防止）
+    const { data: membership } = await supabaseAdmin
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId)
+        .eq('user_id', userId)
+        .single();
+
+    if (!membership) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // グループメンバーの user_id 一覧を取得
