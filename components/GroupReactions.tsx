@@ -129,15 +129,16 @@ export default function GroupReactions({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showExtended]);
 
-    // forceShow に連動してピッカーの開閉を制御
-    // forceShow が false になったら即座に閉じる（複数ピッカー同時表示を防止）
+    // forceShow に連動して＋ボタンの表示を制御
+    // forceShow が true → ＋ボタンを表示（ピッカーはクリックで開閉）
+    // forceShow が false → ＋ボタン非表示 + ピッカーも閉じる
     useEffect(() => {
         if (forceShow) {
             if (hideTimeout.current) {
                 clearTimeout(hideTimeout.current);
                 hideTimeout.current = null;
             }
-            setShowPicker(true);
+            // ピッカーは自動表示しない — クリックで開閉する
         } else {
             // 即座にクローズ — 他の行に移動した際に前の行のピッカーが残らないようにする
             setShowPicker(false);
