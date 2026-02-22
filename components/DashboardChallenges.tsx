@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from '@/navigation';
 
 // ============================================
@@ -25,30 +25,29 @@ export default function DashboardChallenges() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
-    useEffect(() => {
-        let cancelled = false;
-        async function fetchChallenges() {
-            try {
-                const res = await fetch('/api/challenge?status=active');
-                if (!res.ok) {
-                    if (!cancelled) setError(true);
-                    return;
-                }
-                const data = await res.json();
-                if (!cancelled) {
-                    setChallenges((data.challenges || []).slice(0, 2));
-                }
-            } catch {
-                if (!cancelled) setError(true);
-            } finally {
-                if (!cancelled) setLoading(false);
+    // チャレンジを取得（retry にも使える useCallback 版）
+    const fetchChallenges = useCallback(async () => {
+        setLoading(true);
+        setError(false);
+        try {
+            const res = await fetch('/api/challenge?status=active');
+            if (!res.ok) {
+                setError(true);
+                return;
             }
+            const data = await res.json();
+            setChallenges((data.challenges || []).slice(0, 2));
+        } catch {
+            setError(true);
+        } finally {
+            setLoading(false);
         }
-        fetchChallenges();
-        return () => { cancelled = true; };
     }, []);
 
-    // データ無し or ローディング中は表示しない
+    useEffect(() => {
+        fetchChallenges();
+    }, [fetchChallenges]);
+
     if (loading) {
         return (
             <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -61,8 +60,7 @@ export default function DashboardChallenges() {
         );
     }
 
-    if (challenges.length === 0) return null;
-
+    // エラーチェックを空チェックより先に行う（デフォルト空配列でエラーが隠れるバグ修正）
     if (error) {
         return (
             <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -70,8 +68,8 @@ export default function DashboardChallenges() {
                     <span className="text-3xl mb-2">⚠️</span>
                     <p className="text-sm font-semibold text-gray-600">{t('activeChallenges')}</p>
                     <button
-                        onClick={() => { setError(false); setLoading(true); window.location.reload(); }}
-                        className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:scale-105 transition-transform"
+                        onClick={fetchChallenges}
+                        className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:scale-105 active:scale-95 transition-all"
                         style={{ background: 'var(--theme-primary)' }}
                     >
                         {t('retry') || '再試行'}
@@ -80,6 +78,8 @@ export default function DashboardChallenges() {
             </div>
         );
     }
+
+    if (challenges.length === 0) return null;
 
     return (
         <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow p-5">

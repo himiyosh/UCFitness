@@ -707,6 +707,7 @@
         "loadError": "Failed to load missions",
         "retry": "Retry",
         "refresh": "Refresh missions",
+        "noMissions": "No missions available today",
         "bonusHint": "Complete all for bonus",
         "bonusReward": "Complete all missions for +100 UC bonus!"
     },

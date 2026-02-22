@@ -108,7 +108,17 @@ export default function DailyMissions() {
         );
     }
 
-    if (missions.length === 0) return null;
+    if (missions.length === 0) {
+        return (
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+                <div className="flex flex-col items-center py-6 text-center">
+                    <span className="text-4xl mb-3">🎯</span>
+                    <p className="text-sm font-bold text-gray-700 mb-1">{t('dailyMissions')}</p>
+                    <p className="text-xs text-[var(--foreground-muted)]">{t('noMissions')}</p>
+                </div>
+            </div>
+        );
+    }
 
     const completedCount = missions.filter(m => m.is_completed).length;
     const progressPercent = (completedCount / missions.length) * 100;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import TopUsersChart from '@/components/TopUsersChart';
@@ -32,6 +32,22 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
     const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
+
+    // パフォーマンス: ランクバッジのスタイルを事前計算し、レンダーごとの再生成を防止
+    const rankBadgeStyles = useMemo(() => ({
+        1: isMidnight
+            ? { background: 'linear-gradient(160deg, #ca8a04, #eab308)', color: '#ffffff', boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)' }
+            : { background: 'linear-gradient(160deg, #d97706, #f59e0b)', color: '#ffffff', boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)' },
+        2: isMidnight
+            ? { background: 'linear-gradient(160deg, #475569, #94a3b8)', color: '#ffffff', boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)' }
+            : { background: 'linear-gradient(160deg, #5b7a99, #a0b4c8)', color: '#ffffff', boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)' },
+        3: isMidnight
+            ? { background: 'linear-gradient(160deg, #b45309, #ea580c)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' }
+            : { background: 'linear-gradient(160deg, #c2410c, #f97316)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' },
+        default: isMidnight
+            ? { background: 'rgba(30,41,59,0.6)', color: '#64748b', border: '1px solid rgba(148,163,184,0.15)' }
+            : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' },
+    }), [isMidnight]);
 
     // リアクション管理
     const { reactions, handleReactionToggle } = useGroupReactions(groupId, userId, period);
@@ -189,23 +205,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             {/* Content Wrapper */}
                                             <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                                                 <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold shrink-0"
-                                                    style={entry.originalRank === 1 ? {
-                                                        background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
-                                                        color: '#ffffff',
-                                                        boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
-                                                    } : entry.originalRank === 2 ? {
-                                                        background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
-                                                        color: '#ffffff',
-                                                        boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)',
-                                                    } : entry.originalRank === 3 ? {
-                                                        background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
-                                                        color: '#ffffff',
-                                                        boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
-                                                    } : {
-                                                        background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
-                                                        color: isMidnight ? '#64748b' : '#94a3b8',
-                                                        border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
-                                                    }}
+                                                    style={rankBadgeStyles[entry.originalRank as 1 | 2 | 3] ?? rankBadgeStyles.default}
                                                 >
                                                     {entry.originalRank}
                                                 </span>

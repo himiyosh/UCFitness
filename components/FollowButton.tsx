@@ -54,13 +54,11 @@ export default function FollowButton({
     }, [isFollowing, isLoading, targetUserId, onToggle]);
 
     // ボタンの表示テキスト
-    const buttonText = isLoading
-        ? '...'
-        : isFollowing
-            ? isHovered
-                ? t('unfollow')
-                : t('following')
-            : t('follow');
+    const buttonText = isFollowing
+        ? isHovered
+            ? t('unfollow')
+            : t('following')
+        : t('follow');
 
     // ボタンのスタイル
     const baseClasses = 'px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 border-2 inline-flex items-center justify-center gap-1.5 min-w-[100px] hover:scale-105 active:scale-95';
@@ -80,6 +78,9 @@ export default function FollowButton({
             className={`${baseClasses} ${stateClasses} ${isLoading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
             aria-label={isFollowing ? t('unfollow') : t('follow')}
         >
+            {isLoading && (
+                <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full" />
+            )}
             {!isLoading && !isFollowing && (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
