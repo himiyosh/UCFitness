@@ -27,7 +27,7 @@ const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'));
 const DailyMissions = nextDynamic(() => import('@/components/DailyMissions'));
 const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear'));
 const FollowingPanel = nextDynamic(() => import('@/components/FollowingPanel'));
-const ActivityFeed = nextDynamic(() => import('@/components/ActivityFeed'));
+const NotificationBell = nextDynamic(() => import('@/components/NotificationBell'));
 
 export const dynamic = 'force-dynamic';
 
@@ -287,6 +287,7 @@ export default async function Home() {
           </div>
           <div className="flex items-center gap-1">
             <RefreshButton />
+            {session?.user && <NotificationBell />}
             {session?.user ? (
               <UserMenu user={session.user} />
             ) : (
@@ -402,11 +403,6 @@ export default async function Home() {
           {/* フォロー中ユーザー */}
           {session && userId && (
             <FollowingPanel />
-          )}
-
-          {/* アクティビティフィード — フォロー中ユーザーの最近の活動 */}
-          {session && userId && (
-            <ActivityFeed />
           )}
 
           {/* BOTTOM SECTION: Leaderboards */}
