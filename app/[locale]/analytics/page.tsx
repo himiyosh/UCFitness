@@ -18,8 +18,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsPage() {
     const session = await auth();
-    const t = await getTranslations('Analytics');
-    const dashboardT = await getTranslations('Dashboard');
+    // ⚡ パフォーマンス: 翻訳取得を並列化
+    const [t, dashboardT] = await Promise.all([
+        getTranslations('Analytics'),
+        getTranslations('Dashboard'),
+    ]);
 
     if (!session?.user) {
         redirect("/");

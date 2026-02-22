@@ -207,7 +207,6 @@ export default function GroupDetailLeaderboard({
                                             onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                             onTouchStart={() => {
-                                                if (isCurrentUser) return;
                                                 const timer = setTimeout(() => {
                                                     setLongPressUserId(entry.users.id);
                                                 }, 500);
@@ -244,7 +243,7 @@ export default function GroupDetailLeaderboard({
                                                     <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="md" frameColor={entry.users.frameColor} borderClass="border-white" />
                                                 </div>
 
-                                                <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="relative flex flex-col min-w-0 flex-1">
                                                     <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                                                         <span>
                                                             {entry.users?.name || commonT('anonymous')}
@@ -256,9 +255,9 @@ export default function GroupDetailLeaderboard({
                                                     ) : (
                                                         <p className="text-xs text-gray-400">{lt('rankNumber', { rank })}</p>
                                                     )}
-                                                    {/* リアクション — 称号の下に独立行で表示 */}
+                                                    {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="relative z-10 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entry.users.id}

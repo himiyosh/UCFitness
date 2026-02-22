@@ -105,7 +105,16 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
         return unearned?.itemCode || null;
     }, [items]);
 
-    const earnedCount = items.filter(i => i.earned).length;
+    // 達成数（再レンダリング時の不要な再計算を防止）
+    const earnedCount = useMemo(() => items.filter(i => i.earned).length, [items]);
+
+    // カテゴリ別一覧（grouped と t に依存、useMemo で安定化）
+    const categories = useMemo(() => [
+        { key: 'steps' as const, label: t('stepMilestones'), items: grouped.steps },
+        { key: 'streak' as const, label: t('streakAchievements'), items: grouped.streak },
+        { key: 'special' as const, label: t('specialAchievements'), items: grouped.special },
+    ], [grouped, t]);
+
     const [expanded, setExpanded] = useState(false);
 
     if (loading) {
@@ -149,12 +158,6 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
             </div>
         );
     }
-
-    const categories = [
-        { key: 'steps' as const, label: t('stepMilestones'), items: grouped.steps },
-        { key: 'streak' as const, label: t('streakAchievements'), items: grouped.streak },
-        { key: 'special' as const, label: t('specialAchievements'), items: grouped.special },
-    ];
 
     // 次の目標アイテム（未達成の最初のもの）
     const nextGoalItem = items.find(i => i.itemCode === nextGoalCode);

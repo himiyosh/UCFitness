@@ -30,7 +30,9 @@ export async function GET(
         const { data: challenge, error } = await supabaseAdmin
             .from('challenges')
             .select(`
-                *,
+                id, title, description, type, target_steps,
+                start_date, end_date, reward_uc, is_active,
+                created_by, group_id, created_at,
                 creator:created_by(username, name, image),
                 challenge_participants(
                     user_id,

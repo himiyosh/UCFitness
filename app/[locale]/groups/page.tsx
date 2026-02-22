@@ -9,7 +9,7 @@ import UserMenu from "@/components/UserMenu";
 import RefreshButton from '@/components/RefreshButton';
 import GroupSettings from "@/components/GroupSettings";
 import Breadcrumbs from '@/components/Breadcrumbs';
-import { getAllGroupRankings } from "@/lib/ranking-service";
+import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/ranking-service";
 import { getTranslations } from "next-intl/server";
 import Footer from '@/components/Footer';
 
@@ -24,8 +24,8 @@ export default async function MyGroupsPage() {
 
     const userId = (session.user as any).id;
 
-    // ⚡ パフォーマンス: ユーザーデータとメンバーシップを並列取得
-    const [userResult, membershipResult] = await Promise.all([
+    // ⚡ パフォーマンス: ユーザーデータ、メンバーシップ、翻訳を並列取得
+    const [userResult, membershipResult, t, dashboardT] = await Promise.all([
         supabaseAdmin
             .from('users')
             .select('name, group_keyword, image, username')
@@ -45,6 +45,8 @@ export default async function MyGroupsPage() {
       )
     `)
             .eq('user_id', userId),
+        getTranslations('Groups'),
+        getTranslations('Dashboard'),
     ]);
 
     const userData = userResult.data;
@@ -65,12 +67,14 @@ export default async function MyGroupsPage() {
         groups: Array.isArray(m.groups) ? m.groups[0] : m.groups
     }));
 
-    // Fetch Rankings for each group to get "My Rank"
-    const membershipsWithRank = await Promise.all(normalizedMemberships.map(async (m: any) => {
-        // Optimization: We could perhaps fetch only WEEKLY but the service fetches all.
-        // Ideally we cache this or use a lighter query, but for now we follow the plan.
-        const rankings = await getAllGroupRankings(m.groups.id);
-        const weeklyRankings = rankings['WEEKLY'];
+    // ⚡ N+1 解消: グローバルランキングキャッシュからバッチで全グループのランキングを導出
+    const groupIds = normalizedMemberships.map((m: any) => m.groups.id);
+    const globalRankings = await getCachedGlobalRankings();
+    const batchRankings = await deriveBatchGroupRankings(groupIds, globalRankings);
+
+    const membershipsWithRank = normalizedMemberships.map((m: any) => {
+        const groupRankings = batchRankings[m.groups.id];
+        const weeklyRankings = groupRankings?.WEEKLY || [];
         const myRankIndex = weeklyRankings.findIndex((r: any) => r.users.id === userId);
 
         return {
@@ -78,7 +82,7 @@ export default async function MyGroupsPage() {
             rank: myRankIndex !== -1 ? myRankIndex + 1 : null,
             totalMembers: weeklyRankings.length
         };
-    }));
+    });
 
     // Sort memberships based on groupOrder
     const sortedMemberships = membershipsWithRank.sort((a: any, b: any) => {
@@ -96,9 +100,6 @@ export default async function MyGroupsPage() {
         // If neither, sort by join date (newest first)
         return new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime();
     });
-
-    const t = await getTranslations('Groups');
-    const dashboardT = await getTranslations('Dashboard');
 
     // G1/G8: グループサマリーデータの計算
     const totalMembers = membershipsWithRank.reduce((sum: number, m: any) => sum + (m.totalMembers || 0), 0);

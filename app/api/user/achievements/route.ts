@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { auth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,12 @@ export const dynamic = 'force-dynamic';
  * ユーザーの公開実績データを返す（累計歩数、最長ストリーク、バッジ数、ランク）
  */
 export async function GET(request: Request) {
+    // 🛡️ セキュリティ: 認証チェック（ユーザー列挙・データスクレイピング防止）
+    const session = await auth();
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const url = new URL(request.url);
     const targetUsername = url.searchParams.get('username');
 

@@ -32,9 +32,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const params = await props.params;
     const session = await auth();
     const { username, locale } = params;
-    const t = await getTranslations('Profile');
-    const commonT = await getTranslations('Common');
-    const dashboardT = await getTranslations('Dashboard');
+    // ⚡ パフォーマンス: 翻訳取得を並列化
+    const [t, commonT, dashboardT] = await Promise.all([
+        getTranslations('Profile'),
+        getTranslations('Common'),
+        getTranslations('Dashboard'),
+    ]);
 
     // Fetch target user data
     // 🛡️ Sentinel: email を除外して PII 漏洩を防止
@@ -54,7 +57,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     recentDate.setDate(recentDate.getDate() - 400);
     const recentDateStr = recentDate.toISOString().split('T')[0];
 
-    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, recentHistoryResult, statsResult] = await Promise.all([
+    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, recentHistoryResult, statsResult, weeklyRankingsResult] = await Promise.all([
         supabaseAdmin
             .from('group_members')
             .select('groups!inner(keyword, is_public, name, header_image_url, image_url)')
@@ -78,6 +81,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         // 全期間の集計データ（totalSteps, bestDay, lastSynced）
         supabaseAdmin
             .rpc('get_user_step_stats', { p_user_id: user.id }),
+        // ⭐ パフォーマンス: ランキングも並列取得
+        getRankings('GLOBAL', 'WEEKLY').catch(() => [] as any[]),
     ]);
 
     let primaryGroup: any = undefined;
@@ -138,14 +143,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         allHistoryData = recentHistory;
     }
 
-    // ランキング順位を取得
+    // ランキング順位を取得（Promise.allで並列取得済み）
     let userWeeklyRank: number | null = null;
-    try {
-        const weeklyRankings = await getRankings('GLOBAL', 'WEEKLY');
+    const weeklyRankings = weeklyRankingsResult;
+    if (Array.isArray(weeklyRankings) && weeklyRankings.length > 0) {
         const rankIndex = weeklyRankings.findIndex((r: any) => r.users?.id === user.id);
         if (rankIndex >= 0) userWeeklyRank = rankIndex + 1;
-    } catch (e) {
-        // ランキング取得失敗時は表示しない
     }
 
     // --- Stats Calculation (Comparison) ---

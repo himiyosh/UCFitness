@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import TopUsersChart from '@/components/TopUsersChart';
@@ -32,6 +32,22 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
     const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
+
+    // パフォーマンス: ランクバッジのスタイルを事前計算し、レンダーごとの再生成を防止
+    const rankBadgeStyles = useMemo(() => ({
+        1: isMidnight
+            ? { background: 'linear-gradient(160deg, #ca8a04, #eab308)', color: '#ffffff', boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)' }
+            : { background: 'linear-gradient(160deg, #d97706, #f59e0b)', color: '#ffffff', boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)' },
+        2: isMidnight
+            ? { background: 'linear-gradient(160deg, #475569, #94a3b8)', color: '#ffffff', boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)' }
+            : { background: 'linear-gradient(160deg, #5b7a99, #a0b4c8)', color: '#ffffff', boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)' },
+        3: isMidnight
+            ? { background: 'linear-gradient(160deg, #b45309, #ea580c)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' }
+            : { background: 'linear-gradient(160deg, #c2410c, #f97316)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' },
+        default: isMidnight
+            ? { background: 'rgba(30,41,59,0.6)', color: '#64748b', border: '1px solid rgba(148,163,184,0.15)' }
+            : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' },
+    }), [isMidnight]);
 
     // リアクション管理
     const { reactions, handleReactionToggle } = useGroupReactions(groupId, userId, period);
@@ -84,15 +100,15 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
 
     return (
         <div
-            className={`overflow-hidden rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
+            className={`rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
             style={isMidnight
                 ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
                 : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
             }
         >
-            {/* Header */}
+            {/* Header — overflow-hidden + rounded-t-xl でヘッダー角丸を維持 */}
             <div
-                className="px-4 py-2.5 flex items-center gap-2"
+                className="px-4 py-2.5 flex items-center gap-2 overflow-hidden rounded-t-xl"
                 style={isMidnight
                     ? { borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(16,185,129,0.08)' }
                     : { borderBottom: '1px solid #d1fae5', background: 'rgba(236,253,245,0.5)' }
@@ -158,13 +174,16 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 <div role="list" className={`divide-y lg:border-t-0 lg:col-span-7 ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                     {neighbors.length > 0 ? (
                         (() => {
-                            return neighbors.map((entry, i: number) => {
+                            // メンバー数に関わらず常に5人分の高さを確保するための空行数
+                            const MIN_ROWS = 5;
+                            const emptyRowCount = Math.max(0, MIN_ROWS - neighbors.length);
+                            return (<>{neighbors.map((entry, i: number) => {
                                 const entryId = entry.users?.id ?? '';
                                 const isMe = entryId === userId;
                                 const isGap = i > 0 && entry.originalRank > neighbors[i - 1].originalRank + 1;
 
                                 return (
-                                    <div key={entry.originalRank}>
+                                    <div key={entry.originalRank} role="listitem">
                                         {isGap && (
                                             <div className={`px-6 py-2 flex justify-center border-b ${isMidnight ? 'bg-slate-800/50 border-slate-600/20' : 'bg-gray-50 border-gray-50'}`}>
                                                 <span className={`text-xs tracking-widest ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>•••</span>
@@ -176,7 +195,6 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             onMouseEnter={() => setHoveredUserId(entryId)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}
                                             onTouchStart={() => {
-                                                if (isMe) return;
                                                 const timer = setTimeout(() => {
                                                     setLongPressUserId(entryId);
                                                 }, 500);
@@ -189,28 +207,12 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             {/* Content Wrapper */}
                                             <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                                                 <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold shrink-0"
-                                                    style={entry.originalRank === 1 ? {
-                                                        background: isMidnight ? 'linear-gradient(160deg, #ca8a04, #eab308)' : 'linear-gradient(160deg, #d97706, #f59e0b)',
-                                                        color: '#ffffff',
-                                                        boxShadow: '0 2px 6px rgba(234, 179, 8, 0.3)',
-                                                    } : entry.originalRank === 2 ? {
-                                                        background: isMidnight ? 'linear-gradient(160deg, #475569, #94a3b8)' : 'linear-gradient(160deg, #5b7a99, #a0b4c8)',
-                                                        color: '#ffffff',
-                                                        boxShadow: '0 2px 6px rgba(91, 122, 153, 0.35)',
-                                                    } : entry.originalRank === 3 ? {
-                                                        background: isMidnight ? 'linear-gradient(160deg, #b45309, #ea580c)' : 'linear-gradient(160deg, #c2410c, #f97316)',
-                                                        color: '#ffffff',
-                                                        boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)',
-                                                    } : {
-                                                        background: isMidnight ? 'rgba(30,41,59,0.6)' : '#f1f5f9',
-                                                        color: isMidnight ? '#64748b' : '#94a3b8',
-                                                        border: isMidnight ? '1px solid rgba(148,163,184,0.15)' : '1px solid #e2e8f0'
-                                                    }}
+                                                    style={rankBadgeStyles[entry.originalRank as 1 | 2 | 3] ?? rankBadgeStyles.default}
                                                 >
                                                     {entry.originalRank}
                                                 </span>
                                                 <UserAvatar src={entry.users?.image} name={entry.users?.name || '?'} size="sm" frameColor={entry.users?.frameColor} borderClass="border-white" />
-                                                <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="relative flex flex-col min-w-0 flex-1">
                                                     <p className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
                                                         <span className="truncate">
                                                             {entry.users?.name || commonT('anonymous')}
@@ -220,9 +222,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     {entry.users?.titleEmoji && (entry.users?.titleNameJa || entry.users?.titleNameEn) && (
                                                         <span className="text-xs text-gray-400 font-medium whitespace-nowrap leading-tight">{entry.users.titleEmoji} {locale === 'ja' ? entry.users.titleNameJa : entry.users.titleNameEn}</span>
                                                     )}
-                                                    {/* リアクション — 称号の下に独立行で表示 */}
+                                                    {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="relative mt-0.5 empty:hidden" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entryId}
@@ -260,7 +262,11 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                         </div>
                                     </div>
                                 );
-                            });
+                            })}{/* 5人分の高さを埋めるプレースホルダー行 */}
+                            {Array.from({ length: emptyRowCount }).map((_, i) => (
+                                <div key={`empty-${i}`} role="listitem" className="min-h-[4.5rem]" />
+                            ))}
+                            </>);
                         })()
                     ) : (
                         <p className={`text-center py-8 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>

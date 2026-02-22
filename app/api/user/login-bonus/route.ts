@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -159,5 +161,3 @@ export async function POST() {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
-
-export const runtime = "edge";

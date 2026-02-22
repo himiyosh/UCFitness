@@ -54,6 +54,14 @@ interface CustomTooltipProps {
 export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     const t = useTranslations('Bank');
 
+    // パフォーマンス: Recharts の props オブジェクトを安定化し、不要な再マウントを防止
+    const chartMargin = useMemo(() => ({ top: 5, right: 0, left: -20, bottom: 5 }), []);
+    const xAxisTick = useMemo(() => ({ fontSize: 10, fill: '#9ca3af' }), []);
+    const xAxisLine = useMemo(() => ({ stroke: '#e5e7eb' }), []);
+    const balanceYTick = useMemo(() => ({ fontSize: 10, fill: '#d97706' }), []);
+    const dailyYTick = useMemo(() => ({ fontSize: 10, fill: '#6b7280' }), []);
+    const activeDotStyle = useMemo(() => ({ r: 4, stroke: '#f59e0b', strokeWidth: 2, fill: '#fff' }), []);
+
     // チャートデータとドメインの計算をメモ化
     const { chartData, hasNegative, balanceDomain, dailyDomain } = useMemo(() => {
         if (!data || data.length === 0) {
@@ -134,7 +142,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
 
             <div className="h-72 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
+                    <ComposedChart data={chartData} margin={chartMargin}>
                         <defs>
                             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
@@ -144,16 +152,16 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                         <XAxis
                             dataKey="dateLabel"
-                            tick={{ fontSize: 10, fill: '#9ca3af' }}
+                            tick={xAxisTick}
                             tickLine={false}
-                            axisLine={{ stroke: '#e5e7eb' }}
+                            axisLine={xAxisLine}
                             interval="preserveStartEnd"
                         />
                         {/* 左Y軸: 累積残高スケール（オレンジ線） */}
                         <YAxis
                             yAxisId="balance"
                             domain={balanceDomain}
-                            tick={{ fontSize: 10, fill: '#d97706' }}
+                            tick={balanceYTick}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={formatNumber}
@@ -163,7 +171,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             yAxisId="daily"
                             orientation="right"
                             domain={dailyDomain}
-                            tick={{ fontSize: 10, fill: '#6b7280' }}
+                            tick={dailyYTick}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={formatNumber}
@@ -194,7 +202,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             strokeWidth={2.5}
                             fill="url(#balanceGradient)"
                             dot={false}
-                            activeDot={{ r: 4, stroke: '#f59e0b', strokeWidth: 2, fill: '#fff' }}
+                            activeDot={activeDotStyle}
                         />
                     </ComposedChart>
                 </ResponsiveContainer>

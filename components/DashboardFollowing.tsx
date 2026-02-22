@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import UserAvatar from '@/components/UserAvatar';
 import { Link } from '@/navigation';
@@ -25,26 +25,30 @@ export default function DashboardFollowing() {
     const [hasData, setHasData] = useState(false);
     const [error, setError] = useState(false);
 
-    useEffect(() => {
-        const fetchFollowing = async () => {
-            try {
-                const res = await fetch('/api/user/following');
-                if (res.ok) {
-                    const data = await res.json();
-                    const list = data.following || [];
-                    setFollowing(list.slice(0, 5));
-                    setHasData(list.length > 0);
-                } else {
-                    setError(true);
-                }
-            } catch {
+    // フォロー中ユーザーを取得（retry にも使える useCallback 版）
+    const fetchFollowing = useCallback(async () => {
+        setIsLoading(true);
+        setError(false);
+        try {
+            const res = await fetch('/api/user/following');
+            if (res.ok) {
+                const data = await res.json();
+                const list = data.following || [];
+                setFollowing(list.slice(0, 5));
+                setHasData(list.length > 0);
+            } else {
                 setError(true);
-            } finally {
-                setIsLoading(false);
             }
-        };
-        fetchFollowing();
+        } catch {
+            setError(true);
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchFollowing();
+    }, [fetchFollowing]);
 
     // ローディング中はスケルトン表示
     if (isLoading) {
@@ -78,8 +82,8 @@ export default function DashboardFollowing() {
                     <span className="text-3xl mb-2">⚠️</span>
                     <p className="text-sm font-semibold text-gray-600">{t('following')}</p>
                     <button
-                        onClick={() => { setError(false); setIsLoading(true); window.location.reload(); }}
-                        className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:scale-105 transition-transform"
+                        onClick={fetchFollowing}
+                        className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:scale-105 active:scale-95 transition-all"
                         style={{ background: 'var(--theme-primary)' }}
                     >
                         {t('retry') || '再試行'}

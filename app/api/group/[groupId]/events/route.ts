@@ -124,7 +124,7 @@ export async function POST(
                 created_by: session.user.id,
                 is_active: true,
             })
-            .select()
+            .select('id, group_id, title, description, target_steps, start_date, end_date, reward_uc, created_by, is_active, created_at')
             .single();
 
         if (error) {

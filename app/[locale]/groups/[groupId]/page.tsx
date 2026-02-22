@@ -38,9 +38,12 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const userId = (session.user as any).id;
     const { groupId } = params;
 
-    const dashboardT = await getTranslations('Dashboard');
-    const groupsT = await getTranslations('Groups');
-    const detailT = await getTranslations('GroupDetail');
+    // ⚡ パフォーマンス: 翻訳取得を並列化
+    const [dashboardT, groupsT, detailT] = await Promise.all([
+        getTranslations('Dashboard'),
+        getTranslations('Groups'),
+        getTranslations('GroupDetail'),
+    ]);
 
     // ⚡ パフォーマンス: 3つの独立クエリを並列実行
     const [userResult, groupResult, membershipResult] = await Promise.all([

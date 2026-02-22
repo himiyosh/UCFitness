@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
+// UUID形式バリデーション（IDOR攻撃防止）
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface RouteParams {
     params: Promise<{ groupId: string }>;
 }
@@ -89,7 +92,7 @@ export async function POST(
         const { toUserId, emoji, period } = body;
 
         // バリデーション
-        if (!toUserId || typeof toUserId !== 'string') {
+        if (!toUserId || typeof toUserId !== 'string' || !UUID_REGEX.test(toUserId)) {
             return NextResponse.json({ error: 'toUserId is required' }, { status: 400 });
         }
         if (!VALID_EMOJIS.includes(emoji)) {
@@ -98,19 +101,21 @@ export async function POST(
         if (!VALID_PERIODS.includes(period)) {
             return NextResponse.json({ error: 'Invalid period' }, { status: 400 });
         }
-        // 自分自身にはリアクションできない
-        if (toUserId === session.user.id) {
-            return NextResponse.json({ error: 'Cannot react to yourself' }, { status: 400 });
-        }
 
         // メンバーシップ確認（送信者 + 受信者の両方がグループメンバーであること）
+        // セルフリアクション（from === to）の場合は1件でOK
+        const isSelfReaction = toUserId === session.user.id;
+        const userIdsToCheck = isSelfReaction
+            ? [session.user.id]
+            : [session.user.id, toUserId];
         const { data: members } = await supabaseAdmin
             .from('group_members')
             .select('user_id')
             .eq('group_id', groupId)
-            .in('user_id', [session.user.id, toUserId]);
+            .in('user_id', userIdsToCheck);
 
-        if (!members || members.length < 2) {
+        const requiredCount = isSelfReaction ? 1 : 2;
+        if (!members || members.length < requiredCount) {
             return NextResponse.json({ error: 'Both users must be group members' }, { status: 403 });
         }
 

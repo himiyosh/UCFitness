@@ -35,6 +35,9 @@
         "userId": "User ID",
         "dailyGoal": "Daily Goal",
         "notifications": "Notifications",
+        "activityNotifications": "Activity Notifications",
+        "reactionNotifications": "Reaction notifications",
+        "gearReactionNotifications": "Gear reaction notifications",
         "saveSuccess": "Profile updated successfully!",
         "saveError": "Failed to save changes.",
         "languageDescription": "Choose your display language.",
@@ -137,6 +140,7 @@
         "copyright": "Studio344"
     },
     "Leaderboard": {
+        "leaderboard": "Leaderboard",
         "titleGlobal": "Global Leaderboard",
         "tabUser": "User (Global)",
         "titleTop10": "Top 10 Leaders",
@@ -707,8 +711,12 @@
         "loadError": "Failed to load missions",
         "retry": "Retry",
         "refresh": "Refresh missions",
+        "noMissions": "No missions available today",
         "bonusHint": "Complete all for bonus",
-        "bonusReward": "Complete all missions for +100 UC bonus!"
+        "bonusReward": "Complete all missions for +100 UC bonus!",
+        "streak": "{days}-day streak!",
+        "streakGreat": "Great!",
+        "streakAmazing": "Amazing!"
     },
     "GroupEvent": {
         "title": "Group Events",
@@ -738,5 +746,40 @@
         "targetRequired": "Target steps must be greater than 0",
         "dateRequired": "Start date and end date are required",
         "dateInvalid": "End date must be on or after start date"
+    },
+    "Export": {
+        "title": "📥 Data Export",
+        "description": "Download your step data and UC coin transaction history.",
+        "dataType": "Data Type",
+        "steps": "Step Data",
+        "transactions": "UC Transactions",
+        "period": "Period",
+        "last30days": "30 days",
+        "last90days": "90 days",
+        "last365days": "1 year",
+        "format": "Format",
+        "exportButton": "Export",
+        "exporting": "Exporting...",
+        "exportSuccess": "Download complete!",
+        "exportError": "Export failed. Please try again."
+    },
+    "Feed": {
+        "title": "Activity",
+        "earnedBadge": "earned a badge",
+        "reachedMilestone": "reached {milestone} steps",
+        "streakRecord": "achieved a {days}-day streak",
+        "reactedToYou": "reacted {emoji} to you",
+        "reactedToYourGear": "reacted {emoji} to your gear",
+        "stepsUnit": "steps",
+        "emptyMessage": "No activity yet",
+        "emptyHint": "Follow users to see their activities here",
+        "loadMore": "Load More",
+        "loading": "Loading...",
+        "errorMessage": "Failed to load feed",
+        "retry": "Retry",
+        "justNow": "just now",
+        "minutesAgo": "{count}m ago",
+        "hoursAgo": "{count}h ago",
+        "daysAgo": "{count}d ago"
     }
 }

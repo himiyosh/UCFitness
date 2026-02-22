@@ -26,6 +26,7 @@ export default function DailyMissions() {
     const [allCompleted, setAllCompleted] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [showBonus, setShowBonus] = useState(false);
+    const [streak, setStreak] = useState(0);
 
     const fetchMissions = useCallback(async () => {
         setError(false);
@@ -35,6 +36,7 @@ export default function DailyMissions() {
             const data = await res.json();
             setMissions(data.missions || []);
             setAllCompleted(data.allCompleted || false);
+            setStreak(data.streak || 0);
         } catch {
             setError(true);
         } finally {
@@ -108,7 +110,17 @@ export default function DailyMissions() {
         );
     }
 
-    if (missions.length === 0) return null;
+    if (missions.length === 0) {
+        return (
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+                <div className="flex flex-col items-center py-6 text-center">
+                    <span className="text-4xl mb-3">🎯</span>
+                    <p className="text-sm font-bold text-gray-700 mb-1">{t('dailyMissions')}</p>
+                    <p className="text-xs text-[var(--foreground-muted)]">{t('noMissions')}</p>
+                </div>
+            </div>
+        );
+    }
 
     const completedCount = missions.filter(m => m.is_completed).length;
     const progressPercent = (completedCount / missions.length) * 100;
@@ -132,6 +144,7 @@ export default function DailyMissions() {
                                 disabled={refreshing}
                                 className="p-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
                                 title={t('refresh')}
+                                aria-label={t('refresh')}
                             >
                                 <svg className={`w-3.5 h-3.5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -205,6 +218,23 @@ export default function DailyMissions() {
                         <p className="text-xs text-gray-400">
                             🎁 {t('bonusHint')}
                         </p>
+                    </div>
+                )}
+
+                {/* ミッションストリーク — 連続全達成日数 */}
+                {streak > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-center gap-2 py-1.5">
+                            <span className="text-lg">{streak >= 7 ? '🌟' : '🔥'}</span>
+                            <p className="text-sm font-bold text-gray-700">
+                                {t('streak', { days: streak })}
+                            </p>
+                            {streak >= 3 && (
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                    {streak >= 7 ? t('streakAmazing') : t('streakGreat')}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

@@ -11,10 +11,10 @@ export async function GET(request: Request) {
 
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    const isDev = process.env.NODE_ENV === 'development';
+    // 🛡️ セキュリティ: dev モードバイパスを削除（本番で NODE_ENV 設定ミス時の情報漏洩防止）
     const isAuthorized = (cronSecret && authHeader === `Bearer ${cronSecret}`);
 
-    if (!isDev && !isAuthorized) {
+    if (!isAuthorized) {
         return new NextResponse('Unauthorized', { status: 401 });
     }
 

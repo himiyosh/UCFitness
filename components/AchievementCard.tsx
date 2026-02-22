@@ -25,6 +25,7 @@ export default function AchievementCard({ username }: { username: string }) {
     const t = useTranslations('Achievement');
     const [data, setData] = useState<AchievementData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -37,7 +38,7 @@ export default function AchievementCard({ username }: { username: string }) {
                 if (!cancelled) setData(json);
             })
             .catch(() => {
-                // サイレントフェイル
+                if (!cancelled) setError(true);
             })
             .finally(() => {
                 if (!cancelled) setIsLoading(false);
@@ -103,7 +104,18 @@ export default function AchievementCard({ username }: { username: string }) {
         );
     }
 
-    if (!data) return null;
+    if (error || !data) {
+        return (
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+                <div className="flex flex-col items-center py-6 text-center">
+                    <span className="text-3xl mb-2">{error ? '⚠️' : '🏆'}</span>
+                    <p className="text-sm text-[var(--foreground-muted)]">
+                        {t('noProgress')}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">

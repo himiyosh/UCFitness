@@ -6,6 +6,7 @@ import RefreshButton from '@/components/RefreshButton';
 import { Link } from "@/navigation"; // Localized Link
 import Breadcrumbs from "@/components/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
+import ExportButton from "@/components/ExportButton";
 import { getTranslations } from 'next-intl/server';
 import Footer from '@/components/Footer';
 
@@ -15,9 +16,12 @@ export const runtime = 'edge';
 
 export default async function SettingsPage() {
     const session = await auth();
-    const t = await getTranslations('Settings');
-    const commonT = await getTranslations('Common');
-    const dashboardT = await getTranslations('Dashboard');
+    // ⚡ パフォーマンス: 翻訳取得を並列化
+    const [t, commonT, dashboardT] = await Promise.all([
+        getTranslations('Settings'),
+        getTranslations('Common'),
+        getTranslations('Dashboard'),
+    ]);
 
     if (!session || !session.user) {
         redirect("/");
@@ -37,6 +41,13 @@ export default async function SettingsPage() {
     if (!user.username) {
         redirect('/setup');
     }
+
+    // 通知設定カラム（DB にカラムが未追加の場合でもエラーにならないよう別クエリで安全に取得）
+    const { data: notifySettings } = await supabaseAdmin
+        .from("users")
+        .select("notification_reactions, notification_gear_reactions")
+        .eq("id", (session.user as any).id)
+        .single();
 
     // ⚡ パフォーマンス: Midnight テーマチェックと所持アイテムを並列取得
     const userId = (session.user as any).id;
@@ -124,7 +135,12 @@ export default async function SettingsPage() {
                     <p className="text-gray-500">{t('description')}</p>
                 </div>
 
-                <SettingsForm user={user} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} ownedThemes={ownedThemes} />
+                <SettingsForm user={{ ...user, notification_reactions: notifySettings?.notification_reactions ?? null, notification_gear_reactions: notifySettings?.notification_gear_reactions ?? null }} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} ownedThemes={ownedThemes} />
+
+                {/* データエクスポート */}
+                <div className="mt-8 max-w-sm">
+                    <ExportButton />
+                </div>
             </div>
             <Footer />
         </main>

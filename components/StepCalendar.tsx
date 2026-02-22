@@ -323,6 +323,13 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
     const gridCells = useMemo(() => buildGridData(year, stepsMap), [year, stepsMap]);
     const monthLabels = useMemo(() => getMonthLabels(year), [year]);
 
+    // パフォーマンス: 月ラベルを Map に変換し、レンダリングループ内で O(1) ルックアップ
+    const monthLabelMap = useMemo(() => {
+        const map = new Map<number, string>();
+        monthLabels.forEach(ml => map.set(ml.col, ml.label));
+        return map;
+    }, [monthLabels]);
+
     // 集計統計
     const stats = useMemo(() => {
         const totalSteps = data.reduce((sum, d) => sum + d.steps, 0);
@@ -527,10 +534,10 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     >
                         <div />
                         {Array.from({ length: maxCol }).map((_, colIdx) => {
-                            const label = monthLabels.find((ml) => ml.col === colIdx);
+                            const label = monthLabelMap.get(colIdx);
                             return (
                                 <div key={colIdx} className="text-[8px] sm:text-[9px] text-gray-400 font-medium leading-none truncate">
-                                    {label ? label.label : ''}
+                                    {label || ''}
                                 </div>
                             );
                         })}

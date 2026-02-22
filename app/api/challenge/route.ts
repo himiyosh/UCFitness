@@ -18,14 +18,19 @@ export async function GET(req: NextRequest) {
         const status = searchParams.get('status') || 'active'; // 'active' | 'completed' | 'my'
 
         const session = await auth();
-        const userId = session?.user?.id;
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const userId = session.user.id;
 
         const today = new Date().toISOString().split('T')[0];
 
         let query = supabaseAdmin
             .from('challenges')
             .select(`
-                *,
+                id, title, description, type, target_steps,
+                start_date, end_date, reward_uc, is_active,
+                created_by, group_id, created_at,
                 challenge_participants(count),
                 creator:created_by(username, name, image)
             `)
@@ -114,8 +119,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid challenge type' }, { status: 400 });
         }
 
-        if (target_steps <= 0) {
-            return NextResponse.json({ error: 'Target steps must be positive' }, { status: 400 });
+        // 型安全性: target_steps の数値バリデーション
+        if (typeof target_steps !== 'number' || !Number.isFinite(target_steps) || target_steps <= 0) {
+            return NextResponse.json({ error: 'Target steps must be a positive number' }, { status: 400 });
+        }
+
+        // 日付フォーマットバリデーション（YYYY-MM-DD）
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
+            return NextResponse.json({ error: 'Invalid date format (expected YYYY-MM-DD)' }, { status: 400 });
         }
 
         if (new Date(end_date) <= new Date(start_date)) {
@@ -126,7 +138,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Title too long (max 100 chars)' }, { status: 400 });
         }
 
-        const rewardAmount = Math.min(Math.max(reward_uc || 500, 100), 10000);
+        // description の長さ制限（DB への任意大テキスト保存防止）
+        if (description && typeof description === 'string' && description.length > 1000) {
+            return NextResponse.json({ error: 'Description too long (max 1000 chars)' }, { status: 400 });
+        }
+
+        const rewardAmount = Math.min(Math.max(
+            typeof reward_uc === 'number' && Number.isFinite(reward_uc) ? reward_uc : 500,
+            100
+        ), 10000);
 
         const { data, error } = await supabaseAdmin
             .from('challenges')
@@ -141,7 +161,7 @@ export async function POST(req: NextRequest) {
                 created_by: session.user.id,
                 group_id: type === 'GROUP' ? group_id : null,
             })
-            .select()
+            .select('id, title, description, type, target_steps, start_date, end_date, reward_uc, is_active, created_by, group_id, created_at')
             .single();
 
         if (error) {

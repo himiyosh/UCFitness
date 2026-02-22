@@ -35,6 +35,9 @@
         "userId": "ユーザーID",
         "dailyGoal": "1日の目標",
         "notifications": "通知",
+        "activityNotifications": "アクティビティ通知",
+        "reactionNotifications": "リアクション通知",
+        "gearReactionNotifications": "ギアリアクション通知",
         "saveSuccess": "プロフィールを更新しました！",
         "saveError": "変更の保存に失敗しました。",
         "languageDescription": "表示言語を選択してください。",
@@ -137,6 +140,7 @@
         "copyright": "Studio344"
     },
     "Leaderboard": {
+        "leaderboard": "ランキング",
         "titleGlobal": "グローバルランキング",
         "tabUser": "ユーザー (全体)",
         "titleTop10": "トップ10",
@@ -709,8 +713,12 @@
         "loadError": "ミッションの読み込みに失敗しました",
         "retry": "再試行",
         "refresh": "ミッション再チェック",
+        "noMissions": "今日のミッションはまだありません",
         "bonusHint": "全クリアで追加ボーナス",
-        "bonusReward": "全ミッション完了で +100 UC ボーナス！"
+        "bonusReward": "全ミッション完了で +100 UC ボーナス！",
+        "streak": "{days}日連続クリア中！",
+        "streakGreat": "いい調子！",
+        "streakAmazing": "絶好調！"
     },
     "GroupEvent": {
         "title": "グループイベント",
@@ -740,5 +748,40 @@
         "targetRequired": "目標歩数は0より大きい必要があります",
         "dateRequired": "開始日と終了日は必須です",
         "dateInvalid": "終了日は開始日以降にしてください"
+    },
+    "Export": {
+        "title": "📥 データエクスポート",
+        "description": "歩数データやUCコイン取引履歴をダウンロードできます。",
+        "dataType": "データの種類",
+        "steps": "歩数データ",
+        "transactions": "UC取引履歴",
+        "period": "期間",
+        "last30days": "30日",
+        "last90days": "90日",
+        "last365days": "1年",
+        "format": "形式",
+        "exportButton": "エクスポート",
+        "exporting": "エクスポート中...",
+        "exportSuccess": "ダウンロードが完了しました！",
+        "exportError": "エクスポートに失敗しました。もう一度お試しください。"
+    },
+    "Feed": {
+        "title": "アクティビティ",
+        "earnedBadge": "がバッジを獲得",
+        "reachedMilestone": "が {milestone} 歩を達成",
+        "streakRecord": "が {days} 日連続記録を達成",
+        "reactedToYou": "があなたに {emoji} でリアクション",
+        "reactedToYourGear": "があなたのギアに {emoji} でリアクション",
+        "stepsUnit": "歩",
+        "emptyMessage": "まだアクティビティがありません",
+        "emptyHint": "ユーザーをフォローすると、ここに活動が表示されます",
+        "loadMore": "もっと見る",
+        "loading": "読み込み中...",
+        "errorMessage": "フィードの読み込みに失敗しました",
+        "retry": "再試行",
+        "justNow": "たった今",
+        "minutesAgo": "{count}分前",
+        "hoursAgo": "{count}時間前",
+        "daysAgo": "{count}日前"
     }
 }

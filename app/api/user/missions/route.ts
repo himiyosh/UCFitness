@@ -82,7 +82,11 @@ export async function GET() {
     }
 
     const allCompleted = missions.every(m => m.is_completed);
-    return NextResponse.json({ missions, date: today, allCompleted });
+
+    // ミッション連続達成ストリークを計算
+    const streak = await calculateMissionStreak(userId, today);
+
+    return NextResponse.json({ missions, date: today, allCompleted, streak });
 }
 
 /**
@@ -315,4 +319,52 @@ function generateDailyMissions(date: string): MissionTemplate[] {
     selected.push(hard[hardIndex]);
 
     return selected;
+}
+
+/**
+ * ミッション全達成の連続日数（ストリーク）を計算
+ * 今日を含め、過去に遡って連続で全ミッション完了している日数を返す
+ */
+async function calculateMissionStreak(userId: string, today: string): Promise<number> {
+    // 過去30日分のミッションデータを一括取得（パフォーマンス考慮）
+    const thirtyDaysAgo = new Date(`${today}T00:00:00Z`);
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const { data: allMissions } = await supabaseAdmin
+        .from('daily_missions')
+        .select('date, is_completed')
+        .eq('user_id', userId)
+        .gte('date', startDate)
+        .lte('date', today)
+        .order('date', { ascending: false });
+
+    if (!allMissions || allMissions.length === 0) return 0;
+
+    // 日付ごとに全ミッション完了かチェック
+    const dateMap = new Map<string, { total: number; completed: number }>();
+    for (const m of allMissions) {
+        const entry = dateMap.get(m.date) ?? { total: 0, completed: 0 };
+        entry.total++;
+        if (m.is_completed) entry.completed++;
+        dateMap.set(m.date, entry);
+    }
+
+    // 今日から遡って連続全達成日数をカウント
+    let streak = 0;
+    const checkDate = new Date(`${today}T00:00:00Z`);
+
+    for (let i = 0; i < 31; i++) {
+        const dateStr = checkDate.toISOString().split('T')[0];
+        const entry = dateMap.get(dateStr);
+
+        // その日のミッションがない、または全達成でなければストリーク終了
+        if (!entry || entry.total === 0 || entry.completed < entry.total) {
+            break;
+        }
+        streak++;
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+    }
+
+    return streak;
 }

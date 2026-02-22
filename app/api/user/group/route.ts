@@ -3,6 +3,9 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { reportError } from "@/lib/errors";
 
+// UUID形式バリデーション（IDOR攻撃防止）
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(request: Request) {
   const session = await auth();
 
@@ -82,6 +85,28 @@ export async function POST(request: Request) {
         .single();
 
       if (group) {
+        // 🛡️ セキュリティ: 唯一のOWNERが退出するとグループ孤児化するため防止
+        const { data: myMembership } = await supabaseAdmin
+          .from('group_members')
+          .select('role')
+          .eq('group_id', group.id)
+          .eq('user_id', userId)
+          .single();
+
+        if (myMembership?.role === 'OWNER') {
+          const { count: ownerCount } = await supabaseAdmin
+            .from('group_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', group.id)
+            .eq('role', 'OWNER');
+
+          if ((ownerCount || 0) <= 1) {
+            return NextResponse.json({
+              error: 'Cannot leave group as the sole owner. Transfer ownership or delete the group first.'
+            }, { status: 400 });
+          }
+        }
+
         await supabaseAdmin
           .from('group_members')
           .delete()
@@ -90,7 +115,7 @@ export async function POST(request: Request) {
       }
     } else if (action === 'kick') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
@@ -140,7 +165,7 @@ export async function POST(request: Request) {
 
     } else if (action === 'transfer_ownership') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
@@ -190,7 +215,7 @@ export async function POST(request: Request) {
 
     } else if (action === 'demote') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
@@ -334,7 +359,7 @@ export async function POST(request: Request) {
 
     } else if (action === 'invite') {
       const { targetUserId } = body;
-      if (!targetUserId || typeof targetUserId !== 'string') {
+      if (!targetUserId || typeof targetUserId !== 'string' || !UUID_REGEX.test(targetUserId)) {
         return NextResponse.json({ error: "Missing or invalid target user" }, { status: 400 });
       }
 
