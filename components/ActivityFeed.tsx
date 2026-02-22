@@ -12,7 +12,7 @@ import { Link } from '@/navigation';
 
 interface FeedItem {
     id: string;
-    type: 'BADGE_EARNED' | 'STEP_MILESTONE' | 'STREAK_RECORD';
+    type: 'BADGE_EARNED' | 'STEP_MILESTONE' | 'STREAK_RECORD' | 'REACTION_RECEIVED' | 'GEAR_REACTION_RECEIVED';
     userId: string;
     userName: string | null;
     userImage: string | null;
@@ -29,6 +29,8 @@ function getEventIcon(type: FeedItem['type']): string {
         case 'BADGE_EARNED': return '🏅';
         case 'STEP_MILESTONE': return '🚶';
         case 'STREAK_RECORD': return '🔥';
+        case 'REACTION_RECEIVED': return '👍';
+        case 'GEAR_REACTION_RECEIVED': return '🎁';
         default: return '📌';
     }
 }
@@ -294,6 +296,10 @@ function getEventDescription(
             return t('reachedMilestone', { milestone: formatSteps(item.data.milestone as number) });
         case 'STREAK_RECORD':
             return t('streakRecord', { days: item.data.currentStreak as number });
+        case 'REACTION_RECEIVED':
+            return t('reactedToYou', { emoji: String(item.data.emoji ?? '') });
+        case 'GEAR_REACTION_RECEIVED':
+            return t('reactedToYourGear', { emoji: String(item.data.emoji ?? '') });
         default:
             return '';
     }

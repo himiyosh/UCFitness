@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     // ⚡ パフォーマンス: supabaseAdmin を使用し必要なカラムのみ取得
     const { data: user } = await supabaseAdmin
         .from("users")
-        .select("name, image, username, is_custom_image, step_goal, banner_url")
+        .select("name, image, username, is_custom_image, step_goal, banner_url, notification_reactions, notification_gear_reactions")
         .eq("id", (session.user as any).id)
         .single();
 

@@ -25,6 +25,8 @@ interface UserData {
     is_custom_image: boolean | null;
     step_goal: number | null;
     banner_url?: string | null;
+    notification_reactions?: boolean | null;
+    notification_gear_reactions?: boolean | null;
 }
 
 export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [], ownedFrames = [], ownedThemes = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[]; ownedFrames?: OwnedFrame[]; ownedThemes?: OwnedTheme[] }) {
@@ -35,6 +37,11 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
     const [switchingLocale, setSwitchingLocale] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // リアクション通知設定の状態管理
+    const [notifyReactions, setNotifyReactions] = useState(user.notification_reactions !== false);
+    const [notifyGearReactions, setNotifyGearReactions] = useState(user.notification_gear_reactions !== false);
+    const [isSavingNotify, setIsSavingNotify] = useState(false);
 
     // フレームカラーのリアクティブ状態（遅延初期化で不要な再計算を防止）
     const [activeFrameColor, setActiveFrameColor] = useState<string | null>(() => {
@@ -477,6 +484,67 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         {t('notifications')}
                     </h2>
                     <PushNotificationManager />
+
+                    {/* リアクション通知トグル */}
+                    <div className="mt-6 space-y-4 border-t border-gray-100 pt-4">
+                        <h3 className="text-sm font-semibold text-gray-700">{t('activityNotifications')}</h3>
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <div className="flex items-center gap-2">
+                                <span className="text-base">👍</span>
+                                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">{t('reactionNotifications')}</span>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={notifyReactions}
+                                disabled={isSavingNotify}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${notifyReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'} ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={async () => {
+                                    const newVal = !notifyReactions;
+                                    setNotifyReactions(newVal);
+                                    setIsSavingNotify(true);
+                                    try {
+                                        await fetch('/api/user/notification-settings', {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ notificationReactions: newVal, notificationGearReactions: notifyGearReactions }),
+                                        });
+                                    } catch { setNotifyReactions(!newVal); }
+                                    finally { setIsSavingNotify(false); }
+                                }}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </label>
+                        <label className="flex items-center justify-between cursor-pointer group">
+                            <div className="flex items-center gap-2">
+                                <span className="text-base">🎁</span>
+                                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">{t('gearReactionNotifications')}</span>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={notifyGearReactions}
+                                disabled={isSavingNotify}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${notifyGearReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'} ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={async () => {
+                                    const newVal = !notifyGearReactions;
+                                    setNotifyGearReactions(newVal);
+                                    setIsSavingNotify(true);
+                                    try {
+                                        await fetch('/api/user/notification-settings', {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ notificationReactions: notifyReactions, notificationGearReactions: newVal }),
+                                        });
+                                    } catch { setNotifyGearReactions(!newVal); }
+                                    finally { setIsSavingNotify(false); }
+                                }}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyGearReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </label>
+                    </div>
                 </section>
             </div>
 

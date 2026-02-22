@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // フィードアイテムの型
 interface FeedItem {
     id: string;
-    type: 'BADGE_EARNED' | 'STEP_MILESTONE' | 'STREAK_RECORD';
+    type: 'BADGE_EARNED' | 'STEP_MILESTONE' | 'STREAK_RECORD' | 'REACTION_RECEIVED' | 'GEAR_REACTION_RECEIVED';
     userId: string;
     userName: string | null;
     userImage: string | null;
@@ -68,12 +68,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // 2. ユーザー情報を一括取得（N+1防止）
         const { data: usersData } = await supabaseAdmin
             .from('users')
-            .select('id, name, image, username')
+            .select('id, name, image, username, notification_reactions, notification_gear_reactions')
             .in('id', targetIds);
 
-        const userMap = new Map<string, { name: string | null; image: string | null; username: string | null }>();
+        const userMap = new Map<string, { name: string | null; image: string | null; username: string | null; notification_reactions: boolean | null; notification_gear_reactions: boolean | null }>();
         (usersData || []).forEach((u) => {
-            userMap.set(u.id, { name: u.name, image: u.image, username: u.username });
+            userMap.set(u.id, { name: u.name, image: u.image, username: u.username, notification_reactions: u.notification_reactions, notification_gear_reactions: u.notification_gear_reactions });
         });
 
         // 3. 複数ソースから並列でデータ取得（過去7日分に限定してパフォーマンス確保）
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const sinceDate = sevenDaysAgo.toISOString();
 
-        const [badgesResult, stepsResult, streakResult] = await Promise.all([
+        const [badgesResult, stepsResult, streakResult, reactionsResult, gearReactionsResult] = await Promise.all([
             // バッジ獲得
             supabaseAdmin
                 .from('user_badges')
@@ -107,6 +107,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                 .select('user_id, current_streak, best_streak')
                 .in('user_id', targetIds)
                 .gte('current_streak', 7),
+
+            // 自分へのリアクション（ユーザーリアクション: period != 'GEAR'、セルフリアクション除外）
+            supabaseAdmin
+                .from('group_reactions')
+                .select('id, from_user_id, to_user_id, emoji, period, group_id, created_at')
+                .eq('to_user_id', userId)
+                .neq('from_user_id', userId)
+                .neq('period', 'GEAR')
+                .gte('created_at', sinceDate)
+                .lt('created_at', before)
+                .order('created_at', { ascending: false })
+                .limit(limit),
+
+            // 自分のギアへのリアクション（period = 'GEAR'）
+            // ギアリアクションの to_user_id は ASIN なので、from_user_id で検索できない
+            // → 自分が登録したギアへのリアクションは別ロジックが必要
+            // ここでは自分が受け取ったギアリアクション通知をスキップ（将来的に拡張可能）
+            // 代わりに: 自分のギアアイテムの ASIN リストを取得してそれに対するリアクションを検索
+            supabaseAdmin
+                .from('group_reactions')
+                .select('id, from_user_id, to_user_id, emoji, period, group_id, created_at')
+                .eq('period', 'GEAR')
+                .neq('from_user_id', userId)
+                .gte('created_at', sinceDate)
+                .lt('created_at', before)
+                .order('created_at', { ascending: false })
+                .limit(50),
         ]);
 
         // 4. フィードアイテムを構築
@@ -181,6 +208,89 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                         bestStreak: streak.best_streak,
                     },
                 });
+            }
+        }
+
+        // ユーザーリアクション受信イベント（通知設定がONの場合のみ）
+        const currentUserSettings = userMap.get(userId);
+        const reactionNotifyEnabled = currentUserSettings?.notification_reactions !== false;
+        const gearReactionNotifyEnabled = currentUserSettings?.notification_gear_reactions !== false;
+
+        if (reactionNotifyEnabled && reactionsResult.data) {
+            // リアクション送信者のユーザー情報を取得
+            const reactionSenderIds = [...new Set(reactionsResult.data.map((r) => r.from_user_id))];
+            const missingSenderIds = reactionSenderIds.filter((id) => !userMap.has(id));
+            if (missingSenderIds.length > 0) {
+                const { data: senderData } = await supabaseAdmin
+                    .from('users')
+                    .select('id, name, image, username')
+                    .in('id', missingSenderIds);
+                (senderData || []).forEach((u) => {
+                    userMap.set(u.id, { name: u.name, image: u.image, username: u.username, notification_reactions: null, notification_gear_reactions: null });
+                });
+            }
+
+            for (const reaction of reactionsResult.data) {
+                const sender = userMap.get(reaction.from_user_id);
+                feedItems.push({
+                    id: `reaction-${reaction.id}`,
+                    type: 'REACTION_RECEIVED',
+                    userId: reaction.from_user_id,
+                    userName: sender?.name ?? null,
+                    userImage: sender?.image ?? null,
+                    username: sender?.username ?? null,
+                    timestamp: reaction.created_at,
+                    data: {
+                        emoji: reaction.emoji,
+                        groupId: reaction.group_id,
+                        period: reaction.period,
+                    },
+                });
+            }
+        }
+
+        // ギアリアクション受信イベント（通知設定がONの場合のみ）
+        if (gearReactionNotifyEnabled && gearReactionsResult.data) {
+            // 自分が登録したギアの ASIN リストを取得して、自分のギアへのリアクションのみフィルタ
+            const { data: myGearItems } = await supabaseAdmin
+                .from('recommended_items')
+                .select('asin')
+                .eq('user_id', userId);
+            const myAsins = new Set((myGearItems || []).map((g) => g.asin));
+
+            // 自分のギアに対するリアクションのみ抽出
+            const myGearReactions = gearReactionsResult.data.filter((r) => myAsins.has(r.to_user_id));
+
+            if (myGearReactions.length > 0) {
+                const gearSenderIds = [...new Set(myGearReactions.map((r) => r.from_user_id))];
+                const missingGearSenderIds = gearSenderIds.filter((id) => !userMap.has(id));
+                if (missingGearSenderIds.length > 0) {
+                    const { data: senderData } = await supabaseAdmin
+                        .from('users')
+                        .select('id, name, image, username')
+                        .in('id', missingGearSenderIds);
+                    (senderData || []).forEach((u) => {
+                        userMap.set(u.id, { name: u.name, image: u.image, username: u.username, notification_reactions: null, notification_gear_reactions: null });
+                    });
+                }
+
+                for (const reaction of myGearReactions) {
+                    const sender = userMap.get(reaction.from_user_id);
+                    feedItems.push({
+                        id: `gear-reaction-${reaction.id}`,
+                        type: 'GEAR_REACTION_RECEIVED',
+                        userId: reaction.from_user_id,
+                        userName: sender?.name ?? null,
+                        userImage: sender?.image ?? null,
+                        username: sender?.username ?? null,
+                        timestamp: reaction.created_at,
+                        data: {
+                            emoji: reaction.emoji,
+                            asin: reaction.to_user_id,
+                            groupId: reaction.group_id,
+                        },
+                    });
+                }
             }
         }
 
