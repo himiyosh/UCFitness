@@ -85,7 +85,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                                 key={tab.key}
                                 onClick={() => setPeriod(tab.key)}
                                 role="tab"
-                                aria-selected={isActive ? 'true' : 'false'}
+                                aria-selected={isActive}
                                 className={`px-4 py-2 text-sm font-semibold rounded-md transition-all cursor-pointer ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
                                 style={theme === 'midnight' ? {
                                     backgroundColor: isActive ? 'var(--theme-primary)' : 'transparent',

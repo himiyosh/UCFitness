@@ -88,7 +88,6 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     }
 
     const isMember = !!membership;
-    // @ts-ignore
     const isOwner = membership?.role === 'OWNER';
     const isOwnerOrAdmin = membership?.role === 'OWNER' || membership?.role === 'ADMIN';
 

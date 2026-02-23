@@ -163,7 +163,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 key={tab.key}
                                 onClick={() => handleSwitch(tab.key)}
                                 role="tab"
-                                aria-selected={isActive ? "true" : "false"}
+                                aria-selected={isActive}
                                 aria-label={`${t(tab.labelKey)} ${t('leaderboard')}`}
                                 className={`relative z-10 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer text-center ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
                                 style={isMidnight ? (isActive ? {

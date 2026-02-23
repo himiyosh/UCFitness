@@ -7,6 +7,7 @@ import { Link } from '@/navigation';
 import GroupList from "@/components/GroupList";
 import UserMenu from "@/components/UserMenu";
 import RefreshButton from '@/components/RefreshButton';
+import NotificationBell from '@/components/NotificationBell';
 import GroupSettings from "@/components/GroupSettings";
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/ranking-service";
@@ -134,6 +135,7 @@ export default async function MyGroupsPage() {
                     </div>
                     <div className="flex items-center gap-1">
                         <RefreshButton />
+                        <NotificationBell />
                         <UserMenu user={finalUser} />
                     </div>
                 </div>

@@ -44,7 +44,7 @@
         "noBanner": "No Banner",
         "banner": "Banner",
         "unique": "(Unique)",
-        "usernameHint": "Visible in URLs and leaderboards. Min 6 chars (letters, numbers, <code>. - _</code>).",
+        "usernameHint": "Visible in URLs and leaderboards. Min 6 chars (letters, numbers, . - _).",
         "saveChanges": "Save Profile Changes",
         "saving": "Saving...",
         "setDailyGoal": "Set your daily step target.",

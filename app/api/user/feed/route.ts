@@ -65,18 +65,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ feed: [], hasMore: false });
         }
 
-        // 2. ユーザー情報を一括取得（N+1防止）
-        const { data: usersData } = await supabaseAdmin
-            .from('users')
-            .select('id, name, image, username')
-            .in('id', targetIds);
+        // 2. ユーザー情報 + 通知設定を並列取得（N+1防止）
+        const [usersResult, notifyResult] = await Promise.all([
+            supabaseAdmin
+                .from('users')
+                .select('id, name, image, username')
+                .in('id', targetIds),
+            // 通知設定 + 既読タイムスタンプ（カラムが未追加の場合でもエラーにならないよう別クエリで取得）
+            supabaseAdmin
+                .from('users')
+                .select('id, notification_reactions, notification_gear_reactions, feed_last_read_at')
+                .eq('id', userId)
+                .single(),
+        ]);
 
-        // 通知設定 + 既読タイムスタンプ（カラムが未追加の場合でもエラーにならないよう別クエリで取得）
-        const { data: notifyData } = await supabaseAdmin
-            .from('users')
-            .select('id, notification_reactions, notification_gear_reactions, feed_last_read_at')
-            .eq('id', userId)
-            .single();
+        const usersData = usersResult.data;
+        const notifyData = notifyResult.data;
 
         const feedLastReadAt = notifyData?.feed_last_read_at as string | null;
 

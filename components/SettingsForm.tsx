@@ -260,7 +260,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     aria-describedby="username-hint"
                                 />
                             </div>
-                            <p id="username-hint" className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t.raw('usernameHint') }} />
+                            <p id="username-hint" className="text-xs text-gray-500 mt-1">
+                                {t('usernameHint')}
+                            </p>
                         </div>
 
                         <div role="status" aria-live="polite">
