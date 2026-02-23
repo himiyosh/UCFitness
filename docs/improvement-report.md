@@ -1,9 +1,9 @@
 # 🤖 UCFitness AI 改善ループ レポート
 
 > **ブランチ:** `copilot/improvement-loop-1` (PR #80)
-> **期間:** 2026-02-13 〜 2026-02-22
+> **期間:** 2026-02-13 〜 2026-02-23
 > **実行方法:** GitHub Copilot (Claude) + 6 サブエージェント構成
-> **最終更新:** 2026-02-22
+> **最終更新:** 2026-02-23
 
 ---
 
@@ -11,11 +11,11 @@
 
 | 項目 | 値 |
 |------|------|
-| 総コミット数 | 31 |
-| 変更ファイル数 | **249** |
-| 総追加行 | **+6,326** |
-| 総削除行 | **-3,330** |
-| サイクル数 | 11 |
+| 総コミット数 | 33 |
+| 変更ファイル数 | **261** |
+| 総追加行 | **+6,404** |
+| 総削除行 | **-3,389** |
+| サイクル数 | 12 |
 | ビルドエラー | **0** ✅ |
 | 型エラー | **0** ✅ |
 
@@ -1068,3 +1068,100 @@
 ---
 
 *レポート生成: GitHub Copilot (Claude) | ブランチ: feature/new-features-batch1*
+
+---
+
+## 🔄 Cycle 12 — ビルド品質・パフォーマンス・セキュリティ改善 (2026-02-23)
+
+### コード改善
+
+| コミット | 内容 | 対象ファイル数 |
+|----------|------|---------------|
+| `696836b` | ARIA修正・ヘッダー統一・N+1解消・dangerouslySetInnerHTML除去・@ts-ignore整理 | 12 |
+
+### 🔨 Build Validation (5件)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `components/AnimatedLeaderboard.tsx` | `aria-selected` を文字列 `"true"/"false"` から boolean に修正 |
+| `components/ChallengeList.tsx` | `aria-selected` を文字列から boolean に修正 |
+| `components/DynamicLeaderboard.tsx` | `aria-selected` を文字列から boolean に修正 |
+| `app/[locale]/analytics/page.tsx` | ヘッダーに `NotificationBell` を追加（統一パターン準拠） |
+| `app/[locale]/groups/page.tsx` | ヘッダーに `NotificationBell` を追加（統一パターン準拠） |
+
+### ⚡ Performance (3件)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `app/api/external/ranking/route.ts` | **N+1 クエリ解消**: グループごとに 3 クエリ（3N）→ 全グループ一括 3 クエリ + インメモリ集計に変更 |
+| `app/api/user/feed/route.ts` | 連続する 2 つの `await` を既存の `Promise.all` に統合して並列化 |
+| `components/GroupChat.tsx` | 不要な `useMemo(() => groupId, [groupId])` を削除。プリミティブ値のメモ化は無意味 |
+
+### 🔒 Security (1件)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `components/SettingsForm.tsx` | `dangerouslySetInnerHTML={{ __html: t.raw('usernameHint') }}` を削除。プレーンテキスト `{t('usernameHint')}` に変更。`en.json` の `<code>` HTML タグも除去 |
+
+### 🧹 コードクリーンアップ (4件)
+
+| ファイル | 修正内容 |
+|---------|----------|
+| `app/[locale]/user/[username]/page.tsx` | 不要な `@ts-ignore` コメント 3 箇所を削除（型エラーが存在しないため抑制不要） |
+| `app/[locale]/groups/[groupId]/page.tsx` | 不要な `@ts-ignore` コメント 1 箇所を削除 |
+
+### 🧪 Playwright ブラウザ検証
+
+| ビューポート | 横スクロール | JS エラー | API エラー | 備考 |
+|-------------|:---:|:---:|:---:|------|
+| 📱 モバイル (375×667) | ✅ なし | 0 | 0 | ランディングページ正常表示 |
+| 🖥️ デスクトップ (1280×800) | ✅ なし | 0 | 0 | ヘッダー 3 要素統一確認済み |
+
+### 📊 Cycle 12 統計
+
+| 項目 | 値 |
+|------|------|
+| コミット数 | 2 (マージ + 改善) |
+| 変更ファイル数 | 12 |
+| 追加行 | +78 |
+| 削除行 | -59 |
+| 型エラー | **0** ✅ |
+| React Hooks 違反 | **0** ✅ |
+
+### 🔍 新機能提案 (10 件)
+
+#### 🔴 P0 — 即実装すべき
+
+| # | 機能名 | カテゴリ | 工数 | 新規/再提案 | 説明 |
+|---|--------|---------|------|-----------|------|
+| 1 | 🎲 非歩数系ミッション拡張 | エンゲージメント | 🟢 1-2d | ♻️ 再提案 | 「3人にリアクション」「グループチャットで発言」等のソーシャルミッション。`daily_missions` テーブル + `DailyMissions.tsx` 拡張 |
+| 2 | 👥 フレンドチャレンジ (1v1) | ソーシャル | 🟡 3-5d | 🆕 新規 | フォロー中ユーザーと1v1歩数対決。UC を賭けるオプション。`friend_challenges` テーブル新規 |
+| 3 | 🎁 UC ギフト送信 | ソーシャル / マネタイズ | 🟢 1-2d | 🆕 新規 | フォロー中ユーザーに UC 送金。`coin_transactions` の `GIFT_SEND/RECEIVE` で実装可能。送金手数料10% |
+| 4 | 🎰 UC ガチャ / Lucky Draw | マネタイズ | 🟡 3-5d | 🆕 新規 | UC でランダムアイテム獲得。レア称号、限定フレーム等。`gacha_history` テーブル新規 |
+
+#### 🟡 P1 — 次回以降
+
+| # | 機能名 | カテゴリ | 工数 | 新規/再提案 | 説明 |
+|---|--------|---------|------|-----------|------|
+| 5 | ⚔️ グループ対抗戦 | ソーシャル | 🔴 7d+ | ♻️ 再提案 | グループ間の公式対戦。`GroupCompetitionList.tsx` + `group-ranking-service.ts` 活用 |
+| 6 | 🏅 ウィークリーMVP | リテンション | 🟢 1-2d | 🆕 新規 | 毎週自動集計でMVP発表。`cron/weekly-summary` にロジック追加のみ |
+| 7 | 🎯 マイルストーン自動祝福 | リテンション | 🟢 1-2d | ♻️ 再提案 | 累計歩数達成時に紙吹雪+フィード+通知。`Confetti.tsx` + `step-manager.ts` 活用 |
+| 8 | 📊 年間歩数ヒートマップ | 差別化 | 🟢 1-2d | 🆕 新規 | GitHub Contribution Graph 風。`StepCalendar.tsx` にグリッドビューモード追加 |
+
+#### 🔵 P2 — 長期検討
+
+| # | 機能名 | カテゴリ | 工数 | 新規/再提案 | 説明 |
+|---|--------|---------|------|-----------|------|
+| 9 | 🏆 シーズンパス | マネタイズ | 🔴 7d+ | 🆕 新規 | 月次進捗トラック（30レベル）。Free + Premium 2 トラック制 |
+| 10 | 🗺️ バーチャルウォーキングツアー | 差別化 | 🔴 7d+ | ♻️ 再提案 | 東海道五十三次等の仮想ルートに歩数を変換 |
+
+### 📌 次回 Cycle で対応予定
+
+- 大規模コンポーネント分割の継続（9 ファイルが 400 行超）
+- N+1 クエリ最適化: `app/api/user/group/route.ts` delete_group のバッチクエリ化
+- SettingsForm.tsx の `aria-checked` 文字列 → boolean 修正
+- DynamicLeaderboard.tsx の `<li>` が `<ul>/<ol>` に含まれていない問題の修正
+
+---
+
+*レポート生成: GitHub Copilot (Claude Opus 4.6) | ブランチ: copilot/improvement-loop-1*
