@@ -36,11 +36,27 @@ export async function POST(request: Request) {
       // Check if group exists
       const { data: existingGroup } = await supabaseAdmin
         .from('groups')
-        .select('id')
+        .select('id, is_public')
         .eq('keyword', target)
         .single();
 
       let groupId = existingGroup?.id;
+
+      if (groupId) {
+        // 🛡️ Sentinel: Prevent joining private groups via keyword unless already a member
+        if (existingGroup.is_public === false) {
+          const { data: isMember } = await supabaseAdmin
+            .from('group_members')
+            .select('id')
+            .eq('group_id', groupId)
+            .eq('user_id', userId)
+            .single();
+
+          if (!isMember) {
+            return NextResponse.json({ error: "This group is private. You must be invited to join." }, { status: 403 });
+          }
+        }
+      }
 
       if (!groupId) {
         // 🛡️ Sentinel: Validate Keyword before creation
