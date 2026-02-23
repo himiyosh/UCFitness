@@ -45,7 +45,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
     const [inputText, setInputText] = useState('');
     const [isSending, setIsSending] = useState(false);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     // 初期表示時に展開状態を固定するための安定値
@@ -76,10 +76,10 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
         return () => clearInterval(interval);
     }, [fetchMessages]);
 
-    // 新メッセージが来たら自動スクロール
+    // 新メッセージが来たらチャットコンテナ内のみスクロール（ページ全体は動かさない）
     useEffect(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [messages.length]);
 
@@ -220,6 +220,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
             <div id="group-chat-messages" className="flex-1 flex flex-col">
                     {/* メッセージ一覧 */}
                     <div
+                        ref={chatContainerRef}
                         className="max-h-[300px] overflow-y-auto px-4 py-2 space-y-2 flex-1"
                         role="log"
                         aria-live="polite"
@@ -292,7 +293,6 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
                                 </div>
                             );
                         })}
-                        <div ref={messagesEndRef} />
                     </div>
 
                     {/* 入力エリア */}
