@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { isValidUUID } from '@/lib/validation';
 
 // ギアアイテム（ASIN）へのリアクションAPI
 // group_reactions テーブルを再利用: to_user_id に ASIN を格納、period='GEAR'
@@ -33,6 +34,10 @@ export async function GET(
         }
 
         const { groupId } = await context.params;
+
+        if (!isValidUUID(groupId)) {
+            return NextResponse.json({ error: 'Invalid group ID format' }, { status: 400 });
+        }
 
         // メンバーシップ確認
         const { data: membership } = await supabaseAdmin
@@ -79,6 +84,10 @@ export async function POST(
         const { groupId } = await context.params;
         const body = await request.json();
         const { toUserId: asin, emoji } = body;
+
+        if (!isValidUUID(groupId)) {
+            return NextResponse.json({ error: 'Invalid group ID format' }, { status: 400 });
+        }
 
         // バリデーション
         if (!asin || typeof asin !== 'string') {

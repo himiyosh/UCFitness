@@ -94,22 +94,32 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                     </span>
                 </div>
 
-                {/* グループサマリー */}
-                <div className="flex gap-4 mt-3">
-                    <div className="flex-1 bg-gray-50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-gray-400 font-bold uppercase">{t('groupTotal')}</p>
-                        <p className="text-lg font-black text-gray-900 tabular-nums">{data.groupTotal.toLocaleString()}</p>
-                    </div>
-                    <div className="flex-1 bg-gray-50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-gray-400 font-bold uppercase">{t('avgPerMember')}</p>
-                        <p className="text-lg font-black text-gray-900 tabular-nums">{data.groupAvg.toLocaleString()}</p>
-                    </div>
+                {/* グループサマリー — 3カードの高さを揃えるため items-stretch */}
+                <div className="flex gap-3 mt-3 items-stretch">
                     {data.mvp && (
-                        <div className="flex-1 bg-[var(--theme-primary)] rounded-xl p-3 text-center">
-                            <p className="text-xs text-white/80 font-bold uppercase">🏆 MVP</p>
-                            <p className="text-lg font-black text-white truncate">{data.mvp.name}</p>
+                        <div className="flex-1 relative bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-xl p-3 overflow-hidden flex items-center gap-2.5">
+                            {/* 背景装飾 */}
+                            <div className="absolute inset-0 opacity-10 pointer-events-none">
+                                <div className="absolute -top-3 -right-3 w-16 h-16 rounded-full bg-white" />
+                            </div>
+                            <span className="text-3xl flex-shrink-0 relative">🏆</span>
+                            <div className="relative min-w-0">
+                                <p className="text-[10px] text-white/70 font-bold uppercase tracking-wider leading-none">MVP</p>
+                                <p className="text-lg font-black text-white truncate mt-0.5">{data.mvp.name}</p>
+                                <p className="text-xs text-white/80 font-bold tabular-nums leading-none mt-0.5">
+                                    {data.mvp.totalSteps.toLocaleString()} steps
+                                </p>
+                            </div>
                         </div>
                     )}
+                    <div className="flex-1 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                        <p className="text-sm text-gray-400 font-bold uppercase">{t('groupTotal')}</p>
+                        <p className="text-xl font-black text-gray-900 tabular-nums">{data.groupTotal.toLocaleString()}</p>
+                    </div>
+                    <div className="flex-1 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                        <p className="text-sm text-gray-400 font-bold uppercase">{t('avgPerMember')}</p>
+                        <p className="text-xl font-black text-gray-900 tabular-nums">{data.groupAvg.toLocaleString()}</p>
+                    </div>
                 </div>
             </div>
 

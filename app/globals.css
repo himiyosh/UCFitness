@@ -1213,12 +1213,16 @@ button:not(:disabled) {
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  /* backwards: アニメーション開始前に from の値（opacity:0, translateY(5px)）を適用
+     forwards を使わない理由: forwards は transform の最終値（translateY(0) = identity matrix）を
+     保持し、CSS 仕様上 containing block が生成される。
+     これにより子孫の position: fixed がビューポート基準でなくなる問題が発生する。
+     backwards + to に transform なし → アニメーション完了後 transform は none に戻る */
+  animation: fadeIn 0.4s ease-out backwards;
 }
 
 @keyframes pulseGentle {

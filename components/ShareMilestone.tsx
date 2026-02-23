@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
 // ============================================
@@ -26,7 +26,12 @@ export default function ShareMilestone({ totalSteps, username, isOwner = true }:
         return `${t('shareOtherProfile', { username, steps: totalSteps.toLocaleString() })}\n#UCFitness`;
     }, [totalSteps, username, isOwner, t]);
 
-    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/user/${username}` : '';
+    // SSR/CSR ハイドレーション一致のため、パス部分のみで構築
+    // Client Component なので window 参照は安全だが、useMemo で安定化
+    const shareUrl = useMemo(
+        () => (typeof window !== 'undefined' ? `${window.location.origin}/user/${username}` : ''),
+        [username]
+    );
 
     const shareTwitter = useCallback(() => {
         const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(shareUrl)}`;

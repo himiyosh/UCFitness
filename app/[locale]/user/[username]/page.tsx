@@ -9,6 +9,7 @@ import ProfileHeader from '@/components/ProfileHeader';
 import ProfileBadges from '@/components/ProfileBadges';
 import AchievementProgress from '@/components/AchievementProgress';
 import RefreshButton from '@/components/RefreshButton';
+import NotificationBell from '@/components/NotificationBell';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
@@ -22,6 +23,10 @@ import AchievementCard from '@/components/AchievementCard';
 import ShareMilestone from '@/components/ShareMilestone';
 import AdSlot from '@/components/AdSlot';
 import Footer from '@/components/Footer';
+import nextDynamic from 'next/dynamic';
+
+// ⚡ パフォーマンス: ウォーキングコース記録を遅延読み込み（プロフィール所有者のみ表示）
+const WalkingRoutes = nextDynamic(() => import('@/components/WalkingRoutes'));
 
 
 
@@ -256,6 +261,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     {/* Use updated viewerUser for correct image */}
                     <div className="flex items-center gap-1">
                         {session?.user && <RefreshButton />}
+                        {session?.user && <NotificationBell />}
                         {session?.user && viewerUser && <UserMenu user={viewerUser} />}
                     </div>
                 </div>
@@ -486,6 +492,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 isOwner={isOwner}
                                 locale={locale}
                             />
+                        )}
+
+                        {/* ウォーキングコース記録（プロフィール所有者のみ） */}
+                        {isOwner && (
+                            <WalkingRoutes />
                         )}
 
                         {/* 広告スロット（将来のAdSense用） */}

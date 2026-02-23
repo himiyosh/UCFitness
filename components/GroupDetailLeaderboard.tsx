@@ -6,19 +6,29 @@ import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
-import GroupReactions, { type Reaction } from '@/components/GroupReactions';
+import GroupReactions from '@/components/GroupReactions';
+import { useGroupReactions } from '@/hooks/useGroupReactions';
 
 function FadeInWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {
     const [show, setShow] = useState(false);
+    const [animationDone, setAnimationDone] = useState(false);
     useEffect(() => {
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 setShow(true);
+                // アニメーション完了後に transform を解除 — transform 祖先は position:fixed を壊すため
+                setTimeout(() => setAnimationDone(true), 750);
             });
         });
     }, []);
+
+    // transform が残っていると子孫の position:fixed が viewport ではなく transform 祖先基準になる
+    const animClasses = animationDone
+        ? ''
+        : `transition-all duration-700 ease-in-out transform ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`;
+
     return (
-        <div className={`${className} transition-all duration-700 ease-in-out transform ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`${className} ${animClasses}`}>
             {children}
         </div>
     );
@@ -49,8 +59,8 @@ export default function GroupDetailLeaderboard({
     const ITEMS_PER_PAGE = 5;
     const totalPages = useMemo(() => Math.ceil(allData.length / ITEMS_PER_PAGE), [allData.length]);
 
-    // --- リアクション管理 ---
-    const [reactions, setReactions] = useState<Reaction[]>([]);
+    // --- リアクション管理（グローバル共通 — グループ/ダッシュボード間でリアクション数を連動） ---
+    const { reactions, handleReactionToggle } = useGroupReactions('__global__', userId, period);
 
     // ホバー / ロングプレスでリアクション ➕ ボタンを表示
     const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
@@ -71,81 +81,6 @@ export default function GroupDetailLeaderboard({
             window.removeEventListener('scroll', dismiss);
         };
     }, [longPressUserId]);
-
-    // リアクション取得
-    useEffect(() => {
-        if (!groupId || !userId) return;
-        const fetchReactions = async () => {
-            try {
-                const res = await fetch(`/api/group/${groupId}/reactions?period=${period}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setReactions(data.reactions || []);
-                }
-            } catch {
-                // サイレント失敗 — リアクションは必須機能ではない
-            }
-        };
-        fetchReactions();
-    }, [groupId, userId, period]);
-
-    // リアクショントグル（楽観的更新）
-    const handleReactionToggle = useCallback(async (toUserId: string, emoji: string, isAdding: boolean) => {
-        if (!groupId || !userId) return;
-
-        if (isAdding) {
-            // 楽観的追加
-            const tempReaction: Reaction = {
-                id: `temp-${Date.now()}`,
-                from_user_id: userId,
-                to_user_id: toUserId,
-                emoji,
-                period,
-            };
-            setReactions(prev => [...prev, tempReaction]);
-
-            try {
-                const res = await fetch(`/api/group/${groupId}/reactions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ toUserId, emoji, period }),
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    // temp を実データに置換
-                    setReactions(prev =>
-                        prev.map(r => r.id === tempReaction.id ? data.reaction : r)
-                    );
-                } else {
-                    // ロールバック
-                    setReactions(prev => prev.filter(r => r.id !== tempReaction.id));
-                }
-            } catch {
-                setReactions(prev => prev.filter(r => r.id !== tempReaction.id));
-            }
-        } else {
-            // 楽観的削除
-            const removed = reactions.find(
-                r => r.from_user_id === userId && r.to_user_id === toUserId && r.emoji === emoji
-            );
-            setReactions(prev => prev.filter(r => r !== removed));
-
-            try {
-                const res = await fetch(
-                    `/api/group/${groupId}/reactions?toUserId=${toUserId}&emoji=${encodeURIComponent(emoji)}&period=${period}`,
-                    { method: 'DELETE' }
-                );
-                if (!res.ok && removed) {
-                    // ロールバック
-                    setReactions(prev => [...prev, removed]);
-                }
-            } catch {
-                if (removed) {
-                    setReactions(prev => [...prev, removed]);
-                }
-            }
-        }
-    }, [groupId, userId, period, reactions]);
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const displayData = useMemo(() => allData.slice(startIndex, startIndex + ITEMS_PER_PAGE), [allData, startIndex]);
@@ -202,7 +137,7 @@ export default function GroupDetailLeaderboard({
 
                                     return (
                                         <li key={entry.users.id}
-                                            className={`leaderboard-row relative px-4 sm:px-6 py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-all duration-200 hover:shadow-sm overflow-visible ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible ${(hoveredUserId === entry.users.id || longPressUserId === entry.users.id) ? 'z-50' : ''} ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                             onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                             onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}

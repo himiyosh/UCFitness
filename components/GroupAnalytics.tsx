@@ -27,7 +27,7 @@ interface GroupAnalyticsProps {
     userId?: string | null;
     currentGroupId: string;
     currentUsername?: string;
-    children?: React.ReactNode;
+    children?: React.ReactNode; // 未使用（後方互換のため残す）
     isPublic: boolean;
     groupName?: string;
     groupImage?: string;
@@ -224,15 +224,6 @@ export default function GroupAnalytics({
                             />
                         </div>
                     )}
-                </div>
-
-                {/* Settings & Members Panel */}
-                <div className="flex-1 min-w-0">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full min-h-[500px] max-h-[700px] overflow-hidden flex flex-col">
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
-                            {children}
-                        </div>
-                    </div>
                 </div>
             </div>
             </>

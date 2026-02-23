@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString } from '@/lib/date-utils';
+import { isValidUUID } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export async function GET(
     const userId = (session.user as any).id;
     const { groupId } = await context.params;
 
-    if (!groupId || typeof groupId !== 'string') {
+    if (!isValidUUID(groupId)) {
         return NextResponse.json({ error: '無効なグループID' }, { status: 400 });
     }
 

@@ -71,12 +71,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             .select('id, name, image, username')
             .in('id', targetIds);
 
-        // 通知設定（カラムが未追加の場合でもエラーにならないよう別クエリで取得）
+        // 通知設定 + 既読タイムスタンプ（カラムが未追加の場合でもエラーにならないよう別クエリで取得）
         const { data: notifyData } = await supabaseAdmin
             .from('users')
-            .select('id, notification_reactions, notification_gear_reactions')
+            .select('id, notification_reactions, notification_gear_reactions, feed_last_read_at')
             .eq('id', userId)
             .single();
+
+        const feedLastReadAt = notifyData?.feed_last_read_at as string | null;
 
         const userMap = new Map<string, { name: string | null; image: string | null; username: string | null; notification_reactions: boolean | null; notification_gear_reactions: boolean | null }>();
         (usersData || []).forEach((u) => {
@@ -308,12 +310,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
         // 5. タイムスタンプ降順でソート + limit 適用
         feedItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        // 未読数を算出（feed_last_read_at 以降のアイテム数）
+        const lastReadTime = feedLastReadAt ? new Date(feedLastReadAt).getTime() : 0;
+        const unreadCount = feedItems.filter(
+            (item) => new Date(item.timestamp).getTime() > lastReadTime
+        ).length;
+
         const limitedFeed = feedItems.slice(0, limit);
         const hasMore = feedItems.length > limit;
 
         return NextResponse.json({
             feed: limitedFeed,
             hasMore,
+            unreadCount,
             nextCursor: limitedFeed.length > 0
                 ? limitedFeed[limitedFeed.length - 1].timestamp
                 : null,
