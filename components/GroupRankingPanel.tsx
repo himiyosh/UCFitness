@@ -49,8 +49,8 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
             : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' },
     }), [isMidnight]);
 
-    // リアクション管理
-    const { reactions, handleReactionToggle } = useGroupReactions(groupId, userId, period);
+    // リアクション管理（グローバル共通 — グループ/ダッシュボード間でリアクション数を連動）
+    const { reactions, handleReactionToggle } = useGroupReactions('__global__', userId, period);
 
     // モバイル長押しリアクション
     const [longPressUserId, setLongPressUserId] = useState<string | null>(null);
@@ -190,7 +190,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-all overflow-visible ${(hoveredUserId === entryId || longPressUserId === entryId) ? 'z-50' : ''} ${entry.users?.username ? 'cursor-pointer' : ''} hover:shadow-sm ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible ${(hoveredUserId === entryId || longPressUserId === entryId) ? 'z-50' : ''} ${entry.users?.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                             onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
                                             onMouseEnter={() => setHoveredUserId(entryId)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}

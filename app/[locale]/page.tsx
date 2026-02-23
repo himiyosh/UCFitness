@@ -382,6 +382,7 @@ export default async function Home() {
                 <div className="w-full">
                   <StepCalendar
                     userId={userId}
+                    showCalendar={false}
                     activity={{
                       todaySteps: mySteps,
                       yesterdaySteps,

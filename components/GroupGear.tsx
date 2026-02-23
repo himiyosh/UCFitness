@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import GroupReactions from '@/components/GroupReactions';
-import { useGearReactions } from '@/hooks/useGearReactions';
+import GearLikeButton from '@/components/GearLikeButton';
+import { useGlobalGearReactions } from '@/hooks/useGlobalGearReactions';
 
 // ============================================
 // GroupGear — グループメンバーの愛用ギア
@@ -33,28 +33,8 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
 
-    // ギアリアクション管理
-    const { reactions, handleReactionToggle } = useGearReactions(groupId, userId);
-
-    // ホバー / ロングプレスでリアクション ➕ ボタンを表示
-    const [hoveredAsin, setHoveredAsin] = useState<string | null>(null);
-    const [longPressAsin, setLongPressAsin] = useState<string | null>(null);
-    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // ロングプレス解除: 外部タップ or スクロールで閉じる
-    useEffect(() => {
-        if (!longPressAsin) return;
-        const dismiss = () => setLongPressAsin(null);
-        const timer = setTimeout(() => {
-            document.addEventListener('touchstart', dismiss, { once: true });
-            window.addEventListener('scroll', dismiss, { once: true });
-        }, 100);
-        return () => {
-            clearTimeout(timer);
-            document.removeEventListener('touchstart', dismiss);
-            window.removeEventListener('scroll', dismiss);
-        };
-    }, [longPressAsin]);
+    // ギアリアクション管理（グローバル共通 — グループ/ダッシュボード間で Like 数を連動）
+    const { reactions, handleReactionToggle } = useGlobalGearReactions(userId);
 
     useEffect(() => {
         let cancelled = false;
@@ -105,19 +85,19 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
     if (loading) {
         return (
             <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col">
-                <div className="px-5 pt-5 pb-3 flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse" />
-                    <div className="space-y-1.5">
-                        <div className="h-3.5 bg-gray-200 rounded w-24 animate-pulse" />
+                <div className="px-4 pt-3 pb-2 flex items-center gap-2.5">
+                    <div className="w-7 h-7 bg-gray-200 rounded-lg animate-pulse" />
+                    <div className="space-y-1">
+                        <div className="h-3 bg-gray-200 rounded w-24 animate-pulse" />
                         <div className="h-2.5 bg-gray-100 rounded w-32 animate-pulse" />
                     </div>
                 </div>
-                <div className="flex gap-3 px-5 pb-5">
+                <div className="flex gap-2 px-4 pb-3">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="flex-shrink-0 w-36 rounded-xl border border-gray-100 p-2.5 animate-pulse">
-                            <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2" />
-                            <div className="h-3 bg-gray-200 rounded w-full mb-1.5" />
-                            <div className="h-3 bg-gray-100 rounded w-2/3" />
+                        <div key={i} className="flex-shrink-0 w-36 rounded-xl border border-gray-100 p-2 animate-pulse">
+                            <div className="w-full aspect-square bg-gray-100 rounded-lg mb-1.5" />
+                            <div className="h-2.5 bg-gray-200 rounded w-full mb-1" />
+                            <div className="h-2.5 bg-gray-100 rounded w-2/3" />
                         </div>
                     ))}
                 </div>
@@ -128,10 +108,10 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
     return (
         <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 h-full flex flex-col">
             {/* ヘッダー */}
-            <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-shrink-0">
-                <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/20">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/20">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
                     </div>
@@ -172,33 +152,24 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
             {/* アイテムカルーセル */}
             <div
                 ref={scrollRef}
-                className="flex gap-3 overflow-x-auto px-5 pb-14 pt-1 scroll-smooth scrollbar-hide"
+                className="flex gap-2 overflow-x-auto px-4 pb-4 pt-1 scroll-smooth scrollbar-hide"
             >
                 {items.map(item => (
                     <div
                         key={item.asin}
-                        className="relative flex-shrink-0 w-36 pt-9"
-                        onMouseEnter={() => setHoveredAsin(item.asin)}
-                        onMouseLeave={() => setHoveredAsin(prev => prev === item.asin ? null : prev)}
-                        onTouchStart={() => {
-                            const timer = setTimeout(() => {
-                                setLongPressAsin(item.asin);
-                            }, 500);
-                            longPressTimerRef.current = timer;
-                        }}
-                        onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
-                        onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
+                        data-reaction-card
+                        className="relative flex-shrink-0 w-36 pt-7"
                     >
                     {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
                     {(() => {
                         const commented = item.users.find(u => u.comment);
                         return commented ? (
                             <div
-                                className="absolute top-0 left-1/2 z-20 w-[130px] pointer-events-none"
+                                className="absolute top-0 left-1/2 z-20 w-[110px] pointer-events-none"
                                 style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%)' }}
                             >
-                                <div className="bg-[var(--theme-primary)] rounded-lg px-2 py-1.5">
-                                    <p className="text-[10px] text-white leading-snug line-clamp-2 break-words text-center">
+                                <div className="bg-[var(--theme-primary)] rounded-lg px-1.5 py-1">
+                                    <p className="text-[9px] text-white leading-snug line-clamp-2 break-words text-center">
                                         {commented.comment}
                                     </p>
                                 </div>
@@ -211,10 +182,10 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
                         href={item.affiliate_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 hover:shadow-lg hover:border-[var(--theme-primary)]/20 hover:scale-[1.03] p-2.5 transition-all duration-200 group"
+                        className="block w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 hover:shadow-lg hover:border-[var(--theme-primary)]/20 p-2 transition-colors group"
                     >
                         {/* 商品画像 */}
-                        <div className="w-full aspect-square rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-2">
+                        <div className="w-full aspect-square rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-1.5">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={item.image_url}
@@ -228,12 +199,9 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
                         </div>
 
                         {/* タイトル */}
-                        <p className="text-xs font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1 h-8">
+                        <p className="text-[10px] font-medium text-gray-700 leading-snug line-clamp-2 group-hover:text-[var(--theme-primary)] transition-colors mb-1 h-7">
                             {cleanTitle(item.title)}
                         </p>
-
-                        {/* スペーサー（コメントは吹き出しで表示するため不要） */}
-                        <div className="mb-1.5" />
 
                         {/* 愛用者アバター */}
                         <div className="flex items-center -space-x-1.5 mb-1">
@@ -258,24 +226,17 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
                             )}
                         </div>
                     </a>
-                    {/* ギアリアクション — カード下に absolute 配置（コメントバルーンと同じパターン） */}
+                    {/* ギア Like ボタン — Instagram 風のハートボタン */}
                     {userId && (
                         <div
-                            className="relative z-30 flex justify-center mt-1"
+                            className="flex justify-start mt-1 h-[22px] pl-0.5"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                         >
-                            <GroupReactions
-                                groupId={groupId}
-                                toUserId={item.asin}
+                            <GearLikeButton
+                                asin={item.asin}
                                 currentUserId={userId}
-                                period="GEAR"
                                 reactions={reactions}
                                 onReactionToggle={handleReactionToggle}
-                                isSelf={false}
-                                compact
-                                forceShow={hoveredAsin === item.asin || longPressAsin === item.asin}
-                                maxVisibleBadges={2}
-                                pickerPosition="below"
                             />
                         </div>
                     )}

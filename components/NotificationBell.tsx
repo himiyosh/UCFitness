@@ -130,14 +130,24 @@ export default function NotificationBell() {
         return feed[feed.length - 1].timestamp;
     }, [feed]);
 
-    // 初回マウント時に未読数だけ軽量チェック
+    // 既読マークをサーバーに送信し、バッジをリセット
+    const markAsRead = useCallback(async () => {
+        setUnreadCount(0);
+        try {
+            await fetch('/api/user/feed/read', { method: 'POST' });
+        } catch {
+            // 既読マーク失敗は無視（UX をブロックしない）
+        }
+    }, []);
+
+    // 初回マウント時に未読数を軽量 API で取得
     useEffect(() => {
         const checkUnread = async () => {
             try {
-                const res = await fetch('/api/user/feed?limit=5');
+                const res = await fetch('/api/user/feed/unread-count');
                 if (res.ok) {
                     const data = await res.json();
-                    setUnreadCount(data.feed?.length || 0);
+                    setUnreadCount(data.unreadCount ?? 0);
                 }
             } catch {
                 // 未読チェック失敗は無視
@@ -204,12 +214,7 @@ export default function NotificationBell() {
     }, [isOpen]);
 
     const handleToggle = useCallback(() => {
-        setIsOpen((prev) => {
-            const next = !prev;
-            // ポップオーバーを開く時に未読カウントをリセット
-            if (next) setUnreadCount(0);
-            return next;
-        });
+        setIsOpen((prev) => !prev);
     }, []);
 
     // --- レンダリング ---
@@ -264,16 +269,31 @@ export default function NotificationBell() {
                             <span>📰</span>
                             <span>{t('title')}</span>
                         </h3>
-                        <button
-                            type="button"
-                            onClick={() => setIsOpen(false)}
-                            aria-label="Close"
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                        <div className="flex items-center gap-1">
+                            {/* すべて既読にするボタン */}
+                            <button
+                                type="button"
+                                onClick={markAsRead}
+                                aria-label={t('markAllRead')}
+                                title={t('markAllRead')}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
+                            </button>
+                            {/* 閉じるボタン */}
+                            <button
+                                type="button"
+                                onClick={() => setIsOpen(false)}
+                                aria-label="Close"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     {/* ポップオーバーコンテンツ（スクロール可能） */}

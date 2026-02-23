@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback, type TouchEvent as ReactTouchEvent } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
-import GroupReactions from '@/components/GroupReactions';
+import GearLikeButton from '@/components/GearLikeButton';
 import { useGlobalGearReactions } from '@/hooks/useGlobalGearReactions';
 
 // ============================================
@@ -36,26 +36,6 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
 
     // グローバルギアリアクション管理
     const { reactions, handleReactionToggle } = useGlobalGearReactions(userId);
-
-    // ホバー / ロングプレスでリアクション ➕ ボタンを表示
-    const [hoveredAsin, setHoveredAsin] = useState<string | null>(null);
-    const [longPressAsin, setLongPressAsin] = useState<string | null>(null);
-    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // ロングプレス解除: 外部タップ or スクロールで閉じる
-    useEffect(() => {
-        if (!longPressAsin) return;
-        const dismiss = () => setLongPressAsin(null);
-        const timer = setTimeout(() => {
-            document.addEventListener('touchstart', dismiss, { once: true });
-            window.addEventListener('scroll', dismiss, { once: true });
-        }, 100);
-        return () => {
-            clearTimeout(timer);
-            document.removeEventListener('touchstart', dismiss);
-            window.removeEventListener('scroll', dismiss);
-        };
-    }, [longPressAsin]);
 
     useEffect(() => {
         let cancelled = false;
@@ -180,17 +160,8 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                 {items.map(item => (
                     <div
                         key={item.asin}
+                        data-reaction-card
                         className="relative flex-shrink-0 w-[130px] pt-9"
-                        onMouseEnter={() => setHoveredAsin(item.asin)}
-                        onMouseLeave={() => setHoveredAsin(prev => prev === item.asin ? null : prev)}
-                        onTouchStart={() => {
-                            const timer = setTimeout(() => {
-                                setLongPressAsin(item.asin);
-                            }, 500);
-                            longPressTimerRef.current = timer;
-                        }}
-                        onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
-                        onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                     >
                     {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
                     {(() => {
@@ -258,24 +229,17 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                             )}
                         </div>
                     </a>
-                    {/* ギアリアクション — カード下に absolute 配置（コメントバルーンと同じパターン） */}
+                    {/* ギア Like ボタン — Instagram 風のハートボタン */}
                     {userId && (
                         <div
-                            className="relative z-30 flex justify-center mt-1"
+                            className="flex justify-start mt-1 pl-0.5"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                         >
-                            <GroupReactions
-                                groupId="__global__"
-                                toUserId={item.asin}
+                            <GearLikeButton
+                                asin={item.asin}
                                 currentUserId={userId}
-                                period="GEAR"
                                 reactions={reactions}
                                 onReactionToggle={handleReactionToggle}
-                                isSelf={false}
-                                compact
-                                forceShow={hoveredAsin === item.asin || longPressAsin === item.asin}
-                                maxVisibleBadges={2}
-                                pickerPosition="center"
                             />
                         </div>
                     )}

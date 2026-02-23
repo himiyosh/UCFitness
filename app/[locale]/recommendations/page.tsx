@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import UserMenu from "@/components/UserMenu";
 import RefreshButton from '@/components/RefreshButton';
+import NotificationBell from '@/components/NotificationBell';
 import Breadcrumbs from "@/components/Breadcrumbs";
 import AmazonProductSearch from "@/components/AmazonProductSearch";
 import { getTranslations, getLocale } from "next-intl/server";
@@ -56,6 +57,7 @@ export default async function RecommendationsPage() {
                     </div>
                     <div className="flex items-center gap-1">
                         <RefreshButton />
+                        <NotificationBell />
                         <UserMenu user={{
                             ...session.user,
                             name: user?.name || session.user.name,

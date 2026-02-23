@@ -561,6 +561,8 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 8. **Edge Runtime 互換性** — `export const runtime = 'edge'` 確認、`Buffer.from()` → `btoa()`
 9. **`select('*')` 排除** — 必要カラムのみ明示指定
 10. **ページ共通パターン準拠** — `supabaseAdmin` 使用、`session.user.image` 直接使用禁止、username チェック
+11. **ヘッダー統一確認** — 全ページのヘッダー右側が `RefreshButton → NotificationBell → UserMenu` の 3 要素構成になっているか確認。1 つでも欠けている場合はバグとして報告
+12. **flex 横並びのレスポンシブチェック** — `flex` / `flex-row` で複数要素を横並びにしている箇所に `sm:` 等のレスポンシブプレフィックスがあるか確認。`flex` のみで 3 要素以上を `flex-1` で均等配置している場合はモバイル崩れバグとして報告
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -574,10 +576,19 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 
 **UI 頻出バグルール:**
 
+- **`flex` / `flex-row` 横並びにはレスポンシブプレフィックス必須** — 複数カード・パネルを横並びにする場合、`flex` のみ / `flex-row` のみは **禁止**。必ず `flex flex-col sm:flex-row` とし、モバイルでは縦積みにする。`flex-1` で均等分割する 3 カード以上のレイアウトは特に注意（モバイル幅 375px ÷ 3 = 125px/カードで内容が潰れる）。リファレンス: `GroupWeeklyReport.tsx`
 - Flexbox 中央揃え: `flex items-center gap-2` のみ使用（`items-stretch` + `justify-center` 禁止）
 - 最小テキスト: `text-[9px]`〜`text-[11px]` 禁止 → `text-xs` (12px) 以上
 - z-index: ヘッダー `z-50` / モーダル `z-40` / ドロップダウン `z-30` / フローティング `z-20`
 - 広告スペースとの共存: ページ下部・コンテンツ間の余白を潰さない
+- **`transition-all` 禁止** — ランキング行・ギアカード等のリスト要素には `transition-colors` のみ使用。`transition-all` は shadow・scale・padding 等をアニメーションし行高が変動する
+- **`hover:scale-*` 禁止** — リスト行・カードにスケール変換を適用しない。レイアウト崩れとバルーン見切れの原因
+- **リアクションバルーンの見切れ防止** — リアクションピッカーが表示される行は `overflow-visible` + ホバー時 `z-50` 動的切替が必須
+- **`overflow-hidden` 祖先とポップアップの共存** — CSS の仕様上、`overflow-hidden` を持つ祖先要素がある場合、子孫の `z-index` や `overflow-visible` では回避不可。**ポップアップ・ピッカー・ツールチップは `createPortal(document.body)` で Portal 描画すること。** `position: fixed` + `getBoundingClientRect()` で座標計算する。リファレンス実装: `GroupReactions.tsx`（compact モード）
+- **Portal 座標は 2-probe affine 変換で `body { zoom }` を逆補正する** — `body { zoom: 0.9 }` 環境下では `getBoundingClientRect()` が viewport 座標を返すが、`position: fixed` の `top/left` は zoom 後の CSS 座標系で解釈される。probe(0,0) だけでは `0×zoom=0` のため乗算的ずれを検出不可。`position:fixed;top:0` と `top:100px` の 2 要素で `scale = (r2 - r1) / 100` を算出し、`(coord - offset) / scale` で逆変換する。リファレンス: `GroupReactions.tsx` の `detectCoordinateTransform()`
+- **Portal ピッカーのカード中央配置** — ピッカーをトリガーボタン基準ではなく親カード基準で中央配置する場合、カードの wrapper div に `data-reaction-card` 属性を付与し、`triggerEl.closest('[data-reaction-card]')` でカード要素を取得してカード中心を基準に `translateX(-50%)` する。トリガーボタンだけを基準にすると、リアクション追加によるボタン位置の移動でピッカーもずれる
+- **Portal ↔ トリガー間のホバーギャップ（既知制限・変更禁止）** — Portal は DOM ツリー上でトリガーの子孫ではないため、カードの `mouseleave` → Portal の `mouseenter` 間にギャップが発生しピッカーが閉じうる。`isHoveringPickerRef` で部分緩和済みだが完全解決ではない。**現在の実装（fb07776）がユーザー承認済みの安定状態。この動作を変更する場合は必ずユーザーに確認すること**
+- **同一コンポーネント繰り返し修正の禁止** — 同じコンポーネントを 3 回以上修正する場合、個別パッチを中止し根本原因を体系的に分析する。修正 → 別の崩れ → 再修正のループは設計レベルの問題を示唆する
 
 **リーダーボード / ランキング統一ルール（ユーザー繰り返し指摘 — 変更厳禁）:**
 
@@ -589,7 +600,10 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 4. **パディング: `px-3 sm:px-6 py-2 sm:py-2.5`** — モバイルとデスクトップで統一
 5. **ランク行の装飾クラス: `rank-row-1`, `rank-row-2`, `rank-row-3`** — 1〜3 位に適用
 6. **リアクション欄は行内に固定高さ (`h-[22px]`) で表示** — 行高がリアクションの有無で変動しないようにする
-7. **この仕様を変更する場合は必ずユーザーに確認すること**
+7. **行の `transition` は `transition-colors` のみ使用** — `transition-all` は `shadow` / `scale` / `padding` 等すべてのプロパティをアニメーションし、ホバー時に行高が変動するため **絶対に使用しない**。リファレンス実装: `AnimatedLeaderboard.tsx`
+8. **`hover:scale-*` をランキング行・ギアカードに使用しない** — 要素のサイズ変動はレイアウト崩れ・バルーン見切れの原因
+9. **リアクションピッカー（バルーン）が表示される行は `overflow-visible` + ホバー時 `z-50`** — 親コンテナの `overflow-hidden` でバルーンが切れないようにする
+10. **この仕様を変更する場合は必ずユーザーに確認すること**
 
 ### 💰 サブエージェント: Monetization
 
@@ -748,11 +762,51 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 - [ ] i18n: ja/en 両方の翻訳キーが追加されている（該当する場合）
 - [ ] モバイルレスポンシブを考慮している
 - [ ] `main` / `master` ブランチでないことを確認
+- [ ] **プロンプト自己改善トリガー確認（必須）:** 今回のタスクがトリガー条件（繰り返し修正・否定的フィードバック・新技術制約の発見等）に該当するか確認。該当する場合は Lessons Learned + copilot-instructions.md + サブエージェントルールを更新し、同一コミットに含めること
 - [ ] **Improvement Loop の場合:** `improvement-report.md` に「🔍 新機能提案」セクションが記載されている（Step 2.5 必須）
 
 ---
 
-## 🛡️ 全ロール共通ルール（UCFitness 絶対遵守）
+## �️ Supabase MCP ツール利用ルール
+
+UCFitness は Supabase (PostgreSQL) を DB として使用しており、**Supabase MCP** ツールが利用可能である。
+
+### ツールロード（必須）
+
+Supabase MCP ツールは遅延ロードのため、使用前に必ず以下を実行:
+
+```
+tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
+```
+
+### プロジェクト情報
+
+| 項目 | 値 |
+|------|------|
+| プロジェクト名 | UCFitness |
+| プロジェクト ID | `lmqpkoyypxccdbtgycty` |
+| リージョン | ap-northeast-1 |
+| PostgreSQL | 17.x |
+
+### 利用可能な操作
+
+- **`mcp_com_supabase__execute_sql`** — SQL 直接実行（マイグレーション、データ確認、スキーマ変更）
+- **`mcp_com_supabase__list_tables`** — テーブル一覧取得
+- **`mcp_com_supabase__list_extensions`** — 拡張機能一覧
+- **`mcp_com_supabase__get_logs`** — ログ取得（デバッグ時）
+- **`mcp_com_supabase__list_migrations`** — マイグレーション履歴
+
+### 利用ルール
+
+1. **マイグレーション SQL** は `migrations/` ディレクトリにファイルを作成した上で、`mcp_com_supabase__execute_sql` で実行する
+2. **破壊的操作**（`DROP TABLE`, `DELETE`, `TRUNCATE`）は実行前にユーザーに確認する
+3. **RLS ポリシー** はテーブル作成時に必ず有効化する（`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`）
+4. **本番データの直接変更**（`UPDATE`, `INSERT` でユーザーデータを操作）はユーザーの明示的な指示がある場合のみ
+5. Supabase CLI は未インストールのため、MCP ツール経由で操作すること
+
+---
+
+## �🛡️ 全ロール共通ルール（UCFitness 絶対遵守）
 
 1. **Hooks は早期 return の前に配置**（React Error #310 防止）
 2. **Edge Runtime 必須** — `export const runtime = "edge"`
@@ -780,6 +834,56 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 | DB ユーザー情報の不一致              | `session.user.image` を直接使用                                                                                                       | 必ず `supabaseAdmin` から `dbUser` を取得して使用                         |
 | NewFeatureDiscovery 欠落 (Cycle 8-9) | Step 2 のファイル種別マッピング内の補足行に記載されており独立 Step でなかった。限定スコープ時に Step 2 全体がスキップされ連動して欠落 | Step 2.5 として独立化し「スキップ厳禁」を明記。完了チェックリストにも追加 |
 | リーダーボード / ランキング行幅の繰り返し指摘 | 行の高さ (`min-h`) や最低行数 (`MIN_ROWS`) が統一されておらず、改善ループで崩れる | **全リーダーボード / ランキング行は `min-h-[4.5rem]` 固定。最低表示行数は `MIN_ROWS = 5`（空行で埋める）。** この 2 ルールは変更禁止。詳細は下記「リーダーボード統一ルール」参照 |
+| ホバー時の行高変動・バルーン見切れ | ランキング行・ギアカードに `transition-all` / `hover:scale-[1.03]` を使用。`transition-all` は shadow・padding・transform 等すべてをアニメーションし行高が不安定に。`hover:scale` はカードサイズを物理的に変更。親コンテナの `overflow-hidden` でリアクションバルーンが切れる | **`transition-colors` のみ使用**（`transition-all` 禁止）。**`hover:scale-*` 禁止**。リアクション行は **`overflow-visible` + ホバー時 `z-50` 動的切替**。リファレンス: `AnimatedLeaderboard.tsx` |
+| リアクションピッカー見切れ（2回目修正） | `overflow-hidden` は CSS 仕様上、子要素の `z-index` や `overflow-visible` では回避不可。`absolute` 配置のピッカーが祖先の `overflow-hidden rounded-xl` に必ずクリップされる。また compact モードの `pickerPosition='above'` が実際は `top-full`（下方向）に描画されるバグもあった | **`createPortal(document.body)` で Portal 描画**。`position: fixed` + `getBoundingClientRect()` で計算した座標に配置。`pickerPosition` に基づいてビューポート端での自動反転も実装。`forceShow=false` 時は 300ms タイマーで遅延クローズし、行 → ポータルピッカーへのマウス移動を許容 |
+| Portal 座標が `body { zoom }` でずれる（6回再修正） | `body { zoom: 0.9 }` により `getBoundingClientRect()` は viewport 座標を返すが、`position: fixed` の `top/left` は zoom 後の CSS 座標系で解釈される。probe(0,0) だけでは `0×zoom=0` のため **乗算的なずれ（zoom scale）を検出不可** だった | **2-probe affine 変換検出**: `position:fixed;top:0` と `top:100px` の 2 要素で `scale = (r2.top - r1.top) / 100` を算出。viewport 座標を `(coord - offset) / scale` で CSS 座標に逆変換する。リファレンス実装: `GroupReactions.tsx` の `detectCoordinateTransform()` |
+| Portal ピッカーがトリガーボタン基準でずれる | リアクション追加により `+` ボタンの位置が移動し、ピッカーの中央位置もずれる。トリガーボタンではなく親カード全体を基準にすべきだった | **`data-reaction-card` 属性 + `closest()` パターン**: カードの wrapper div に `data-reaction-card` を付与。ピッカー座標計算時に `triggerEl.closest('[data-reaction-card]')` で親カードを取得し、カード中心を基準に `translateX(-50%)` で中央配置。リファレンス: `GroupGear.tsx`, `TrendingGear.tsx` |
+| Portal ↔ トリガー間のホバーギャップ（既知制限） | Portal は DOM ツリー上でトリガー要素の子孫ではないため、カードから `mouseleave` すると Portal に到達する前にピッカーが閉じる。`isHoveringPickerRef` で部分的に緩和したが、マウスの移動経路によっては依然として閉じることがある | **既知制限として受容（fb07776 で安定状態宣言）**。`isHoveringPickerRef` で Portal 上のホバー状態を追跡し、`forceShow=false` 時の 300ms タイマー内で `isHoveringPickerRef.current` を確認して遅延クローズを抑制。**完全解決ではないが最も安定した状態としてユーザー承認済み。この動作を変更する場合は必ずユーザーに確認すること** |
+| 同一コンポーネントの繰り返し修正（6回超の再修正） | `GroupReactions.tsx` のピッカー位置を 6 回以上修正。個別の CSS 調整では根本原因（`body { zoom }` による座標系不一致）を解決できず、修正 → 別の崩れ → 再修正のループに陥った | **3 回以上同じコンポーネントを修正する場合、個別パッチを中止し根本原因を体系的に分析する**。今回の教訓: ① `getBoundingClientRect()` と `position: fixed` は異なる座標系になりうる ② probe テストは `0` 以外の値で検証 ③ 修正が別の崩れを生む場合は設計レベルの見直しが必要 |
+| ヘッダーの `NotificationBell` が Dashboard のみ（他ページ未統一） | `copilot-instructions.md` の⑤ヘッダーテンプレートに `RefreshButton` と `NotificationBell` が記載されていなかった。テンプレートが `<UserMenu>` のみの古い状態だったため、新規ページ作成・ヘッダー統一時に漏れた | **ヘッダーテンプレートを `RefreshButton → NotificationBell → UserMenu` の 3 要素構成に更新**。必須 import にも `RefreshButton` と `NotificationBell` を追加。Build Validation サブエージェントのチェック項目にもヘッダー統一確認を追加 |
+| プロンプト自己改善ルールがコード修正時に発動しなかった | 自己改善の 4 ステップがタスク完了チェックリストに組み込まれておらず、コード修正に集中した結果プロンプト更新を失念した | **完了チェックリストに「プロンプト自己改善トリガー確認」を必須項目として追加**。コミット前にトリガー条件に該当するか確認し、該当する場合はプロンプト更新を同一コミットに含める |
+| モバイルで flex 横並びカードが潰れる（Weekly Report MVP カード） | `flex gap-3` のみでレスポンシブプレフィックスなし。3 カードが `flex-1` で均等分割されモバイル幅では各カードが ~100px に圧縮される。copilot-instructions に `flex-col` → `sm:flex-row` ルールは記載済みだったが、UI 頻出バグルールとBuild Validation の具体的チェック項目になっておらず、コード生成時・レビュー時に見落とされた | **UI 頻出バグルールに「`flex-row` / `flex` 横並びはレスポンシブプレフィックス必須」を追加**。`flex` のみ / `flex-row` のみの複数カード横並びは禁止 → 必ず `flex-col sm:flex-row` にする。Build Validation にも「flex 横並びのレスポンシブチェック」を追加。リファレンス: `GroupWeeklyReport.tsx` |
+
+---
+
+## 🔄 プロンプト自己改善ルール（Prompt Self-Improvement）— 絶対遵守
+
+**⚠️ このルールはすべてのロール・すべてのタスクにおいて最優先で適用される。「後で追記する」「次のサイクルで対応する」は禁止。トリガー条件を検出した時点で即座にプロンプト更新をタスクに組み込むこと。**
+
+**🔒 発動タイミング:** コード修正をコミットする**前**に、完了チェックリストの「プロンプト自己改善トリガー確認」項目で必ず確認する。コード修正だけコミットしてからプロンプト更新を別コミットにしてはならない。
+
+### 自動実行フロー（スキップ厳禁）
+
+トリガー条件を検出 → 以下の **4 ステップすべて** を即座に実行する。1 つでも漏れた場合、タスクは未完了とみなす。
+
+1. **Lessons Learned テーブルに追記** — `UCFitnessAgent.agent.md` の「⚠️ 既知の問題と対策」テーブルに「問題 | 原因 | 対策」を 1 行追加する
+2. **copilot-instructions.md の更新** — 該当するセクション（リーダーボード統一ルール、ページ共通パターン、コーディング規約等）に具体的なルールとして追記する。リファレンス実装のファイル名も明記する
+3. **サブエージェントルールの更新** — 問題が UI/UX・Build・Security・Performance 等の特定サブエージェントに関連する場合、そのサブエージェントのチェックリスト/ルールにも追加する
+4. **同一コミットに含める** — プロンプト改善の差分は、関連するコード修正と同じコミットに含める。コード修正のみコミットしてプロンプト更新を忘れることを防止する
+
+### トリガー条件（1 つでも該当すれば即座に発動）
+
+- **繰り返し修正**: 同一パターンの修正を 2 回以上実施した
+- **否定的フィードバック**: ユーザーから「直っていない」「違う」「まだ壊れている」等の指摘を受けた
+- **新しい技術的制約の発見**: CSS / React / Next.js / ブラウザ API の未知の制約を発見した（例: `overflow-hidden` は `z-index` で回避不可、`body { zoom }` は `getBoundingClientRect()` の座標系に影響）
+- **ユーザー承認による安定状態の確定**: ユーザーが「この状態を正とする」「これでOK」と宣言した場合、その実装をリファレンスとして記録し、今後の改善ループで変更されないよう保護ルールを追記する
+- **ワークアラウンドの採用**: 完全解決できない問題に対してワークアラウンド（部分緩和策）を採用した場合、既知制限として記録し、将来のエージェントが同じ問題を「解決しよう」として安定状態を壊さないようにする
+- **3 回以上の同一コンポーネント修正**: 同じファイルを 3 回以上修正した場合、個別パッチでは根本解決できていない証拠。根本原因と正しいアプローチを記録する
+
+### 記録すべき内容の基準
+
+- **何が起きたか**（問題の具体的な症状）
+- **なぜ起きたか**（根本原因の技術的説明）
+- **どう解決したか**（採用した対策とリファレンス実装のファイル名・関数名）
+- **今後何を禁止/必須とするか**（再発防止の具体的ルール）
+- **安定状態のコミットハッシュ**（ユーザー承認済みの場合）
+
+### アンチパターン（絶対禁止）
+
+- ❌ コード修正だけコミットしてプロンプト更新を「後で」にする
+- ❌ Lessons Learned テーブルだけ更新して `copilot-instructions.md` を更新しない
+- ❌ 「些細な問題だから記録不要」と自己判断する（判断基準はトリガー条件のみ）
+- ❌ ユーザーが安定状態を宣言したのに保護ルールを追記しない
 
 ---
 

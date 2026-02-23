@@ -154,6 +154,7 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 すべての UI 変更・新規コンポーネント作成時に以下を厳守すること。
 
 - **モバイルファースト**: まずモバイル（`w-full`, `flex-col`）でレイアウトし、`sm:` / `md:` / `lg:` で拡張する
+- **`flex` / `flex-row` 横並び禁止（レスポンシブなし）**: 複数カード・パネルを横並びにする場合、`flex` のみは禁止。必ず `flex flex-col sm:flex-row` にする。モバイル幅 375px で `flex-1` × 3 = 125px/カードとなり内容が潰れる。リファレンス: `GroupWeeklyReport.tsx`
 - **最小タッチターゲット**: ボタン・リンクは最低 **44×44px** のタップ領域を確保する（`min-h-[44px] min-w-[44px]`）
 - **横スクロール禁止**: `overflow-x-hidden` を意識し、`w-screen` や固定幅（`w-[500px]` 等）を使わない
 - **テキストサイズ**: モバイルでは `text-sm` / `text-xs` を基本とし、`sm:text-base` 等で拡大する
@@ -175,7 +176,14 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 4. **パディング: `px-3 sm:px-6 py-2 sm:py-2.5`** — モバイルとデスクトップで統一
 5. **ランク行の装飾クラス: `rank-row-1`, `rank-row-2`, `rank-row-3`** — 1〜3 位に適用
 6. **リアクション欄は行内に固定高さ (`h-[22px]`) で表示** — 行高がリアクションの有無で変動しないようにする
-7. **この仕様を変更する場合は必ずユーザーに確認すること**
+7. **行の `transition` は `transition-colors` のみ使用** — `transition-all` は `shadow` / `scale` / `padding` 等すべてのプロパティをアニメーションし、ホバー時に行高が変動するため **絶対に使用しない**。リファレンス実装: `AnimatedLeaderboard.tsx`
+8. **`hover:scale-*` をランキング行・ギアカードに使用しない** — 要素のサイズ変動はレイアウト崩れ・バルーン見切れの原因
+9. **リアクションピッカー（バルーン）が表示される行は `overflow-visible` + ホバー時 `z-50`** — 親コンテナの `overflow-hidden` でバルーンが切れないようにする。z-index の動的切替パターン: `${(hoveredUserId === id || longPressUserId === id) ? 'z-50' : ''}`
+10. **リアクションピッカーは `createPortal(document.body)` で Portal 描画** — CSS 仕様上、`overflow-hidden` 祖先は `z-index` や子の `overflow-visible` では回避不可。ピッカーは `position: fixed` + `getBoundingClientRect()` で座標計算し、`document.body` に描画すること。`forceShow=false` 時は 300ms タイマーで遅延クローズし、行 → ポータルピッカーへのマウス移動を許容する。リファレンス実装: `GroupReactions.tsx`
+11. **Portal 座標は 2-probe affine 変換で `body { zoom }` を逆補正する** — `body { zoom: 0.9 }` 環境下では `getBoundingClientRect()` が viewport 座標を返すが、`position: fixed` の `top/left` は zoom 後の CSS 座標系で解釈される。probe(0,0) だけでは `0×zoom=0` のため乗算的ずれを検出不可。`position:fixed;top:0` と `top:100px` の 2 要素で `scale = (r2 - r1) / 100` を算出し、`(coord - offset) / scale` で逆変換する。リファレンス: `GroupReactions.tsx` の `detectCoordinateTransform()`
+12. **Portal ピッカーのカード中央配置** — ピッカーはトリガーボタンではなく親カード基準で中央配置する。カードの wrapper div に `data-reaction-card` 属性を付与し、`triggerEl.closest('[data-reaction-card]')` でカード要素を取得。カード中心を基準に `translateX(-50%)` する。リファレンス: `GroupGear.tsx`, `TrendingGear.tsx`
+13. **Portal ↔ トリガー間のホバーギャップは既知制限** — Portal は DOM ツリー上でトリガーの子孫ではないため、カード `mouseleave` → Portal `mouseenter` 間にギャップが発生しピッカーが閉じうる。`isHoveringPickerRef` による部分緩和のみ。**現在の実装（fb07776）がユーザー承認済みの安定状態であり、この動作を変更する場合は必ずユーザーに確認すること**
+14. **この仕様を変更する場合は必ずユーザーに確認すること**
 
 ### アクセシビリティ（a11y）
 
@@ -302,6 +310,8 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/navigation";
 import UserMenu from "@/components/UserMenu";
+import RefreshButton from "@/components/RefreshButton";
+import NotificationBell from "@/components/NotificationBell";
 import Breadcrumbs from "@/components/Breadcrumbs";
 ```
 
@@ -361,20 +371,25 @@ if (!dbUser?.username) {
         </span>
       </Link>
     </div>
-    <UserMenu
-      user={{
-        id: userId,
-        name: dbUser?.name || session.user.name,
-        email: session.user.email,
-        image: dbUser?.image || session.user.image,
-      }}
-    />
+    <div className="flex items-center gap-1">
+      <RefreshButton />
+      <NotificationBell />
+      <UserMenu
+        user={{
+          id: userId,
+          name: dbUser?.name || session.user.name,
+          email: session.user.email,
+          image: dbUser?.image || session.user.image,
+        }}
+      />
+    </div>
   </div>
 </header>
 ```
 
 - `BackButton` はヘッダーに置かない（パンくずリストで代替）
 - ヘッダー左側は常にアプリロゴ（`UCFitness` グラデーション + beta バッジ）
+- **ヘッダー右側は必ず `RefreshButton` → `NotificationBell` → `UserMenu` の 3 要素を配置**（1 つでも欠けると統一性が崩れる）
 - `dashboardT = await getTranslations('Dashboard')` で取得
 
 #### ⑥ コンテンツ領域

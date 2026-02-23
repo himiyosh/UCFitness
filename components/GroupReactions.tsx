@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 
 // デフォルトのクイックリアクション絵文字
@@ -55,7 +56,7 @@ export default function GroupReactions({
     compact = false,
     forceShow = false,
     maxVisibleBadges = 3,
-    pickerPosition = 'above',
+    pickerPosition = 'below',
 }: GroupReactionsProps) {
     const t = useTranslations('GroupReactions');
     const [loading, setLoading] = useState<string | null>(null);
@@ -64,6 +65,11 @@ export default function GroupReactions({
     const [activeCategory, setActiveCategory] = useState(0);
     const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pickerRef = useRef<HTMLDivElement>(null);
+    const triggerBtnRef = useRef<HTMLButtonElement>(null);
+    const portalPickerRef = useRef<HTMLDivElement>(null);
+    // ポータルピッカー上にマウスがあるかを追跡（forceShow=false でも閉じない）
+    const isHoveringPickerRef = useRef(false);
+    const [portalPos, setPortalPos] = useState<{ style: React.CSSProperties; above: boolean } | null>(null);
 
     // このユーザーに対するリアクション集計（任意の絵文字に対応）
     const reactionCounts = useMemo(() => {
@@ -106,24 +112,31 @@ export default function GroupReactions({
             clearTimeout(hideTimeout.current);
             hideTimeout.current = null;
         }
+        isHoveringPickerRef.current = true;
         setShowPicker(true);
     }, []);
 
     const handleMouseLeave = useCallback(() => {
+        isHoveringPickerRef.current = false;
         hideTimeout.current = setTimeout(() => {
             setShowPicker(false);
             setShowExtended(false);
         }, 250);
     }, []);
 
-    // 拡張ピッカーの外側クリックで閉じる
+    // 拡張ピッカーの外側クリックで閉じる（ポータル要素も考慮）
     useEffect(() => {
         if (!showExtended) return;
         const handleClickOutside = (e: MouseEvent) => {
-            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-                setShowExtended(false);
-                setShowPicker(false);
+            const target = e.target as Node;
+            if (
+                (pickerRef.current && pickerRef.current.contains(target)) ||
+                (portalPickerRef.current && portalPickerRef.current.contains(target))
+            ) {
+                return;
             }
+            setShowExtended(false);
+            setShowPicker(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -132,6 +145,7 @@ export default function GroupReactions({
     // forceShow に連動してピッカーの自動表示を制御
     // forceShow が true → ＋ボタン表示 + ピッカーも自動オープン
     // forceShow が false → ＋ボタン非表示 + ピッカーも閉じる
+    // ※ ポータルピッカー上にマウスがある間は閉じない（カード → ピッカー移動を許容）
     useEffect(() => {
         if (forceShow) {
             if (hideTimeout.current) {
@@ -140,15 +154,182 @@ export default function GroupReactions({
             }
             setShowPicker(true);
         } else {
-            // 即座にクローズ — 他の行に移動した際に前の行のピッカーが残らないようにする
-            setShowPicker(false);
-            setShowExtended(false);
-            if (hideTimeout.current) {
-                clearTimeout(hideTimeout.current);
-                hideTimeout.current = null;
-            }
+            // ポータル描画のためタイマー付きで閉じる（行 → ピッカーへのマウス移動を許容）
+            hideTimeout.current = setTimeout(() => {
+                // ピッカー上にマウスがある場合は閉じない
+                if (isHoveringPickerRef.current) return;
+                setShowPicker(false);
+                setShowExtended(false);
+            }, 300);
         }
     }, [forceShow]);
+
+    // body { zoom: 0.9 } がある場合、getBoundingClientRect() は viewport 座標を返すが、
+    // position: fixed の top/left は zoom 後の座標系で解釈される。
+    // 2 つの probe 要素（0,0 と 100,100）で affine 変換パラメータ（offset + scale）を検出し、
+    // viewport 座標 → fixed CSS 座標への逆変換を行う。
+    // ※ 0,0 だけでは 0×zoom=0 のため乗算的なずれ（zoom）を検出できない。
+    const detectCoordinateTransform = useCallback((): {
+        offsetX: number; offsetY: number; scaleX: number; scaleY: number;
+    } => {
+        const p1 = document.createElement('div');
+        p1.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;z-index:-1;';
+        const p2 = document.createElement('div');
+        p2.style.cssText = 'position:fixed;top:100px;left:100px;width:1px;height:1px;pointer-events:none;visibility:hidden;z-index:-1;';
+        document.body.appendChild(p1);
+        document.body.appendChild(p2);
+        const r1 = p1.getBoundingClientRect();
+        const r2 = p2.getBoundingClientRect();
+        p1.remove();
+        p2.remove();
+        // scale: CSS 100px が viewport 何 px に変換されるか（zoom=0.9 なら scale=0.9）
+        const scaleX = (r2.left - r1.left) / 100 || 1;
+        const scaleY = (r2.top - r1.top) / 100 || 1;
+        return { offsetX: r1.left, offsetY: r1.top, scaleX, scaleY };
+    }, []);
+
+    // ピッカー表示時にポータル描画位置を計算（overflow-hidden 祖先を回避）
+    // useLayoutEffect で初期位置を設定し、ポータル描画をトリガーする
+    useLayoutEffect(() => {
+        if (!showPicker && !showExtended) {
+            setPortalPos(null);
+            return;
+        }
+        if (!triggerBtnRef.current) return;
+
+        // 2-probe で座標系の affine 変換パラメータを検出（body zoom / transform 等に対応）
+        const ct = detectCoordinateTransform();
+        // viewport 座標 → position:fixed の CSS 値に逆変換するヘルパー
+        const toFixedX = (vx: number): number => (vx - ct.offsetX) / ct.scaleX;
+        const toFixedY = (vy: number): number => (vy - ct.offsetY) / ct.scaleY;
+
+        const rect = triggerBtnRef.current.getBoundingClientRect();
+        // pickerPosition に直接準拠: 'above' → 上、'below' / 'center' → 下
+        // 'center' は親カード（[data-reaction-card]）の水平中央を基準に配置
+        const above = pickerPosition === 'above';
+        const centerAlign = pickerPosition === 'center';
+
+        let left: number;
+        if (centerAlign) {
+            // + ボタンではなく、親カードの中央を基準にする
+            const card = triggerBtnRef.current.closest('[data-reaction-card]');
+            const cardRect = card?.getBoundingClientRect();
+            left = cardRect
+                ? cardRect.left + cardRect.width / 2
+                : rect.left + rect.width / 2;
+        } else {
+            left = rect.left;
+        }
+        const maxLeft = window.innerWidth - 240;
+        if (!centerAlign && left > maxLeft) left = maxLeft;
+        if (!centerAlign && left < 4) left = 4;
+
+        // viewport 座標 → fixed CSS 座標に変換（zoom 逆補正）
+        const fixedLeft = toFixedX(left);
+        const fixedTop = above
+            ? toFixedY(rect.top - 6)
+            : toFixedY(rect.bottom + 6);
+
+        const style: React.CSSProperties = {
+            position: 'fixed',
+            left: fixedLeft,
+            top: fixedTop,
+            transform: above
+                ? 'translateY(-100%)'
+                : centerAlign
+                    ? 'translateX(-50%)'
+                    : undefined,
+            zIndex: 9999,
+        };
+
+        setPortalPos({ style, above });
+    }, [showPicker, showExtended, pickerPosition, detectCoordinateTransform]);
+
+    // RAF ループでボタンの最新位置にポータルを追従させる
+    // body zoom / レイアウトシフト / アニメーション完了後も正しい位置を維持する
+    useEffect(() => {
+        if (!showPicker && !showExtended) return;
+
+        // 2 つの probe 要素で座標系の offset + scale を常時計測（body zoom 対応）
+        const probe1 = document.createElement('div');
+        probe1.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;z-index:-1;';
+        const probe2 = document.createElement('div');
+        probe2.style.cssText = 'position:fixed;top:100px;left:100px;width:1px;height:1px;pointer-events:none;visibility:hidden;z-index:-1;';
+        document.body.appendChild(probe1);
+        document.body.appendChild(probe2);
+
+        let rafId: number;
+        const updatePosition = (): void => {
+            if (!triggerBtnRef.current || !portalPickerRef.current) {
+                rafId = requestAnimationFrame(updatePosition);
+                return;
+            }
+
+            // 2-probe から affine 変換パラメータを毎フレーム算出
+            const r1 = probe1.getBoundingClientRect();
+            const r2 = probe2.getBoundingClientRect();
+            const scaleX = (r2.left - r1.left) / 100 || 1;
+            const scaleY = (r2.top - r1.top) / 100 || 1;
+            const offsetX = r1.left;
+            const offsetY = r1.top;
+
+            const rect = triggerBtnRef.current.getBoundingClientRect();
+            const above = pickerPosition === 'above';
+            const centerAlign = pickerPosition === 'center';
+            let left: number;
+            if (centerAlign) {
+                // + ボタンではなく、親カードの中央を基準にする
+                const card = triggerBtnRef.current.closest('[data-reaction-card]');
+                const cardRect = card?.getBoundingClientRect();
+                left = cardRect
+                    ? cardRect.left + cardRect.width / 2
+                    : rect.left + rect.width / 2;
+            } else {
+                left = rect.left;
+            }
+            const maxLeft = window.innerWidth - 240;
+            if (!centerAlign && left > maxLeft) left = maxLeft;
+            if (!centerAlign && left < 4) left = 4;
+
+            // viewport 座標 → fixed CSS 座標に逆変換
+            const el = portalPickerRef.current;
+            el.style.left = `${(left - offsetX) / scaleX}px`;
+            el.style.transform = above
+                ? 'translateY(-100%)'
+                : centerAlign
+                    ? 'translateX(-50%)'
+                    : '';
+            if (above) {
+                el.style.top = `${(rect.top - 6 - offsetY) / scaleY}px`;
+            } else {
+                el.style.top = `${(rect.bottom + 6 - offsetY) / scaleY}px`;
+            }
+
+            rafId = requestAnimationFrame(updatePosition);
+        };
+
+        rafId = requestAnimationFrame(updatePosition);
+        return () => {
+            cancelAnimationFrame(rafId);
+            probe1.remove();
+            probe2.remove();
+        };
+    }, [showPicker, showExtended, pickerPosition]);
+
+    // スクロール・リサイズ時にピッカーを閉じる
+    useEffect(() => {
+        if (!showPicker && !showExtended) return;
+        const close = () => {
+            setShowPicker(false);
+            setShowExtended(false);
+        };
+        window.addEventListener('scroll', close, true);
+        window.addEventListener('resize', close);
+        return () => {
+            window.removeEventListener('scroll', close, true);
+            window.removeEventListener('resize', close);
+        };
+    }, [showPicker, showExtended]);
 
     // compact モード: バッジは常時表示、追加ボタン+ピッカーはホバー/長押しで表示
     // forceShow が唯一の開閉トリガー（onMouseEnter/Leave 不要）
@@ -201,6 +382,7 @@ export default function GroupReactions({
 
                 {/* 追加ボタン（＋アイコン）— ホバー/長押し時のみ表示 */}
                 <button
+                    ref={triggerBtnRef}
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation();
@@ -215,23 +397,20 @@ export default function GroupReactions({
                     </svg>
                 </button>
 
-                {/* クイックリアクションピッカー — ＋ボタン下に吹き出しで表示 */}
-                {showPicker && !showExtended && (
+                {/* クイックリアクションピッカー — Portal 描画で overflow-hidden 祖先を回避 */}
+                {showPicker && !showExtended && portalPos && typeof document !== 'undefined' && createPortal(
                     <div
-                        className={`absolute z-[9999] flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel ${
-                            pickerPosition === 'center'
-                                ? 'left-1/2 -translate-x-1/2 bottom-full mb-2'
-                                : 'left-0 top-full mt-1.5'
-                        }`}
-                        style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
+                        ref={portalPickerRef}
+                        className="flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-white border border-gray-200 shadow-lg midnight-solid-panel"
+                        style={{ ...portalPos.style, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
                         {/* 吹き出し三角 */}
-                        {pickerPosition === 'center' ? (
-                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-200 transform rotate-45" />
+                        {portalPos.above ? (
+                            <div className={`absolute -bottom-1.5 w-3 h-3 bg-white border-r border-b border-gray-200 transform rotate-45 ${pickerPosition === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-3'}`} />
                         ) : (
-                            <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
+                            <div className={`absolute -top-1.5 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 ${pickerPosition === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-3'}`} />
                         )}
                         {DEFAULT_EMOJIS.map(emoji => {
                             const reacted = reactionCounts[emoji]?.reacted ?? false;
@@ -273,27 +452,25 @@ export default function GroupReactions({
                                 <path d="M3 10a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM8.5 10a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM15.5 8.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" />
                             </svg>
                         </button>
-                    </div>
+                    </div>,
+                    document.body
                 )}
 
-                {/* 拡張絵文字ピッカー — ＋ボタン下に吹き出しで表示 */}
-                {showExtended && (
+                {/* 拡張絵文字ピッカー — Portal 描画で overflow-hidden 祖先を回避 */}
+                {showExtended && portalPos && typeof document !== 'undefined' && createPortal(
                     <div
-                        className={`absolute z-[9999] w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible ${
-                            pickerPosition === 'center'
-                                ? 'left-1/2 -translate-x-1/2 bottom-full mb-2'
-                                : 'left-0 top-full mt-1.5'
-                        }`}
-                        style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.2))' }}
+                        ref={portalPickerRef}
+                        className="w-[220px] rounded-xl bg-white border border-gray-200 shadow-xl midnight-solid-panel overflow-visible"
+                        style={{ ...portalPos.style, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.2))' }}
                         onClick={(e) => e.stopPropagation()}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
                         {/* 吹き出し三角 */}
-                        {pickerPosition === 'center' ? (
-                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-200 transform rotate-45 z-50" />
+                        {portalPos.above ? (
+                            <div className={`absolute -bottom-1.5 w-3 h-3 bg-white border-r border-b border-gray-200 transform rotate-45 z-50 ${pickerPosition === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-3'}`} />
                         ) : (
-                            <div className="absolute -top-1.5 left-3 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50" />
+                            <div className={`absolute -top-1.5 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45 z-50 ${pickerPosition === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-3'}`} />
                         )}
                         <div className="flex items-center border-b border-gray-100 px-1 pt-1">
                             {EXTENDED_EMOJI_CATEGORIES.map((cat, idx) => (
@@ -340,7 +517,8 @@ export default function GroupReactions({
                                 );
                             })}
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
         );

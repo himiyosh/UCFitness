@@ -7,8 +7,8 @@ import Link from "next/link";
 import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
 import UserMenu from "@/components/UserMenu";
 import RefreshButton from '@/components/RefreshButton';
+import NotificationBell from '@/components/NotificationBell';
 import GroupHeaderActions from "@/components/GroupHeaderActions";
-import GroupSettingsLayout from "@/components/GroupSettingsLayout";
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/ranking-service";
 import { enrichRankingsWithEquip } from "@/lib/ranking-utils";
@@ -24,6 +24,7 @@ import GroupWeeklyReport from "@/components/GroupWeeklyReport";
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
 const GroupGear = nextDynamic(() => import('@/components/GroupGear'));
+const GroupChat = nextDynamic(() => import('@/components/GroupChat'));
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +111,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                         </div>
                         <div className="flex items-center gap-1">
                             <RefreshButton />
+                            <NotificationBell />
                             <UserMenu user={currentUser} />
                         </div>
                     </div>
@@ -193,6 +195,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                     <div className="flex items-center gap-1">
                         <RefreshButton />
+                        <NotificationBell />
                         <UserMenu user={currentUser} />
                     </div>
                 </div>
@@ -255,20 +258,27 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
 
                         {/* Right: Actions */}
                         <div className="w-full sm:w-auto flex flex-col items-end gap-2 shrink-0 sm:relative">
-                            <GroupHeaderActions group={group} isOwner={isOwner} />
+                            <GroupHeaderActions group={group} isOwner={isOwner} members={members || []} currentUserId={userId} />
                         </div>
                     </div>
                 </section>
 
-                {/* グループイベント + メンバーの愛用ギア */}
-                <div className="flex flex-col gap-6">
-                    <section>
-                        <GroupEventList groupId={groupId} isOwnerOrAdmin={isOwnerOrAdmin} />
+                {/* グループイベント + グループチャット（横並び） */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                    <section className="flex">
+                        <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow w-full p-4">
+                            <GroupEventList groupId={groupId} isOwnerOrAdmin={isOwnerOrAdmin} />
+                        </div>
                     </section>
-                    <section>
-                        <GroupGear groupId={groupId} userId={userId} />
+                    <section className="flex">
+                        <GroupChat groupId={groupId} currentUserId={userId} />
                     </section>
                 </div>
+
+                {/* メンバーの愛用ギア */}
+                <section>
+                    <GroupGear groupId={groupId} userId={userId} />
+                </section>
 
                 {/* ウィークリーレポート */}
                 <GroupWeeklyReport groupId={groupId} />
@@ -286,17 +296,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             isPublic={group.is_public}
                             groupName={group.name}
                             groupImage={group.image_url}
-                        >
-                            <div className="p-4 sm:p-6">
-                                <h2 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pb-2 border-b border-gray-100">{detailT('settingsMembers')}</h2>
-                                <GroupSettingsLayout
-                                    members={members || []}
-                                    group={group}
-                                    isOwner={isOwner}
-                                    currentUserId={userId}
-                                />
-                            </div>
-                        </GroupAnalytics>
+                        />
                     </div>
                 </div>
 

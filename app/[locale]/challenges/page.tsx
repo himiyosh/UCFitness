@@ -7,6 +7,7 @@ import { getTranslations } from 'next-intl/server';
 import { Link } from '@/navigation';
 import UserMenu from '@/components/UserMenu';
 import RefreshButton from '@/components/RefreshButton';
+import NotificationBell from '@/components/NotificationBell';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ChallengesPageClient from '@/components/ChallengesPageClient';
 import Footer from '@/components/Footer';
@@ -60,6 +61,7 @@ export default async function ChallengesPage() {
                     </div>
                     <div className="flex items-center gap-1">
                         <RefreshButton />
+                        <NotificationBell />
                         <UserMenu user={{
                             id: userId,
                             name: dbUser?.name || session.user.name,

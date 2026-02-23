@@ -10,6 +10,32 @@ interface StepDay {
     steps: number;
 }
 
+// パーセンタイルランクデータ
+interface PercentileData {
+    daily: number | null;
+    weekly: number | null;
+    monthly: number | null;
+}
+
+// ウィークリーゴールの日次データ
+interface DayProgress {
+    date: string;
+    steps: number;
+}
+
+// ウィークリーゴールデータ
+interface WeeklyGoalData {
+    weekStart: string;
+    weekEnd: string;
+    weeklyGoal: number;
+    dailyGoal: number;
+    totalSteps: number;
+    days: DayProgress[];
+    progress: number;
+    pacePercent: number;
+    elapsedDays: number;
+}
+
 // アクティビティ統計（サーバーから渡される props）
 interface ActivityStats {
     todaySteps: number;
@@ -188,6 +214,28 @@ function HeatmapCell({
     );
 }
 
+// パーセンタイルに応じた絵文字・色を決定
+function getPercentileStyle(value: number | null): { emoji: string; color: string; bgColor: string } {
+    if (value === null) return { emoji: '➖', color: 'text-gray-400', bgColor: 'bg-gray-50' };
+    if (value <= 5) return { emoji: '👑', color: 'text-amber-600', bgColor: 'bg-amber-50' };
+    if (value <= 10) return { emoji: '🏆', color: 'text-amber-500', bgColor: 'bg-amber-50' };
+    if (value <= 25) return { emoji: '🔥', color: 'text-orange-500', bgColor: 'bg-orange-50' };
+    if (value <= 50) return { emoji: '💪', color: 'text-blue-500', bgColor: 'bg-blue-50' };
+    return { emoji: '🏃', color: 'text-gray-500', bgColor: 'bg-gray-50' };
+}
+
+// ウィークリーゴール進捗に応じたスタイル
+function getWeeklyProgressStyle(data: WeeklyGoalData): { emoji: string; color: string; barColor: string } {
+    if (data.progress >= 100) return { emoji: '🎉', color: 'text-green-600', barColor: 'bg-green-500' };
+    if (data.pacePercent >= 100) return { emoji: '🔥', color: 'text-orange-500', barColor: 'bg-orange-500' };
+    if (data.pacePercent >= 80) return { emoji: '💪', color: 'text-blue-500', barColor: 'bg-blue-500' };
+    if (data.pacePercent >= 50) return { emoji: '🚶', color: 'text-amber-500', barColor: 'bg-amber-500' };
+    return { emoji: '⚡', color: 'text-red-500', barColor: 'bg-red-400' };
+}
+
+/** ウィークリーゴール曜日キー */
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+
 // ゴール進捗リング（軽量SVG）+ 100%達成時の紙吹雪＆アニメーション
 function GoalRing({ current, goal }: { current: number; goal: number }) {
     const rawPct = goal > 0 ? current / goal : 0;
@@ -276,14 +324,23 @@ function CalendarSkeleton() {
     );
 }
 
-export default function StepCalendar({ userId, activity }: { userId: string; activity?: ActivityStats }) {
+export default function StepCalendar({ userId, activity, showCalendar = true }: { userId: string; activity?: ActivityStats; showCalendar?: boolean }) {
     const t = useTranslations('Calendar');
     const dashT = useTranslations('Dashboard');
+    const pctT = useTranslations('Percentile');
+    const wgT = useTranslations('WeeklyGoal');
     const currentYear = new Date().getFullYear();
     const [year, setYear] = useState(currentYear);
     const [data, setData] = useState<StepDay[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
+    // パーセンタイルランクデータ
+    const [percentile, setPercentile] = useState<PercentileData | null>(null);
+    const [totalUsers, setTotalUsers] = useState(0);
+
+    // ウィークリーゴールデータ
+    const [weeklyGoal, setWeeklyGoal] = useState<WeeklyGoalData | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -305,9 +362,31 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
         }
     }, [userId, year]);
 
+    // パーセンタイル + ウィークリーゴールを並列取得（activity がある＝ダッシュボード時のみ）
+    const fetchExtras = useCallback(async () => {
+        if (!activity) return;
+        const [pctRes, wgRes] = await Promise.all([
+            fetch('/api/user/percentile').catch(() => null),
+            fetch('/api/user/weekly-goal').catch(() => null),
+        ]);
+        if (pctRes?.ok) {
+            const pctJson = await pctRes.json();
+            setPercentile(pctJson.percentile ?? null);
+            setTotalUsers(pctJson.totalUsers ?? 0);
+        }
+        if (wgRes?.ok) {
+            const wgJson = await wgRes.json();
+            setWeeklyGoal(wgJson);
+        }
+    }, [activity]);
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    useEffect(() => {
+        fetchExtras();
+    }, [fetchExtras]);
 
     // データをMapに変換
     const stepsMap = useMemo(() => {
@@ -341,6 +420,18 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
 
     // 最大列数（常に年全体を表示）
     const maxCol = gridCells.length > 0 ? Math.max(...gridCells.map((c) => c.col)) + 1 : 53;
+
+    // ウィークリーゴール進捗スタイル
+    const wgProgressStyle = useMemo(
+        () => weeklyGoal ? getWeeklyProgressStyle(weeklyGoal) : null,
+        [weeklyGoal]
+    );
+
+    // ウィークリーゴールの日別チャート用最大値
+    const wgMaxDaySteps = useMemo(
+        () => weeklyGoal ? Math.max(...weeklyGoal.days.map((d) => d.steps), weeklyGoal.dailyGoal) : 0,
+        [weeklyGoal]
+    );
 
     // 今日の列位置（スクロール計算用）
     const todayCol = useMemo(() => {
@@ -402,7 +493,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
         <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col">
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
-                <div className="mb-3 pb-3 border-b border-gray-100">
+                <div className={showCalendar ? 'mb-3 pb-3 border-b border-gray-100' : ''}>
                     {/* 今日の歩数 + ゴールリング */}
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
@@ -411,6 +502,12 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 </div>
                                 <h3 className="text-sm font-bold text-gray-900">{dashT('yourActivity')}</h3>
+                                {/* デイリーパーセンタイルバッジ */}
+                                {percentile?.daily !== null && percentile?.daily !== undefined && (
+                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${getPercentileStyle(percentile.daily).bgColor} ${getPercentileStyle(percentile.daily).color}`}>
+                                        {getPercentileStyle(percentile.daily).emoji} {pctT('topPercent', { percent: percentile.daily })}
+                                    </span>
+                                )}
                             </div>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: '"Inter", sans-serif' }}>
@@ -428,6 +525,11 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                                     {Math.abs(activity.todaySteps - activity.yesterdaySteps).toLocaleString()}
                                 </span>
                                 <span className="text-xs text-gray-400">{dashT('vsYesterday')}</span>
+                                {totalUsers > 0 && (
+                                    <span className="text-[10px] text-gray-400">
+                                        ({pctT('totalUsers', { count: totalUsers })})
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -436,26 +538,119 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                         </div>
                     </div>
 
-                    {/* 週間・月間パネル */}
+                    {/* 週間・月間パネル（パーセンタイルバッジ横並び） */}
                     <div className="grid grid-cols-2 gap-1.5 mt-3">
-                        <div className="bg-gray-50 rounded-lg py-2 text-center">
-                            <div className="text-xs text-gray-400 font-medium leading-none">{dashT('thisWeek')}</div>
-                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.weeklySteps.toLocaleString()}</div>
-                            <div className={`text-xs font-semibold leading-none ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
+                        <div className="bg-gray-50 rounded-lg py-2 px-3">
+                            <div className="text-xs text-gray-400 font-medium leading-none text-center">{dashT('thisWeek')}</div>
+                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug text-center">{activity.weeklySteps.toLocaleString()}</div>
+                            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                                <span className={`text-xs font-semibold leading-none ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                    {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
+                                </span>
+                                {percentile?.weekly !== null && percentile?.weekly !== undefined && (
+                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${getPercentileStyle(percentile.weekly).bgColor} ${getPercentileStyle(percentile.weekly).color}`}>
+                                        {getPercentileStyle(percentile.weekly).emoji} {pctT('topPercent', { percent: percentile.weekly })}
+                                    </span>
+                                )}
                             </div>
                         </div>
-                        <div className="bg-gray-50 rounded-lg py-2 text-center">
-                            <div className="text-xs text-gray-400 font-medium leading-none">{dashT('thisMonth')}</div>
-                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug">{activity.monthlySteps.toLocaleString()}</div>
-                            <div className={`text-xs font-semibold leading-none ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
+                        <div className="bg-gray-50 rounded-lg py-2 px-3">
+                            <div className="text-xs text-gray-400 font-medium leading-none text-center">{dashT('thisMonth')}</div>
+                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug text-center">{activity.monthlySteps.toLocaleString()}</div>
+                            <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                                <span className={`text-xs font-semibold leading-none ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
+                                    {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
+                                </span>
+                                {percentile?.monthly !== null && percentile?.monthly !== undefined && (
+                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${getPercentileStyle(percentile.monthly).bgColor} ${getPercentileStyle(percentile.monthly).color}`}>
+                                        {getPercentileStyle(percentile.monthly).emoji} {pctT('topPercent', { percent: percentile.monthly })}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
+
+                    {/* ウィークリーゴール（統合表示） */}
+                    {weeklyGoal && wgProgressStyle && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            {/* ゴールヘッダー + プログレスバー */}
+                            <div className="flex items-center mb-1.5">
+                                <span className="text-xs font-bold text-gray-900 flex items-center gap-1">
+                                    🎯 {wgT('title')}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
+                                <span>{weeklyGoal.totalSteps.toLocaleString()} {wgT('steps')}</span>
+                                <span>{wgT('goal')}: {weeklyGoal.weeklyGoal.toLocaleString()}</span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-700 ${wgProgressStyle.barColor}`}
+                                    style={{ width: `${Math.min(100, weeklyGoal.progress)}%` }}
+                                />
+                            </div>
+                            <p className="text-[11px] text-gray-400 mt-1">
+                                {weeklyGoal.pacePercent >= 100
+                                    ? wgT('aheadOfPace')
+                                    : wgT('behindPace', { percent: 100 - weeklyGoal.pacePercent })
+                                }
+                                {' '}({wgT('day', { current: weeklyGoal.elapsedDays })} / 7)
+                            </p>
+
+                            {/* 日別バーチャート */}
+                            <div className="flex items-end gap-1 mt-2">
+                                {weeklyGoal.days.map((day, i) => {
+                                    const barHeight = wgMaxDaySteps > 0
+                                        ? Math.max(4, (day.steps / wgMaxDaySteps) * 40)
+                                        : 4;
+                                    const isToday = i === weeklyGoal.elapsedDays - 1;
+                                    const isFuture = i >= weeklyGoal.elapsedDays;
+                                    const metGoal = day.steps >= weeklyGoal.dailyGoal;
+
+                                    return (
+                                        <div key={day.date} className="flex-1 flex flex-col items-center gap-0.5">
+                                            <span className="text-[9px] sm:text-[10px] text-gray-400 tabular-nums h-3 flex items-center">
+                                                {day.steps > 0 ? day.steps.toLocaleString() : ''}
+                                            </span>
+                                            <div
+                                                className={`w-full rounded-t transition-all duration-500 ${
+                                                    isFuture
+                                                        ? 'bg-gray-100'
+                                                        : metGoal
+                                                            ? 'bg-green-400'
+                                                            : isToday
+                                                                ? 'bg-[var(--theme-primary)]'
+                                                                : 'bg-[var(--theme-primary)]/60'
+                                                }`}
+                                                style={{ height: `${barHeight}px` }}
+                                            />
+                                            <span
+                                                className={`text-[10px] sm:text-xs font-medium ${
+                                                    isToday
+                                                        ? 'text-[var(--theme-primary)] font-bold'
+                                                        : isFuture
+                                                            ? 'text-gray-300'
+                                                            : 'text-gray-500'
+                                                }`}
+                                            >
+                                                {wgT(DAY_KEYS[i])}
+                                            </span>
+                                            {metGoal && <span className="text-[8px]">✅</span>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-400">
+                                <span className="inline-block w-3 h-0.5 bg-green-400 rounded" />
+                                <span>{wgT('dailyGoalLine', { goal: weeklyGoal.dailyGoal.toLocaleString() })}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
+            {/* カレンダー部分（showCalendar=false の場合は非表示） */}
+            {!showCalendar ? null : <>
             {/* カレンダーヘッダー */}
             <div className="flex items-center justify-between mb-2">
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
@@ -586,6 +781,7 @@ export default function StepCalendar({ userId, activity }: { userId: string; act
                     </div>
                 </div>
             )}
+            </>}
         </div>
     );
 }

@@ -1021,4 +1021,50 @@
 
 ---
 
-*レポート生成: GitHub Copilot (Claude) | ブランチ: copilot/improvement-loop-1*
+## 🚀 新機能バッチ 1 — Cycle 11 NewFeatureDiscovery からの実装
+
+> **日時:** 2025-07-20
+> **ブランチ:** feature/new-features-batch1
+> **コミット:** 0de9b6c
+
+### 実装済み機能 (5 件)
+
+| # | 機能名 | カテゴリ | 新規ファイル | 変更ファイル | 概要 |
+|---|--------|---------|------------|------------|------|
+| 1 | 💯 歩数パーセンタイルランク | ゲーミフィケーション | `api/user/percentile/route.ts`, `PercentileRank.tsx` | `page.tsx` (ダッシュボード) | 全ユーザー中の歩数順位をパーセンタイル表示。ダッシュボードに統合 |
+| 3 | 📊 ウィークリーゴール | リテンション | `api/user/weekly-goal/route.ts`, `WeeklyGoal.tsx` | `page.tsx` (ダッシュボード) | 週間歩数目標の進捗バー + 7日間の日別棒グラフ。ペース判定付き |
+| 4 | 💬 グループチャット | ソーシャル | `api/group/[groupId]/messages/route.ts`, `GroupChat.tsx`, `migrations/022_group_messages.sql` | `groups/[groupId]/page.tsx` | 折りたたみ式チャットウィジェット。15秒ポーリング、カーソルページネーション |
+| 5 | 🚶 ウォーキングコース記録 | 機能拡張 | `api/user/walking-routes/route.ts`, `api/user/walking-routes/[routeId]/route.ts`, `WalkingRoutes.tsx`, `migrations/023_walking_routes.sql` | `user/[username]/page.tsx` | コース CRUD + 統計。距離・所要時間・難易度・お気に入り・歩数カウント |
+| 7 | 🔔 スマートリマインダー | リテンション | `api/cron/step-reminder/route.ts` | — | 目標達成率70%未満ユーザーにPush通知。既存 `web-push.ts` + cron パターン流用 |
+
+### 翻訳キー追加
+
+| セクション | キー数 | 対象ファイル |
+|-----------|--------|------------|
+| Percentile | 7 | ja.json, en.json |
+| WeeklyGoal | 14 | ja.json, en.json |
+| GroupChat | 12 | ja.json, en.json |
+| WalkingRoutes | 22 | ja.json, en.json |
+
+### DB マイグレーション (要手動実行)
+
+| ファイル | テーブル | 概要 |
+|---------|---------|------|
+| `migrations/022_group_messages.sql` | `group_messages` | グループチャットメッセージ。RLS有効、500文字制限 |
+| `migrations/023_walking_routes.sql` | `walking_routes` | ウォーキングコース記録。距離・所要時間・難易度・お気に入り |
+
+### 📊 新機能バッチ 1 統計
+
+| 項目 | 値 |
+|------|------|
+| コミット数 | 1 |
+| 変更ファイル数 | 15 |
+| 追加行 | +1986 |
+| 新規コンポーネント | 4 |
+| 新規 API ルート | 6 |
+| 新規マイグレーション | 2 |
+| 型エラー | **0** ✅ |
+
+---
+
+*レポート生成: GitHub Copilot (Claude) | ブランチ: feature/new-features-batch1*
