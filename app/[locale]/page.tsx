@@ -81,7 +81,7 @@ export default async function Home() {
     const [userResult, membershipResult, stepsResult] = await Promise.all([
       supabaseAdmin
         .from('users')
-        .select('username, step_goal, banner_url, image, name')
+        .select('username, step_goal, banner_url, image, name, group_keyword')
         .eq('id', userId)
         .single(),
       supabaseAdmin
@@ -104,25 +104,39 @@ export default async function Home() {
     bannerUrl = userData?.banner_url;
 
     // ⚡ Bolt Optimization: Process memberships to extract group data without extra query
+    const membershipKeywords = new Set<string>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     memberships?.forEach((m: any) => {
       const g = m.groups;
       if (g && g.keyword) {
-        groupKeywords.push(g.keyword);
         groupMetadataMap.set(g.keyword, g);
+        membershipKeywords.add(g.keyword);
         if (g.id) validGroupIds.push(g.id);
       }
     });
 
-    // レガシー users.group_keyword をサイレント同期 (他機能の整合性維持)
-    supabaseAdmin
-      .from('users')
-      .update({ group_keyword: groupKeywords })
-      .eq('id', userId)
-      .then(
-        () => {/* fire-and-forget */},
-        (err: unknown) => console.error('[group_keyword sync]', err)
-      );
+    // ⚡ Bolt Optimization: Respect user's custom order if available, then sync new groups
+    const savedKeywords = (userData?.group_keyword as string[]) || [];
+    const orderedKeywords = savedKeywords.filter(k => membershipKeywords.has(k));
+    const newKeywords = Array.from(membershipKeywords).filter(k => !orderedKeywords.includes(k));
+
+    // Construct final list preserving order
+    const finalGroupKeywords = [...orderedKeywords, ...newKeywords];
+
+    // Update local variable for usage in this request
+    groupKeywords.push(...finalGroupKeywords);
+
+    // Only update DB if the list has changed (avoids redundant writes on every page load)
+    if (JSON.stringify(finalGroupKeywords) !== JSON.stringify(savedKeywords)) {
+      supabaseAdmin
+        .from('users')
+        .update({ group_keyword: finalGroupKeywords })
+        .eq('id', userId)
+        .then(
+          () => {/* fire-and-forget */},
+          (err: unknown) => console.error('[group_keyword sync]', err)
+        );
+    }
 
     // Override session image with fresh DB image if available
     if (userData) {
