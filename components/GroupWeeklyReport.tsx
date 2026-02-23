@@ -94,10 +94,10 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                     </span>
                 </div>
 
-                {/* グループサマリー — 3カードの高さを揃えるため items-stretch */}
-                <div className="flex gap-3 mt-3 items-stretch">
+                {/* グループサマリー — モバイルは縦積み、sm以上は横並び */}
+                <div className="flex flex-col sm:flex-row gap-3 mt-3 sm:items-stretch">
                     {data.mvp && (
-                        <div className="flex-1 relative bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-xl p-3 overflow-hidden flex items-center gap-2.5">
+                        <div className="sm:flex-1 relative bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-xl p-3 overflow-hidden flex items-center gap-2.5">
                             {/* 背景装飾 */}
                             <div className="absolute inset-0 opacity-10 pointer-events-none">
                                 <div className="absolute -top-3 -right-3 w-16 h-16 rounded-full bg-white" />
@@ -112,13 +112,15 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                             </div>
                         </div>
                     )}
-                    <div className="flex-1 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                        <p className="text-sm text-gray-400 font-bold uppercase">{t('groupTotal')}</p>
-                        <p className="text-xl font-black text-gray-900 tabular-nums">{data.groupTotal.toLocaleString()}</p>
-                    </div>
-                    <div className="flex-1 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                        <p className="text-sm text-gray-400 font-bold uppercase">{t('avgPerMember')}</p>
-                        <p className="text-xl font-black text-gray-900 tabular-nums">{data.groupAvg.toLocaleString()}</p>
+                    <div className="grid grid-cols-2 sm:contents gap-3">
+                        <div className="sm:flex-1 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                            <p className="text-sm text-gray-400 font-bold uppercase">{t('groupTotal')}</p>
+                            <p className="text-xl font-black text-gray-900 tabular-nums">{data.groupTotal.toLocaleString()}</p>
+                        </div>
+                        <div className="sm:flex-1 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                            <p className="text-sm text-gray-400 font-bold uppercase">{t('avgPerMember')}</p>
+                            <p className="text-xl font-black text-gray-900 tabular-nums">{data.groupAvg.toLocaleString()}</p>
+                        </div>
                     </div>
                 </div>
             </div>

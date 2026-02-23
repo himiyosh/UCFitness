@@ -562,6 +562,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 9. **`select('*')` 排除** — 必要カラムのみ明示指定
 10. **ページ共通パターン準拠** — `supabaseAdmin` 使用、`session.user.image` 直接使用禁止、username チェック
 11. **ヘッダー統一確認** — 全ページのヘッダー右側が `RefreshButton → NotificationBell → UserMenu` の 3 要素構成になっているか確認。1 つでも欠けている場合はバグとして報告
+12. **flex 横並びのレスポンシブチェック** — `flex` / `flex-row` で複数要素を横並びにしている箇所に `sm:` 等のレスポンシブプレフィックスがあるか確認。`flex` のみで 3 要素以上を `flex-1` で均等配置している場合はモバイル崩れバグとして報告
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -575,6 +576,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 
 **UI 頻出バグルール:**
 
+- **`flex` / `flex-row` 横並びにはレスポンシブプレフィックス必須** — 複数カード・パネルを横並びにする場合、`flex` のみ / `flex-row` のみは **禁止**。必ず `flex flex-col sm:flex-row` とし、モバイルでは縦積みにする。`flex-1` で均等分割する 3 カード以上のレイアウトは特に注意（モバイル幅 375px ÷ 3 = 125px/カードで内容が潰れる）。リファレンス: `GroupWeeklyReport.tsx`
 - Flexbox 中央揃え: `flex items-center gap-2` のみ使用（`items-stretch` + `justify-center` 禁止）
 - 最小テキスト: `text-[9px]`〜`text-[11px]` 禁止 → `text-xs` (12px) 以上
 - z-index: ヘッダー `z-50` / モーダル `z-40` / ドロップダウン `z-30` / フローティング `z-20`
@@ -840,6 +842,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | 同一コンポーネントの繰り返し修正（6回超の再修正） | `GroupReactions.tsx` のピッカー位置を 6 回以上修正。個別の CSS 調整では根本原因（`body { zoom }` による座標系不一致）を解決できず、修正 → 別の崩れ → 再修正のループに陥った | **3 回以上同じコンポーネントを修正する場合、個別パッチを中止し根本原因を体系的に分析する**。今回の教訓: ① `getBoundingClientRect()` と `position: fixed` は異なる座標系になりうる ② probe テストは `0` 以外の値で検証 ③ 修正が別の崩れを生む場合は設計レベルの見直しが必要 |
 | ヘッダーの `NotificationBell` が Dashboard のみ（他ページ未統一） | `copilot-instructions.md` の⑤ヘッダーテンプレートに `RefreshButton` と `NotificationBell` が記載されていなかった。テンプレートが `<UserMenu>` のみの古い状態だったため、新規ページ作成・ヘッダー統一時に漏れた | **ヘッダーテンプレートを `RefreshButton → NotificationBell → UserMenu` の 3 要素構成に更新**。必須 import にも `RefreshButton` と `NotificationBell` を追加。Build Validation サブエージェントのチェック項目にもヘッダー統一確認を追加 |
 | プロンプト自己改善ルールがコード修正時に発動しなかった | 自己改善の 4 ステップがタスク完了チェックリストに組み込まれておらず、コード修正に集中した結果プロンプト更新を失念した | **完了チェックリストに「プロンプト自己改善トリガー確認」を必須項目として追加**。コミット前にトリガー条件に該当するか確認し、該当する場合はプロンプト更新を同一コミットに含める |
+| モバイルで flex 横並びカードが潰れる（Weekly Report MVP カード） | `flex gap-3` のみでレスポンシブプレフィックスなし。3 カードが `flex-1` で均等分割されモバイル幅では各カードが ~100px に圧縮される。copilot-instructions に `flex-col` → `sm:flex-row` ルールは記載済みだったが、UI 頻出バグルールとBuild Validation の具体的チェック項目になっておらず、コード生成時・レビュー時に見落とされた | **UI 頻出バグルールに「`flex-row` / `flex` 横並びはレスポンシブプレフィックス必須」を追加**。`flex` のみ / `flex-row` のみの複数カード横並びは禁止 → 必ず `flex-col sm:flex-row` にする。Build Validation にも「flex 横並びのレスポンシブチェック」を追加。リファレンス: `GroupWeeklyReport.tsx` |
 
 ---
 
