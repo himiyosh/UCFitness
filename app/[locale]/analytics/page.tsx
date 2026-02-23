@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/navigation";
 import UserMenu from "@/components/UserMenu";
 import RefreshButton from '@/components/RefreshButton';
+import NotificationBell from '@/components/NotificationBell';
 import Breadcrumbs from "@/components/Breadcrumbs";
 import nextDynamic from 'next/dynamic';
 import { supabaseAdmin } from "@/lib/supabase";
@@ -63,6 +64,7 @@ export default async function AnalyticsPage() {
                     </div>
                     <div className="flex items-center gap-1">
                         <RefreshButton />
+                        <NotificationBell />
                         <UserMenu user={{
                             id: userId,
                             name: dbUser?.name || user.name,

@@ -44,51 +44,67 @@ export async function GET(request: Request) {
             if (groups) targetGroups = groups;
         }
 
-        const stats = [];
+        // N+1 防止: 全グループのメンバー・ユーザー・歩数を一括取得
+        const allGroupIds = targetGroups.map(g => g.id);
 
-        for (const group of targetGroups) {
-            // Get members
-            const { data: members } = await supabaseAdmin
-                .from('group_members')
-                .select('user_id')
-                .eq('group_id', group.id);
+        // 1. 全グループのメンバーを一括取得
+        const { data: allMembers } = await supabaseAdmin
+            .from('group_members')
+            .select('group_id, user_id')
+            .in('group_id', allGroupIds);
 
-            if (!members || members.length === 0) continue;
+        if (!allMembers || allMembers.length === 0) {
+            return NextResponse.json({ date: todayYMD, groups: [] });
+        }
 
-            const memberIds = members.map(m => m.user_id);
+        const allMemberIds = [...new Set(allMembers.map(m => m.user_id))];
 
-            // Get users info
-            const { data: users } = await supabaseAdmin
+        // 2. ユーザー情報と歩数を並列取得
+        const [usersResult, stepsResult] = await Promise.all([
+            supabaseAdmin
                 .from('users')
                 .select('id, name, username, image, is_custom_image')
-                .in('id', memberIds);
-
-            if (!users) continue;
-
-            // Get steps for today
-            const { data: steps } = await supabaseAdmin
+                .in('id', allMemberIds),
+            supabaseAdmin
                 .from('daily_steps')
                 .select('user_id, steps')
                 .eq('date', todayYMD)
-                .in('user_id', memberIds);
+                .in('user_id', allMemberIds),
+        ]);
 
-            // Merge
-            const ranking = users.map(user => {
-                const s = steps?.find(step => step.user_id === user.id);
-                return {
-                    id: user.id,
-                    name: user.name || user.username || 'Unknown',
-                    image: user.image,
-                    steps: s ? s.steps : 0
-                };
-            }).sort((a, b) => b.steps - a.steps) // Sort DESC
+        const usersMap = new Map((usersResult.data || []).map(u => [u.id, u]));
+        const stepsMap = new Map((stepsResult.data || []).map(s => [s.user_id, s.steps]));
+
+        // 3. グループごとにインメモリでランキング構築
+        const stats = [];
+
+        for (const group of targetGroups) {
+            const memberIds = allMembers
+                .filter(m => m.group_id === group.id)
+                .map(m => m.user_id);
+
+            if (memberIds.length === 0) continue;
+
+            const ranking = memberIds
+                .map(id => {
+                    const user = usersMap.get(id);
+                    if (!user) return null;
+                    return {
+                        id: user.id,
+                        name: user.name || user.username || 'Unknown',
+                        image: user.image,
+                        steps: stepsMap.get(id) || 0,
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => b!.steps - a!.steps)
                 .map((u, i) => ({ ...u, rank: i + 1 }));
 
             stats.push({
                 groupId: group.id,
                 groupName: group.name,
                 date: todayYMD,
-                ranking: ranking
+                ranking,
             });
         }
 

@@ -3,15 +3,19 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendWebPushNotification } from '@/lib/web-push';
 import { reportError } from '@/lib/errors';
 import { getJSTDateString } from '@/lib/date-utils';
+import {
+    normalizePushLocale,
+    weeklySummaryTitle,
+    formatWeeklySummaryBody,
+} from '@/lib/push-messages';
+
+import type { PushLocale } from '@/lib/push-messages';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 /** バッチサイズ: 一度に処理するユーザー数 */
 const BATCH_SIZE = 20;
-
-/** 曜日ラベル（英語略称） */
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 /**
  * GET /api/cron/weekly-summary
@@ -60,6 +64,18 @@ export async function GET(request: Request) {
         }
 
         const userIds = Array.from(userSubscriptions.keys());
+
+        // ユーザーの言語設定を一括取得
+        const { data: usersLangData } = await supabaseAdmin
+            .from('users')
+            .select('id, language')
+            .in('id', userIds);
+
+        const userLangMap = new Map<string, PushLocale>();
+        for (const u of usersLangData || []) {
+            userLangMap.set(u.id, normalizePushLocale(u.language));
+        }
+
         let totalSent = 0;
         let totalFailed = 0;
 
@@ -71,8 +87,9 @@ export async function GET(request: Request) {
                 batch.map(async (userId) => {
                     const summary = await getUserWeeklySummary(userId, weekStart, weekEnd);
                     const subs = userSubscriptions.get(userId) || [];
+                    const locale = userLangMap.get(userId) || 'ja';
 
-                    const notificationBody = formatSummaryBody(summary);
+                    const notificationBody = formatWeeklySummaryBody(locale, summary);
 
                     // 全デバイスに通知を送信
                     const sendResults = await Promise.allSettled(
@@ -83,7 +100,7 @@ export async function GET(request: Request) {
                                     keys: { p256dh: sub.p256dh, auth: sub.auth },
                                 },
                                 {
-                                    title: '📊 Weekly Summary',
+                                    title: weeklySummaryTitle(locale),
                                     body: notificationBody,
                                     url: '/profile',
                                 }
@@ -211,23 +228,4 @@ async function getUserWeeklySummary(
     const totalCoins = coinsData.reduce((sum, row) => sum + (row.amount || 0), 0);
 
     return { totalSteps, totalCoins, bestDay };
-}
-
-/**
- * サマリーを通知本文にフォーマット
- */
-function formatSummaryBody(summary: WeeklySummary): string {
-    const steps = summary.totalSteps.toLocaleString('en-US');
-    const coins = summary.totalCoins.toLocaleString('en-US');
-
-    let body = `Last week: ${steps} steps | +${coins} UC`;
-
-    if (summary.bestDay) {
-        const bestDate = new Date(`${summary.bestDay.date}T00:00:00Z`);
-        const dayLabel = DAY_LABELS[bestDate.getUTCDay()];
-        const bestSteps = summary.bestDay.steps.toLocaleString('en-US');
-        body += ` | Best day: ${dayLabel} (${bestSteps} steps)`;
-    }
-
-    return body;
 }

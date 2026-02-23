@@ -246,6 +246,16 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 
 - `git push` は Cloudflare Pages のデプロイ制限があるため、明示的に許可があるまで実行しない
 
+### プッシュ通知ルール
+
+- **i18n 必須**: プッシュ通知メッセージは必ずユーザーの `language` カラム（`users` テーブル）を参照し、`lib/push-messages.ts` のローカライズ関数で生成すること。ハードコードされた文字列は禁止
+- **通知集約（バッチ通知）必須**: 同一ユーザーに複数の通知（バッジ獲得等）が発生する場合、**1 通にまとめて送信**すること。バッジごとに個別通知を送信してはならない
+- **新規通知追加時**: `lib/push-messages.ts` にメッセージテンプレートを追加し、ja/en 両方を定義すること
+- リファレンス実装:
+  - バッジ統合通知: `badge-awards.ts` の `sendConsolidatedBadgeNotification()`
+  - ステップリマインダー: `cron/step-reminder/route.ts`
+  - ウィークリーサマリー: `cron/weekly-summary/route.ts`
+
 ### 言語ポリシー
 
 - コミットメッセージ: 日本語

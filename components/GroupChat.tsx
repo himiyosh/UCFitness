@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import UserAvatar from '@/components/UserAvatar';
@@ -48,12 +48,9 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // 初期表示時に展開状態を固定するための安定値
-    const stableGroupId = useMemo(() => groupId, [groupId]);
-
     const fetchMessages = useCallback(async () => {
         try {
-            const res = await fetch(`/api/group/${stableGroupId}/messages`);
+            const res = await fetch(`/api/group/${groupId}/messages`);
             if (!res.ok) throw new Error('fetch failed');
             const data = await res.json();
             setMessages(data.messages || []);
@@ -63,7 +60,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
         } finally {
             setIsLoading(false);
         }
-    }, [stableGroupId]);
+    }, [groupId]);
 
     // 初回ロード
     useEffect(() => {
@@ -90,7 +87,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
 
         setIsSending(true);
         try {
-            const res = await fetch(`/api/group/${stableGroupId}/messages`, {
+            const res = await fetch(`/api/group/${groupId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text }),
@@ -108,7 +105,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
         } finally {
             setIsSending(false);
         }
-    }, [inputText, isSending, stableGroupId]);
+    }, [inputText, isSending, groupId]);
 
     // Enter キーで送信
     const handleKeyDown = useCallback(

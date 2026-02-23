@@ -3,6 +3,7 @@ import { fetchAllWithPagination } from '@/lib/supabase-utils';
 import { reportError } from '@/lib/errors';
 import { Period } from '@/components/LeaderboardTabs';
 import { sendBadgeNotification } from './teams';
+import { normalizePushLocale, badgeUnlockedTitle, badgeUnlockedBody } from './push-messages';
 
 const BADGE_DEFINITIONS = {
     GLOBAL: {
@@ -116,7 +117,7 @@ const assignPersonalBadges = async (dateStr: string) => {
             historyMap.get(row.user_id)?.push(row);
         });
 
-        // Process batch in parallel
+        // Process batch in parallel — バッジ付与後にユーザーごとに統合通知を送信
         await Promise.all(batch.map(async (user) => {
             if (user.steps < 1000) return;
 
@@ -124,17 +125,23 @@ const assignPersonalBadges = async (dateStr: string) => {
             const goal = goalMap.get(user.user_id) || 10000;
             const userTotals = totalsMap.get(user.user_id) || { total_steps: 0, total_days: 0 };
 
-            await Promise.all([
+            const results = await Promise.all([
                 assignStreakBadges(user.user_id, dateStr, history, goal),
                 assignMilestoneBadges(user.user_id, userTotals.total_steps),
                 assignTitleBadges(user.user_id, dateStr, userTotals.total_steps, userTotals.total_days),
                 assignLifestyleBadges(user.user_id, dateStr, user.steps),
             ]);
+
+            // 全カテゴリの新規バッジを統合して1通知にまとめる
+            const newBadgeCodes = results.flat().filter(Boolean) as string[];
+            if (newBadgeCodes.length > 0) {
+                await sendConsolidatedBadgeNotification(user.user_id, newBadgeCodes);
+            }
         }));
     }
 }
 
-const assignStreakBadges = async (userId: string, dateStr: string, history: { date: string, steps: number }[], goal: number) => {
+const assignStreakBadges = async (userId: string, dateStr: string, history: { date: string, steps: number }[], goal: number): Promise<(string | null)[]> => {
     // Check 30 days back
     // Filter and sort in memory instead of DB query
     const steps = history
@@ -142,7 +149,7 @@ const assignStreakBadges = async (userId: string, dateStr: string, history: { da
         .sort((a, b) => b.date.localeCompare(a.date)) // Descending date
         .slice(0, 30);
 
-    if (!steps || steps.length < 3) return;
+    if (!steps || steps.length < 3) return [];
 
     let streak = 0;
     const today = new Date(dateStr);
@@ -163,41 +170,49 @@ const assignStreakBadges = async (userId: string, dateStr: string, history: { da
         }
     }
 
-    if (streak >= 30) await awardBadge(userId, 'STREAK_30', dateStr, null);
-    if (streak >= 7) await awardBadge(userId, 'STREAK_7', dateStr, null);
-    if (streak >= 3) await awardBadge(userId, 'STREAK_3', dateStr, null);
+    const results: (string | null)[] = [];
+    if (streak >= 30) results.push(await awardBadge(userId, 'STREAK_30', dateStr, null));
+    if (streak >= 7) results.push(await awardBadge(userId, 'STREAK_7', dateStr, null));
+    if (streak >= 3) results.push(await awardBadge(userId, 'STREAK_3', dateStr, null));
+    return results;
 }
 
-const assignMilestoneBadges = async (userId: string, totalSteps: number) => {
+const assignMilestoneBadges = async (userId: string, totalSteps: number): Promise<(string | null)[]> => {
     const dateStr = new Date().toISOString().split('T')[0];
+    const results: (string | null)[] = [];
 
-    if (totalSteps >= 1000000) await awardBadge(userId, 'MILESTONE_1M', dateStr, null);
-    if (totalSteps >= 500000) await awardBadge(userId, 'MILESTONE_500K', dateStr, null);
-    if (totalSteps >= 100000) await awardBadge(userId, 'MILESTONE_100K', dateStr, null);
+    if (totalSteps >= 1000000) results.push(await awardBadge(userId, 'MILESTONE_1M', dateStr, null));
+    if (totalSteps >= 500000) results.push(await awardBadge(userId, 'MILESTONE_500K', dateStr, null));
+    if (totalSteps >= 100000) results.push(await awardBadge(userId, 'MILESTONE_100K', dateStr, null));
+    return results;
 }
 
-const assignTitleBadges = async (userId: string, dateStr: string, totalSteps: number, totalDays: number) => {
-    if (totalDays === 0) return;
+const assignTitleBadges = async (userId: string, dateStr: string, totalSteps: number, totalDays: number): Promise<(string | null)[]> => {
+    if (totalDays === 0) return [];
 
     const average = totalSteps / totalDays;
+    const results: (string | null)[] = [];
 
-    if (average >= 20000) await awardBadge(userId, 'TITLE_AVGST_20K', dateStr, null);
-    if (average >= 15000) await awardBadge(userId, 'TITLE_AVGST_15K', dateStr, null);
-    if (average >= 10000) await awardBadge(userId, 'TITLE_AVGST_10K', dateStr, null);
-    if (average >= 8000) await awardBadge(userId, 'TITLE_AVGST_8K', dateStr, null);
-    if (average >= 6000) await awardBadge(userId, 'TITLE_AVGST_6K', dateStr, null);
+    if (average >= 20000) results.push(await awardBadge(userId, 'TITLE_AVGST_20K', dateStr, null));
+    if (average >= 15000) results.push(await awardBadge(userId, 'TITLE_AVGST_15K', dateStr, null));
+    if (average >= 10000) results.push(await awardBadge(userId, 'TITLE_AVGST_10K', dateStr, null));
+    if (average >= 8000) results.push(await awardBadge(userId, 'TITLE_AVGST_8K', dateStr, null));
+    if (average >= 6000) results.push(await awardBadge(userId, 'TITLE_AVGST_6K', dateStr, null));
+    return results;
 }
 
-const assignLifestyleBadges = async (userId: string, dateStr: string, steps: number) => {
+const assignLifestyleBadges = async (userId: string, dateStr: string, steps: number): Promise<(string | null)[]> => {
     // Weekend Warrior: High steps on Sat/Sun
     const d = new Date(dateStr);
     const day = d.getUTCDay(); // 0=Sun, 6=Sat
+    const results: (string | null)[] = [];
 
     if (day === 0 || day === 6) {
         if (steps >= 20000) {
-            await awardBadge(userId, 'LIFESTYLE_WEEKEND', dateStr, null);
+            results.push(await awardBadge(userId, 'LIFESTYLE_WEEKEND', dateStr, null));
         }
     }
+    return results;
 }
 
 const assignGlobalBadges = async (period: Period, dateStr: string) => {
@@ -217,10 +232,21 @@ const assignGlobalBadges = async (period: Period, dateStr: string) => {
 
     const top3 = rankings.slice(0, 3);
 
-    await Promise.all(top3.map((entry, i) => {
-        if (entry.steps <= 0) return Promise.resolve();
-        return awardBadge(entry.userId, badgeCodes[i], dateStr, null);
+    // ユーザーごとに新規バッジを収集して統合通知を送信
+    const userBadgeMap = new Map<string, string[]>();
+    await Promise.all(top3.map(async (entry, i) => {
+        if (entry.steps <= 0) return;
+        const result = await awardBadge(entry.userId, badgeCodes[i], dateStr, null);
+        if (result) {
+            const existing = userBadgeMap.get(entry.userId) || [];
+            existing.push(result);
+            userBadgeMap.set(entry.userId, existing);
+        }
     }));
+
+    for (const [userId, codes] of userBadgeMap) {
+        await sendConsolidatedBadgeNotification(userId, codes);
+    }
 };
 
 const getRankingsForRange = async (startDate: string, endDate: string, userIds?: string[]) => {
@@ -312,7 +338,9 @@ const assignGroupBadges = async (period: Period, dateStr: string) => {
     const allRankings = await getRankingsForRange(startDate, endDate, Array.from(allUserIds));
     const stepsLookup = new Map(allRankings.map(r => [r.userId, r.steps]));
 
-    // Award badges per group
+    // Award badges per group — ユーザーごとに統合通知を送信
+    const allUserBadgeMap = new Map<string, string[]>();
+
     await Promise.all(qualifyingGroups.map(async (group) => {
         const userIds = groupMembersMap.get(group.id) ?? [];
 
@@ -323,14 +351,29 @@ const assignGroupBadges = async (period: Period, dateStr: string) => {
 
         const top3 = rankings.slice(0, 3);
 
-        await Promise.all(top3.map((entry, i) => {
-            if (entry.steps <= 0) return Promise.resolve();
-            return awardBadge(entry.userId, badgeCodes[i], dateStr, group.id);
+        await Promise.all(top3.map(async (entry, i) => {
+            if (entry.steps <= 0) return;
+            const result = await awardBadge(entry.userId, badgeCodes[i], dateStr, group.id);
+            if (result) {
+                const existing = allUserBadgeMap.get(entry.userId) || [];
+                existing.push(result);
+                allUserBadgeMap.set(entry.userId, existing);
+            }
         }));
     }));
+
+    // 全グループの結果をまとめてユーザーごとに1通知
+    for (const [userId, codes] of allUserBadgeMap) {
+        await sendConsolidatedBadgeNotification(userId, codes);
+    }
 };
 
-const awardBadge = async (userId: string, badgeCode: string, periodDate: string, groupId: string | null) => {
+/**
+ * バッジを DB に挿入する（通知は送信しない）。
+ * 新規付与に成功した場合は badgeCode を返し、既に付与済みまたはエラーの場合は null を返す。
+ * 通知は呼び出し元で sendConsolidatedBadgeNotification にまとめて委譲する。
+ */
+const awardBadge = async (userId: string, badgeCode: string, periodDate: string, groupId: string | null): Promise<string | null> => {
     try {
         const { error } = await supabaseAdmin
             .from('user_badges')
@@ -346,10 +389,10 @@ const awardBadge = async (userId: string, badgeCode: string, periodDate: string,
             if (error.code !== '23505') {
                 reportError('awardBadge:insert', error, { badgeCode });
             }
-            return;
+            return null;
         }
 
-        // Fetch badge info and user info in parallel
+        // Teams 通知のみここで送信（バッジごとに個別投稿するのが適切）
         const [badgeResult, userResult] = await Promise.all([
             supabaseAdmin
                 .from('badges')
@@ -367,44 +410,70 @@ const awardBadge = async (userId: string, badgeCode: string, periodDate: string,
         const userData = userResult.data;
 
         if (badgeData && userData) {
-            // 1. Teams Notification
             await sendBadgeNotification(
                 userData.username || "A user",
                 badgeData.name,
                 badgeData.image_url,
                 badgeData.description
             );
-
-            // 2. Web Push Notification
-            const { data: subscriptions } = await supabaseAdmin
-                .from('push_subscriptions')
-                .select('endpoint, p256dh, auth')
-                .eq('user_id', userId);
-
-            if (subscriptions && subscriptions.length > 0) {
-                const { sendWebPushNotification } = await import('@/lib/web-push');
-
-                await Promise.allSettled(
-                    subscriptions.map(sub => {
-                        const pushSub = {
-                            endpoint: sub.endpoint,
-                            keys: {
-                                p256dh: sub.p256dh,
-                                auth: sub.auth
-                            }
-                        };
-
-                        return sendWebPushNotification(pushSub, {
-                            title: '🎉 New Badge Unlocked!',
-                            body: `You earned the "${badgeData.name}" badge!`,
-                            icon: badgeData.image_url || '/globe.svg',
-                            url: `/profile`
-                        });
-                    })
-                );
-            }
         }
+
+        return badgeCode;
     } catch (error: unknown) {
         reportError('awardBadge', error, { badgeCode });
+        return null;
+    }
+};
+
+/**
+ * 複数バッジを1通のプッシュ通知にまとめて送信する。
+ * ユーザーの言語設定に応じたローカライズ済みメッセージを使用する。
+ */
+const sendConsolidatedBadgeNotification = async (userId: string, badgeCodes: string[]): Promise<void> => {
+    try {
+        // バッジ名・ユーザー言語・Push購読を並列取得
+        const [badgesResult, userResult, subsResult] = await Promise.all([
+            supabaseAdmin
+                .from('badges')
+                .select('code, name')
+                .in('code', badgeCodes),
+            supabaseAdmin
+                .from('users')
+                .select('language')
+                .eq('id', userId)
+                .single(),
+            supabaseAdmin
+                .from('push_subscriptions')
+                .select('endpoint, p256dh, auth')
+                .eq('user_id', userId),
+        ]);
+
+        const subs = subsResult.data;
+        if (!subs || subs.length === 0) return;
+
+        const locale = normalizePushLocale(userResult.data?.language);
+        const badgeNameMap = new Map(badgesResult.data?.map(b => [b.code, b.name]) || []);
+        const badgeNames = badgeCodes
+            .map(code => badgeNameMap.get(code))
+            .filter(Boolean)
+            .join(', ');
+
+        const { sendWebPushNotification } = await import('@/lib/web-push');
+
+        await Promise.allSettled(
+            subs.map(sub => {
+                const pushSub = {
+                    endpoint: sub.endpoint,
+                    keys: { p256dh: sub.p256dh, auth: sub.auth },
+                };
+                return sendWebPushNotification(pushSub, {
+                    title: badgeUnlockedTitle(locale),
+                    body: badgeUnlockedBody(locale, badgeNames),
+                    url: '/profile',
+                });
+            })
+        );
+    } catch (error: unknown) {
+        reportError('sendConsolidatedBadgeNotification', error, { userId, badgeCodes });
     }
 };

@@ -95,9 +95,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
     // Override the denormalized group_keyword with actual public groups
     if (publicGroups) {
-        // @ts-ignore
         user.group_keyword = publicGroups.map((g: any) => g.groups.keyword);
-        // @ts-ignore
         primaryGroup = publicGroups[0]?.groups;
     } else {
         user.group_keyword = [];
@@ -219,7 +217,6 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                 ...session.user,
                 name: vUser.name || session.user.name,
                 image: vUser.image || session.user.image,
-                // @ts-ignore
                 username: vUser.username || (session.user as any).username,
             };
         }

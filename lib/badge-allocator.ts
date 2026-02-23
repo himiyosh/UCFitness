@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { getJSTDateString } from './date-utils';
 import { reportError } from './errors';
+import { normalizePushLocale, badgeUnlockedTitle, badgeUnlockedBody } from './push-messages';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,14 +116,25 @@ export async function checkAndAwardBadges(userId: string) {
         } else {
             // Send Push Notifications for newly earned badges
             try {
-                const { data: subs } = await supabaseAdmin
-                    .from('push_subscriptions')
-                    .select('endpoint, p256dh, auth')
-                    .eq('user_id', userId);
+                // ユーザーの言語設定と Push 購読を並列取得
+                const [userLangResult, subsResult] = await Promise.all([
+                    supabaseAdmin
+                        .from('users')
+                        .select('language')
+                        .eq('id', userId)
+                        .single(),
+                    supabaseAdmin
+                        .from('push_subscriptions')
+                        .select('endpoint, p256dh, auth')
+                        .eq('user_id', userId),
+                ]);
+
+                const subs = subsResult.data;
 
                 if (subs && subs.length > 0) {
                     const { sendWebPushNotification } = await import('./web-push');
 
+                    const locale = normalizePushLocale(userLangResult.data?.language);
                     const badgeMap = new Map((allBadges as BadgeDefinition[]).map(def => [def.code, def.name]));
                     const badgeNames = newBadges
                         .map(b => badgeMap.get(b.badge_code))
@@ -132,8 +144,8 @@ export async function checkAndAwardBadges(userId: string) {
                     await Promise.allSettled(
                         subs.map(sub =>
                             sendWebPushNotification(sub, {
-                                title: '🎉 New Badge Unlocked! 🏆',
-                                body: `Wow! You've earned: ${badgeNames} ✨\nKeep being awesome! 🚀`,
+                                title: badgeUnlockedTitle(locale),
+                                body: badgeUnlockedBody(locale, badgeNames),
                                 url: '/profile'
                             })
                         )
