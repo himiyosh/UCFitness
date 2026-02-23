@@ -563,6 +563,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 10. **ページ共通パターン準拠** — `supabaseAdmin` 使用、`session.user.image` 直接使用禁止、username チェック
 11. **ヘッダー統一確認** — 全ページのヘッダー右側が `RefreshButton → NotificationBell → UserMenu` の 3 要素構成になっているか確認。1 つでも欠けている場合はバグとして報告
 12. **flex 横並びのレスポンシブチェック** — `flex` / `flex-row` で複数要素を横並びにしている箇所に `sm:` 等のレスポンシブプレフィックスがあるか確認。`flex` のみで 3 要素以上を `flex-1` で均等配置している場合はモバイル崩れバグとして報告
+13. **プッシュ通知 i18n・集約チェック** — `sendWebPushNotification` を呼び出す全箇所で、① ユーザーの `language` カラムを参照して `lib/push-messages.ts` のローカライズ関数を使用しているか、② 同一ユーザーに複数通知が発生しうるケース（バッジ複数同時獲得等）で 1 通に集約されているか確認。ハードコードされたメッセージ文字列はバグとして報告
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -843,6 +844,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | ヘッダーの `NotificationBell` が Dashboard のみ（他ページ未統一） | `copilot-instructions.md` の⑤ヘッダーテンプレートに `RefreshButton` と `NotificationBell` が記載されていなかった。テンプレートが `<UserMenu>` のみの古い状態だったため、新規ページ作成・ヘッダー統一時に漏れた | **ヘッダーテンプレートを `RefreshButton → NotificationBell → UserMenu` の 3 要素構成に更新**。必須 import にも `RefreshButton` と `NotificationBell` を追加。Build Validation サブエージェントのチェック項目にもヘッダー統一確認を追加 |
 | プロンプト自己改善ルールがコード修正時に発動しなかった | 自己改善の 4 ステップがタスク完了チェックリストに組み込まれておらず、コード修正に集中した結果プロンプト更新を失念した | **完了チェックリストに「プロンプト自己改善トリガー確認」を必須項目として追加**。コミット前にトリガー条件に該当するか確認し、該当する場合はプロンプト更新を同一コミットに含める |
 | モバイルで flex 横並びカードが潰れる（Weekly Report MVP カード） | `flex gap-3` のみでレスポンシブプレフィックスなし。3 カードが `flex-1` で均等分割されモバイル幅では各カードが ~100px に圧縮される。copilot-instructions に `flex-col` → `sm:flex-row` ルールは記載済みだったが、UI 頻出バグルールとBuild Validation の具体的チェック項目になっておらず、コード生成時・レビュー時に見落とされた | **UI 頻出バグルールに「`flex-row` / `flex` 横並びはレスポンシブプレフィックス必須」を追加**。`flex` のみ / `flex-row` のみの複数カード横並びは禁止 → 必ず `flex-col sm:flex-row` にする。Build Validation にも「flex 横並びのレスポンシブチェック」を追加。リファレンス: `GroupWeeklyReport.tsx` |
+| プッシュ通知のi18n未対応・バッジ個別通知（改善ループで見逃し） | 改善ループのサブエージェント（Build Validation / Performance / Security）がプッシュ通知メッセージの「機能的正確性」（i18n対応・通知集約）をチェック対象に含んでいなかった。サブエージェントのスコープが型・ビルド・パフォーマンス・セキュリティに限定されており、**ビジネスロジックの正確性**（ユーザーの言語設定を使っているか、通知が重複しないか）を検査するルールがなかった。さらに `step-reminder` は日本語固定、`badge-awards`/`weekly-summary` は英語固定という不統一も見逃した | **copilot-instructions.md にプッシュ通知ルールセクションを新設**: ① i18n 必須（`users.language` を参照して `lib/push-messages.ts` で生成）、② 通知集約必須（同一ユーザーに複数バッジ → 1通にまとめる）、③ 新規通知追加時は `push-messages.ts` にテンプレート追加。**Build Validation サブエージェントに「プッシュ通知 i18n・集約チェック」を追加**。リファレンス: `badge-awards.ts` の `sendConsolidatedBadgeNotification()` |
 
 ---
 

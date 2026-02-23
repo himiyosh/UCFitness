@@ -5,6 +5,13 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendWebPushNotification } from '@/lib/web-push';
 import { reportError } from '@/lib/errors';
 import { getJSTDateString, getJSTHour } from '@/lib/date-utils';
+import {
+    normalizePushLocale,
+    stepReminderTitle,
+    stepReminderBody,
+} from '@/lib/push-messages';
+
+import type { PushLocale } from '@/lib/push-messages';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,21 +69,22 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         const userIds = Array.from(userSubscriptions.keys());
 
-        // ユーザーの step_goal を取得
+        // ユーザーの step_goal と言語設定を取得
         const { data: usersData, error: usersError } = await supabaseAdmin
             .from('users')
-            .select('id, step_goal, name')
+            .select('id, step_goal, name, language')
             .in('id', userIds);
 
         if (usersError) {
             throw new Error(`ユーザー情報取得失敗: ${usersError.message}`);
         }
 
-        const userGoalMap = new Map<string, { stepGoal: number; name: string | null }>();
+        const userGoalMap = new Map<string, { stepGoal: number; name: string | null; locale: PushLocale }>();
         for (const u of usersData || []) {
             userGoalMap.set(u.id, {
                 stepGoal: u.step_goal || 10000,
                 name: u.name,
+                locale: normalizePushLocale(u.language),
             });
         }
 
@@ -131,8 +139,9 @@ export async function GET(request: Request): Promise<NextResponse> {
                     const goal = info?.stepGoal || 10000;
                     const remaining = goal - currentSteps;
                     const progressPercent = Math.round((currentSteps / goal) * 100);
+                    const locale = info?.locale || 'ja';
 
-                    const body = `今日の歩数: ${currentSteps.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')} (${progressPercent}%) — あと ${remaining.toLocaleString('en-US')} 歩！`;
+                    const body = stepReminderBody(locale, currentSteps, goal, progressPercent, remaining);
 
                     // 全デバイスに通知を送信
                     const sendResults = await Promise.allSettled(
@@ -143,7 +152,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                                     keys: { p256dh: sub.p256dh, auth: sub.auth },
                                 },
                                 {
-                                    title: '🏃 歩数リマインダー',
+                                    title: stepReminderTitle(locale),
                                     body,
                                     url: '/',
                                 }
