@@ -62,65 +62,86 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
     displayRankings: RankingEntry[];
     isTruncated: boolean
 } {
-    // Assign original ranks manually since we're filtering
-    const rankedItems: RankingEntry[] = allRankings.map((r, i) => ({
-        ...r,
-        originalRank: i + 1
-    }));
+    // ⚡ Bolt Optimization: Avoid mapping the entire array (O(N) allocation)
+    // Only map the items we actually return (O(k))
+    // Also respect existing originalRank if present (for sparse arrays)
+
+    if (allRankings.length === 0) {
+        return { displayRankings: [], isTruncated: false };
+    }
+
+    const getRank = (entry: RankingEntry, index: number) => entry.originalRank ?? (index + 1);
 
     if (!userId) {
         // Not logged in: Just show top 5 or maxItems
         const limit = maxItems || 5;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        const displayRankings = allRankings.slice(0, limit).map((r, i) => ({
+            ...r,
+            originalRank: getRank(r, i)
+        }));
+        return { displayRankings, isTruncated: allRankings.length > limit };
     }
 
-    const top3 = rankedItems.slice(0, 3);
-    const userIndex = rankedItems.findIndex(r => r.users.id === userId);
+    // Find user index (O(N) search is unavoidable without map, but faster than O(N) allocation)
+    const userIndex = allRankings.findIndex(r => r.users.id === userId);
 
     if (userIndex === -1) {
         // User not in list
         const limit = maxItems || 3;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        const displayRankings = allRankings.slice(0, limit).map((r, i) => ({
+            ...r,
+            originalRank: getRank(r, i)
+        }));
+        return { displayRankings, isTruncated: allRankings.length > limit };
     }
 
-    // High Ranking User (Rank 1, 2, 3) -> Show Top 5 (or maxItems)
+    // Collect indices to include
+    const indices = new Set<number>();
+
+    // Top 3
+    for (let i = 0; i < 3 && i < allRankings.length; i++) indices.add(i);
+
+    // If user is in top 3, show top 5 (to match original behavior)
     if (userIndex < 3) {
-        const limit = maxItems || 5;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        for (let i = 0; i < 5 && i < allRankings.length; i++) indices.add(i);
     }
 
     // Neighbors: User-1, User, User+1
+    // Handle bounds carefully
     const start = Math.max(0, userIndex - 1);
-    const end = Math.min(rankedItems.length, userIndex + 2); // slice is exclusive end
-    const neighbors = rankedItems.slice(start, end);
+    const end = Math.min(allRankings.length - 1, userIndex + 1);
+    for (let i = start; i <= end; i++) indices.add(i);
 
-    // Merge Unique
-    let combined = [...top3];
-    neighbors.forEach(n => {
-        if (!combined.find(c => c.originalRank === n.originalRank)) {
-            combined.push(n);
-        }
+    // Convert to sorted indices
+    const sortedIndices = Array.from(indices).sort((a, b) => a - b);
+
+    // Construct result array
+    let combined = sortedIndices.map(i => {
+        const r = allRankings[i];
+        return {
+            ...r,
+            originalRank: getRank(r, i)
+        };
     });
 
-    // Sort by rank again to be sure
-    combined.sort((a, b) => a.originalRank - b.originalRank);
-
     // Apply strict limit if requested
+    // This logic mirrors the original behavior to respect maxItems
     if (maxItems && combined.length > maxItems) {
-        // We MUST keep the user (if they are in combined, which they should be)
+        // We MUST keep the user
         const userEntry = combined.find(r => r.users.id === userId);
 
         if (userEntry) {
             // Take top (N-1) + User
+            // Filter user out first
             const others = combined.filter(r => r.users.id !== userId).slice(0, maxItems - 1);
             combined = [...others, userEntry].sort((a, b) => a.originalRank - b.originalRank);
         } else {
-            // Should not happen as we added neighbors including user, but fallback
+            // Fallback
             combined = combined.slice(0, maxItems);
         }
     }
 
-    return { displayRankings: combined, isTruncated: rankedItems.length > combined.length };
+    return { displayRankings: combined, isTruncated: allRankings.length > combined.length };
 }
 
 /**
