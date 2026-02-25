@@ -37,8 +37,8 @@ describe('deriveBatchGroupRankings', () => {
     it('should derive rankings for users in the group', async () => {
         const groupIds = ['group1'];
         const groupMembers = [
-            { group_id: 'group1', user_id: 'user1' },
-            { group_id: 'group1', user_id: 'user2' }
+            { group_id: 'group1', user_id: 'user1', users: { id: 'user1', name: 'User 1' } },
+            { group_id: 'group1', user_id: 'user2', users: { id: 'user2', name: 'User 2' } }
         ];
 
         // Mock group_members response
@@ -70,15 +70,14 @@ describe('deriveBatchGroupRankings', () => {
     it('should handle users with 0 steps (missing from global rankings)', async () => {
         const groupIds = ['group1'];
         const groupMembers = [
-            { group_id: 'group1', user_id: 'user1' },
-            { group_id: 'group1', user_id: 'userZero' }
+            { group_id: 'group1', user_id: 'user1', users: { id: 'user1', name: 'User 1' } },
+            { group_id: 'group1', user_id: 'userZero', users: { id: 'userZero', name: 'User Zero' } }
         ];
 
         // Mock group_members response
         mockIn.mockResolvedValueOnce({ data: groupMembers, error: null }); // for group_members query
 
-        // Mock missing users query
-        mockIn.mockResolvedValueOnce({ data: [{ id: 'userZero', name: 'User Zero' }], error: null });
+        // No need to mock missing users query anymore as it's removed
 
         const globalRankings = {
             DAILY: [

@@ -85,7 +85,7 @@ describe('Ranking Optimization', () => {
         const groupIds = ['g1'];
         // Mock group members
         mockIn.mockResolvedValueOnce({
-            data: [{ group_id: 'g1', user_id: 'u1' }],
+            data: [{ group_id: 'g1', user_id: 'u1', users: { id: 'u1' } }],
             error: null
         });
 
@@ -106,7 +106,7 @@ describe('Ranking Optimization', () => {
     it('deriveBatchGroupRankings works with Map input (optimized)', async () => {
         const groupIds = ['g1'];
         mockIn.mockResolvedValueOnce({
-            data: [{ group_id: 'g1', user_id: 'u1' }],
+            data: [{ group_id: 'g1', user_id: 'u1', users: { id: 'u1' } }],
             error: null
         });
 

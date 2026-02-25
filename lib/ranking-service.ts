@@ -773,10 +773,11 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     // Query start: earlier of last month or year start
     const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
-    // 1. Fetch Members for ALL groups
+    // 1. Fetch Members with User Data for ALL groups
+    // ⚡ Bolt Optimization: Join users here to avoid N+1 query for missing users
     const { data: groupMembers } = await supabase
         .from('group_members')
-        .select('group_id, user_id')
+        .select('group_id, user_id, users(id, name, image, username)')
         .in('group_id', groupIds);
 
     if (!groupMembers || groupMembers.length === 0) return {};
@@ -969,32 +970,32 @@ export const deriveBatchGroupRankings = async (
         });
     }
 
-    // 3. Identify Missing Users (who have 0 steps across all periods, so not in global rankings)
-    const missingUserIds: string[] = [];
-
-    targetUserIds.forEach(uid => {
-        if (!userStats.has(uid)) {
-            missingUserIds.push(uid);
+    // 3. Fill in Missing Users (who have 0 steps) using the joined user data
+    // ⚡ Bolt Optimization: Use the user data from step 1 instead of fetching again
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userDetailsMap = new Map<string, any>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    groupMembers.forEach((m: any) => {
+        if (m.users) {
+            userDetailsMap.set(m.user_id, m.users);
         }
     });
 
-    // 4. Fetch Missing Users Profile Data
-    if (missingUserIds.length > 0) {
-        const { data: users } = await supabase
-            .from('users')
-            .select('id, name, image, username')
-            .in('id', missingUserIds);
+    targetUserIds.forEach(uid => {
+        if (!userStats.has(uid)) {
+            const user = userDetailsMap.get(uid);
+            if (user) {
+                userStats.set(uid, {
+                    users: user,
+                    DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
+                    PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
+                });
+            }
+        }
+    });
 
-        users?.forEach(u => {
-            userStats.set(u.id, {
-                users: u,
-                DAILY: 0, WEEKLY: 0, MONTHLY: 0, YEARLY: 0,
-                PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
-            });
-        });
-    }
-
-    // 5. Distribute to Groups
+    // 4. Distribute to Groups (Step 5 in original)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: Record<string, Record<Period, any[]>> = {};
     groupIds.forEach(gid => {
         result[gid] = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
