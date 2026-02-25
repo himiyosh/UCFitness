@@ -36,11 +36,15 @@ export async function POST(request: Request) {
       // Check if group exists
       const { data: existingGroup } = await supabaseAdmin
         .from('groups')
-        .select('id')
+        .select('id, is_public')
         .eq('keyword', target)
         .single();
 
       let groupId = existingGroup?.id;
+
+      if (existingGroup && !existingGroup.is_public) {
+        return NextResponse.json({ error: "Private groups cannot be joined via keyword. You must be invited." }, { status: 403 });
+      }
 
       if (!groupId) {
         // 🛡️ Sentinel: Validate Keyword before creation
