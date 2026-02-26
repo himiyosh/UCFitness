@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 vi.mock('@/lib/auth', () => ({
-    auth: vi.fn().mockResolvedValue({ user: { id: 'owner-id' } })
+    auth: vi.fn().mockResolvedValue({ user: { id: '00000000-0000-0000-0000-000000000001' } })
 }));
 
 vi.mock('next/server', () => ({
@@ -71,7 +71,7 @@ describe('POST /api/user/group - Invite Security', () => {
                                 eq: (col2: string, val2: string) => ({
                                     single: () => {
                                         // Owner check
-                                        if (val1 === 'group-id' && val2 === 'owner-id') {
+                                        if (val1 === 'group-id' && val2 === '00000000-0000-0000-0000-000000000001') {
                                             return Promise.resolve({ data: { role: 'OWNER' } });
                                         }
                                         // Existing member check
@@ -111,7 +111,7 @@ describe('POST /api/user/group - Invite Security', () => {
             body: JSON.stringify({
                 action: 'invite',
                 keyword: 'my-group',
-                targetUserId: 'stranger-id'
+                targetUserId: '00000000-0000-0000-0000-000000000002'
             })
         });
 
@@ -130,7 +130,7 @@ describe('POST /api/user/group - Invite Security', () => {
             body: JSON.stringify({
                 action: 'invite',
                 keyword: 'my-group',
-                targetUserId: 'follower-id'
+                targetUserId: '00000000-0000-0000-0000-000000000003'
             })
         });
 

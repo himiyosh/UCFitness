@@ -36,9 +36,14 @@ export async function POST(request: Request) {
       // Check if group exists
       const { data: existingGroup } = await supabaseAdmin
         .from('groups')
-        .select('id')
+        .select('id, is_public')
         .eq('keyword', target)
         .single();
+
+      // 🛡️ Sentinel: Block unauthorized access to private groups
+      if (existingGroup && existingGroup.is_public === false) {
+        return NextResponse.json({ error: "This is a private group. You must be invited to join." }, { status: 403 });
+      }
 
       let groupId = existingGroup?.id;
 
