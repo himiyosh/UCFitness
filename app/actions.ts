@@ -18,6 +18,12 @@ function getSessionUserId(session: { user?: { id?: string } | null } | null): st
 
 // 🛡️ セキュリティ: 許可されたファイルタイプとサイズ制限
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MIME_TO_EXT: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif'
+};
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 function validateImageFile(file: File): void {
@@ -140,7 +146,8 @@ export async function uploadProfileImage(formData: FormData) {
     // 🛡️ セキュリティ: ファイル検証
     validateImageFile(file);
 
-    const fileExt = file.name.split('.').pop();
+    // 🛡️ Sentinel Fix: MIME typeから拡張子を決定 (ユーザー入力の拡張子は無視)
+    const fileExt = MIME_TO_EXT[file.type] || 'jpg'; // Fallback to jpg if undefined (though validated above)
     const filePath = `${userId}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseAdmin
