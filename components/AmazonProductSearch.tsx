@@ -90,6 +90,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const [isGenerating, setIsGenerating] = useState(false);
     const [latestResult, setLatestResult] = useState<GenerateResult | null>(null);
     const [history, setHistory] = useState<LinkHistoryItem[]>([]);
+    const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
     const [candidateIndex, setCandidateIndex] = useState(0);
     const [isSavingRecommended, setIsSavingRecommended] = useState(false);
     const [savedAsins, setSavedAsins] = useState<Set<string>>(new Set());
@@ -454,7 +455,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 hover:shadow-sm transition-shadow group"
                             >
                                 {/* サムネイル or アイコン */}
-                                {item.imageUrl ? (
+                                {item.imageUrl && !imageErrors[item.id] ? (
                                     <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
@@ -462,14 +463,15 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                             alt={item.asin || ''}
                                             className="w-full h-full object-contain"
                                             loading="lazy"
-                                            onError={(e) => {
-                                                const parent = (e.target as HTMLElement).parentElement;
-                                                if (parent) parent.innerHTML = `<span class="flex items-center justify-center w-full h-full text-lg">${linkTypeIcon(item.type)}</span>`;
+                                            onError={() => {
+                                                setImageErrors(prev => ({ ...prev, [item.id]: true }));
                                             }}
                                         />
                                     </div>
                                 ) : (
-                                    <span className="text-lg flex-shrink-0">{linkTypeIcon(item.type)}</span>
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center">
+                                        <span className="text-lg">{linkTypeIcon(item.type)}</span>
+                                    </div>
                                 )}
 
                                 <div className="flex-1 min-w-0">
