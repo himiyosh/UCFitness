@@ -110,6 +110,20 @@
         "refreshing": "Refreshing...",
         "refreshFailed": "Failed to refresh steps"
     },
+    "BottomNav": {
+        "home": "Home",
+        "groups": "Groups",
+        "ranking": "Ranking",
+        "profile": "Profile",
+        "label": "Main navigation"
+    },
+    "Portal": {
+        "heroLabel": "Today's steps and stats",
+        "rank": "Rank",
+        "quickActions": "Quick actions",
+        "recentActivity": "Recent Activity",
+        "viewAll": "View All"
+    },
     "LoginBonus": {
         "title": "Daily Bonus",
         "claimed": "+{amount} UC! (Day {streak})",
@@ -141,6 +155,7 @@
     },
     "Leaderboard": {
         "leaderboard": "Leaderboard",
+        "headerDesc": "Check global and group step rankings",
         "titleGlobal": "Global Leaderboard",
         "tabUser": "User (Global)",
         "titleTop10": "Top 10 Leaders",

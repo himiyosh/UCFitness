@@ -12,6 +12,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { auth } from "@/lib/auth";
 import LanguageSyncer from "@/components/LanguageSyncer";
+import BottomNavBar from "@/components/BottomNavBar";
 
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
 const SplashScreen = dynamic(() => import('@/components/SplashScreen'));
@@ -86,9 +87,12 @@ export default async function LocaleLayout({
 
                 <LanguageSyncer user={session?.user as any} />
                 {session && <FloatingEmojis />}
-                <div id="main-content" className="relative flex flex-col" style={{ zIndex: 20 }}>
+                {/* pb-14: ボトムナビの高さ (56px) 分の余白を確保 */}
+                <div id="main-content" className="relative flex flex-col pb-14 sm:pb-0" style={{ zIndex: 20 }}>
                   {children}
                 </div>
+                {/* モバイル用固定ボトムナビゲーション (認証済みユーザーのみ) */}
+                {session && <BottomNavBar />}
               </ThemeProvider>
             </ToastProvider>
           </AuthProvider>

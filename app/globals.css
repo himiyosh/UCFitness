@@ -2,6 +2,27 @@
 
 /* ==== Noto Sans JP フォント読み込み ==== */
 
+/* ==== SAFE AREA (iPhone ノッチ・ジェスチャーバー対応) ==== */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ==== THIN SCROLLBAR (フィードエリア用) ==== */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.2) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.25);
+  border-radius: 9999px;
+}
+
 /* ==== SCROLLBAR STABILITY ==== */
 html {
   scrollbar-gutter: stable;

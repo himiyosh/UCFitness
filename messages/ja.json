@@ -110,6 +110,20 @@
         "refreshing": "同期中...",
         "refreshFailed": "歩数の同期に失敗しました"
     },
+    "BottomNav": {
+        "home": "ホーム",
+        "groups": "グループ",
+        "ranking": "ランキング",
+        "profile": "プロフ",
+        "label": "メインナビゲーション"
+    },
+    "Portal": {
+        "heroLabel": "今日の歩数と統計",
+        "rank": "ランク",
+        "quickActions": "クイックアクション",
+        "recentActivity": "最近のアクティビティ",
+        "viewAll": "すべて見る"
+    },
     "LoginBonus": {
         "title": "デイリーボーナス",
         "claimed": "+{amount} UC! ({streak}日連続)",
@@ -141,6 +155,7 @@
     },
     "Leaderboard": {
         "leaderboard": "ランキング",
+        "headerDesc": "グローバル・グループのステップランキングを確認しましょう",
         "titleGlobal": "グローバルランキング",
         "tabUser": "ユーザー (全体)",
         "titleTop10": "トップ10",
