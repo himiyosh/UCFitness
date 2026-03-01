@@ -43,7 +43,7 @@ export default function BottomNavBar() {
               aria-current={isActive ? 'page' : undefined}
             >
               <item.icon active={isActive} />
-              <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>
+              <span className={`text-xs font-medium ${isActive ? 'font-semibold' : ''}`}>
                 {item.label}
               </span>
             </Link>

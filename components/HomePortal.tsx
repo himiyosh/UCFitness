@@ -95,7 +95,7 @@ export default function HomePortal({
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-lg sm:text-xl font-black leading-none">{todaySteps.toLocaleString()}</span>
-              <span className="text-[9px] sm:text-[10px] opacity-80 mt-0.5">/ {stepGoal.toLocaleString()}</span>
+              <span className="text-[10px] sm:text-xs opacity-80 mt-0.5">/ {stepGoal.toLocaleString()}</span>
             </div>
           </div>
 
@@ -114,7 +114,7 @@ export default function HomePortal({
               <span className="text-xs font-semibold bg-white/20 rounded-full px-2 py-0.5">
                 {progressPercent}% {progressPercent >= 100 ? '🎉' : progressPercent >= 50 ? '🔥' : '👟'}
               </span>
-              <span className={`text-[10px] sm:text-xs font-medium ${vsDiff >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+              <span className={`text-xs font-medium ${vsDiff >= 0 ? 'text-green-200' : 'text-red-200'}`}>
                 {vsSign}{vsDiff.toLocaleString()} {pt('stepsUnit')} {t('vsYesterday')}
               </span>
             </div>
@@ -123,17 +123,17 @@ export default function HomePortal({
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <div className="text-xs sm:text-sm font-bold">{formatK(weeklySteps)}</div>
-                <div className="text-[9px] sm:text-[10px] opacity-70">{t('thisWeek')}</div>
+                <div className="text-[10px] sm:text-xs opacity-70">{t('thisWeek')}</div>
               </div>
               <div>
                 <div className="text-xs sm:text-sm font-bold">{formatK(monthlySteps)}</div>
-                <div className="text-[9px] sm:text-[10px] opacity-70">{t('thisMonth')}</div>
+                <div className="text-[10px] sm:text-xs opacity-70">{t('thisMonth')}</div>
               </div>
               <div>
                 <div className="text-xs sm:text-sm font-bold">
                   {globalRank ? `#${globalRank}` : '—'}
                 </div>
-                <div className="text-[9px] sm:text-[10px] opacity-70">{pt('rank')}</div>
+                <div className="text-[10px] sm:text-xs opacity-70">{pt('rank')}</div>
               </div>
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function HomePortal({
               className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow min-h-[72px]"
             >
               <span className="text-2xl sm:text-3xl">{action.emoji}</span>
-              <span className="text-[10px] sm:text-xs font-semibold text-gray-700">{action.label}</span>
+              <span className="text-xs font-semibold text-gray-700">{action.label}</span>
             </Link>
           ))}
         </div>
@@ -167,7 +167,7 @@ export default function HomePortal({
           </h2>
           <Link
             href={`/user/${username}`}
-            className="text-[10px] sm:text-xs text-[var(--theme-primary)] font-medium hover:underline"
+            className="text-xs text-[var(--theme-primary)] font-medium hover:underline"
           >
             {pt('viewAll')} →
           </Link>

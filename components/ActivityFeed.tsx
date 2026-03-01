@@ -118,11 +118,7 @@ export default function ActivityFeed() {
     // --- ローディング状態 ---
     if (isLoading) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <span>📰</span>
-                    <span>{t('title')}</span>
-                </h3>
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full">
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="flex items-start gap-3 animate-pulse">
@@ -141,11 +137,7 @@ export default function ActivityFeed() {
     // --- エラー状態 ---
     if (error) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <span>📰</span>
-                    <span>{t('title')}</span>
-                </h3>
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full">
                 <div className="text-center py-6">
                     <p className="text-sm text-gray-500 mb-3">{t('errorMessage')}</p>
                     <button
@@ -163,11 +155,7 @@ export default function ActivityFeed() {
     // --- 空状態 ---
     if (feed.length === 0) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <span>📰</span>
-                    <span>{t('title')}</span>
-                </h3>
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full flex flex-col items-center justify-center">
                 <div className="text-center py-8">
                     <div className="text-4xl mb-3">👥</div>
                     <p className="text-sm text-gray-500">{t('emptyMessage')}</p>
@@ -179,12 +167,7 @@ export default function ActivityFeed() {
 
     // --- データ表示 ---
     return (
-        <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                <span>📰</span>
-                <span>{t('title')}</span>
-            </h3>
-
+        <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full">
             <div className="space-y-1">
                 {feed.map((item) => (
                     <FeedItemCard key={item.id} item={item} t={t} />
