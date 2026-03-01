@@ -65,8 +65,9 @@ export default function HomePortal({
   ], [t]);
 
   return (
-    // 100dvh からヘッダー(48px) + ボトムナビ(56px) を差し引いた高さ
-    <div className="flex flex-col h-[calc(100dvh-48px-56px)] sm:h-full overflow-hidden">
+    // モバイル: 100dvh からヘッダー(48px) + ボトムナビ(56px) を差し引いた固定高さ
+    // デスクトップ: 自然な高さ（サイドバー側で overflow-y-auto を担当）
+    <div className="flex flex-col h-[calc(100dvh-48px-56px)] sm:h-auto overflow-hidden sm:overflow-visible">
 
       {/* ===== ヒーローセクション ===== */}
       <section
@@ -158,7 +159,7 @@ export default function HomePortal({
 
       {/* ===== アクティビティフィード ===== */}
       <section
-        className="flex-1 min-h-0 flex flex-col px-4 sm:px-6 pb-2 bg-[var(--theme-page-bg)]"
+        className="flex-1 sm:flex-none min-h-0 flex flex-col px-4 sm:px-6 pb-2 sm:pb-4 bg-[var(--theme-page-bg)]"
         aria-label={pt('recentActivity')}
       >
         <div className="flex items-center justify-between mb-2 max-w-lg mx-auto w-full">
@@ -173,7 +174,7 @@ export default function HomePortal({
           </Link>
         </div>
         {/* フィードはスクロール可能なエリア（この領域のみスクロール） */}
-        <div className="flex-1 min-h-0 overflow-y-auto max-w-lg mx-auto w-full rounded-xl scrollbar-thin">
+        <div className="flex-1 sm:flex-none min-h-0 overflow-y-auto sm:overflow-visible max-w-lg mx-auto w-full rounded-xl scrollbar-thin">
           <ActivityFeed />
         </div>
       </section>

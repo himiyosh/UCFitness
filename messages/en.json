@@ -794,6 +794,7 @@
         "loading": "Loading...",
         "errorMessage": "Failed to load feed",
         "retry": "Retry",
+        "sparseHint": "Follow more people to fill your feed with activity \ud83d\udc65",
         "markAllRead": "Mark all read",
         "justNow": "just now",
         "minutesAgo": "{count}m ago",

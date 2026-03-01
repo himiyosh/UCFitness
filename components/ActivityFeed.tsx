@@ -118,7 +118,7 @@ export default function ActivityFeed() {
     // --- ローディング状態 ---
     if (isLoading) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full">
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4">
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="flex items-start gap-3 animate-pulse">
@@ -137,7 +137,7 @@ export default function ActivityFeed() {
     // --- エラー状態 ---
     if (error) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full">
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4">
                 <div className="text-center py-6">
                     <p className="text-sm text-gray-500 mb-3">{t('errorMessage')}</p>
                     <button
@@ -155,7 +155,7 @@ export default function ActivityFeed() {
     // --- 空状態 ---
     if (feed.length === 0) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full flex flex-col items-center justify-center">
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 flex flex-col items-center justify-center">
                 <div className="text-center py-8">
                     <div className="text-4xl mb-3">👥</div>
                     <p className="text-sm text-gray-500">{t('emptyMessage')}</p>
@@ -167,7 +167,7 @@ export default function ActivityFeed() {
 
     // --- データ表示 ---
     return (
-        <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 min-h-full">
+        <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-4">
             <div className="space-y-1">
                 {feed.map((item) => (
                     <FeedItemCard key={item.id} item={item} t={t} />
@@ -195,6 +195,13 @@ export default function ActivityFeed() {
                             t('loadMore')
                         )}
                     </button>
+                </div>
+            )}
+
+            {/* フィードアイテムが少ない時のフォロー促進CTA */}
+            {!hasMore && feed.length > 0 && feed.length < 5 && (
+                <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+                    <p className="text-xs text-gray-400">{t('sparseHint')}</p>
                 </div>
             )}
         </div>

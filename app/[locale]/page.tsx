@@ -234,7 +234,7 @@ export default async function Home() {
       {/* ===== デスクトップ: Portal + サイドバー 2カラムレイアウト (sm以上のみ表示) ===== */}
       <div className="hidden sm:flex flex-1">
         {/* 左カラム: ポータル（sticky — モバイルと統一されたヒーロー + クイックアクション + フィード） */}
-        <div className="w-[420px] lg:w-[460px] xl:w-[480px] flex-shrink-0 border-r border-gray-200/60 sticky top-16 h-[calc(100vh-4rem)]">
+        <div className="w-[420px] lg:w-[460px] xl:w-[480px] flex-shrink-0 border-r border-gray-200/60 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto bg-[var(--theme-page-bg)]">
           <HomePortal
             todaySteps={mySteps}
             yesterdaySteps={yesterdaySteps}
@@ -250,7 +250,7 @@ export default async function Home() {
 
         {/* 右カラム: ウィジェット群（スクロール可能） */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-4 lg:px-6 py-6 flex flex-col gap-5">
+          <div className="px-4 lg:px-6 py-4 lg:py-5 flex flex-col gap-4">
 
             {/* アクティビティサマリー */}
             <StepCalendar
@@ -280,7 +280,7 @@ export default async function Home() {
             <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
 
             {/* おすすめギア + 人気ギア */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <PersonalizedGear />
               <TrendingGear userId={userId} />
             </div>
