@@ -242,6 +242,16 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **翻訳ファイル** (`messages/ja.json`, `messages/en.json`) にフラグ関連のキーがあれば削除する
 - フラグ削除は **1 フラグ = 1 コミット** で行い、複数フラグを同時に削除しない
 
+### dev サーバー起動ルール（ポート 3000 必須）
+
+- **NextAuth の OAuth コールバック URL が `localhost:3000` に固定されているため、dev サーバーは必ずポート 3000 で起動すること**
+- ポート 3000 が他のプロセスに使用されている場合は、**先にそのプロセスをキルしてから起動する**:
+  ```powershell
+  Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+  ```
+- `npm run dev` は自動的にポート 3000 を使用する。ポート競合で 3001 等にフォールバックした場合、認証（ログイン・セッション）が機能しないため、必ずキル→再起動すること
+- Playwright テストも `localhost:3000` を対象とする
+
 ### デプロイ制限
 
 - `git push` は Cloudflare Pages のデプロイ制限があるため、明示的に許可があるまで実行しない

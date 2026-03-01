@@ -147,7 +147,7 @@ tool_search_tool_regex(pattern="mcp_playwright", limit=30)
 **⚠️ 重要: スクリーンショットは「撮って終わり」ではない。撮った画像の内容を 5 項目以上言語化して報告すること。「✅ 問題なし」だけの報告は禁止。**
 
 ```
-1. dev サーバー起動確認（localhost:3000 が応答するか）
+1. dev サーバー起動確認（**必ず localhost:3000** — 3001 等では認証不可。ポート競合時はプロセスキル→再起動）
 2. browser_navigate → 対象ページに遷移
 3. browser_resize → ビューポート設定
 4. browser_snapshot → DOM 構造・アクセシビリティツリー取得
@@ -570,13 +570,15 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - `git push` はユーザー許可後のみ
 - `improvement-report.md` に改善内容を追記（**「🔍 新機能提案」セクション必須** — Step 2.5 の結果を含める）
 
-#### Step 4: dev サーバー再起動
+#### Step 4: dev サーバー再起動（ポート 3000 必須）
+
+**⚠️ NextAuth の OAuth コールバック URL が `localhost:3000` 固定のため、dev サーバーは必ずポート 3000 で起動すること。ポート 3001 等にフォールバックすると認証が機能しない。**
 
 1. `kill_terminal` で以前のバックグラウンドターミナル削除
-2. ポート 3000 を解放: `Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`
+2. **ポート 3000 を強制解放**: `Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`
 3. `.next` 削除: `Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue`
 4. `npm run dev` を `isBackground: true` で起動
-5. `get_terminal_output` で起動確認
+5. `get_terminal_output` で起動確認 — **ポート 3000 で起動していることを確認**。`3001` 等になっていたらキル→再起動
 
 #### Step 5: プロンプト自己学習
 
@@ -856,6 +858,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 8. **モバイルファースト設計**（最小タッチターゲット 44×44px）
 9. **翻訳キー追加時は ja/en 両方を更新**
 10. **`main` / `master` への直接 push / merge 禁止**
+11. **dev サーバーは必ずポート 3000 で起動**（OAuth コールバック URL 固定のため）。ポート競合時は `Get-NetTCPConnection -LocalPort 3000 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }` でキルしてから起動
 
 ---
 
