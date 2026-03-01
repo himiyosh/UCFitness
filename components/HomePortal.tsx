@@ -66,7 +66,7 @@ export default function HomePortal({
 
   return (
     // 100dvh からヘッダー(48px) + ボトムナビ(56px) を差し引いた高さ
-    <div className="flex flex-col h-[calc(100dvh-48px-56px)] sm:h-auto sm:min-h-screen overflow-hidden sm:overflow-auto">
+    <div className="flex flex-col h-[calc(100dvh-48px-56px)] sm:h-full overflow-hidden">
 
       {/* ===== ヒーローセクション ===== */}
       <section
