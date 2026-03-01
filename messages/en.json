@@ -120,6 +120,7 @@
     "Portal": {
         "heroLabel": "Today's steps and stats",
         "rank": "Rank",
+        "stepsUnit": "steps",
         "quickActions": "Quick actions",
         "recentActivity": "Recent Activity",
         "viewAll": "View All"

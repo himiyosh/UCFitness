@@ -20,15 +20,38 @@ import type { RankingEntry } from '@/lib/ranking-utils';
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast'));
 const NotificationBell = nextDynamic(() => import('@/components/NotificationBell'));
+
+// スケルトンローディングプレースホルダー（チャンク読み込み中に表示）
+const CardSkeleton = ({ h = 'h-32', title }: { h?: string; title?: string }) => (
+  <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-5 animate-pulse">
+    {title && <div className="flex items-center gap-2 mb-3"><span className="text-lg">{title}</span><div className="h-4 w-28 bg-gray-200 rounded" /></div>}
+    <div className={`${h} bg-gray-100 rounded-lg`} />
+  </div>
+);
+
 // デスクトップ用コンポーネント（モバイルでは不要）
 const RunnerAnimation = nextDynamic(() => import('@/components/RunnerAnimation'));
-const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'));
-const DashboardChallenges = nextDynamic(() => import('@/components/DashboardChallenges'));
-const DailyMissions = nextDynamic(() => import('@/components/DailyMissions'));
-const FollowingPanel = nextDynamic(() => import('@/components/FollowingPanel'));
-const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear'));
-const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'));
-const DynamicLeaderboard = nextDynamic(() => import('@/components/DynamicLeaderboard'));
+const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'), {
+  loading: () => <CardSkeleton h="h-48" title="📊" />,
+});
+const DashboardChallenges = nextDynamic(() => import('@/components/DashboardChallenges'), {
+  loading: () => <CardSkeleton h="h-24" title="🏆" />,
+});
+const DailyMissions = nextDynamic(() => import('@/components/DailyMissions'), {
+  loading: () => <CardSkeleton h="h-40" title="🎯" />,
+});
+const FollowingPanel = nextDynamic(() => import('@/components/FollowingPanel'), {
+  loading: () => <CardSkeleton h="h-32" title="👥" />,
+});
+const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear'), {
+  loading: () => <CardSkeleton h="h-36" title="🎁" />,
+});
+const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'), {
+  loading: () => <CardSkeleton h="h-36" title="🔥" />,
+});
+const DynamicLeaderboard = nextDynamic(() => import('@/components/DynamicLeaderboard'), {
+  loading: () => <CardSkeleton h="h-64" title="🏅" />,
+});
 
 export const dynamic = 'force-dynamic';
 

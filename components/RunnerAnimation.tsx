@@ -31,10 +31,11 @@ function generateSparkles(count: number) {
     for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count;
         const dist = 35 + (((i * 7 + 3) % 11) / 11) * 25;
-        const sx = Math.cos(angle) * 18;
-        const sy = Math.sin(angle) * 18;
-        const ex = Math.cos(angle) * dist;
-        const ey = Math.sin(angle) * dist;
+        // Math.cos/sin の浮動小数点精度はプラットフォームで異なるため 2桁丸め（SSR/CSR ハイドレーション不一致防止）
+        const sx = Math.round(Math.cos(angle) * 18 * 100) / 100;
+        const sy = Math.round(Math.sin(angle) * 18 * 100) / 100;
+        const ex = Math.round(Math.cos(angle) * dist * 100) / 100;
+        const ey = Math.round(Math.sin(angle) * dist * 100) / 100;
         const dur = 1.5 + (((i * 9 + 2) % 7) / 7) * 1;
         const delay = (((i * 5 + 1) % 11) / 11) * 2;
         const hue = 220 + (((i * 3 + 4) % 10) / 10) * 80;

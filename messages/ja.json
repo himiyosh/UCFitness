@@ -120,6 +120,7 @@
     "Portal": {
         "heroLabel": "今日の歩数と統計",
         "rank": "ランク",
+        "stepsUnit": "歩",
         "quickActions": "クイックアクション",
         "recentActivity": "最近のアクティビティ",
         "viewAll": "すべて見る"

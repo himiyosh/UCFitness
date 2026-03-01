@@ -115,7 +115,7 @@ export default function HomePortal({
                 {progressPercent}% {progressPercent >= 100 ? '🎉' : progressPercent >= 50 ? '🔥' : '👟'}
               </span>
               <span className={`text-[10px] sm:text-xs font-medium ${vsDiff >= 0 ? 'text-green-200' : 'text-red-200'}`}>
-                {vsSign}{vsDiff.toLocaleString()} {t('vsYesterday')}
+                {vsSign}{vsDiff.toLocaleString()} {pt('stepsUnit')} {t('vsYesterday')}
               </span>
             </div>
 
