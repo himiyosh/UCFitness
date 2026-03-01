@@ -180,7 +180,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
 
                 {/* Group Leaderboards */}
                 {groupRankingsList.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         {groupRankingsList.map((groupData, index) => (
                             <div key={groupData.keyword} className="relative">
                                 <GroupRankingPanel
