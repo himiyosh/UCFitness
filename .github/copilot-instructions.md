@@ -183,6 +183,56 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **良い例**: `ActivityFeed.tsx` — `min-h-full` を使わず、少数アイテム時に `sparseHint` CTA を表示
 - **悪い例（修正済み）**: `sm:h-full` + `flex-1` + `min-h-full` の3重引き伸ばし → 1アイテムで300px超の空白発生
 
+### UI 美学ルール（Design Aesthetics — 必須遵守）
+
+**美しい UI は「画面を埋める」ことではない。** 以下のルールは Refactoring UI、Laws of UX 等のデザイン原則に基づく。
+
+> _"You don't have to fill the whole screen. Just because you have the space, doesn't mean you need to use it."_ — Refactoring UI (p.65)
+
+#### コンテンツ幅の制約
+
+1. **`max-width` を必ず設定する** — コンテンツ領域は画面幅に無制限に追従させない。ワイドスクリーン（1920px+）でカードやテキストが水平に引き延ばされるのは最も一般的な「間延び」パターン
+2. **推奨 `max-width` 値**:
+   - ページコンテンツ全体: `max-w-7xl`（1280px）
+   - 2 カラムレイアウトの右カラム内容: `max-w-[960px]`
+   - テキスト中心のコンテンツ: `max-w-prose`（65ch ≈ 600px）
+   - カード内のテキスト行長: 45〜75 文字が最適（それ以上は可読性が低下する）
+3. **余った空間はページ背景色で処理する** — `var(--theme-page-bg)` のグラデーション背景がコンテンツの外側に自然に現れるようにする。空間を埋めるために不要な UI 要素を追加しない
+
+#### 視覚的階層（Visual Hierarchy）
+
+4. **階層はサイズだけでなく色と太さで表現する** — 見出しを大きくする代わりに、太字 + テーマカラーで強調する。補助テキストは `text-gray-500` + `font-normal` で控えめにする
+5. **セマンティックカラーを活用する**:
+   - プライマリアクション: `var(--theme-primary)` + 白テキスト（塗りつぶしボタン）
+   - セカンダリアクション: `var(--theme-primary)` + 透明背景（アウトラインボタン）
+   - ターシャリアクション: テキストリンクスタイル（ボタン枠なし）
+6. **すべてのラベルに `font-semibold` は不要** — ラベルが多い UI で全部太字にすると何も目立たない。重要なものだけに太さを使い、それ以外は `font-normal` + `text-gray-500`
+
+#### 境界線と区切り（Borders & Separation）
+
+7. **ボーダーを減らし、背景色・影・余白で区切る** — `border-b` の連続使用は視覚的ノイズを増やす。代替手段:
+   - **背景色のコントラスト**: 隣接セクションに異なる背景色（`bg-white` と `bg-gray-50/50`）
+   - **影（shadow）**: `shadow-sm` でカードを浮かせて区切る
+   - **余白（spacing）**: `gap-4` や `py-4` で自然な区切りを作る
+8. **アクセントボーダーで個性を出す** — 左端の装飾線（`border-l-4 border-[var(--theme-primary)]`）はカードに視覚的アクセントを与える。全辺のボーダーより軽く、かつ印象的
+
+#### 近接と関連性（Law of Proximity & Common Region）
+
+9. **関連要素はグループ化し、無関係な要素は離す** — 同じ機能グループのコンポーネントは `gap-2` で密接に配置し、異なるセクション間は `gap-4` 以上で区切る。等間隔に並べると機能的な違いが読み取れなくなる
+10. **共通領域の法則** — 背景色やカード（`rounded-xl bg-white/80`）で囲むことで、要素の関連性を視覚的に示す。ボーダーだけでなく背景色の変化も「グループ」を表現する手段
+
+#### 美的ユーザビリティ効果（Aesthetic-Usability Effect）
+
+11. **見た目が美しいデザインは、ユーザーに「使いやすい」と感じさせる** — 軽微なユーザビリティの問題は、視覚的に洗練されたデザインによって許容される。逆に見た目が雑だと、機能的に正しくてもユーザーは不満を感じる。デザインの美しさへの投資は UX 品質に直結する
+
+#### リファレンス
+
+- **出典**: [Refactoring UI](https://www.refactoringui.com/) — "You don't have to fill the whole screen" (p.65), "Establish a spacing and sizing system" (p.60)
+- **出典**: [Laws of UX](https://lawsofux.com/) — Aesthetic-Usability Effect, Law of Proximity, Law of Common Region
+- **出典**: [7 Practical Tips for Cheating at Design](https://medium.com/refactoring-ui/7-practical-tips-for-cheating-at-design-40c736799886) — 色・太さの階層、ボーダー削減、アクセントボーダー、ボタン階層
+- **良い例**: `app/[locale]/page.tsx` — 右カラムに `max-w-[960px]` で幅制約、余白はページ背景色で処理
+- **悪い例（修正済み）**: 右カラムに `max-width` なし → 1920px で全幅に引き延ばされ、カードが巨大化
+
 ### リーダーボード / ランキング統一ルール（変更厳禁）
 
 **ユーザーから繰り返し指摘されている仕様。改善ループやリファクタリングで勝手に変更してはならない。**

@@ -248,11 +248,13 @@ export default async function Home() {
           />
         </div>
 
-        {/* 右カラム: ウィジェット群（スクロール可能） */}
+        {/* 右カラム: ウィジェット群（スクロール可能）
+             Refactoring UI: "You don't have to fill the whole screen"
+             — max-w-[960px] でカードの水平引き伸ばしを防止 */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-4 lg:px-6 py-4 lg:py-5 flex flex-col gap-4">
+          <div className="max-w-[960px] px-4 lg:px-6 xl:px-8 py-4 lg:py-5 flex flex-col gap-4">
 
-            {/* アクティビティサマリー */}
+            {/* アクティビティサマリー（チャートがあるため全幅） */}
             <StepCalendar
               userId={userId}
               showCalendar={false}
@@ -267,20 +269,20 @@ export default async function Home() {
               }}
             />
 
-            {/* デイリーミッション */}
-            <DailyMissions />
-
-            {/* アクティブチャレンジ */}
-            <DashboardChallenges />
-
-            {/* フォロー中ユーザー */}
-            <FollowingPanel />
+            {/* デイリーミッション + アクティブチャレンジ: 2カラムグリッドで密度向上 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <DailyMissions />
+              <DashboardChallenges />
+            </div>
 
             {/* リーダーボード */}
             <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
 
+            {/* フォロー中ユーザー */}
+            <FollowingPanel />
+
             {/* おすすめギア + 人気ギア */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PersonalizedGear />
               <TrendingGear userId={userId} />
             </div>
