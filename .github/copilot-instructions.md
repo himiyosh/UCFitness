@@ -573,8 +573,8 @@ export const runtime = "edge";
 
 ## JPUCSupport 共通ルール準拠セクション
 
-> 以下のセクションは [unified-project-rules.md](../unified-project-rules.md) に基づき、
-> JPUCSupport 組織配下の全プロジェクトで統一されたルールを UCFitness 向けに適用したもの。
+> 以下のセクションは JPUCSupport 組織配下の全プロジェクトで統一されたルールを
+> UCFitness 向けに適用したもの。
 
 ### README 同期 (必須)
 

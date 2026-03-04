@@ -123,7 +123,6 @@ UCFitness/
 +-- i18n.ts                  # next-intl 設定
 +-- next.config.ts           # Next.js 設定
 +-- vitest.config.ts         # Vitest テスト設定
-+-- unified-project-rules.md # JPUCSupport 共通ルール
 ```
 
 ## セットアップ
@@ -276,7 +275,6 @@ npm run test:coverage
 | ドキュメント | 説明 |
 |---|---|
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Copilot 共通指示 (コーディング規約、ページパターン等) |
-| [unified-project-rules.md](unified-project-rules.md) | JPUCSupport 組織共通ルール |
 | [docs/improvement-report.md](docs/improvement-report.md) | 改善レポート |
 | [docs/security-hardening-notes.md](docs/security-hardening-notes.md) | セキュリティ強化メモ |
 | [.env.local.example](.env.local.example) | 環境変数テンプレート |
