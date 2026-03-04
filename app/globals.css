@@ -409,7 +409,7 @@ html {
     radial-gradient(ellipse 40% 35% at 50% 50%, rgba(56, 189, 248, 0.04) 0%, transparent 60%),
     linear-gradient(160deg, #1e293b 0%, #0f172a 35%, #020617 100%) !important;
   background-attachment: fixed !important;
-  min-height: calc(100vh / 0.9);
+  min-height: 100vh;
 }
 
 /* Shimmer animation for premium card edges */
@@ -1289,17 +1289,17 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-  zoom: 0.9;
+  /* zoom: 0.9 を廃止 — ビューポート全体がずれる原因だった */
+  overflow-x: hidden; /* FloatingEmojis 等の absolute 要素による水平スクロール防止 */
 }
 
 /* スティッキーフッター: コンテンツが少ない場合もフッターをビューポート最下部に固定 */
-/* zoom: 0.9 により 100vh/100% が視覚的に90%に縮小されるため、1/0.9 で補正 */
 html {
   height: 100%;
 }
 
 body {
-  min-height: calc(100% / 0.9);
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }

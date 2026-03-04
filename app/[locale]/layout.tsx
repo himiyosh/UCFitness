@@ -87,8 +87,8 @@ export default async function LocaleLayout({
 
                 <LanguageSyncer user={session?.user as any} />
                 {session && <FloatingEmojis />}
-                {/* pb-14: ボトムナビの高さ (56px) 分の余白を確保 */}
-                <div id="main-content" className="relative flex flex-col pb-14 sm:pb-0" style={{ zIndex: 20 }}>
+                {/* pb-16: BottomNav h-16 (64px) 分の余白を確保 */}
+                <div id="main-content" className="relative flex flex-col pb-16 sm:pb-0" style={{ zIndex: 20 }}>
                   {children}
                 </div>
                 {/* モバイル用固定ボトムナビゲーション (認証済みユーザーのみ) */}

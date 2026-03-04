@@ -65,9 +65,9 @@ export default function HomePortal({
   ], [t]);
 
   return (
-    // モバイル: 100dvh からヘッダー(48px) + ボトムナビ(56px) を差し引いた固定高さ
+    // モバイル: 100dvh からヘッダー(48px) + ボトムナビ(64px) を差し引いた固定高さ
     // デスクトップ: 自然な高さ（サイドバー側で overflow-y-auto を担当）
-    <div className="flex flex-col h-[calc(100dvh-48px-56px)] sm:h-auto overflow-hidden sm:overflow-visible">
+    <div className="flex flex-col h-[calc(100dvh-48px-64px)] sm:h-auto overflow-hidden sm:overflow-visible">
 
       {/* ===== ヒーローセクション ===== */}
       <section

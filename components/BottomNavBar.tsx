@@ -44,7 +44,7 @@ export default function BottomNavBar() {
             >
               {/* M3 Active Indicator (pill) */}
               <span
-                className={`absolute top-1 flex items-center justify-center w-16 h-8 rounded-full m3-transition ${
+                className={`absolute top-0.5 flex items-center justify-center w-16 h-7 rounded-full m3-transition ${
                   isActive
                     ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
                     : 'scale-75 opacity-0'
