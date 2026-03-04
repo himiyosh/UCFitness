@@ -409,7 +409,7 @@ html {
     radial-gradient(ellipse 40% 35% at 50% 50%, rgba(56, 189, 248, 0.04) 0%, transparent 60%),
     linear-gradient(160deg, #1e293b 0%, #0f172a 35%, #020617 100%) !important;
   background-attachment: fixed !important;
-  min-height: calc(100vh / 0.9);
+  /* transform scale 方式では body の min-height が既に 1/0.9 補正済み */
 }
 
 /* Shimmer animation for premium card edges */
@@ -1285,24 +1285,25 @@ html {
 /* OSのdark modeはアプリのdata-themeシステムで管理するため無効化 */
 /* @media (prefers-color-scheme: dark) {} */
 
+/* === 0.9x スケーリング ===
+   zoom プロパティはブラウザによってビューポート端にギャップが生じる。
+   代わりに transform: scale を使用し、width/height を 1/0.9 に拡張して
+   ビューポート全体をカバーする方式に変更。 */
+html {
+  height: 100%;
+  overflow: hidden; /* スケーリングで拡張された body のはみ出しをクリップ */
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-  zoom: 0.9;
-  overflow-x: hidden; /* zoom による横幅拡張 + FloatingEmojis の水平はみ出し防止 */
-}
-
-/* スティッキーフッター: コンテンツが少ない場合もフッターをビューポート最下部に固定 */
-/* zoom: 0.9 により body は viewport の 90% に縮小されるため、
-   min-height を 1/0.9 で補正してビューポート全体をカバーする */
-html {
-  height: 100%;
-  overflow-x: hidden; /* zoom で横に拡張された body のはみ出しをクリップ */
-}
-
-body {
-  min-height: calc(100% / 0.9);
+  transform: scale(0.9);
+  transform-origin: top left;
+  width: calc(100% / 0.9);   /* 111.11% — スケール後に viewport 幅にフィット */
+  min-height: calc(100vh / 0.9); /* 111.11% — スケール後に viewport 高さにフィット */
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
