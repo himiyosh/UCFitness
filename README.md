@@ -113,6 +113,9 @@ UCFitness/
 +-- public/                  # 静的ファイル (PWA マニフェスト、アイコン)
 +-- scripts/                 # ユーティリティスクリプト
 +-- docs/                    # ドキュメント
+|   +-- CLOUDFLARE_SETUP.md  # Cloudflare Pages セットアップ手順
+|   +-- improvement-report.md
+|   +-- security-hardening-notes.md
 +-- .github/
 |   +-- copilot-instructions.md  # Copilot 共通指示
 |   +-- instructions/            # 補助 Instructions (18 ファイル)
