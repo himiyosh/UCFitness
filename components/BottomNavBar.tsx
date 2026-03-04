@@ -35,26 +35,26 @@ export default function BottomNavBar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] m3-transition ${
+              className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[44px] m3-transition ${
                 isActive
                   ? 'text-[var(--theme-primary)]'
                   : 'text-gray-400 hover:text-gray-600'
               }`}
               aria-current={isActive ? 'page' : undefined}
             >
-              {/* M3 Active Indicator (pill) */}
+              {/* M3 Active Indicator (pill) — アイコン背景のみ */}
               <span
-                className={`absolute top-0.5 flex items-center justify-center w-16 h-7 rounded-full m3-transition ${
+                className={`absolute top-1 w-14 h-7 rounded-full m3-transition ${
                   isActive
                     ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
                     : 'scale-75 opacity-0'
                 }`}
                 aria-hidden="true"
               />
-              <span className="relative z-10">
+              <span className="relative z-10 mt-1">
                 <item.icon active={isActive} />
               </span>
-              <span className={`relative z-10 text-[10px] leading-tight font-medium ${isActive ? 'font-semibold' : ''}`}>
+              <span className={`relative z-10 text-[10px] leading-none mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>
                 {item.label}
               </span>
             </Link>

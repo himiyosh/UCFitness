@@ -792,6 +792,7 @@
         "stepsUnit": "歩",
         "emptyMessage": "まだアクティビティがありません",
         "emptyHint": "ユーザーをフォローすると、ここに活動が表示されます",
+        "findUsers": "ユーザーを見つける",
         "loadMore": "もっと見る",
         "loading": "読み込み中...",
         "errorMessage": "フィードの読み込みに失敗しました",

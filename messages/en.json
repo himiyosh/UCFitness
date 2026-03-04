@@ -790,6 +790,7 @@
         "stepsUnit": "steps",
         "emptyMessage": "No activity yet",
         "emptyHint": "Follow users to see their activities here",
+        "findUsers": "Find Users",
         "loadMore": "Load More",
         "loading": "Loading...",
         "errorMessage": "Failed to load feed",
