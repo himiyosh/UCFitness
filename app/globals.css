@@ -409,7 +409,7 @@ html {
     radial-gradient(ellipse 40% 35% at 50% 50%, rgba(56, 189, 248, 0.04) 0%, transparent 60%),
     linear-gradient(160deg, #1e293b 0%, #0f172a 35%, #020617 100%) !important;
   background-attachment: fixed !important;
-  min-height: 100vh;
+  min-height: calc(100vh / 0.9);
 }
 
 /* Shimmer animation for premium card edges */
@@ -1289,17 +1289,20 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-  /* zoom: 0.9 を廃止 — ビューポート全体がずれる原因だった */
-  overflow-x: hidden; /* FloatingEmojis 等の absolute 要素による水平スクロール防止 */
+  zoom: 0.9;
+  overflow-x: hidden; /* zoom による横幅拡張 + FloatingEmojis の水平はみ出し防止 */
 }
 
 /* スティッキーフッター: コンテンツが少ない場合もフッターをビューポート最下部に固定 */
+/* zoom: 0.9 により body は viewport の 90% に縮小されるため、
+   min-height を 1/0.9 で補正してビューポート全体をカバーする */
 html {
   height: 100%;
+  overflow-x: hidden; /* zoom で横に拡張された body のはみ出しをクリップ */
 }
 
 body {
-  min-height: 100%;
+  min-height: calc(100% / 0.9);
   display: flex;
   flex-direction: column;
 }
