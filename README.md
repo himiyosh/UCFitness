@@ -119,7 +119,10 @@ UCFitness/
 +-- .github/
 |   +-- copilot-instructions.md  # Copilot 共通指示
 |   +-- instructions/            # 補助 Instructions (18 ファイル)
-|   +-- agents/                  # Copilot カスタムエージェント
+|   |   +-- awesome-copilot/     # awesome-copilot から導入 (8 ファイル)
+|   +-- agents/                  # Copilot カスタムエージェント (7 ファイル)
+|   +-- skills/                  # Copilot スキル (3 スキル)
+|   +-- prompts/                 # Copilot カスタムプロンプト
 |   +-- prompts/                 # Copilot カスタムプロンプト
 +-- middleware.ts            # i18n ミドルウェア
 +-- navigation.ts            # next-intl ナビゲーション設定
@@ -211,11 +214,43 @@ npm run pages:build
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | メイン指示 (コーディング規約、ページパターン、UI ルール等) |
 | [.github/instructions/](.github/instructions/) | 補助 Instructions (18 ファイル: a11y, hooks, security, mobile 等) |
 
+<details>
+<summary>awesome-copilot Instructions (クリックで展開)</summary>
+
+[github/awesome-copilot](https://github.com/github/awesome-copilot) から導入した補助 Instructions:
+
+| ファイル | 対象 | 用途 |
+|---|---|---|
+| [nextjs.instructions.md](.github/instructions/awesome-copilot/nextjs.instructions.md) | Next.js | App Router / RSC / Server Actions ベストプラクティス |
+| [nextjs-tailwind.instructions.md](.github/instructions/awesome-copilot/nextjs-tailwind.instructions.md) | Next.js + Tailwind | Tailwind CSS 統合パターン |
+| [reactjs.instructions.md](.github/instructions/awesome-copilot/reactjs.instructions.md) | React | コンポーネント設計・Hooks・状態管理 |
+| [a11y.instructions.md](.github/instructions/awesome-copilot/a11y.instructions.md) | アクセシビリティ | WCAG 2.1 AA 準拠ガイダンス |
+| [performance-optimization.instructions.md](.github/instructions/awesome-copilot/performance-optimization.instructions.md) | パフォーマンス | Web Vitals・バンドル最適化・キャッシュ戦略 |
+| [security-and-owasp.instructions.md](.github/instructions/awesome-copilot/security-and-owasp.instructions.md) | セキュリティ | OWASP Top 10 対策・入力検証 |
+| [typescript-5-es2022.instructions.md](.github/instructions/awesome-copilot/typescript-5-es2022.instructions.md) | TypeScript | TS 5 / ES2022 コーディング規約 |
+| [playwright-typescript.instructions.md](.github/instructions/awesome-copilot/playwright-typescript.instructions.md) | テスト | Playwright E2E テスト生成ガイド |
+
+</details>
+
 ### カスタムエージェント
 
 | 名前 | 説明 |
 |---|---|
 | [UCFitnessAgent](.github/agents/UCFitnessAgent.agent.md) | UCFitness 専用の開発支援エージェント |
+
+<details>
+<summary>awesome-copilot エージェント (クリックで展開)</summary>
+
+| 名前 | ソース | 用途 |
+|---|---|---|
+| [Expert Next.js Developer](.github/agents/expert-nextjs-developer.agent.md) | awesome-copilot | Next.js 15 App Router 専門開発者 |
+| [Expert React Frontend Engineer](.github/agents/expert-react-frontend-engineer.agent.md) | awesome-copilot | React フロントエンド専門家 |
+| [SE Security Reviewer](.github/agents/se-security-reviewer.agent.md) | awesome-copilot | セキュリティレビュー・OWASP 監査 |
+| [SE UX/UI Designer](.github/agents/se-ux-ui-designer.agent.md) | awesome-copilot | UX/UI デザインレビュー・改善提案 |
+| [Accessibility](.github/agents/accessibility.agent.md) | awesome-copilot | アクセシビリティ監査・WCAG 準拠 |
+| [Playwright Tester](.github/agents/playwright-tester.agent.md) | awesome-copilot | E2E テスト生成・Playwright |
+
+</details>
 
 ### カスタムプロンプト
 
@@ -246,6 +281,20 @@ npm run pages:build
 | `/agents/ui-ux` | UI/UX 改善 |
 
 </details>
+
+### Skills (awesome-copilot)
+
+| スキル | 用途 |
+|---|---|
+| [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
+| [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |
+| [next-intl-add-language](.github/skills/next-intl-add-language/SKILL.md) | next-intl 翻訳キー追加ワークフロー |
+
+### MCP Server
+
+| MCP | 用途 |
+|---|---|
+| [awesome-copilot](.vscode/mcp.json) | github/awesome-copilot の検索・インストール MCP (Docker 必須) |
 
 ## テスト方法
 
