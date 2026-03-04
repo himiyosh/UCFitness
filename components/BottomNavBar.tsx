@@ -20,11 +20,11 @@ export default function BottomNavBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/95 backdrop-blur-md border-t border-gray-200 safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/90 backdrop-blur-xl border-t border-gray-200/60 safe-area-bottom m3-nav-bar"
       role="navigation"
       aria-label={t('label')}
     >
-      <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
+      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map((item) => {
           // ホームは完全一致、他はプレフィックス一致
           const isActive = item.href === '/'
@@ -35,15 +35,26 @@ export default function BottomNavBar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] transition-colors ${
+              className={`relative flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] m3-transition ${
                 isActive
                   ? 'text-[var(--theme-primary)]'
                   : 'text-gray-400 hover:text-gray-600'
               }`}
               aria-current={isActive ? 'page' : undefined}
             >
-              <item.icon active={isActive} />
-              <span className={`text-xs font-medium ${isActive ? 'font-semibold' : ''}`}>
+              {/* M3 Active Indicator (pill) */}
+              <span
+                className={`absolute top-1 flex items-center justify-center w-16 h-8 rounded-full m3-transition ${
+                  isActive
+                    ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
+                    : 'scale-75 opacity-0'
+                }`}
+                aria-hidden="true"
+              />
+              <span className="relative z-10">
+                <item.icon active={isActive} />
+              </span>
+              <span className={`relative z-10 text-[10px] leading-tight font-medium ${isActive ? 'font-semibold' : ''}`}>
                 {item.label}
               </span>
             </Link>

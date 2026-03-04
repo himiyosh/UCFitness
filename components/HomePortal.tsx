@@ -71,48 +71,49 @@ export default function HomePortal({
 
       {/* ===== ヒーローセクション ===== */}
       <section
-        className="relative flex-shrink-0 bg-gradient-to-br from-[var(--theme-gradient-from)] via-[var(--theme-secondary)] to-[var(--theme-gradient-to)] text-white px-4 pt-3 pb-4 sm:px-6 sm:pt-6 sm:pb-8"
+        className="relative flex-shrink-0 bg-gradient-to-br from-[var(--theme-gradient-from)] via-[var(--theme-secondary)] to-[var(--theme-gradient-to)] text-white px-4 pt-3 pb-5 sm:px-6 sm:pt-6 sm:pb-8 overflow-hidden"
         aria-label={pt('heroLabel')}
       >
-        {/* 装飾 */}
-        <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
-        <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" aria-hidden="true" />
+        {/* 装飾 — Apple-style mesh gradient feel */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 bg-white/8 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 -ml-12 -mb-12 w-40 h-40 bg-white/8 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" aria-hidden="true" />
 
         <div className="relative z-10 flex items-center gap-4 sm:gap-6 max-w-lg mx-auto">
-          {/* 歩数リング */}
+          {/* 歩数リング — Apple Watch風 */}
           <div className="relative flex-shrink-0">
-            <svg className="w-24 h-24 sm:w-28 sm:h-28 -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+            <svg className="w-[104px] h-[104px] sm:w-[120px] sm:h-[120px] -rotate-90 drop-shadow-lg" viewBox="0 0 100 100" aria-hidden="true">
               {/* 背景リング */}
-              <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
-              {/* 進捗リング */}
+              <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" />
+              {/* 進捗リング — Round cap + subtle glow */}
               <circle
                 cx="50" cy="50" r={ringRadius}
-                fill="none" stroke="#fff" strokeWidth="8"
+                fill="none" stroke="#fff" strokeWidth="7"
                 strokeLinecap="round"
                 strokeDasharray={ringCircumference}
                 strokeDashoffset={ringOffset}
-                className="transition-all duration-1000 ease-out"
+                className="transition-all duration-1000 ring-glow"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-lg sm:text-xl font-black leading-none">{todaySteps.toLocaleString()}</span>
-              <span className="text-[10px] sm:text-xs opacity-80 mt-0.5">/ {stepGoal.toLocaleString()}</span>
+              <span className="text-xl sm:text-2xl font-black leading-none tracking-tight">{todaySteps.toLocaleString()}</span>
+              <span className="text-[10px] sm:text-xs opacity-70 mt-0.5 font-medium">/ {stepGoal.toLocaleString()}</span>
             </div>
           </div>
 
           {/* 統計情報 */}
-          <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="flex-1 min-w-0 space-y-2">
             {/* ユーザー挨拶 */}
             <div className="flex items-center gap-2">
               <UserAvatar src={userImage} name={userName || username} size="sm" />
-              <p className="text-sm sm:text-base font-bold truncate">
+              <p className="text-sm sm:text-base font-bold truncate tracking-tight">
                 {userName || username}
               </p>
             </div>
 
-            {/* 歩数達成率 */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold bg-white/20 rounded-full px-2 py-0.5">
+            {/* 歩数達成率 — M3 chip 風 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1">
                 {progressPercent}% {progressPercent >= 100 ? '🎉' : progressPercent >= 50 ? '🔥' : '👟'}
               </span>
               <span className={`text-xs font-medium ${vsDiff >= 0 ? 'text-green-200' : 'text-red-200'}`}>
@@ -120,21 +121,21 @@ export default function HomePortal({
               </span>
             </div>
 
-            {/* 週間・月間・ランク */}
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className="text-xs sm:text-sm font-bold">{formatK(weeklySteps)}</div>
-                <div className="text-[10px] sm:text-xs opacity-70">{t('thisWeek')}</div>
+            {/* 週間・月間・ランク — Apple HIG 風の統計グリッド */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl py-1.5 px-1">
+                <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(weeklySteps)}</div>
+                <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{t('thisWeek')}</div>
               </div>
-              <div>
-                <div className="text-xs sm:text-sm font-bold">{formatK(monthlySteps)}</div>
-                <div className="text-[10px] sm:text-xs opacity-70">{t('thisMonth')}</div>
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl py-1.5 px-1">
+                <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(monthlySteps)}</div>
+                <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{t('thisMonth')}</div>
               </div>
-              <div>
-                <div className="text-xs sm:text-sm font-bold">
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl py-1.5 px-1">
+                <div className="text-sm sm:text-base font-bold tracking-tight">
                   {globalRank ? `#${globalRank}` : '—'}
                 </div>
-                <div className="text-[10px] sm:text-xs opacity-70">{pt('rank')}</div>
+                <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{pt('rank')}</div>
               </div>
             </div>
           </div>
@@ -143,15 +144,17 @@ export default function HomePortal({
 
       {/* ===== クイックアクション ===== */}
       <section className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 bg-[var(--theme-page-bg)]" aria-label={pt('quickActions')}>
-        <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-lg mx-auto">
+        <div className="grid grid-cols-4 gap-2.5 sm:gap-3 max-w-lg mx-auto">
           {quickActions.map((action) => (
             <Link
               key={action.href}
               href={action.href}
-              className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow min-h-[72px]"
+              className="group relative flex flex-col items-center justify-center gap-2 py-3.5 rounded-2xl bg-white border border-gray-100/80 min-h-[76px] m3-transition card-elevated"
             >
-              <span className="text-2xl sm:text-3xl">{action.emoji}</span>
-              <span className="text-xs font-semibold text-gray-700">{action.label}</span>
+              {/* M3 State Layer */}
+              <span className="absolute inset-0 rounded-2xl bg-[var(--theme-primary)] opacity-0 group-hover:opacity-[0.08] group-active:opacity-[0.12] transition-opacity duration-200 pointer-events-none" aria-hidden="true" />
+              <span className="text-2xl sm:text-3xl transition-transform duration-300 group-hover:scale-110 group-active:scale-95 spring-transition">{action.emoji}</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-gray-600 group-hover:text-gray-900 transition-colors duration-200">{action.label}</span>
             </Link>
           ))}
         </div>

@@ -1,6 +1,162 @@
 @import "tailwindcss";
 
-/* ==== Noto Sans JP フォント読み込み ==== */
+/* ==== M3 / Apple HIG デザインシステム基盤 ==== */
+
+/* --- グローバルフォント & スムージング --- */
+body {
+  font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* --- M3 Motion トークン (Apple の spring-like イージング) --- */
+:root {
+  /* M3 Emphasized: メインのページ遷移・モーダル */
+  --motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --motion-emphasized-duration: 500ms;
+  /* M3 Standard: カード・ボタンなどの日常的なインタラクション */
+  --motion-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-standard-duration: 300ms;
+  /* M3 Deemphasized: 微細なフィードバック */
+  --motion-deemphasized: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --motion-deemphasized-duration: 200ms;
+  /* Apple-style spring (CSS approximation) */
+  --spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --- M3 Shape トークン (Continuous corner radius) --- */
+:root {
+  --radius-xs: 4px;    /* chip badge 等 */
+  --radius-sm: 8px;    /* small buttons, input */
+  --radius-md: 12px;   /* cards, dialogs */
+  --radius-lg: 16px;   /* large cards, sheets */
+  --radius-xl: 24px;   /* FAB, bottom sheet */
+  --radius-full: 9999px; /* pill */
+}
+
+/* --- M3 Surface Tint (Tonal elevation) --- */
+:root {
+  --surface-dim: rgba(0, 0, 0, 0.03);
+  --surface-base: rgba(255, 255, 255, 1);
+  --surface-container-lowest: rgba(255, 255, 255, 1);
+  --surface-container-low: rgba(247, 248, 250, 1);
+  --surface-container: rgba(243, 244, 248, 1);
+  --surface-container-high: rgba(236, 238, 243, 1);
+  --surface-container-highest: rgba(229, 231, 237, 1);
+}
+
+/* --- M3 ユーティリティクラス --- */
+/* Surface containers */
+.surface-base { background: var(--surface-base); }
+.surface-container-low { background: var(--surface-container-low); }
+.surface-container { background: var(--surface-container); }
+.surface-container-high { background: var(--surface-container-high); }
+
+/* M3 カードスタイル (Elevated / Filled / Outlined) */
+.card-elevated {
+  background: var(--surface-container-low);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow var(--motion-standard-duration) var(--motion-standard),
+              transform var(--motion-standard-duration) var(--motion-standard);
+}
+.card-elevated:hover {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+}
+.card-filled {
+  background: var(--surface-container-high);
+  border-radius: var(--radius-md);
+  transition: background var(--motion-standard-duration) var(--motion-standard);
+}
+.card-outlined {
+  background: var(--surface-base);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-md);
+}
+
+/* M3 ボタンスタイル */
+.btn-filled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 24px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  background: var(--theme-primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: all var(--motion-standard-duration) var(--motion-standard);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.btn-filled:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+  filter: brightness(1.05);
+}
+.btn-filled:active {
+  transform: scale(0.97);
+}
+
+.btn-tonal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 24px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  background: var(--theme-primary-light);
+  color: var(--theme-primary);
+  border: none;
+  cursor: pointer;
+  transition: all var(--motion-standard-duration) var(--motion-standard);
+}
+.btn-tonal:hover {
+  background: color-mix(in srgb, var(--theme-primary) 15%, var(--theme-primary-light));
+}
+.btn-tonal:active {
+  transform: scale(0.97);
+}
+
+/* Apple-style glass morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* M3 State Layer (hover/press/focus の視覚フィードバック) */
+.state-layer {
+  position: relative;
+  overflow: hidden;
+}
+.state-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--motion-deemphasized-duration) var(--motion-deemphasized);
+  pointer-events: none;
+}
+.state-layer:hover::after { opacity: 0.08; }
+.state-layer:focus-visible::after { opacity: 0.12; }
+.state-layer:active::after { opacity: 0.12; }
+
+/* Noto Sans JP フォント読み込み ==== */
 
 /* ==== SAFE AREA (iPhone ノッチ・ジェスチャーバー対応) ==== */
 .safe-area-bottom {
@@ -1494,6 +1650,98 @@ button:not(:disabled) {
     transform: translateX(25px);
   }
 }
+
+/* ==== M3 / Apple HIG グローバルインタラクション改善 ==== */
+
+/* --- 汎用のスムーズ遷移 (全テーマ共通) --- */
+/* リンクとボタンにデフォルトで M3 standard motion を適用 */
+a, button, [role="button"] {
+  transition-timing-function: var(--motion-standard);
+}
+
+/* --- M3 Navigation Bar (Bottom Nav) midnight 対応 --- */
+[data-theme="midnight"] nav[role="navigation"] {
+  background: rgba(15, 23, 42, 0.88) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  border-top-color: rgba(100, 116, 139, 0.2) !important;
+}
+[data-theme="midnight"] nav[role="navigation"] a {
+  color: rgba(148, 163, 184, 0.7);
+}
+[data-theme="midnight"] nav[role="navigation"] a[aria-current="page"] {
+  color: #818cf8 !important;
+}
+/* M3 Active Indicator pill — midnight のテーマ色対応 */
+[data-theme="midnight"] nav[role="navigation"] a[aria-current="page"] > span:first-child {
+  background: rgba(99, 102, 241, 0.2) !important;
+}
+
+/* --- Apple-style list separator (ヘアライン) --- */
+.hairline-separator {
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+[data-theme="midnight"] .hairline-separator {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+/* --- M3 Hero Section のスタット glassmorphism — midnight 対応 --- */
+[data-theme="midnight"] .bg-white\/10 {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+[data-theme="midnight"] .bg-white\/8 {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* --- M3 Quick Action cards — midnight 対応 --- */
+[data-theme="midnight"] .group span[class*="bg-\[var(--theme-primary)\]"] {
+  background: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* --- Apple-style Haptic Feel: active ボタン押下効果 --- */
+.press-scale {
+  transition: transform var(--motion-deemphasized-duration) var(--spring);
+}
+.press-scale:active {
+  transform: scale(0.96);
+}
+
+/* --- M3 Transition ユーティリティ --- */
+.m3-transition {
+  transition: all var(--motion-standard-duration) var(--motion-standard);
+}
+.spring-transition {
+  transition-timing-function: var(--spring);
+}
+
+/* --- M3 Navigation Bar Glass base --- */
+.m3-nav-bar {
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* --- Apple Watch 風リング glow --- */
+.ring-glow {
+  transition-timing-function: var(--spring);
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.4));
+}
+
+/* --- M3 Typography Scale (デザイントークン) --- */
+.display-large { font-size: 57px; line-height: 64px; letter-spacing: -0.25px; font-weight: 400; }
+.display-medium { font-size: 45px; line-height: 52px; font-weight: 400; }
+.display-small { font-size: 36px; line-height: 44px; font-weight: 400; }
+.headline-large { font-size: 32px; line-height: 40px; font-weight: 400; }
+.headline-medium { font-size: 28px; line-height: 36px; font-weight: 400; }
+.headline-small { font-size: 24px; line-height: 32px; font-weight: 400; }
+.title-large { font-size: 22px; line-height: 28px; font-weight: 500; }
+.title-medium { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
+.title-small { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.label-large { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.label-medium { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+.label-small { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+.body-large { font-size: 16px; line-height: 24px; font-weight: 400; letter-spacing: 0.5px; }
+.body-medium { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0.25px; }
+.body-small { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0.4px; }
+
 
 /* Wiggle animation for playful elements */
 @keyframes wiggle {
