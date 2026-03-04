@@ -568,3 +568,115 @@ export const runtime = "edge";
   - 対象コンポーネント自体を `'use client'` にし、その中で `import` する（通常はこれで十分）
   - または中間の Client Component ラッパーを作り、そこで `dynamic(() => import(...), { ssr: false })` する
 - 参考: `GroupAnalytics.tsx`（Client Component 内で `ssr: false`）✅ / `wallet/page.tsx`（Server Component で `ssr: false` → ビルドエラー）❌
+
+---
+
+## JPUCSupport 共通ルール準拠セクション
+
+> 以下のセクションは [unified-project-rules.md](../unified-project-rules.md) に基づき、
+> JPUCSupport 組織配下の全プロジェクトで統一されたルールを UCFitness 向けに適用したもの。
+
+### README 同期 (必須)
+
+- コード変更時に関連する README セクションを**必ず同一コミットで更新**する
+- 対象: ファイル追加/削除、ディレクトリ構造変更、機能追加/変更、API エンドポイント変更、設定ファイルの構造変更、翻訳キー追加
+- 「次回更新する」という先送りは禁止
+- Copilot Instructions (本ファイル) も同様 --- コード変更がルール・インストラクションに影響する場合は同一コミットで更新
+
+### ファイル命名規則
+
+- **ファイル名**: 英語のみ。日本語ファイル名は禁止 (URL エンコーディング問題回避)
+- **コンポーネント**: PascalCase (`UserMenu.tsx`, `ActivityFeed.tsx`)
+- **ユーティリティ / lib**: camelCase (`pushMessages.ts`) またはケバブケース (`push-messages.ts`)
+- **設定ファイル**: `.env` (本番用) は `.gitignore` に追加、`.env.example` をコミットしてプレースホルダー値を記載
+- **翻訳ファイル**: `messages/ja.json`, `messages/en.json` の 2 ファイル構成
+
+### エンコーディング (Node.js / TypeScript)
+
+- ソースファイルは **UTF-8 (BOM なし)** で保存
+- ファイル I/O 時は必ずエンコーディングを明示指定する
+- コンソール出力に絵文字を使用禁止 --- ASCII マーカー (`OK:`, `ERR:`, `SKIP:`, `WARN:`) を使用すること
+- Markdown ファイル (`.md`) を編集した後は、必ず U+FFFD スキャンを実行すること (BMP 外絵文字の文字化け防止)
+- ログファイルはスクリプト内部で UTF-8 明示指定で実装し、シェルリダイレクト (`>`, `Tee-Object`) に依存しない
+
+### セキュリティ / シークレット管理
+
+- **絶対禁止**: シークレット (パスワード、API キー、トークン、Supabase サービスロールキー、NextAuth シークレット) をソースコードにハードコードしてはならない
+- **設定ファイル戦略**:
+  - `.env` / `.env.local` は `.gitignore` に追加済み
+  - `.env.example` をコミットし、プレースホルダー値を記載
+- **サーバーサイドのみ**: `supabaseAdmin` (サービスロールキー使用) はサーバーコンポーネント・API ルートのみで使用。クライアントに露出させない
+- **Fitbit API トークン**: OAuth リフレッシュトークンは DB に保存し、アクセストークンはメモリ内で短命管理
+- **`console.log` でのシークレット出力禁止**: デバッグ時もトークン・キーをログに含めない
+
+### 社内コンプライアンスポリシー (CSS Data Policy)
+
+> **参照ポリシー**:
+> - Article 5072448: [Guidance for Support Engineers in using Copilot Chat/Agent](https://internal.evergreen.microsoft.com/en-us/topic/2551d022-d53d-4abc-c733-4aa959b7fb87)
+> - Article 4457137: [Handling support data (commercial customers)](https://internal.evergreen.microsoft.com/en-us/topic/e7f0b758-57f8-41e9-1b42-fbea2fab36cf)
+
+#### 絶対遵守事項
+
+1. **PII 禁止**: お客様の PII (氏名、メールアドレス、電話番号、テナント ID 等) をプロンプトに入力してはならない
+2. **パスワード禁止**: お客様のパスワードの送受信は絶対禁止
+3. **MCP 制限**: TrIP 承認済みの MCP サーバーのみ使用可。オープンソース MCP サーバーでの顧客データ処理は禁止
+4. **データ転送**: サポートデータの転送は **DTMv2 のみ**。メール添付、OneDrive、Teams 共有は禁止
+5. **データ削除**: トラブルシューティング完了後は Copilot ログおよびサポートデータのローカルコピーを速やかに削除
+6. **使用アカウント**: @microsoft.com アカウントまたは紐づいた GitHub Enterprise アカウントのみ
+
+### テスト / 品質保証
+
+- コード修正後は**必ず型チェック (`npx tsc --noEmit`) とリント (`npx next lint`) を実行**し、PASS を確認してから完了報告する
+- Vitest テストがある場合は `npx vitest run` で関連テストも実行する
+- 既存テストが失敗した場合は**実装バグを先に疑う** --- テストコード修正が必要な場合はユーザーに確認する
+- テスト用設定値を本番設定に混入させない
+- テスト後のクリーンアップ (一時ファイル、テストブランチの削除) を必ず実施
+- **`.next` キャッシュ破損注意**: `npx next build` 実行後は `.next` ディレクトリを削除すること (型チェックには `tsc --noEmit` を優先)
+
+### 自動実行の安全制約
+
+#### 破壊的・不可逆操作の禁止
+
+以下の操作は**ユーザーの明示的な承認なしに実行してはならない**:
+
+- `git push --force` / `git reset --hard` / 公開済みコミットの amend
+- ファイル/ブランチの削除 (`rm -rf`, `git branch -D`)
+- データベースへの書き込み・削除操作 (Supabase)
+- 外部サービスへの投稿 (PR コメント、Teams メッセージ送信)
+- 本番環境への変更適用 (Cloudflare Pages デプロイ)
+
+#### 安全チェック回避の禁止
+
+- `--no-verify` / `--force` / `-f` 等の安全チェックバイパスオプションは使用禁止
+- CI/CD パイプラインの手動スキップは禁止
+
+#### 自動実行の原則
+
+| 操作 | ユーザー確認 |
+|---|---|
+| 作業ブランチへの `git push` | 不要 (自動実行 OK) |
+| PR の作成 (`gh pr create`) | 不要 (自動実行 OK) |
+| PR のマージ (`gh pr merge`) | **必須** |
+| `main` / `master` への直接 push | **禁止** |
+| 本番データの変更 (Supabase) | **必須** |
+| Cloudflare Pages デプロイ (`git push`) | **必須** (デプロイ制限あり) |
+| ドライラン / プレビュー | 不要 (自動実行 OK) |
+
+### 自己改善プロトコル (Lessons Learned)
+
+障害・未検出・誤検出・ワークフロー上の問題が発生した場合、**コード修正 + プロンプト/instruction 更新 + コミットの 3 点セット**を同一セッション内で完了する。
+
+#### 記録フォーマット
+
+```markdown
+### LL-XXX: {タイトル}
+- **事象**: {何が起きたか}
+- **根本原因**: {なぜ起きたか}
+- **対策**: {どう修正/予防したか}
+- **教訓**: {今後の汎用的な学び}
+```
+
+#### ルール
+
+- コード変更時に関連するプロンプトの処理フロー・ステップ説明・検証項目を**同一コミットで更新**
+- **禁止**: 「次回修正します」と先送り / ユーザーに指摘されてから修正 / 説明だけでコード未修正 / コード修正だけでプロンプト未更新
