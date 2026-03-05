@@ -50,7 +50,7 @@ export default function DashboardChallenges() {
 
     if (loading) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="premium-card p-5">
                 <div className="animate-pulse">
                     <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
                     <div className="h-16 bg-gray-200 rounded mb-2" />
@@ -63,7 +63,7 @@ export default function DashboardChallenges() {
     // エラーチェックを空チェックより先に行う（デフォルト空配列でエラーが隠れるバグ修正）
     if (error) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="premium-card p-5">
                 <div className="flex flex-col items-center py-6 text-center">
                     <span className="text-3xl mb-2">⚠️</span>
                     <p className="text-sm font-semibold text-gray-600">{t('activeChallenges')}</p>
@@ -82,7 +82,7 @@ export default function DashboardChallenges() {
     if (challenges.length === 0) return null;
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow p-5">
+        <div className="premium-card hover:shadow-lg transition-shadow p-5">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                     🎯 {t('activeChallenges')}

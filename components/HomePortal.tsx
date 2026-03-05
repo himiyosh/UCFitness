@@ -149,7 +149,7 @@ export default function HomePortal({
             <Link
               key={action.href}
               href={action.href}
-              className="group relative flex flex-col items-center justify-center gap-2 py-3.5 rounded-2xl bg-white border border-gray-100/80 min-h-[76px] m3-transition card-elevated"
+              className="group relative flex flex-col items-center justify-center gap-2 py-3.5 premium-card min-h-[76px]"
             >
               {/* M3 State Layer */}
               <span className="absolute inset-0 rounded-2xl bg-[var(--theme-primary)] opacity-0 group-hover:opacity-[0.08] group-active:opacity-[0.12] transition-opacity duration-200 pointer-events-none" aria-hidden="true" />
