@@ -1,6 +1,6 @@
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { INVESTOR_RANKS, type InvestorRank } from './coin-service';
-import { reportError } from './errors';
+import { reportError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 

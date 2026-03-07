@@ -3,7 +3,7 @@
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 import Spinner from '@/components/ui/Spinner';
 
-import type { UserItem, EquippedItems } from '@/lib/shop-service';
+import type { UserItem, EquippedItems } from '@/lib/services/shop-service';
 
 // ============================================
 // サブコンポーネント: インベントリ

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
-import { generateAffiliateLink, searchProductCandidates, detectInputType } from '@/lib/amazon-creators-api';
+import { generateAffiliateLink, searchProductCandidates, detectInputType } from '@/lib/api/amazon-creators-api';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';

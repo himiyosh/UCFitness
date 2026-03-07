@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getGroupRankings } from '@/lib/ranking-service';
+import { getGroupRankings } from '@/lib/services/ranking-service';
 import { reportError } from '@/lib/errors';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
 

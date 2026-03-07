@@ -1,5 +1,5 @@
-import { supabaseAdmin } from './supabase';
-import { getJSTDateString, getJSTHour } from './date-utils';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getJSTDateString, getJSTHour } from '@/lib/date-utils';
 
 /**
  * 称号達成チェック & 自動付与サービス

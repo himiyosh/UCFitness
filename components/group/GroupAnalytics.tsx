@@ -3,9 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { ChartData } from '@/lib/group-comparison-service';
-import { RankingEntry } from '@/lib/ranking-utils';
-import { GroupRankingEntry } from '@/lib/group-ranking-service';
+import { ChartData } from '@/lib/services/group-comparison-service';
+import { RankingEntry } from '@/lib/services/ranking-utils';
+import { GroupRankingEntry } from '@/lib/services/group-ranking-service';
 import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
 

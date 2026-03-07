@@ -1,6 +1,6 @@
-import { supabaseAdmin } from './supabase';
-import { getJSTDateString } from './date-utils';
-import { reportError } from './errors';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getJSTDateString } from '@/lib/date-utils';
+import { reportError } from '@/lib/errors';
 import { normalizePushLocale, badgeUnlockedTitle, badgeUnlockedBody } from './push-messages';
 
 export const dynamic = 'force-dynamic';
@@ -132,7 +132,7 @@ export async function checkAndAwardBadges(userId: string) {
                 const subs = subsResult.data;
 
                 if (subs && subs.length > 0) {
-                    const { sendWebPushNotification } = await import('./web-push');
+                    const { sendWebPushNotification } = await import('@/lib/api/web-push');
 
                     const locale = normalizePushLocale(userLangResult.data?.language);
                     const badgeMap = new Map((allBadges as BadgeDefinition[]).map(def => [def.code, def.name]));

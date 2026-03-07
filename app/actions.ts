@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
-import { refreshFitbitToken, getFitbitProfile } from "@/lib/fitbit";
+import { refreshFitbitToken, getFitbitProfile } from "@/lib/api/fitbit";
 
 // 🛡️ セキュリティ: セッションからユーザーIDを安全に抽出するヘルパー
 // NextAuth v5 beta の auth() は複数オーバーロードを持つため、

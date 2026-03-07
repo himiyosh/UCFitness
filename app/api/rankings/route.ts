@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getRankings } from '@/lib/ranking-service';
-import { enrichRankingsWithEquip } from '@/lib/ranking-utils';
+import { getRankings } from '@/lib/services/ranking-service';
+import { enrichRankingsWithEquip } from '@/lib/services/ranking-utils';
 import { reportError } from '@/lib/errors';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
 

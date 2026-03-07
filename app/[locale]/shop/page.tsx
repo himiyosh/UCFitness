@@ -10,8 +10,8 @@ import NotificationBell from '@/components/layout/NotificationBell';
 import UCHintBalloon from "@/components/ui/UCHintBalloon";
 import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import ShopClient from "@/components/ShopClient";
-import { getShopItems, getUserItems, getEquippedItems } from "@/lib/shop-service";
-import { getCoinBalance, getInvestorRank } from "@/lib/coin-service";
+import { getShopItems, getUserItems, getEquippedItems } from "@/lib/services/shop-service";
+import { getCoinBalance, getInvestorRank } from "@/lib/services/coin-service";
 import { getTranslations, getLocale } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
 

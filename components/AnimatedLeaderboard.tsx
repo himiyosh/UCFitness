@@ -3,9 +3,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocale } from 'next-intl';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { RankingEntry } from '@/lib/ranking-utils';
+import { RankingEntry } from '@/lib/services/ranking-utils';
 import GroupCompetitionList from '@/components/group/GroupCompetitionList';
-import { GroupRankingEntry } from '@/lib/group-ranking-service';
+import { GroupRankingEntry } from '@/lib/services/group-ranking-service';
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTranslations } from 'next-intl';

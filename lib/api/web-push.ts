@@ -1,5 +1,5 @@
 import { SignJWT, importPKCS8, importJWK } from 'jose';
-import { reportError } from './errors';
+import { reportError } from '@/lib/errors';
 
 export interface PushPayload {
     title: string;

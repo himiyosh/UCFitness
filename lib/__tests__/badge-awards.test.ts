@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { assignBadges } from '../badge-awards';
+import { assignBadges } from '../services/badge-awards';
 
 const { mockFrom, mockRpc } = vi.hoisted(() => ({
     mockFrom: vi.fn(),

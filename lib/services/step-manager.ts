@@ -1,10 +1,10 @@
-import { supabaseAdmin } from './supabase';
-import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeriesByDateRange } from './fitbit';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeriesByDateRange } from '@/lib/api/fitbit';
 import { checkAndAwardBadges } from './badge-allocator';
 import { processCoins } from './coin-service';
 import { checkAndAwardTitleAchievements } from './title-achievement-service';
-import { reportError } from './errors';
-import { getJSTDateString } from './date-utils';
+import { reportError } from '@/lib/errors';
+import { getJSTDateString } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 

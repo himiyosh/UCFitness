@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { GroupRankingEntry } from '@/lib/group-ranking-service';
+import { GroupRankingEntry } from '@/lib/services/group-ranking-service';
 
 interface GroupCompetitionListProps {
     initialRankings: GroupRankingEntry[];

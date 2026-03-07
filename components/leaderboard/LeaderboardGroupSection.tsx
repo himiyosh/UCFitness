@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-import { getDisplayRankings } from '@/lib/ranking-utils';
+import { getDisplayRankings } from '@/lib/services/ranking-utils';
 import GroupRankingPanel from '@/components/group/GroupRankingPanel';
 import FadeInWrapper from '@/components/leaderboard/FadeInWrapper';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
-import type { RankingEntry } from '@/lib/ranking-utils';
-import type { GroupRankingEntry } from '@/lib/group-ranking-service';
+import type { RankingEntry } from '@/lib/services/ranking-utils';
+import type { GroupRankingEntry } from '@/lib/services/group-ranking-service';
 
 interface LeaderboardGroupSectionProps {
     period: Period;

@@ -11,7 +11,7 @@ import UCHintBalloon from "@/components/ui/UCHintBalloon";
 import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import CoinBalanceCard from "@/components/CoinBalanceCard";
 import nextDynamic from 'next/dynamic';
-import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/coin-service";
+import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/services/coin-service";
 import { getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
 

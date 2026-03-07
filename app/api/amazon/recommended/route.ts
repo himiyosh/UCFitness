@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
-import { fetchProductTitle } from '@/lib/amazon-creators-api';
+import { fetchProductTitle } from '@/lib/api/amazon-creators-api';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';

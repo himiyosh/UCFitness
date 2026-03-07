@@ -7,16 +7,16 @@ import { getTranslations } from 'next-intl/server';
 import RefreshButton from '@/components/layout/RefreshButton';
 import UserMenu from '@/components/layout/UserMenu';
 import { auth } from "@/lib/auth";
-import { getCachedGlobalRankingMap, transformRankingMapToLists } from '@/lib/ranking-service';
+import { getCachedGlobalRankingMap, transformRankingMapToLists } from '@/lib/services/ranking-service';
 import nextDynamic from 'next/dynamic';
-import { optimizeRankingsForPayload } from '@/lib/ranking-utils';
+import { optimizeRankingsForPayload } from '@/lib/services/ranking-utils';
 import AutoSync from '@/components/AutoSync';
 import Footer from '@/components/layout/Footer';
 import LandingPage from '@/components/LandingPage';
 import HomePortal from '@/components/dashboard/HomePortal';
 import QuickActions from '@/components/dashboard/QuickActions';
 
-import type { RankingEntry } from '@/lib/ranking-utils';
+import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const LoginBonusToast = nextDynamic(() => import('@/components/auth/LoginBonusToast'));

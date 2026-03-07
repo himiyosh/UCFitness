@@ -10,7 +10,7 @@ import RefreshButton from '@/components/layout/RefreshButton';
 import NotificationBell from '@/components/layout/NotificationBell';
 import GroupSettings from "@/components/group/GroupSettings";
 import Breadcrumbs from '@/components/layout/Breadcrumbs';
-import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/ranking-service";
+import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/services/ranking-service";
 import { getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
 

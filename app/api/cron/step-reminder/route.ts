@@ -2,16 +2,16 @@ export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendWebPushNotification } from '@/lib/web-push';
+import { sendWebPushNotification } from '@/lib/api/web-push';
 import { reportError } from '@/lib/errors';
 import { getJSTDateString, getJSTHour } from '@/lib/date-utils';
 import {
     normalizePushLocale,
     stepReminderTitle,
     stepReminderBody,
-} from '@/lib/push-messages';
+} from '@/lib/services/push-messages';
 
-import type { PushLocale } from '@/lib/push-messages';
+import type { PushLocale } from '@/lib/services/push-messages';
 
 export const dynamic = 'force-dynamic';
 

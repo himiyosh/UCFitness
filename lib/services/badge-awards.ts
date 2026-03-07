@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { fetchAllWithPagination } from '@/lib/supabase-utils';
 import { reportError } from '@/lib/errors';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { sendBadgeNotification } from './teams';
+import { sendBadgeNotification } from '@/lib/api/teams';
 import { normalizePushLocale, badgeUnlockedTitle, badgeUnlockedBody } from './push-messages';
 
 const BADGE_DEFINITIONS = {
@@ -458,7 +458,7 @@ const sendConsolidatedBadgeNotification = async (userId: string, badgeCodes: str
             .filter(Boolean)
             .join(', ');
 
-        const { sendWebPushNotification } = await import('@/lib/web-push');
+        const { sendWebPushNotification } = await import('@/lib/api/web-push');
 
         await Promise.allSettled(
             subs.map(sub => {

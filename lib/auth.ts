@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import { supabaseAdmin } from "./supabase";
-import { backfillUserSteps } from "./step-manager";
+import { backfillUserSteps } from "@/lib/services/step-manager";
 import { reportError } from "./errors";
 
 // Custom Fitbit Provider since it's missing from the installed next-auth package

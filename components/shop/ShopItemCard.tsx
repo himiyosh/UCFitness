@@ -5,7 +5,7 @@ import React from 'react';
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 import Spinner from '@/components/ui/Spinner';
 
-import type { ShopItem } from '@/lib/shop-service';
+import type { ShopItem } from '@/lib/services/shop-service';
 
 // 前方宣言: ランク短縮ラベル（ShopPreviewDialog に定義）
 import { getRankShortLabel } from '@/components/shop/ShopPreviewDialog';

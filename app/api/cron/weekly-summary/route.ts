@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendWebPushNotification } from '@/lib/web-push';
+import { sendWebPushNotification } from '@/lib/api/web-push';
 import { reportError } from '@/lib/errors';
 import { getJSTDateString } from '@/lib/date-utils';
 import {
     normalizePushLocale,
     weeklySummaryTitle,
     formatWeeklySummaryBody,
-} from '@/lib/push-messages';
+} from '@/lib/services/push-messages';
 
-import type { PushLocale } from '@/lib/push-messages';
+import type { PushLocale } from '@/lib/services/push-messages';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';

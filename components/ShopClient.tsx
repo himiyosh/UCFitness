@@ -10,7 +10,7 @@ import ShopItemCard from '@/components/shop/ShopItemCard';
 import InventoryView from '@/components/shop/ShopInventoryView';
 import { ItemPreviewDialog, ConfirmDialog } from '@/components/shop/ShopPreviewDialog';
 
-import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
+import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/services/shop-service';
 import type { Theme } from '@/components/ThemeProvider';
 
 /** item_code → アプリテーマのマッピング */

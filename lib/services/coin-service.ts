@@ -1,5 +1,5 @@
-import { supabaseAdmin } from './supabase';
-import { reportError } from './errors';
+import { supabaseAdmin } from '@/lib/supabase';
+import { reportError } from '@/lib/errors';
 import {
     BASE_RATE,
     GOAL_BONUS_RATE,
@@ -8,8 +8,8 @@ import {
     getStreakMultiplier,
     getInvestorRank,
     getNextRankInfo,
-} from './constants';
-import { getJSTDateString } from './date-utils';
+} from '@/lib/constants';
+import { getJSTDateString } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 

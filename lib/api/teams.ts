@@ -1,4 +1,4 @@
-import { reportError } from './errors';
+import { reportError } from '@/lib/errors';
 
 interface RankingUser {
     name?: string | null;

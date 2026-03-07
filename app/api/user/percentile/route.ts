@@ -2,7 +2,7 @@ export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getCachedGlobalRankingMap } from '@/lib/ranking-service';
+import { getCachedGlobalRankingMap } from '@/lib/services/ranking-service';
 
 export const dynamic = 'force-dynamic';
 
