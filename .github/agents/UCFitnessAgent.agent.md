@@ -1,5 +1,5 @@
 ---
-description: "UCFitness 統合エキスパートエージェント。リクエスト内容を分析し、適切な専門ロール（Next.js / React / Security / QA / Debug / UX / a11y / Playwright / Planning / Cleanup / Self-Critique）を自動選択して対応する。"
+description: "UCFitness 統合エキスパートエージェント。リクエスト内容を分析し、適切な専門ロール（Next.js / React / Security / QA / Debug / UX / a11y / Playwright / Planning / Cleanup / Monetization / Self-Critique）を自動選択して対応する。"
 ---
 
 # UCFitnessAgent
@@ -27,6 +27,7 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 | 計画、設計、アーキテクチャ、見積もり、要件整理                               | **Plan Mode**            |
 | クリーンアップ、リファクタリング、技術負債、整理                             | **Universal Janitor**    |
 | 改善ループ、品質改善、全体チェック、ループ回して                             | **🔄 Improvement Loop**  |
+| 収益化、マネタイズ、広告、アフィリエイト、Premium、課金、収益、売上                   | **💰 Monetization Consultant** |
 | 批判、レビュー、見直し、チェック、統一性、見切れ、不統一                      | **🔴 Self-Critique**     |
 
 **自動起動ルール**: 他ロールが修正・実装を完了しユーザーに報告する直前、または Improvement Loop の各 Cycle 完了後に、**Self-Critique ロールが自動起動** する。全 6 軸（デザイン一貫性・余白密度・レスポンシブ・テキスト翻訳・インタラクション品質・コード品質）で批判し、全軸 ✅ PASS するまで報告しない。詳細は `self-critique.agent.md` を参照。
@@ -227,6 +228,7 @@ tool_search_tool_regex(pattern="mcp_playwright", limit=30)
 - **アバター表示** — プロフィール画像が正しい円形で表示され、歪んでいないか
 - **アイコン切れ** — 絵文字やアイコンが部分的に切れていないか
 - **画像サイズ** — 画像がコンテナをはみ出したり、モバイルで巨大表示されていないか
+- **絶対配置アイコンの中央揃え** — `position: absolute` + `translate` で中央配置されたアイコン・アバターが、モバイル/デスクトップ両方で参照コンテナ内の中央に正しく配置されているか確認。親の `flex-direction` が変わるブレイクポイントでは特に注意
 
 ##### 🃏 カード・パネル・セクション精査
 
@@ -526,6 +528,21 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - 手順: `grep_search` → カテゴリ分け → 影響範囲確認 → 最小変更 → `get_errors` → `npx tsc --noEmit`
 - 優先順位: 🔴 ビルドエラー → 🟠 型安全性 → 🟡 重複 → 🟢 スタイル不一致 → 🔵 コメント整理
 
+### 💰 Monetization Consultant
+
+**専門**: 収益化戦略の立案・実行、アフィリエイト最適化、広告戦略、Premium 機能設計
+
+- **Amazon アフィリエイト最適化**: CTR/CVR 改善、コンテキスト連動レコメンド、季節性キーワード自動切替、Creators API 資格達成加速
+- **Google AdSense 段階導入**: Phase 方式（プレースホルダー → 審査 → ネイティブ広告 → 最適化）、UX 保護ルール（ファーストビュー禁止、最大 3 スロット/ページ）
+- **スポンサーシップ**: フィットネスブランドとのタイアップチャレンジ設計
+- **Premium 機能 (UCFitness Pro)**: フリーミアムモデル設計（基本機能のペイウォール化は禁止）
+- **アフィリエイト拡張**: 楽天・Yahoo!・A8.net 等のマルチプラットフォーム展開
+- **企業向け福利厚生プラン**: B2B 法人ライセンス設計
+- **KPI 追跡**: CTR、CVR、EPC、RPM、ARPU、MRR の定義と目標設定
+- **コンプライアンス**: 特定商取引法、景品表示法、Amazon 運営規約、GDPR 準拠
+- **UX 連携必須**: 広告配置・Premium UI の変更時は必ず UX Designer + Self-Critique に連携
+- 詳細は `monetization-consultant.agent.md` を参照
+
 ---
 
 ## 🔄 Improvement Loop モード
@@ -642,6 +659,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **Portal ピッカーのカード中央配置** — ピッカーをトリガーボタン基準ではなく親カード基準で中央配置する場合、カードの wrapper div に `data-reaction-card` 属性を付与し、`triggerEl.closest('[data-reaction-card]')` でカード要素を取得してカード中心を基準に `translateX(-50%)` する。トリガーボタンだけを基準にすると、リアクション追加によるボタン位置の移動でピッカーもずれる
 - **Portal ↔ トリガー間のホバーギャップ（既知制限・変更禁止）** — Portal は DOM ツリー上でトリガーの子孫ではないため、カードの `mouseleave` → Portal の `mouseenter` 間にギャップが発生しピッカーが閉じうる。`isHoveringPickerRef` で部分緩和済みだが完全解決ではない。**現在の実装（fb07776）がユーザー承認済みの安定状態。この動作を変更する場合は必ずユーザーに確認すること**
 - **同一コンポーネント繰り返し修正の禁止** — 同じコンポーネントを 3 回以上修正する場合、個別パッチを中止し根本原因を体系的に分析する。修正 → 別の崩れ → 再修正のループは設計レベルの問題を示唆する
+- **`position: absolute` + レスポンシブオーバーライドの座標検証必須** — `absolute` 配置で `top/left` + `translate` による中央配置を行う要素が `sm:`/`md:` オーバーライドを持つ場合、各ブレイクポイントで参照コンテナのサイズ・向きを考慮した座標計算が正しいか検証する。特に親の `flex-direction` が変わる場合（`flex-col` → `sm:flex-row`）、子のabsolute座標は新しいレイアウト方向に合わせて再計算が必要。**古いレイアウト用の `sm:` 座標が残存していないか必ず確認すること。** リファレンス: `GroupList.tsx`（アイコン中央配置修正）
+- **モバイルで root スクロールを無効化しない** — `html/body` の `overflow: hidden` や全画面スケーリング（`transform: scale`）は、モバイルで下部パネル・CTA の見切れ/操作不能を起こしやすい。全画面スケーリングは `lg:` 以上に限定し、モバイルは通常スクロールを維持すること。
+- **サイドパネル `sticky` のモバイル適用禁止** — 2カラムの右パネルで `sticky top-*` を使う場合、モバイルには適用しない（`lg:sticky` を使用）。モバイルで `sticky` を有効にすると、Join/Create などのパネルが部分表示のまま固定化されることがある。
 - **2 カラム高さ合わせのためにカード内部へ空白を押し込まない** — `items-stretch` や `h-full` で短いカードを引き伸ばし、カード下部に意味のない余白を作るのは NG。`QuickActions` のような独立ウィジェットを別行へ逃がし、カードは自然高さのまま配置を再構成すること。例外として、ユーザーが下端揃えを明示的に要求した場合のみ stretch を許可するが、その場合は **`grid auto-rows-fr` でリスト行自体が余剰高さを均等に分担する方式を使う**こと。`mt-auto` でフッターだけを押し下げる方式は禁止（フッターとリストの間に大きな空白帯が発生する）。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`
 - **デスクトップのフッター下に背景だけの空白を残さない** — デスクトップのページラッパーは `flex-1 flex-col` を基本とし、短いページではフッターを viewport 下端へ寄せること。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
 
@@ -917,6 +937,8 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | `fixed` + 低 `zIndex` のデコレーションが不透明背景に隠れる | `FloatingEmojis` を `position: fixed; zIndex: -1` で配置したが、メインコンテンツの `zIndex: 20` + 不透明背景色 `bg-[var(--theme-page-bg)]` で完全に隠された。`zIndex: 5` に上げても同じ。修正: コンポーネントを `#main-content` 内部に移動 + `zIndex: 30` に設定 | **`fixed` デコレーション要素は、不透明背景を持つコンテナの内部に配置すること**。コンテナ外に `fixed` + 低 `zIndex` で配置すると、コンテナの背景色に覆い隠される。`pointer-events-none` で操作透過を確保しつつ、`zIndex` はメインコンテンツ (`zIndex: 20`) より高い値 (30) に設定する |
 | 情報密度の過剰（StepCalendar サマリーカード） | Daily Goal / Weekly Goal が各 4〜5 行の独立セクションで表示され、ラベル行・数値行・パーセント行・ペース行が冗長。ユーザーから「行が多く視覚的な情報量が多い」と指摘。1 画面に収まるべきサマリーが 2 スクロール分の高さに | **サマリーカードの各指標は「ラベル＋バー＋数値」を 1 行にまとめる**。`flex items-center gap-2` で横一列に配置し、ラベル (`w-11 shrink-0`) → プログレスバー (`flex-1 h-1.5`) → 数値 (`shrink-0 tabular-nums`) の 3 要素構成にする。補足情報（パーセント、ペース等）は削除するか、バッジとして 1 行にまとめる。リファレンス: `StepCalendar.tsx` の Daily/Weekly ゴール表示 |
 | 2カラム高さ合わせの誤修正（カード内部の空白化） | 左右カラムの高さ差を消す目的で `items-stretch` / `h-full` を使い、短い `StepCalendar` カードを右列の高さまで引き伸ばした結果、ページ背景の空白は減ったが**カード内部に大きな無意味空白**が発生した。次に `mt-auto` でフッターを押し下げたが、フッターとリストの間に帯状の空白帯が残った。最終的にリスト行自体が高さを分担する `grid auto-rows-fr` パターンで解決した | **通常は配置の再構成で解決する**: `QuickActions` のような独立ウィジェットは別行へ移動し、カードは自然高さを維持する。**ただし明示的に下端揃えが必要な場合は `grid auto-rows-fr` でリスト行が余剰高さを均等に分担する方式を使う**。`mt-auto` だけでフッターを押し下げる方式は禁止（帯状空白の原因）。デスクトップ最上位ラッパーは `flex-1 flex-col` にしてフッター下のデッドスペースも防止する。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`, `components/Footer.tsx` |
+| グループカードのアイコン位置ずれ（`absolute` + レスポンシブ座標の不整合） | グループカードのアイコンが `position: absolute` + `top-1/2 left-10 -translate-y/x-1/2` でモバイル向けに正しく中央配置されていたが、デスクトップ用 `sm:top-24 sm:left-8` オーバーライドが古いレイアウト（バナー上部配置）の値のまま残存。親が `flex-col` → `sm:flex-row` に切り替わるのに子の座標が新レイアウトに合わせて再計算されていなかった。`sm:top-24`=96px は 110px カードの中央ではなく、`sm:left-8`=32px は 80px バナーの中央(40px)ではない | **不要な `sm:` オーバーライドを削除し、全ブレイクポイントで `top-1/2 left-10 -translate-y/x-1/2` に統一。** UI 頻出バグルールに「`absolute` + レスポンシブ座標検証必須」を追加。親の flex-direction が変わる場合、子の absolute 座標が新レイアウトに対応しているか検証するルールを新設。Playwright チェックリストにも「絶対配置要素の中央揃え検証」を追加。リファレンス: `GroupList.tsx` |
+| モバイルでパネル見切れ（root overflow + sticky の複合要因） | `html { overflow: hidden }` と全画面 `transform: scale(0.9)` がモバイルでも適用され、スクロールコンテナが不安定化。さらに `/groups` 右カラム `aside` がモバイルでも `sticky top-24` で固定され、Join/Create パネルが部分表示のまま見切れやすくなった。結果として「スクロールなしで全パネルを見せる」前提が暗黙に入り、下部 UI 到達性の検証が漏れた | **モバイルでは root 通常スクロールを維持**（全画面スケーリングは `lg:` 以上へ限定）。**サイドパネルの sticky は `lg:sticky` に限定**。Playwright は mobile で `top/middle/bottom` の 3 点スクショ + `window.scrollY` の変化確認を必須化し、下部パネル（Join/Create/CTA）の操作可否まで確認する。リファレンス: `app/globals.css`, `app/[locale]/groups/page.tsx` |
 
 ---
 

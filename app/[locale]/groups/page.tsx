@@ -195,7 +195,7 @@ export default async function MyGroupsPage() {
                     </section>
 
                     {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
-                    <aside className="w-full lg:w-80 flex-shrink-0 sticky top-24 space-y-4">
+                    <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-24 space-y-4">
                         {/* G1: グループサマリー */}
                         {sortedMemberships.length > 0 && (
                             <div className="bg-white midnight-solid-panel rounded-xl p-5 border border-gray-100 shadow-sm">

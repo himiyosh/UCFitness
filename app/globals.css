@@ -1297,21 +1297,35 @@ html {
    ビューポート全体をカバーする方式に変更。 */
 html {
   height: 100%;
-  overflow: hidden; /* スケーリングで拡張された body のはみ出しをクリップ */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-  transform: scale(0.9);
+  transform: none;
   transform-origin: top left;
-  width: calc(100% / 0.9);   /* 111.11% — スケール後に viewport 幅にフィット */
-  min-height: calc(100vh / 0.9); /* 111.11% — スケール後に viewport 高さにフィット */
+  width: 100%;
+  min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+/* デスクトップのみ 0.9x スケーリングを適用（モバイルは通常スクロールを優先） */
+@media (min-width: 1024px) {
+  html {
+    overflow: hidden; /* スケーリングで拡張された body のはみ出しをクリップ */
+  }
+
+  body {
+    transform: scale(0.9);
+    width: calc(100% / 0.9);   /* 111.11% — スケール後に viewport 幅にフィット */
+    min-height: calc(100vh / 0.9); /* 111.11% — スケール後に viewport 高さにフィット */
+  }
 }
 
 #main-content {
