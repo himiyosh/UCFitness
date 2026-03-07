@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import ChallengeList from '@/components/ChallengeList';
-import CreateChallengeModal from '@/components/CreateChallengeModal';
+import ChallengeList from '@/components/challenge/ChallengeList';
+import CreateChallengeModal from '@/components/challenge/CreateChallengeModal';
 import { useTranslations } from 'next-intl';
 
 // ============================================

@@ -2,10 +2,10 @@
 
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useCallback } from 'react';
-import ChallengeCard from '@/components/ChallengeCard';
+import ChallengeCard from '@/components/challenge/ChallengeCard';
 import dynamic from 'next/dynamic';
 
-const ChallengeGearBanner = dynamic(() => import('@/components/ChallengeGearBanner'));
+const ChallengeGearBanner = dynamic(() => import('@/components/challenge/ChallengeGearBanner'));
 
 // ============================================
 // チャレンジ一覧 コンポーネント

@@ -9,7 +9,7 @@ import UserMenu from '@/components/UserMenu';
 import RefreshButton from '@/components/RefreshButton';
 import NotificationBell from '@/components/NotificationBell';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import ChallengesPageClient from '@/components/ChallengesPageClient';
+import ChallengesPageClient from '@/components/challenge/ChallengesPageClient';
 import Footer from '@/components/Footer';
 
 // ============================================
