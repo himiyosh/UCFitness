@@ -158,7 +158,6 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                         {/* Icon (Positioned Absolutely) */}
                         <div className="absolute z-10 
                             top-1/2 left-10 -translate-y-1/2 -translate-x-1/2 
-                            sm:top-24 sm:left-8 sm:translate-x-[-50%] 
                             w-12 h-12 rounded-xl border-2 border-white shadow-sm 
                             sm:w-16 sm:h-16 sm:rounded-2xl sm:border-4
                             flex items-center justify-center bg-[var(--theme-primary-light)] overflow-hidden text-[var(--theme-primary)]">
