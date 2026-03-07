@@ -118,11 +118,7 @@ export default function ActivityFeed() {
     // --- ローディング状態 ---
     if (isLoading) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <span>📰</span>
-                    <span>{t('title')}</span>
-                </h3>
+            <div className="premium-card p-4">
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="flex items-start gap-3 animate-pulse">
@@ -141,12 +137,8 @@ export default function ActivityFeed() {
     // --- エラー状態 ---
     if (error) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <span>📰</span>
-                    <span>{t('title')}</span>
-                </h3>
-                <div className="text-center py-6">
+            <div className="premium-card p-4">
+                <div className="text-center py-4">
                     <p className="text-sm text-gray-500 mb-3">{t('errorMessage')}</p>
                     <button
                         type="button"
@@ -163,15 +155,17 @@ export default function ActivityFeed() {
     // --- 空状態 ---
     if (feed.length === 0) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <span>📰</span>
-                    <span>{t('title')}</span>
-                </h3>
-                <div className="text-center py-8">
-                    <div className="text-4xl mb-3">👥</div>
-                    <p className="text-sm text-gray-500">{t('emptyMessage')}</p>
-                    <p className="text-xs text-gray-400 mt-1">{t('emptyHint')}</p>
+            <div className="premium-card flex flex-col items-center justify-center min-h-[200px]">
+                <div className="text-center px-6 py-4">
+                    <div className="text-5xl mb-4">\ud83d\udc65</div>
+                    <p className="text-sm font-medium text-gray-600">{t('emptyMessage')}</p>
+                    <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{t('emptyHint')}</p>
+                    <Link
+                        href="/leaderboard"
+                        className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-xs font-semibold hover:opacity-80 transition-opacity"
+                    >
+                        \ud83d\udc51 {t('findUsers', { defaultMessage: '\u30e6\u30fc\u30b6\u30fc\u3092\u898b\u3064\u3051\u308b' })}
+                    </Link>
                 </div>
             </div>
         );
@@ -179,12 +173,7 @@ export default function ActivityFeed() {
 
     // --- データ表示 ---
     return (
-        <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                <span>📰</span>
-                <span>{t('title')}</span>
-            </h3>
-
+        <div className="premium-card p-4">
             <div className="space-y-1">
                 {feed.map((item) => (
                     <FeedItemCard key={item.id} item={item} t={t} />
@@ -212,6 +201,13 @@ export default function ActivityFeed() {
                             t('loadMore')
                         )}
                     </button>
+                </div>
+            )}
+
+            {/* フィードアイテムが少ない時のフォロー促進CTA */}
+            {!hasMore && feed.length > 0 && feed.length < 5 && (
+                <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+                    <p className="text-xs text-gray-400">{t('sparseHint')}</p>
                 </div>
             )}
         </div>

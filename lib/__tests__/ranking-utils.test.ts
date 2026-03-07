@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { enrichCombinedRankings, RankingEntry } from '../ranking-utils';
-import * as shopService from '../shop-service';
+import { enrichCombinedRankings, RankingEntry } from '../services/ranking-utils';
+import * as shopService from '../services/shop-service';
 
 // Mock getEquippedItemsForUsers
-vi.mock('../shop-service', () => ({
+vi.mock('../services/shop-service', () => ({
     getEquippedItemsForUsers: vi.fn(),
 }));
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { deriveBatchGroupRankings, getAllRankings } from '../ranking-service';
+import { deriveBatchGroupRankings, getAllRankings } from '../services/ranking-service';
 
 // Hoist mocks
 const { mockSupabase, mockSelect, mockIn, mockFrom, mockEq, mockSingle } = vi.hoisted(() => {

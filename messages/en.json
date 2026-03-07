@@ -110,6 +110,26 @@
         "refreshing": "Refreshing...",
         "refreshFailed": "Failed to refresh steps"
     },
+    "BottomNav": {
+        "home": "Home",
+        "groups": "Groups",
+        "ranking": "Ranking",
+        "profile": "Profile",
+        "label": "Main navigation"
+    },
+    "Portal": {
+        "heroLabel": "Today's steps and stats",
+        "rank": "Rank",
+        "stepsUnit": "steps",
+        "quickActions": "Quick actions",
+        "recentActivity": "Recent Activity",
+        "viewAll": "View All"
+    },
+    "HomePortal": {
+        "missions": "Missions",
+        "challenges": "Challenges",
+        "following": "Following"
+    },
     "LoginBonus": {
         "title": "Daily Bonus",
         "claimed": "+{amount} UC! (Day {streak})",
@@ -141,6 +161,7 @@
     },
     "Leaderboard": {
         "leaderboard": "Leaderboard",
+        "headerDesc": "Check global and group step rankings",
         "titleGlobal": "Global Leaderboard",
         "tabUser": "User (Global)",
         "titleTop10": "Top 10 Leaders",
@@ -774,10 +795,12 @@
         "stepsUnit": "steps",
         "emptyMessage": "No activity yet",
         "emptyHint": "Follow users to see their activities here",
+        "findUsers": "Find Users",
         "loadMore": "Load More",
         "loading": "Loading...",
         "errorMessage": "Failed to load feed",
         "retry": "Retry",
+        "sparseHint": "Follow more people to fill your feed with activity \ud83d\udc65",
         "markAllRead": "Mark all read",
         "justNow": "just now",
         "minutesAgo": "{count}m ago",
@@ -796,6 +819,7 @@
     },
     "WeeklyGoal": {
         "title": "Weekly Goal",
+        "weeklyStepsLabel": "Weekly Steps",
         "steps": "steps",
         "goal": "Goal",
         "aheadOfPace": "🔥 On track!",

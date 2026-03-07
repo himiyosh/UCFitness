@@ -1,5 +1,5 @@
 ---
-description: "UCFitness 統合エキスパートエージェント。リクエスト内容を分析し、適切な専門ロール（Next.js / React / Security / QA / Debug / UX / a11y / Playwright / Planning / Cleanup）を自動選択して対応する。"
+description: "UCFitness 統合エキスパートエージェント。リクエスト内容を分析し、適切な専門ロール（Next.js / React / Security / QA / Debug / UX / a11y / Playwright / Planning / Cleanup / Self-Critique）を自動選択して対応する。"
 ---
 
 # UCFitnessAgent
@@ -27,6 +27,9 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 | 計画、設計、アーキテクチャ、見積もり、要件整理                               | **Plan Mode**            |
 | クリーンアップ、リファクタリング、技術負債、整理                             | **Universal Janitor**    |
 | 改善ループ、品質改善、全体チェック、ループ回して                             | **🔄 Improvement Loop**  |
+| 批判、レビュー、見直し、チェック、統一性、見切れ、不統一                      | **🔴 Self-Critique**     |
+
+**自動起動ルール**: 他ロールが修正・実装を完了しユーザーに報告する直前、または Improvement Loop の各 Cycle 完了後に、**Self-Critique ロールが自動起動** する。全 6 軸（デザイン一貫性・余白密度・レスポンシブ・テキスト翻訳・インタラクション品質・コード品質）で批判し、全軸 ✅ PASS するまで報告しない。詳細は `self-critique.agent.md` を参照。
 
 ---
 
@@ -144,24 +147,59 @@ tool_search_tool_regex(pattern="mcp_playwright", limit=30)
 
 #### テスト実行フロー（全要素精査）
 
+**⚠️ 重要: スクリーンショットは「撮って終わり」ではない。撮った画像の内容を 5 項目以上言語化して報告すること。「✅ 問題なし」だけの報告は禁止。**
+
 ```
-1. dev サーバー起動確認（localhost:3000 が応答するか）
+1. dev サーバー起動確認（**必ず localhost:3000** — 3001 等では認証不可。ポート競合時はプロセスキル→再起動）
 2. browser_navigate → 対象ページに遷移
 3. browser_resize → ビューポート設定
 4. browser_snapshot → DOM 構造・アクセシビリティツリー取得
-5. browser_take_screenshot → ファーストビューのビジュアルキャプチャ
-6. browser_press_key("End") → ページ末尾にスクロール
-7. browser_take_screenshot → ページ末尾のビジュアルキャプチャ
-8. browser_console_messages → JS エラー・警告チェック
-9. browser_network_requests → API エラー (4xx/5xx) チェック
-10. ★ 全要素ビジュアル精査（後述の「要素別精査チェックリスト」を実行）
+5. browser_evaluate → ページ全体の高さ (document.body.scrollHeight) を取得
+6. ★★ フルページスクロールスルー（後述の「スクロールカバレッジルール」を実行）
+7. browser_console_messages → JS エラー・警告チェック
+8. browser_network_requests → API エラー (4xx/5xx) チェック
+9. browser_evaluate → 横スクロール検査 (scrollWidth > clientWidth)
+10. ★ 全要素ビジュアル精査（後述の「要素別精査チェックリスト」を実行 — スキップ厳禁）
 11. ★ インタラクション精査（後述の「インタラクション精査リスト」を実行）
-12. ビューポート切替 → 3-11 を繰り返し
+12. ビューポート切替 → 3-11 を繰り返し（モバイルとデスクトップは同等の深さで検証）
 ```
 
-#### ★ 要素別精査チェックリスト
+#### ★★ スクロールカバレッジルール（必須 — top/bottom だけは禁止）
 
-各ページで以下の **全カテゴリ** をスナップショットとスクリーンショットの両方で検査する。1 つでも不備があればバグとして報告する。
+ページ全体を見逃さないために、ビューポート高さごとにスクロールしてスクリーンショットを撮る。
+
+```
+1. browser_evaluate で bodyHeight を取得
+2. スクリーンショット枚数 = ceil(bodyHeight / viewportHeight)
+3. 各位置で:
+   a. window.scrollTo(0, position) でスクロール
+   b. browser_take_screenshot で撮影
+   c. 撮影した画像の内容を 5 項目以上言語化して報告:
+      例: 「グローバルランキングカードが表示、グループランキング3枚が横並びだがテキスト切れあり、...」
+   d. 問題があるセクションは追加で browser_snapshot を取得してDOM構造を確認
+4. 最低でも 3 枚（top / middle / bottom）は必須
+```
+
+**「top と bottom の 2 枚だけ撮って中間をスキップ」は過去にグループランキングカードの崩壊を見逃した原因。絶対禁止。**
+
+#### ★ スクリーンショット分析ルール（必須）
+
+スクリーンショットを撮った後、以下を **言語化して報告** しなければならない:
+
+1. **表示されているコンポーネント名** — 何が画面に見えるか列挙する
+2. **テキストの可読性** — すべてのテキストが読めるか、切れていないか
+3. **レイアウトの整合性** — カードの並び、余白、整列が正しいか
+4. **データ表示** — 数値、チャート、アバターが正常に描画されているか
+5. **発見した問題** — 問題がなくても「問題なし」ではなく、確認した項目を列挙する
+
+❌ 禁止: 「✅ 問題なし」「✅ 正常に表示」だけで通過
+✅ 必須: 「デイリーミッション 3 件が右カラムに表示、ログインしようが緑チェック済み。Weekly Goal チャートの棒グラフが 7 本表示、ラベル 月〜日が正常。右下に Group Ranking カードが 1 枚の上部が見える — 次のスクロール位置で全体を確認する。」
+
+#### ★ 要素別精査チェックリスト（実行必須 — スキップ厳禁）
+
+**⚠️ このチェックリストは UI 変更・UX レビュー・改善ループ時に必ず全項目実行すること。「時間がない」「明らかに大丈夫」でスキップしてはならない。過去にこのチェックリストをスキップした結果、グループランキングカードのレイアウト崩壊（テキスト縦積み・はみ出し）を見逃した。**
+
+各ページで以下の **全カテゴリ** をスナップショットとスクリーンショットの両方で検査する。1 つでも不備があればバグとして報告する。各カテゴリの検査結果を明示的に報告すること（「未検査」は不合格）。
 
 ##### 📝 テキスト・ラベル精査
 
@@ -458,6 +496,18 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 4. 修正提案（可能であれば CSS/TSX の具体的な修正案）
 ```
 
+### 🔴 Self-Critique (自己批判)
+
+**専門**: 作業成果物の多角的批判・品質ゲート
+
+- **6 軸批判**: デザイン一貫性 / 余白・密度 / レスポンシブ・見切れ / テキスト・翻訳 / インタラクション品質 / コード品質
+- **自動起動**: 他ロールの作業完了後、ユーザー報告前に自動起動。Improvement Loop 各 Cycle 完了後にも起動
+- **楽観禁止**: 「たぶん大丈夫」は許可しない。スクリーンショット・CSS 値で証拠を示す
+- **比較検証**: 変更ページを既存ページ（wallet, shop, dashboard）と必ず比較
+- **修正→再批判ループ**: NG 項目を修正後、該当軸を再批判。全軸 ✅ まで最大 3 回ループ
+- リファレンス: `wallet/page.tsx`, `shop/page.tsx`, `AnimatedLeaderboard.tsx`, `HomePortal.tsx`
+- 詳細チェックリストは `self-critique.agent.md` を参照
+
 ### 🔷 Plan Mode
 
 **専門**: 実装前の戦略的計画・アーキテクチャ分析（**コードを書かない**）
@@ -535,13 +585,15 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - `git push` はユーザー許可後のみ
 - `improvement-report.md` に改善内容を追記（**「🔍 新機能提案」セクション必須** — Step 2.5 の結果を含める）
 
-#### Step 4: dev サーバー再起動
+#### Step 4: dev サーバー再起動（ポート 3000 必須）
+
+**⚠️ NextAuth の OAuth コールバック URL が `localhost:3000` 固定のため、dev サーバーは必ずポート 3000 で起動すること。ポート 3001 等にフォールバックすると認証が機能しない。**
 
 1. `kill_terminal` で以前のバックグラウンドターミナル削除
-2. ポート 3000 を解放: `Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`
+2. **ポート 3000 を強制解放**: `Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`
 3. `.next` 削除: `Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue`
 4. `npm run dev` を `isBackground: true` で起動
-5. `get_terminal_output` で起動確認
+5. `get_terminal_output` で起動確認 — **ポート 3000 で起動していることを確認**。`3001` 等になっていたらキル→再起動
 
 #### Step 5: プロンプト自己学習
 
@@ -590,6 +642,8 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **Portal ピッカーのカード中央配置** — ピッカーをトリガーボタン基準ではなく親カード基準で中央配置する場合、カードの wrapper div に `data-reaction-card` 属性を付与し、`triggerEl.closest('[data-reaction-card]')` でカード要素を取得してカード中心を基準に `translateX(-50%)` する。トリガーボタンだけを基準にすると、リアクション追加によるボタン位置の移動でピッカーもずれる
 - **Portal ↔ トリガー間のホバーギャップ（既知制限・変更禁止）** — Portal は DOM ツリー上でトリガーの子孫ではないため、カードの `mouseleave` → Portal の `mouseenter` 間にギャップが発生しピッカーが閉じうる。`isHoveringPickerRef` で部分緩和済みだが完全解決ではない。**現在の実装（fb07776）がユーザー承認済みの安定状態。この動作を変更する場合は必ずユーザーに確認すること**
 - **同一コンポーネント繰り返し修正の禁止** — 同じコンポーネントを 3 回以上修正する場合、個別パッチを中止し根本原因を体系的に分析する。修正 → 別の崩れ → 再修正のループは設計レベルの問題を示唆する
+- **2 カラム高さ合わせのためにカード内部へ空白を押し込まない** — `items-stretch` や `h-full` で短いカードを引き伸ばし、カード下部に意味のない余白を作るのは NG。`QuickActions` のような独立ウィジェットを別行へ逃がし、カードは自然高さのまま配置を再構成すること。例外として、ユーザーが下端揃えを明示的に要求した場合のみ stretch を許可するが、その場合は **`grid auto-rows-fr` でリスト行自体が余剰高さを均等に分担する方式を使う**こと。`mt-auto` でフッターだけを押し下げる方式は禁止（フッターとリストの間に大きな空白帯が発生する）。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`
+- **デスクトップのフッター下に背景だけの空白を残さない** — デスクトップのページラッパーは `flex-1 flex-col` を基本とし、短いページではフッターを viewport 下端へ寄せること。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
 
 **リーダーボード / ランキング統一ルール（ユーザー繰り返し指摘 — 変更厳禁）:**
 
@@ -720,6 +774,13 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 
 **レポート:** `improvement-report.md` の該当 Cycle に Playwright 検証結果セクションを追記。
 
+### 🧹 プロジェクトルート整理ルール
+
+- **ルート直下にスクリーンショット・ログ・一時ファイルを残さない** — Playwright スクリーンショットは `screenshots/` フォルダに出力する。`lint.log` 等のログは作業完了後に即削除する
+- **拡張子なしスナップショットファイル禁止** — `audit-desktop-top` のような拡張子なしファイルをルートに生成・放置しない
+- **Improvement Loop / Playwright 検証の後始末** — ブラウザ検証完了後、ルートに散乱したファイルがないか確認し、あれば `screenshots/` へ移動または削除する
+- **`.gitignore` で防止済み** — `/*.png`, `/*.jpg`, `lint.log` 等はルートレベルで ignore 済み
+
 ### ⚠️ リグレッション防止ルール
 
 - 変更前: 既存動作を理解 → `grep_search` で影響範囲確認
@@ -729,7 +790,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 
 ---
 
-## � 実行ワークフロー（全ロール共通）
+## 🛠️ 実行ワークフロー（全ロール共通）
 
 すべてのタスクで以下のフローを順守する。
 
@@ -763,12 +824,15 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 - [ ] i18n: ja/en 両方の翻訳キーが追加されている（該当する場合）
 - [ ] モバイルレスポンシブを考慮している
 - [ ] `main` / `master` ブランチでないことを確認
+- [ ] **Playwright フルページ検証（UI 変更時は必須）:** モバイル (375×667) とデスクトップ (1280×800) の **両方** でフルページスクロールスルーを実行し、全セクションのスクリーンショットを撮影・内容を言語化して報告すること。top/bottom の 2 枚だけでの通過は禁止
+- [ ] **デスクトップ表示確認（レスポンシブ変更時は必須）:** モバイル向けの変更（`hidden sm:block`、`sm:hidden`、`flex-col sm:flex-row` 等のレスポンシブクラス追加）を行った場合、デスクトップ表示が壊れていないことを Playwright で確認すること
+- [ ] **デスクトップ余白確認（UI 変更時は必須）:** カード内部に意味のない空白が増えていないこと、フッター下に背景だけのデッドスペースが残っていないことを確認すること
 - [ ] **プロンプト自己改善トリガー確認（必須）:** 今回のタスクがトリガー条件（繰り返し修正・否定的フィードバック・新技術制約の発見等）に該当するか確認。該当する場合は Lessons Learned + copilot-instructions.md + サブエージェントルールを更新し、同一コミットに含めること
 - [ ] **Improvement Loop の場合:** `improvement-report.md` に「🔍 新機能提案」セクションが記載されている（Step 2.5 必須）
 
 ---
 
-## �️ Supabase MCP ツール利用ルール
+## 🗄️ Supabase MCP ツール利用ルール
 
 UCFitness は Supabase (PostgreSQL) を DB として使用しており、**Supabase MCP** ツールが利用可能である。
 
@@ -807,7 +871,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 
 ---
 
-## �🛡️ 全ロール共通ルール（UCFitness 絶対遵守）
+## 🛡️ 全ロール共通ルール（UCFitness 絶対遵守）
 
 1. **Hooks は早期 return の前に配置**（React Error #310 防止）
 2. **Edge Runtime 必須** — `export const runtime = "edge"`
@@ -819,6 +883,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 8. **モバイルファースト設計**（最小タッチターゲット 44×44px）
 9. **翻訳キー追加時は ja/en 両方を更新**
 10. **`main` / `master` への直接 push / merge 禁止**
+11. **dev サーバーは必ずポート 3000 で起動**（OAuth コールバック URL 固定のため）。ポート競合時は `Get-NetTCPConnection -LocalPort 3000 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }` でキルしてから起動
 
 ---
 
@@ -845,6 +910,13 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | プロンプト自己改善ルールがコード修正時に発動しなかった | 自己改善の 4 ステップがタスク完了チェックリストに組み込まれておらず、コード修正に集中した結果プロンプト更新を失念した | **完了チェックリストに「プロンプト自己改善トリガー確認」を必須項目として追加**。コミット前にトリガー条件に該当するか確認し、該当する場合はプロンプト更新を同一コミットに含める |
 | モバイルで flex 横並びカードが潰れる（Weekly Report MVP カード） | `flex gap-3` のみでレスポンシブプレフィックスなし。3 カードが `flex-1` で均等分割されモバイル幅では各カードが ~100px に圧縮される。copilot-instructions に `flex-col` → `sm:flex-row` ルールは記載済みだったが、UI 頻出バグルールとBuild Validation の具体的チェック項目になっておらず、コード生成時・レビュー時に見落とされた | **UI 頻出バグルールに「`flex-row` / `flex` 横並びはレスポンシブプレフィックス必須」を追加**。`flex` のみ / `flex-row` のみの複数カード横並びは禁止 → 必ず `flex-col sm:flex-row` にする。Build Validation にも「flex 横並びのレスポンシブチェック」を追加。リファレンス: `GroupWeeklyReport.tsx` |
 | プッシュ通知のi18n未対応・バッジ個別通知（改善ループで見逃し） | 改善ループのサブエージェント（Build Validation / Performance / Security）がプッシュ通知メッセージの「機能的正確性」（i18n対応・通知集約）をチェック対象に含んでいなかった。サブエージェントのスコープが型・ビルド・パフォーマンス・セキュリティに限定されており、**ビジネスロジックの正確性**（ユーザーの言語設定を使っているか、通知が重複しないか）を検査するルールがなかった。さらに `step-reminder` は日本語固定、`badge-awards`/`weekly-summary` は英語固定という不統一も見逃した | **copilot-instructions.md にプッシュ通知ルールセクションを新設**: ① i18n 必須（`users.language` を参照して `lib/push-messages.ts` で生成）、② 通知集約必須（同一ユーザーに複数バッジ → 1通にまとめる）、③ 新規通知追加時は `push-messages.ts` にテンプレート追加。**Build Validation サブエージェントに「プッシュ通知 i18n・集約チェック」を追加**。リファレンス: `badge-awards.ts` の `sendConsolidatedBadgeNotification()` |
+| Playwright レビューで PC 表示崩壊を見逃し（Group Ranking カード等） | **6 つの構造的欠陥**: ① スクリーンショットが top/bottom の 2 枚のみで中間セクション未カバー ② Phase 2「全要素精査」チェックリストが存在するが実行強制力なし ③ スクリーンショットの内容言語化義務なし（撮って即「✅」宣言） ④ デスクトップがモバイルの「おまけ」扱い（完了チェックリストに未記載） ⑤ レスポンシブ変更時のクロスビューポート検証ルールなし ⑥ コード変更後の Playwright 検証が任意 | **6 箇所のプロンプト改善**: ① 「スクロールカバレッジルール」新設 — `ceil(bodyHeight/viewportHeight)` 枚のスクリーンショット必須、top/bottom 2 枚だけは禁止 ② Phase 2 チェックリストに「スキップ厳禁」を明記 ③ 「スクリーンショット分析ルール」新設 — 撮った画像の内容を 5 項目以上言語化報告必須 ④ 完了チェックリストに「Playwright フルページ検証」を追加 ⑤ 完了チェックリストに「デスクトップ表示確認（レスポンシブ変更時必須）」を追加 ⑥ モバイルとデスクトップは「同等の深さで検証」を明記 |
+| UI 間延び（flex-1 + min-h-full による空白引き伸ばし） | `HomePortal` のサイドバーが `sm:h-full` + `flex-1` + `ActivityFeed` の `min-h-full` で 3 重にコンテンツを引き伸ばし。フィードアイテムが 1 件の場合、300px 超の白い空白が発生。`gap-5` / `py-6` の過大なスペーシングも密度低下の原因 | **copilot-instructions.md に「UI 密度ルール」セクションを新設**: ① `flex-1` による空白引き伸ばし禁止 ② `min-h-full` の安易な使用禁止 ③ カード間ギャップは `gap-4` を標準 ④ `py-4` を標準パディング ⑤ サイドバーは `sm:h-auto` + `overflow-y-auto` ⑥ 少数アイテム時は CTA で空白を埋める。リファレンス: `HomePortal.tsx`（`sm:h-auto`）、`ActivityFeed.tsx`（`sparseHint`） |
+| UI 水平間延び（右カラムに max-width なし） | ダッシュボードの 2 カラムレイアウトで右カラム `flex-1` にコンテンツ幅制約なし。1920px モニターでカードが ~1440px に引き延ばされ、テキスト行長が 150 文字超に。Refactoring UI の "You don't have to fill the whole screen" (p.65) に反する | **copilot-instructions.md に「UI 美学ルール」セクションを新設**: ① `max-width` 必須（ページ全体: `max-w-7xl`, 右カラム内容: `max-w-[960px]`, テキスト: `max-w-prose`）② 余った空間はページ背景色で処理 ③ 視覚的階層は色と太さで表現 ④ ボーダーより背景色・影で区切る ⑤ Laws of UX (Proximity, Common Region, Aesthetic-Usability) を原則として採用。リファレンス: `app/[locale]/page.tsx`（右カラムに `max-w-[960px]`） |
+| `<details>` 折りたたみでパネルが隠れる | ダッシュボードの FollowingPanel / PersonalizedGear / TrendingGear を `<details>` で折りたたんだ結果、ユーザーが存在に気づかなかった。「初期表示の見切れ防止」という意図だったが、主要機能を隠すのは UX 上逆効果 | **主要パネルを `<details>` で折りたたまない**。ファーストビュー外のパネルはスクロールで到達可能な状態で常時表示する。`<details>` は FAQ・ヘルプ・補足情報等の「本当に必要な時だけ見る」コンテンツにのみ使用すること |
+| `fixed` + 低 `zIndex` のデコレーションが不透明背景に隠れる | `FloatingEmojis` を `position: fixed; zIndex: -1` で配置したが、メインコンテンツの `zIndex: 20` + 不透明背景色 `bg-[var(--theme-page-bg)]` で完全に隠された。`zIndex: 5` に上げても同じ。修正: コンポーネントを `#main-content` 内部に移動 + `zIndex: 30` に設定 | **`fixed` デコレーション要素は、不透明背景を持つコンテナの内部に配置すること**。コンテナ外に `fixed` + 低 `zIndex` で配置すると、コンテナの背景色に覆い隠される。`pointer-events-none` で操作透過を確保しつつ、`zIndex` はメインコンテンツ (`zIndex: 20`) より高い値 (30) に設定する |
+| 情報密度の過剰（StepCalendar サマリーカード） | Daily Goal / Weekly Goal が各 4〜5 行の独立セクションで表示され、ラベル行・数値行・パーセント行・ペース行が冗長。ユーザーから「行が多く視覚的な情報量が多い」と指摘。1 画面に収まるべきサマリーが 2 スクロール分の高さに | **サマリーカードの各指標は「ラベル＋バー＋数値」を 1 行にまとめる**。`flex items-center gap-2` で横一列に配置し、ラベル (`w-11 shrink-0`) → プログレスバー (`flex-1 h-1.5`) → 数値 (`shrink-0 tabular-nums`) の 3 要素構成にする。補足情報（パーセント、ペース等）は削除するか、バッジとして 1 行にまとめる。リファレンス: `StepCalendar.tsx` の Daily/Weekly ゴール表示 |
+| 2カラム高さ合わせの誤修正（カード内部の空白化） | 左右カラムの高さ差を消す目的で `items-stretch` / `h-full` を使い、短い `StepCalendar` カードを右列の高さまで引き伸ばした結果、ページ背景の空白は減ったが**カード内部に大きな無意味空白**が発生した。次に `mt-auto` でフッターを押し下げたが、フッターとリストの間に帯状の空白帯が残った。最終的にリスト行自体が高さを分担する `grid auto-rows-fr` パターンで解決した | **通常は配置の再構成で解決する**: `QuickActions` のような独立ウィジェットは別行へ移動し、カードは自然高さを維持する。**ただし明示的に下端揃えが必要な場合は `grid auto-rows-fr` でリスト行が余剰高さを均等に分担する方式を使う**。`mt-auto` だけでフッターを押し下げる方式は禁止（帯状空白の原因）。デスクトップ最上位ラッパーは `flex-1 flex-col` にしてフッター下のデッドスペースも防止する。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`, `components/Footer.tsx` |
 
 ---
 

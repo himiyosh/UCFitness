@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/ui/Toast';
 import Spinner from '@/components/ui/Spinner';
 
 // ============================================

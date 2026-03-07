@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/ui/Toast';
 
 export interface OwnedTitle {
     userItemId: string;    // user_items.id

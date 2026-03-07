@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "../globals.css";
-import { AuthProvider } from "@/components/AuthProvider";
-import { ToastProvider } from "@/components/Toast";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import GlobalLoader from "@/components/GlobalLoader";
+import GlobalLoader from "@/components/auth/GlobalLoader";
 import dynamic from 'next/dynamic';
 
 import { Suspense } from "react";
@@ -11,11 +11,12 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { auth } from "@/lib/auth";
-import LanguageSyncer from "@/components/LanguageSyncer";
+import LanguageSyncer from "@/components/layout/LanguageSyncer";
+import BottomNavBar from "@/components/layout/BottomNavBar";
 
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
-const SplashScreen = dynamic(() => import('@/components/SplashScreen'));
-const FloatingEmojis = dynamic(() => import('@/components/FloatingEmojis'));
+const SplashScreen = dynamic(() => import('@/components/auth/SplashScreen'));
+const FloatingEmojis = dynamic(() => import('@/components/dashboard/FloatingEmojis'));
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -53,6 +54,9 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   const session = await auth();
+  const languageUser = session?.user
+    ? { language: (session.user as { language?: string | null }).language ?? null }
+    : undefined;
 
   // Ensure that the incoming `locale` is valid
   if (!['ja', 'en'].includes(locale)) {
@@ -84,11 +88,14 @@ export default async function LocaleLayout({
                   <GlobalLoader />
                 </Suspense>
 
-                <LanguageSyncer user={session?.user as any} />
-                {session && <FloatingEmojis />}
-                <div id="main-content" className="relative flex flex-col" style={{ zIndex: 20 }}>
+                <LanguageSyncer user={languageUser} />
+                {/* pb-16: BottomNav h-16 (64px) 分の余白を確保 */}
+                <div id="main-content" className="relative flex flex-col pb-16 sm:pb-0" style={{ zIndex: 20 }}>
+                  {session && <FloatingEmojis />}
                   {children}
                 </div>
+                {/* モバイル用固定ボトムナビゲーション (認証済みユーザーのみ) */}
+                {session && <BottomNavBar />}
               </ThemeProvider>
             </ToastProvider>
           </AuthProvider>

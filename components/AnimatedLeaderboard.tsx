@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocale } from 'next-intl';
-import { Period } from '@/components/LeaderboardTabs';
-import { RankingEntry } from '@/lib/ranking-utils';
-import GroupCompetitionList from '@/components/GroupCompetitionList';
-import { GroupRankingEntry } from '@/lib/group-ranking-service';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
+import { RankingEntry } from '@/lib/services/ranking-utils';
+import GroupCompetitionList from '@/components/group/GroupCompetitionList';
+import { GroupRankingEntry } from '@/lib/services/group-ranking-service';
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
-import GroupReactions from '@/components/GroupReactions';
+import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
 import FadeInWrapper from '@/components/leaderboard/FadeInWrapper';
 import Sparkline from '@/components/leaderboard/Sparkline';
@@ -152,7 +152,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     }, [currentGlobal.length, page, totalPages, safePage]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* TABS - Moved to top for alignment */}
             <div className="flex justify-center sm:justify-start">
                 <div role="tablist" className={`flex p-1 rounded-lg shadow-sm w-fit overflow-hidden relative gap-2 ${isMidnight ? '' : 'bg-white border border-gray-200'}`}>
@@ -187,7 +187,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 </div>
             </div>
 
-            <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-start">
                 {/* Global Leaderboard */}
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
@@ -281,7 +281,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                         <>
                                 <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                                     {currentGlobal.length === 0 ? (
-                                        <li className="list-none"><p className="text-center py-8" style={{ color: 'var(--foreground-muted, #6b7280)' }}>{t('noData')}</p></li>
+                                        <li className="list-none"><p className="text-center py-4" style={{ color: 'var(--foreground-muted, #6b7280)' }}>{t('noData')}</p></li>
                                     ) : (
                                         <>
                                                         {paginatedItems.map((entry) => {
@@ -462,7 +462,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 </div>
 
                 {/* Right Column Stack */}
-                <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
+                <div className="lg:col-span-7 order-1 lg:order-2 space-y-4">
                     <LeaderboardGroupSection
                         period={period}
                         allGroupRankings={allGroupRankings}

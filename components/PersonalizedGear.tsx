@@ -95,7 +95,7 @@ export default function PersonalizedGear() {
 
     if (isLoading) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+            <div className="glass-card rounded-2xl p-5">
                 <div className="animate-pulse">
                     <div className="h-5 bg-gray-200 rounded w-48 mb-3" />
                     <div className="h-24 bg-gray-100 rounded-xl mb-2" />
@@ -174,7 +174,7 @@ export default function PersonalizedGear() {
     };
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+        <div className="glass-card rounded-2xl overflow-hidden transition-all duration-200 flex flex-col">
             <div className="px-5 pt-5 pb-3 flex-shrink-0">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">

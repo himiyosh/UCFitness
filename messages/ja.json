@@ -110,6 +110,26 @@
         "refreshing": "同期中...",
         "refreshFailed": "歩数の同期に失敗しました"
     },
+    "BottomNav": {
+        "home": "ホーム",
+        "groups": "グループ",
+        "ranking": "ランキング",
+        "profile": "プロフ",
+        "label": "メインナビゲーション"
+    },
+    "Portal": {
+        "heroLabel": "今日の歩数と統計",
+        "rank": "ランク",
+        "stepsUnit": "歩",
+        "quickActions": "クイックアクション",
+        "recentActivity": "最近のアクティビティ",
+        "viewAll": "すべて見る"
+    },
+    "HomePortal": {
+        "missions": "ミッション",
+        "challenges": "チャレンジ",
+        "following": "フォロー"
+    },
     "LoginBonus": {
         "title": "デイリーボーナス",
         "claimed": "+{amount} UC! ({streak}日連続)",
@@ -141,6 +161,7 @@
     },
     "Leaderboard": {
         "leaderboard": "ランキング",
+        "headerDesc": "グローバル・グループのステップランキングを確認しましょう",
         "titleGlobal": "グローバルランキング",
         "tabUser": "ユーザー (全体)",
         "titleTop10": "トップ10",
@@ -776,10 +797,12 @@
         "stepsUnit": "歩",
         "emptyMessage": "まだアクティビティがありません",
         "emptyHint": "ユーザーをフォローすると、ここに活動が表示されます",
+        "findUsers": "ユーザーを見つける",
         "loadMore": "もっと見る",
         "loading": "読み込み中...",
         "errorMessage": "フィードの読み込みに失敗しました",
         "retry": "再試行",
+        "sparseHint": "もっとユーザーをフォローして、アクティビティを充実させよう 👥",
         "markAllRead": "すべて既読にする",
         "justNow": "たった今",
         "minutesAgo": "{count}分前",
@@ -798,6 +821,7 @@
     },
     "WeeklyGoal": {
         "title": "ウィークリーゴール",
+        "weeklyStepsLabel": "Weekly Steps",
         "steps": "歩",
         "goal": "目標",
         "aheadOfPace": "🔥 ペース通り達成中！",

@@ -4,27 +4,27 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import GroupDetailLeaderboard from "@/components/GroupDetailLeaderboard";
-import UserMenu from "@/components/UserMenu";
-import RefreshButton from '@/components/RefreshButton';
-import NotificationBell from '@/components/NotificationBell';
-import GroupHeaderActions from "@/components/GroupHeaderActions";
-import Breadcrumbs from '@/components/Breadcrumbs';
-import { getAllGroupRankings } from "@/lib/ranking-service";
-import { enrichRankingsWithEquip } from "@/lib/ranking-utils";
-import { getGroupCompetitionRankings } from "@/lib/group-ranking-service";
-import JoinGroupPreview from "@/components/JoinGroupPreview";
+import GroupDetailLeaderboard from "@/components/group/GroupDetailLeaderboard";
+import UserMenu from "@/components/layout/UserMenu";
+import RefreshButton from '@/components/layout/RefreshButton';
+import NotificationBell from '@/components/layout/NotificationBell';
+import GroupHeaderActions from "@/components/group/GroupHeaderActions";
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import { getAllGroupRankings } from "@/lib/services/ranking-service";
+import { enrichRankingsWithEquip } from "@/lib/services/ranking-utils";
+import { getGroupCompetitionRankings } from "@/lib/services/group-ranking-service";
+import JoinGroupPreview from "@/components/group/JoinGroupPreview";
 import nextDynamic from 'next/dynamic';
-import { getAllGroupComparisonData } from "@/lib/group-comparison-service";
+import { getAllGroupComparisonData } from "@/lib/services/group-comparison-service";
 import { getTranslations } from 'next-intl/server';
-import Footer from '@/components/Footer';
-import GroupEventList from "@/components/GroupEventList";
-import GroupWeeklyReport from "@/components/GroupWeeklyReport";
+import Footer from '@/components/layout/Footer';
+import GroupEventList from "@/components/group/GroupEventList";
+import GroupWeeklyReport from "@/components/group/GroupWeeklyReport";
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
-const GroupAnalytics = nextDynamic(() => import('@/components/GroupAnalytics'));
-const GroupGear = nextDynamic(() => import('@/components/GroupGear'));
-const GroupChat = nextDynamic(() => import('@/components/GroupChat'));
+const GroupAnalytics = nextDynamic(() => import('@/components/group/GroupAnalytics'));
+const GroupGear = nextDynamic(() => import('@/components/group/GroupGear'));
+const GroupChat = nextDynamic(() => import('@/components/group/GroupChat'));
 
 export const dynamic = 'force-dynamic';
 

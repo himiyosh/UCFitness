@@ -3,14 +3,14 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/ui/Toast';
 import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 import ShopRecommendations from '@/components/ShopRecommendations';
 import ShopItemCard from '@/components/shop/ShopItemCard';
 import InventoryView from '@/components/shop/ShopInventoryView';
 import { ItemPreviewDialog, ConfirmDialog } from '@/components/shop/ShopPreviewDialog';
 
-import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/shop-service';
+import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/services/shop-service';
 import type { Theme } from '@/components/ThemeProvider';
 
 /** item_code → アプリテーマのマッピング */

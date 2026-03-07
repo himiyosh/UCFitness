@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { RankingEntry } from '@/lib/ranking-utils';
+import { RankingEntry } from '@/lib/services/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { assignBadges } from '@/lib/badge-awards';
+import { assignBadges } from '@/lib/services/badge-awards';
 import { reportError } from '@/lib/errors';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';

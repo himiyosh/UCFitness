@@ -4,16 +4,16 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/navigation";
-import UserMenu from "@/components/UserMenu";
-import RefreshButton from '@/components/RefreshButton';
-import NotificationBell from '@/components/NotificationBell';
-import Breadcrumbs from "@/components/Breadcrumbs";
+import UserMenu from "@/components/layout/UserMenu";
+import RefreshButton from '@/components/layout/RefreshButton';
+import NotificationBell from '@/components/layout/NotificationBell';
+import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import nextDynamic from 'next/dynamic';
 import { supabaseAdmin } from "@/lib/supabase";
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 
 // ⚡ パフォーマンス: クライアントコンポーネントを遅延読み込み
-const PersonalAnalytics = nextDynamic(() => import('@/components/PersonalAnalytics'));
+const PersonalAnalytics = nextDynamic(() => import('@/components/profile/PersonalAnalytics'));
 
 export const dynamic = 'force-dynamic';
 

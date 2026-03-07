@@ -4,15 +4,15 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
-import GroupList from "@/components/GroupList";
-import UserMenu from "@/components/UserMenu";
-import RefreshButton from '@/components/RefreshButton';
-import NotificationBell from '@/components/NotificationBell';
-import GroupSettings from "@/components/GroupSettings";
-import Breadcrumbs from '@/components/Breadcrumbs';
-import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/ranking-service";
+import GroupList from "@/components/group/GroupList";
+import UserMenu from "@/components/layout/UserMenu";
+import RefreshButton from '@/components/layout/RefreshButton';
+import NotificationBell from '@/components/layout/NotificationBell';
+import GroupSettings from "@/components/group/GroupSettings";
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/services/ranking-service";
 import { getTranslations } from "next-intl/server";
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 
 export const dynamic = 'force-dynamic';
 

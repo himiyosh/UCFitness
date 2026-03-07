@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { useToast } from './Toast';
+import { useToast } from '@/components/ui/Toast';
 
 // Helper to convert VAPID key
 function urlBase64ToUint8Array(base64String: string) {

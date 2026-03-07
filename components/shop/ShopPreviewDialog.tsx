@@ -8,7 +8,7 @@ import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
 import Spinner from '@/components/ui/Spinner';
 
 import type { Theme } from '@/components/ThemeProvider';
-import type { ShopItem } from '@/lib/shop-service';
+import type { ShopItem } from '@/lib/services/shop-service';
 
 /** item_code → アプリテーマのマッピング */
 export const THEME_MAP: Record<string, Theme> = {

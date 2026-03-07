@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { type Reaction } from '@/components/GroupReactions';
+import { type Reaction } from '@/components/group/GroupReactions';
 
 /**
  * グループリアクション管理Hook

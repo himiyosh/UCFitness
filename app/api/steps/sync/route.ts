@@ -2,7 +2,7 @@ export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { auth } from "@/lib/auth";
-import { updateUserSteps, backfillUserSteps } from '@/lib/step-manager';
+import { updateUserSteps, backfillUserSteps } from '@/lib/services/step-manager';
 import { reportError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateAllUserSteps } from '@/lib/step-manager';
+import { updateAllUserSteps } from '@/lib/services/step-manager';
 import { reportError } from '@/lib/errors';
 
 export const runtime = 'edge';

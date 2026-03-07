@@ -164,6 +164,121 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **モーダル・ドロップダウン**: モバイルでは全幅 or ボトムシート風にする
 - **フォントサイズの階層**: モバイルの見出しは `text-xl` ～ `text-2xl`、`sm:text-3xl` ～ `sm:text-4xl` で拡大
 
+### UI 密度ルール（間延び防止 — 必須遵守）
+
+**「間延び」（余白が多すぎてコンテンツが疎に見える状態）は美しいデザインではない。** コンパクトで密度の高いレイアウトを常に目指すこと。
+
+#### 間延び防止の原則
+
+1. **`flex-1` による空白引き伸ばし禁止** — コンテンツが少ない場合に `flex-1` で空白を埋めるのは NG。コンテンツの自然な高さに委ね、余白は背景色・グラデーションで処理する
+2. **`min-h-full` の安易な使用禁止** — 親要素の高さに合わせてコンテナを引き伸ばすと、コンテンツが少ない時に巨大な空白が発生する。フィード・リスト系コンポーネントでは `min-h-full` を使わない
+3. **カード間ギャップは `gap-4` (16px) を標準とする** — `gap-5`（20px）以上はコンテンツが疎に見える。`gap-6` 以上は特別な理由がない限り使用しない
+4. **セクションパディングは `py-4` を標準とする** — `py-6` 以上はコンテンツ密度が低下する。大きなパディングが必要な場合は `py-4 lg:py-5` のようにレスポンシブに設定
+5. **デスクトップサイドバーで固定高さのコンテナに少ないコンテンツ**: サイドバー内のコンポーネントは `sm:h-auto` (自然な高さ) を使用し、サイドバーコンテナ側で `overflow-y-auto` と `bg-[var(--theme-page-bg)]` を設定する。コンテンツが少ない場合、余白はページ背景色で自然に処理される
+6. **フィード・リストの空白対策**: コンテンツが少ない（5件未満）場合は「フォロー促進CTA」や「もっと活動しよう」などの補助コンテンツを表示し、空白を意味のあるコンテンツで埋める
+
+#### リファレンス
+
+- **良い例**: `HomePortal.tsx` — デスクトップで `sm:h-auto sm:overflow-visible`、モバイルで固定高さ
+- **良い例**: `ActivityFeed.tsx` — `min-h-full` を使わず、少数アイテム時に `sparseHint` CTA を表示
+- **悪い例（修正済み）**: `sm:h-full` + `flex-1` + `min-h-full` の3重引き伸ばし → 1アイテムで300px超の空白発生
+
+#### `<details>` 折りたたみの使用制限
+
+7. **主要パネル・機能を `<details>` で折りたたまない** — ユーザーが存在に気づかず、機能が使われない。`<details>` は FAQ・ヘルプ・補足情報等「必要な時だけ見る」コンテンツにのみ使用する。ファーストビュー外のパネルはスクロールで到達可能な状態で常時表示すること
+
+#### `fixed` デコレーション要素の配置
+
+8. **`position: fixed` のデコレーション要素（絵文字・パーティクル等）は、不透明背景を持つコンテナの内部に配置する** — コンテナ外に `fixed` + 低 `zIndex` で配置すると、コンテナの背景色 (`bg-[var(--theme-page-bg)]`) に覆い隠される。`pointer-events-none` + コンテンツより高い `zIndex` (例: 30) で操作透過を確保しつつ視認性を保つ。リファレンス: `FloatingEmojis.tsx` (`zIndex: 30`, `layout.tsx` の `#main-content` 内部に配置)
+
+#### サマリーカードの情報密度
+
+9. **複数指標を表示するサマリーカードでは、各指標を「ラベル＋バー＋数値」の 1 行にまとめる** — ラベル行・数値行・パーセント行を別々に表示すると行数が肥大する。`flex items-center gap-2` でラベル (`shrink-0`) → プログレスバー (`flex-1 h-1.5`) → 数値 (`shrink-0 tabular-nums`) の 3 要素を横一列に配置する。補足情報（パーセント・ペース等）は削除するかバッジで 1 行にまとめる。リファレンス: `StepCalendar.tsx` の Daily/Weekly ゴール表示
+
+#### 2 カラムグリッドの高さバランス
+
+10. **2 カラムグリッドの高さ合わせで `items-stretch` / `h-full` を安易に使わない** — 短いカラムを無理に引き伸ばすと、ページ外の空白は減っても**カード内部に意味のない余白**が発生し、見た目はむしろ悪化する。まずはカードを自然高さのまま保ち、`QuickActions` のような独立ウィジェットを別行へ移動する・近い密度のカード同士を並べるなど、**配置の再構成でバランスを取ること**。ただし、ユーザーが明示的に下端揃えを求める場合のみ、`items-stretch` / `h-full` を使ってよい。その際、余剰高さの吸収には **`grid auto-rows-fr`（リスト行が均等に高さを分担）** を使い、`mt-auto` だけでフッターを押し下げる方式は禁止（フッターとコンテンツの間に大きな空白帯が発生するため）。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`
+11. **デスクトップのフッター下にデッドスペースを残さない** — コンテンツ量が少ないページでは、デスクトップ側の最上位ラッパーを `sm:flex sm:flex-col sm:flex-1` にし、フッターを `mt-auto` で最下部へ押し出すこと。フッターの下に背景だけの空白帯が残る構成は禁止。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
+
+### UI 美学ルール（Design Aesthetics — 必須遵守）
+
+**美しい UI は「画面を埋める」ことではない。** 以下のルールは Refactoring UI、Laws of UX 等のデザイン原則に基づく。
+
+> _"You don't have to fill the whole screen. Just because you have the space, doesn't mean you need to use it."_ — Refactoring UI (p.65)
+
+#### コンテンツ幅の制約
+
+1. **`max-width` を必ず設定する** — コンテンツ領域は画面幅に無制限に追従させない。ワイドスクリーン（1920px+）でカードやテキストが水平に引き延ばされるのは最も一般的な「間延び」パターン
+2. **推奨 `max-width` 値**:
+   - ページコンテンツ全体: `max-w-7xl`（1280px）
+   - 2 カラムレイアウトの右カラム内容: `max-w-[960px]`
+   - テキスト中心のコンテンツ: `max-w-prose`（65ch ≈ 600px）
+   - カード内のテキスト行長: 45〜75 文字が最適（それ以上は可読性が低下する）
+3. **余った空間はページ背景色で処理する** — `var(--theme-page-bg)` のグラデーション背景がコンテンツの外側に自然に現れるようにする。空間を埋めるために不要な UI 要素を追加しない
+
+#### 視覚的階層（Visual Hierarchy）
+
+4. **階層はサイズだけでなく色と太さで表現する** — 見出しを大きくする代わりに、太字 + テーマカラーで強調する。補助テキストは `text-gray-500` + `font-normal` で控えめにする
+5. **セマンティックカラーを活用する**:
+   - プライマリアクション: `var(--theme-primary)` + 白テキスト（塗りつぶしボタン）
+   - セカンダリアクション: `var(--theme-primary)` + 透明背景（アウトラインボタン）
+   - ターシャリアクション: テキストリンクスタイル（ボタン枠なし）
+6. **すべてのラベルに `font-semibold` は不要** — ラベルが多い UI で全部太字にすると何も目立たない。重要なものだけに太さを使い、それ以外は `font-normal` + `text-gray-500`
+
+#### 境界線と区切り（Borders & Separation）
+
+7. **ボーダーを減らし、背景色・影・余白で区切る** — `border-b` の連続使用は視覚的ノイズを増やす。代替手段:
+   - **背景色のコントラスト**: 隣接セクションに異なる背景色（`bg-white` と `bg-gray-50/50`）
+   - **影（shadow）**: `shadow-sm` でカードを浮かせて区切る
+   - **余白（spacing）**: `gap-4` や `py-4` で自然な区切りを作る
+8. **アクセントボーダーで個性を出す** — 左端の装飾線（`border-l-4 border-[var(--theme-primary)]`）はカードに視覚的アクセントを与える。全辺のボーダーより軽く、かつ印象的
+
+#### 近接と関連性（Law of Proximity & Common Region）
+
+9. **関連要素はグループ化し、無関係な要素は離す** — 同じ機能グループのコンポーネントは `gap-2` で密接に配置し、異なるセクション間は `gap-4` 以上で区切る。等間隔に並べると機能的な違いが読み取れなくなる
+10. **共通領域の法則** — 背景色やカード（`rounded-xl bg-white/80`）で囲むことで、要素の関連性を視覚的に示す。ボーダーだけでなく背景色の変化も「グループ」を表現する手段
+
+#### 美的ユーザビリティ効果（Aesthetic-Usability Effect）
+
+11. **見た目が美しいデザインは、ユーザーに「使いやすい」と感じさせる** — 軽微なユーザビリティの問題は、視覚的に洗練されたデザインによって許容される。逆に見た目が雑だと、機能的に正しくてもユーザーは不満を感じる。デザインの美しさへの投資は UX 品質に直結する
+
+#### リファレンス
+
+- **出典**: [Refactoring UI](https://www.refactoringui.com/) — "You don't have to fill the whole screen" (p.65), "Establish a spacing and sizing system" (p.60)
+- **出典**: [Laws of UX](https://lawsofux.com/) — Aesthetic-Usability Effect, Law of Proximity, Law of Common Region
+- **出典**: [7 Practical Tips for Cheating at Design](https://medium.com/refactoring-ui/7-practical-tips-for-cheating-at-design-40c736799886) — 色・太さの階層、ボーダー削減、アクセントボーダー、ボタン階層
+- **良い例**: `app/[locale]/page.tsx` — 右カラムに `max-w-[960px]` で幅制約、余白はページ背景色で処理
+- **悪い例（修正済み）**: 右カラムに `max-width` なし → 1920px で全幅に引き延ばされ、カードが巨大化
+
+### デザイン哲学 — 「訪れるのが楽しくなるサイト」(Design Delight)
+
+UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日開きたくなる**デザインを目指す。「機能的に正しい」だけでは不十分。**ワクワク感・達成感・遊び心**を視覚的に表現すること。
+
+#### 原則
+
+1. **Motion = Emotion** — 静的な画面は退屈。CSS アニメーション (`@keyframes`) を活用し、カードの入場・数値のカウントアップ・達成時のお祝いなど、意味のあるモーションを追加する
+2. **Glassmorphism & Depth** — フラットデザインに固執しない。`backdrop-blur` / `bg-white/80` / グラデーションシャドウで奥行きと高級感を出す
+3. **Gamification Visual** — ランク表示、バッジ、ストリーク、レベルアップなどゲーム的な視覚フィードバックを積極的に採用
+4. **Micro-Interactions** — ホバー、タップ、スクロールに対して小さな反応を返す。ボタンの `scale` / カードの `shadow` 変化 / アバターの `ring` 点灯など
+5. **Color = Meaning** — 色は装飾ではなく意味を持たせる。達成=緑、警告=オレンジ、1位=ゴールド、自分=テーマカラーリング
+
+#### 実装パターン
+
+- **入場アニメーション**: `@keyframes fadeInUp` → `.animate-fadeInUp` でカードがフェードイン + 上昇
+- **stagger 遅延**: 複数カードは `animation-delay` をずらして順番に入場
+- **ホバーエフェクト**: カードは `hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200`（ただしリーダーボード行は `transition-colors` のみ）
+- **数値ハイライト**: 歩数・コインなどの重要数値は `bg-clip-text text-transparent bg-gradient-to-r` でグラデーション表示
+- **達成バッジ**: ゴール達成時は `animate-bounce` + 緑のグロー (`shadow-green-500/30`)
+- **プログレスバー**: `transition-all duration-700` で滑らかにアニメーション
+- **ガラスカード**: `bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg` で半透明ガラス効果
+- **`prefers-reduced-motion`**: アニメーションを無効化するオプションを必ず提供
+
+#### 禁止事項
+
+- `framer-motion` は使用禁止（CSS アニメーション + Tailwind のみ）
+- 意味のないアニメーション（ローディング以外の無限回転、点滅等）は禁止
+- パフォーマンスを犠牲にする重いアニメーション（`filter: blur(20px)` の連続適用等）は禁止
+
 ### リーダーボード / ランキング統一ルール（変更厳禁）
 
 **ユーザーから繰り返し指摘されている仕様。改善ループやリファクタリングで勝手に変更してはならない。**
@@ -200,6 +315,7 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 ### コードレビューチェックリスト（Red Flags）
 
 **コード変更時に以下の項目に該当する箇所がないか確認すること。**
+**なお、作業完了報告の直前には `self-critique.agent.md` の 6 軸批判を自動的に実行し、全軸 PASS するまで報告しないこと。**
 
 #### セキュリティ
 
@@ -241,6 +357,16 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **環境変数ファイル** (`.env`, `.env.local`) からもフラグを削除すること
 - **翻訳ファイル** (`messages/ja.json`, `messages/en.json`) にフラグ関連のキーがあれば削除する
 - フラグ削除は **1 フラグ = 1 コミット** で行い、複数フラグを同時に削除しない
+
+### dev サーバー起動ルール（ポート 3000 必須）
+
+- **NextAuth の OAuth コールバック URL が `localhost:3000` に固定されているため、dev サーバーは必ずポート 3000 で起動すること**
+- ポート 3000 が他のプロセスに使用されている場合は、**先にそのプロセスをキルしてから起動する**:
+  ```powershell
+  Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+  ```
+- `npm run dev` は自動的にポート 3000 を使用する。ポート競合で 3001 等にフォールバックした場合、認証（ログイン・セッション）が機能しないため、必ずキル→再起動すること
+- Playwright テストも `localhost:3000` を対象とする
 
 ### デプロイ制限
 
@@ -489,3 +615,220 @@ export const runtime = "edge";
   - 対象コンポーネント自体を `'use client'` にし、その中で `import` する（通常はこれで十分）
   - または中間の Client Component ラッパーを作り、そこで `dynamic(() => import(...), { ssr: false })` する
 - 参考: `GroupAnalytics.tsx`（Client Component 内で `ssr: false`）✅ / `wallet/page.tsx`（Server Component で `ssr: false` → ビルドエラー）❌
+
+---
+
+## JPUCSupport 共通ルール準拠セクション
+
+> 以下のセクションは JPUCSupport 組織配下の全プロジェクトで統一されたルールを
+> UCFitness 向けに適用したもの。
+
+### README 同期 (必須)
+
+- コード変更時に関連する README セクションを**必ず同一コミットで更新**する
+- 対象: ファイル追加/削除、ディレクトリ構造変更、機能追加/変更、API エンドポイント変更、設定ファイルの構造変更、翻訳キー追加
+- 「次回更新する」という先送りは禁止
+- Copilot Instructions (本ファイル) も同様 --- コード変更がルール・インストラクションに影響する場合は同一コミットで更新
+
+### エージェント組織図の README 同期 (必須)
+
+`.github/agents/`, `.github/prompts/`, `.github/skills/`, `.github/instructions/` 配下のファイルを**追加・削除・変更**した場合、README.md の `### カスタムエージェント` セクション内の**組織階層図（テキスト版）**と関連テーブルを**同一コミットで更新**すること。
+
+#### 更新トリガー
+
+| 変更内容 | 更新対象 |
+|---|---|
+| `.agent.md` の追加・削除・リネーム | 階層図 + エージェント詳細一覧テーブル + ロール自動選択テーブル |
+| `.prompt.md` の追加・削除 (agents/ 配下) | 階層図の「Agent Sub-Prompts」ノード |
+| `.prompt.md` の追加・削除 (prompts/ 直下) | 階層図の「Slash Commands」ノード |
+| `SKILL.md` の追加・削除 | 階層図の「Skills」ノード + Skills テーブル |
+| `.instructions.md` の追加・削除 | 階層図の「Shared Instructions」ノードのファイル数 |
+| `UCFitnessAgent.agent.md` のロール追加・変更 | 階層図のロール配置 + ロール自動選択テーブル |
+
+#### 階層図のフォーマットルール
+
+階層図は以下のスタイルで記述する:
+
+```
+👤 User (VS Code Chat Panel / Slash Commands)
+│
+├── ⚙️ {MasterAgent} [Orchestrator — Layer 1]
+│   │  {説明テキスト}
+│   │
+│   ├── 📁 {カテゴリ名}
+│   │   ├── {色絵文字} {AgentName}              {役割の短い説明}
+│   │   │   └── 🔧 [{skill名} skill]
+│   │   └── {色絵文字} {AgentName}              {役割の短い説明}
+│   │
+│   ├── 🎭 {StandaloneAgent}               {役割の短い説明}
+│   └── 🧹 {JanitorAgent}                  {役割の短い説明}
+│       └── 🔄 {SubWorkflow}               {説明}
+│
+├── ⚡ Slash Commands (Prompts) — ユーザーが直接呼び出す定型タスク
+│   ├── {絵文字} /{command-name}               {用途}
+│   ...
+│
+├── ⚡ Agent Sub-Prompts — {MasterAgent} 内部で使用するワークフロー
+│   ├── {絵文字} /agents/{prompt-name}         {用途}
+│   ...
+│
+├── 📋 Shared Instructions (全エージェント共通ルール)
+│   ├── {filename}                             {説明}
+│   ...
+│
+└── 🔧 Skills (再利用可能なドメイン知識)
+    ├── {skill-name}                           {説明}
+    ...
+```
+
+**スタイル規則:**
+- **ルートノード**: `👤 User` — ユーザーが起点
+- **オーケストレーター**: `⚙️` + `[Orchestrator — Layer N]` で階層レベルを明示
+- **エージェントロール**: 色付き四角絵文字 (🟦🟩🟥🟨🟪🟧🟫) で視認性を確保。同じロールには同じ色を維持する
+- **カテゴリグルーピング**: 関連ロールは `📁 {カテゴリ名}` でグループ化
+- **スキル参照**: エージェントが使用するスキルは `🔧 [{skill名} skill]` で子ノードに配置
+- **Slash Commands**: `⚡` + コマンドごとに用途を示す絵文字
+- **説明テキスト**: ロール名の後にスペース区切りで右揃え風に配置（等幅フォント前提）
+- **コードブロック内**: 絵文字は使用 OK（コンソール出力禁止ルールの対象外）
+
+### プロジェクトルートの整理ルール（必須遵守）
+
+**プロジェクトルートにスクリーンショット・ログ・一時ファイルを放置しない。**
+
+- **スクリーンショット**: Playwright 等で生成したスクリーンショットは `screenshots/` フォルダに格納する。ルート直下への出力は禁止
+- **ログファイル**: `lint.log` 等のビルド・リント出力は作業完了後に必ず削除する。コミット対象にしない
+- **一時スナップショット**: 拡張子なしのスナップショットファイル（`audit-desktop-top` 等）をルートに残さない。不要になった時点で即削除
+- **`.gitignore` で防止済み**: `/*.png`, `/*.jpg`, `lint.log` 等はルートレベルで `.gitignore` に登録済み。サブフォルダ内の画像は影響を受けない
+- **許可されるルートファイル**: `README.md`, `package.json`, `tsconfig.json`, 各種設定ファイル（`.eslint*`, `next.config.*`, `postcss.config.*`, `vitest.config.*`）、`middleware.ts`, `navigation.ts`, `i18n.ts` のみ
+
+### ディレクトリ構造整理ルール（必須遵守）
+
+**フラットに 100 以上のファイルが並ぶディレクトリは整理対象。** 新規ファイル作成時は、以下のサブフォルダ分類に従うこと。
+
+#### `components/` のサブフォルダ分類
+
+新規コンポーネント作成時は、該当するサブフォルダに配置する。既存のフラットファイルは計画的なリファクタリングで段階移行する（import パス変更を伴うため、専用ブランチで実施）。
+
+| サブフォルダ | 対象コンポーネント |
+|---|---|
+| `components/leaderboard/` | ランキング・リーダーボード系 |
+| `components/shop/` | ショップ・購入系 |
+| `components/group/` | グループ関連（`Group*.tsx`） |
+| `components/challenge/` | チャレンジ関連（`Challenge*.tsx`） |
+| `components/dashboard/` | ダッシュボード専用ウィジェット（`Dashboard*.tsx`, `HomePortal`, `QuickActions` 等） |
+| `components/profile/` | プロフィール関連（`Profile*.tsx`） |
+| `components/auth/` | 認証関連（`Auth*.tsx`, `LoginBonusToast`） |
+| `components/ui/` | 汎用 UI 部品（`Spinner`, `Toast`, `Breadcrumbs` 等） |
+| `components/layout/` | レイアウト系（`Footer`, `UserMenu`, `BottomNavBar`, `RefreshButton` 等） |
+
+#### `lib/` のサブフォルダ分類
+
+| サブフォルダ | 対象モジュール |
+|---|---|
+| `lib/` (直下) | 共通ユーティリティ（`auth.ts`, `supabase.ts`, `constants.ts`, `env.ts`, `errors.ts`, `validation.ts`, `date-utils.ts`） |
+| `lib/services/` | ビジネスロジック（`badge-*.ts`, `coin-service.ts`, `shop-service.ts`, `ranking-*.ts`, `step-manager.ts`） |
+| `lib/api/` | 外部 API 連携（`fitbit.ts`, `amazon-creators-api.ts`, `web-push.ts`, `teams.ts`） |
+
+#### `screenshots/` のクリーンアップ
+
+- スクリーンショットは**作業中の一時ファイル**であり、長期保存しない
+- Improvement Loop / Playwright 検証の完了後、不要なスクリーンショットは即削除する
+- README やドキュメントに使用する画像のみ `public/` または `docs/images/` に保存する
+
+### ファイル命名規則
+
+- **ファイル名**: 英語のみ。日本語ファイル名は禁止 (URL エンコーディング問題回避)
+- **コンポーネント**: PascalCase (`UserMenu.tsx`, `ActivityFeed.tsx`)
+- **ユーティリティ / lib**: camelCase (`pushMessages.ts`) またはケバブケース (`push-messages.ts`)
+- **設定ファイル**: `.env` (本番用) は `.gitignore` に追加、`.env.example` をコミットしてプレースホルダー値を記載
+- **翻訳ファイル**: `messages/ja.json`, `messages/en.json` の 2 ファイル構成
+
+### エンコーディング (Node.js / TypeScript)
+
+- ソースファイルは **UTF-8 (BOM なし)** で保存
+- ファイル I/O 時は必ずエンコーディングを明示指定する
+- コンソール出力に絵文字を使用禁止 --- ASCII マーカー (`OK:`, `ERR:`, `SKIP:`, `WARN:`) を使用すること
+- Markdown ファイル (`.md`) を編集した後は、必ず U+FFFD スキャンを実行すること (BMP 外絵文字の文字化け防止)
+- ログファイルはスクリプト内部で UTF-8 明示指定で実装し、シェルリダイレクト (`>`, `Tee-Object`) に依存しない
+
+### セキュリティ / シークレット管理
+
+- **絶対禁止**: シークレット (パスワード、API キー、トークン、Supabase サービスロールキー、NextAuth シークレット) をソースコードにハードコードしてはならない
+- **設定ファイル戦略**:
+  - `.env` / `.env.local` は `.gitignore` に追加済み
+  - `.env.example` をコミットし、プレースホルダー値を記載
+- **サーバーサイドのみ**: `supabaseAdmin` (サービスロールキー使用) はサーバーコンポーネント・API ルートのみで使用。クライアントに露出させない
+- **Fitbit API トークン**: OAuth リフレッシュトークンは DB に保存し、アクセストークンはメモリ内で短命管理
+- **`console.log` でのシークレット出力禁止**: デバッグ時もトークン・キーをログに含めない
+
+### 社内コンプライアンスポリシー (CSS Data Policy)
+
+> **参照ポリシー**:
+> - Article 5072448: [Guidance for Support Engineers in using Copilot Chat/Agent](https://internal.evergreen.microsoft.com/en-us/topic/2551d022-d53d-4abc-c733-4aa959b7fb87)
+> - Article 4457137: [Handling support data (commercial customers)](https://internal.evergreen.microsoft.com/en-us/topic/e7f0b758-57f8-41e9-1b42-fbea2fab36cf)
+
+#### 絶対遵守事項
+
+1. **PII 禁止**: お客様の PII (氏名、メールアドレス、電話番号、テナント ID 等) をプロンプトに入力してはならない
+2. **パスワード禁止**: お客様のパスワードの送受信は絶対禁止
+3. **MCP 制限**: TrIP 承認済みの MCP サーバーのみ使用可。オープンソース MCP サーバーでの顧客データ処理は禁止
+4. **データ転送**: サポートデータの転送は **DTMv2 のみ**。メール添付、OneDrive、Teams 共有は禁止
+5. **データ削除**: トラブルシューティング完了後は Copilot ログおよびサポートデータのローカルコピーを速やかに削除
+6. **使用アカウント**: @microsoft.com アカウントまたは紐づいた GitHub Enterprise アカウントのみ
+
+### テスト / 品質保証
+
+- コード修正後は**必ず型チェック (`npx tsc --noEmit`) とリント (`npx next lint`) を実行**し、PASS を確認してから完了報告する
+- Vitest テストがある場合は `npx vitest run` で関連テストも実行する
+- 既存テストが失敗した場合は**実装バグを先に疑う** --- テストコード修正が必要な場合はユーザーに確認する
+- テスト用設定値を本番設定に混入させない
+- テスト後のクリーンアップ (一時ファイル、テストブランチの削除) を必ず実施
+- **`.next` キャッシュ破損注意**: `npx next build` 実行後は `.next` ディレクトリを削除すること (型チェックには `tsc --noEmit` を優先)
+
+### 自動実行の安全制約
+
+#### 破壊的・不可逆操作の禁止
+
+以下の操作は**ユーザーの明示的な承認なしに実行してはならない**:
+
+- `git push --force` / `git reset --hard` / 公開済みコミットの amend
+- ファイル/ブランチの削除 (`rm -rf`, `git branch -D`)
+- データベースへの書き込み・削除操作 (Supabase)
+- 外部サービスへの投稿 (PR コメント、Teams メッセージ送信)
+- 本番環境への変更適用 (Cloudflare Pages デプロイ)
+
+#### 安全チェック回避の禁止
+
+- `--no-verify` / `--force` / `-f` 等の安全チェックバイパスオプションは使用禁止
+- CI/CD パイプラインの手動スキップは禁止
+
+#### 自動実行の原則
+
+| 操作 | ユーザー確認 |
+|---|---|
+| 作業ブランチへの `git push` | 不要 (自動実行 OK) |
+| PR の作成 (`gh pr create`) | 不要 (自動実行 OK) |
+| PR のマージ (`gh pr merge`) | **必須** |
+| `main` / `master` への直接 push | **禁止** |
+| 本番データの変更 (Supabase) | **必須** |
+| Cloudflare Pages デプロイ (`git push`) | **必須** (デプロイ制限あり) |
+| ドライラン / プレビュー | 不要 (自動実行 OK) |
+
+### 自己改善プロトコル (Lessons Learned)
+
+障害・未検出・誤検出・ワークフロー上の問題が発生した場合、**コード修正 + プロンプト/instruction 更新 + コミットの 3 点セット**を同一セッション内で完了する。
+
+#### 記録フォーマット
+
+```markdown
+### LL-XXX: {タイトル}
+- **事象**: {何が起きたか}
+- **根本原因**: {なぜ起きたか}
+- **対策**: {どう修正/予防したか}
+- **教訓**: {今後の汎用的な学び}
+```
+
+#### ルール
+
+- コード変更時に関連するプロンプトの処理フロー・ステップ説明・検証項目を**同一コミットで更新**
+- **禁止**: 「次回修正します」と先送り / ユーザーに指摘されてから修正 / 説明だけでコード未修正 / コード修正だけでプロンプト未更新

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendTeamsNotification } from '@/lib/teams';
+import { sendTeamsNotification } from '@/lib/api/teams';
 import { reportError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';

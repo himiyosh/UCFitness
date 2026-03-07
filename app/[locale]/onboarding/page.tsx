@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import UsernameForm from "@/components/UsernameForm";
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 
 export const dynamic = 'force-dynamic';
 

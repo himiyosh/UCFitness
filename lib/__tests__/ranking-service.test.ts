@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { deriveBatchGroupRankings } from '../ranking-service';
+import { deriveBatchGroupRankings } from '../services/ranking-service';
 
 const { mockSupabase, mockSelect, mockIn, mockFrom } = vi.hoisted(() => {
     const mockSelect = vi.fn();

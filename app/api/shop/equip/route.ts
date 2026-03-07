@@ -2,7 +2,7 @@ export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { equipItem, unequipItem } from '@/lib/shop-service';
+import { equipItem, unequipItem } from '@/lib/services/shop-service';
 import { reportError } from '@/lib/errors';
 
 export async function POST(request: Request) {

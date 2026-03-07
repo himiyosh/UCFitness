@@ -4,16 +4,16 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
-import UserMenu from "@/components/UserMenu";
-import RefreshButton from '@/components/RefreshButton';
-import NotificationBell from '@/components/NotificationBell';
-import UCHintBalloon from "@/components/UCHintBalloon";
-import Breadcrumbs from "@/components/Breadcrumbs";
+import UserMenu from "@/components/layout/UserMenu";
+import RefreshButton from '@/components/layout/RefreshButton';
+import NotificationBell from '@/components/layout/NotificationBell';
+import UCHintBalloon from "@/components/ui/UCHintBalloon";
+import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import CoinBalanceCard from "@/components/CoinBalanceCard";
 import nextDynamic from 'next/dynamic';
-import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/coin-service";
+import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/services/coin-service";
 import { getTranslations } from "next-intl/server";
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 
 // ⚡ パフォーマンス: Recharts系の重いチャートコンポーネントを遅延読み込み
 // ※ Server Component では ssr: false は使用不可 — Client Component 内でのみ使用可能
