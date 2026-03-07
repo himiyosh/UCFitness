@@ -156,7 +156,7 @@ export default function ActivityFeed() {
     if (feed.length === 0) {
         return (
             <div className="premium-card flex flex-col items-center justify-center min-h-[200px]">
-                <div className="text-center px-6 py-6">
+                <div className="text-center px-6 py-4">
                     <div className="text-5xl mb-4">\ud83d\udc65</div>
                     <p className="text-sm font-medium text-gray-600">{t('emptyMessage')}</p>
                     <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{t('emptyHint')}</p>

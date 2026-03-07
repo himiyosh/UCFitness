@@ -187,7 +187,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 </div>
             </div>
 
-            <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-start">
                 {/* Global Leaderboard */}
                 <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
@@ -281,7 +281,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                         <>
                                 <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                                     {currentGlobal.length === 0 ? (
-                                        <li className="list-none"><p className="text-center py-8" style={{ color: 'var(--foreground-muted, #6b7280)' }}>{t('noData')}</p></li>
+                                        <li className="list-none"><p className="text-center py-4" style={{ color: 'var(--foreground-muted, #6b7280)' }}>{t('noData')}</p></li>
                                     ) : (
                                         <>
                                                         {paginatedItems.map((entry) => {

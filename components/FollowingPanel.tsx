@@ -246,7 +246,7 @@ export default function FollowingPanel() {
                                 ))}
                             </div>
                         ) : compError ? (
-                            <div className="flex flex-col items-center py-6 text-center">
+                            <div className="flex flex-col items-center py-4 text-center">
                                 <span className="text-3xl mb-2">⚠️</span>
                                 <p className="text-sm font-semibold text-gray-700">{t('comparisonError')}</p>
                                 <button
@@ -258,7 +258,7 @@ export default function FollowingPanel() {
                                 </button>
                             </div>
                         ) : compData.length <= 1 ? (
-                            <div className="flex flex-col items-center py-6 text-center">
+                            <div className="flex flex-col items-center py-4 text-center">
                                 <span className="text-3xl mb-2">👥</span>
                                 <p className="text-xs text-gray-500">{t('noComparisonData')}</p>
                             </div>

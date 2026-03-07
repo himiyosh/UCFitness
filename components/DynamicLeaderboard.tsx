@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/GroupRankingPanel';
-import GroupSettings from '@/components/GroupSettings';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
@@ -30,6 +29,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
     const [globalRankings, setGlobalRankings] = useState<RankingEntry[]>([]);
     const [groupRankingsList, setGroupRankingsList] = useState<{ keyword: string; neighbors: RankingEntry[] }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [activeGroupIndex, setActiveGroupIndex] = useState(0);
 
     // 配列参照の安定化（親が毎レンダー新配列を渡してもeffectが再実行されない）
     const serializedKeywords = JSON.stringify(groupKeywords);
@@ -55,7 +55,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                     })
                 );
                 setGroupRankingsList(groupResults);
-            } catch (_error: unknown) {
+            } catch {
                 // エラーはUIにローディング解除で反映
             } finally {
                 setIsLoading(false);
@@ -63,11 +63,10 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
         };
 
         fetchData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [period, userId, serializedKeywords]);
 
     return (
-        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-start">
             {/* Global Leaderboard (Mobile: Order 2, Desktop: Left 5 cols) */}
             <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
 
@@ -99,7 +98,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                     })}
                 </div>
 
-                <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[400px]">
+                <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 min-h-[360px]">
                     <div className="px-4 py-3 sm:px-6 sm:py-5 border-b border-gray-100 flex justify-between items-center">
                         <h3 className="text-base font-bold text-gray-900">
                             {t('titleGlobal')}
@@ -176,27 +175,54 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
             </div>
 
             {/* Right Column Stack (Mobile: Order 1, Desktop: Right 7 cols) */}
-            <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
+            <div className="lg:col-span-7 order-1 lg:order-2 space-y-4 pb-2">
 
                 {/* Group Leaderboards */}
                 {groupRankingsList.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4">
-                        {groupRankingsList.map((groupData, index) => (
-                            <div key={groupData.keyword} className="relative">
+                    <div className="flex flex-col gap-4">
+                        {/* チーム切り替え用アイコン・ボタン群 */}
+                        {groupRankingsList.length > 1 && (
+                            <div className={`flex gap-2 p-1 overflow-x-auto scrollbar-hide rounded-xl ${theme !== 'midnight' ? 'bg-white border border-gray-100 shadow-sm' : ''}`} style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}>
+                                {groupRankingsList.map((groupData, index) => {
+                                    const isActive = activeGroupIndex === index;
+                                    const shortName = groupData.keyword.replace(/^group:/, '').slice(0, 2).toUpperCase();
+                                    return (
+                                        <button
+                                            key={groupData.keyword}
+                                            onClick={() => setActiveGroupIndex(index)}
+                                            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all flex items-center gap-2 ${
+                                                isActive 
+                                                    ? (theme !== 'midnight' ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'bg-[var(--theme-primary)] text-white')
+                                                    : (theme !== 'midnight' ? 'text-gray-600 hover:bg-gray-50' : 'text-gray-400 hover:text-white')
+                                            }`}
+                                        >
+                                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-[10px]">
+                                                {shortName}
+                                            </span>
+                                            <span className="inline-block truncate max-w-[120px]">{groupData.keyword.replace(/^group:/, '')}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        
+                        {/* 選択中のグループのみ表示 */}
+                        {groupRankingsList[activeGroupIndex] && (
+                            <div className="relative">
                                 <GroupRankingPanel
-                                    keyword={groupData.keyword}
-                                    neighbors={groupData.neighbors}
+                                    keyword={groupRankingsList[activeGroupIndex].keyword}
+                                    neighbors={groupRankingsList[activeGroupIndex].neighbors}
                                     userId={userId}
-                                    index={index}
+                                    index={activeGroupIndex}
                                     totalCount={groupRankingsList.length}
                                 />
                                 {isLoading && (
                                     <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl">
-                                        {/* Spinner optional here, or just blur */}
+                                        {/* Spinner optional here */}
                                     </div>
                                 )}
                             </div>
-                        ))}
+                        )}
                     </div>
                 ) : (
                     !isLoading && (
@@ -206,9 +232,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                     )
                 )}
 
-                {/* グループ設定パネル */}
-                {userId && <GroupSettings />}
             </div>
         </div>
     );
 }
+

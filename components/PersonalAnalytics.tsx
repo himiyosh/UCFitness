@@ -40,9 +40,9 @@ function formatMonth(monthStr: string): string {
 // ローディングスケルトン
 function Skeleton() {
     return (
-        <div className="space-y-5 animate-pulse">
+        <div className="space-y-4 animate-pulse">
             <div className="h-48 rounded-3xl bg-gradient-to-br from-gray-200 to-gray-100" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="h-[340px] rounded-2xl bg-gray-100" />
                 <div className="h-[340px] rounded-2xl bg-gray-100" />
             </div>
@@ -188,7 +188,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
             </div>
 
             {/* ============ 2カラムグリッド: 曜日 + 月別 ============ */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* ---- 曜日別平均チャート ---- */}
                 <div className="midnight-solid-panel bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden hover:shadow-md transition-shadow">
                     <div className="px-5 py-4 border-b border-gray-100/80">

@@ -269,7 +269,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                             </>);
                         })()
                     ) : (
-                        <p className={`text-center py-8 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
+                        <p className={`text-center py-4 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
                     )}
                 </div>
             </div>

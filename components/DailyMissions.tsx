@@ -95,7 +95,7 @@ export default function DailyMissions() {
     if (error) {
         return (
             <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
-                <div className="flex flex-col items-center py-6 text-center">
+                <div className="flex flex-col items-center py-4 text-center">
                     <span className="text-3xl mb-2">⚠️</span>
                     <p className="text-sm font-semibold text-gray-700">{t('loadError')}</p>
                     <button
@@ -113,7 +113,7 @@ export default function DailyMissions() {
     if (missions.length === 0) {
         return (
             <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
-                <div className="flex flex-col items-center py-6 text-center">
+                <div className="flex flex-col items-center py-4 text-center">
                     <span className="text-4xl mb-3">🎯</span>
                     <p className="text-sm font-bold text-gray-700 mb-1">{t('dailyMissions')}</p>
                     <p className="text-xs text-[var(--foreground-muted)]">{t('noMissions')}</p>
@@ -154,18 +154,7 @@ export default function DailyMissions() {
                     </div>
                 </div>
 
-                {/* プログレスバー */}
-                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div
-                        className="h-full rounded-full transition-all duration-500 ease-out"
-                        style={{
-                            width: `${progressPercent}%`,
-                            background: allCompleted
-                                ? 'linear-gradient(90deg, #10b981, #34d399)'
-                                : 'var(--theme-primary)',
-                        }}
-                    />
-                </div>
+                {/* プログレスバー（削除） */}
                 {allCompleted && (
                     <p className="text-xs font-bold text-emerald-600 mt-1">
                         ✨ {t('allCompleted')}

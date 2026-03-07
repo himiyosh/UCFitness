@@ -14,6 +14,7 @@ import AutoSync from '@/components/AutoSync';
 import Footer from '@/components/Footer';
 import LandingPage from '@/components/LandingPage';
 import HomePortal from '@/components/HomePortal';
+import QuickActions from '@/components/QuickActions';
 
 import type { RankingEntry } from '@/lib/ranking-utils';
 
@@ -141,8 +142,8 @@ export default async function Home() {
   }
 
   // グループキーワード・バナー画像を抽出
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const groupKeywords = (membershipResult.data ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((m: any) => m.groups?.keyword)
     .filter(Boolean) as string[];
 
@@ -189,10 +190,10 @@ export default async function Home() {
   const userImage = dbUserImage || session.user.image || null;
 
   return (
-    <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
+    <main className="min-h-screen flex flex-col bg-[var(--theme-page-bg)]">
       {/* ヘッダー: モバイルではコンパクト (h-12) */}
       <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-        <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 group">
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
@@ -231,65 +232,67 @@ export default async function Home() {
         />
       </div>
 
-      {/* ===== デスクトップ: Portal + サイドバー 2カラムレイアウト (sm以上のみ表示) ===== */}
-      <div className="hidden sm:flex flex-1">
-        {/* 左カラム: ポータル（sticky — モバイルと統一されたヒーロー + クイックアクション + フィード） */}
-        <div className="w-[420px] lg:w-[460px] xl:w-[480px] flex-shrink-0 border-r border-gray-200/60 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto bg-[var(--theme-page-bg)]">
-          <HomePortal
-            todaySteps={mySteps}
-            yesterdaySteps={yesterdaySteps}
-            weeklySteps={weeklySteps}
-            monthlySteps={monthlySteps}
-            stepGoal={stepGoal}
-            userName={dbUserName || session.user.name || null}
-            userImage={userImage}
-            username={username}
-            globalRank={globalRank}
-          />
-        </div>
+      {/* ===== デスクトップ: 1カラムレイアウト (sm以上のみ表示) ===== */}
+      <div className="hidden sm:block mx-auto max-w-7xl w-full">
+        <div className="w-full px-4 lg:px-6 xl:px-8 py-3 lg:py-4 pb-8 flex flex-col gap-3">
 
-        {/* 右カラム: ウィジェット群（スクロール可能）
-             Refactoring UI: "You don't have to fill the whole screen"
-             — max-w-[960px] でカードの水平引き伸ばしを防止 */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-[960px] px-4 lg:px-6 xl:px-8 py-4 lg:py-5 flex flex-col gap-4">
-
-            {/* アクティビティサマリー（チャートがあるため全幅） */}
-            <StepCalendar
-              userId={userId}
-              showCalendar={false}
-              activity={{
-                todaySteps: mySteps,
-                yesterdaySteps,
-                weeklySteps,
-                lastWeekSteps,
-                monthlySteps,
-                lastMonthSteps,
-                stepGoal,
-              }}
-            />
-
-            {/* デイリーミッション + アクティブチャレンジ: 2カラムグリッドで密度向上 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <DailyMissions />
-              <DashboardChallenges />
+            {/* 上部: アクティビティサマリー (左) / デイリーミッション & クイックアクション (右) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="h-full">
+                <StepCalendar
+                  userId={userId}
+                  userName={dbUserName || session.user.name || null}
+                  userImage={userImage}
+                  username={username}
+                  showCalendar={false}
+                  activity={{
+                    todaySteps: mySteps,
+                    yesterdaySteps,
+                    weeklySteps,
+                    lastWeekSteps,
+                    monthlySteps,
+                    lastMonthSteps,
+                    stepGoal,
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-3 h-full">
+                <div className="flex-1 min-h-0">
+                  <DailyMissions />
+                </div>
+                <div className="flex-shrink-0 mb-auto sm:mb-0">
+                  <QuickActions />
+                </div>
+              </div>
             </div>
+
+            {/* アクティブチャレンジ */}
+            <DashboardChallenges />
 
             {/* リーダーボード */}
             <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
 
-            {/* フォロー中ユーザー */}
-            <FollowingPanel />
+            {/* 追加パネル: 初期表示の見切れを減らすため折りたたみ */}
+            <details className="group rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+              <summary className="list-none cursor-pointer select-none px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between">
+                <span className="text-sm sm:text-base font-bold text-gray-900">More Panels</span>
+                <span className="text-xs sm:text-sm text-gray-500 group-open:hidden">Show</span>
+                <span className="text-xs sm:text-sm text-gray-500 hidden group-open:inline">Hide</span>
+              </summary>
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5 border-t border-gray-100 flex flex-col gap-4">
+                {/* フォロー中ユーザー */}
+                <FollowingPanel />
 
-            {/* おすすめギア + 人気ギア */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PersonalizedGear />
-              <TrendingGear userId={userId} />
-            </div>
+                {/* おすすめギア + 人気ギア */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <PersonalizedGear />
+                  <TrendingGear userId={userId} />
+                </div>
+              </div>
+            </details>
 
-          </div>
-          <Footer />
         </div>
+        <Footer />
       </div>
 
       {/* 非表示ユーティリティ */}
@@ -298,3 +301,7 @@ export default async function Home() {
     </main>
   );
 }
+
+
+
+

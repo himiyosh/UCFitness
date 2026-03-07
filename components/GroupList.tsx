@@ -128,9 +128,9 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                     key={m.groups.id}
                     className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group overflow-hidden"
                 >
-                    <Link href={`/groups/${m.groups.id}`} className="block relative h-full flex flex-row sm:flex-col min-h-[110px] sm:min-h-0">
+                    <Link href={`/groups/${m.groups.id}`} className="block relative h-full flex flex-col sm:flex-row min-h-0 sm:min-h-[110px]">
                         {/* Banner Section */}
-                        <div className="w-20 sm:w-full h-auto sm:h-24 bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-r sm:border-r-0 border-gray-100">
+                        <div className="w-full sm:w-20 h-24 sm:h-auto bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-b sm:border-b-0 sm:border-r border-gray-100">
                             {/* Rank Badge */}
                             {m.rank && (
                                 <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
