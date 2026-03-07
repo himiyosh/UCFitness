@@ -197,7 +197,8 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 
 #### 2 カラムグリッドの高さバランス
 
-10. **2 カラムグリッドの左右カラムは高さを近づける** — `items-start` で上揃えにしても、短いカラムの下にページ背景の空白が生じる。特に midnight テーマではカード外の暗背景とページ背景が同化し、「カード内の空白」に見えてしまう。**短いカラムにコンテンツ（DashboardChallenges 等）を追加して高さバランスを改善すること**。左右の高さ差が 200px 以上になる場合は、コンテンツの配置を見直す
+10. **2 カラムグリッドの高さ合わせで `items-stretch` / `h-full` を安易に使わない** — 短いカラムを無理に引き伸ばすと、ページ外の空白は減っても**カード内部に意味のない余白**が発生し、見た目はむしろ悪化する。まずはカードを自然高さのまま保ち、`QuickActions` のような独立ウィジェットを別行へ移動する・近い密度のカード同士を並べるなど、**配置の再構成でバランスを取ること**。ただし、ユーザーが明示的に下端揃えを求める場合のみ、`items-stretch` / `h-full` を使ってよい。その際、余剰高さの吸収には **`grid auto-rows-fr`（リスト行が均等に高さを分担）** を使い、`mt-auto` だけでフッターを押し下げる方式は禁止（フッターとコンテンツの間に大きな空白帯が発生するため）。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`
+11. **デスクトップのフッター下にデッドスペースを残さない** — コンテンツ量が少ないページでは、デスクトップ側の最上位ラッパーを `sm:flex sm:flex-col sm:flex-1` にし、フッターを `mt-auto` で最下部へ押し出すこと。フッターの下に背景だけの空白帯が残る構成は禁止。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
 
 ### UI 美学ルール（Design Aesthetics — 必須遵守）
 
@@ -689,6 +690,50 @@ export const runtime = "edge";
 - **Slash Commands**: `⚡` + コマンドごとに用途を示す絵文字
 - **説明テキスト**: ロール名の後にスペース区切りで右揃え風に配置（等幅フォント前提）
 - **コードブロック内**: 絵文字は使用 OK（コンソール出力禁止ルールの対象外）
+
+### プロジェクトルートの整理ルール（必須遵守）
+
+**プロジェクトルートにスクリーンショット・ログ・一時ファイルを放置しない。**
+
+- **スクリーンショット**: Playwright 等で生成したスクリーンショットは `screenshots/` フォルダに格納する。ルート直下への出力は禁止
+- **ログファイル**: `lint.log` 等のビルド・リント出力は作業完了後に必ず削除する。コミット対象にしない
+- **一時スナップショット**: 拡張子なしのスナップショットファイル（`audit-desktop-top` 等）をルートに残さない。不要になった時点で即削除
+- **`.gitignore` で防止済み**: `/*.png`, `/*.jpg`, `lint.log` 等はルートレベルで `.gitignore` に登録済み。サブフォルダ内の画像は影響を受けない
+- **許可されるルートファイル**: `README.md`, `package.json`, `tsconfig.json`, 各種設定ファイル（`.eslint*`, `next.config.*`, `postcss.config.*`, `vitest.config.*`）、`middleware.ts`, `navigation.ts`, `i18n.ts` のみ
+
+### ディレクトリ構造整理ルール（必須遵守）
+
+**フラットに 100 以上のファイルが並ぶディレクトリは整理対象。** 新規ファイル作成時は、以下のサブフォルダ分類に従うこと。
+
+#### `components/` のサブフォルダ分類
+
+新規コンポーネント作成時は、該当するサブフォルダに配置する。既存のフラットファイルは計画的なリファクタリングで段階移行する（import パス変更を伴うため、専用ブランチで実施）。
+
+| サブフォルダ | 対象コンポーネント |
+|---|---|
+| `components/leaderboard/` | ランキング・リーダーボード系 |
+| `components/shop/` | ショップ・購入系 |
+| `components/group/` | グループ関連（`Group*.tsx`） |
+| `components/challenge/` | チャレンジ関連（`Challenge*.tsx`） |
+| `components/dashboard/` | ダッシュボード専用ウィジェット（`Dashboard*.tsx`, `HomePortal`, `QuickActions` 等） |
+| `components/profile/` | プロフィール関連（`Profile*.tsx`） |
+| `components/auth/` | 認証関連（`Auth*.tsx`, `LoginBonusToast`） |
+| `components/ui/` | 汎用 UI 部品（`Spinner`, `Toast`, `Breadcrumbs` 等） |
+| `components/layout/` | レイアウト系（`Footer`, `UserMenu`, `BottomNavBar`, `RefreshButton` 等） |
+
+#### `lib/` のサブフォルダ分類
+
+| サブフォルダ | 対象モジュール |
+|---|---|
+| `lib/` (直下) | 共通ユーティリティ（`auth.ts`, `supabase.ts`, `constants.ts`, `env.ts`, `errors.ts`, `validation.ts`, `date-utils.ts`） |
+| `lib/services/` | ビジネスロジック（`badge-*.ts`, `coin-service.ts`, `shop-service.ts`, `ranking-*.ts`, `step-manager.ts`） |
+| `lib/api/` | 外部 API 連携（`fitbit.ts`, `amazon-creators-api.ts`, `web-push.ts`, `teams.ts`） |
+
+#### `screenshots/` のクリーンアップ
+
+- スクリーンショットは**作業中の一時ファイル**であり、長期保存しない
+- Improvement Loop / Playwright 検証の完了後、不要なスクリーンショットは即削除する
+- README やドキュメントに使用する画像のみ `public/` または `docs/images/` に保存する
 
 ### ファイル命名規則
 

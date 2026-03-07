@@ -233,18 +233,18 @@ export default async function Home() {
       </div>
 
       {/* ===== デスクトップ: 1カラムレイアウト (sm以上のみ表示) ===== */}
-      <div className="hidden sm:block mx-auto max-w-7xl w-full">
+      <div className="hidden sm:flex flex-1 flex-col mx-auto max-w-7xl w-full">
         <div className="w-full px-4 lg:px-6 xl:px-8 py-3 lg:py-4 pb-4 flex flex-col gap-3">
 
             {/* 上部: アクティビティサマリー (左) / デイリーミッション & クイックアクション (右) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-              <div className="flex flex-col gap-3 animate-fadeInUp">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start lg:items-stretch">
+              <div className="animate-fadeInUp">
                 <StepCalendar
                   userId={userId}
                   userName={dbUserName || session.user.name || null}
                   userImage={userImage}
                   username={username}
-                  showCalendar={true}
+                  showCalendar={false}
                   activity={{
                     todaySteps: mySteps,
                     yesterdaySteps,
@@ -255,13 +255,14 @@ export default async function Home() {
                     stepGoal,
                   }}
                 />
-                {/* アクティブチャレンジ — 左カラムに配置して高さバランス改善 */}
-                <DashboardChallenges />
               </div>
-              <div className="flex flex-col gap-3 animate-fadeInUp delay-100">
+              <div className="animate-fadeInUp delay-100 h-full">
                 <DailyMissions />
-                <QuickActions />
               </div>
+            </div>
+
+            <div className="animate-fadeInUp delay-150">
+              <QuickActions />
             </div>
 
             {/* リーダーボード */}
@@ -271,6 +272,8 @@ export default async function Home() {
 
             {/* 追加パネル */}
             <div className="flex flex-col gap-4 animate-fadeInUp delay-400">
+                <DashboardChallenges />
+
                 {/* フォロー中ユーザー */}
                 <FollowingPanel />
 

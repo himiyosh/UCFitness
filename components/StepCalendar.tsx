@@ -423,10 +423,10 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     }
 
     return (
-        <div className="glass-card rounded-xl p-4 sm:p-5 flex flex-col transition-all duration-200">
+        <div className={`glass-card rounded-xl p-4 sm:p-5 flex flex-col transition-all duration-200 ${activity && !showCalendar ? 'h-full' : ''}`}>
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
-                <div className={showCalendar ? 'mb-3 pb-3 border-b border-gray-100' : ''}>
+                <div className={showCalendar ? 'mb-3 pb-3 border-b border-gray-100' : 'flex h-full flex-col'}>
                     {/* 今日の歩数 + ゴールリング */}
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
@@ -488,7 +488,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                     </div>
 
                     {/* デイリー & ウィークリーゴール */}
-                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                    <div className={`${showCalendar ? 'mt-3' : 'mt-auto'} pt-3 border-t border-gray-100 space-y-2`}>
                         {/* デイリーゴール — 1行にラベル・バー・数値をまとめる */}
                         <div>
                             <div className="flex items-center gap-2">
@@ -540,25 +540,26 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                         )}
                     </div>
 
-                    {/* 日別バーチャート（コンパクト版） */}
+                    {/* 日別バーチャート */}
                     {weeklyGoal && (
-                        <div className="mt-2 pt-2 border-t border-gray-100">
-                            <div className="flex items-end gap-1">
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            <div className="text-[10px] font-bold text-gray-600 mb-2">{wgT('weeklyStepsLabel')}</div>
+                            <div className="flex items-end gap-1.5" style={{ minHeight: '80px' }}>
                             {weeklyGoal.days.map((day, i) => {
                                 const barHeight = wgMaxDaySteps > 0
-                                    ? Math.max(4, (day.steps / wgMaxDaySteps) * 32)
-                                    : 4;
+                                    ? Math.max(6, (day.steps / wgMaxDaySteps) * 80)
+                                    : 6;
                                 const isToday = i === weeklyGoal.elapsedDays - 1;
                                 const isFuture = i >= weeklyGoal.elapsedDays;
                                 const metGoal = day.steps >= weeklyGoal.dailyGoal;
 
                                 return (
-                                    <div key={day.date} className="flex-1 flex flex-col items-center gap-0.5">
+                                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
                                         <span className="text-[9px] text-gray-400 tabular-nums h-3 flex items-center">
                                             {day.steps > 0 ? (day.steps >= 10000 ? `${(day.steps / 1000).toFixed(0)}k` : day.steps.toLocaleString()) : ''}
                                         </span>
                                         <div
-                                            className={`w-full rounded-t transition-all duration-500 ${
+                                            className={`w-full rounded-t-md transition-all duration-500 ${
                                                 isFuture
                                                     ? 'bg-gray-100'
                                                     : metGoal
@@ -570,7 +571,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                                             style={{ height: `${barHeight}px` }}
                                         />
                                         <span
-                                            className={`text-[9px] font-medium leading-none ${
+                                            className={`text-[10px] font-medium leading-none ${
                                                 isToday
                                                     ? 'text-[var(--theme-primary)] font-bold'
                                                     : isFuture

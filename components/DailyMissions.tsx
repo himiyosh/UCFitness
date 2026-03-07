@@ -63,8 +63,9 @@ export default function DailyMissions() {
             if (result.missions) {
                 setMissions(result.missions);
             }
+            setAllCompleted(Boolean(result.allCompleted));
+            setStreak(result.streak || 0);
             if (result.allCompleted) {
-                setAllCompleted(true);
                 if (result.bonusAwarded) {
                     setShowBonus(true);
                     setTimeout(() => setShowBonus(false), 3000);
@@ -79,7 +80,7 @@ export default function DailyMissions() {
 
     if (isLoading) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 h-full flex flex-col justify-center">
                 <div className="animate-pulse">
                     <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
                     <div className="space-y-3">
@@ -94,7 +95,7 @@ export default function DailyMissions() {
 
     if (error) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 h-full flex flex-col justify-center">
                 <div className="flex flex-col items-center py-4 text-center">
                     <span className="text-3xl mb-2">⚠️</span>
                     <p className="text-sm font-semibold text-gray-700">{t('loadError')}</p>
@@ -112,7 +113,7 @@ export default function DailyMissions() {
 
     if (missions.length === 0) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5">
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 h-full flex flex-col justify-center">
                 <div className="flex flex-col items-center py-4 text-center">
                     <span className="text-4xl mb-3">🎯</span>
                     <p className="text-sm font-bold text-gray-700 mb-1">{t('dailyMissions')}</p>
@@ -123,10 +124,19 @@ export default function DailyMissions() {
     }
 
     const completedCount = missions.filter(m => m.is_completed).length;
-    const progressPercent = (completedCount / missions.length) * 100;
+
+    const bottomMessage = !allCompleted ? (
+        <p className="text-xs text-gray-400 text-center">
+            🎁 {t('bonusHint')}
+        </p>
+    ) : (
+        <p className="text-xs font-bold text-emerald-600 text-center">
+            ✨ {t('allCompleted')}
+        </p>
+    );
 
     return (
-        <div className="glass-card rounded-2xl overflow-hidden transition-all duration-200 flex flex-col">
+        <div className="glass-card rounded-2xl overflow-hidden transition-all duration-200 flex h-full flex-col">
             {/* ヘッダー */}
             <div className="px-3 pt-3 pb-2 sm:px-5 sm:pt-5 sm:pb-3 flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">
@@ -154,78 +164,68 @@ export default function DailyMissions() {
                     </div>
                 </div>
 
-                {/* プログレスバー（削除） */}
-                {allCompleted && (
-                    <p className="text-xs font-bold text-emerald-600 mt-1">
-                        ✨ {t('allCompleted')}
-                    </p>
-                )}
             </div>
 
             {/* ミッションリスト */}
-            <div className="px-3 pb-3 space-y-1.5 sm:px-5 sm:pb-5 sm:space-y-2 flex-1">
-                {missions.map(mission => (
-                    <div
-                        key={mission.id}
-                        className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 ${
-                            mission.is_completed
-                                ? 'bg-emerald-50 border-emerald-200'
-                                : 'bg-gray-50/80 border-gray-100 hover:bg-white hover:border-[var(--theme-primary)]/20 hover:shadow-sm'
-                        }`}
-                    >
-                        {/* ステータスアイコン（自動判定 — クリック不可） */}
-                        {mission.is_completed ? (
-                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
+            <div className="px-3 pb-3 sm:px-5 sm:pb-5 flex flex-1 flex-col min-h-0">
+                <div className="grid flex-1 auto-rows-fr gap-1.5 sm:gap-2 min-h-0">
+                    {missions.map(mission => (
+                        <div
+                            key={mission.id}
+                            className={`flex h-full items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 ${
+                                mission.is_completed
+                                    ? 'bg-emerald-50 border-emerald-200'
+                                    : 'bg-gray-50/80 border-gray-100 hover:bg-white hover:border-[var(--theme-primary)]/20 hover:shadow-sm'
+                            }`}
+                        >
+                            {/* ステータスアイコン（自動判定 — クリック不可） */}
+                            {mission.is_completed ? (
+                                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-3 h-3 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            ) : (
+                                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center flex-shrink-0">
+                                    <span className="text-xs text-gray-300">○</span>
+                                </div>
+                            )}
+
+                            {/* ミッション詳細 */}
+                            <div className="flex-1 min-w-0">
+                                <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-gray-800'}`}>
+                                    {mission.title}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0 sm:mt-0.5">{mission.description}</p>
                             </div>
-                        ) : (
-                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs text-gray-300">○</span>
+
+                            {/* 報酬 */}
+                            <span className={`text-xs font-bold flex-shrink-0 ${mission.is_completed ? 'text-emerald-600' : 'text-[var(--theme-primary)]'}`}>
+                                +{mission.reward_uc} UC
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="pt-2.5">
+                    <div className="border-t border-gray-100 pt-2.5 space-y-2">
+                        {bottomMessage}
+
+                        {streak > 0 && (
+                            <div className="flex items-center justify-center gap-2 py-1.5">
+                                <span className="text-lg">{streak >= 7 ? '🌟' : '🔥'}</span>
+                                <p className="text-sm font-bold text-gray-700">
+                                    {t('streak', { days: streak })}
+                                </p>
+                                {streak >= 3 && (
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                        {streak >= 7 ? t('streakAmazing') : t('streakGreat')}
+                                    </span>
+                                )}
                             </div>
                         )}
-
-                        {/* ミッション詳細 */}
-                        <div className="flex-1 min-w-0">
-                            <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-gray-800'}`}>
-                                {mission.title}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0 sm:mt-0.5">{mission.description}</p>
-                        </div>
-
-                        {/* 報酬 */}
-                        <span className={`text-xs font-bold flex-shrink-0 ${mission.is_completed ? 'text-emerald-600' : 'text-[var(--theme-primary)]'}`}>
-                            +{mission.reward_uc} UC
-                        </span>
                     </div>
-                ))}
-
-                {/* 全達成ボーナス表示 */}
-                {!allCompleted && (
-                    <div className="text-center py-2">
-                        <p className="text-xs text-gray-400">
-                            🎁 {t('bonusHint')}
-                        </p>
-                    </div>
-                )}
-
-                {/* ミッションストリーク — 連続全達成日数 */}
-                {streak > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                        <div className="flex items-center justify-center gap-2 py-1.5">
-                            <span className="text-lg">{streak >= 7 ? '🌟' : '🔥'}</span>
-                            <p className="text-sm font-bold text-gray-700">
-                                {t('streak', { days: streak })}
-                            </p>
-                            {streak >= 3 && (
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                                    {streak >= 7 ? t('streakAmazing') : t('streakGreat')}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                )}
+                </div>
             </div>
 
             {/* ボーナスアニメーション */}
