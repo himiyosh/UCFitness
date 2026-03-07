@@ -46,7 +46,7 @@ const FloatingEmojis = memo(function FloatingEmojis() {
           style={{
             left: item.left,
             top: item.top,
-            opacity: 0.3,
+            opacity: 0.18,
             filter: 'saturate(0.9) brightness(0.95)',
           }}
         >

@@ -88,7 +88,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
     if (loading) return null;
     if (error) {
         return (
-            <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 text-center h-full flex flex-col items-center justify-center">
+            <div className="glass-card rounded-2xl p-6 text-center flex flex-col items-center justify-center">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-amber-50 flex items-center justify-center">
                     <span className="text-2xl">⚠️</span>
                 </div>
@@ -106,7 +106,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
     if (items.length === 0) return null;
 
     return (
-        <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-lg shadow-[var(--theme-primary)]/5 h-full flex flex-col">
+        <div className="glass-card rounded-2xl flex flex-col">
             {/* ヘッダー */}
             <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">

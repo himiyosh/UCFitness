@@ -167,10 +167,10 @@ export default function DailyMissions() {
                 {missions.map(mission => (
                     <div
                         key={mission.id}
-                        className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all ${
+                        className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 ${
                             mission.is_completed
                                 ? 'bg-emerald-50 border-emerald-200'
-                                : 'bg-gray-50 border-gray-100'
+                                : 'bg-gray-50/80 border-gray-100 hover:bg-white hover:border-[var(--theme-primary)]/20 hover:shadow-sm'
                         }`}
                     >
                         {/* ステータスアイコン（自動判定 — クリック不可） */}

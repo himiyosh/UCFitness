@@ -27,7 +27,7 @@ export default function QuickActions({ className = '' }: QuickActionsProps) {
           <Link
             key={action.href}
             href={action.href}
-            className="group relative flex flex-col items-center justify-center gap-2 py-3.5 sm:py-4 premium-card min-h-[76px] sm:min-h-[88px]"
+            className="group relative flex flex-col items-center justify-center gap-2 py-3.5 sm:py-4 rounded-2xl bg-white/60 hover:bg-white transition-all duration-200 min-h-[76px] sm:min-h-[88px]"
           >
             {/* M3 State Layer */}
             <span className="absolute inset-0 rounded-2xl bg-[var(--theme-primary)] opacity-0 group-hover:opacity-[0.08] group-active:opacity-[0.12] transition-opacity duration-200 pointer-events-none" aria-hidden="true" />

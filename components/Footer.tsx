@@ -5,9 +5,10 @@ export default async function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="hidden sm:block border-t border-gray-200 bg-white/80 backdrop-blur-sm mt-auto">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+    <footer className="hidden sm:block mt-auto">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="glass-card rounded-2xl px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* リンク */}
           <nav className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
             <a
@@ -57,6 +58,7 @@ export default async function Footer() {
             </a>
             . {t('allRightsReserved')}
           </p>
+          </div>
         </div>
       </div>
     </footer>
