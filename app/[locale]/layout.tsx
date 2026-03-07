@@ -54,6 +54,9 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   const session = await auth();
+  const languageUser = session?.user
+    ? { language: (session.user as { language?: string | null }).language ?? null }
+    : undefined;
 
   // Ensure that the incoming `locale` is valid
   if (!['ja', 'en'].includes(locale)) {
@@ -85,10 +88,10 @@ export default async function LocaleLayout({
                   <GlobalLoader />
                 </Suspense>
 
-                <LanguageSyncer user={session?.user as any} />
-                {session && <FloatingEmojis />}
+                <LanguageSyncer user={languageUser} />
                 {/* pb-16: BottomNav h-16 (64px) 分の余白を確保 */}
                 <div id="main-content" className="relative flex flex-col pb-16 sm:pb-0" style={{ zIndex: 20 }}>
+                  {session && <FloatingEmojis />}
                   {children}
                 </div>
                 {/* モバイル用固定ボトムナビゲーション (認証済みユーザーのみ) */}

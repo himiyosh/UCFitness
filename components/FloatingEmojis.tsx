@@ -14,14 +14,12 @@ import { memo, useEffect, useState } from 'react';
 // モバイルでは全て非表示 (コンテンツ密度が高いためノイジーになる)
 const EMOJIS = [
   // --- デスクトップの余白エリアのみに配置 (右端のデッドスペース) ---
-  { emoji: '💪', size: 'text-2xl', left: '2%',  top: '12%', anim: 'animate-float',          mobileHide: true },
-  { emoji: '✨', size: 'text-lg',  left: '95%', top: '8%',  anim: 'animate-float',          mobileHide: true },
-  { emoji: '🎯', size: 'text-xl',  left: '93%', top: '25%', anim: 'animate-float-delayed',  mobileHide: true },
-  { emoji: '🏃', size: 'text-2xl', left: '1%',  top: '45%', anim: 'animate-float-delayed',  mobileHide: true },
-  { emoji: '👟', size: 'text-xl',  left: '94%', top: '50%', anim: 'animate-float',          mobileHide: true },
-  { emoji: '🎉', size: 'text-lg',  left: '96%', top: '72%', anim: 'animate-float-delayed',  mobileHide: true },
-  { emoji: '🏆', size: 'text-xl',  left: '2%',  top: '78%', anim: 'animate-float',          mobileHide: true },
-  { emoji: '⚡', size: 'text-lg',  left: '93%', top: '88%', anim: 'animate-float-delayed',  mobileHide: true },
+  { emoji: '💪', size: 'text-xl', left: '1.5%',  top: '14%', anim: 'animate-float',         mobileHide: true },
+  { emoji: '✨', size: 'text-base', left: '97.5%', top: '10%', anim: 'animate-float',        mobileHide: true },
+  { emoji: '🎯', size: 'text-lg', left: '97%', top: '30%', anim: 'animate-float-delayed',   mobileHide: true },
+  { emoji: '🏃', size: 'text-xl', left: '1%', top: '52%', anim: 'animate-float-delayed',    mobileHide: true },
+  { emoji: '👟', size: 'text-lg', left: '97%', top: '64%', anim: 'animate-float',           mobileHide: true },
+  { emoji: '🏆', size: 'text-lg', left: '1.5%', top: '82%', anim: 'animate-float',          mobileHide: true },
 ] as const;
 
 const FloatingEmojis = memo(function FloatingEmojis() {
@@ -38,7 +36,7 @@ const FloatingEmojis = memo(function FloatingEmojis() {
   return (
     <div
       className="fixed inset-0 overflow-hidden pointer-events-none"
-      style={{ zIndex: -1 }}
+      style={{ zIndex: 30 }}
       aria-hidden="true"
     >
       {EMOJIS.map((item, i) => (
@@ -48,6 +46,8 @@ const FloatingEmojis = memo(function FloatingEmojis() {
           style={{
             left: item.left,
             top: item.top,
+            opacity: 0.3,
+            filter: 'saturate(0.9) brightness(0.95)',
           }}
         >
           {item.emoji}

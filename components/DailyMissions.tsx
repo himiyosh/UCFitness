@@ -126,7 +126,7 @@ export default function DailyMissions() {
     const progressPercent = (completedCount / missions.length) * 100;
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+        <div className="glass-card rounded-2xl overflow-hidden transition-all duration-200 flex flex-col">
             {/* ヘッダー */}
             <div className="px-3 pt-3 pb-2 sm:px-5 sm:pt-5 sm:pb-3 flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">

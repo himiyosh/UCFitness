@@ -238,7 +238,7 @@ export default async function Home() {
 
             {/* 上部: アクティビティサマリー (左) / デイリーミッション & クイックアクション (右) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-              <div>
+              <div className="animate-fadeInUp">
                 <StepCalendar
                   userId={userId}
                   userName={dbUserName || session.user.name || null}
@@ -256,20 +256,24 @@ export default async function Home() {
                   }}
                 />
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 animate-fadeInUp delay-100">
                 <DailyMissions />
                 <QuickActions />
               </div>
             </div>
 
             {/* アクティブチャレンジ */}
-            <DashboardChallenges />
+            <div className="animate-fadeInUp delay-200">
+              <DashboardChallenges />
+            </div>
 
             {/* リーダーボード */}
-            <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
+            <div className="animate-fadeInUp delay-300">
+              <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
+            </div>
 
             {/* 追加パネル */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 animate-fadeInUp delay-400">
                 {/* フォロー中ユーザー */}
                 <FollowingPanel />
 

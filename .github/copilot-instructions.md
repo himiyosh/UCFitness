@@ -183,6 +183,18 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **良い例**: `ActivityFeed.tsx` — `min-h-full` を使わず、少数アイテム時に `sparseHint` CTA を表示
 - **悪い例（修正済み）**: `sm:h-full` + `flex-1` + `min-h-full` の3重引き伸ばし → 1アイテムで300px超の空白発生
 
+#### `<details>` 折りたたみの使用制限
+
+7. **主要パネル・機能を `<details>` で折りたたまない** — ユーザーが存在に気づかず、機能が使われない。`<details>` は FAQ・ヘルプ・補足情報等「必要な時だけ見る」コンテンツにのみ使用する。ファーストビュー外のパネルはスクロールで到達可能な状態で常時表示すること
+
+#### `fixed` デコレーション要素の配置
+
+8. **`position: fixed` のデコレーション要素（絵文字・パーティクル等）は、不透明背景を持つコンテナの内部に配置する** — コンテナ外に `fixed` + 低 `zIndex` で配置すると、コンテナの背景色 (`bg-[var(--theme-page-bg)]`) に覆い隠される。`pointer-events-none` + コンテンツより高い `zIndex` (例: 30) で操作透過を確保しつつ視認性を保つ。リファレンス: `FloatingEmojis.tsx` (`zIndex: 30`, `layout.tsx` の `#main-content` 内部に配置)
+
+#### サマリーカードの情報密度
+
+9. **複数指標を表示するサマリーカードでは、各指標を「ラベル＋バー＋数値」の 1 行にまとめる** — ラベル行・数値行・パーセント行を別々に表示すると行数が肥大する。`flex items-center gap-2` でラベル (`shrink-0`) → プログレスバー (`flex-1 h-1.5`) → 数値 (`shrink-0 tabular-nums`) の 3 要素を横一列に配置する。補足情報（パーセント・ペース等）は削除するかバッジで 1 行にまとめる。リファレンス: `StepCalendar.tsx` の Daily/Weekly ゴール表示
+
 ### UI 美学ルール（Design Aesthetics — 必須遵守）
 
 **美しい UI は「画面を埋める」ことではない。** 以下のルールは Refactoring UI、Laws of UX 等のデザイン原則に基づく。
@@ -232,6 +244,35 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **出典**: [7 Practical Tips for Cheating at Design](https://medium.com/refactoring-ui/7-practical-tips-for-cheating-at-design-40c736799886) — 色・太さの階層、ボーダー削減、アクセントボーダー、ボタン階層
 - **良い例**: `app/[locale]/page.tsx` — 右カラムに `max-w-[960px]` で幅制約、余白はページ背景色で処理
 - **悪い例（修正済み）**: 右カラムに `max-width` なし → 1920px で全幅に引き延ばされ、カードが巨大化
+
+### デザイン哲学 — 「訪れるのが楽しくなるサイト」(Design Delight)
+
+UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日開きたくなる**デザインを目指す。「機能的に正しい」だけでは不十分。**ワクワク感・達成感・遊び心**を視覚的に表現すること。
+
+#### 原則
+
+1. **Motion = Emotion** — 静的な画面は退屈。CSS アニメーション (`@keyframes`) を活用し、カードの入場・数値のカウントアップ・達成時のお祝いなど、意味のあるモーションを追加する
+2. **Glassmorphism & Depth** — フラットデザインに固執しない。`backdrop-blur` / `bg-white/80` / グラデーションシャドウで奥行きと高級感を出す
+3. **Gamification Visual** — ランク表示、バッジ、ストリーク、レベルアップなどゲーム的な視覚フィードバックを積極的に採用
+4. **Micro-Interactions** — ホバー、タップ、スクロールに対して小さな反応を返す。ボタンの `scale` / カードの `shadow` 変化 / アバターの `ring` 点灯など
+5. **Color = Meaning** — 色は装飾ではなく意味を持たせる。達成=緑、警告=オレンジ、1位=ゴールド、自分=テーマカラーリング
+
+#### 実装パターン
+
+- **入場アニメーション**: `@keyframes fadeInUp` → `.animate-fadeInUp` でカードがフェードイン + 上昇
+- **stagger 遅延**: 複数カードは `animation-delay` をずらして順番に入場
+- **ホバーエフェクト**: カードは `hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200`（ただしリーダーボード行は `transition-colors` のみ）
+- **数値ハイライト**: 歩数・コインなどの重要数値は `bg-clip-text text-transparent bg-gradient-to-r` でグラデーション表示
+- **達成バッジ**: ゴール達成時は `animate-bounce` + 緑のグロー (`shadow-green-500/30`)
+- **プログレスバー**: `transition-all duration-700` で滑らかにアニメーション
+- **ガラスカード**: `bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg` で半透明ガラス効果
+- **`prefers-reduced-motion`**: アニメーションを無効化するオプションを必ず提供
+
+#### 禁止事項
+
+- `framer-motion` は使用禁止（CSS アニメーション + Tailwind のみ）
+- 意味のないアニメーション（ローディング以外の無限回転、点滅等）は禁止
+- パフォーマンスを犠牲にする重いアニメーション（`filter: blur(20px)` の連続適用等）は禁止
 
 ### リーダーボード / ランキング統一ルール（変更厳禁）
 

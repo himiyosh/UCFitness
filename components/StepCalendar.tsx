@@ -423,7 +423,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     }
 
     return (
-        <div className="bg-white midnight-solid-panel rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col">
+        <div className="glass-card rounded-xl p-4 sm:p-5 flex flex-col transition-all duration-200">
             {/* アクティビティ統計（サーバーから渡された場合） */}
             {activity && (
                 <div className={showCalendar ? 'mb-3 pb-3 border-b border-gray-100' : ''}>
