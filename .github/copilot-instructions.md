@@ -156,6 +156,8 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **モバイルファースト**: まずモバイル（`w-full`, `flex-col`）でレイアウトし、`sm:` / `md:` / `lg:` で拡張する
 - **`flex` / `flex-row` 横並び禁止（レスポンシブなし）**: 複数カード・パネルを横並びにする場合、`flex` のみは禁止。必ず `flex flex-col sm:flex-row` にする。モバイル幅 375px で `flex-1` × 3 = 125px/カードとなり内容が潰れる。リファレンス: `GroupWeeklyReport.tsx`
 - **`absolute` 配置のレスポンシブ座標検証必須**: `position: absolute` + `top/left` + `-translate-x/y-1/2` で中央配置する要素に `sm:top-*` / `sm:left-*` のレスポンシブオーバーライドがある場合、親の `flex-direction` 変更（`flex-col` → `sm:flex-row`）に伴い座標が新レイアウトに対応しているか必ず検証する。古いレイアウト用の `sm:` 値が残存すると位置ずれの原因になる。リファレンス: `GroupList.tsx`（アイコン中央配置修正）
+- **モバイルで root スクロールを殺さない**: `html/body` に `overflow: hidden` を適用する場合は、モバイルでスクロール不能・パネル見切れが発生しないかを必ず検証する。全画面スケーリング（`transform: scale(...)` など）は `lg:` 以上に限定し、モバイルでは通常スクロールを優先すること。
+- **サイドパネルの `sticky` はデスクトップ限定**: 右カラムや補助パネルの `sticky top-*` は `lg:sticky` のようにブレイクポイント限定で適用する。モバイルで常時 `sticky` にすると、下部パネルや CTA が見切れ・操作不能になることがある。リファレンス: `app/[locale]/groups/page.tsx`
 - **最小タッチターゲット**: ボタン・リンクは最低 **44×44px** のタップ領域を確保する（`min-h-[44px] min-w-[44px]`）
 - **横スクロール禁止**: `overflow-x-hidden` を意識し、`w-screen` や固定幅（`w-[500px]` 等）を使わない
 - **テキストサイズ**: モバイルでは `text-sm` / `text-xs` を基本とし、`sm:text-base` 等で拡大する
