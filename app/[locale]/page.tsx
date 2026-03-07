@@ -244,7 +244,7 @@ export default async function Home() {
                   userName={dbUserName || session.user.name || null}
                   userImage={userImage}
                   username={username}
-                  showCalendar={false}
+                  showCalendar={true}
                   activity={{
                     todaySteps: mySteps,
                     yesterdaySteps,
