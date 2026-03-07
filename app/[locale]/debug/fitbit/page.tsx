@@ -2,7 +2,7 @@ export const runtime = 'edge';
 
 import { supabaseAdmin } from '@/lib/supabase';
 import { auth } from "@/lib/auth";
-import AuthButtons from '@/components/AuthButtons';
+import AuthButtons from '@/components/auth/AuthButtons';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "../globals.css";
-import { AuthProvider } from "@/components/AuthProvider";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import GlobalLoader from "@/components/GlobalLoader";
+import GlobalLoader from "@/components/auth/GlobalLoader";
 import dynamic from 'next/dynamic';
 
 import { Suspense } from "react";
@@ -15,7 +15,7 @@ import LanguageSyncer from "@/components/LanguageSyncer";
 import BottomNavBar from "@/components/BottomNavBar";
 
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
-const SplashScreen = dynamic(() => import('@/components/SplashScreen'));
+const SplashScreen = dynamic(() => import('@/components/auth/SplashScreen'));
 const FloatingEmojis = dynamic(() => import('@/components/dashboard/FloatingEmojis'));
 
 export const viewport: Viewport = {

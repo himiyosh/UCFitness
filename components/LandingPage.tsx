@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AuthButtons from './AuthButtons';
+import AuthButtons from '@/components/auth/AuthButtons';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
 import { useRouter, usePathname } from '@/navigation';

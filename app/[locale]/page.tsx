@@ -19,7 +19,7 @@ import QuickActions from '@/components/dashboard/QuickActions';
 import type { RankingEntry } from '@/lib/ranking-utils';
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
-const LoginBonusToast = nextDynamic(() => import('@/components/LoginBonusToast'));
+const LoginBonusToast = nextDynamic(() => import('@/components/auth/LoginBonusToast'));
 const NotificationBell = nextDynamic(() => import('@/components/NotificationBell'));
 
 // スケルトンローディングプレースホルダー（チャンク読み込み中に表示）
