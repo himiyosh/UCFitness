@@ -120,7 +120,7 @@ UCFitness/
 |   +-- copilot-instructions.md  # Copilot 共通指示
 |   +-- instructions/            # 補助 Instructions (18 ファイル)
 |   |   +-- awesome-copilot/     # awesome-copilot から導入 (8 ファイル)
-|   +-- agents/                  # Copilot カスタムエージェント (7 ファイル)
+│   +-- agents/                  # Copilot カスタムエージェント (9 ファイル)
 |   +-- skills/                  # Copilot スキル (3 スキル)
 |   +-- prompts/                 # Copilot カスタムプロンプト
 |   +-- prompts/                 # Copilot カスタムプロンプト
@@ -264,6 +264,8 @@ npm run pages:build
 │   ├── 🧹 Universal Janitor              クリーンアップ / リファクタリング / 技術負債
 │   │   └── 🔄 Improvement Loop            品質改善ループ・レトロスペクティブ
 │   │
+│   ├── 💰 Monetization Consultant       収益化戦略 / Amazon アフィリエイト / 広告 / Premium
+│   │
 │   └── 🔴 Self-Critique                   成果物の 6 軸批判・品質ゲート (自動起動)
 │       └── 批判→修正→再批判ループ (全軸 PASS まで最大 3 回)
 │
@@ -312,6 +314,7 @@ npm run pages:build
 | SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
 | Accessibility Expert | [accessibility.agent.md](.github/agents/accessibility.agent.md) | GPT-4.1 | WCAG 2.1/2.2 準拠 / ARIA / キーボードナビ / スクリーンリーダー対応 |
 | Playwright Tester | [playwright-tester.agent.md](.github/agents/playwright-tester.agent.md) | Claude Sonnet 4 | Playwright MCP による全要素精査型 E2E テスト / レスポンシブ検証 |
+| Monetization Consultant | [monetization-consultant.agent.md](.github/agents/monetization-consultant.agent.md) | - | 収益化戦略立案 / Amazon アフィリエイト最適化 / 広告戦略 / Premium 機能設計 |
 | Self-Critique | [self-critique.agent.md](.github/agents/self-critique.agent.md) | - | 成果物の 6 軸批判 (デザイン一貫性・余白密度・レスポンシブ・翻訳・インタラクション・コード品質) |
 
 #### ロール自動選択ルール (UCFitnessAgent)
@@ -331,6 +334,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | 計画、設計、アーキテクチャ、見積もり、要件整理 | 📐 **Plan Mode** |
 | クリーンアップ、リファクタリング、技術負債、整理 | 🧹 **Universal Janitor** |
 | 改善ループ、品質改善、全体チェック、ループ回して | 🔄 **Improvement Loop** |
+| 収益化、マネタイズ、広告、アフィリエイト、Premium、課金、収益、売上 | 💰 **Monetization Consultant** |
 | 批判、レビュー、見直し、統一性、見切れ、不統一 | 🔴 **Self-Critique** |
 
 > **自動起動**: 他ロールの作業完了後・Improvement Loop 各 Cycle 完了後・PR 作成直前に Self-Critique が自動起動し、全 6 軸 PASS するまで完了報告しない。
