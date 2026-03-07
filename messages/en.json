@@ -125,6 +125,11 @@
         "recentActivity": "Recent Activity",
         "viewAll": "View All"
     },
+    "HomePortal": {
+        "missions": "Missions",
+        "challenges": "Challenges",
+        "following": "Following"
+    },
     "LoginBonus": {
         "title": "Daily Bonus",
         "claimed": "+{amount} UC! (Day {streak})",
@@ -814,6 +819,7 @@
     },
     "WeeklyGoal": {
         "title": "Weekly Goal",
+        "weeklyStepsLabel": "Weekly Steps",
         "steps": "steps",
         "goal": "Goal",
         "aheadOfPace": "🔥 On track!",

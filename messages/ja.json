@@ -125,6 +125,11 @@
         "recentActivity": "最近のアクティビティ",
         "viewAll": "すべて見る"
     },
+    "HomePortal": {
+        "missions": "ミッション",
+        "challenges": "チャレンジ",
+        "following": "フォロー"
+    },
     "LoginBonus": {
         "title": "デイリーボーナス",
         "claimed": "+{amount} UC! ({streak}日連続)",
@@ -816,6 +821,7 @@
     },
     "WeeklyGoal": {
         "title": "ウィークリーゴール",
+        "weeklyStepsLabel": "Weekly Steps",
         "steps": "歩",
         "goal": "目標",
         "aheadOfPace": "🔥 ペース通り達成中！",
