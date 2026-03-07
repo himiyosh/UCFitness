@@ -234,11 +234,11 @@ export default async function Home() {
 
       {/* ===== デスクトップ: 1カラムレイアウト (sm以上のみ表示) ===== */}
       <div className="hidden sm:block mx-auto max-w-7xl w-full">
-        <div className="w-full px-4 lg:px-6 xl:px-8 py-3 lg:py-4 pb-8 flex flex-col gap-3">
+        <div className="w-full px-4 lg:px-6 xl:px-8 py-3 lg:py-4 pb-4 flex flex-col gap-3">
 
             {/* 上部: アクティビティサマリー (左) / デイリーミッション & クイックアクション (右) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <div className="h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+              <div>
                 <StepCalendar
                   userId={userId}
                   userName={dbUserName || session.user.name || null}
@@ -256,13 +256,9 @@ export default async function Home() {
                   }}
                 />
               </div>
-              <div className="flex flex-col gap-3 h-full">
-                <div className="flex-1 min-h-0">
-                  <DailyMissions />
-                </div>
-                <div className="flex-shrink-0 mb-auto sm:mb-0">
-                  <QuickActions />
-                </div>
+              <div className="flex flex-col gap-3">
+                <DailyMissions />
+                <QuickActions />
               </div>
             </div>
 
@@ -272,14 +268,8 @@ export default async function Home() {
             {/* リーダーボード */}
             <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
 
-            {/* 追加パネル: 初期表示の見切れを減らすため折りたたみ */}
-            <details className="group rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
-              <summary className="list-none cursor-pointer select-none px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between">
-                <span className="text-sm sm:text-base font-bold text-gray-900">More Panels</span>
-                <span className="text-xs sm:text-sm text-gray-500 group-open:hidden">Show</span>
-                <span className="text-xs sm:text-sm text-gray-500 hidden group-open:inline">Hide</span>
-              </summary>
-              <div className="px-4 pb-4 sm:px-5 sm:pb-5 border-t border-gray-100 flex flex-col gap-4">
+            {/* 追加パネル */}
+            <div className="flex flex-col gap-4">
                 {/* フォロー中ユーザー */}
                 <FollowingPanel />
 
@@ -288,8 +278,7 @@ export default async function Home() {
                   <PersonalizedGear />
                   <TrendingGear userId={userId} />
                 </div>
-              </div>
-            </details>
+            </div>
 
         </div>
         <Footer />

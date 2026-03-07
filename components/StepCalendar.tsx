@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import Confetti from './Confetti';
+import UserAvatar from '@/components/UserAvatar';
 
 // 歩数データ型
 interface StepDay {
@@ -236,73 +236,6 @@ function getWeeklyProgressStyle(data: WeeklyGoalData): { emoji: string; color: s
 /** ウィークリーゴール曜日キー */
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
-// ゴール進捗リング（軽量SVG）+ 100%達成時の紙吹雪＆アニメーション
-function GoalRing({ current, goal }: { current: number; goal: number }) {
-    const rawPct = goal > 0 ? current / goal : 0;
-    const isAchieved = rawPct >= 1;
-    // リングの塗りは最大1周（100%）に制限。表示テキストは実際の%を表示
-    const ringPct = Math.min(rawPct, 1);
-    const r = 32;
-    const circ = 2 * Math.PI * r;
-    const offset = circ * (1 - ringPct);
-    const color = isAchieved ? '#22c55e' : 'var(--theme-primary)';
-
-    // 🎉 紙吹雪: 初回100%達成時のみ発火
-    const [hasTriggeredConfetti, setHasTriggeredConfetti] = useState(false);
-    const [showConfetti, setShowConfetti] = useState(false);
-
-    useEffect(() => {
-        if (isAchieved && !hasTriggeredConfetti) {
-            setShowConfetti(true);
-            setHasTriggeredConfetti(true);
-        }
-    }, [isAchieved, hasTriggeredConfetti]);
-
-    return (
-        <>
-            <Confetti
-                trigger={showConfetti}
-                duration={4000}
-                pieceCount={80}
-                onComplete={() => setShowConfetti(false)}
-            />
-            <div className={`relative w-[110px] h-[110px] sm:w-[130px] sm:h-[130px] rounded-full transition-transform duration-300`}>
-                <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-                    {/* 達成時パルスリング — SVGベースで円と完全に中心一致 */}
-                    {isAchieved && (
-                        <circle
-                            cx="40" cy="40" r={r}
-                            fill="none" stroke="#22c55e" strokeWidth="4"
-                            className="animate-[ringPulse_1.5s_ease-out_infinite]"
-                            style={{ transformOrigin: '40px 40px' }}
-                        />
-                    )}
-                    <circle cx="40" cy="40" r={r} fill="none" stroke="var(--ring-track, #e5e7eb)" strokeWidth="5" />
-                    <circle
-                        cx="40" cy="40" r={r} fill="none"
-                        stroke={color} strokeWidth="5" strokeLinecap="round"
-                        strokeDasharray={circ} strokeDashoffset={offset}
-                        className="transition-all duration-700 ease-out"
-                    />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    {isAchieved ? (
-                        <>
-                            <span className="text-lg">🎉</span>
-                            <span className="text-xs font-bold text-green-600">{Math.round(rawPct * 100)}%</span>
-                        </>
-                    ) : (
-                        <>
-                            <span className="text-xl sm:text-2xl font-black text-gray-800">{Math.round(rawPct * 100)}%</span>
-                            <span className="text-xs sm:text-sm text-gray-400 font-medium">{goal.toLocaleString()}</span>
-                        </>
-                    )}
-                </div>
-            </div>
-        </>
-    );
-}
-
 // ローディングスケルトン
 function CalendarSkeleton() {
     return (
@@ -324,7 +257,7 @@ function CalendarSkeleton() {
     );
 }
 
-export default function StepCalendar({ userId, activity, showCalendar = true }: { userId: string; activity?: ActivityStats; showCalendar?: boolean }) {
+export default function StepCalendar({ userId, activity, showCalendar = true, userName, userImage, username }: { userId: string; userName?: string | null; userImage?: string | null; username?: string | null; activity?: ActivityStats; showCalendar?: boolean }) {
     const t = useTranslations('Calendar');
     const dashT = useTranslations('Dashboard');
     const pctT = useTranslations('Percentile');
@@ -496,12 +429,30 @@ export default function StepCalendar({ userId, activity, showCalendar = true }: 
                 <div className={showCalendar ? 'mb-3 pb-3 border-b border-gray-100' : ''}>
                     {/* 今日の歩数 + ゴールリング */}
                     <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5">
-                                <div className="p-1.5 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                </div>
-                                <h3 className="text-sm font-bold text-gray-900">{dashT('yourActivity')}</h3>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                {username || userName || userImage ? (
+                                    <>
+                                        <UserAvatar src={userImage || null} name={userName || username || ''} size="sm" />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-gray-900 leading-tight">
+                                                {userName || username}
+                                            </span>
+                                            {userName && username && (
+                                                <span className="text-[10px] text-gray-500 font-medium tracking-wide">
+                                                    @{username}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="p-1.5 bg-[var(--theme-primary)] rounded-lg text-white shadow-md shadow-[var(--theme-primary)]/30">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        </div>
+                                        <h3 className="text-sm font-bold text-gray-900">{dashT('yourActivity')}</h3>
+                                    </>
+                                )}
                                 {/* デイリーパーセンタイルバッジ */}
                                 {percentile?.daily !== null && percentile?.daily !== undefined && (
                                     <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${getPercentileStyle(percentile.daily).bgColor} ${getPercentileStyle(percentile.daily).color}`}>
@@ -533,116 +484,105 @@ export default function StepCalendar({ userId, activity, showCalendar = true }: 
                             </div>
                         </div>
 
-                        <div className="flex-shrink-0">
-                            <GoalRing current={activity.todaySteps} goal={activity.stepGoal} />
-                        </div>
+
                     </div>
 
-                    {/* 週間・月間パネル（パーセンタイルバッジ横並び） */}
-                    <div className="grid grid-cols-2 gap-1.5 mt-3">
-                        <div className="bg-gray-50 rounded-lg py-2 px-3">
-                            <div className="text-xs text-gray-400 font-medium leading-none text-center">{dashT('thisWeek')}</div>
-                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug text-center">{activity.weeklySteps.toLocaleString()}</div>
-                            <div className="flex items-center justify-center gap-1.5 mt-0.5">
-                                <span className={`text-xs font-semibold leading-none ${activity.weeklySteps >= activity.lastWeekSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.weeklySteps >= activity.lastWeekSteps ? '▲' : '▼'}{Math.abs(activity.weeklySteps - activity.lastWeekSteps).toLocaleString()}
+                    {/* デイリー & ウィークリーゴール */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                        {/* デイリーゴール — 1行にラベル・バー・数値をまとめる */}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-gray-600 w-11 shrink-0">Daily</span>
+                                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full transition-all duration-700 ${activity.todaySteps >= activity.stepGoal ? 'bg-green-500' : 'bg-[var(--theme-primary)]'}`}
+                                        style={{ width: `${Math.min(100, activity.stepGoal > 0 ? (activity.todaySteps / activity.stepGoal) * 100 : 0)}%` }}
+                                    />
+                                </div>
+                                <span className="text-[10px] text-gray-500 tabular-nums shrink-0">
+                                    {activity.todaySteps.toLocaleString()} / {activity.stepGoal.toLocaleString()}
                                 </span>
-                                {percentile?.weekly !== null && percentile?.weekly !== undefined && (
+                            </div>
+                        </div>
+
+                        {/* ウィークリーゴール — 同じ 1 行フォーマット */}
+                        {weeklyGoal && wgProgressStyle && (
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-gray-600 w-11 shrink-0">Weekly</span>
+                                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-700 ${wgProgressStyle.barColor}`}
+                                            style={{ width: `${Math.min(100, weeklyGoal.progress)}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 tabular-nums shrink-0">
+                                        {weeklyGoal.totalSteps.toLocaleString()} / {weeklyGoal.weeklyGoal.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* パーセンタイルバッジ */}
+                        {(percentile?.weekly != null || percentile?.monthly != null) && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                                {percentile?.weekly != null && (
                                     <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${getPercentileStyle(percentile.weekly).bgColor} ${getPercentileStyle(percentile.weekly).color}`}>
-                                        {getPercentileStyle(percentile.weekly).emoji} {pctT('topPercent', { percent: percentile.weekly })}
+                                        {getPercentileStyle(percentile.weekly).emoji} {pctT('weekly')} {pctT('topPercent', { percent: percentile.weekly })}
                                     </span>
                                 )}
-                            </div>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg py-2 px-3">
-                            <div className="text-xs text-gray-400 font-medium leading-none text-center">{dashT('thisMonth')}</div>
-                            <div className="text-lg font-black text-gray-800 tabular-nums leading-snug text-center">{activity.monthlySteps.toLocaleString()}</div>
-                            <div className="flex items-center justify-center gap-1.5 mt-0.5">
-                                <span className={`text-xs font-semibold leading-none ${activity.monthlySteps >= activity.lastMonthSteps ? 'text-green-600' : 'text-red-500'}`}>
-                                    {activity.monthlySteps >= activity.lastMonthSteps ? '▲' : '▼'}{Math.abs(activity.monthlySteps - activity.lastMonthSteps).toLocaleString()}
-                                </span>
-                                {percentile?.monthly !== null && percentile?.monthly !== undefined && (
+                                {percentile?.monthly != null && (
                                     <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${getPercentileStyle(percentile.monthly).bgColor} ${getPercentileStyle(percentile.monthly).color}`}>
-                                        {getPercentileStyle(percentile.monthly).emoji} {pctT('topPercent', { percent: percentile.monthly })}
+                                        {getPercentileStyle(percentile.monthly).emoji} {pctT('monthly')} {pctT('topPercent', { percent: percentile.monthly })}
                                     </span>
                                 )}
                             </div>
-                        </div>
+                        )}
                     </div>
 
-                    {/* ウィークリーゴール（統合表示） */}
-                    {weeklyGoal && wgProgressStyle && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            {/* ゴールヘッダー + プログレスバー */}
-                            <div className="flex items-center mb-1.5">
-                                <span className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                                    🎯 {wgT('title')}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
-                                <span>{weeklyGoal.totalSteps.toLocaleString()} {wgT('steps')}</span>
-                                <span>{wgT('goal')}: {weeklyGoal.weeklyGoal.toLocaleString()}</span>
-                            </div>
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-700 ${wgProgressStyle.barColor}`}
-                                    style={{ width: `${Math.min(100, weeklyGoal.progress)}%` }}
-                                />
-                            </div>
-                            <p className="text-[11px] text-gray-400 mt-1">
-                                {weeklyGoal.pacePercent >= 100
-                                    ? wgT('aheadOfPace')
-                                    : wgT('behindPace', { percent: 100 - weeklyGoal.pacePercent })
-                                }
-                                {' '}({wgT('day', { current: weeklyGoal.elapsedDays })} / 7)
-                            </p>
+                    {/* 日別バーチャート（コンパクト版） */}
+                    {weeklyGoal && (
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                            <div className="flex items-end gap-1">
+                            {weeklyGoal.days.map((day, i) => {
+                                const barHeight = wgMaxDaySteps > 0
+                                    ? Math.max(4, (day.steps / wgMaxDaySteps) * 32)
+                                    : 4;
+                                const isToday = i === weeklyGoal.elapsedDays - 1;
+                                const isFuture = i >= weeklyGoal.elapsedDays;
+                                const metGoal = day.steps >= weeklyGoal.dailyGoal;
 
-                            {/* 日別バーチャート */}
-                            <div className="flex items-end gap-1 mt-2">
-                                {weeklyGoal.days.map((day, i) => {
-                                    const barHeight = wgMaxDaySteps > 0
-                                        ? Math.max(4, (day.steps / wgMaxDaySteps) * 40)
-                                        : 4;
-                                    const isToday = i === weeklyGoal.elapsedDays - 1;
-                                    const isFuture = i >= weeklyGoal.elapsedDays;
-                                    const metGoal = day.steps >= weeklyGoal.dailyGoal;
-
-                                    return (
-                                        <div key={day.date} className="flex-1 flex flex-col items-center gap-0.5">
-                                            <span className="text-[9px] sm:text-[10px] text-gray-400 tabular-nums h-3 flex items-center">
-                                                {day.steps > 0 ? day.steps.toLocaleString() : ''}
-                                            </span>
-                                            <div
-                                                className={`w-full rounded-t transition-all duration-500 ${
-                                                    isFuture
-                                                        ? 'bg-gray-100'
-                                                        : metGoal
-                                                            ? 'bg-green-400'
-                                                            : isToday
-                                                                ? 'bg-[var(--theme-primary)]'
-                                                                : 'bg-[var(--theme-primary)]/60'
-                                                }`}
-                                                style={{ height: `${barHeight}px` }}
-                                            />
-                                            <span
-                                                className={`text-[10px] sm:text-xs font-medium ${
-                                                    isToday
-                                                        ? 'text-[var(--theme-primary)] font-bold'
-                                                        : isFuture
-                                                            ? 'text-gray-300'
-                                                            : 'text-gray-500'
-                                                }`}
-                                            >
-                                                {wgT(DAY_KEYS[i])}
-                                            </span>
-                                            {metGoal && <span className="text-[8px]">✅</span>}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-400">
-                                <span className="inline-block w-3 h-0.5 bg-green-400 rounded" />
-                                <span>{wgT('dailyGoalLine', { goal: weeklyGoal.dailyGoal.toLocaleString() })}</span>
+                                return (
+                                    <div key={day.date} className="flex-1 flex flex-col items-center gap-0.5">
+                                        <span className="text-[9px] text-gray-400 tabular-nums h-3 flex items-center">
+                                            {day.steps > 0 ? (day.steps >= 10000 ? `${(day.steps / 1000).toFixed(0)}k` : day.steps.toLocaleString()) : ''}
+                                        </span>
+                                        <div
+                                            className={`w-full rounded-t transition-all duration-500 ${
+                                                isFuture
+                                                    ? 'bg-gray-100'
+                                                    : metGoal
+                                                        ? 'bg-green-400'
+                                                        : isToday
+                                                            ? 'bg-[var(--theme-primary)]'
+                                                            : 'bg-[var(--theme-primary)]/60'
+                                            }`}
+                                            style={{ height: `${barHeight}px` }}
+                                        />
+                                        <span
+                                            className={`text-[9px] font-medium leading-none ${
+                                                isToday
+                                                    ? 'text-[var(--theme-primary)] font-bold'
+                                                    : isFuture
+                                                        ? 'text-gray-300'
+                                                        : 'text-gray-500'
+                                            }`}
+                                        >
+                                            {wgT(DAY_KEYS[i])}
+                                        </span>
+                                    </div>
+                                );
+                            })}
                             </div>
                         </div>
                     )}
