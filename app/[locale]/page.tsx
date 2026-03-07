@@ -13,8 +13,8 @@ import { optimizeRankingsForPayload } from '@/lib/ranking-utils';
 import AutoSync from '@/components/AutoSync';
 import Footer from '@/components/Footer';
 import LandingPage from '@/components/LandingPage';
-import HomePortal from '@/components/HomePortal';
-import QuickActions from '@/components/QuickActions';
+import HomePortal from '@/components/dashboard/HomePortal';
+import QuickActions from '@/components/dashboard/QuickActions';
 
 import type { RankingEntry } from '@/lib/ranking-utils';
 
@@ -34,13 +34,13 @@ const CardSkeleton = ({ h = 'h-32', title }: { h?: string; title?: string }) => 
 const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'), {
   loading: () => <CardSkeleton h="h-48" title="📊" />,
 });
-const DashboardChallenges = nextDynamic(() => import('@/components/DashboardChallenges'), {
+const DashboardChallenges = nextDynamic(() => import('@/components/dashboard/DashboardChallenges'), {
   loading: () => <CardSkeleton h="h-24" title="🏆" />,
 });
-const DailyMissions = nextDynamic(() => import('@/components/DailyMissions'), {
+const DailyMissions = nextDynamic(() => import('@/components/dashboard/DailyMissions'), {
   loading: () => <CardSkeleton h="h-40" title="🎯" />,
 });
-const FollowingPanel = nextDynamic(() => import('@/components/FollowingPanel'), {
+const FollowingPanel = nextDynamic(() => import('@/components/dashboard/FollowingPanel'), {
   loading: () => <CardSkeleton h="h-32" title="👥" />,
 });
 const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear'), {
@@ -49,7 +49,7 @@ const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear
 const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'), {
   loading: () => <CardSkeleton h="h-36" title="🔥" />,
 });
-const DynamicLeaderboard = nextDynamic(() => import('@/components/DynamicLeaderboard'), {
+const DynamicLeaderboard = nextDynamic(() => import('@/components/dashboard/DynamicLeaderboard'), {
   loading: () => <CardSkeleton h="h-64" title="🏅" />,
 });
 

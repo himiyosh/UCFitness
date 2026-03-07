@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 import { ChartData } from '@/lib/group-comparison-service';
 import { RankingEntry } from '@/lib/ranking-utils';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';

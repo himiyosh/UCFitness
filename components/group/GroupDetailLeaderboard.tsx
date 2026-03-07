@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';

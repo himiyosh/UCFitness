@@ -1,6 +1,6 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 import { unstable_cache } from 'next/cache';
 import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
 

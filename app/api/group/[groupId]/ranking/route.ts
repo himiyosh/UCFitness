@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getGroupRankings } from '@/lib/ranking-service';
 import { reportError } from '@/lib/errors';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 
 interface RouteParams {
     params: Promise<{

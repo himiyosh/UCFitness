@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { fetchAllWithPagination } from '@/lib/supabase-utils';
 import { reportError } from '@/lib/errors';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 import { sendBadgeNotification } from './teams';
 import { normalizePushLocale, badgeUnlockedTitle, badgeUnlockedBody } from './push-messages';
 

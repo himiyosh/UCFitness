@@ -8,7 +8,7 @@ import { getDisplayRankings } from '@/lib/ranking-utils';
 import GroupRankingPanel from '@/components/group/GroupRankingPanel';
 import FadeInWrapper from '@/components/leaderboard/FadeInWrapper';
 
-import type { Period } from '@/components/LeaderboardTabs';
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 import type { RankingEntry } from '@/lib/ranking-utils';
 import type { GroupRankingEntry } from '@/lib/group-ranking-service';
 

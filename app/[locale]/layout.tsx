@@ -16,7 +16,7 @@ import BottomNavBar from "@/components/BottomNavBar";
 
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
 const SplashScreen = dynamic(() => import('@/components/SplashScreen'));
-const FloatingEmojis = dynamic(() => import('@/components/FloatingEmojis'));
+const FloatingEmojis = dynamic(() => import('@/components/dashboard/FloatingEmojis'));
 
 export const viewport: Viewport = {
   width: 'device-width',

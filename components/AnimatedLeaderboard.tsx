@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocale } from 'next-intl';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
 import GroupCompetitionList from '@/components/group/GroupCompetitionList';
 import { GroupRankingEntry } from '@/lib/group-ranking-service';

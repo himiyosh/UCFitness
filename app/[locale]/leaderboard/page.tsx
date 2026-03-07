@@ -10,7 +10,7 @@ import RefreshButton from '@/components/RefreshButton';
 import UserMenu from '@/components/UserMenu';
 import NotificationBell from '@/components/NotificationBell';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import DynamicLeaderboard from '@/components/DynamicLeaderboard';
+import DynamicLeaderboard from '@/components/dashboard/DynamicLeaderboard';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,5 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
-import { Period } from '@/components/LeaderboardTabs';
+import { Period } from '@/components/dashboard/LeaderboardTabs';
 
 export interface ComparisonDataPoint {
     date: string; // YYYY-MM-DD or YYYY-MM

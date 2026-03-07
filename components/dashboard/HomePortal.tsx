@@ -4,11 +4,11 @@ import { useState } from 'react';
 
 import { useTranslations } from 'next-intl';
 
-import HomeHero from '@/components/HomeHero';
-import QuickActions from '@/components/QuickActions';
-import DailyMissions from '@/components/DailyMissions';
-import DashboardChallenges from '@/components/DashboardChallenges';
-import FollowingPanel from '@/components/FollowingPanel';
+import HomeHero from '@/components/dashboard/HomeHero';
+import QuickActions from '@/components/dashboard/QuickActions';
+import DailyMissions from '@/components/dashboard/DailyMissions';
+import DashboardChallenges from '@/components/dashboard/DashboardChallenges';
+import FollowingPanel from '@/components/dashboard/FollowingPanel';
 
 // ============================================
 // HomePortal — ネイティブアプリ風ポータル + タブ切替
