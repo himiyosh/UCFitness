@@ -234,55 +234,110 @@ npm run pages:build
 
 ### カスタムエージェント
 
-| 名前 | 説明 |
+#### エージェント組織階層図 (テキスト版)
+
+```
+👤 User (VS Code Chat Panel / Slash Commands)
+│
+├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
+│   │  クエリを分析し、適切な専門ロールを自動選択・組み合わせて委任
+│   │
+│   ├── 📁 フロントエンド開発 (Next.js + React)
+│   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
+│   │   │   └── 🔧 [next-intl-add-language skill]
+│   │   └── 🟩 React Expert                Hooks / 状態管理 / パフォーマンス最適化
+│   │
+│   ├── 📁 品質・セキュリティ
+│   │   ├── 🟥 Security Expert             OWASP Top 10 / 認証 / XSS / IDOR
+│   │   ├── 🟨 QA                          テスト戦略 / エッジケース / カバレッジ
+│   │   └── 🟪 Debug Mode                  エラー調査 / クラッシュ分析 / 5ステップRCA
+│   │
+│   ├── 📁 デザイン・アクセシビリティ
+│   │   ├── 🟧 UX Designer                 UI/UX / モバイルファースト / ゲーミフィケーション
+│   │   │   └── 🔧 [web-design-reviewer skill]
+│   │   └── 🟫 Accessibility Expert        WCAG 2.1/2.2 / ARIA / キーボードナビ
+│   │
+│   ├── 🎭 Playwright Tester               全要素精査型 E2E テスト / レスポンシブ検証
+│   │
+│   ├── 📐 Plan Mode                       計画 / アーキテクチャ / 要件整理
+│   │
+│   ├── 🧹 Universal Janitor              クリーンアップ / リファクタリング / 技術負債
+│   │   └── 🔄 Improvement Loop            品質改善ループ・レトロスペクティブ
+│   │
+│   └── 🔴 Self-Critique                   成果物の 6 軸批判・品質ゲート (自動起動)
+│       └── 批判→修正→再批判ループ (全軸 PASS まで最大 3 回)
+│
+├── ⚡ Slash Commands (Prompts) — ユーザーが直接呼び出す定型タスク
+│   ├── 📋 /context-map                    プロジェクトコンテキストマップ生成
+│   ├── 📝 /conventional-commit            コミットメッセージ生成
+│   ├── 📖 /copilot-instructions-blueprint Copilot Instructions テンプレート
+│   ├── 📐 /create-implementation-plan     実装計画作成
+│   ├── 📄 /create-readme                  README 生成
+│   ├── 🔀 /git-flow-branch               Git フローブランチ管理
+│   ├── 📋 /my-issues                      Issue 管理
+│   ├── 🔍 /review-and-refactor           コードレビュー・リファクタリング
+│   ├── 📐 /refactor-plan                  リファクタリング計画
+│   ├── 🌐 /next-intl-add-language         翻訳キー追加
+│   ├── 🐘 /postgresql-review              PostgreSQL クエリレビュー
+│   └── ❓ /what-context-do-you-need       コンテキスト発見
+│
+├── ⚡ Agent Sub-Prompts — UCFitnessAgent 内部で使用するワークフロー
+│   ├── 🔨 /agents/build-validation        ビルド検証・型チェック・リント
+│   ├── ✨ /agents/feature-enhancement     機能拡張 (状態設計・エラーハンドリング)
+│   ├── 💰 /agents/monetization            マネタイズ戦略・収益機能提案
+│   ├── 🔍 /agents/new-feature-discovery   新機能発見・バリデーション
+│   ├── ⚡ /agents/performance              パフォーマンス最適化
+│   ├── 🔒 /agents/security                API セキュリティ監査
+│   ├── 🧪 /agents/testing                 テストカバレッジ分析・提案
+│   └── 🎨 /agents/ui-ux                   UI/UX 改善 (スタイル・CSS のみ)
+│
+├── 📋 Shared Instructions (全エージェント共通ルール)
+│   ├── copilot-instructions.md            リポジトリ共通ルール・コーディング規約
+│   └── .github/instructions/ (18 files)   a11y / hooks / security / mobile 等
+│
+└── 🔧 Skills (再利用可能なドメイン知識)
+    ├── web-design-reviewer                UI/UX ビジュアルチェック・レスポンシブ検証
+    ├── postgresql-optimization            PostgreSQL クエリ最適化・パフォーマンス分析
+    └── next-intl-add-language             next-intl 翻訳キー追加ワークフロー
+```
+
+#### エージェント詳細一覧
+
+| 名前 | ファイル | モデル | 役割 |
+|---|---|---|---|
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。リクエストのキーワード・文脈から専門ロールを自動判定し、委任する |
+| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15 App Router / Server Components / Edge Runtime / next-intl 専門 |
+| React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 19.2 Hooks / Server Components / Actions / パフォーマンス最適化 |
+| SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
+| SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
+| Accessibility Expert | [accessibility.agent.md](.github/agents/accessibility.agent.md) | GPT-4.1 | WCAG 2.1/2.2 準拠 / ARIA / キーボードナビ / スクリーンリーダー対応 |
+| Playwright Tester | [playwright-tester.agent.md](.github/agents/playwright-tester.agent.md) | Claude Sonnet 4 | Playwright MCP による全要素精査型 E2E テスト / レスポンシブ検証 |
+| Self-Critique | [self-critique.agent.md](.github/agents/self-critique.agent.md) | - | 成果物の 6 軸批判 (デザイン一貫性・余白密度・レスポンシブ・翻訳・インタラクション・コード品質) |
+
+#### ロール自動選択ルール (UCFitnessAgent)
+
+UCFitnessAgent はリクエストのキーワード・文脈から以下のルールで専門ロールを自動判定する。複数ロールが必要な場合は組み合わせて対応する。
+
+| トリガーキーワード | 選択ロール |
 |---|---|
-| [UCFitnessAgent](.github/agents/UCFitnessAgent.agent.md) | UCFitness 専用の開発支援エージェント |
+| ページ追加、ルーティング、SSR、Edge Runtime、i18n | 🟦 **Next.js Expert** |
+| Hooks、コンポーネント、再レンダリング、状態管理 | 🟩 **React Expert** |
+| 脆弱性、認証、OWASP、XSS、IDOR、入力検証 | 🟥 **Security Expert** |
+| テスト、テストケース、バグ、品質、エッジケース | 🟨 **QA** |
+| エラー、バグ修正、クラッシュ、動かない、原因調査 | 🟪 **Debug Mode** |
+| UI、UX、ユーザー体験、レイアウト、デザイン | 🟧 **UX Designer** |
+| アクセシビリティ、WCAG、a11y、スクリーンリーダー | 🟫 **Accessibility Expert** |
+| E2E テスト、ブラウザテスト、Playwright、表示確認 | 🎭 **Playwright Tester** |
+| 計画、設計、アーキテクチャ、見積もり、要件整理 | 📐 **Plan Mode** |
+| クリーンアップ、リファクタリング、技術負債、整理 | 🧹 **Universal Janitor** |
+| 改善ループ、品質改善、全体チェック、ループ回して | 🔄 **Improvement Loop** |
+| 批判、レビュー、見直し、統一性、見切れ、不統一 | 🔴 **Self-Critique** |
 
-<details>
-<summary>awesome-copilot エージェント (クリックで展開)</summary>
+> **自動起動**: 他ロールの作業完了後・Improvement Loop 各 Cycle 完了後・PR 作成直前に Self-Critique が自動起動し、全 6 軸 PASS するまで完了報告しない。
 
-| 名前 | ソース | 用途 |
-|---|---|---|
-| [Expert Next.js Developer](.github/agents/expert-nextjs-developer.agent.md) | awesome-copilot | Next.js 15 App Router 専門開発者 |
-| [Expert React Frontend Engineer](.github/agents/expert-react-frontend-engineer.agent.md) | awesome-copilot | React フロントエンド専門家 |
-| [SE Security Reviewer](.github/agents/se-security-reviewer.agent.md) | awesome-copilot | セキュリティレビュー・OWASP 監査 |
-| [SE UX/UI Designer](.github/agents/se-ux-ui-designer.agent.md) | awesome-copilot | UX/UI デザインレビュー・改善提案 |
-| [Accessibility](.github/agents/accessibility.agent.md) | awesome-copilot | アクセシビリティ監査・WCAG 準拠 |
-| [Playwright Tester](.github/agents/playwright-tester.agent.md) | awesome-copilot | E2E テスト生成・Playwright |
+### Skills
 
-</details>
-
-### カスタムプロンプト
-
-| プロンプト | 用途 |
-|---|---|
-| `/context-map` | プロジェクトコンテキストマップ生成 |
-| `/conventional-commit` | コミットメッセージ生成 |
-| `/create-implementation-plan` | 実装計画作成 |
-| `/create-readme` | README 生成 |
-| `/git-flow-branch` | Git フローブランチ管理 |
-| `/review-and-refactor` | コードレビュー・リファクタリング |
-| `/refactor-plan` | リファクタリング計画 |
-| `/next-intl-add-language` | 翻訳キー追加 |
-| `/postgresql-review` | PostgreSQL クエリレビュー |
-
-<details>
-<summary>エージェント用サブプロンプト (クリックで展開)</summary>
-
-| プロンプト | 用途 |
-|---|---|
-| `/agents/build-validation` | ビルド検証 |
-| `/agents/feature-enhancement` | 機能拡張提案 |
-| `/agents/monetization` | マネタイズ戦略 |
-| `/agents/new-feature-discovery` | 新機能発見 |
-| `/agents/performance` | パフォーマンス最適化 |
-| `/agents/security` | セキュリティ監査 |
-| `/agents/testing` | テスト生成 |
-| `/agents/ui-ux` | UI/UX 改善 |
-
-</details>
-
-### Skills (awesome-copilot)
+詳細はツリー図の「Skills」セクションを参照。
 
 | スキル | 用途 |
 |---|---|

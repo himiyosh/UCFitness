@@ -1165,3 +1165,96 @@
 ---
 
 *レポート生成: GitHub Copilot (Claude Opus 4.6) | ブランチ: copilot/improvement-loop-1*
+
+---
+
+## 🔄 Cycle 12 — 余白・密度統一とレスポンシブ修正 (2026-03-07)
+
+> **ブランチ:** `feature/design-improvement`
+> **トリガー:** ユーザー指示「全体チェックして改善ループ回して」
+> **分析:** Self-Critique 6 軸批判フレームワーク導入
+
+### 📋 修正内容
+
+#### 🔨 Build / 型チェック
+- TypeScript: **0 エラー** ✅ (変更前後とも)
+
+#### 🎨 UI/UX — 余白・密度の統一
+
+| ファイル | 修正内容 | 影響度 |
+|---|---|---|
+| `app/[locale]/page.tsx` | `<main>` から `flex-1` 除去 — 空白引き伸ばし防止 | 🔴 高 |
+| `DynamicLeaderboard.tsx` | `lg:gap-6` → `lg:gap-4` | 🟡 中 |
+| `AnimatedLeaderboard.tsx` | `gap-6 lg:gap-8` → `gap-4 lg:gap-4` / `space-y-6` → `space-y-4` (タブ + 右カラム) / no-data `py-8` → `py-4` | 🔴 高 |
+| `PersonalAnalytics.tsx` | `space-y-5` → `space-y-4` (スケルトン + メインラッパー + グリッド gap) | 🟡 中 |
+| `DailyMissions.tsx` | エラー/空状態 `py-6` → `py-4` | 🟡 中 |
+| `FollowingPanel.tsx` | エラー/空状態 `py-6` → `py-4` | 🟡 中 |
+| `ActivityFeed.tsx` | 空状態 + エラー状態 `py-6` → `py-4` | 🟡 中 |
+| `GroupRankingPanel.tsx` | no-data `py-8` → `py-4` | 🟡 中 |
+
+#### 📱 レスポンシブ修正
+
+| ファイル | 修正内容 | 影響度 |
+|---|---|---|
+| `GroupList.tsx` | `flex-row sm:flex-col` → `flex-col sm:flex-row` (モバイルファースト方向修正) | 🔴 高 |
+| `GroupList.tsx` | バナー `w-20 sm:w-full` → `w-full sm:w-20` + border 方向修正 | 🔴 高 |
+
+### 🔴 Self-Critique 結果
+
+| 軸 | 1 回目 | 2 回目 (修正後) |
+|---|---|---|
+| 🎨 デザイン一貫性 | ✅ OK | ✅ OK |
+| 📐 余白・密度 | ❌ NG (4 件残存) | ✅ OK |
+| 📱 レスポンシブ | ✅ OK | ✅ OK |
+| 🔤 テキスト・翻訳 | ✅ OK | ✅ OK |
+| ⚡ インタラクション | ✅ OK | ✅ OK |
+| 🏗️ コード品質 | ⚠️ WARN | ✅ OK |
+| **総合判定** | **❌ FAIL** | **✅ PASS** |
+
+### 📊 Cycle 12 統計
+
+| 項目 | 値 |
+|------|------|
+| コミット数 | 2 |
+| 変更ファイル数 | 9 |
+| 追加行 | +121 |
+| 削除行 | -100 |
+| 型エラー | **0** ✅ |
+| Self-Critique ループ回数 | 2 回 (1 回目 FAIL → 修正 → 2 回目 PASS) |
+
+### 🔍 新機能提案 (8 件)
+
+#### 🔴 P0 — 即実装すべき
+
+| # | 機能名 | カテゴリ | 工数 | 説明 |
+|---|--------|---------|------|------|
+| 1 | 🤝 Duo Walking Partner | ソーシャル / リテンション | 🟢 Easy | フォロワーから「ウォーキングパートナー」を選択。両者が 5000 歩達成で +50% コインボーナス |
+| 2 | 🏆 Weekly Group Battle Pass | マネタイズ / エンゲージメント | 🟡 Medium | シーズンパスの 5 ティア制。グループランキング順位に応じてコスメ・コイン倍率を自動付与 |
+| 3 | 🌸 Seasonal Shop Cosmetics | マネタイズ | 🟢 Easy | `shop_items` に `season_code` + `retire_date` を追加。FOMO 駆動の限定アイテム |
+
+#### 🟡 P1 — Nice-to-have
+
+| # | 機能名 | カテゴリ | 工数 | 説明 |
+|---|--------|---------|------|------|
+| 4 | 💝 Social Gift System | エンゲージメント / ソーシャル | 🟢 Easy | フォロワーにギフト送信 (エナジードリンク、休息パス等)。UC 消費で送信 |
+| 5 | 🎡 Daily Bonus Multiplier Wheel | リテンション | 🟢 Easy | 1 日 1 回スピンでコイン倍率 (1x〜2x) を獲得。デイリーログイン促進 |
+| 6 | 🎯 Group Quests | エンゲージメント / バイラル | 🟡 Medium | グループリーダーが週間目標設定。達成で全員ボーナス UC + 特別バッジ |
+| 7 | 🔥 Streak Celebration Milestones | リテンション | 🟢 Easy | 7/14/30/100 日ストリークで特別アニメ + プッシュ通知 + マイルストーンバッジ |
+
+#### 🔵 P2 — Future
+
+| # | 機能名 | カテゴリ | 工数 | 説明 |
+|---|--------|---------|------|------|
+| 8 | 🗺️ Walking Route Leaderboard | エンゲージメント | 🟡 Medium | 人気ルートのリーダーボード。ベストタイム・最多リピート・最高歩数で競争 |
+
+### 📌 次回 Cycle で対応予定
+
+- 他ページ (groups, wallet, shop, challenges) の gap/padding 統一チェック
+- `SettingsForm.tsx` gap-8 → gap-4 統一
+- `GroupComparisonChart.tsx` gap-8 空状態の修正
+- `GroupAnalytics.tsx` gap-6 → gap-4 統一
+- Playwright MCP 接続後にフルページスクロールスルー検証
+
+---
+
+*レポート生成: GitHub Copilot (Claude Opus 4.6) | ブランチ: feature/design-improvement*

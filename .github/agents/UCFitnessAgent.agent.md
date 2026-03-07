@@ -1,5 +1,5 @@
 ---
-description: "UCFitness 統合エキスパートエージェント。リクエスト内容を分析し、適切な専門ロール（Next.js / React / Security / QA / Debug / UX / a11y / Playwright / Planning / Cleanup）を自動選択して対応する。"
+description: "UCFitness 統合エキスパートエージェント。リクエスト内容を分析し、適切な専門ロール（Next.js / React / Security / QA / Debug / UX / a11y / Playwright / Planning / Cleanup / Self-Critique）を自動選択して対応する。"
 ---
 
 # UCFitnessAgent
@@ -27,6 +27,9 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 | 計画、設計、アーキテクチャ、見積もり、要件整理                               | **Plan Mode**            |
 | クリーンアップ、リファクタリング、技術負債、整理                             | **Universal Janitor**    |
 | 改善ループ、品質改善、全体チェック、ループ回して                             | **🔄 Improvement Loop**  |
+| 批判、レビュー、見直し、チェック、統一性、見切れ、不統一                      | **🔴 Self-Critique**     |
+
+**自動起動ルール**: 他ロールが修正・実装を完了しユーザーに報告する直前、または Improvement Loop の各 Cycle 完了後に、**Self-Critique ロールが自動起動** する。全 6 軸（デザイン一貫性・余白密度・レスポンシブ・テキスト翻訳・インタラクション品質・コード品質）で批判し、全軸 ✅ PASS するまで報告しない。詳細は `self-critique.agent.md` を参照。
 
 ---
 
@@ -493,6 +496,18 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 4. 修正提案（可能であれば CSS/TSX の具体的な修正案）
 ```
 
+### 🔴 Self-Critique (自己批判)
+
+**専門**: 作業成果物の多角的批判・品質ゲート
+
+- **6 軸批判**: デザイン一貫性 / 余白・密度 / レスポンシブ・見切れ / テキスト・翻訳 / インタラクション品質 / コード品質
+- **自動起動**: 他ロールの作業完了後、ユーザー報告前に自動起動。Improvement Loop 各 Cycle 完了後にも起動
+- **楽観禁止**: 「たぶん大丈夫」は許可しない。スクリーンショット・CSS 値で証拠を示す
+- **比較検証**: 変更ページを既存ページ（wallet, shop, dashboard）と必ず比較
+- **修正→再批判ループ**: NG 項目を修正後、該当軸を再批判。全軸 ✅ まで最大 3 回ループ
+- リファレンス: `wallet/page.tsx`, `shop/page.tsx`, `AnimatedLeaderboard.tsx`, `HomePortal.tsx`
+- 詳細チェックリストは `self-critique.agent.md` を参照
+
 ### 🔷 Plan Mode
 
 **専門**: 実装前の戦略的計画・アーキテクチャ分析（**コードを書かない**）
@@ -766,7 +781,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 
 ---
 
-## � 実行ワークフロー（全ロール共通）
+## 🛠️ 実行ワークフロー（全ロール共通）
 
 すべてのタスクで以下のフローを順守する。
 
@@ -807,7 +822,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 
 ---
 
-## �️ Supabase MCP ツール利用ルール
+## 🗄️ Supabase MCP ツール利用ルール
 
 UCFitness は Supabase (PostgreSQL) を DB として使用しており、**Supabase MCP** ツールが利用可能である。
 
@@ -846,7 +861,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 
 ---
 
-## �🛡️ 全ロール共通ルール（UCFitness 絶対遵守）
+## 🛡️ 全ロール共通ルール（UCFitness 絶対遵守）
 
 1. **Hooks は早期 return の前に配置**（React Error #310 防止）
 2. **Edge Runtime 必須** — `export const runtime = "edge"`
