@@ -9,14 +9,14 @@ import { GroupRankingEntry } from '@/lib/group-ranking-service';
 import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
 
-const GroupComparisonChart = dynamic(() => import('@/components/GroupComparisonChart'), {
+const GroupComparisonChart = dynamic(() => import('@/components/group/GroupComparisonChart'), {
     ssr: false,
     loading: () => <div className="w-full h-64 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--theme-secondary)' }} />,
 });
-const GroupDetailLeaderboard = dynamic(() => import('@/components/GroupDetailLeaderboard'), {
+const GroupDetailLeaderboard = dynamic(() => import('@/components/group/GroupDetailLeaderboard'), {
     loading: () => <div className="w-full h-96 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--theme-secondary)' }} />,
 });
-const GroupCompetitionList = dynamic(() => import('@/components/GroupCompetitionList'), {
+const GroupCompetitionList = dynamic(() => import('@/components/group/GroupCompetitionList'), {
     loading: () => <div className="w-full h-48 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--theme-secondary)' }} />,
 });
 

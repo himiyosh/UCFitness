@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 import { getDisplayRankings } from '@/lib/ranking-utils';
-import GroupRankingPanel from '@/components/GroupRankingPanel';
+import GroupRankingPanel from '@/components/group/GroupRankingPanel';
 import FadeInWrapper from '@/components/leaderboard/FadeInWrapper';
 
 import type { Period } from '@/components/LeaderboardTabs';

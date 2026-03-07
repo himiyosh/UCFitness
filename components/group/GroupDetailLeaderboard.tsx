@@ -6,7 +6,7 @@ import { Period } from '@/components/LeaderboardTabs';
 import { RankingEntry } from '@/lib/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
-import GroupReactions from '@/components/GroupReactions';
+import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
 
 function FadeInWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {

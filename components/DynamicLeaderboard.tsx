@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Period } from '@/components/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/ranking-utils';
-import GroupRankingPanel from '@/components/GroupRankingPanel';
+import GroupRankingPanel from '@/components/group/GroupRankingPanel';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';

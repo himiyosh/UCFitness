@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useState } from 'react';
 
-import type { Reaction } from '@/components/GroupReactions';
+import type { Reaction } from '@/components/group/GroupReactions';
 
 // ============================================
 // GearLikeButton — Instagram 風のシンプルな ❤ Like ボタン

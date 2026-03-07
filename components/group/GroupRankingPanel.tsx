@@ -7,7 +7,7 @@ import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import { RankingEntry } from '@/lib/ranking-utils';
-import GroupReactions from '@/components/GroupReactions';
+import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
 
 type Props = {
