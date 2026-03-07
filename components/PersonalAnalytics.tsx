@@ -136,7 +136,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
     }
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-4">
             {/* ============ ヒーローカード: 今月サマリー ============ */}
             <div
                 className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white"

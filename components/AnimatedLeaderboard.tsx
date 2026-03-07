@@ -152,7 +152,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     }, [currentGlobal.length, page, totalPages, safePage]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* TABS - Moved to top for alignment */}
             <div className="flex justify-center sm:justify-start">
                 <div role="tablist" className={`flex p-1 rounded-lg shadow-sm w-fit overflow-hidden relative gap-2 ${isMidnight ? '' : 'bg-white border border-gray-200'}`}>
@@ -462,7 +462,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                 </div>
 
                 {/* Right Column Stack */}
-                <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
+                <div className="lg:col-span-7 order-1 lg:order-2 space-y-4">
                     <LeaderboardGroupSection
                         period={period}
                         allGroupRankings={allGroupRankings}

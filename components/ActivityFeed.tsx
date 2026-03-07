@@ -138,7 +138,7 @@ export default function ActivityFeed() {
     if (error) {
         return (
             <div className="premium-card p-4">
-                <div className="text-center py-6">
+                <div className="text-center py-4">
                     <p className="text-sm text-gray-500 mb-3">{t('errorMessage')}</p>
                     <button
                         type="button"
