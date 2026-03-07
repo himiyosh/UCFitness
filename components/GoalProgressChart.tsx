@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Confetti from './Confetti';
+import Confetti from '@/components/ui/Confetti';
 
 interface GoalProgressChartProps {
     current: number;

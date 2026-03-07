@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import ImageModal from '@/components/ImageModal';
+import ImageModal from '@/components/ui/ImageModal';
 import UserAvatar from '@/components/UserAvatar';
 
 interface UserData {

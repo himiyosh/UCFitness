@@ -6,10 +6,10 @@ import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
-import RefreshButton from '@/components/RefreshButton';
-import UserMenu from '@/components/UserMenu';
-import NotificationBell from '@/components/NotificationBell';
-import Breadcrumbs from '@/components/Breadcrumbs';
+import RefreshButton from '@/components/layout/RefreshButton';
+import UserMenu from '@/components/layout/UserMenu';
+import NotificationBell from '@/components/layout/NotificationBell';
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import DynamicLeaderboard from '@/components/dashboard/DynamicLeaderboard';
 
 export const dynamic = 'force-dynamic';

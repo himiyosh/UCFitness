@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import ProfileImageEditor from "@/components/profile/ProfileImageEditor";
 import BannerImageEditor from "@/components/BannerImageEditor";
-import ImageModal from "@/components/ImageModal";
+import ImageModal from "@/components/ui/ImageModal";
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, Link } from '@/navigation';
 import { useSession } from 'next-auth/react'; // Import useSession

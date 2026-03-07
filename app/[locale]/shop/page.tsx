@@ -4,16 +4,16 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
-import UserMenu from "@/components/UserMenu";
-import RefreshButton from '@/components/RefreshButton';
-import NotificationBell from '@/components/NotificationBell';
-import UCHintBalloon from "@/components/UCHintBalloon";
-import Breadcrumbs from "@/components/Breadcrumbs";
+import UserMenu from "@/components/layout/UserMenu";
+import RefreshButton from '@/components/layout/RefreshButton';
+import NotificationBell from '@/components/layout/NotificationBell';
+import UCHintBalloon from "@/components/ui/UCHintBalloon";
+import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import ShopClient from "@/components/ShopClient";
 import { getShopItems, getUserItems, getEquippedItems } from "@/lib/shop-service";
 import { getCoinBalance, getInvestorRank } from "@/lib/coin-service";
 import { getTranslations, getLocale } from "next-intl/server";
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 
 export const dynamic = 'force-dynamic';
 

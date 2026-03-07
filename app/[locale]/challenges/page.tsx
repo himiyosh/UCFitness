@@ -5,12 +5,12 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/navigation';
-import UserMenu from '@/components/UserMenu';
-import RefreshButton from '@/components/RefreshButton';
-import NotificationBell from '@/components/NotificationBell';
-import Breadcrumbs from '@/components/Breadcrumbs';
+import UserMenu from '@/components/layout/UserMenu';
+import RefreshButton from '@/components/layout/RefreshButton';
+import NotificationBell from '@/components/layout/NotificationBell';
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import ChallengesPageClient from '@/components/challenge/ChallengesPageClient';
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 
 // ============================================
 // チャレンジページ（Server Component）

@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import ImageModal from '@/components/ImageModal';
+import ImageModal from '@/components/ui/ImageModal';
 import UserAvatar from '@/components/UserAvatar';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/ui/Toast';
 import { useTranslations } from 'next-intl';
 import LeaveGroupButton from './LeaveGroupButton';
 

@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/ui/Toast';
 
 // 検索コンポーネントはモーダル表示時のみ読み込み
 const AmazonProductSearch = dynamic(() => import('@/components/AmazonProductSearch'), {

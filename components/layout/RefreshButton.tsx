@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useToast } from './Toast';
+import { useToast } from '@/components/ui/Toast';
 
 export default function RefreshButton() {
     const [loading, setLoading] = useState(false);

@@ -4,13 +4,13 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from 'next/link';
 import ActivityGraph from '@/components/ActivityGraph';
-import UserMenu from '@/components/UserMenu';
+import UserMenu from '@/components/layout/UserMenu';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileBadges from '@/components/profile/ProfileBadges';
 import AchievementProgress from '@/components/profile/AchievementProgress';
-import RefreshButton from '@/components/RefreshButton';
-import NotificationBell from '@/components/NotificationBell';
-import Breadcrumbs from '@/components/Breadcrumbs';
+import RefreshButton from '@/components/layout/RefreshButton';
+import NotificationBell from '@/components/layout/NotificationBell';
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getUserBadges } from "@/lib/badge-service";
 import { getEquippedItems } from "@/lib/shop-service";
@@ -21,8 +21,8 @@ import StepCalendar from '@/components/StepCalendar';
 import FollowButtonWrapper from '@/components/FollowButtonWrapper';
 import AchievementCard from '@/components/profile/AchievementCard';
 import ShareMilestone from '@/components/ShareMilestone';
-import AdSlot from '@/components/AdSlot';
-import Footer from '@/components/Footer';
+import AdSlot from '@/components/ui/AdSlot';
+import Footer from '@/components/layout/Footer';
 import nextDynamic from 'next/dynamic';
 
 // ⚡ パフォーマンス: ウォーキングコース記録を遅延読み込み（プロフィール所有者のみ表示）

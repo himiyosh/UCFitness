@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/ui/Toast';
 
 export default function LeaveGroupButton({
     groupKeyword,

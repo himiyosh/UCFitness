@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/Spinner';
-import { useToast } from '@/components/Toast';
+import { useToast } from '@/components/ui/Toast';
 
 interface GroupMembership {
     role: string;

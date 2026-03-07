@@ -4,14 +4,14 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import RefreshButton from '@/components/RefreshButton';
-import UserMenu from '@/components/UserMenu';
+import RefreshButton from '@/components/layout/RefreshButton';
+import UserMenu from '@/components/layout/UserMenu';
 import { auth } from "@/lib/auth";
 import { getCachedGlobalRankingMap, transformRankingMapToLists } from '@/lib/ranking-service';
 import nextDynamic from 'next/dynamic';
 import { optimizeRankingsForPayload } from '@/lib/ranking-utils';
 import AutoSync from '@/components/AutoSync';
-import Footer from '@/components/Footer';
+import Footer from '@/components/layout/Footer';
 import LandingPage from '@/components/LandingPage';
 import HomePortal from '@/components/dashboard/HomePortal';
 import QuickActions from '@/components/dashboard/QuickActions';
@@ -20,7 +20,7 @@ import type { RankingEntry } from '@/lib/ranking-utils';
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const LoginBonusToast = nextDynamic(() => import('@/components/auth/LoginBonusToast'));
-const NotificationBell = nextDynamic(() => import('@/components/NotificationBell'));
+const NotificationBell = nextDynamic(() => import('@/components/layout/NotificationBell'));
 
 // スケルトンローディングプレースホルダー（チャンク読み込み中に表示）
 const CardSkeleton = ({ h = 'h-32', title }: { h?: string; title?: string }) => (

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "../globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
-import { ToastProvider } from "@/components/Toast";
+import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import GlobalLoader from "@/components/auth/GlobalLoader";
 import dynamic from 'next/dynamic';
@@ -11,8 +11,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { auth } from "@/lib/auth";
-import LanguageSyncer from "@/components/LanguageSyncer";
-import BottomNavBar from "@/components/BottomNavBar";
+import LanguageSyncer from "@/components/layout/LanguageSyncer";
+import BottomNavBar from "@/components/layout/BottomNavBar";
 
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
 const SplashScreen = dynamic(() => import('@/components/auth/SplashScreen'));
