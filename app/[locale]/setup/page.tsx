@@ -5,7 +5,7 @@ export const runtime = 'edge';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import ProfileImageEditor from "@/components/ProfileImageEditor";
+import ProfileImageEditor from "@/components/profile/ProfileImageEditor";
 
 export default function SetupPage() {
     const { data: session, update } = useSession();

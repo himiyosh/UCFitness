@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import ProfileImageEditor from "@/components/ProfileImageEditor";
+import ProfileImageEditor from "@/components/profile/ProfileImageEditor";
 import BannerImageEditor from "@/components/BannerImageEditor";
 import ImageModal from "@/components/ImageModal";
 import { useLocale, useTranslations } from 'next-intl';

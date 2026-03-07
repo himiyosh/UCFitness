@@ -13,7 +13,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import Footer from '@/components/Footer';
 
 // ⚡ パフォーマンス: クライアントコンポーネントを遅延読み込み
-const PersonalAnalytics = nextDynamic(() => import('@/components/PersonalAnalytics'));
+const PersonalAnalytics = nextDynamic(() => import('@/components/profile/PersonalAnalytics'));
 
 export const dynamic = 'force-dynamic';
 
