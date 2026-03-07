@@ -238,7 +238,7 @@ export default async function Home() {
 
             {/* 上部: アクティビティサマリー (左) / デイリーミッション & クイックアクション (右) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-              <div className="animate-fadeInUp">
+              <div className="flex flex-col gap-3 animate-fadeInUp">
                 <StepCalendar
                   userId={userId}
                   userName={dbUserName || session.user.name || null}
@@ -255,16 +255,13 @@ export default async function Home() {
                     stepGoal,
                   }}
                 />
+                {/* アクティブチャレンジ — 左カラムに配置して高さバランス改善 */}
+                <DashboardChallenges />
               </div>
               <div className="flex flex-col gap-3 animate-fadeInUp delay-100">
                 <DailyMissions />
                 <QuickActions />
               </div>
-            </div>
-
-            {/* アクティブチャレンジ */}
-            <div className="animate-fadeInUp delay-200">
-              <DashboardChallenges />
             </div>
 
             {/* リーダーボード */}
