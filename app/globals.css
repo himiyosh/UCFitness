@@ -1315,16 +1315,22 @@ body {
   flex-direction: column;
 }
 
-/* デスクトップのみ 0.9x スケーリングを適用（モバイルは通常スクロールを優先） */
+/* デスクトップのみ 0.9x スケーリングを適用（モバイルは通常スクロールを優先）
+   ⚠️ 重要制約:
+   - html に overflow: hidden (両方向) を絶対に設定しないこと → 縦スクロールが死ぬ
+   - body は min-height ではなく height (固定) にすること → body 内部でスクロールさせるため
+   - min-height にすると body がコンテンツに合わせて伸び、overflow-y: auto が効かない */
 @media (min-width: 1024px) {
   html {
-    overflow: hidden; /* スケーリングで拡張された body のはみ出しをクリップ */
+    overflow-x: hidden; /* transform で横にはみ出す分だけクリップ */
+    overflow-y: hidden;  /* body 内部でスクロールするため html レベルでは不要 */
   }
 
   body {
     transform: scale(0.9);
-    width: calc(100% / 0.9);   /* 111.11% — スケール後に viewport 幅にフィット */
-    min-height: calc(100vh / 0.9); /* 111.11% — スケール後に viewport 高さにフィット */
+    width: calc(100% / 0.9);    /* 111.11% — スケール後に viewport 幅にフィット */
+    height: calc(100vh / 0.9);  /* 固定高さ — body 内部で overflow-y: auto スクロールを有効化 */
+    overflow-y: auto;           /* コンテンツが溢れた場合に body 自体がスクロール */
   }
 }
 
