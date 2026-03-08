@@ -256,7 +256,7 @@ export default async function Home() {
                   }}
                 />
               </div>
-              <div className="animate-fadeInUp delay-100 h-full">
+              <div className="animate-fadeInUp delay-100">
                 <DailyMissions />
               </div>
             </div>

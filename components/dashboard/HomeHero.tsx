@@ -49,7 +49,7 @@ export default function HomeHero({
 
   return (
     <section
-      className={`relative flex-shrink-0 bg-gradient-to-br from-[var(--theme-gradient-from)] via-[var(--theme-secondary)] to-[var(--theme-gradient-to)] text-white px-4 pt-3 pb-5 sm:px-6 sm:pt-6 sm:pb-8 overflow-hidden rounded-none sm:rounded-2xl ${className}`}
+      className={`relative flex-shrink-0 bg-gradient-to-br from-[var(--theme-gradient-from)] via-[var(--theme-secondary)] to-[var(--theme-gradient-to)] text-white px-4 pt-5 pb-6 sm:px-6 sm:pt-6 sm:pb-8 overflow-hidden rounded-none sm:rounded-2xl ${className}`}
       aria-label={pt('heroLabel')}
     >
       {/* 装飾 — Apple-style mesh gradient feel */}
