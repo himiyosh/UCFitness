@@ -142,10 +142,15 @@ export default async function Home() {
   }
 
   // グループキーワード・バナー画像を抽出
-  const groupKeywords = (membershipResult.data ?? [])
+  const groupInfo = (membershipResult.data ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((m: any) => m.groups?.keyword)
-    .filter(Boolean) as string[];
+    .map((m: any) => ({
+      keyword: m.groups?.keyword as string,
+      imageUrl: m.groups?.header_image_url as string | null
+    }))
+    .filter(g => Boolean(g.keyword));
+
+  const groupKeywords = groupInfo.map(g => g.keyword);
 
   // 歩数をメモリ内で集計
   const stepsMap = new Map<string, number>();
@@ -267,7 +272,7 @@ export default async function Home() {
 
             {/* リーダーボード */}
             <div className="animate-fadeInUp delay-300">
-              <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
+              <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} groupInfo={groupInfo} />
             </div>
 
             {/* 追加パネル */}

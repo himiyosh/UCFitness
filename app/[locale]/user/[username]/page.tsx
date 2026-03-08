@@ -24,6 +24,11 @@ import ShareMilestone from '@/components/ShareMilestone';
 import AdSlot from '@/components/ui/AdSlot';
 import Footer from '@/components/layout/Footer';
 import nextDynamic from 'next/dynamic';
+import { getCoinBalance } from "@/lib/services/coin-service";
+
+// 遅延読み込み: プロフィール追加コンポーネント
+const BadgeMuseum = nextDynamic(() => import('@/components/profile/BadgeMuseum'));
+const PersonalRecords = nextDynamic(() => import('@/components/profile/PersonalRecords'));
 
 // ⚡ パフォーマンス: ウォーキングコース記録を遅延読み込み（プロフィール所有者のみ表示）
 const WalkingRoutes = nextDynamic(() => import('@/components/WalkingRoutes'));
@@ -62,7 +67,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     recentDate.setDate(recentDate.getDate() - 400);
     const recentDateStr = recentDate.toISOString().split('T')[0];
 
-    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, recentHistoryResult, statsResult, weeklyRankingsResult] = await Promise.all([
+    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, recentHistoryResult, statsResult, weeklyRankingsResult, coinBalance] = await Promise.all([
         supabaseAdmin
             .from('group_members')
             .select('groups!inner(keyword, is_public, name, header_image_url, image_url)')
@@ -88,6 +93,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             .rpc('get_user_step_stats', { p_user_id: user.id }),
         // ⭐ パフォーマンス: ランキングも並列取得
         getRankings('GLOBAL', 'WEEKLY').catch(() => [] as any[]),
+        // コイン残高（パーソナルレコード用）
+        getCoinBalance(user.id),
     ]);
 
     let primaryGroup: any = undefined;
@@ -481,6 +488,24 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         {/* Step Heatmap Calendar */}
                         <StepCalendar userId={user.id} />
+
+                        {/* バッジミュージアム — タイムライン表示 */}
+                        {userBadges.length > 0 && (
+                            <BadgeMuseum badges={userBadges} />
+                        )}
+
+                        {/* パーソナルレコード */}
+                        <PersonalRecords
+                            totalSteps={totalSteps}
+                            bestDaySteps={bestDay.steps}
+                            bestDayDate={bestDay.date}
+                            bestStreak={coinBalance?.best_streak ?? 0}
+                            currentStreak={coinBalance?.current_streak ?? 0}
+                            activeDays={allHistoryData.filter((d: any) => d.steps > 0).length}
+                            totalDays={allHistoryData.length}
+                            investorRank={coinBalance?.investor_rank ?? 'BEGINNER'}
+                            totalEarned={coinBalance?.total_earned ?? 0}
+                        />
 
                         {/* Recommended Items — 愛用アイテム */}
                         {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (

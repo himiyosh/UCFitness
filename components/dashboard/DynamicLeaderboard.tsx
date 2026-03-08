@@ -19,9 +19,10 @@ const TABS: { key: Period; labelKey: string }[] = [
 interface DynamicLeaderboardProps {
     userId?: string | null;
     groupKeywords: string[];
+    groupInfo?: { keyword: string; imageUrl: string | null }[];
 }
 
-export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLeaderboardProps) {
+export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }: DynamicLeaderboardProps) {
     const [period, setPeriod] = useState<Period>('DAILY');
     const { theme } = useTheme();
     const t = useTranslations('Leaderboard');
@@ -182,24 +183,31 @@ export default function DynamicLeaderboard({ userId, groupKeywords }: DynamicLea
                     <div className="flex flex-col gap-4">
                         {/* チーム切り替え用アイコン・ボタン群 */}
                         {groupRankingsList.length > 1 && (
-                            <div className={`flex gap-2 p-1 overflow-x-auto scrollbar-hide rounded-xl ${theme !== 'midnight' ? 'bg-white border border-gray-100 shadow-sm' : ''}`} style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}>
+                            <div className={`flex flex-nowrap gap-2 p-1.5 overflow-x-auto scrollbar-hide rounded-xl ${theme !== 'midnight' ? 'bg-white border border-gray-100 shadow-sm' : ''}`} style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}>
                                 {groupRankingsList.map((groupData, index) => {
                                     const isActive = activeGroupIndex === index;
                                     const shortName = groupData.keyword.replace(/^group:/, '').slice(0, 2).toUpperCase();
+                                    const info = groupInfo?.find(g => g.keyword === groupData.keyword);
+                                    const imageUrl = info?.imageUrl;
                                     return (
                                         <button
                                             key={groupData.keyword}
                                             onClick={() => setActiveGroupIndex(index)}
-                                            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all flex items-center gap-2 ${
+                                            className={`flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 ${
                                                 isActive 
                                                     ? (theme !== 'midnight' ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'bg-[var(--theme-primary)] text-white')
                                                     : (theme !== 'midnight' ? 'text-gray-600 hover:bg-gray-50' : 'text-gray-400 hover:text-white')
                                             }`}
                                         >
-                                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-[10px]">
-                                                {shortName}
-                                            </span>
-                                            <span className="inline-block truncate max-w-[120px]">{groupData.keyword.replace(/^group:/, '')}</span>
+                                            <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden flex-shrink-0 ${isActive ? 'bg-white/20' : 'bg-black/5'} text-[10px]`}>
+                                                {imageUrl ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    shortName
+                                                )}
+                                            </div>
+                                            <span className="inline-block truncate max-w-[100px] sm:max-w-[140px]">{groupData.keyword.replace(/^group:/, '')}</span>
                                         </button>
                                     );
                                 })}

@@ -114,7 +114,7 @@
         "home": "ホーム",
         "groups": "グループ",
         "ranking": "ランキング",
-        "profile": "プロフ",
+        "profile": "プロフィール",
         "label": "メインナビゲーション"
     },
     "Portal": {
@@ -880,5 +880,84 @@
         "favorites": "お気に入り",
         "minutes": "分",
         "times": "回"
+    },
+    "GoalAdvisor": {
+        "title": "スマートゴールアドバイザー",
+        "recentAverage": "30日平均",
+        "consistency": "継続率",
+        "currentGoal": "現在の目標",
+        "percentileLabel": "パーセンタイル",
+        "top": "上位",
+        "analysis": "分析",
+        "noDataYet": "まだデータがありません。歩き始めましょう！",
+        "tooEasy": "目標に余裕で到達しています。チャレンジアップしてみませんか？",
+        "goodBalance": "良いバランスです！この調子を維持しましょう。",
+        "challenging": "適度なチャレンジレベルです。素晴らしい！",
+        "tooHard": "目標が高すぎるかもしれません。無理なく続けられる目標にしましょう。",
+        "levelEasy": "ライト",
+        "levelModerate": "スタンダード",
+        "levelChallenge": "チャレンジ",
+        "startGentle": "まずは無理なく始めましょう",
+        "standardGoal": "健康的な標準目標",
+        "ambitiousGoal": "野心的な目標で上を目指す",
+        "easyDesc": "平均の85%—無理なく達成できるレベル",
+        "moderateDesc": "平均と同等—バランスの良い目標",
+        "challengeDesc": "平均の120%—成長を目指す目標",
+        "apply": "適用",
+        "applied": "適用済み",
+        "current": "現在",
+        "error": "目標の更新に失敗しました"
+    },
+    "RecordBoard": {
+        "title": "パーソナルレコード",
+        "totalSteps": "総歩数",
+        "bestDay": "ベストデイ",
+        "bestStreak": "最長ストリーク",
+        "currentStreak": "現在のストリーク",
+        "averageSteps": "平均歩数",
+        "activeDays": "活動日数",
+        "totalEarned": "総獲得UC",
+        "investorRank": "投資家ランク",
+        "days": "日",
+        "TYCOON": "ヘルスタイクーン",
+        "DIAMOND": "ダイヤモンド投資家",
+        "FUND_MANAGER": "ファンドマネージャー",
+        "BUSINESS": "ビジネスウォーカー",
+        "BEGINNER": "新人投資家"
+    },
+    "StreakMilestone": {
+        "title": "ストリーク達成！",
+        "days": "日連続",
+        "bonusActive": "ボーナスアクティブ",
+        "keepItUp": "この調子で続けましょう！"
+    },
+    "Museum": {
+        "title": "バッジミュージアム",
+        "totalEarned": "個取得済み",
+        "all": "すべて",
+        "global": "グローバル",
+        "group": "グループ",
+        "personal": "個人",
+        "emptyState": "まだバッジを取得していません"
+    },
+    "Earnings": {
+        "title": "コイン獲得分析",
+        "earned": "獲得",
+        "spent": "支出",
+        "net": "純利益",
+        "stepsCoins": "歩数コイン",
+        "goalBonus": "目標ボーナス",
+        "streakBonus": "ストリークボーナス",
+        "loginBonus": "ログインボーナス",
+        "rankBonus": "ランクボーナス",
+        "missionReward": "ミッション報酬",
+        "giftReceived": "ギフト受取",
+        "purchases": "ショップ購入",
+        "giftSent": "ギフト送信"
+    },
+    "Heatmap": {
+        "lessActive": "少ない",
+        "moreActive": "多い",
+        "yearLabel": "年"
     }
 }
