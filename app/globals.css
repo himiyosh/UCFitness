@@ -2098,23 +2098,23 @@ body::before {
    ランキングページ専用アニメーション
    ============================================ */
 
-/* 行のスライドイン（stagger対応: animation-delayをinline styleで指定） */
-@keyframes rankRowSlideIn {
+/* 行のフェードイン（stagger対応: animation-delayをinline styleで指定） */
+@keyframes rankRowFadeIn {
   0% {
     opacity: 0;
-    transform: translateX(-12px);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 .rank-row-enter {
   opacity: 0;
-  animation: rankRowSlideIn 0.35s ease-out forwards;
+  animation: rankRowFadeIn 0.4s var(--spring) forwards;
 }
 
-/* 1位の行のゴールドシマー（背景グラデーションがゆっくり移動） */
+/* 1位の行のゴールドシマー（控えめにゆっくり流れる） */
 @keyframes goldShimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -2130,13 +2130,13 @@ body::before {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(234, 179, 8, 0.08) 25%,
-    rgba(234, 179, 8, 0.15) 50%,
-    rgba(234, 179, 8, 0.08) 75%,
+    rgba(234, 179, 8, 0.05) 30%,
+    rgba(234, 179, 8, 0.10) 50%,
+    rgba(234, 179, 8, 0.05) 70%,
     transparent 100%
   );
   background-size: 200% 100%;
-  animation: goldShimmer 3s ease-in-out infinite;
+  animation: goldShimmer 4s ease-in-out infinite;
   pointer-events: none;
   border-radius: inherit;
 }
@@ -2144,34 +2144,32 @@ body::before {
 /* ランクバッジのパルスグロー（1位用） */
 @keyframes rankBadgePulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4);
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.3);
   }
   50% {
-    box-shadow: 0 0 8px 3px rgba(234, 179, 8, 0.2);
+    box-shadow: 0 0 6px 2px rgba(234, 179, 8, 0.15);
   }
 }
 .rank-badge-glow {
-  animation: rankBadgePulse 2s ease-in-out infinite;
+  animation: rankBadgePulse 2.5s ease-in-out infinite;
 }
 
-/* 歩数のカウントアップ風フェードイン */
+/* 歩数のフェードイン */
 @keyframes stepsReveal {
   0% {
     opacity: 0;
-    transform: translateY(4px) scale(0.95);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 .steps-reveal {
-  animation: stepsReveal 0.4s ease-out forwards;
+  animation: stepsReveal 0.5s ease-out forwards;
 }
 
 /* タブ切替時のコンテンツフェード */
 @keyframes tabContentFade {
-  0% { opacity: 0; transform: translateY(6px); }
+  0% { opacity: 0; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 .tab-content-enter {
@@ -2182,15 +2180,15 @@ body::before {
 @keyframes cardEnter {
   0% {
     opacity: 0;
-    transform: translateY(16px) scale(0.98);
+    transform: translateY(12px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 .leaderboard-card-enter {
-  animation: cardEnter 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: cardEnter 0.45s var(--spring) forwards;
 }
 
 /* ランキングヒーローのグラデーション波 */
@@ -2234,14 +2232,24 @@ body::before {
   animation: rankSkeletonPulse 1.5s ease-in-out infinite;
 }
 
-/* 自分の行のアクセント（左ボーダー + 薄い背景。animation 非使用で rank-row-enter と競合しない） */
+/* 自分の行の強調表示（左ボーダー + 濃い背景 + グロー） */
 .my-row-accent {
-  border-left: 3px solid var(--theme-primary);
-  background: linear-gradient(90deg, var(--theme-primary-light) 0%, transparent 60%);
+  border-left: 4px solid var(--theme-primary);
+  background: linear-gradient(90deg, var(--theme-primary-light) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.06) 50%, transparent 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.12);
+}
+.my-row-accent .leaderboard-steps {
+  color: var(--theme-primary) !important;
+  font-size: 1.25rem;
 }
 [data-theme="midnight"] .my-row-accent {
-  border-left: 3px solid var(--theme-primary);
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.12) 0%, transparent 60%);
+  border-left: 4px solid var(--theme-primary);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+[data-theme="midnight"] .my-row-accent .leaderboard-steps {
+  color: #a5b4fc !important;
+  font-size: 1.25rem;
 }
 
 /* ランキングのピルタブ（モバイル最適化） */

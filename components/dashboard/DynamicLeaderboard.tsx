@@ -258,18 +258,20 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                                             name={entry.users?.name || '?'}
                                                             size="sm"
                                                             frameColor={entry.users?.frameColor}
-                                                            borderClass={isMe ? 'ring-2 ring-[var(--theme-primary)] ring-offset-1' : 'border-gray-100'}
+                                                            borderClass={isMe ? 'ring-2 ring-[var(--theme-primary)] ring-offset-2' : 'border-gray-100'}
                                                         />
 
                                                         <div className="min-w-0 flex-1">
-                                                            <p className={`text-sm font-semibold truncate flex items-center gap-1.5 ${
+                                                            <p className={`text-sm truncate flex items-center gap-1.5 ${
+                                                                isMe ? 'font-bold' : 'font-semibold'
+                                                            } ${
                                                                 isMidnight ? 'text-slate-100' : 'text-gray-900'
                                                             }`}>
                                                                 <span className="truncate">
                                                                     {entry.users?.name || commonT('anonymous')}
                                                                 </span>
                                                                 {isMe && (
-                                                                    <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none">
+                                                                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none shadow-sm shadow-[var(--theme-primary)]/30">
                                                                         {commonT('you')}
                                                                     </span>
                                                                 )}
