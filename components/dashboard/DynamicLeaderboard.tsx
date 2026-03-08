@@ -230,7 +230,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                                     ${rank === 1 ? 'rank-row-1 rank-row-1-shimmer' : ''}
                                                     ${rank === 2 ? 'rank-row-2' : ''}
                                                     ${rank === 3 ? 'rank-row-3' : ''}
-                                                    ${isMe ? 'my-row-pulse' : ''}
+                                                    ${isMe ? 'my-row-accent' : ''}
                                                     ${entry.users.username ? 'cursor-pointer' : ''}
                                                 `}
                                                 style={{ animationDelay: `${index * 0.06}s` }}

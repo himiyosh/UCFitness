@@ -1538,16 +1538,18 @@ button:not(:disabled) {
   animation: splashPopIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* アイコンバウンス */
-@keyframes splashBounceIcon {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-12px) rotate(-5deg); }
-  50% { transform: translateY(0) rotate(0deg); }
-  75% { transform: translateY(-8px) rotate(5deg); }
+/* アイコンが走るアニメーション */
+@keyframes splashRunPerson {
+  0% { transform: translateX(0) translateY(0) rotate(5deg); }
+  25% { transform: translateX(4px) translateY(-12px) rotate(15deg); }
+  50% { transform: translateX(8px) translateY(0) rotate(5deg); }
+  75% { transform: translateX(4px) translateY(-8px) rotate(0deg); }
+  100% { transform: translateX(0) translateY(0) rotate(5deg); }
 }
-.splash-bounce-icon {
-  animation: splashBounceIcon 1.2s ease-in-out infinite;
-  animation-delay: 0.8s;
+.splash-run-person {
+  display: inline-block;
+  transform-origin: bottom center;
+  animation: splashRunPerson 0.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* リングアニメーション */
@@ -2232,14 +2234,14 @@ body::before {
   animation: rankSkeletonPulse 1.5s ease-in-out infinite;
 }
 
-/* 自分の行のハイライトパルス */
-@keyframes myRowHighlight {
-  0% { box-shadow: inset 0 0 0 0 var(--theme-primary); }
-  50% { box-shadow: inset 3px 0 0 0 var(--theme-primary); }
-  100% { box-shadow: inset 0 0 0 0 var(--theme-primary); }
+/* 自分の行のアクセント（左ボーダー + 薄い背景。animation 非使用で rank-row-enter と競合しない） */
+.my-row-accent {
+  border-left: 3px solid var(--theme-primary);
+  background: linear-gradient(90deg, var(--theme-primary-light) 0%, transparent 60%);
 }
-.my-row-pulse {
-  animation: myRowHighlight 2s ease-in-out 1;
+[data-theme="midnight"] .my-row-accent {
+  border-left: 3px solid var(--theme-primary);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.12) 0%, transparent 60%);
 }
 
 /* ランキングのピルタブ（モバイル最適化） */
@@ -2281,7 +2283,6 @@ body::before {
   .leaderboard-hero-bg,
   .trophy-bounce,
   .rank-skeleton-row,
-  .my-row-pulse,
   .delta-animated {
     animation: none !important;
     opacity: 1 !important;
