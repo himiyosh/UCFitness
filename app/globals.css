@@ -1538,16 +1538,18 @@ button:not(:disabled) {
   animation: splashPopIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* アイコンバウンス */
-@keyframes splashBounceIcon {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-12px) rotate(-5deg); }
-  50% { transform: translateY(0) rotate(0deg); }
-  75% { transform: translateY(-8px) rotate(5deg); }
+/* アイコンが走るアニメーション */
+@keyframes splashRunPerson {
+  0% { transform: translateX(0) translateY(0) rotate(5deg); }
+  25% { transform: translateX(4px) translateY(-12px) rotate(15deg); }
+  50% { transform: translateX(8px) translateY(0) rotate(5deg); }
+  75% { transform: translateX(4px) translateY(-8px) rotate(0deg); }
+  100% { transform: translateX(0) translateY(0) rotate(5deg); }
 }
-.splash-bounce-icon {
-  animation: splashBounceIcon 1.2s ease-in-out infinite;
-  animation-delay: 0.8s;
+.splash-run-person {
+  display: inline-block;
+  transform-origin: bottom center;
+  animation: splashRunPerson 0.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* リングアニメーション */
@@ -2090,6 +2092,210 @@ body::before {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   ランキングページ専用アニメーション
+   ============================================ */
+
+/* 行のフェードイン（stagger対応: animation-delayをinline styleで指定） */
+@keyframes rankRowFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rank-row-enter {
+  opacity: 0;
+  animation: rankRowFadeIn 0.4s var(--spring) forwards;
+}
+
+/* 1位の行のゴールドシマー（控えめにゆっくり流れる） */
+@keyframes goldShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.rank-row-1-shimmer {
+  position: relative;
+  overflow: visible;
+}
+.rank-row-1-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(234, 179, 8, 0.05) 30%,
+    rgba(234, 179, 8, 0.10) 50%,
+    rgba(234, 179, 8, 0.05) 70%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: goldShimmer 4s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ランクバッジのパルスグロー（1位用） */
+@keyframes rankBadgePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 6px 2px rgba(234, 179, 8, 0.15);
+  }
+}
+.rank-badge-glow {
+  animation: rankBadgePulse 2.5s ease-in-out infinite;
+}
+
+/* 歩数のフェードイン */
+@keyframes stepsReveal {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.steps-reveal {
+  animation: stepsReveal 0.5s ease-out forwards;
+}
+
+/* タブ切替時のコンテンツフェード */
+@keyframes tabContentFade {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.tab-content-enter {
+  animation: tabContentFade 0.3s ease-out;
+}
+
+/* ランキングカード全体の入場アニメーション */
+@keyframes cardEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.leaderboard-card-enter {
+  animation: cardEnter 0.45s var(--spring) forwards;
+}
+
+/* ランキングヒーローのグラデーション波 */
+@keyframes heroWave {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.leaderboard-hero-bg {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to), var(--theme-primary));
+  background-size: 200% 200%;
+  animation: heroWave 6s ease infinite;
+}
+
+/* Midnight テーマ用ヒーロー */
+[data-theme="midnight"] .leaderboard-hero-bg {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.3));
+  background-size: 200% 200%;
+  animation: heroWave 6s ease infinite;
+}
+
+/* トロフィーアイコンのバウンス */
+@keyframes trophyBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-6px) rotate(-3deg); }
+  40% { transform: translateY(0) rotate(0deg); }
+  60% { transform: translateY(-3px) rotate(2deg); }
+  80% { transform: translateY(0) rotate(0deg); }
+}
+.trophy-bounce {
+  animation: trophyBounce 2s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+/* スケルトン行のパルス（ランキング用） */
+@keyframes rankSkeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+.rank-skeleton-row {
+  animation: rankSkeletonPulse 1.5s ease-in-out infinite;
+}
+
+/* 自分の行の強調表示（左ボーダー + 濃い背景 + グロー） */
+.my-row-accent {
+  border-left: 4px solid var(--theme-primary);
+  background: linear-gradient(90deg, var(--theme-primary-light) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.06) 50%, transparent 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.12);
+}
+.my-row-accent .leaderboard-steps {
+  color: var(--theme-primary) !important;
+  font-size: 1.25rem;
+}
+[data-theme="midnight"] .my-row-accent {
+  border-left: 4px solid var(--theme-primary);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+[data-theme="midnight"] .my-row-accent .leaderboard-steps {
+  color: #a5b4fc !important;
+  font-size: 1.25rem;
+}
+
+/* ランキングのピルタブ（モバイル最適化） */
+.leaderboard-tab-pill {
+  position: relative;
+  z-index: 1;
+}
+.leaderboard-tab-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: var(--theme-primary);
+  transition: opacity 0.2s ease;
+  z-index: -1;
+}
+.leaderboard-tab-pill[aria-selected="true"]::after {
+  opacity: 1;
+}
+
+/* デルタ値のアニメーション */
+@keyframes deltaAppear {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.delta-animated {
+  animation: deltaAppear 0.3s ease-out 0.5s backwards;
+}
+
+/* prefers-reduced-motion: ランキングアニメーション無効化 */
+@media (prefers-reduced-motion: reduce) {
+  .rank-row-enter,
+  .rank-row-1-shimmer::before,
+  .rank-badge-glow,
+  .steps-reveal,
+  .tab-content-enter,
+  .leaderboard-card-enter,
+  .leaderboard-hero-bg,
+  .trophy-bounce,
+  .rank-skeleton-row,
+  .delta-animated {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 

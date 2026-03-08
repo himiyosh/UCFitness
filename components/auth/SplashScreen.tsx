@@ -23,21 +23,11 @@ export default function SplashScreen() {
     const [progress, setProgress] = useState(0);
     const t = useTranslations('Splash');
 
-    // スキップ機能: クリックまたはキー押下で即座にスキップ
+    // スキップ機能: セッションストレージや設定で自動スキップされる
     const skipSplash = useCallback(() => {
         setIsVisible(false);
         setTimeout(() => setShouldRender(false), 500);
     }, []);
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-                skipSplash();
-            }
-        };
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [skipSplash]);
 
     useEffect(() => {
         // prefers-reduced-motion: アニメーションをスキップ
@@ -99,7 +89,6 @@ export default function SplashScreen() {
                 backgroundSize: '400% 400%',
                 animation: isVisible ? 'splashGradientShift 3s ease infinite' : 'none',
             }}
-            onClick={skipSplash}
             role="status"
             aria-label={t('loading')}
         >
@@ -138,9 +127,9 @@ export default function SplashScreen() {
                     <div className="absolute -inset-8 rounded-full border-2 border-white/15 splash-ring-outer" />
 
                     {/* メインアイコン */}
-                    <div className="splash-bounce-icon bg-white/95 backdrop-blur-sm p-5 rounded-2xl shadow-2xl relative">
+                    <div className="bg-white/95 backdrop-blur-sm p-5 rounded-2xl shadow-2xl relative flex items-center justify-center overflow-visible">
                         <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-yellow-200/30 to-pink-200/30" />
-                        <span className="relative text-5xl block">🏃‍♂️</span>
+                        <span className="relative text-5xl splash-run-person">🏃‍♂️</span>
                     </div>
                 </div>
 
@@ -182,11 +171,6 @@ export default function SplashScreen() {
                         />
                     </div>
                 </div>
-
-                {/* スキップヒント */}
-                <p className="mt-6 text-white/40 text-xs font-medium splash-fade-up" style={{ animationDelay: '1.5s' }}>
-                    {t('skipHint')}
-                </p>
             </div>
         </div>
     );

@@ -190,7 +190,9 @@
         "groupHeader": "グループ",
         "avgStepsHeader": "平均歩数",
         "totalStepsHeader": "総歩数",
-        "membersHeader": "メンバー"
+        "membersHeader": "メンバー",
+        "emptyMotivation": "歩いてランキングに参加しよう！",
+        "joinPromptSub": "グループに参加して仲間と競争しよう"
     },
     "Notifications": {
         "title": "通知設定",

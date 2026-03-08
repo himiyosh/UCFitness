@@ -167,9 +167,11 @@ export default function NotificationBell() {
     const updatePosition = useCallback(() => {
         if (!bellRef.current) return;
         const rect = bellRef.current.getBoundingClientRect();
+        const isMobile = window.innerWidth < 640;
         setPopoverPos({
             top: rect.bottom + 8,
-            right: window.innerWidth - rect.right,
+            // モバイル: 左8pxで画面幅-16px固定、デスクトップ: ベルアイコン右端基準
+            right: isMobile ? -1 : Math.max(8, window.innerWidth - rect.right),
         });
     }, []);
 
@@ -260,7 +262,9 @@ export default function NotificationBell() {
                     className="fixed z-[60] w-[calc(100vw-16px)] sm:w-96 max-h-[70vh] flex flex-col rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2"
                     style={{
                         top: `${popoverPos.top}px`,
-                        right: `max(8px, ${popoverPos.right}px)`,
+                        ...(popoverPos.right >= 0
+                            ? { right: `${popoverPos.right}px` }
+                            : { left: '8px' }),
                     }}
                 >
                     {/* ポップオーバーヘッダー */}
