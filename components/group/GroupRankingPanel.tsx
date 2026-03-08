@@ -100,7 +100,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
 
     return (
         <div
-            className={`rounded-xl shadow-sm relative group/panel ${isMoving ? 'opacity-50' : ''}`}
+            className={`rounded-xl shadow-sm relative group/panel h-full flex flex-col ${isMoving ? 'opacity-50' : ''}`}
             style={isMidnight
                 ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
                 : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
@@ -163,7 +163,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                     </button>
                 )}
             </div>
-            <div className={`px-0 lg:grid lg:grid-cols-12 lg:items-start ${isMidnight ? 'bg-transparent' : 'bg-white'}`}>
+            <div className={`px-0 lg:grid lg:grid-cols-12 lg:items-start flex-1 ${isMidnight ? 'bg-transparent' : 'bg-white'}`}>
                 <div className={`px-3 pt-3 sm:px-6 sm:pt-6 lg:col-span-5 lg:border-r flex flex-col justify-center h-full ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
                     <TopUsersChart
                         data={neighbors}

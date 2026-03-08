@@ -194,12 +194,12 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
             </div>
 
             {/* ===== 2カラムグリッド: カードのみ（タブは上に分離済み） ===== */}
-            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-start">
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-stretch">
                 {/* グローバルランキング (Mobile: Order 2, Desktop: Left 5 cols) */}
                 <div className="lg:col-span-5 order-2 lg:order-1">
                 <div
                     key={animationKey}
-                    className={`overflow-hidden rounded-xl shadow-sm min-h-[360px] tab-content-enter ${
+                    className={`overflow-hidden rounded-xl shadow-sm min-h-[360px] tab-content-enter flex flex-col h-full ${
                         !isMidnight ? 'bg-white/90 backdrop-blur-sm border border-gray-100/80' : ''
                     }`}
                     style={isMidnight ? { background: 'rgba(30,41,59,0.7)', border: '1px solid rgba(100,116,139,0.3)', backdropFilter: 'blur(8px)' } : undefined}
@@ -223,8 +223,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                         }`}>{t('topAndNeighbors')}</span>
                     </div>
 
-                    {/* ランキングリスト */}
-                    <div className="relative">
+                    {/* ランキングリスト — flex-1 で余剰高さを吸収 */}
+                    <div className="relative flex-1">
                         {/* ローディング: スケルトン行 */}
                         {isLoading && (
                             <div className="divide-y divide-gray-50">
@@ -358,9 +358,9 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                         )}
                     </div>
 
-                    {/* 自分のランク — カード下部のミニサマリー */}
+                    {/* 自分のランク — カード下部のミニサマリー（mt-auto で常に下端に固定） */}
                     {!isLoading && myEntry && (
-                        <div className={`px-4 py-3 sm:px-6 flex items-center justify-between ${
+                        <div className={`mt-auto px-4 py-3 sm:px-6 flex items-center justify-between ${
                             isMidnight
                                 ? 'bg-slate-800/40 border-t border-slate-600/20'
                                 : 'bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-primary)]/2 border-t border-[var(--theme-primary)]/10'
@@ -388,10 +388,10 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
             <div className="lg:col-span-7 order-1 lg:order-2">
 
                 {groupRankingsList.length > 0 ? (
-                    <div>
+                    <div className="h-full">
                         {/* 選択中のグループ */}
                         {groupRankingsList[activeGroupIndex] && (
-                            <div className="relative leaderboard-card-enter" key={`${activeGroupIndex}-${animationKey}`}>
+                            <div className="relative leaderboard-card-enter h-full" key={`${activeGroupIndex}-${animationKey}`}>
                                 <GroupRankingPanel
                                     keyword={groupRankingsList[activeGroupIndex].keyword}
                                     neighbors={groupRankingsList[activeGroupIndex].neighbors}
