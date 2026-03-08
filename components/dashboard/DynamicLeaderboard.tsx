@@ -108,11 +108,10 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
     }, [period, userId, serializedKeywords]);
 
     return (
-        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-start">
-            {/* ===== グローバルランキング (Mobile: Order 2, Desktop: Left 5 cols) ===== */}
-            <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4">
-
-                {/* ピリオドタブ — ガラスモーフィズム風 */}
+        <div className="flex flex-col gap-3">
+            {/* ===== 共通コントロールバー: ピリオドタブ + グループタブ ===== */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                {/* ピリオドタブ */}
                 <div
                     className={`flex p-1 gap-1 rounded-xl w-full sm:w-fit backdrop-blur-sm ${
                         !isMidnight ? 'bg-white/80 border border-gray-200/60 shadow-sm' : ''
@@ -149,7 +148,55 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                     })}
                 </div>
 
-                {/* グローバルランキングカード */}
+                {/* グループ切替タブ（デスクトップ: 右寄せ） */}
+                {groupRankingsList.length > 1 && (
+                    <div
+                        className={`flex flex-nowrap gap-1.5 p-1.5 overflow-x-auto scrollbar-hide rounded-xl backdrop-blur-sm ${
+                            !isMidnight ? 'bg-white/80 border border-gray-100/60 shadow-sm' : ''
+                        }`}
+                        style={isMidnight ? { backgroundColor: 'rgba(30, 41, 59, 0.85)', border: '1px solid rgba(100, 116, 139, 0.4)' } : undefined}
+                    >
+                        {groupRankingsList.map((groupData, index) => {
+                            const isActive = activeGroupIndex === index;
+                            const shortName = groupData.keyword.replace(/^group:/, '').slice(0, 2).toUpperCase();
+                            const info = groupInfo?.find(g => g.keyword === groupData.keyword);
+                            const imageUrl = info?.imageUrl;
+                            return (
+                                <button
+                                    key={groupData.keyword}
+                                    onClick={() => setActiveGroupIndex(index)}
+                                    className={`flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                                        isActive
+                                            ? (!isMidnight
+                                                ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
+                                                : 'bg-[var(--theme-primary)] text-white')
+                                            : (!isMidnight
+                                                ? 'text-gray-500 hover:bg-gray-50/80 hover:text-gray-700'
+                                                : 'text-gray-400 hover:text-white')
+                                    }`}
+                                >
+                                    <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden flex-shrink-0 ${
+                                        isActive ? 'bg-white/20 ring-1 ring-white/30' : 'bg-black/5'
+                                    } text-[10px]`}>
+                                        {imageUrl ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            shortName
+                                        )}
+                                    </div>
+                                    <span className="inline-block truncate max-w-[100px] sm:max-w-[140px]">{groupData.keyword.replace(/^group:/, '')}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* ===== 2カラムグリッド: カードのみ（タブは上に分離済み） ===== */}
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-start">
+                {/* グローバルランキング (Mobile: Order 2, Desktop: Left 5 cols) */}
+                <div className="lg:col-span-5 order-2 lg:order-1">
                 <div
                     key={animationKey}
                     className={`overflow-hidden rounded-xl shadow-sm min-h-[360px] tab-content-enter ${
@@ -338,54 +385,10 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
             </div>
 
             {/* ===== グループランキング (Mobile: Order 1, Desktop: Right 7 cols) ===== */}
-            <div className="lg:col-span-7 order-1 lg:order-2 space-y-4 pb-2">
+            <div className="lg:col-span-7 order-1 lg:order-2">
 
                 {groupRankingsList.length > 0 ? (
-                    <div className="flex flex-col gap-4">
-                        {/* グループ切替タブ */}
-                        {groupRankingsList.length > 1 && (
-                            <div
-                                className={`flex flex-nowrap gap-1.5 p-1.5 overflow-x-auto scrollbar-hide rounded-xl backdrop-blur-sm ${
-                                    !isMidnight ? 'bg-white/80 border border-gray-100/60 shadow-sm' : ''
-                                }`}
-                                style={isMidnight ? { backgroundColor: 'rgba(30, 41, 59, 0.85)', border: '1px solid rgba(100, 116, 139, 0.4)' } : undefined}
-                            >
-                                {groupRankingsList.map((groupData, index) => {
-                                    const isActive = activeGroupIndex === index;
-                                    const shortName = groupData.keyword.replace(/^group:/, '').slice(0, 2).toUpperCase();
-                                    const info = groupInfo?.find(g => g.keyword === groupData.keyword);
-                                    const imageUrl = info?.imageUrl;
-                                    return (
-                                        <button
-                                            key={groupData.keyword}
-                                            onClick={() => setActiveGroupIndex(index)}
-                                            className={`flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
-                                                isActive
-                                                    ? (!isMidnight
-                                                        ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
-                                                        : 'bg-[var(--theme-primary)] text-white')
-                                                    : (!isMidnight
-                                                        ? 'text-gray-500 hover:bg-gray-50/80 hover:text-gray-700'
-                                                        : 'text-gray-400 hover:text-white')
-                                            }`}
-                                        >
-                                            <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden flex-shrink-0 ${
-                                                isActive ? 'bg-white/20 ring-1 ring-white/30' : 'bg-black/5'
-                                            } text-[10px]`}>
-                                                {imageUrl ? (
-                                                    // eslint-disable-next-line @next/next/no-img-element
-                                                    <img src={imageUrl} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    shortName
-                                                )}
-                                            </div>
-                                            <span className="inline-block truncate max-w-[100px] sm:max-w-[140px]">{groupData.keyword.replace(/^group:/, '')}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-
+                    <div>
                         {/* 選択中のグループ */}
                         {groupRankingsList[activeGroupIndex] && (
                             <div className="relative leaderboard-card-enter" key={`${activeGroupIndex}-${animationKey}`}>
@@ -420,6 +423,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                     )
                 )}
 
+            </div>
             </div>
         </div>
     );
