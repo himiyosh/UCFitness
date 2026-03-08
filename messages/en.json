@@ -190,7 +190,9 @@
         "groupHeader": "Group",
         "avgStepsHeader": "Avg Steps",
         "totalStepsHeader": "Total Steps",
-        "membersHeader": "Members"
+        "membersHeader": "Members",
+        "emptyMotivation": "Start walking to join the rankings!",
+        "joinPromptSub": "Join a group and compete with friends"
     },
     "Notifications": {
         "title": "Notifications",
