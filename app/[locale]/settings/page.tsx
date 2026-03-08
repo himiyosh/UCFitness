@@ -8,7 +8,9 @@ import { Link } from "@/navigation"; // Localized Link
 import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
 import ExportButton from "@/components/ExportButton";
+import SmartGoalAdvisor from "@/components/SmartGoalAdvisor";
 import { getTranslations } from 'next-intl/server';
+import { getCoinBalance } from "@/lib/services/coin-service";
 import Footer from '@/components/layout/Footer';
 
 export const dynamic = 'force-dynamic';
@@ -52,7 +54,13 @@ export default async function SettingsPage() {
 
     // ⚡ パフォーマンス: Midnight テーマチェックと所持アイテムを並列取得
     const userId = (session.user as any).id;
-    const [midnightResult, ownedItemsResult] = await Promise.all([
+
+    // スマートゴールアドバイザー用: 直近30日の歩数データを取得
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const [midnightResult, ownedItemsResult, recentStepsResult, coinBalance] = await Promise.all([
         supabaseAdmin
             .from('user_items')
             .select('id, shop_items!inner(item_code)')
@@ -64,6 +72,14 @@ export default async function SettingsPage() {
             .select('id, is_equipped, shop_items(item_code, name_en, name_ja, preview_value, category)')
             .eq('user_id', userId)
             .order('purchased_at', { ascending: true }),
+        // スマートゴールアドバイザー用データ
+        supabaseAdmin
+            .from('daily_steps')
+            .select('date, steps')
+            .eq('user_id', userId)
+            .gte('date', thirtyDaysAgoStr)
+            .order('date', { ascending: true }),
+        getCoinBalance(userId),
     ]);
     const ownsMidnight = midnightResult.data !== null;
     const ownedTitleItems = ownedItemsResult.data;

@@ -22,6 +22,7 @@ const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart')
 });
 const TransactionHistory = nextDynamic(() => import('@/components/TransactionHistory'));
 const InvestorRankPanel = nextDynamic(() => import('@/components/InvestorRankPanel'));
+const EarningBreakdown = nextDynamic(() => import('@/components/EarningBreakdown'));
 
 export const dynamic = 'force-dynamic';
 
@@ -121,6 +122,9 @@ export default async function BankPage() {
 
                     {/* 資産推移チャート */}
                     <CoinGrowthChart data={balanceHistory} />
+
+                    {/* コイン獲得分析 */}
+                    <EarningBreakdown transactions={transactions} />
 
                     {/* ショップ導線 */}
                     <Link href="/shop" className="block group">
