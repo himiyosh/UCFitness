@@ -80,7 +80,7 @@ export default function DailyMissions() {
 
     if (isLoading) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 h-full flex flex-col justify-center">
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-center">
                 <div className="animate-pulse">
                     <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
                     <div className="space-y-3">
@@ -95,7 +95,7 @@ export default function DailyMissions() {
 
     if (error) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 h-full flex flex-col justify-center">
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-center">
                 <div className="flex flex-col items-center py-4 text-center">
                     <span className="text-3xl mb-2">⚠️</span>
                     <p className="text-sm font-semibold text-gray-700">{t('loadError')}</p>
@@ -113,7 +113,7 @@ export default function DailyMissions() {
 
     if (missions.length === 0) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 h-full flex flex-col justify-center">
+            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-center">
                 <div className="flex flex-col items-center py-4 text-center">
                     <span className="text-4xl mb-3">🎯</span>
                     <p className="text-sm font-bold text-gray-700 mb-1">{t('dailyMissions')}</p>
@@ -136,7 +136,7 @@ export default function DailyMissions() {
     );
 
     return (
-        <div className="glass-card rounded-2xl overflow-hidden transition-all duration-200 flex h-full flex-col">
+        <div className="glass-card rounded-2xl overflow-hidden transition-all duration-200 flex flex-col">
             {/* ヘッダー */}
             <div className="px-3 pt-3 pb-2 sm:px-5 sm:pt-5 sm:pb-3 flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">
@@ -167,12 +167,12 @@ export default function DailyMissions() {
             </div>
 
             {/* ミッションリスト */}
-            <div className="px-3 pb-3 sm:px-5 sm:pb-5 flex flex-1 flex-col min-h-0">
-                <div className="grid flex-1 auto-rows-fr gap-1.5 sm:gap-2 min-h-0">
+            <div className="px-3 pb-2 sm:px-5 sm:pb-4 flex flex-col min-h-0">
+                <div className="grid auto-rows-auto gap-1.5 sm:gap-2 min-h-0">
                     {missions.map(mission => (
                         <div
                             key={mission.id}
-                            className={`flex h-full items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 ${
+                            className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 ${
                                 mission.is_completed
                                     ? 'bg-emerald-50 border-emerald-200'
                                     : 'bg-gray-50/80 border-gray-100 hover:bg-white hover:border-[var(--theme-primary)]/20 hover:shadow-sm'
