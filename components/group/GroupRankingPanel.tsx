@@ -164,7 +164,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 )}
             </div>
             <div className={`px-0 lg:grid lg:grid-cols-12 lg:items-start flex-1 ${isMidnight ? 'bg-transparent' : 'bg-white'}`}>
-                <div className={`px-3 pt-3 sm:px-6 sm:pt-6 lg:col-span-5 lg:border-r flex flex-col justify-center h-full ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
+                <div className={`px-3 pt-3 sm:px-6 sm:pt-6 lg:col-span-5 lg:border-r flex flex-col ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
                     <TopUsersChart
                         data={neighbors}
                         userId={userId}
