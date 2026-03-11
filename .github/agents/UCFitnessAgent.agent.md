@@ -633,6 +633,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 11. **ヘッダー統一確認** — 全ページのヘッダー右側が `RefreshButton → NotificationBell → UserMenu` の 3 要素構成になっているか確認。1 つでも欠けている場合はバグとして報告
 12. **flex 横並びのレスポンシブチェック** — `flex` / `flex-row` で複数要素を横並びにしている箇所に `sm:` 等のレスポンシブプレフィックスがあるか確認。`flex` のみで 3 要素以上を `flex-1` で均等配置している場合はモバイル崩れバグとして報告
 13. **プッシュ通知 i18n・集約チェック** — `sendWebPushNotification` を呼び出す全箇所で、① ユーザーの `language` カラムを参照して `lib/push-messages.ts` のローカライズ関数を使用しているか、② 同一ユーザーに複数通知が発生しうるケース（バッジ複数同時獲得等）で 1 通に集約されているか確認。ハードコードされたメッセージ文字列はバグとして報告
+14. **DB FK 参照先チェック** — マイグレーション SQL やテーブル作成で `REFERENCES auth.users(id)` を使用している箇所がないか確認。UCFitness は NextAuth + `public.users` テーブルを使用するため、**必ず `REFERENCES public.users(id)` を指定すること。** `auth.users` への FK はデータ挿入時に制約違反を起こす
+15. **CRUD API 完全性チェック** — 新規リソース（テーブル）に対応する API Route が GET / POST だけでなく、PUT（編集）/ DELETE（削除）も必要に応じて実装されているか確認。UI に「作成」ボタンがあるのに「編集」が不可能な状態はバグとして報告
+16. **Supabase 埋め込みカウント形式チェック** — `(count)` を使った埋め込みクエリの結果を抽出する際、`Array.isArray()` で配列/オブジェクト両形式をハンドルしているか確認。`data?.[0]?.count` のみの抽出はバグの可能性あり
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -945,6 +948,9 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | `position: fixed` + `right` でモバイル左見切れ | 通知パネルの幅が `calc(100vw - 16px)` で `right: N px` （ベルアイコンの右端基準）で配置。モバイルでは `right` が小さい値（ビューポート右端に近い）のため、パネル幅 + right がビューポート幅を超え、左側がはみ出す | **モバイル (< 640px) では `left: 8px` で配置**し、デスクトップでは `right` 基準を維持。**ルール**: `position: fixed` + 全幅パネル (`w-[calc(100vw-Npx)]`) を使う場合、モバイルでは `right` ではなく `left` で配置すること。`right + width > 100vw` になるケースを必ず検証する。リファレンス: `NotificationBell.tsx` |
 | 2カラムグリッドでタブバーがカラム内にあると下端がずれる | `DynamicLeaderboard` の 2 カラムグリッドで、左カラムにピリオドタブ、右カラムにグループタブがそれぞれ含まれていた。タブの高さが左右で異なるためカード本体の下端が揃わない。ユーザーから 3 回指摘された | **2カラムグリッドで下端を揃える場合のルール**: (1) タブバー・フィルター等のコントロール要素はグリッドの外（上部）に配置し、グリッド内はカード本体のみにする (2) グリッドに `items-stretch` を使用し、カード内部は `flex flex-col h-full` + リスト部分 `flex-1` で余剰高さを吸収 (3) フッター（Your Rank 等）は `mt-auto` でカード下端に固定。リファレンス: `DynamicLeaderboard.tsx`, `GroupRankingPanel.tsx` |
 | グリッド子要素の `h-full` + `justify-center` でカード内部に上下巨大空白 | `GroupRankingPanel` の左カラム（表彰台エリア）に `h-full justify-center` を設定。親グリッドが `items-start` なのに子の `h-full` が右カラム（メンバー5行分 = ~360px）の高さまで引き延ばし、`justify-center` で TopUsersChart (~200px) を垂直中央配置。結果: 上下に各 ~80px の空白が発生し「何も表示されていない」ように見える | **`items-start` グリッドの子要素に `h-full` を付けない。** `h-full` はグリッドセルを全高まで引き延ばし `items-start` を無効化する。レイアウトの整列は親の `items-*` プロパティに委任し、子要素は自然な高さに任せる。`h-full` + `justify-center` の組み合わせはグリッド子要素では原則禁止（上下に巨大空白が発生する）。リファレンス: `GroupRankingPanel.tsx`（左カラムから `h-full justify-center` を削除して修正） |
+| group_events 作成 500 エラー (FK 制約違反) | `group_events.created_by REFERENCES auth.users(id)` だが、NextAuth は `public.users` にユーザーを保存するため `auth.users` に該当ユーザーが存在しない。マイグレーション SQL のテンプレートが `auth.users` を参照していた | **マイグレーション SQL で `REFERENCES auth.users(id)` は禁止。** `REFERENCES public.users(id)` を使用する。copilot-instructions.md に「Supabase DB スキーマルール」を追加。修正マイグレーション: `migrations/fix_group_events_fk.sql` |
+| チャレンジ編集不可 (PUT API 未実装) | `/api/challenge/[challengeId]` に GET のみ実装し PUT/PATCH を忘れた。CRUD のうち Update が欠落した状態で出荷 | **新規テーブル/リソースの API 作成時は GET/POST/PUT/DELETE の 4 操作の要否を最初に確認し、必要な操作を最初から実装する。** copilot-instructions.md + Build Validation に「CRUD API 完全性チェック」を追加 |
+| 参加人数が 0 人表示 (Supabase count レスポンス形式) | `challenge_participants(count)` の返り値を `[{count: N}]` (配列) として扱ったが、Supabase バージョンにより `{count: N}` (単一オブジェクト) を返す場合がある。`challenge.challenge_participants?.[0]?.count` が `undefined` になり 0 にフォールバック | **Supabase の埋め込みカウント (`(count)`) は配列・オブジェクト両方の形式をハンドルする。** `Array.isArray(cp) ? cp[0]?.count : cp?.count` パターンを使用。リファレンス: `app/api/challenge/route.ts` |
 
 ---
 

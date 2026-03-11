@@ -818,6 +818,13 @@ export const runtime = "edge";
 - テスト後のクリーンアップ (一時ファイル、テストブランチの削除) を必ず実施
 - **`.next` キャッシュ破損注意**: `npx next build` 実行後は `.next` ディレクトリを削除すること (型チェックには `tsc --noEmit` を優先)
 
+### Supabase DB スキーマルール（必須遵守）
+
+- **FK 参照先は `public.users` を使用**: UCFitness は NextAuth を使い、ユーザーを `public.users` テーブルに保存する。Supabase Auth の `auth.users` は使用していない。マイグレーション SQL で `REFERENCES auth.users(id)` と書くと FK 制約違反でデータ挿入が失敗する。**必ず `REFERENCES public.users(id)` を使用すること**
+- **新規テーブル作成時**: `created_by` / `user_id` 等のカラムが `auth.users` を参照していないことを確認する
+- **Supabase count の抽出**: `challenge_participants(count)` 等の埋め込みカウントは、Supabase バージョンにより `[{count: N}]`（配列）または `{count: N}`（オブジェクト）を返す。**両方の形式をハンドルすること**
+- **CRUD API の完全性チェック**: 新規テーブル/リソースの API を作成するときは、GET（一覧・詳細）/ POST（作成）/ PUT（編集）/ DELETE（削除）の 4 操作すべてが必要かを確認し、必要な操作を最初から実装する。「編集 API なし」で出荷しない
+
 ### 自動実行の安全制約
 
 #### 破壊的・不可逆操作の禁止
