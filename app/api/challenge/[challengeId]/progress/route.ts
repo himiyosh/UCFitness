@@ -7,10 +7,11 @@ import { reportError } from '@/lib/errors';
 
 // ============================================
 // チャレンジ進捗取得 API
-// daily_steps テーブルから期間内の歩数合計を計算
+// INDIVIDUAL: 個人の歩数合計で判定
+// GROUP: 全参加者の歩数合計で判定
 // ============================================
 
-/** GET: ユーザーのチャレンジ進捗を取得 */
+/** GET: チャレンジ進捗を取得 */
 export async function GET(
     _req: NextRequest,
     { params }: { params: Promise<{ challengeId: string }> }
@@ -24,10 +25,10 @@ export async function GET(
         const { challengeId } = await params;
         const userId = session.user.id;
 
-        // チャレンジ情報を取得
+        // チャレンジ情報を取得（typeも必要）
         const { data: challenge, error: challengeError } = await supabaseAdmin
             .from('challenges')
-            .select('id, target_steps, start_date, end_date, reward_uc')
+            .select('id, type, target_steps, start_date, end_date, reward_uc')
             .eq('id', challengeId)
             .single();
 
@@ -47,20 +48,51 @@ export async function GET(
             return NextResponse.json({ error: 'Not participating' }, { status: 403 });
         }
 
-        // daily_steps から期間内の歩数合計を計算
-        const { data: stepsData, error: stepsError } = await supabaseAdmin
-            .from('daily_steps')
-            .select('steps')
-            .eq('user_id', userId)
-            .gte('date', challenge.start_date)
-            .lte('date', challenge.end_date);
+        let totalSteps: number;
 
-        if (stepsError) {
-            reportError('challenge:progress:steps', stepsError, { userId, challengeId });
-            return NextResponse.json({ error: 'Failed to fetch steps' }, { status: 500 });
+        if (challenge.type === 'GROUP') {
+            // GROUP チャレンジ: 全参加者の歩数合計で目標達成を判定
+            const { data: participants } = await supabaseAdmin
+                .from('challenge_participants')
+                .select('user_id')
+                .eq('challenge_id', challengeId);
+
+            const participantIds = (participants || []).map(p => p.user_id);
+
+            if (participantIds.length === 0) {
+                totalSteps = 0;
+            } else {
+                const { data: stepsData, error: stepsError } = await supabaseAdmin
+                    .from('daily_steps')
+                    .select('steps')
+                    .in('user_id', participantIds)
+                    .gte('date', challenge.start_date)
+                    .lte('date', challenge.end_date);
+
+                if (stepsError) {
+                    reportError('challenge:progress:group-steps', stepsError, { userId, challengeId });
+                    return NextResponse.json({ error: 'Failed to fetch steps' }, { status: 500 });
+                }
+
+                totalSteps = (stepsData || []).reduce((sum, row) => sum + (row.steps || 0), 0);
+            }
+        } else {
+            // INDIVIDUAL チャレンジ: 個人の歩数のみ
+            const { data: stepsData, error: stepsError } = await supabaseAdmin
+                .from('daily_steps')
+                .select('steps')
+                .eq('user_id', userId)
+                .gte('date', challenge.start_date)
+                .lte('date', challenge.end_date);
+
+            if (stepsError) {
+                reportError('challenge:progress:steps', stepsError, { userId, challengeId });
+                return NextResponse.json({ error: 'Failed to fetch steps' }, { status: 500 });
+            }
+
+            totalSteps = (stepsData || []).reduce((sum, row) => sum + (row.steps || 0), 0);
         }
 
-        const totalSteps = (stepsData || []).reduce((sum, row) => sum + (row.steps || 0), 0);
         const isCompleted = totalSteps >= challenge.target_steps;
         const progressPercent = Math.min(100, Math.round((totalSteps / challenge.target_steps) * 100));
 
@@ -82,6 +114,7 @@ export async function GET(
                 is_completed: isCompleted,
                 completed_at: participation.completed_at,
                 reward_uc: challenge.reward_uc,
+                type: challenge.type,
             },
         });
     } catch (err) {
