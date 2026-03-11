@@ -137,8 +137,12 @@ export async function POST(
             .single();
 
         if (error) {
-            reportError('group/events:create', error, { groupId });
-            return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
+            reportError('group/events:create', error, { groupId, userId: session.user.id });
+            // FK制約エラーの場合、詳細なメッセージを返す
+            const errorMsg = error.code === '23503'
+                ? 'Database foreign key constraint error. Please run the migration: migrations/fix_group_events_fk.sql'
+                : 'Failed to create event';
+            return NextResponse.json({ error: errorMsg }, { status: 500 });
         }
 
         return NextResponse.json({ event }, { status: 201 });

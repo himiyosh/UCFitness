@@ -203,6 +203,7 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 
 10. **2 カラムグリッドの高さ合わせで `items-stretch` / `h-full` を安易に使わない** — 短いカラムを無理に引き伸ばすと、ページ外の空白は減っても**カード内部に意味のない余白**が発生し、見た目はむしろ悪化する。まずはカードを自然高さのまま保ち、`QuickActions` のような独立ウィジェットを別行へ移動する・近い密度のカード同士を並べるなど、**配置の再構成でバランスを取ること**。ただし、ユーザーが明示的に下端揃えを求める場合のみ、`items-stretch` / `h-full` を使ってよい。その際、余剰高さの吸収には **`grid auto-rows-fr`（リスト行が均等に高さを分担）** を使い、`mt-auto` だけでフッターを押し下げる方式は禁止（フッターとコンテンツの間に大きな空白帯が発生するため）。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`
 11. **デスクトップのフッター下にデッドスペースを残さない** — コンテンツ量が少ないページでは、デスクトップ側の最上位ラッパーを `sm:flex sm:flex-col sm:flex-1` にし、フッターを `mt-auto` で最下部へ押し出すこと。フッターの下に背景だけの空白帯が残る構成は禁止。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
+12. **グリッド子要素に `h-full` を付けて親の `items-start` を無効化しない** — CSS Grid で `items-start`（トップ揃え）を指定している場合、子要素に `h-full` を付けるとグリッドセルの全高まで引き延ばされ `items-start` が無効化される。さらに `justify-center` を併用すると、引き延ばされた高さの中でコンテンツが垂直中央配置され、上下に巨大な空白が発生する。**グリッド子要素は自然な高さに任せ、レイアウトの整列は親の `items-*` プロパティに委任すること。** `h-full` が必要な場合は、親を `items-stretch` に変更し、子の `justify-center` を削除する。リファレンス: `GroupRankingPanel.tsx`（左カラムから `h-full justify-center` を削除して修正）
 
 ### UI 美学ルール（Design Aesthetics — 必須遵守）
 
@@ -816,6 +817,13 @@ export const runtime = "edge";
 - テスト用設定値を本番設定に混入させない
 - テスト後のクリーンアップ (一時ファイル、テストブランチの削除) を必ず実施
 - **`.next` キャッシュ破損注意**: `npx next build` 実行後は `.next` ディレクトリを削除すること (型チェックには `tsc --noEmit` を優先)
+
+### Supabase DB スキーマルール（必須遵守）
+
+- **FK 参照先は `public.users` を使用**: UCFitness は NextAuth を使い、ユーザーを `public.users` テーブルに保存する。Supabase Auth の `auth.users` は使用していない。マイグレーション SQL で `REFERENCES auth.users(id)` と書くと FK 制約違反でデータ挿入が失敗する。**必ず `REFERENCES public.users(id)` を使用すること**
+- **新規テーブル作成時**: `created_by` / `user_id` 等のカラムが `auth.users` を参照していないことを確認する
+- **Supabase count の抽出**: `challenge_participants(count)` 等の埋め込みカウントは、Supabase バージョンにより `[{count: N}]`（配列）または `{count: N}`（オブジェクト）を返す。**両方の形式をハンドルすること**
+- **CRUD API の完全性チェック**: 新規テーブル/リソースの API を作成するときは、GET（一覧・詳細）/ POST（作成）/ PUT（編集）/ DELETE（削除）の 4 操作すべてが必要かを確認し、必要な操作を最初から実装する。「編集 API なし」で出荷しない
 
 ### 自動実行の安全制約
 

@@ -6,6 +6,7 @@ import ChallengeCard from '@/components/challenge/ChallengeCard';
 import dynamic from 'next/dynamic';
 
 const ChallengeGearBanner = dynamic(() => import('@/components/challenge/ChallengeGearBanner'));
+const EditChallengeModal = dynamic(() => import('@/components/challenge/EditChallengeModal'));
 
 // ============================================
 // チャレンジ一覧 コンポーネント
@@ -24,6 +25,7 @@ interface Challenge {
     is_active: boolean;
     participant_count: number;
     is_joined: boolean;
+    created_by?: string;
     creator?: {
         username?: string;
         name?: string;
@@ -31,15 +33,20 @@ interface Challenge {
     };
 }
 
+interface ChallengeListProps {
+    currentUserId?: string;
+}
+
 type TabKey = 'active' | 'completed' | 'my';
 
-export default function ChallengeList() {
+export default function ChallengeList({ currentUserId }: ChallengeListProps) {
     const t = useTranslations('Challenge');
     const [tab, setTab] = useState<TabKey>('active');
     const [challenges, setChallenges] = useState<Challenge[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+    const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
 
     // チャレンジ一覧を取得
     const fetchChallenges = useCallback(async (status: TabKey) => {
@@ -170,10 +177,25 @@ export default function ChallengeList() {
                             key={challenge.id}
                             challenge={challenge}
                             progress={progressMap[challenge.id] || 0}
+                            currentUserId={currentUserId}
                             onJoin={handleJoin}
+                            onEdit={setEditingChallenge}
                         />
                     ))}
                 </div>
+            )}
+
+            {/* 編集モーダル */}
+            {editingChallenge && (
+                <EditChallengeModal
+                    isOpen={true}
+                    challenge={editingChallenge}
+                    onClose={() => setEditingChallenge(null)}
+                    onUpdated={() => {
+                        setEditingChallenge(null);
+                        fetchChallenges(tab);
+                    }}
+                />
             )}
         </div>
     );

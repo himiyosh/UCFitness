@@ -633,6 +633,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 11. **ヘッダー統一確認** — 全ページのヘッダー右側が `RefreshButton → NotificationBell → UserMenu` の 3 要素構成になっているか確認。1 つでも欠けている場合はバグとして報告
 12. **flex 横並びのレスポンシブチェック** — `flex` / `flex-row` で複数要素を横並びにしている箇所に `sm:` 等のレスポンシブプレフィックスがあるか確認。`flex` のみで 3 要素以上を `flex-1` で均等配置している場合はモバイル崩れバグとして報告
 13. **プッシュ通知 i18n・集約チェック** — `sendWebPushNotification` を呼び出す全箇所で、① ユーザーの `language` カラムを参照して `lib/push-messages.ts` のローカライズ関数を使用しているか、② 同一ユーザーに複数通知が発生しうるケース（バッジ複数同時獲得等）で 1 通に集約されているか確認。ハードコードされたメッセージ文字列はバグとして報告
+14. **DB FK 参照先チェック** — マイグレーション SQL やテーブル作成で `REFERENCES auth.users(id)` を使用している箇所がないか確認。UCFitness は NextAuth + `public.users` テーブルを使用するため、**必ず `REFERENCES public.users(id)` を指定すること。** `auth.users` への FK はデータ挿入時に制約違反を起こす
+15. **CRUD API 完全性チェック** — 新規リソース（テーブル）に対応する API Route が GET / POST だけでなく、PUT（編集）/ DELETE（削除）も必要に応じて実装されているか確認。UI に「作成」ボタンがあるのに「編集」が不可能な状態はバグとして報告
+16. **Supabase 埋め込みカウント形式チェック** — `(count)` を使った埋め込みクエリの結果を抽出する際、`Array.isArray()` で配列/オブジェクト両形式をハンドルしているか確認。`data?.[0]?.count` のみの抽出はバグの可能性あり
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -663,6 +666,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **モバイルで root スクロールを無効化しない** — `html/body` の `overflow: hidden` や全画面スケーリング（`transform: scale`）は、モバイルで下部パネル・CTA の見切れ/操作不能を起こしやすい。全画面スケーリングは `lg:` 以上に限定し、モバイルは通常スクロールを維持すること。
 - **サイドパネル `sticky` のモバイル適用禁止** — 2カラムの右パネルで `sticky top-*` を使う場合、モバイルには適用しない（`lg:sticky` を使用）。モバイルで `sticky` を有効にすると、Join/Create などのパネルが部分表示のまま固定化されることがある。
 - **2 カラム高さ合わせのためにカード内部へ空白を押し込まない** — `items-stretch` や `h-full` で短いカードを引き伸ばし、カード下部に意味のない余白を作るのは NG。`QuickActions` のような独立ウィジェットを別行へ逃がし、カードは自然高さのまま配置を再構成すること。例外として、ユーザーが下端揃えを明示的に要求した場合のみ stretch を許可するが、その場合は **`grid auto-rows-fr` でリスト行自体が余剰高さを均等に分担する方式を使う**こと。`mt-auto` でフッターだけを押し下げる方式は禁止（フッターとリストの間に大きな空白帯が発生する）。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`
+- **グリッド子要素に `h-full` を付けて親の `items-start` を無効化しない** — CSS Grid で `items-start` を指定している場合、子要素に `h-full` を付けるとグリッドセルの全高まで引き延ばされ `items-start` が無効化される。`justify-center` を併用すると上下に巨大な空白が発生する。グリッド子要素は自然高さに任せ、整列は親の `items-*` に委任すること。カード内部のサブグリッドでも同じルールが適用される。リファレンス: `GroupRankingPanel.tsx`（左カラムから `h-full justify-center` を削除して修正）
 - **デスクトップのフッター下に背景だけの空白を残さない** — デスクトップのページラッパーは `flex-1 flex-col` を基本とし、短いページではフッターを viewport 下端へ寄せること。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
 
 **リーダーボード / ランキング統一ルール（ユーザー繰り返し指摘 — 変更厳禁）:**
@@ -943,6 +947,10 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | CSS animation プロパティ競合による要素非表示 | `rank-row-enter` が `opacity: 0` + `animation: rankRowFadeIn` で表示させる設計だが、同一要素に `my-row-pulse` (`animation: myRowHighlight`) も付与。CSS カスケードにより後者の `animation` が勝ち、`rankRowFadeIn` が実行されず `opacity: 0` のまま行が完全に非表示になった | **同一要素に複数の `animation` クラスを付与しない。** 入場アニメーション（`opacity: 0` から開始）を持つ要素には、他の `animation` プロパティを使うクラスを絶対に追加しない。装飾エフェクトは `border` / `background` / `box-shadow` 等の非 animation プロパティで実現する。`::before` / `::after` 擬似要素を使えば親要素の animation と競合しない。リファレンス: `my-row-accent` (border-left + background gradient で実現) |
 | `position: fixed` + `right` でモバイル左見切れ | 通知パネルの幅が `calc(100vw - 16px)` で `right: N px` （ベルアイコンの右端基準）で配置。モバイルでは `right` が小さい値（ビューポート右端に近い）のため、パネル幅 + right がビューポート幅を超え、左側がはみ出す | **モバイル (< 640px) では `left: 8px` で配置**し、デスクトップでは `right` 基準を維持。**ルール**: `position: fixed` + 全幅パネル (`w-[calc(100vw-Npx)]`) を使う場合、モバイルでは `right` ではなく `left` で配置すること。`right + width > 100vw` になるケースを必ず検証する。リファレンス: `NotificationBell.tsx` |
 | 2カラムグリッドでタブバーがカラム内にあると下端がずれる | `DynamicLeaderboard` の 2 カラムグリッドで、左カラムにピリオドタブ、右カラムにグループタブがそれぞれ含まれていた。タブの高さが左右で異なるためカード本体の下端が揃わない。ユーザーから 3 回指摘された | **2カラムグリッドで下端を揃える場合のルール**: (1) タブバー・フィルター等のコントロール要素はグリッドの外（上部）に配置し、グリッド内はカード本体のみにする (2) グリッドに `items-stretch` を使用し、カード内部は `flex flex-col h-full` + リスト部分 `flex-1` で余剰高さを吸収 (3) フッター（Your Rank 等）は `mt-auto` でカード下端に固定。リファレンス: `DynamicLeaderboard.tsx`, `GroupRankingPanel.tsx` |
+| グリッド子要素の `h-full` + `justify-center` でカード内部に上下巨大空白 | `GroupRankingPanel` の左カラム（表彰台エリア）に `h-full justify-center` を設定。親グリッドが `items-start` なのに子の `h-full` が右カラム（メンバー5行分 = ~360px）の高さまで引き延ばし、`justify-center` で TopUsersChart (~200px) を垂直中央配置。結果: 上下に各 ~80px の空白が発生し「何も表示されていない」ように見える | **`items-start` グリッドの子要素に `h-full` を付けない。** `h-full` はグリッドセルを全高まで引き延ばし `items-start` を無効化する。レイアウトの整列は親の `items-*` プロパティに委任し、子要素は自然な高さに任せる。`h-full` + `justify-center` の組み合わせはグリッド子要素では原則禁止（上下に巨大空白が発生する）。リファレンス: `GroupRankingPanel.tsx`（左カラムから `h-full justify-center` を削除して修正） |
+| group_events 作成 500 エラー (FK 制約違反) | `group_events.created_by REFERENCES auth.users(id)` だが、NextAuth は `public.users` にユーザーを保存するため `auth.users` に該当ユーザーが存在しない。マイグレーション SQL のテンプレートが `auth.users` を参照していた | **マイグレーション SQL で `REFERENCES auth.users(id)` は禁止。** `REFERENCES public.users(id)` を使用する。copilot-instructions.md に「Supabase DB スキーマルール」を追加。修正マイグレーション: `migrations/fix_group_events_fk.sql` |
+| チャレンジ編集不可 (PUT API 未実装) | `/api/challenge/[challengeId]` に GET のみ実装し PUT/PATCH を忘れた。CRUD のうち Update が欠落した状態で出荷 | **新規テーブル/リソースの API 作成時は GET/POST/PUT/DELETE の 4 操作の要否を最初に確認し、必要な操作を最初から実装する。** copilot-instructions.md + Build Validation に「CRUD API 完全性チェック」を追加 |
+| 参加人数が 0 人表示 (Supabase count レスポンス形式) | `challenge_participants(count)` の返り値を `[{count: N}]` (配列) として扱ったが、Supabase バージョンにより `{count: N}` (単一オブジェクト) を返す場合がある。`challenge.challenge_participants?.[0]?.count` が `undefined` になり 0 にフォールバック | **Supabase の埋め込みカウント (`(count)`) は配列・オブジェクト両方の形式をハンドルする。** `Array.isArray(cp) ? cp[0]?.count : cp?.count` パターンを使用。リファレンス: `app/api/challenge/route.ts` |
 
 ---
 
