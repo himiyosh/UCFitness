@@ -699,7 +699,13 @@
         "viewAll": "View All",
         "backToHome": "Back to Home",
         "retry": "Retry",
-        "createNewHint": "Create a new challenge to get started!"
+        "createNewHint": "Create a new challenge to get started!",
+        "edit": "Edit",
+        "save": "Save",
+        "saving": "Saving...",
+        "cancelEdit": "Cancel",
+        "activeToggle": "Active",
+        "titleRequired": "Title is required"
     },
     "Shield": {
         "title": "Streak Shield",

@@ -86,11 +86,19 @@ export async function GET(req: NextRequest) {
 
         const participatedIds = participationsResult.data?.map(p => p.challenge_id) || [];
 
-        const challenges = (data || []).map(challenge => ({
-            ...challenge,
-            participant_count: challenge.challenge_participants?.[0]?.count || 0,
-            is_joined: participatedIds.includes(challenge.id),
-        }));
+        const challenges = (data || []).map(challenge => {
+            // challenge_participants(count) はSupabaseバージョンにより
+            // [{count: N}] (配列) または {count: N} (オブジェクト) を返す
+            const cp = challenge.challenge_participants;
+            const participantCount = Array.isArray(cp)
+                ? (cp[0]?.count ?? 0)
+                : (cp as unknown as { count: number } | null)?.count ?? 0;
+            return {
+                ...challenge,
+                participant_count: participantCount,
+                is_joined: participatedIds.includes(challenge.id),
+            };
+        });
 
         return NextResponse.json({ challenges });
     } catch (err) {

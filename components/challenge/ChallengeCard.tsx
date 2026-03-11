@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react';
 
 // ============================================
 // チャレンジカード コンポーネント
-// 個々のチャレンジを表示（進捗バー・参加ボタン付き）
+// 個々のチャレンジを表示（進捗バー・参加ボタン・編集ボタン付き）
 // ============================================
 
 interface Challenge {
@@ -20,6 +20,7 @@ interface Challenge {
     is_active: boolean;
     participant_count: number;
     is_joined: boolean;
+    created_by?: string;
     creator?: {
         username?: string;
         name?: string;
@@ -29,11 +30,13 @@ interface Challenge {
 
 interface ChallengeCardProps {
     challenge: Challenge;
-    progress?: number; // 現在のステップ数
+    progress?: number;
+    currentUserId?: string;
     onJoin?: (challengeId: string) => Promise<void>;
+    onEdit?: (challenge: Challenge) => void;
 }
 
-export default function ChallengeCard({ challenge, progress = 0, onJoin }: ChallengeCardProps) {
+export default function ChallengeCard({ challenge, progress = 0, currentUserId, onJoin, onEdit }: ChallengeCardProps) {
     const t = useTranslations('Challenge');
     const [joining, setJoining] = useState(false);
     const [isJoined, setIsJoined] = useState(challenge.is_joined);
@@ -45,6 +48,9 @@ export default function ChallengeCard({ challenge, progress = 0, onJoin }: Chall
     const endDate = new Date(challenge.end_date + 'T23:59:59');
     const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
     const isExpired = daysLeft === 0 && today > endDate;
+
+    // 作成者かどうか
+    const isCreator = currentUserId && challenge.created_by === currentUserId;
 
     const handleJoin = useCallback(async () => {
         if (joining || isJoined || !onJoin) return;
@@ -136,27 +142,40 @@ export default function ChallengeCard({ challenge, progress = 0, onJoin }: Chall
                     👥 {t('participants', { count: challenge.participant_count })}
                 </span>
 
-                {isJoined ? (
-                    <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
-                        ✅ {t('joined')}
-                    </span>
-                ) : !isExpired ? (
-                    <button
-                        onClick={handleJoin}
-                        disabled={joining}
-                        className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-bold bg-[var(--theme-primary)] text-white hover:opacity-90 hover:scale-105 transition-all disabled:opacity-50"
-                    >
-                        {joining ? (
-                            <>
-                                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                {t('join')}
-                            </>
-                        ) : t('join')}
-                    </button>
-                ) : null}
+                <div className="flex items-center gap-2">
+                    {/* 編集ボタン（作成者のみ） */}
+                    {isCreator && onEdit && (
+                        <button
+                            onClick={() => onEdit(challenge)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors min-h-[32px]"
+                            aria-label={t('edit')}
+                        >
+                            ✏️ {t('edit')}
+                        </button>
+                    )}
+
+                    {isJoined ? (
+                        <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                            ✅ {t('joined')}
+                        </span>
+                    ) : !isExpired ? (
+                        <button
+                            onClick={handleJoin}
+                            disabled={joining}
+                            className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-bold bg-[var(--theme-primary)] text-white hover:opacity-90 hover:scale-105 transition-all disabled:opacity-50"
+                        >
+                            {joining ? (
+                                <>
+                                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    {t('join')}
+                                </>
+                            ) : t('join')}
+                        </button>
+                    ) : null}
+                </div>
             </div>
         </div>
     );

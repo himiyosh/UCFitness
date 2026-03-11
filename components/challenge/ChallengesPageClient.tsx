@@ -10,7 +10,11 @@ import { useTranslations } from 'next-intl';
 // モーダル開閉とチャレンジ一覧を管理
 // ============================================
 
-export default function ChallengesPageClient() {
+interface ChallengesPageClientProps {
+    currentUserId?: string;
+}
+
+export default function ChallengesPageClient({ currentUserId }: ChallengesPageClientProps) {
     const t = useTranslations('Challenge');
     const [showCreate, setShowCreate] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -31,7 +35,7 @@ export default function ChallengesPageClient() {
             </div>
 
             {/* チャレンジ一覧 */}
-            <ChallengeList key={refreshKey} />
+            <ChallengeList key={refreshKey} currentUserId={currentUserId} />
 
             {/* 作成モーダル */}
             <CreateChallengeModal

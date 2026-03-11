@@ -91,7 +91,7 @@ export default async function ChallengesPage() {
                 </div>
 
                 {/* チャレンジコンテンツ */}
-                <ChallengesPageClient />
+                <ChallengesPageClient currentUserId={userId} />
             </div>
             <Footer />
         </main>
