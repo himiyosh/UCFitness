@@ -9,6 +9,44 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 
 ---
 
+## 🔌 利用可能な MCP ツール
+
+UCFitnessAgent は以下の MCP ツールが利用可能。すべて遅延ロードのため、**使用前に `tool_search_tool_regex` でロード必須**。
+
+| MCP サーバー | ロードコマンド | 主な用途 |
+|---|---|---|
+| **Playwright** | `tool_search_tool_regex(pattern="mcp_playwright", limit=30)` | 実ブラウザ E2E テスト・スクリーンショット・DOM 検査 |
+| **Supabase** | `tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)` | SQL 実行・マイグレーション・テーブル管理・ログ取得 |
+
+### Playwright MCP — 主要ツール
+
+| ツール名 | 用途 |
+|---|---|
+| `mcp_playwright_browser_navigate` | URL に遷移 |
+| `mcp_playwright_browser_resize` | ビューポートサイズ変更 |
+| `mcp_playwright_browser_take_screenshot` | スクリーンショット撮影 |
+| `mcp_playwright_browser_snapshot` | DOM / アクセシビリティツリー取得 |
+| `mcp_playwright_browser_click` | 要素クリック |
+| `mcp_playwright_browser_fill_form` | フォーム入力 |
+| `mcp_playwright_browser_evaluate` | JavaScript 実行 |
+| `mcp_playwright_browser_console_messages` | コンソールログ取得 |
+| `mcp_playwright_browser_network_requests` | ネットワークリクエスト監視 |
+| `mcp_playwright_browser_press_key` | キーボード操作 |
+
+### Supabase MCP — 主要ツール
+
+| ツール名 | 用途 |
+|---|---|
+| `mcp_com_supabase__execute_sql` | SQL 直接実行（マイグレーション・データ確認・スキーマ変更） |
+| `mcp_com_supabase__list_tables` | テーブル一覧取得 |
+| `mcp_com_supabase__list_extensions` | PostgreSQL 拡張機能一覧 |
+| `mcp_com_supabase__get_logs` | ログ取得（デバッグ時） |
+| `mcp_com_supabase__list_migrations` | マイグレーション履歴 |
+
+**Supabase プロジェクト ID:** `lmqpkoyypxccdbtgycty`
+
+---
+
 ## 🎯 ロール自動選択ルール
 
 リクエストのキーワードや文脈から、以下のロールを自動判定する。
@@ -892,6 +930,8 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 3. **RLS ポリシー** はテーブル作成時に必ず有効化する（`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`）
 4. **本番データの直接変更**（`UPDATE`, `INSERT` でユーザーデータを操作）はユーザーの明示的な指示がある場合のみ
 5. Supabase CLI は未インストールのため、MCP ツール経由で操作すること
+6. **FK 制約変更後は必ず `pg_constraint` で検証する** — `information_schema` は `auth.users` など他スキーマの参照を表示しないことがある。`pg_constraint` + `confrelid::regclass` で正確な参照先を確認すること
+7. **テストデータは即クリーンアップ** — 検証用 INSERT を行った場合、確認後に即 DELETE する
 
 ---
 
