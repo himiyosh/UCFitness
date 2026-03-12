@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import UserAvatar from '@/components/UserAvatar';
 
 // ============================================
@@ -49,6 +50,7 @@ interface ChallengeDetailModalProps {
 
 export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: ChallengeDetailModalProps) {
     const t = useTranslations('Challenge');
+    const router = useRouter();
     const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -278,26 +280,46 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                                 ) : (
                                     <div className="space-y-2">
                                         {sortedParticipants.map((participant, index) => {
-                                            const percent = Math.min(100, Math.round(
-                                                ((participant.progress_steps || 0) / challenge.target_steps) * 100
-                                            ));
+                                            // GROUP: グループ合計に対する個人貢献割合
+                                            // INDIVIDUAL: 個人目標に対する達成率
+                                            const isGroup = challenge.type === 'GROUP';
+                                            const steps = participant.progress_steps || 0;
+                                            const percent = isGroup
+                                                ? (totalGroupSteps > 0 ? Math.round((steps / totalGroupSteps) * 100) : 0)
+                                                : Math.min(100, Math.round((steps / challenge.target_steps) * 100));
                                             const isCompleted = participant.is_completed;
+                                            const username = participant.user?.username;
 
                                             return (
                                                 <div
                                                     key={participant.user_id}
-                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => {
+                                                        if (username) {
+                                                            onClose();
+                                                            router.push(`/user/${username}`);
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if ((e.key === 'Enter' || e.key === ' ') && username) {
+                                                            onClose();
+                                                            router.push(`/user/${username}`);
+                                                        }
+                                                    }}
+                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                         isCompleted
-                                                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                                                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:border-green-300'
                                                             : index < 3
-                                                                ? 'bg-gradient-to-r from-gray-50 to-white border-gray-100 hover:border-[var(--theme-primary)]/20'
-                                                                : 'bg-white border-gray-100 hover:border-gray-200'
+                                                                ? 'bg-gradient-to-r from-gray-50 to-white border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-sm'
+                                                                : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm'
                                                     }`}
                                                     style={{
                                                         animationDelay: `${index * 60}ms`,
                                                         animation: 'fadeInUp 0.3s ease-out forwards',
                                                         opacity: 0,
                                                     }}
+                                                    aria-label={`${participant.user?.name || username || 'Unknown'} - ${t('detailViewProfile')}`}
                                                 >
                                                     {/* ランク */}
                                                     <div className="w-7 text-center flex-shrink-0">
@@ -310,7 +332,7 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                                                     <div className="flex-shrink-0 relative">
                                                         <UserAvatar
                                                             src={participant.user?.image}
-                                                            name={participant.user?.name || participant.user?.username}
+                                                            name={participant.user?.name || username}
                                                             size="sm"
                                                         />
                                                         {isCompleted && (
@@ -323,28 +345,40 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                                                     {/* ユーザー情報 + プログレス */}
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center justify-between mb-1">
-                                                            <span className="text-sm font-semibold text-gray-800 truncate">
-                                                                {participant.user?.name || participant.user?.username || 'Unknown'}
+                                                            <span className="text-sm font-semibold text-gray-800 truncate group-hover:text-[var(--theme-primary)]">
+                                                                {participant.user?.name || username || 'Unknown'}
                                                             </span>
                                                             <span className={`text-xs font-bold flex-shrink-0 ml-2 ${
                                                                 isCompleted ? 'text-green-600' : 'text-gray-500'
                                                             }`}>
-                                                                {(participant.progress_steps || 0).toLocaleString()} {t('stepsUnit')}
+                                                                {steps.toLocaleString()} {t('stepsUnit')}
                                                             </span>
                                                         </div>
-                                                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full rounded-full transition-all duration-700 ease-out"
-                                                                style={{
-                                                                    width: `${percent}%`,
-                                                                    backgroundColor: isCompleted
-                                                                        ? '#22c55e'
-                                                                        : index === 0
-                                                                            ? 'var(--theme-primary)'
-                                                                            : '#94a3b8',
-                                                                }}
-                                                            />
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full rounded-full transition-all duration-700 ease-out"
+                                                                    style={{
+                                                                        width: `${percent}%`,
+                                                                        backgroundColor: isCompleted
+                                                                            ? '#22c55e'
+                                                                            : index === 0
+                                                                                ? 'var(--theme-primary)'
+                                                                                : '#94a3b8',
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            {isGroup && (
+                                                                <span className="text-[10px] text-gray-400 flex-shrink-0 tabular-nums w-8 text-right">
+                                                                    {percent}%
+                                                                </span>
+                                                            )}
                                                         </div>
+                                                        {isGroup && (
+                                                            <div className="text-[10px] text-gray-400 mt-0.5">
+                                                                {t('detailContribution')}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );

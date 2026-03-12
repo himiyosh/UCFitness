@@ -714,7 +714,9 @@
         "detailGroupProgress": "Group Total Progress",
         "detailClearReward": "Clear reward",
         "detailCompleted": "Completed!",
-        "detailTapToView": "Tap for details"
+        "detailTapToView": "Tap for details",
+        "detailViewProfile": "View profile",
+        "detailContribution": "Contribution to group"
     },
     "Shield": {
         "title": "Streak Shield",
