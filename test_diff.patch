@@ -1,0 +1,9 @@
+--- components/AmazonProductSearch.tsx
++++ components/AmazonProductSearch.tsx
+@@ -467,9 +467,8 @@
+                                             className="w-full h-full object-contain"
+                                             loading="lazy"
+                                             onError={(e) => {
+-                                                const parent = (e.target as HTMLElement).parentElement;
+-                                                if (parent) parent.innerHTML = `<span class="flex items-center justify-center w-full h-full text-lg">${linkTypeIcon(item.type)}</span>`;
+                                             }}

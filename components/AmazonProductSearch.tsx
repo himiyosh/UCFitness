@@ -79,6 +79,61 @@ function linkTypeIcon(type: AffiliateLinkType): string {
 }
 
 // ============================================
+// History Item Component
+// ============================================
+
+function HistoryItemView({ item, locale, t, reuseHistoryItem }: { item: LinkHistoryItem, locale: string, t: any, reuseHistoryItem: (item: LinkHistoryItem) => void }) {
+    const [imageError, setImageError] = useState(false);
+
+    return (
+        <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 hover:shadow-sm transition-shadow group">
+            {/* サムネイル or アイコン */}
+            {item.imageUrl && !imageError ? (
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={item.imageUrl}
+                        alt={item.asin || ''}
+                        className="w-full h-full object-contain"
+                        loading="lazy"
+                        onError={() => setImageError(true)}
+                    />
+                </div>
+            ) : (
+                <span className="text-lg flex-shrink-0 flex items-center justify-center w-10 h-10">
+                    {linkTypeIcon(item.type)}
+                </span>
+            )}
+
+            <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 truncate">
+                    {item.input}
+                </div>
+            </div>
+
+            <div className="flex gap-1.5 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={() => reuseHistoryItem(item)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 transition-all"
+                    title={locale === 'ja' ? '再利用' : 'Reuse'}
+                >
+                    ↩️
+                </button>
+                <a
+                    href={item.affiliateLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/20 hover:opacity-80 transition-all"
+                    title={t('viewOnAmazon')}
+                >
+                    🛒
+                </a>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
 // メインコンポーネント
 // ============================================
 
