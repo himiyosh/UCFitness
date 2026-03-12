@@ -67,11 +67,17 @@ export async function GET(
                 stepsMap[row.user_id] = (stepsMap[row.user_id] || 0) + (row.steps || 0);
             }
 
-            // 各参加者の progress_steps をリアルタイム値で上書き
+            // GROUP: グループ合計で達成判定 / INDIVIDUAL: 個人歩数で達成判定
+            const groupTotal = Object.values(stepsMap).reduce((sum, s) => sum + s, 0);
+            const isGroupCompleted = challenge.type === 'GROUP' && groupTotal >= challenge.target_steps;
+
+            // 各参加者の progress_steps を個人の実際の歩数で上書き
             for (const participant of participants as { user_id: string; progress_steps: number; is_completed: boolean }[]) {
                 const actualSteps = stepsMap[participant.user_id] || 0;
                 participant.progress_steps = actualSteps;
-                participant.is_completed = actualSteps >= challenge.target_steps;
+                participant.is_completed = challenge.type === 'GROUP'
+                    ? isGroupCompleted
+                    : actualSteps >= challenge.target_steps;
             }
         }
 
