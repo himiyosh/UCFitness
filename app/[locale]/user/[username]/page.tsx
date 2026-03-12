@@ -279,7 +279,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Column: Profile Card */}
-                    <div className="md:col-span-1 space-y-6 order-last md:order-none">
+                    <div className="md:col-span-1 space-y-6">
                         {/* Heading for alignment — hidden on mobile since profile card is self-explanatory */}
                         <div className="hidden md:flex items-center justify-between h-8">
                             <h2 className="text-2xl font-bold text-gray-900 truncate">{t('profile')}</h2>
@@ -365,7 +365,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     </div>
 
                     {/* Right Column: Stats & Achievements */}
-                    <div className="md:col-span-2 space-y-6 order-first md:order-none">
+                    <div className="md:col-span-2 space-y-6">
                         <div className="flex items-center justify-between gap-2"> {/* gap for spacing */}
                             <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                                 {isOwner ? t('activityTitle') : t('activityTitleOther')}

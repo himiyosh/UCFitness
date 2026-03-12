@@ -164,41 +164,27 @@ export default async function MyGroupsPage() {
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                     {/* Group List (Left on Desktop, Top on Mobile) */}
                     <section className="flex-1 w-full">
-                        {/* G8: ハイライトバナー */}
-                        {bestRank && bestRankGroup && bestRank <= 3 && (
-                            <div className={`highlight-banner mb-4 p-4 rounded-xl border flex items-center gap-3 ${
-                                bestRank === 1 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' :
-                                bestRank === 2 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200' :
-                                'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'
-                            }`}>
-                                <span className="text-3xl">{bestRank === 1 ? '🥇' : bestRank === 2 ? '🥈' : '🥉'}</span>
-                                <div>
-                                    <div className="highlight-label text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
-                                    <div className="highlight-text text-sm font-bold text-gray-900">
-                                        {t('topRankedIn', { rank: bestRank, group: bestRankGroup.groups.name })}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">{t('yourGroups')}</h2>
-                        </div>
-
-                        {!memberships || memberships.length === 0 ? (
-                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                                <p className="text-gray-500">{t('noGroups')}</p>
-                            </div>
-                        ) : (
-                            <GroupList initialMemberships={sortedMemberships} />
-                        )}
-                    </section>
-
-                    {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
-                    <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-24 space-y-4">
-                        {/* G1: グループサマリー */}
+                        {/* G1/G8: ハイライト + グループサマリー統合パネル */}
                         {sortedMemberships.length > 0 && (
-                            <div className="bg-white midnight-solid-panel rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <div className="bg-white midnight-solid-panel rounded-xl p-4 sm:p-5 border border-gray-100 shadow-sm mb-4">
+                                {/* ハイライトバナー（Top3 のみ表示） */}
+                                {bestRank && bestRankGroup && bestRank <= 3 && (
+                                    <div className={`p-3 rounded-lg border flex items-center gap-3 mb-3 ${
+                                        bestRank === 1 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' :
+                                        bestRank === 2 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200' :
+                                        'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'
+                                    }`}>
+                                        <span className="text-2xl">{bestRank === 1 ? '🥇' : bestRank === 2 ? '🥈' : '🥉'}</span>
+                                        <div>
+                                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
+                                            <div className="text-sm font-bold text-gray-900">
+                                                {t('topRankedIn', { rank: bestRank, group: bestRankGroup.groups.name })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* グループサマリー */}
                                 <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                                     <span className="text-lg">📊</span>
                                     {t('groupSummary')}
@@ -222,6 +208,21 @@ export default async function MyGroupsPage() {
                             </div>
                         )}
 
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-gray-900">{t('yourGroups')}</h2>
+                        </div>
+
+                        {!memberships || memberships.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                                <p className="text-gray-500">{t('noGroups')}</p>
+                            </div>
+                        ) : (
+                            <GroupList initialMemberships={sortedMemberships} />
+                        )}
+                    </section>
+
+                    {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
+                    <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-24 space-y-4">
                         {/* Join / Create */}
                         <div>
                             <div className="flex items-center mb-4">

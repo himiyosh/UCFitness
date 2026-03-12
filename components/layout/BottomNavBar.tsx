@@ -26,10 +26,12 @@ export default function BottomNavBar() {
     >
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map((item) => {
-          // ホームは完全一致、他はプレフィックス一致
+          // ホームは完全一致、プロフィールは /profile と /user/ の両方に対応、他はプレフィックス一致
           const isActive = item.href === '/'
             ? pathname === '/'
-            : pathname.startsWith(item.href);
+            : item.href === '/profile'
+              ? pathname === '/profile' || pathname.startsWith('/user/')
+              : pathname.startsWith(item.href);
 
           return (
             <Link

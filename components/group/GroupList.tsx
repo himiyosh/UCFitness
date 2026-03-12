@@ -172,7 +172,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                         </div>
 
                         {/* Content Section */}
-                        <div className="flex-1 p-3 pl-4 sm:p-4 sm:pt-12 relative min-w-0 flex flex-col justify-center sm:block">
+                        <div className="flex-1 p-3 pl-16 sm:p-4 sm:pt-12 relative min-w-0 flex flex-col justify-center sm:block">
                             <div className="min-w-0 pr-10 sm:pr-0">
                                 <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-[var(--theme-primary)] truncate">
                                     {m.groups.name}

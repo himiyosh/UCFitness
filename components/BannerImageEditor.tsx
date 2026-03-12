@@ -86,6 +86,18 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         };
     }, [previewUrl]);
 
+    // ダイアログ表示中はページスクロールをロック
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
     // プレビュー領域のサイズ計算
     const getContainerWidth = () => containerRef.current?.clientWidth || 360;
     const getCropHeight = () => getContainerWidth() / BANNER_ASPECT;
