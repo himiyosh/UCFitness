@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
                 start_date, end_date, reward_uc, is_active,
                 created_by, group_id, created_at,
                 challenge_participants(count),
+                recent_participants:challenge_participants(user:user_id(username, name, image), joined_at),
                 creator:created_by(username, name, image)
             `)
             .order('created_at', { ascending: false });
@@ -93,9 +94,29 @@ export async function GET(req: NextRequest) {
             const participantCount = Array.isArray(cp)
                 ? (cp[0]?.count ?? 0)
                 : (cp as unknown as { count: number } | null)?.count ?? 0;
+
+            // 参加者のアバター情報（最新5人まで）
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const recentParticipants = (challenge as any).recent_participants;
+            const participantAvatars = Array.isArray(recentParticipants)
+                ? recentParticipants
+                    .filter((p: { user: unknown }) => p.user)
+                    .sort((a: { joined_at: string }, b: { joined_at: string }) =>
+                        new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime()
+                    )
+                    .slice(0, 5)
+                    .map((p: { user: { username?: string; name?: string; image?: string } }) => ({
+                        username: p.user.username,
+                        name: p.user.name,
+                        image: p.user.image,
+                    }))
+                : [];
+
             return {
                 ...challenge,
+                recent_participants: undefined,
                 participant_count: participantCount,
+                participant_avatars: participantAvatars,
                 is_joined: participatedIds.includes(challenge.id),
             };
         });

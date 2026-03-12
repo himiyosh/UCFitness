@@ -24,6 +24,7 @@ interface Challenge {
     reward_uc: number;
     is_active: boolean;
     participant_count: number;
+    participant_avatars?: { username?: string; name?: string; image?: string }[];
     is_joined: boolean;
     created_by?: string;
     creator?: {

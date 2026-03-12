@@ -705,7 +705,16 @@
         "saving": "Saving...",
         "cancelEdit": "Cancel",
         "activeToggle": "Active",
-        "titleRequired": "Title is required"
+        "titleRequired": "Title is required",
+        "detailViewDetail": "View details",
+        "detailViewParticipants": "View participants",
+        "detailParticipants": "{count} challengers",
+        "detailNoParticipants": "No participants yet. Be the first challenger!",
+        "detailCreatedBy": "Created by",
+        "detailGroupProgress": "Group Total Progress",
+        "detailClearReward": "Clear reward",
+        "detailCompleted": "Completed!",
+        "detailTapToView": "Tap for details"
     },
     "Shield": {
         "title": "Streak Shield",
