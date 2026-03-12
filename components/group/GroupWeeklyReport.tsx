@@ -132,10 +132,22 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                     return (
                         <div key={member.userId} className="flex items-center gap-3">
                             <span className="w-5 text-center text-xs font-bold text-gray-400 tabular-nums">{index + 1}</span>
-                            <UserAvatar src={member.image} name={member.name} size="sm" />
+                            {member.username ? (
+                                <a href={`/user/${member.username}`} className="flex-shrink-0" aria-label={member.name || member.username}>
+                                    <UserAvatar src={member.image} name={member.name} size="sm" />
+                                </a>
+                            ) : (
+                                <UserAvatar src={member.image} name={member.name} size="sm" />
+                            )}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-0.5">
-                                    <p className="text-xs font-semibold text-gray-700 truncate">{member.name}</p>
+                                    {member.username ? (
+                                        <a href={`/user/${member.username}`} className="text-xs font-semibold text-gray-700 truncate hover:text-[var(--theme-primary)] hover:underline">
+                                            {member.name}
+                                        </a>
+                                    ) : (
+                                        <p className="text-xs font-semibold text-gray-700 truncate">{member.name}</p>
+                                    )}
                                     <p className="text-xs font-bold text-gray-900 tabular-nums ml-2 flex-shrink-0">
                                         {member.totalSteps.toLocaleString()}
                                     </p>

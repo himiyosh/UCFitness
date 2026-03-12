@@ -13,6 +13,7 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - **i18n**: next-intl (ja/en)
 - **デプロイ**: Cloudflare Pages
 - **チャート**: Recharts
+- **MCP サーバー**: Supabase MCP (`com.supabase/mcp`) — SQL 実行・テーブル管理・マイグレーション・ログ取得に使用。プロジェクト ID: `lmqpkoyypxccdbtgycty`
 
 ## 絶対遵守ルール
 

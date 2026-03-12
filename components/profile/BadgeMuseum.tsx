@@ -21,50 +21,79 @@ interface BadgeMuseumProps {
   badges: BadgeData[];
 }
 
-type FilterCategory = 'ALL' | 'GLOBAL' | 'GROUP' | 'ACHIEVEMENT';
+type FilterCategory = 'ALL' | 'PERSONAL' | 'GROUP';
+
+/** バッジ種別ごとのグループ */
+interface BadgeGroup {
+  badgeCode: string;
+  name: string;
+  description?: string;
+  category: string;
+  type: string;
+  rank: number;
+  count: number;
+  dates: string[];
+}
 
 export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
   const t = useTranslations('Museum');
   const [filter, setFilter] = useState<FilterCategory>('ALL');
+  const [expandedBadge, setExpandedBadge] = useState<string | null>(null);
 
-  // カテゴリ別にグループ化
-  const grouped = useMemo(() => {
-    const filtered = filter === 'ALL'
-      ? badges
-      : badges.filter(b => b.badges.type === filter);
-
-    // 日付順（新しい順）
-    const sorted = [...filtered].sort((a, b) => {
-      const dateA = a.awarded_at || a.period_date;
-      const dateB = b.awarded_at || b.period_date;
-      return dateB.localeCompare(dateA);
-    });
-
-    // 月別にグループ化
-    const groups = new Map<string, BadgeData[]>();
-    for (const badge of sorted) {
-      const date = badge.awarded_at || badge.period_date;
-      const month = date.slice(0, 7); // YYYY-MM
-      const list = groups.get(month) || [];
-      list.push(badge);
-      groups.set(month, list);
-    }
-    return groups;
-  }, [badges, filter]);
-
-  // カテゴリ別カウント
+  // カテゴリ別カウント（GLOBAL + ACHIEVEMENT = PERSONAL）
   const counts = useMemo(() => ({
     ALL: badges.length,
-    GLOBAL: badges.filter(b => b.badges.type === 'GLOBAL').length,
+    PERSONAL: badges.filter(b => b.badges.type === 'GLOBAL' || b.badges.type === 'ACHIEVEMENT').length,
     GROUP: badges.filter(b => b.badges.type === 'GROUP').length,
-    ACHIEVEMENT: badges.filter(b => b.badges.type === 'ACHIEVEMENT').length,
   }), [badges]);
+
+  // バッジ種別ごとにグループ化し、取得回数と日付をまとめる
+  const groupedBadges = useMemo(() => {
+    const filtered = filter === 'ALL'
+      ? badges
+      : filter === 'PERSONAL'
+        ? badges.filter(b => b.badges.type === 'GLOBAL' || b.badges.type === 'ACHIEVEMENT')
+        : badges.filter(b => b.badges.type === 'GROUP');
+
+    // badge_code ごとにグループ化
+    const map = new Map<string, BadgeGroup>();
+    for (const badge of filtered) {
+      const key = badge.badge_code;
+      const existing = map.get(key);
+      const date = badge.awarded_at || badge.period_date;
+      if (existing) {
+        existing.count++;
+        existing.dates.push(date);
+      } else {
+        map.set(key, {
+          badgeCode: badge.badge_code,
+          name: badge.badges.name,
+          description: badge.badges.description,
+          category: badge.badges.category,
+          type: badge.badges.type,
+          rank: badge.badges.rank,
+          count: 1,
+          dates: [date],
+        });
+      }
+    }
+
+    // 日付を新しい順にソート
+    for (const group of map.values()) {
+      group.dates.sort((a, b) => b.localeCompare(a));
+    }
+
+    // 取得回数の多い順→名前順でソート
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name);
+    });
+  }, [badges, filter]);
 
   const filters: { key: FilterCategory; emoji: string; labelKey: string }[] = [
     { key: 'ALL', emoji: '🏛️', labelKey: 'all' },
-    { key: 'GLOBAL', emoji: '🌍', labelKey: 'global' },
+    { key: 'PERSONAL', emoji: '🏅', labelKey: 'personal' },
     { key: 'GROUP', emoji: '👥', labelKey: 'group' },
-    { key: 'ACHIEVEMENT', emoji: '⭐', labelKey: 'personal' },
   ];
 
   if (badges.length === 0) {
@@ -92,12 +121,12 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
         </span>
       </div>
 
-      {/* フィルタータブ */}
+      {/* フィルタータブ（個人 / グループの2種） */}
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
         {filters.map(f => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => { setFilter(f.key); setExpandedBadge(null); }}
             className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
               filter === f.key
                 ? 'bg-[var(--theme-primary)] text-white shadow-sm'
@@ -111,43 +140,58 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
         ))}
       </div>
 
-      {/* タイムライン */}
-      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1 scroll-thin">
-        {Array.from(grouped.entries()).map(([month, monthBadges]) => {
-          const [y, m] = month.split('-');
-          const monthLabel = `${y}/${m}`;
+      {/* バッジ種別グリッド — 既定は取得回数表示、タップで日付展開 */}
+      <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1 scroll-thin">
+        {groupedBadges.map((group) => {
+          const isExpanded = expandedBadge === group.badgeCode;
           return (
-            <div key={month}>
-              {/* 月ヘッダー */}
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--theme-primary)]" />
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{monthLabel}</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-
-              {/* バッジグリッド */}
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 pl-4">
-                {monthBadges.map((badge, i) => (
-                  <div
-                    key={`${badge.badge_code}-${badge.period_date}-${i}`}
-                    className="flex flex-col items-center p-2 rounded-lg bg-gray-50 hover:bg-[var(--theme-primary)]/5 transition-colors group"
-                    title={badge.badges.description || badge.badges.name}
+            <div key={group.badgeCode}>
+              <button
+                onClick={() => setExpandedBadge(isExpanded ? null : group.badgeCode)}
+                className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors text-left ${
+                  isExpanded
+                    ? 'bg-[var(--theme-primary)]/5 ring-1 ring-[var(--theme-primary)]/20'
+                    : 'bg-gray-50 hover:bg-[var(--theme-primary)]/5'
+                }`}
+              >
+                <BadgeIcon
+                  category={group.category}
+                  type={group.type}
+                  rank={group.rank}
+                  className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-sm flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{group.name}</p>
+                  {group.description && (
+                    <p className="text-xs text-gray-400 truncate">{group.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-xs font-bold tabular-nums">
+                    ×{group.count}
+                  </span>
+                  <svg
+                    className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <BadgeIcon
-                      category={badge.badges.category}
-                      type={badge.badges.type}
-                      rank={badge.badges.rank}
-                      className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-sm"
-                    />
-                    <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight truncate w-full group-hover:text-[var(--theme-primary)]">
-                      {badge.badges.name}
-                    </span>
-                    <span className="text-[9px] text-gray-400">
-                      {(badge.awarded_at || badge.period_date).slice(5, 10)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+
+              {/* 取得日の詳細（展開時） */}
+              {isExpanded && (
+                <div className="ml-14 mt-1 mb-2 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
+                  {group.dates.map((date, i) => (
+                    <div key={`${date}-${i}`} className="flex items-center gap-2 px-2 py-1 text-xs text-gray-500">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]/40" />
+                      <span className="tabular-nums">{date.slice(0, 10)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

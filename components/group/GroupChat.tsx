@@ -254,24 +254,46 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
                                     key={msg.id}
                                     className={`flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
                                 >
-                                    {/* アバター（全ユーザー表示） */}
-                                    <div
-                                        className="flex-shrink-0 cursor-pointer"
-                                        onMouseEnter={(e) => msg.users && handleAvatarEnter(e, msg.users)}
-                                        onMouseLeave={handleAvatarLeave}
-                                    >
-                                        <UserAvatar
-                                            src={msg.users?.image}
-                                            name={msg.users?.name || '?'}
-                                            size="sm"
-                                        />
-                                    </div>
+                                    {/* アバター（クリックでプロフィール遷移） */}
+                                    {msg.users?.username ? (
+                                        <a
+                                            href={`/user/${msg.users.username}`}
+                                            className="flex-shrink-0"
+                                            aria-label={msg.users?.name || msg.users.username}
+                                            onMouseEnter={(e) => msg.users && handleAvatarEnter(e, msg.users)}
+                                            onMouseLeave={handleAvatarLeave}
+                                        >
+                                            <UserAvatar
+                                                src={msg.users?.image}
+                                                name={msg.users?.name || '?'}
+                                                size="sm"
+                                            />
+                                        </a>
+                                    ) : (
+                                        <div
+                                            className="flex-shrink-0"
+                                            onMouseEnter={(e) => msg.users && handleAvatarEnter(e, msg.users)}
+                                            onMouseLeave={handleAvatarLeave}
+                                        >
+                                            <UserAvatar
+                                                src={msg.users?.image}
+                                                name={msg.users?.name || '?'}
+                                                size="sm"
+                                            />
+                                        </div>
+                                    )}
 
                                     {/* メッセージバブル */}
                                     <div className={`max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
                                         {!isMe && (
                                             <p className="text-[10px] text-gray-400 mb-0.5 px-1">
-                                                {msg.users?.name || t('unknown')}
+                                                {msg.users?.username ? (
+                                                    <a href={`/user/${msg.users.username}`} className="hover:text-[var(--theme-primary)] hover:underline">
+                                                        {msg.users?.name || t('unknown')}
+                                                    </a>
+                                                ) : (
+                                                    msg.users?.name || t('unknown')
+                                                )}
                                             </p>
                                         )}
                                         <div
