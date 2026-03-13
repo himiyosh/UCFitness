@@ -719,7 +719,7 @@
         "detailContribution": "Contribution to group",
         "leave": "Leave",
         "leaveTitle": "Leave Challenge",
-        "leaveConfirm": "Are you sure you want to leave this challenge? Your progress will be reset."
+        "leaveConfirm": "Are you sure you want to leave this challenge?"
     },
     "Shield": {
         "title": "Streak Shield",
