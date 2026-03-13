@@ -2253,7 +2253,6 @@ body::before {
 }
 .my-row-accent .leaderboard-steps {
   color: var(--theme-primary) !important;
-  font-size: 1.25rem;
 }
 [data-theme="midnight"] .my-row-accent {
   border-left: 4px solid var(--theme-primary);
@@ -2262,7 +2261,6 @@ body::before {
 }
 [data-theme="midnight"] .my-row-accent .leaderboard-steps {
   color: #a5b4fc !important;
-  font-size: 1.25rem;
 }
 
 /* ランキングのピルタブ（モバイル最適化） */
