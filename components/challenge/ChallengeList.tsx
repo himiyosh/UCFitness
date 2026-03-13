@@ -98,6 +98,16 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
         await fetchChallenges(tab);
     }, [tab, fetchChallenges]);
 
+    // チャレンジから離脱
+    const handleLeave = useCallback(async (challengeId: string) => {
+        const res = await fetch(`/api/challenge/${challengeId}/leave`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to leave');
+        }
+        await fetchChallenges(tab);
+    }, [tab, fetchChallenges]);
+
     const tabs: { key: TabKey; label: string }[] = [
         { key: 'active', label: t('active') },
         { key: 'completed', label: t('completed') },
@@ -180,6 +190,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                             progress={progressMap[challenge.id] || 0}
                             currentUserId={currentUserId}
                             onJoin={handleJoin}
+                            onLeave={handleLeave}
                             onEdit={setEditingChallenge}
                         />
                     ))}

@@ -716,7 +716,10 @@
         "detailCompleted": "Completed!",
         "detailTapToView": "Tap for details",
         "detailViewProfile": "View profile",
-        "detailContribution": "Contribution to group"
+        "detailContribution": "Contribution to group",
+        "leave": "Leave",
+        "leaveTitle": "Leave Challenge",
+        "leaveConfirm": "Are you sure you want to leave this challenge? Your progress will be reset."
     },
     "Shield": {
         "title": "Streak Shield",
