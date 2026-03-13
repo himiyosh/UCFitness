@@ -35,7 +35,7 @@ export default async function LeaderboardPage() {
       .single(),
     supabaseAdmin
       .from('group_members')
-      .select('groups(keyword)')
+      .select('groups(keyword, image_url)')
       .eq('user_id', userId),
   ]);
 
@@ -44,11 +44,13 @@ export default async function LeaderboardPage() {
     redirect('/setup');
   }
 
-  // グループキーワードを抽出
+  // グループキーワードと画像情報を抽出
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const groupKeywords = (membershipResult.data ?? [])
-    .map((m: any) => m.groups?.keyword)
-    .filter(Boolean) as string[];
+  const groupData = (membershipResult.data ?? [])
+    .map((m: any) => m.groups)
+    .filter(Boolean) as { keyword: string; image_url: string | null }[];
+  const groupKeywords = groupData.map(g => g.keyword);
+  const groupInfo = groupData.map(g => ({ keyword: g.keyword, imageUrl: g.image_url }));
 
   return (
     <main className="min-h-screen bg-[var(--theme-page-bg)]">
@@ -119,7 +121,7 @@ export default async function LeaderboardPage() {
         </div>
 
         {/* リーダーボード本体 */}
-        <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} />
+        <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} groupInfo={groupInfo} />
       </div>
     </main>
   );
