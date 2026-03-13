@@ -705,7 +705,21 @@
         "saving": "Saving...",
         "cancelEdit": "Cancel",
         "activeToggle": "Active",
-        "titleRequired": "Title is required"
+        "titleRequired": "Title is required",
+        "detailViewDetail": "View details",
+        "detailViewParticipants": "View participants",
+        "detailParticipants": "{count} challengers",
+        "detailNoParticipants": "No participants yet. Be the first challenger!",
+        "detailCreatedBy": "Created by",
+        "detailGroupProgress": "Group Total Progress",
+        "detailClearReward": "Clear reward",
+        "detailCompleted": "Completed!",
+        "detailTapToView": "Tap for details",
+        "detailViewProfile": "View profile",
+        "detailContribution": "Contribution to group",
+        "leave": "Leave",
+        "leaveTitle": "Leave Challenge",
+        "leaveConfirm": "Are you sure you want to leave this challenge?"
     },
     "Shield": {
         "title": "Streak Shield",

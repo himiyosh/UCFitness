@@ -50,6 +50,37 @@ export async function GET(
             return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
         }
 
+        // 各参加者の実際の歩数を daily_steps からリアルタイム計算
+        const participants = challenge.challenge_participants || [];
+        if (participants.length > 0) {
+            const userIds = participants.map((p: { user_id: string }) => p.user_id);
+            const { data: stepsData } = await supabaseAdmin
+                .from('daily_steps')
+                .select('user_id, steps')
+                .in('user_id', userIds)
+                .gte('date', challenge.start_date)
+                .lte('date', challenge.end_date);
+
+            // ユーザーごとの歩数合計を集計
+            const stepsMap: Record<string, number> = {};
+            for (const row of stepsData || []) {
+                stepsMap[row.user_id] = (stepsMap[row.user_id] || 0) + (row.steps || 0);
+            }
+
+            // GROUP: グループ合計で達成判定 / INDIVIDUAL: 個人歩数で達成判定
+            const groupTotal = Object.values(stepsMap).reduce((sum, s) => sum + s, 0);
+            const isGroupCompleted = challenge.type === 'GROUP' && groupTotal >= challenge.target_steps;
+
+            // 各参加者の progress_steps を個人の実際の歩数で上書き
+            for (const participant of participants as { user_id: string; progress_steps: number; is_completed: boolean }[]) {
+                const actualSteps = stepsMap[participant.user_id] || 0;
+                participant.progress_steps = actualSteps;
+                participant.is_completed = challenge.type === 'GROUP'
+                    ? isGroupCompleted
+                    : actualSteps >= challenge.target_steps;
+            }
+        }
+
         return NextResponse.json({ challenge });
     } catch (err) {
         reportError('challenge:detail:unexpected', err);

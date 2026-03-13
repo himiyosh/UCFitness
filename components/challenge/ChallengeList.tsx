@@ -24,6 +24,7 @@ interface Challenge {
     reward_uc: number;
     is_active: boolean;
     participant_count: number;
+    participant_avatars?: { username?: string; name?: string; image?: string }[];
     is_joined: boolean;
     created_by?: string;
     creator?: {
@@ -94,6 +95,16 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
             throw new Error(data.error || 'Failed to join');
         }
         // 一覧を再取得
+        await fetchChallenges(tab);
+    }, [tab, fetchChallenges]);
+
+    // チャレンジから離脱
+    const handleLeave = useCallback(async (challengeId: string) => {
+        const res = await fetch(`/api/challenge/${challengeId}/leave`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to leave');
+        }
         await fetchChallenges(tab);
     }, [tab, fetchChallenges]);
 
@@ -179,6 +190,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                             progress={progressMap[challenge.id] || 0}
                             currentUserId={currentUserId}
                             onJoin={handleJoin}
+                            onLeave={handleLeave}
                             onEdit={setEditingChallenge}
                         />
                     ))}
