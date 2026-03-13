@@ -83,10 +83,20 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
       group.dates.sort((a, b) => b.localeCompare(a));
     }
 
-    // 取得回数の多い順→名前順でソート
+    // 種類(type) → カテゴリ(category) → ランク(rank)順でソート
+    const TYPE_ORDER: Record<string, number> = { GLOBAL: 0, GROUP: 1, ACHIEVEMENT: 2 };
+    const CAT_ORDER: Record<string, number> = {
+      DAILY: 0, WEEKLY: 1, MONTHLY: 2,
+      STREAK: 3, MILESTONE: 4, LIFESTYLE: 5, TITLE: 6,
+    };
     return Array.from(map.values()).sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      return a.name.localeCompare(b.name);
+      const typeA = TYPE_ORDER[a.type] ?? 9;
+      const typeB = TYPE_ORDER[b.type] ?? 9;
+      if (typeA !== typeB) return typeA - typeB;
+      const catA = CAT_ORDER[a.category] ?? 9;
+      const catB = CAT_ORDER[b.category] ?? 9;
+      if (catA !== catB) return catA - catB;
+      return a.rank - b.rank;
     });
   }, [badges, filter]);
 
@@ -140,12 +150,37 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
         ))}
       </div>
 
-      {/* バッジ種別グリッド — 既定は取得回数表示、タップで日付展開 */}
+      {/* バッジ種別グリッド — 種類別にセクション表示 */}
       <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1 scroll-thin">
-        {groupedBadges.map((group) => {
+        {groupedBadges.map((group, index) => {
           const isExpanded = expandedBadge === group.badgeCode;
+          // セクション見出し: 前のバッジと type が変わったら表示
+          const prevType = index > 0 ? groupedBadges[index - 1].type : null;
+          const showSection = group.type !== prevType;
+          const sectionKey = group.type === 'GLOBAL' ? 'sectionGlobal'
+            : group.type === 'GROUP' ? 'sectionGroup'
+            : 'sectionPersonal';
+          const sectionEmoji = group.type === 'GLOBAL' ? '🌍'
+            : group.type === 'GROUP' ? '👥'
+            : '🏅';
+
+          // バッジ名・説明を翻訳キーで表示（badge_code をキーとして使用）
+          const nameKey = `badgeNames.${group.badgeCode}`;
+          const descKey = `badgeDescs.${group.badgeCode}`;
+          const badgeName = t.has(nameKey) ? t(nameKey) : group.name;
+          const badgeDesc = t.has(descKey) ? t(descKey) : group.description;
+
           return (
             <div key={group.badgeCode}>
+              {showSection && (
+                <div className="flex items-center gap-2 pt-3 pb-1.5 first:pt-0">
+                  <span className="text-sm">{sectionEmoji}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                    {t(sectionKey)}
+                  </span>
+                  <div className="flex-1 h-px bg-gray-100" />
+                </div>
+              )}
               <button
                 onClick={() => setExpandedBadge(isExpanded ? null : group.badgeCode)}
                 className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors text-left ${
@@ -161,9 +196,9 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
                   className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-sm flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{group.name}</p>
-                  {group.description && (
-                    <p className="text-xs text-gray-400 truncate">{group.description}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{badgeName}</p>
+                  {badgeDesc && (
+                    <p className="text-xs text-gray-400 truncate">{badgeDesc}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
