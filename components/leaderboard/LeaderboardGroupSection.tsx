@@ -55,7 +55,7 @@ export default function LeaderboardGroupSection({
                                 <button
                                     key={group.keyword}
                                     onClick={() => setSelectedGroupIndex(idx)}
-                                    className={`cursor-pointer whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all ${!isMidnight ? (selectedGroupIndex === idx ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
+                                    className={`cursor-pointer whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${!isMidnight ? (selectedGroupIndex === idx ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
                                     style={isMidnight ? (selectedGroupIndex === idx ? {
                                         background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
                                         color: '#ffffff',
@@ -70,6 +70,22 @@ export default function LeaderboardGroupSection({
                                         textShadow: '0 1px 2px rgba(0,0,0,0.3)'
                                     }) : undefined}
                                 >
+                                    {group.image_url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={group.image_url}
+                                            alt=""
+                                            className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                                        />
+                                    ) : (
+                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${
+                                            selectedGroupIndex === idx
+                                                ? 'bg-white/20 text-white'
+                                                : 'bg-[var(--theme-primary)]/10 text-[var(--theme-primary)]'
+                                        }`}>
+                                            {group.keyword.slice(0, 2).toUpperCase()}
+                                        </span>
+                                    )}
                                     {group.keyword}
                                 </button>
                             ))}
