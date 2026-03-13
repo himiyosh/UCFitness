@@ -463,8 +463,15 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                             className="w-full h-full object-contain"
                                             loading="lazy"
                                             onError={(e) => {
-                                                const parent = (e.target as HTMLElement).parentElement;
-                                                if (parent) parent.innerHTML = `<span class="flex items-center justify-center w-full h-full text-lg">${linkTypeIcon(item.type)}</span>`;
+                                                const img = e.target as HTMLImageElement;
+                                                img.style.display = 'none';
+                                                const parent = img.parentElement;
+                                                if (parent && !parent.querySelector('.fallback-icon')) {
+                                                    const span = document.createElement('span');
+                                                    span.className = 'flex items-center justify-center w-full h-full text-lg fallback-icon';
+                                                    span.textContent = linkTypeIcon(item.type);
+                                                    parent.appendChild(span);
+                                                }
                                             }}
                                         />
                                     </div>

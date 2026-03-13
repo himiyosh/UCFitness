@@ -111,7 +111,7 @@ describe('POST /api/user/group - Invite Security', () => {
             body: JSON.stringify({
                 action: 'invite',
                 keyword: 'my-group',
-                targetUserId: 'stranger-id'
+                targetUserId: '00000000-0000-0000-0000-000000000001'
             })
         });
 
@@ -130,7 +130,7 @@ describe('POST /api/user/group - Invite Security', () => {
             body: JSON.stringify({
                 action: 'invite',
                 keyword: 'my-group',
-                targetUserId: 'follower-id'
+                targetUserId: '00000000-0000-0000-0000-000000000002'
             })
         });
 
