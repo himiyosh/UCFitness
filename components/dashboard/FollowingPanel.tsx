@@ -112,6 +112,19 @@ export default function FollowingPanel() {
         return Math.max(1, ...compData.map(u => u.totalSteps));
     }, [compData]);
 
+    // ⚡ Bolt: Pre-compute daily steps into an O(1) nested Map to prevent O(N*D) lookups during render
+    const dailyStepsMap = useMemo(() => {
+        const map = new Map<string, Map<string, number>>();
+        for (const user of compData) {
+            const userMap = new Map<string, number>();
+            for (const daily of user.dailySteps) {
+                userMap.set(daily.date, daily.steps);
+            }
+            map.set(user.userId, userMap);
+        }
+        return map;
+    }, [compData]);
+
     // ローディング中はスケルトン
     if (activityLoading) {
         return (
@@ -300,16 +313,16 @@ export default function FollowingPanel() {
                                         <div className="flex gap-1 items-end h-16">
                                             {dates.map((date) => {
                                                 const dayMax = Math.max(1, ...compData.map(u => {
-                                                    const d = u.dailySteps.find(s => s.date === date);
-                                                    return d?.steps || 0;
+                                                    // ⚡ Bolt: O(1) lookup instead of Array.prototype.find
+                                                    return dailyStepsMap.get(u.userId)?.get(date) || 0;
                                                 }));
                                                 const dayLabel = new Date(`${date}T00:00:00Z`).toLocaleDateString('ja-JP', { weekday: 'short' });
                                                 return (
                                                     <div key={date} className="flex-1 flex flex-col items-center gap-0.5">
                                                         <div className="flex gap-px items-end h-12 w-full justify-center">
                                                             {compData.slice(0, 5).map((user, ui) => {
-                                                                const d = user.dailySteps.find(s => s.date === date);
-                                                                const steps = d?.steps || 0;
+                                                                // ⚡ Bolt: O(1) lookup instead of Array.prototype.find
+                                                                const steps = dailyStepsMap.get(user.userId)?.get(date) || 0;
                                                                 const h = dayMax > 0 ? (steps / dayMax) * 100 : 0;
                                                                 return (
                                                                     <div
