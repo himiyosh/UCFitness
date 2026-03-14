@@ -24,7 +24,9 @@
         "ucHint": "UndouCoin（運動コイン）― 毎日の歩数から獲得できるコイン。たくさん歩いて貯めよう！",
         "you": "自分",
         "anonymous": "匿名ユーザー",
-        "userNotFound": "ユーザーが見つかりません。"
+        "userNotFound": "ユーザーが見つかりません。",
+        "error": "エラーが発生しました。再度お試しください。",
+        "retry": "再試行"
     },
     "Settings": {
         "title": "設定",
@@ -872,7 +874,8 @@
         "minutesAgo": "{count}分前",
         "hoursAgo": "{count}時間前",
         "daysAgo": "{count}日前",
-        "viewProfile": "プロフィールを見る"
+        "viewProfile": "プロフィールを見る",
+        "sendError": "メッセージの送信に失敗しました。再度お試しください。"
     },
     "WalkingRoutes": {
         "title": "ウォーキングコース",
@@ -901,7 +904,10 @@
         "totalDistance": "合計距離",
         "favorites": "お気に入り",
         "minutes": "分",
-        "times": "回"
+        "times": "回",
+        "createError": "コースの作成に失敗しました。再度お試しください。",
+        "updateError": "更新に失敗しました。再度お試しください。",
+        "deleteError": "削除に失敗しました。再度お試しください。"
     },
     "GoalAdvisor": {
         "title": "スマートゴールアドバイザー",

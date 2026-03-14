@@ -58,6 +58,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
     const [globalRankings, setGlobalRankings] = useState<RankingEntry[]>([]);
     const [groupRankingsList, setGroupRankingsList] = useState<{ keyword: string; neighbors: RankingEntry[] }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(false);
+    const [retryKey, setRetryKey] = useState(0);
     const [activeGroupIndex, setActiveGroupIndex] = useState(0);
     // データ取得完了後にアニメーションを発火させるキー
     const [animationKey, setAnimationKey] = useState(0);
@@ -78,26 +80,31 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
     }, []);
 
     useEffect(() => {
+        const abortController = new AbortController();
         const keywords: string[] = JSON.parse(serializedKeywords);
         const fetchData = async (): Promise<void> => {
             setIsLoading(true);
+            setFetchError(false);
             try {
-                const globalRes = await fetch(`/api/rankings?scope=GLOBAL&period=${period}`);
+                const globalRes = await fetch(`/api/rankings?scope=GLOBAL&period=${period}`, { signal: abortController.signal });
+                if (!globalRes.ok) throw new Error(`Rankings fetch failed: ${globalRes.status}`);
                 const globalData = await globalRes.json();
                 const { displayRankings: filteredGlobal } = getDisplayRankings(globalData, userId);
                 setGlobalRankings(filteredGlobal);
 
                 const groupResults = await Promise.all(
                     keywords.map(async (keyword) => {
-                        const res = await fetch(`/api/rankings?scope=GROUP&period=${period}&keyword=${keyword}`);
+                        const res = await fetch(`/api/rankings?scope=GROUP&period=${period}&keyword=${keyword}`, { signal: abortController.signal });
+                        if (!res.ok) throw new Error(`Group ranking fetch failed: ${res.status}`);
                         const data = await res.json();
                         const { displayRankings: filtered } = getDisplayRankings(data, userId);
                         return { keyword, neighbors: filtered };
                     })
                 );
                 setGroupRankingsList(groupResults);
-            } catch {
-                // エラーはUIにローディング解除で反映
+            } catch (err) {
+                if (err instanceof DOMException && err.name === 'AbortError') return;
+                setFetchError(true);
             } finally {
                 setIsLoading(false);
                 setAnimationKey(k => k + 1);
@@ -105,7 +112,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
         };
 
         fetchData();
-    }, [period, userId, serializedKeywords]);
+        return () => abortController.abort();
+    }, [period, userId, serializedKeywords, retryKey]);
 
     return (
         <div className="flex flex-col gap-3">
@@ -234,8 +242,24 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                             </div>
                         )}
 
+                        {/* エラー */}
+                        {!isLoading && fetchError && (
+                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                <span className="text-4xl mb-3">⚠️</span>
+                                <p className={`text-sm font-medium mb-3 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                    {commonT('error')}
+                                </p>
+                                <button
+                                    onClick={() => setRetryKey(k => k + 1)}
+                                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
+                                >
+                                    {commonT('retry')}
+                                </button>
+                            </div>
+                        )}
+
                         {/* データなし */}
-                        {!isLoading && globalRankings.length === 0 && (
+                        {!isLoading && !fetchError && globalRankings.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
                                 <span className="text-4xl mb-3">🏃</span>
                                 <p className={`text-sm font-medium ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>

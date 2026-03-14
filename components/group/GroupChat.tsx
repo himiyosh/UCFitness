@@ -44,6 +44,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
     const [error, setError] = useState(false);
     const [inputText, setInputText] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [sendError, setSendError] = useState(false);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -86,6 +87,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
         if (!text || isSending) return;
 
         setIsSending(true);
+        setSendError(false);
         try {
             const res = await fetch(`/api/group/${groupId}/messages`, {
                 method: 'POST',
@@ -101,7 +103,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
             setInputText('');
             inputRef.current?.focus();
         } catch {
-            // 送信失敗時は何もしない（入力テキストは保持）
+            setSendError(true);
         } finally {
             setIsSending(false);
         }
@@ -313,6 +315,13 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
                             );
                         })}
                     </div>
+
+                    {/* 送信エラー表示 */}
+                    {sendError && (
+                        <div className="px-3 py-1.5 bg-red-50 border-t border-red-200">
+                            <p className="text-xs text-red-600 font-medium">{t('sendError')}</p>
+                        </div>
+                    )}
 
                     {/* 入力エリア */}
                     <div className="border-t border-gray-100 px-3 py-2 flex items-center gap-2">

@@ -24,7 +24,9 @@
         "ucHint": "UndouCoin (\u904b\u52d5\u30b3\u30a4\u30f3) \u2014 Coins earned from your daily steps. Walk more to earn more!",
         "you": "YOU",
         "anonymous": "Anonymous",
-        "userNotFound": "User not found."
+        "userNotFound": "User not found.",
+        "error": "An error occurred. Please try again.",
+        "retry": "Retry"
     },
     "Settings": {
         "title": "Settings",
@@ -870,7 +872,8 @@
         "minutesAgo": "{count}m ago",
         "hoursAgo": "{count}h ago",
         "daysAgo": "{count}d ago",
-        "viewProfile": "View Profile"
+        "viewProfile": "View Profile",
+        "sendError": "Failed to send message. Please try again."
     },
     "WalkingRoutes": {
         "title": "Walking Routes",
@@ -899,7 +902,10 @@
         "totalDistance": "Total Distance",
         "favorites": "Favorites",
         "minutes": "min",
-        "times": "times"
+        "times": "times",
+        "createError": "Failed to create route. Please try again.",
+        "updateError": "Failed to update. Please try again.",
+        "deleteError": "Failed to delete. Please try again."
     },
     "GoalAdvisor": {
         "title": "Smart Goal Advisor",
