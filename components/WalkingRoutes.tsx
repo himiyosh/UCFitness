@@ -110,7 +110,7 @@ export default function WalkingRoutes() {
         } finally {
             setIsSaving(false);
         }
-    }, [formName, formDescription, formDistance, formDuration, formDifficulty, isSaving]);
+    }, [formName, formDescription, formDistance, formDuration, formDifficulty, isSaving, t]);
 
     // お気に入り切替
     const handleToggleFavorite = useCallback(async (routeId: string, currentValue: boolean) => {
@@ -129,7 +129,7 @@ export default function WalkingRoutes() {
         } finally {
             setActionLoadingId(null);
         }
-    }, []);
+    }, [t]);
 
     // 歩いた記録
     const handleLogWalk = useCallback(async (routeId: string) => {
@@ -148,7 +148,7 @@ export default function WalkingRoutes() {
         } finally {
             setActionLoadingId(null);
         }
-    }, []);
+    }, [t]);
 
     // 削除
     const handleDelete = useCallback(async (routeId: string) => {
@@ -165,7 +165,7 @@ export default function WalkingRoutes() {
         } finally {
             setActionLoadingId(null);
         }
-    }, []);
+    }, [t]);
 
     // ローディング
     if (isLoading) {
