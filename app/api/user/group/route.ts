@@ -72,9 +72,14 @@ export async function POST(request: Request) {
 
       // Add Member (upsert to be safe)
       const role = !existingGroup ? 'OWNER' : 'MEMBER';
-      await supabaseAdmin
+      const { error: addError } = await supabaseAdmin
         .from('group_members')
         .upsert({ group_id: groupId, user_id: userId, role }, { onConflict: 'group_id,user_id' });
+
+      if (addError) {
+        reportError('user/group:add', addError, { groupId, userId });
+        return NextResponse.json({ error: 'Failed to join group' }, { status: 500 });
+      }
 
     } else if (action === 'remove') {
       // Find group
@@ -209,7 +214,10 @@ export async function POST(request: Request) {
         .eq('group_id', group.id)
         .eq('user_id', targetUserId);
 
-      if (promoteError) reportError('user/group:transfer_ownership', promoteError, { groupId: group.id, targetUserId });
+      if (promoteError) {
+        reportError('user/group:transfer_ownership', promoteError, { groupId: group.id, targetUserId });
+        return NextResponse.json({ error: 'Failed to transfer ownership' }, { status: 500 });
+      }
 
       return NextResponse.json({ success: true });
 
@@ -273,7 +281,10 @@ export async function POST(request: Request) {
         .eq('group_id', group.id)
         .eq('user_id', targetUserId);
 
-      if (demoteError) reportError('user/group:demote', demoteError, { groupId: group.id, targetUserId });
+      if (demoteError) {
+        reportError('user/group:demote', demoteError, { groupId: group.id, targetUserId });
+        return NextResponse.json({ error: 'Failed to demote member' }, { status: 500 });
+      }
 
       return NextResponse.json({ success: true });
 
