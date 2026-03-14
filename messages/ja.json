@@ -457,7 +457,7 @@
         "errorItemNotFound": "アイテムが見つかりません。",
         "errorGeneric": "エラーが発生しました。もう一度お試しください。",
         "noItems": "このカテゴリにアイテムがありません。",
-        "comingSoon": "Coming Soon",
+        "comingSoon": "近日公開",
         "myItems": "マイアイテム",
         "shopTab": "ショップ",
         "gearTab": "ギア",
@@ -843,7 +843,7 @@
     },
     "WeeklyGoal": {
         "title": "ウィークリーゴール",
-        "weeklyStepsLabel": "Weekly Steps",
+        "weeklyStepsLabel": "週間歩数",
         "steps": "歩",
         "goal": "目標",
         "aheadOfPace": "🔥 ペース通り達成中！",
