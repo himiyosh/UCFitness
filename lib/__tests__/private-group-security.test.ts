@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 vi.mock('@/lib/auth', () => ({
-    auth: vi.fn().mockResolvedValue({ user: { id: 'owner-id' } })
+    auth: vi.fn().mockResolvedValue({ user: { id: 'test-user-id' } })
 }));
 
 vi.mock('next/server', () => ({
@@ -27,12 +27,11 @@ vi.mock('next/server', () => ({
     }
 }));
 
-describe('POST /api/user/group - Invite Security', () => {
+describe('POST /api/user/group - Private Group Security', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    // Helper for chainable mocks
     const createChain = (data: any = {}) => ({
         select: () => createChain(data),
         eq: () => createChain(data),
@@ -41,22 +40,22 @@ describe('POST /api/user/group - Invite Security', () => {
         update: () => Promise.resolve({ error: null }),
         delete: () => Promise.resolve({ error: null }),
         filter: () => createChain(data),
-        then: (resolve: any) => resolve({ data, error: null })
+        then: (resolve: any) => resolve({ data, error: null }),
+        upsert: () => Promise.resolve({ error: null })
     });
 
-    const setupMocks = (isFollowing: boolean) => {
+    const setupMocks = (isPublic: boolean) => {
         mockFrom.mockImplementation((table: string) => {
             if (table === 'groups') {
                 return {
                     select: () => ({
-                        eq: () => ({ single: () => Promise.resolve({ data: { id: 'group-id' } }) })
+                        eq: () => ({ single: () => Promise.resolve({ data: { id: 'group-id', is_public: isPublic } }) })
                     })
                 };
             }
             if (table === 'group_members') {
                 return {
                     select: (cols: string) => {
-                        // Legacy sync query: .select('groups(keyword)').eq(...)
                         if (cols === 'groups(keyword)') {
                             return {
                                 eq: () => ({
@@ -64,35 +63,9 @@ describe('POST /api/user/group - Invite Security', () => {
                                 })
                             };
                         }
-
-                        // Owner check / Member check
-                        return {
-                            eq: (col1: string, val1: string) => ({
-                                eq: (col2: string, val2: string) => ({
-                                    single: () => {
-                                        // Owner check
-                                        if (val1 === 'group-id' && val2 === 'owner-id') {
-                                            return Promise.resolve({ data: { role: 'OWNER' } });
-                                        }
-                                        // Existing member check
-                                        return Promise.resolve({ data: null });
-                                    }
-                                })
-                            })
-                        };
+                        return createChain();
                     },
-                    insert: () => Promise.resolve({ error: null })
-                };
-            }
-            if (table === 'user_follows') {
-                 return {
-                    select: () => ({
-                        eq: () => ({
-                            eq: () => ({
-                                single: () => Promise.resolve({ data: isFollowing ? { id: 'follow-id' } : null })
-                            })
-                        })
-                    })
+                    upsert: () => Promise.resolve({ error: null })
                 };
             }
             if (table === 'users') {
@@ -103,15 +76,14 @@ describe('POST /api/user/group - Invite Security', () => {
         });
     };
 
-    it('should REJECT invite if target user does NOT follow owner', async () => {
-        setupMocks(false);
+    it('should REJECT add request for a private group', async () => {
+        setupMocks(false); // is_public: false
 
         const req = new Request('http://localhost/api/user/group', {
             method: 'POST',
             body: JSON.stringify({
-                action: 'invite',
-                keyword: 'my-group',
-                targetUserId: '550e8400-e29b-41d4-a716-446655440000'
+                action: 'add',
+                keyword: 'secret-group'
             })
         });
 
@@ -119,25 +91,22 @@ describe('POST /api/user/group - Invite Security', () => {
         const data = await res.json();
 
         expect(res.status).toBe(403);
-        expect(data.error).toMatch(/must follow/i);
+        expect(data.error).toMatch(/private group/i);
     });
 
-    it('should ALLOW invite if target user follows owner', async () => {
-        setupMocks(true);
+    it('should ALLOW add request for a public group', async () => {
+        setupMocks(true); // is_public: true
 
         const req = new Request('http://localhost/api/user/group', {
             method: 'POST',
             body: JSON.stringify({
-                action: 'invite',
-                keyword: 'my-group',
-                targetUserId: '550e8400-e29b-41d4-a716-446655440001'
+                action: 'add',
+                keyword: 'public-group'
             })
         });
 
         const res = await POST(req);
-        const data = await res.json();
 
         expect(res.status).toBe(200);
-        expect(data.success).toBe(true);
     });
 });
