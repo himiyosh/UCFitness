@@ -178,7 +178,7 @@ export default async function MyGroupsPage() {
                                             {topRankedGroups.map((m: any, i: number) => (
                                                 <span key={m.groups.id} className="inline-flex items-center gap-1 text-sm font-bold text-gray-900">
                                                     <span>{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
-                                                    <span>{m.groups.name}</span>
+                                                    <span>{t('topRankedIn', { rank: m.rank, group: m.groups.name })}</span>
                                                     {i < topRankedGroups.length - 1 && <span className="text-gray-300 mx-0.5">|</span>}
                                                 </span>
                                             ))}
