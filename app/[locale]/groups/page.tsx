@@ -144,15 +144,15 @@ export default async function MyGroupsPage() {
                 </div>
             </header>
 
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
                 {/* パンくずリスト */}
-                <div className="mb-0">
+                <div className="mb-4 sm:mb-6">
                     <Breadcrumbs items={[{ label: t('title') }]} />
                 </div>
 
                 {/* ヒーローセクション — ランキングページと統一デザイン */}
-                <div className="relative overflow-hidden rounded-2xl leaderboard-hero-bg p-5 sm:p-6 text-white leaderboard-card-enter">
+                <div className="mb-6 sm:mb-8 relative overflow-hidden rounded-2xl leaderboard-hero-bg p-5 sm:p-6 text-white leaderboard-card-enter">
                     {/* 背景デコレーション */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
                         <div className="absolute -top-4 -right-4 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full blur-2xl" />
