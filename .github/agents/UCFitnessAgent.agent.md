@@ -201,6 +201,7 @@ tool_search_tool_regex(pattern="mcp_playwright", limit=30)
 10. ★ 全要素ビジュアル精査（後述の「要素別精査チェックリスト」を実行 — スキップ厳禁）
 11. ★ インタラクション精査（後述の「インタラクション精査リスト」を実行）
 12. ビューポート切替 → 3-11 を繰り返し（モバイルとデスクトップは同等の深さで検証）
+13. ★★ browser_close → 全検証完了後に必ずブラウザを閉じる（**スキップ厳禁** — ユーザーの画面にブラウザウィンドウが残り続ける）
 ```
 
 #### ★★ スクロールカバレッジルール（必須 — top/bottom だけは禁止）
@@ -528,6 +529,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 17. `browser_resize(width=1280, height=800)` でデスクトップに切替
 18. Phase 1-3 を繰り返し
 
+**Phase 5: ブラウザクローズ（必須 — スキップ厳禁）**
+19. `browser_close` で Playwright ブラウザウィンドウを閉じる。ブラウザを開いたまま放置するとユーザーの画面を占有し続けるため、**レポート作成前に必ず実行すること**
+
 **レポート形式:**
 全バグを以下の重要度で分類し、スクリーンショットのファイル名と対応付けて報告:
 - 🔴 Critical: ページクラッシュ / 白画面 / 主要機能動作不能
@@ -636,6 +640,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 4. 横スクロール検査: `browser_evaluate` で `scrollWidth > clientWidth` をチェック
 5. 主要なインタラクション（ボタンクリック・ナビゲーション）を検証
 6. 検出バグがあれば修正 → 再検証 → コミット
+7. **`mcp_playwright_browser_close` でブラウザを閉じる**（スキップ厳禁 — ユーザーの画面にブラウザウィンドウが残り続ける）
 
 #### Step 3: 検証
 
@@ -904,6 +909,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 - [ ] **デスクトップ表示確認（レスポンシブ変更時は必須）:** モバイル向けの変更（`hidden sm:block`、`sm:hidden`、`flex-col sm:flex-row` 等のレスポンシブクラス追加）を行った場合、デスクトップ表示が壊れていないことを Playwright で確認すること
 - [ ] **デスクトップ余白確認（UI 変更時は必須）:** カード内部に意味のない空白が増えていないこと、フッター下に背景だけのデッドスペースが残っていないことを確認すること
 - [ ] **プロンプト自己改善トリガー確認（必須）:** 今回のタスクがトリガー条件（繰り返し修正・否定的フィードバック・新技術制約の発見等）に該当するか確認。該当する場合は Lessons Learned + copilot-instructions.md + サブエージェントルールを更新し、同一コミットに含めること
+- [ ] **Playwright ブラウザクローズ（必須）:** Playwright MCP を使用した場合、全検証完了後に **必ず `mcp_playwright_browser_close` を呼び出してブラウザウィンドウを閉じる**。スクリーンショット撮影・スナップショット取得後にブラウザを開いたまま放置しない
 - [ ] **Improvement Loop の場合:** `improvement-report.md` に「🔍 新機能提案」セクションが記載されている（Step 2.5 必須）
 
 ---
@@ -1006,6 +1012,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | チャレンジ編集不可 (PUT API 未実装) | `/api/challenge/[challengeId]` に GET のみ実装し PUT/PATCH を忘れた。CRUD のうち Update が欠落した状態で出荷 | **新規テーブル/リソースの API 作成時は GET/POST/PUT/DELETE の 4 操作の要否を最初に確認し、必要な操作を最初から実装する。** copilot-instructions.md + Build Validation に「CRUD API 完全性チェック」を追加 |
 | 参加人数が 0 人表示 (Supabase count レスポンス形式) | `challenge_participants(count)` の返り値を `[{count: N}]` (配列) として扱ったが、Supabase バージョンにより `{count: N}` (単一オブジェクト) を返す場合がある。`challenge.challenge_participants?.[0]?.count` が `undefined` になり 0 にフォールバック | **Supabase の埋め込みカウント (`(count)`) は配列・オブジェクト両方の形式をハンドルする。** `Array.isArray(cp) ? cp[0]?.count : cp?.count` パターンを使用。リファレンス: `app/api/challenge/route.ts` |
 | カードリストのモバイル表示がぐちゃっとなる（縦型バナーカードの過剰適用） | グループ一覧カードを全ビューポートで縦型（バナー画像 `h-24` + オーバーラップアイコン + テキスト + プログレスバー）に統一した結果、モバイルでは各カード ~180px 高 × 3+ で 540px+ の縦スクロールが発生。375px 幅では情報密度が高すぎ「ぐちゃっとした印象」に。初回修正で `sm`(640px) ブレイクポイントを使用したが、タブレット・大型スマホでは 640px+ のビューポートになりリッチレイアウトが表示され間延び問題が再発 | **カードリストのレスポンシブ設計ルール**: (1) ブレイクポイントは `sm`(640px) ではなく **`md`(768px)** を使用 (2) モバイル(<md)は横型コンパクトカード（アイコン`w-10 h-10`左 + テキスト右、`px-2.5 py-2`、カード高さ ~56px） (3) デスクトップ(md+)は縦型リッチカード（バナー + オーバーラップアイコン + プログレスバー） (4) 補助情報は `hidden md:block` でデスクトップのみ (5) グリッドギャップ `gap-1.5 md:gap-3`。リファレンス: `GroupList.tsx`, `app/[locale]/groups/page.tsx` |
+| Playwright ブラウザ閉じ忘れ（ユーザー指摘） | Improvement Loop の Playwright 検証ステップで `mcp_playwright_browser_take_screenshot` / `browser_snapshot` 等を実行した後、`mcp_playwright_browser_close` を呼び出さずにタスク完了を報告。ユーザーの画面に Playwright のブラウザウィンドウが残り続けた | **Playwright MCP 使用後は必ず `mcp_playwright_browser_close` を呼び出す。** (1) テスト実行フローのステップ 13 に「browser_close」を追加（スキップ厳禁） (2) 完了チェックリストに「Playwright ブラウザクローズ」項目を追加 (3) サブエージェント委任テンプレートにもクローズ指示を含める。**ブラウザを開いたまま放置すると、ユーザーの画面を占有し続ける** |
 
 ---
 
