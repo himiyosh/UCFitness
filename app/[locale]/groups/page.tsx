@@ -170,22 +170,19 @@ export default async function MyGroupsPage() {
                         {/* G1/G8: ハイライト + グループサマリー統合パネル */}
                         {sortedMemberships.length > 0 && (
                             <div className="bg-white midnight-solid-panel rounded-xl p-4 sm:p-5 border border-gray-100 shadow-sm mb-4">
-                                {/* ハイライトバナー（全グループのTop3を表示） */}
+                                {/* ハイライトバナー（全グループのTop3をコンパクト表示） */}
                                 {topRankedGroups.length > 0 && (
-                                    <div className="mb-3 space-y-2">
-                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
-                                        {topRankedGroups.map((m: any) => (
-                                            <div key={m.groups.id} className={`p-3 rounded-lg border flex items-center gap-3 ${
-                                                m.rank === 1 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' :
-                                                m.rank === 2 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200' :
-                                                'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'
-                                            }`}>
-                                                <span className="text-2xl">{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
-                                                <div className="text-sm font-bold text-gray-900">
-                                                    {t('topRankedIn', { rank: m.rank, group: m.groups.name })}
-                                                </div>
-                                            </div>
-                                        ))}
+                                    <div className="mb-3 p-2.5 rounded-lg bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide shrink-0">{t('todayHighlight')}</span>
+                                            {topRankedGroups.map((m: any, i: number) => (
+                                                <span key={m.groups.id} className="inline-flex items-center gap-1 text-sm font-bold text-gray-900">
+                                                    <span>{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
+                                                    <span>{m.groups.name}</span>
+                                                    {i < topRankedGroups.length - 1 && <span className="text-gray-300 mx-0.5">|</span>}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
 
