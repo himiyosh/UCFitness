@@ -224,7 +224,7 @@ function FeedItemCard({ item, t }: { item: FeedItem; t: ReturnType<typeof useTra
     const displayName = item.userName || item.username || '???';
 
     return (
-        <div className="flex items-start gap-3 py-3 px-2 rounded-lg hover:bg-gray-50 transition-colors">
+        <div className="flex items-start gap-3 py-3 px-2 rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all">
             {/* ユーザーアバター */}
             <Link href={item.username ? `/user/${item.username}` : '#'}>
                 <UserAvatar
