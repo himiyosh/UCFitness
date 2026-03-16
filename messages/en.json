@@ -999,11 +999,17 @@
             "MILESTONE_500K": "500K Steps Milestone",
             "MILESTONE_1M": "1M Steps Milestone",
             "WEEKEND_WARRIOR": "Weekend Warrior",
+            "LIFESTYLE_WEEKEND": "Weekend Warrior",
             "TITLE_WALKER": "Walker (6k)",
             "TITLE_HIKER": "Hiker (8k)",
             "TITLE_ACHIEVER": "Achiever (10k)",
             "TITLE_ATHLETE": "Athlete (15k)",
-            "TITLE_CHAMPION": "Champion (20k)"
+            "TITLE_CHAMPION": "Champion (20k)",
+            "TITLE_AVGST_6K": "Walker (6k)",
+            "TITLE_AVGST_8K": "Hiker (8k)",
+            "TITLE_AVGST_10K": "Achiever (10k)",
+            "TITLE_AVGST_15K": "Athlete (15k)",
+            "TITLE_AVGST_20K": "Champion (20k)"
         },
         "badgeDescs": {
             "GLOBAL_DAILY_1": "Ranked 1st in global daily steps",
@@ -1031,11 +1037,17 @@
             "MILESTONE_500K": "Reached 500,000 total lifetime steps",
             "MILESTONE_1M": "Reached 1,000,000 total lifetime steps",
             "WEEKEND_WARRIOR": "Walked 20,000+ steps on a weekend",
+            "LIFESTYLE_WEEKEND": "Walked 20,000+ steps on a weekend",
             "TITLE_WALKER": "Maintained 6,000 daily average steps",
             "TITLE_HIKER": "Maintained 8,000 daily average steps",
             "TITLE_ACHIEVER": "Maintained 10,000 daily average steps",
             "TITLE_ATHLETE": "Maintained 15,000 daily average steps",
-            "TITLE_CHAMPION": "Maintained 20,000 daily average steps"
+            "TITLE_CHAMPION": "Maintained 20,000 daily average steps",
+            "TITLE_AVGST_6K": "Maintained 6,000 daily average steps",
+            "TITLE_AVGST_8K": "Maintained 8,000 daily average steps",
+            "TITLE_AVGST_10K": "Maintained 10,000 daily average steps",
+            "TITLE_AVGST_15K": "Maintained 15,000 daily average steps",
+            "TITLE_AVGST_20K": "Maintained 20,000 daily average steps"
         }
     },
     "Earnings": {
