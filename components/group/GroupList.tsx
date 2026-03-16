@@ -267,82 +267,103 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                     </button>
                 </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-3">
             {memberships.map((m) => (
                 <div
                     key={m.groups.id}
                     className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group"
                 >
-                    <Link href={`/groups/${m.groups.id}`} className="block relative h-full flex flex-row items-center gap-3 p-2.5 sm:p-3">
-                        {/* グループアイコン */}
-                        <div className="relative w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl border-2 border-white shadow-sm shrink-0 bg-[var(--theme-primary-light)] overflow-hidden">
-                            {m.groups.image_url ? (
-                                <img src={m.groups.image_url} alt="" className="w-full h-full object-cover" />
-                            ) : m.groups.header_image_url ? (
-                                <img src={m.groups.header_image_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center font-bold text-base sm:text-lg text-[var(--theme-primary)]">
-                                    {m.groups.name.substring(0, 1).toUpperCase()}
-                                </div>
-                            )}
-                            {/* ランクバッジ */}
+                    <Link href={`/groups/${m.groups.id}`} className="block h-full">
+                        {/* バナー — md 以上のみフル表示 */}
+                        <div className="hidden md:block w-full h-28 bg-[var(--theme-primary-light)] relative overflow-hidden rounded-t-xl border-b border-gray-100">
                             {m.rank && (
-                                <div className={`absolute -top-1 -left-1 z-10 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black shadow-sm border border-white
+                                <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
                                     ${m.rank === 1 ? 'bg-yellow-400 text-yellow-900' :
-                                        m.rank === 2 ? 'bg-gray-300 text-gray-800' :
-                                            m.rank === 3 ? 'bg-orange-400 text-orange-900' : 'bg-[var(--theme-primary)] text-white'}
+                                        m.rank === 2 ? 'bg-gray-200 text-gray-800' :
+                                            m.rank === 3 ? 'bg-orange-400 text-orange-900' : 'bg-white/90 text-[var(--theme-primary)]'}
                                 `}>
-                                    {m.rank}
+                                    #{m.rank}
                                 </div>
+                            )}
+                            {m.groups.header_image_url ? (
+                                <div className="absolute inset-0">
+                                    <img src={m.groups.header_image_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                                </div>
+                            ) : (
+                                <div className="absolute inset-0 bg-gradient-to-br from-[var(--theme-primary-light)] to-[var(--theme-gradient-to)]/20" />
                             )}
                         </div>
 
-                        {/* コンテンツ */}
-                        <div className="min-w-0 flex-1">
-                            <h3 className="text-sm sm:text-base font-bold text-gray-900 group-hover:text-[var(--theme-primary)] truncate leading-tight">
-                                {m.groups.name}
-                            </h3>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                {m.role === 'OWNER' && (
-                                    <span className="shrink-0 px-1 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase rounded leading-none">
-                                        {t('owner')}
-                                    </span>
+                        {/* コンテンツ — モバイル(<md): 横型コンパクト+背景バナー / デスクトップ(md+): 縦型リッチ */}
+                        <div className="relative">
+                            {/* モバイル背景: バナー画像を半透明で表示 */}
+                            {m.groups.header_image_url && (
+                                <div className="md:hidden absolute inset-0 z-0 rounded-xl overflow-hidden">
+                                    <img src={m.groups.header_image_url} alt="" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/80 to-white/60" />
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2.5 px-2.5 py-2 md:block md:px-4 md:pb-4 md:pt-0 relative z-[1]">
+                            {/* アイコン — モバイル: インライン / デスクトップ: ネガティブマージンでバナーに重ねる */}
+                            <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-2xl md:-mt-8 md:mb-2 border-2 md:border-4 border-white shadow-sm shrink-0 bg-[var(--theme-primary-light)] overflow-hidden">
+                                {m.groups.image_url ? (
+                                    <img src={m.groups.image_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center font-bold text-sm md:text-xl text-[var(--theme-primary)]">
+                                        {m.groups.name.substring(0, 1).toUpperCase()}
+                                    </div>
                                 )}
-                                <span className="text-[11px] text-gray-400 truncate">#{m.groups.keyword}</span>
                             </div>
-                            <div className="mt-1 flex items-center gap-2">
-                                {m.totalMembers && (
-                                    <span className="text-[11px] text-gray-500">
-                                        {t('members', { count: m.totalMembers })}
-                                    </span>
+
+                            {/* テキスト */}
+                            <div className="relative z-[1] min-w-0 flex-1 md:flex-none md:w-full md:pr-10">
+                                <h3 className="text-sm md:text-lg font-bold text-gray-900 group-hover:text-[var(--theme-primary)] truncate transition-colors leading-tight">
+                                    {m.groups.name}
+                                </h3>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    {m.role === 'OWNER' && (
+                                        <span className="shrink-0 px-1 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase rounded leading-none">
+                                            {t('owner')}
+                                        </span>
+                                    )}
+                                    <span className="text-[11px] text-gray-400 truncate">#{m.groups.keyword}</span>
+                                </div>
+                                <div className="flex items-center gap-2 md:gap-3 mt-0.5 md:mt-2">
+                                    {m.totalMembers && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] md:text-xs text-gray-500">
+                                            <svg className="hidden md:inline w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656-.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            {t('members', { count: m.totalMembers })}
+                                        </span>
+                                    )}
+                                    {m.rank && m.totalMembers && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] md:text-xs text-[var(--theme-primary)] font-bold">
+                                            🏆 {t('rankOf', { rank: m.rank, total: m.totalMembers })}
+                                        </span>
+                                    )}
+                                </div>
+                                {/* プログレスバー — デスクトップのみ */}
+                                {m.rank && m.totalMembers && m.totalMembers > 1 && (
+                                    <div className="hidden md:block mt-2.5 w-full">
+                                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                                    m.rank === 1 ? 'bg-yellow-400' :
+                                                    m.rank === 2 ? 'bg-gray-400' :
+                                                    m.rank === 3 ? 'bg-orange-400' : 'bg-[var(--theme-primary)]/60'
+                                                }`}
+                                                style={{ width: `${Math.max(10, ((m.totalMembers - m.rank + 1) / m.totalMembers) * 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
                                 )}
-                                {m.rank && m.totalMembers && (
-                                    <span className="text-[11px] text-[var(--theme-primary)] font-bold">
-                                        🏆 {t('rankOf', { rank: m.rank, total: m.totalMembers })}
-                                    </span>
-                                )}
+                            </div>
                             </div>
                         </div>
-
-                        {/* ミニプログレスバー（デスクトップのみ） */}
-                        {m.rank && m.totalMembers && m.totalMembers > 1 && (
-                            <div className="hidden sm:flex items-center shrink-0 w-16">
-                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-700 ease-out ${
-                                            m.rank === 1 ? 'bg-yellow-400' :
-                                            m.rank === 2 ? 'bg-gray-400' :
-                                            m.rank === 3 ? 'bg-orange-400' : 'bg-[var(--theme-primary)]/60'
-                                        }`}
-                                        style={{ width: `${Math.max(10, ((m.totalMembers - m.rank + 1) / m.totalMembers) * 100)}%` }}
-                                    />
-                                </div>
-                            </div>
-                        )}
                     </Link>
 
                     {/* シェアボタン */}
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
+                    <div className="absolute right-2 top-2 md:right-3 md:top-[calc(7rem-1.25rem)] z-20">
                         <button
                             onClick={(e) => {
                                 e.preventDefault();
