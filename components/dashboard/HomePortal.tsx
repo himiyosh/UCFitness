@@ -53,7 +53,7 @@ export default function HomePortal({
   const t = useTranslations('HomePortal');
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-48px-64px)] sm:h-auto overflow-hidden sm:overflow-visible">
+    <div className="flex flex-col sm:h-auto overflow-visible">
 
       {/* ===== ヒーローセクション ===== */}
       {!hideHero && (
@@ -75,7 +75,7 @@ export default function HomePortal({
       <QuickActions className="bg-transparent sm:bg-transparent shadow-none sm:shadow-none border-none sm:border-none" />
 
       {/* ===== モバイルタブ切替 ===== */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col">
         {/* タブバー */}
         <div className="flex border-b border-gray-200/60 bg-white/60 backdrop-blur-sm px-2" role="tablist">
           {MOBILE_TABS.map((tab) => (
@@ -95,8 +95,8 @@ export default function HomePortal({
           ))}
         </div>
 
-        {/* タブコンテンツ（スクロール可能） */}
-        <div className="flex-1 overflow-y-auto px-3 py-3">
+        {/* タブコンテンツ */}
+        <div className="px-3 py-3">
           {activeTab === 'missions' && <DailyMissions />}
           {activeTab === 'challenges' && <DashboardChallenges />}
           {activeTab === 'following' && <FollowingPanel />}

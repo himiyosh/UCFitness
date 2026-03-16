@@ -344,7 +344,7 @@ export default function WalkingRoutes() {
                         return (
                             <div
                                 key={route.id}
-                                className="border border-gray-100 rounded-xl p-3 hover:bg-gray-50/50 transition-colors"
+                                className="border border-gray-100 rounded-xl p-3 hover:bg-gray-50/50 hover:shadow-sm transition-all"
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex-1 min-w-0">

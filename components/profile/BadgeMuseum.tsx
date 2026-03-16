@@ -170,6 +170,10 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
           const badgeName = t.has(nameKey) ? t(nameKey) : group.name;
           const badgeDesc = t.has(descKey) ? t(descKey) : group.description;
 
+          // 個人アチーブメント（ACHIEVEMENT type）は一度取得したら永続。
+          // ランキング系（GLOBAL/GROUP）は繰り返し取得可能。
+          const isOneTime = group.type === 'ACHIEVEMENT';
+
           return (
             <div key={group.badgeCode}>
               {showSection && (
@@ -181,6 +185,29 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
                   <div className="flex-1 h-px bg-gray-100" />
                 </div>
               )}
+
+              {isOneTime ? (
+                /* ── 個人アチーブメント: 取得日インライン表示、アコーディオンなし ── */
+                <div className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-gray-50">
+                  <BadgeIcon
+                    category={group.category}
+                    type={group.type}
+                    rank={group.rank}
+                    className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-sm flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{badgeName}</p>
+                    {badgeDesc && (
+                      <p className="text-xs text-gray-400 truncate">{badgeDesc}</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">
+                    {group.dates[0]?.slice(0, 10)}
+                  </span>
+                </div>
+              ) : (
+                /* ── ランキング系: 取得回数 + アコーディオン ── */
+                <>
               <button
                 onClick={() => setExpandedBadge(isExpanded ? null : group.badgeCode)}
                 className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors text-left ${
@@ -226,6 +253,8 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
                     </div>
                   ))}
                 </div>
+              )}
+                </>
               )}
             </div>
           );

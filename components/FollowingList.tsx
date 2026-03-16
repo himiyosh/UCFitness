@@ -108,7 +108,7 @@ export default function FollowingList({ limit, compact = false, className = '' }
                 <Link
                     key={user.id}
                     href={user.username ? `/user/${user.username}` : '#'}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors group"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all group"
                 >
                     <UserAvatar
                         src={user.image}

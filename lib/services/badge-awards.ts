@@ -170,35 +170,35 @@ const assignStreakBadges = async (userId: string, dateStr: string, history: { da
         }
     }
 
-    const results: (string | null)[] = [];
-    if (streak >= 30) results.push(await awardBadge(userId, 'STREAK_30', dateStr, null));
-    if (streak >= 7) results.push(await awardBadge(userId, 'STREAK_7', dateStr, null));
-    if (streak >= 3) results.push(await awardBadge(userId, 'STREAK_3', dateStr, null));
-    return results;
+    const badgePromises: Promise<string | null>[] = [];
+    if (streak >= 30) badgePromises.push(awardBadge(userId, 'STREAK_30', dateStr, null));
+    if (streak >= 7) badgePromises.push(awardBadge(userId, 'STREAK_7', dateStr, null));
+    if (streak >= 3) badgePromises.push(awardBadge(userId, 'STREAK_3', dateStr, null));
+    return Promise.all(badgePromises);
 }
 
 const assignMilestoneBadges = async (userId: string, totalSteps: number): Promise<(string | null)[]> => {
     const dateStr = new Date().toISOString().split('T')[0];
-    const results: (string | null)[] = [];
+    const badgePromises: Promise<string | null>[] = [];
 
-    if (totalSteps >= 1000000) results.push(await awardBadge(userId, 'MILESTONE_1M', dateStr, null));
-    if (totalSteps >= 500000) results.push(await awardBadge(userId, 'MILESTONE_500K', dateStr, null));
-    if (totalSteps >= 100000) results.push(await awardBadge(userId, 'MILESTONE_100K', dateStr, null));
-    return results;
+    if (totalSteps >= 1000000) badgePromises.push(awardBadge(userId, 'MILESTONE_1M', dateStr, null));
+    if (totalSteps >= 500000) badgePromises.push(awardBadge(userId, 'MILESTONE_500K', dateStr, null));
+    if (totalSteps >= 100000) badgePromises.push(awardBadge(userId, 'MILESTONE_100K', dateStr, null));
+    return Promise.all(badgePromises);
 }
 
 const assignTitleBadges = async (userId: string, dateStr: string, totalSteps: number, totalDays: number): Promise<(string | null)[]> => {
     if (totalDays === 0) return [];
 
     const average = totalSteps / totalDays;
-    const results: (string | null)[] = [];
+    const badgePromises: Promise<string | null>[] = [];
 
-    if (average >= 20000) results.push(await awardBadge(userId, 'TITLE_AVGST_20K', dateStr, null));
-    if (average >= 15000) results.push(await awardBadge(userId, 'TITLE_AVGST_15K', dateStr, null));
-    if (average >= 10000) results.push(await awardBadge(userId, 'TITLE_AVGST_10K', dateStr, null));
-    if (average >= 8000) results.push(await awardBadge(userId, 'TITLE_AVGST_8K', dateStr, null));
-    if (average >= 6000) results.push(await awardBadge(userId, 'TITLE_AVGST_6K', dateStr, null));
-    return results;
+    if (average >= 20000) badgePromises.push(awardBadge(userId, 'TITLE_AVGST_20K', dateStr, null));
+    if (average >= 15000) badgePromises.push(awardBadge(userId, 'TITLE_AVGST_15K', dateStr, null));
+    if (average >= 10000) badgePromises.push(awardBadge(userId, 'TITLE_AVGST_10K', dateStr, null));
+    if (average >= 8000) badgePromises.push(awardBadge(userId, 'TITLE_AVGST_8K', dateStr, null));
+    if (average >= 6000) badgePromises.push(awardBadge(userId, 'TITLE_AVGST_6K', dateStr, null));
+    return Promise.all(badgePromises);
 }
 
 const assignLifestyleBadges = async (userId: string, dateStr: string, steps: number): Promise<(string | null)[]> => {

@@ -20,9 +20,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        console.log('[Cron] Starting step sync for all users...');
         await updateAllUserSteps();
-        console.log('[Cron] Step sync completed.');
 
         return NextResponse.json({
             success: true,

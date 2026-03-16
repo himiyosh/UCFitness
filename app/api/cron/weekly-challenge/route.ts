@@ -88,8 +88,6 @@ export async function GET(request: Request) {
             throw new Error(`チャレンジ作成失敗: ${error.message}`);
         }
 
-        console.log(`[Cron] ウィークリーチャレンジ作成完了: ${challenge.id} (${template.title})`);
-
         return NextResponse.json({
             success: true,
             message: 'ウィークリーチャレンジを作成しました',
