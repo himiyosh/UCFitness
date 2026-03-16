@@ -1316,10 +1316,9 @@ body {
 }
 
 /* デスクトップのみ 0.9x スケーリングを適用（モバイルは通常スクロールを優先）
-   ⚠️ 重要制約:
-   - html に overflow: hidden (両方向) を絶対に設定しないこと → 縦スクロールが死ぬ
-   - body は min-height ではなく height (固定) にすること → body 内部でスクロールさせるため
-   - min-height にすると body がコンテンツに合わせて伸び、overflow-y: auto が効かない */
+   注意: 以下の overflow 制御は 0.9x スケーリングのために必要な最低限の設定。
+   コンポーネント単位での overflow-hidden / max-h は各コンポーネントが
+   必要に応じて判断してよい（root スクロールを殺す設定だけ避ける） */
 @media (min-width: 1024px) {
   html {
     overflow-x: hidden; /* transform で横にはみ出す分だけクリップ */
