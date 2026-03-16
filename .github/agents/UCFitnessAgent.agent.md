@@ -275,6 +275,12 @@ tool_search_tool_regex(pattern="mcp_playwright", limit=30)
 - **影・ボーダー** — カードの影やボーダーが正しく描画されているか
 - **グリッドレイアウト** — モバイルで 1 カラム、デスクトップで複数カラムに正しく切り替わるか
 - **空状態** — データがない場合に適切な空状態メッセージが表示されるか（真っ白にならないか）
+- **モバイルパネル間延び検知（必須）** — モバイル (< 768px) でフォームパネル・CTAパネル・サイドパネルが以下に該当する場合はバグとして報告:
+  - 装飾要素（アイキャッチ絵文字 `w-20 h-20` 以上、背景デコレーション）がモバイルでも表示されている（`hidden md:block` 漏れ）
+  - パネルのパディングが `p-5`/`p-6` 以上（モバイルは `p-3` が基本）
+  - CTA ボタンが縦型レイアウト（絵文字上 + テキスト下）のまま（モバイルは横型 `flex items-center gap-3` が基本）
+  - 見出しのマージンが `mb-4` 以上（モバイルは `mb-2` が基本）
+  - 絵文字・アイコンが `text-2xl` 以上のサイズ（モバイルは `text-xl` が上限）
 
 ##### 🔔 ポップアップ・モーダル・通知精査
 
@@ -692,6 +698,13 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - 最小テキスト: `text-[9px]`〜`text-[11px]` 禁止 → `text-xs` (12px) 以上
 - z-index: ヘッダー `z-50` / モーダル `z-40` / ドロップダウン `z-30` / フローティング `z-20`
 - 広告スペースとの共存: ページ下部・コンテンツ間の余白を潰さない
+- **モバイルパネル間延び防止（必須）** — モバイル (<md) でフォームパネル・CTAパネル・サイドパネルの高さを最小限に保つ。以下に該当する場合は即修正:
+  - 装飾要素（アイキャッチイラスト・背景装飾）がモバイルで表示されている → `hidden md:block` / `hidden md:flex` で非表示化
+  - パネルのパディングが `p-5`/`p-6` → モバイルは `p-3`、デスクトップは `md:p-5`
+  - CTA が縦型レイアウト → モバイルは横型 `flex items-center gap-3 px-4 py-3`、デスクトップは `md:block md:p-4 md:text-center`
+  - 見出しマージン `mb-4` 以上 → モバイルは `mb-2`、デスクトップは `md:mb-4`
+  - 絵文字 `text-2xl` 以上 → モバイルは `text-xl`、デスクトップは `md:text-2xl`
+  - リファレンス: `app/[locale]/groups/page.tsx` の aside パネル
 - **`transition-all` 禁止** — ランキング行・ギアカード等のリスト要素には `transition-colors` のみ使用。`transition-all` は shadow・scale・padding 等をアニメーションし行高が変動する
 - **`hover:scale-*` 禁止** — リスト行・カードにスケール変換を適用しない。レイアウト崩れとバルーン見切れの原因
 - **リアクションバルーンの見切れ防止** — リアクションピッカーが表示される行は `overflow-visible` + ホバー時 `z-50` 動的切替が必須
@@ -700,6 +713,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **Portal ピッカーのカード中央配置** — ピッカーをトリガーボタン基準ではなく親カード基準で中央配置する場合、カードの wrapper div に `data-reaction-card` 属性を付与し、`triggerEl.closest('[data-reaction-card]')` でカード要素を取得してカード中心を基準に `translateX(-50%)` する。トリガーボタンだけを基準にすると、リアクション追加によるボタン位置の移動でピッカーもずれる
 - **Portal ↔ トリガー間のホバーギャップ（既知制限・変更禁止）** — Portal は DOM ツリー上でトリガーの子孫ではないため、カードの `mouseleave` → Portal の `mouseenter` 間にギャップが発生しピッカーが閉じうる。`isHoveringPickerRef` で部分緩和済みだが完全解決ではない。**現在の実装（fb07776）がユーザー承認済みの安定状態。この動作を変更する場合は必ずユーザーに確認すること**
 - **同一コンポーネント繰り返し修正の禁止** — 同じコンポーネントを 3 回以上修正する場合、個別パッチを中止し根本原因を体系的に分析する。修正 → 別の崩れ → 再修正のループは設計レベルの問題を示唆する
+- **カードリストのレスポンシブ設計（モバイル横型 / デスクトップ縦型）** — カード一覧を設計する際、モバイルとデスクトップで同じカード形状を使わない。モバイルでは **横型コンパクトカード**（アイコン左 + テキスト右、バナーなし）でスキャナブルなリスト、デスクトップ (md+) では **縦型リッチカード**（バナー画像上部 + オーバーラップアイコン + テキスト下部）でビジュアル豊かなグリッドにする。**ブレイクポイントは `sm`(640px) ではなく `md`(768px) を使用** — タブレットや大型スマホでバナーが表示され間延びするのを防止。モバイルカードの高さは ~56px 以下を目標（アイコン `w-10 h-10`=40px + `py-2`=16px）。実装パターン: バナーに `hidden md:block`、コンテンツ部に `flex items-center gap-2.5 px-2.5 py-2 md:block md:px-4 md:pb-4 md:pt-10`。プログレスバーや太い SVG アイコンなどの補助情報はデスクトップのみ表示 (`hidden md:block` / `hidden md:inline`)。リファレンス: `GroupList.tsx`
 - **`position: absolute` + レスポンシブオーバーライドの座標検証必須** — `absolute` 配置で `top/left` + `translate` による中央配置を行う要素が `sm:`/`md:` オーバーライドを持つ場合、各ブレイクポイントで参照コンテナのサイズ・向きを考慮した座標計算が正しいか検証する。特に親の `flex-direction` が変わる場合（`flex-col` → `sm:flex-row`）、子のabsolute座標は新しいレイアウト方向に合わせて再計算が必要。**古いレイアウト用の `sm:` 座標が残存していないか必ず確認すること。** リファレンス: `GroupList.tsx`（アイコン中央配置修正）
 - **モバイルで root スクロールを無効化しない** — `html/body` の `overflow: hidden` や全画面スケーリング（`transform: scale`）は、モバイルで下部パネル・CTA の見切れ/操作不能を起こしやすい。全画面スケーリングは `lg:` 以上に限定し、モバイルは通常スクロールを維持すること。
 - **サイドパネル `sticky` のモバイル適用禁止** — 2カラムの右パネルで `sticky top-*` を使う場合、モバイルには適用しない（`lg:sticky` を使用）。モバイルで `sticky` を有効にすると、Join/Create などのパネルが部分表示のまま固定化されることがある。
@@ -991,6 +1005,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | group_events 作成 500 エラー (FK 制約違反) | `group_events.created_by REFERENCES auth.users(id)` だが、NextAuth は `public.users` にユーザーを保存するため `auth.users` に該当ユーザーが存在しない。マイグレーション SQL のテンプレートが `auth.users` を参照していた | **マイグレーション SQL で `REFERENCES auth.users(id)` は禁止。** `REFERENCES public.users(id)` を使用する。copilot-instructions.md に「Supabase DB スキーマルール」を追加。修正マイグレーション: `migrations/fix_group_events_fk.sql` |
 | チャレンジ編集不可 (PUT API 未実装) | `/api/challenge/[challengeId]` に GET のみ実装し PUT/PATCH を忘れた。CRUD のうち Update が欠落した状態で出荷 | **新規テーブル/リソースの API 作成時は GET/POST/PUT/DELETE の 4 操作の要否を最初に確認し、必要な操作を最初から実装する。** copilot-instructions.md + Build Validation に「CRUD API 完全性チェック」を追加 |
 | 参加人数が 0 人表示 (Supabase count レスポンス形式) | `challenge_participants(count)` の返り値を `[{count: N}]` (配列) として扱ったが、Supabase バージョンにより `{count: N}` (単一オブジェクト) を返す場合がある。`challenge.challenge_participants?.[0]?.count` が `undefined` になり 0 にフォールバック | **Supabase の埋め込みカウント (`(count)`) は配列・オブジェクト両方の形式をハンドルする。** `Array.isArray(cp) ? cp[0]?.count : cp?.count` パターンを使用。リファレンス: `app/api/challenge/route.ts` |
+| カードリストのモバイル表示がぐちゃっとなる（縦型バナーカードの過剰適用） | グループ一覧カードを全ビューポートで縦型（バナー画像 `h-24` + オーバーラップアイコン + テキスト + プログレスバー）に統一した結果、モバイルでは各カード ~180px 高 × 3+ で 540px+ の縦スクロールが発生。375px 幅では情報密度が高すぎ「ぐちゃっとした印象」に。初回修正で `sm`(640px) ブレイクポイントを使用したが、タブレット・大型スマホでは 640px+ のビューポートになりリッチレイアウトが表示され間延び問題が再発 | **カードリストのレスポンシブ設計ルール**: (1) ブレイクポイントは `sm`(640px) ではなく **`md`(768px)** を使用 (2) モバイル(<md)は横型コンパクトカード（アイコン`w-10 h-10`左 + テキスト右、`px-2.5 py-2`、カード高さ ~56px） (3) デスクトップ(md+)は縦型リッチカード（バナー + オーバーラップアイコン + プログレスバー） (4) 補助情報は `hidden md:block` でデスクトップのみ (5) グリッドギャップ `gap-1.5 md:gap-3`。リファレンス: `GroupList.tsx`, `app/[locale]/groups/page.tsx` |
 
 ---
 

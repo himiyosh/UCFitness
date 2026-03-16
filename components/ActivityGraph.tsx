@@ -342,13 +342,13 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-y-3 gap-x-4 bg-gray-50 p-2 rounded-lg min-h-[48px]">
 
                     {/* Navigation (Left Aligned) */}
-                    <div className="flex items-center gap-2 h-8">
+                    <div className="flex items-center gap-2 min-h-[44px]">
                         {viewMode === 'WEEKLY' ? (
                             <>
                                 <button
                                     onClick={() => setWeekOffset(prev => prev - 1)}
                                     aria-label="Previous week"
-                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
+                                    className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -363,7 +363,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                     onClick={() => setWeekOffset(prev => prev + 1)}
                                     disabled={weekOffset >= 0}
                                     aria-label="Next week"
-                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
+                                    className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -375,7 +375,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                 <button
                                     onClick={() => setMonthOffset(prev => prev - 1)}
                                     aria-label="Previous month"
-                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all h-full aspect-square flex items-center justify-center"
+                                    className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -390,7 +390,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                     onClick={() => setMonthOffset(prev => prev + 1)}
                                     disabled={monthOffset >= 0}
                                     aria-label="Next month"
-                                    className="p-1 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent h-full aspect-square flex items-center justify-center"
+                                    className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                         <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />

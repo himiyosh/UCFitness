@@ -416,7 +416,7 @@ export default function GroupMembersPanel({
 
                         {/* Actions */}
                         {isOwner && (
-                            <div className={`flex flex-row gap-2 shrink-0 ${!isEditing ? 'invisible pointer-events-none' : ''}`}>
+                            <div className={`flex flex-wrap gap-1.5 sm:gap-2 shrink-0 ${!isEditing ? 'invisible pointer-events-none' : ''}`}>
                                 {member.user_id === currentUserId ? (
                                     member.role === 'OWNER' && (
                                         <>

@@ -456,7 +456,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         <span className="text-xl">📈</span>
                         {t('accountStats')}
                     </h2>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
                             <div className="text-2xl font-black account-stat-number">{ownedTitles.length}</div>
                             <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('titlesOwned')}</div>

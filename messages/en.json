@@ -24,7 +24,9 @@
         "ucHint": "UndouCoin (\u904b\u52d5\u30b3\u30a4\u30f3) \u2014 Coins earned from your daily steps. Walk more to earn more!",
         "you": "YOU",
         "anonymous": "Anonymous",
-        "userNotFound": "User not found."
+        "userNotFound": "User not found.",
+        "error": "An error occurred. Please try again.",
+        "retry": "Retry"
     },
     "Settings": {
         "title": "Settings",
@@ -292,8 +294,8 @@
         "noGroups": "You haven't joined any groups yet.",
         "noGroupsDescription": "Join a group and compete with others on step counts!",
         "joinGroup": "Join a Group",
-        "enterGroupName": "Enter a group name to see its ranking.",
-        "placeholder": "GroupId",
+        "enterGroupName": "Enter the keyword of the group you want to join.",
+        "placeholder": "Group keyword",
         "join": "Join",
         "joining": "Joining...",
         "success": "Joined group: {keyword}",
@@ -351,6 +353,10 @@
         "tipBody": "The Group ID cannot be changed later. Choose something memorable!",
         "owner": "Owner",
         "reorderFailed": "Failed to save order. Reverting.",
+        "editOrder": "Reorder",
+        "saveOrder": "Save",
+        "cancel": "Cancel",
+        "dragToReorder": "Drag to reorder",
         "moveUp": "Move Up",
         "moveDown": "Move Down"
     },
@@ -696,6 +702,7 @@
         "titleLabel": "Title",
         "titlePlaceholder": "e.g. 100K Steps in a Week",
         "activeChallenges": "Active Challenges",
+        "participantUnit": " joined",
         "viewAll": "View All",
         "backToHome": "Back to Home",
         "retry": "Retry",
@@ -870,7 +877,8 @@
         "minutesAgo": "{count}m ago",
         "hoursAgo": "{count}h ago",
         "daysAgo": "{count}d ago",
-        "viewProfile": "View Profile"
+        "viewProfile": "View Profile",
+        "sendError": "Failed to send message. Please try again."
     },
     "WalkingRoutes": {
         "title": "Walking Routes",
@@ -899,7 +907,10 @@
         "totalDistance": "Total Distance",
         "favorites": "Favorites",
         "minutes": "min",
-        "times": "times"
+        "times": "times",
+        "createError": "Failed to create route. Please try again.",
+        "updateError": "Failed to update. Please try again.",
+        "deleteError": "Failed to delete. Please try again."
     },
     "GoalAdvisor": {
         "title": "Smart Goal Advisor",

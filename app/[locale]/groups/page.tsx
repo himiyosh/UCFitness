@@ -109,7 +109,10 @@ export default async function MyGroupsPage() {
         if (best === null) return m.rank;
         return m.rank < best ? m.rank : best;
     }, null as number | null);
-    const bestRankGroup = bestRank ? membershipsWithRank.find((m: any) => m.rank === bestRank) : null;
+    // 全グループのTop3ランクを収集（グループ順に依存せず全て表示）
+    const topRankedGroups = membershipsWithRank
+        .filter((m: any) => m.rank && m.rank <= 3)
+        .sort((a: any, b: any) => a.rank - b.rank);
 
     // Use custom image if available, otherwise fallback to session image
     const finalUser = {
@@ -164,52 +167,44 @@ export default async function MyGroupsPage() {
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                     {/* Group List (Left on Desktop, Top on Mobile) */}
                     <section className="flex-1 w-full">
-                        {/* G1/G8: ハイライト + グループサマリー統合パネル */}
+                        {/* ハイライト + サマリー統合パネル */}
                         {sortedMemberships.length > 0 && (
-                            <div className="bg-white midnight-solid-panel rounded-xl p-4 sm:p-5 border border-gray-100 shadow-sm mb-4">
-                                {/* ハイライトバナー（Top3 のみ表示） */}
-                                {bestRank && bestRankGroup && bestRank <= 3 && (
-                                    <div className={`p-3 rounded-lg border flex items-center gap-3 mb-3 ${
-                                        bestRank === 1 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' :
-                                        bestRank === 2 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200' :
-                                        'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'
-                                    }`}>
-                                        <span className="text-2xl">{bestRank === 1 ? '🥇' : bestRank === 2 ? '🥈' : '🥉'}</span>
-                                        <div>
-                                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
-                                            <div className="text-sm font-bold text-gray-900">
-                                                {t('topRankedIn', { rank: bestRank, group: bestRankGroup.groups.name })}
-                                            </div>
+                            <div className="bg-white midnight-solid-panel rounded-xl p-3 sm:p-4 border border-gray-100 shadow-sm mb-3">
+                                {/* ハイライトバナー */}
+                                {topRankedGroups.length > 0 && (
+                                    <div className="mb-2.5">
+                                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">{t('todayHighlight')}</div>
+                                        <div className="flex items-center gap-1 flex-wrap">
+                                            {topRankedGroups.map((m: any) => (
+                                                <span key={m.groups.id} className="inline-flex items-center gap-0.5 text-[11px] font-bold text-gray-700">
+                                                    <span>{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
+                                                    <span className="truncate max-w-[120px]">{m.groups.name}</span>
+                                                </span>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* グループサマリー */}
-                                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                    <span className="text-lg">📊</span>
-                                    {t('groupSummary')}
-                                </h3>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
-                                        <div className="text-xl font-black text-[var(--theme-primary)]">{sortedMemberships.length}</div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('groupsJoined')}</div>
-                                    </div>
-                                    <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
-                                        <div className="text-xl font-black text-[var(--theme-primary)]">{totalMembers}</div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('totalGroupMembers')}</div>
-                                    </div>
-                                    <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
-                                        <div className="text-xl font-black text-[var(--theme-primary)]">
-                                            {bestRank ? `#${bestRank}` : '—'}
-                                        </div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('bestRank')}</div>
-                                    </div>
+                                {/* サマリー: ラベル+値をインラインでコンパクトに */}
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    <span className="inline-flex items-center gap-1.5 text-xs">
+                                        <span className="font-black text-base text-[var(--theme-primary)]">{sortedMemberships.length}</span>
+                                        <span className="font-medium text-gray-500">{t('groupsJoined')}</span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 text-xs">
+                                        <span className="font-black text-base text-[var(--theme-primary)]">{totalMembers}</span>
+                                        <span className="font-medium text-gray-500">{t('totalGroupMembers')}</span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 text-xs">
+                                        <span className="font-black text-base text-[var(--theme-primary)]">{bestRank ? `#${bestRank}` : '—'}</span>
+                                        <span className="font-medium text-gray-500">{t('bestRank')}</span>
+                                    </span>
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">{t('yourGroups')}</h2>
+                        <div className="mb-3">
+                            <h2 className="text-base font-bold text-gray-900">{t('yourGroups')}</h2>
                         </div>
 
                         {!memberships || memberships.length === 0 ? (
@@ -222,25 +217,29 @@ export default async function MyGroupsPage() {
                     </section>
 
                     {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
-                    <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-24 space-y-4">
+                    <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-24 space-y-3">
                         {/* Join / Create */}
                         <div>
-                            <div className="flex items-center mb-4">
-                                <h2 className="text-lg font-bold text-gray-900">{t('joinOrCreate')}</h2>
+                            <div className="flex items-center mb-2">
+                                <h2 className="text-base font-bold text-gray-900">{t('joinOrCreate')}</h2>
                             </div>
-                            <div className="bg-[var(--theme-primary-light)] midnight-solid-panel rounded-xl p-6 border border-[var(--theme-primary)]/20">
-                                {/* G4: イラスト風装飾 */}
-                                <div className="flex justify-center mb-4">
-                                    <div className="flex items-end gap-1">
-                                        <div className="w-6 h-10 bg-[var(--theme-primary)]/15 rounded-t-full" />
-                                        <div className="w-6 h-16 bg-[var(--theme-primary)]/25 rounded-t-full" />
-                                        <div className="w-6 h-12 bg-[var(--theme-primary)]/20 rounded-t-full" />
-                                        <div className="w-6 h-20 bg-[var(--theme-primary)]/30 rounded-t-full" />
-                                        <div className="w-6 h-14 bg-[var(--theme-primary)]/20 rounded-t-full" />
+                            <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-[var(--theme-primary-light)] via-white to-white border border-[var(--theme-primary)]/20 shadow-sm">
+                                {/* 装飾 — デスクトップのみ */}
+                                <div className="hidden md:block absolute right-0 top-0 w-32 h-32 bg-[var(--theme-primary)]/5 rounded-bl-full translate-x-8 -translate-y-8" />
+                                <div className="hidden md:block absolute left-0 bottom-0 w-24 h-24 bg-[var(--theme-primary)]/5 rounded-tr-full -translate-x-8 translate-y-8" />
+                                
+                                <div className="relative p-3 md:p-5 md:pb-6">
+                                    {/* アイキャッチ — デスクトップのみ */}
+                                    <div className="hidden md:flex justify-center mb-4">
+                                        <div className="relative w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                                            <div className="absolute inset-0 rounded-full border-[3px] border-[var(--theme-primary)]/20 border-dashed animate-[spin_10s_linear_infinite]" />
+                                            <div className="absolute inset-2 rounded-full bg-gradient-to-br from-[var(--theme-primary-light)] to-[var(--theme-primary)]/10" />
+                                            <span className="text-2xl relative z-10 -ml-0.5">🤝</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="w-full">
-                                    <GroupSettings />
+                                    <div className="w-full">
+                                        <GroupSettings />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -248,11 +247,13 @@ export default async function MyGroupsPage() {
                         {/* G5: グループ作成CTA */}
                         <Link
                             href="/groups/create"
-                            className="block w-full p-4 rounded-xl bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] text-white text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group cursor-pointer"
+                            className="flex items-center gap-3 w-full px-4 py-3 md:block md:p-4 md:text-center rounded-xl bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] text-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group cursor-pointer"
                         >
-                            <div className="text-2xl mb-1">🏃‍♂️</div>
-                            <div className="font-bold text-sm">{t('createGroup')}</div>
-                            <div className="text-xs text-white/80 mt-0.5">{t('createGroupDesc')}</div>
+                            <span className="text-xl md:text-2xl md:mb-1 shrink-0">🏃‍♂️</span>
+                            <div className="min-w-0">
+                                <div className="font-bold text-sm">{t('createGroup')}</div>
+                                <div className="text-[11px] md:text-xs text-white/80">{t('createGroupDesc')}</div>
+                            </div>
                         </Link>
                     </aside>
                 </div>

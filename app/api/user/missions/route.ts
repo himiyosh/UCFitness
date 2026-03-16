@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString } from '@/lib/date-utils';
+import { reportError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export const dynamic = 'force-dynamic';
  * 歩数ミッションは自動判定する。
  */
 export async function GET() {
+  try {
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,12 +24,19 @@ export async function GET() {
     const today = getJSTDateString();
 
     // 今日のミッションが既にあるか確認
-    let { data: missions } = await supabaseAdmin
+    const { data: existingMissions, error: fetchError } = await supabaseAdmin
         .from('daily_missions')
         .select('id, mission_type, title, description, reward_uc, is_completed, completed_at')
         .eq('user_id', userId)
         .eq('date', today)
         .order('mission_type', { ascending: true });
+
+    if (fetchError) {
+        reportError('user/missions:GET:fetch', fetchError, { userId });
+        return NextResponse.json({ error: 'ミッション取得失敗' }, { status: 500 });
+    }
+
+    let missions = existingMissions;
 
     if (!missions || missions.length === 0) {
         // 今日のミッションを生成（3つ）
@@ -46,6 +55,7 @@ export async function GET() {
             .select('id, mission_type, title, description, reward_uc, is_completed, completed_at');
 
         if (error) {
+            reportError('user/missions:GET:create', error, { userId });
             return NextResponse.json({ error: 'ミッション生成失敗' }, { status: 500 });
         }
         missions = created || [];
@@ -56,12 +66,16 @@ export async function GET() {
 
     if (uncompletedMissions.length > 0) {
         // 今日の歩数を取得
-        const { data: stepData } = await supabaseAdmin
+        const { data: stepData, error: stepError } = await supabaseAdmin
             .from('daily_steps')
             .select('steps')
             .eq('user_id', userId)
             .eq('date', today)
             .single();
+
+        if (stepError && stepError.code !== 'PGRST116') {
+            reportError('user/missions:GET:steps', stepError, { userId });
+        }
         const todaySteps = stepData?.steps ?? 0;
 
         // 各ミッションを自動判定
@@ -87,6 +101,10 @@ export async function GET() {
     const streak = await calculateMissionStreak(userId, today);
 
     return NextResponse.json({ missions, date: today, allCompleted, streak });
+  } catch (err) {
+    reportError('user/missions:GET', err);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
 }
 
 /**
@@ -94,6 +112,7 @@ export async function GET() {
  * ミッション再チェックをトリガー（手動完了は不可、自動判定のみ）
  */
 export async function POST(request: Request) {
+  try {
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -112,24 +131,33 @@ export async function POST(request: Request) {
     const today = getJSTDateString();
 
     // 今日のミッションを取得
-    const { data: missions } = await supabaseAdmin
+    const { data: missions, error: fetchError } = await supabaseAdmin
         .from('daily_missions')
         .select('id, mission_type, title, description, reward_uc, is_completed, completed_at')
         .eq('user_id', userId)
         .eq('date', today)
         .order('mission_type', { ascending: true });
 
+    if (fetchError) {
+        reportError('user/missions:POST:fetch', fetchError, { userId });
+        return NextResponse.json({ error: 'ミッション取得失敗' }, { status: 500 });
+    }
+
     if (!missions || missions.length === 0) {
         return NextResponse.json({ error: 'ミッションが見つかりません' }, { status: 404 });
     }
 
     // 今日の歩数を取得
-    const { data: stepData } = await supabaseAdmin
+    const { data: stepData, error: stepError } = await supabaseAdmin
         .from('daily_steps')
         .select('steps')
         .eq('user_id', userId)
         .eq('date', today)
         .single();
+
+    if (stepError && stepError.code !== 'PGRST116') {
+        reportError('user/missions:POST:steps', stepError, { userId });
+    }
     const todaySteps = stepData?.steps ?? 0;
 
     let newlyCompleted = 0;
@@ -162,6 +190,10 @@ export async function POST(request: Request) {
         bonusAwarded: allCompleted && newlyCompleted > 0,
         bonusUc: allCompleted && newlyCompleted > 0 ? 100 : 0,
     });
+  } catch (err) {
+    reportError('user/missions:POST', err);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
 }
 
 // ============================================
@@ -199,13 +231,18 @@ async function completeMissionAndReward(
     date: string,
 ): Promise<void> {
     // ミッションを完了に更新
-    await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
         .from('daily_missions')
         .update({
             is_completed: true,
             completed_at: new Date().toISOString(),
         })
         .eq('id', missionId);
+
+    if (updateError) {
+        reportError('user/missions:completeMission:update', updateError, { missionId });
+        return;
+    }
 
     // 報酬UCを付与（冪等性キーで重複防止）
     const { error: txError } = await supabaseAdmin
@@ -219,22 +256,37 @@ async function completeMissionAndReward(
             idempotency_key: `mission:${missionId}`,
         });
 
-    if (!txError) {
-        const { data: balanceData } = await supabaseAdmin
-            .from('coin_balances')
-            .select('total_balance, total_bonus')
-            .eq('user_id', userId)
-            .single();
+    if (txError) {
+        // 冪等性キー重複 (23505) はスキップ、それ以外はログ記録
+        if (txError.code !== '23505') {
+            reportError('user/missions:completeMission:transaction', txError, { missionId, rewardUc });
+        }
+        return;
+    }
 
-        if (balanceData) {
-            await supabaseAdmin
-                .from('coin_balances')
-                .update({
-                    total_balance: balanceData.total_balance + rewardUc,
-                    total_bonus: balanceData.total_bonus + rewardUc,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('user_id', userId);
+    const { data: balanceData, error: balanceError } = await supabaseAdmin
+        .from('coin_balances')
+        .select('total_balance, total_bonus')
+        .eq('user_id', userId)
+        .single();
+
+    if (balanceError) {
+        reportError('user/missions:completeMission:balance', balanceError, { userId });
+        return;
+    }
+
+    if (balanceData) {
+        const { error: balanceUpdateError } = await supabaseAdmin
+            .from('coin_balances')
+            .update({
+                total_balance: balanceData.total_balance + rewardUc,
+                total_bonus: balanceData.total_bonus + rewardUc,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId);
+
+        if (balanceUpdateError) {
+            reportError('user/missions:completeMission:balanceUpdate', balanceUpdateError, { userId, rewardUc });
         }
     }
 }
@@ -253,21 +305,37 @@ async function awardAllCompletedBonus(userId: string, date: string): Promise<voi
             idempotency_key: bonusKey,
         });
 
-    if (!bonusError) {
-        const { data: bd } = await supabaseAdmin
+    if (bonusError) {
+        // 冪等性キー重複はスキップ
+        if (bonusError.code !== '23505') {
+            reportError('user/missions:allCompletedBonus:insert', bonusError, { userId, date });
+        }
+        return;
+    }
+
+    const { data: bd, error: balanceFetchError } = await supabaseAdmin
+        .from('coin_balances')
+        .select('total_balance, total_bonus')
+        .eq('user_id', userId)
+        .single();
+
+    if (balanceFetchError) {
+        reportError('user/missions:allCompletedBonus:balance', balanceFetchError, { userId });
+        return;
+    }
+
+    if (bd) {
+        const { error: balUpdateError } = await supabaseAdmin
             .from('coin_balances')
-            .select('total_balance, total_bonus')
-            .eq('user_id', userId)
-            .single();
-        if (bd) {
-            await supabaseAdmin
-                .from('coin_balances')
-                .update({
-                    total_balance: bd.total_balance + 100,
-                    total_bonus: bd.total_bonus + 100,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('user_id', userId);
+            .update({
+                total_balance: bd.total_balance + 100,
+                total_bonus: bd.total_bonus + 100,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId);
+
+        if (balUpdateError) {
+            reportError('user/missions:allCompletedBonus:update', balUpdateError, { userId });
         }
     }
 }

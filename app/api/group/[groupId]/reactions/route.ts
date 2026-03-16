@@ -88,6 +88,12 @@ export async function POST(
         }
 
         const { groupId } = await context.params;
+
+        // UUIDバリデーション
+        if (!UUID_REGEX.test(groupId)) {
+            return NextResponse.json({ error: 'Invalid group ID' }, { status: 400 });
+        }
+
         const body = await request.json();
         const { toUserId, emoji, period } = body;
 
@@ -158,6 +164,12 @@ export async function DELETE(
         }
 
         const { groupId } = await context.params;
+
+        // UUIDバリデーション
+        if (!UUID_REGEX.test(groupId)) {
+            return NextResponse.json({ error: 'Invalid group ID' }, { status: 400 });
+        }
+
         const { searchParams } = new URL(request.url);
         const toUserId = searchParams.get('toUserId');
         const emoji = searchParams.get('emoji');
@@ -165,6 +177,11 @@ export async function DELETE(
 
         if (!toUserId || !emoji || !period) {
             return NextResponse.json({ error: 'toUserId, emoji, period are required' }, { status: 400 });
+        }
+
+        // toUserId UUID バリデーション
+        if (!UUID_REGEX.test(toUserId)) {
+            return NextResponse.json({ error: 'Invalid toUserId' }, { status: 400 });
         }
 
         const { error } = await supabaseAdmin

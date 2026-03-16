@@ -157,7 +157,7 @@ export default function FollowingPanel() {
                 <div className="flex rounded-lg border border-gray-200 overflow-hidden">
                     <button
                         onClick={() => setTab('activity')}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-[44px] ${
                             tab === 'activity'
                                 ? 'bg-[var(--theme-primary)] text-white'
                                 : 'bg-white text-gray-600 hover:bg-gray-50'
@@ -167,7 +167,7 @@ export default function FollowingPanel() {
                     </button>
                     <button
                         onClick={() => setTab('comparison')}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-[44px] ${
                             tab === 'comparison'
                                 ? 'bg-[var(--theme-primary)] text-white'
                                 : 'bg-white text-gray-600 hover:bg-gray-50'

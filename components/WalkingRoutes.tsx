@@ -37,6 +37,7 @@ export default function WalkingRoutes() {
     const [routes, setRoutes] = useState<WalkingRoute[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -105,11 +106,11 @@ export default function WalkingRoutes() {
             setFormDuration('');
             setFormDifficulty('normal');
         } catch {
-            // エラー処理は省略（フォームは保持）
+            setActionError(t('createError'));
         } finally {
             setIsSaving(false);
         }
-    }, [formName, formDescription, formDistance, formDuration, formDifficulty, isSaving]);
+    }, [formName, formDescription, formDistance, formDuration, formDifficulty, isSaving, t]);
 
     // お気に入り切替
     const handleToggleFavorite = useCallback(async (routeId: string, currentValue: boolean) => {
@@ -124,11 +125,11 @@ export default function WalkingRoutes() {
             const data = await res.json();
             setRoutes((prev) => prev.map((r) => (r.id === routeId ? data.route : r)));
         } catch {
-            // エラー時は何もしない
+            setActionError(t('updateError'));
         } finally {
             setActionLoadingId(null);
         }
-    }, []);
+    }, [t]);
 
     // 歩いた記録
     const handleLogWalk = useCallback(async (routeId: string) => {
@@ -143,11 +144,11 @@ export default function WalkingRoutes() {
             const data = await res.json();
             setRoutes((prev) => prev.map((r) => (r.id === routeId ? data.route : r)));
         } catch {
-            // エラー時は何もしない
+            setActionError(t('updateError'));
         } finally {
             setActionLoadingId(null);
         }
-    }, []);
+    }, [t]);
 
     // 削除
     const handleDelete = useCallback(async (routeId: string) => {
@@ -160,11 +161,11 @@ export default function WalkingRoutes() {
             if (!res.ok) throw new Error('delete failed');
             setRoutes((prev) => prev.filter((r) => r.id !== routeId));
         } catch {
-            // エラー時は何もしない
+            setActionError(t('deleteError'));
         } finally {
             setActionLoadingId(null);
         }
-    }, []);
+    }, [t]);
 
     // ローディング
     if (isLoading) {
@@ -196,6 +197,19 @@ export default function WalkingRoutes() {
 
     return (
         <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 p-4 hover:shadow-lg transition-shadow">
+            {/* アクションエラートースト */}
+            {actionError && (
+                <div className="mb-3 p-2.5 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between gap-2">
+                    <p className="text-xs text-red-600 font-medium">{actionError}</p>
+                    <button
+                        onClick={() => setActionError(null)}
+                        className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0"
+                        aria-label="Close"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
             {/* ヘッダー */}
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">

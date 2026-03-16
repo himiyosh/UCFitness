@@ -165,7 +165,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 role="tab"
                                 aria-selected={isActive}
                                 aria-label={`${t(tab.labelKey)} ${t('leaderboard')}`}
-                                className={`relative z-10 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer text-center ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
+                                className={`relative z-10 px-2.5 sm:px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer text-center whitespace-nowrap ${!isMidnight ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 border border-gray-200 hover:bg-gray-50') : ''}`}
                                 style={isMidnight ? (isActive ? {
                                     background: 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
                                     color: '#ffffff',
