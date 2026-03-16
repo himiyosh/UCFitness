@@ -353,6 +353,10 @@
         "tipBody": "The Group ID cannot be changed later. Choose something memorable!",
         "owner": "Owner",
         "reorderFailed": "Failed to save order. Reverting.",
+        "editOrder": "Reorder",
+        "saveOrder": "Save",
+        "cancel": "Cancel",
+        "dragToReorder": "Drag to reorder",
         "moveUp": "Move Up",
         "moveDown": "Move Down"
     },

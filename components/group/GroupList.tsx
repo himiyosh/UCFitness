@@ -6,6 +6,24 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Spinner from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface GroupMembership {
     role: string;
@@ -21,73 +39,141 @@ interface GroupMembership {
     };
 }
 
+// ドラッグ可能なカード（編集モード用）
+function SortableGroupCard({ m, t }: { m: GroupMembership; t: ReturnType<typeof useTranslations<'Groups'>> }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: m.groups.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`relative bg-white midnight-solid-panel rounded-xl border shadow-sm flex items-center gap-3 p-3 ${
+                isDragging
+                    ? 'border-[var(--theme-primary)] shadow-lg z-50 opacity-90'
+                    : 'border-gray-100'
+            }`}
+        >
+            {/* ドラッグハンドル */}
+            <button
+                className="cursor-grab active:cursor-grabbing p-1.5 rounded-lg text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-colors shrink-0 touch-none"
+                aria-label={t('dragToReorder')}
+                {...attributes}
+                {...listeners}
+            >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                </svg>
+            </button>
+
+            {/* グループアイコン */}
+            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[var(--theme-primary-light)] flex items-center justify-center">
+                {m.groups.image_url ? (
+                    <img src={m.groups.image_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                    <span className="font-bold text-sm text-[var(--theme-primary)]">
+                        {m.groups.name.substring(0, 1).toUpperCase()}
+                    </span>
+                )}
+            </div>
+
+            {/* グループ情報 */}
+            <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-gray-900 truncate">{m.groups.name}</h3>
+                <span className="text-xs text-gray-500">#{m.groups.keyword}</span>
+            </div>
+
+            {/* 順位バッジ */}
+            {m.rank && (
+                <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold ${
+                    m.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                    m.rank === 2 ? 'bg-gray-100 text-gray-600' :
+                    m.rank === 3 ? 'bg-orange-100 text-orange-700' :
+                    'bg-gray-50 text-gray-500'
+                }`}>
+                    #{m.rank}
+                </span>
+            )}
+        </div>
+    );
+}
+
 export default function GroupList({ initialMemberships }: { initialMemberships: GroupMembership[] }) {
     const [memberships, setMemberships] = useState(initialMemberships);
+    const [isEditing, setIsEditing] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [editOrder, setEditOrder] = useState<GroupMembership[]>(initialMemberships);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const router = useRouter();
     const t = useTranslations('Groups');
     const { error: toastError } = useToast();
 
-    // 共通の並び替えAPI呼び出しロジック
-    const submitReorder = useCallback(async (newList: GroupMembership[]) => {
+    // DnD センサー設定（タッチ + ポインター + キーボード）
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+
+    // 編集モード開始
+    const startEditing = useCallback(() => {
+        setEditOrder([...memberships]);
+        setIsEditing(true);
+    }, [memberships]);
+
+    // 編集キャンセル
+    const cancelEditing = useCallback(() => {
+        setIsEditing(false);
+        setEditOrder(memberships);
+    }, [memberships]);
+
+    // 並び替え保存
+    const saveOrder = useCallback(async () => {
         setIsUpdating(true);
-        setMemberships(newList); // Optimistic Update
+        setMemberships(editOrder); // Optimistic
+        setIsEditing(false);
 
         try {
-            const keywords = newList.map(m => m.groups.keyword);
-
+            const keywords = editOrder.map(m => m.groups.keyword);
             const res = await fetch('/api/user/group', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'reorder',
-                    groupKeywords: keywords
-                }),
+                body: JSON.stringify({ action: 'reorder', groupKeywords: keywords }),
             });
-
-            if (!res.ok) {
-                throw new Error('Failed to update order');
-            }
-
+            if (!res.ok) throw new Error('Failed to update order');
             router.refresh();
-        } catch (error) {
-            console.error(error);
+        } catch {
             toastError(t('reorderFailed'));
-            setMemberships(initialMemberships); // Revert
+            setMemberships(initialMemberships);
         } finally {
             setIsUpdating(false);
         }
-    }, [router, toastError, t, initialMemberships]);
+    }, [editOrder, router, toastError, t, initialMemberships]);
 
-    const handleMakePrimary = useCallback(async (targetId: string) => {
-        if (isUpdating) return;
+    // DnD完了
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
 
-        const targetIndex = memberships.findIndex(m => m.groups.id === targetId);
-        if (targetIndex <= 0) return;
+        setEditOrder((prev) => {
+            const oldIndex = prev.findIndex(m => m.groups.id === active.id);
+            const newIndex = prev.findIndex(m => m.groups.id === over.id);
+            return arrayMove(prev, oldIndex, newIndex);
+        });
+    }, []);
 
-        const targetGroup = memberships[targetIndex];
-        const newList = [
-            targetGroup,
-            ...memberships.filter(m => m.groups.id !== targetId)
-        ];
-
-        await submitReorder(newList);
-    }, [isUpdating, memberships, submitReorder]);
-
-    const handleMove = useCallback(async (index: number, direction: -1 | 1) => {
-        if (isUpdating) return;
-
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= memberships.length) return;
-
-        const newList = [...memberships];
-        [newList[index], newList[newIndex]] = [newList[newIndex], newList[index]];
-
-        await submitReorder(newList);
-    }, [isUpdating, memberships, submitReorder]);
-
-    // G7: 招待リンクをコピー
+    // 招待リンクコピー
     const handleShareInvite = useCallback(async (keyword: string, groupId: string) => {
         const url = `${window.location.origin}/groups/join?keyword=${encodeURIComponent(keyword)}`;
         try {
@@ -95,7 +181,6 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
             setCopiedId(groupId);
             setTimeout(() => setCopiedId(null), 2000);
         } catch {
-            // フォールバック
             const textarea = document.createElement('textarea');
             textarea.value = url;
             document.body.appendChild(textarea);
@@ -121,9 +206,69 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
         );
     }
 
+    // === 編集モード ===
+    if (isEditing) {
+        return (
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 font-medium">{t('dragToReorder')}</p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={cancelEditing}
+                            className="px-3 py-1.5 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                            {t('cancel')}
+                        </button>
+                        <button
+                            onClick={saveOrder}
+                            disabled={isUpdating}
+                            className="px-3 py-1.5 text-sm font-semibold text-white bg-[var(--theme-primary)] hover:opacity-90 rounded-lg transition-opacity flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                            {isUpdating && <Spinner size="sm" className="text-white" />}
+                            {t('saveOrder')}
+                        </button>
+                    </div>
+                </div>
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={editOrder.map(m => m.groups.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="space-y-2">
+                            {editOrder.map((m) => (
+                                <SortableGroupCard key={m.groups.id} m={m} t={t} />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
+            </div>
+        );
+    }
+
+    // === 通常モード ===
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {memberships.map((m, index) => (
+        <div>
+            {/* 編集ボタン（グループが2つ以上ある場合のみ表示） */}
+            {memberships.length >= 2 && (
+                <div className="flex justify-end mb-3">
+                    <button
+                        onClick={startEditing}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        aria-label={t('editOrder')}
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                        {t('editOrder')}
+                    </button>
+                </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {memberships.map((m) => (
                 <div
                     key={m.groups.id}
                     className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group"
@@ -131,7 +276,6 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                     <Link href={`/groups/${m.groups.id}`} className="block relative h-full flex flex-col sm:flex-row min-h-0 sm:min-h-[110px]">
                         {/* Banner Section */}
                         <div className="w-full sm:w-20 h-24 sm:h-auto bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-b sm:border-b-0 sm:border-r border-gray-100 rounded-t-xl sm:rounded-t-none sm:rounded-l-xl">
-                            {/* Rank Badge */}
                             {m.rank && (
                                 <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
                                     ${m.rank === 1 ? 'bg-yellow-300 text-yellow-900' :
@@ -155,13 +299,12 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                             )}
                         </div>
 
-                        {/* Icon (Positioned Absolutely) */}
+                        {/* Icon */}
                         <div className="absolute z-10 
                             top-1/2 left-10 -translate-y-1/2 -translate-x-1/2 
                             w-12 h-12 rounded-xl border-2 border-white shadow-sm 
                             sm:w-16 sm:h-16 sm:rounded-2xl sm:border-4
                             flex items-center justify-center bg-[var(--theme-primary-light)] overflow-hidden text-[var(--theme-primary)]">
-
                             {m.groups.image_url ? (
                                 <img src={m.groups.image_url} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -188,7 +331,6 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     </span>
                                 </div>
 
-                                {/* G10: メンバー数 + G2: ランクバー */}
                                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                                     {m.totalMembers && (
                                         <span className="inline-flex items-center gap-1 text-xs text-gray-500 font-medium">
@@ -203,7 +345,6 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                     )}
                                 </div>
 
-                                {/* G2: ミニランクプログレスバー */}
                                 {m.rank && m.totalMembers && m.totalMembers > 1 && (
                                     <div className="mt-2 hidden sm:block">
                                         <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -222,9 +363,8 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                         </div>
                     </Link>
 
-                    {/* Actions Column */}
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 sm:top-4 sm:right-4 sm:translate-y-0 flex flex-col gap-2 z-20">
-                        {/* G7: 招待共有ボタン */}
+                    {/* シェアボタンのみ — 通常モードではこれだけ */}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 sm:top-3 sm:right-3 sm:translate-y-0 z-20">
                         <button
                             onClick={(e) => {
                                 e.preventDefault();
@@ -236,74 +376,15 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                             aria-label={t('shareInvite')}
                         >
                             {copiedId === m.groups.id ? (
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                             ) : (
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                             )}
                         </button>
-
-                        {/* Primary Action (Pin) */}
-                        <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (index !== 0) handleMakePrimary(m.groups.id);
-                            }}
-                            disabled={isUpdating || index === 0}
-                            className={`cursor-pointer p-1.5 rounded-full transition-colors flex items-center justify-center ${index === 0
-                                ? 'text-[var(--theme-primary)] bg-[var(--theme-primary-light)] cursor-default shadow-sm border border-[var(--theme-primary)]/20'
-                                : 'text-gray-400 bg-white shadow-sm hover:text-[var(--theme-primary)] hover:bg-white border border-transparent hover:border-[var(--theme-primary)]/20'
-                                }`}
-                            title={index === 0 ? t('primaryTooltip') : t('setPrimaryTooltip')}
-                            aria-label={index === 0 ? t('primaryTooltip') : t('setPrimaryTooltip')}
-                        >
-                            {isUpdating && index !== 0 ? (
-                                <Spinner size="md" className="text-[var(--theme-primary)]" />
-                            ) : index === 0 ? (
-                                // Solid Star (Active)
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 fill-current" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                            ) : (
-                                // Outline Star (Inactive)
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                </svg>
-                            )}
-                        </button>
-
-                        {/* Reorder Arrows */}
-                        <div className="flex flex-col gap-1">
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleMove(index, -1);
-                                }}
-                                disabled={isUpdating || index === 0}
-                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] hover:border-[var(--theme-primary)]/30 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
-                                title={t('moveUp')}
-                                aria-label={t('moveUp')}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" /></svg>
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleMove(index, 1);
-                                }}
-                                disabled={isUpdating || index === memberships.length - 1}
-                                className="cursor-pointer p-1 w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] hover:border-[var(--theme-primary)]/30 disabled:opacity-0 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
-                                title={t('moveDown')}
-                                aria-label={t('moveDown')}  
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                            </button>
-                        </div>
                     </div>
                 </div>
             ))}
+            </div>
         </div>
     );
 }

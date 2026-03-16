@@ -210,7 +210,7 @@ export default async function MyGroupsPage() {
                             </div>
                         )}
 
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="mb-4">
                             <h2 className="text-lg font-bold text-gray-900">{t('yourGroups')}</h2>
                         </div>
 

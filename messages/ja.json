@@ -353,6 +353,10 @@
         "tipBody": "グループIDは変更できません。わかりやすい名前にしましょう。",
         "owner": "オーナー",
         "reorderFailed": "並び替えの保存に失敗しました。元に戻します。",
+        "editOrder": "並び替え",
+        "saveOrder": "保存",
+        "cancel": "キャンセル",
+        "dragToReorder": "ドラッグで並び替え",
         "moveUp": "上に移動",
         "moveDown": "下に移動"
     },
