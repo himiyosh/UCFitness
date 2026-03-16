@@ -422,6 +422,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                     userId={userId}
                                     index={activeGroupIndex}
                                     totalCount={groupRankingsList.length}
+                                    showMoveButtons={false}
                                 />
                                 {isLoading && (
                                     <div className={`absolute inset-0 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl ${

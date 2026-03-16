@@ -18,11 +18,12 @@ type Props = {
     totalCount: number;
     groupId?: string;
     period?: string;
+    showMoveButtons?: boolean;
 };
 
 import { useTranslations } from 'next-intl';
 
-export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId, period = 'DAILY' }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId, period = 'DAILY', showMoveButtons = true }: Props) {
     const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
     const [moveDirection, setMoveDirection] = useState<'up' | 'down' | null>(null);
@@ -124,7 +125,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                     }
                 >{keyword}</span>
             </div>
-            <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
+            {showMoveButtons && <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
                 {moveError && (
                     <span className="text-xs text-red-500 font-bold animate-pulse mr-1">Error</span>
                 )}
@@ -162,7 +163,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                         )}
                     </button>
                 )}
-            </div>
+            </div>}
             <div className={`px-0 lg:grid lg:grid-cols-12 lg:items-start flex-1 ${isMidnight ? 'bg-transparent' : 'bg-white'}`}>
                 <div className={`px-3 pt-3 sm:px-6 sm:pt-6 lg:col-span-5 lg:border-r flex flex-col ${isMidnight ? 'lg:border-slate-600/20' : 'lg:border-gray-50'}`}>
                     <TopUsersChart
