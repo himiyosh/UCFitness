@@ -144,23 +144,30 @@ export default async function MyGroupsPage() {
                 </div>
             </header>
 
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
-                {/* Page Title & Back Nav */}
-                {/* Page Title & Back Nav */}
-                <div className="space-y-4">
+                {/* パンくずリスト */}
+                <div className="mb-4 sm:mb-6">
                     <Breadcrumbs items={[{ label: t('title') }]} />
-                    <div>
-                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
+                </div>
+
+                {/* ヒーローセクション — ランキングページと統一デザイン */}
+                <div className="mb-6 sm:mb-8 relative overflow-hidden rounded-2xl leaderboard-hero-bg p-5 sm:p-6 text-white leaderboard-card-enter">
+                    {/* 背景デコレーション */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+                        <div className="absolute -top-4 -right-4 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full blur-2xl" />
+                        <div className="absolute bottom-0 left-1/4 w-16 h-16 sm:w-20 sm:h-20 bg-white/5 rounded-full blur-xl" />
+                    </div>
+
+                    <div className="relative z-10">
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight flex items-center gap-2.5">
                             <span>👥</span>
-                            <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
-                                {t('title')}
-                            </span>
+                            <span>{t('title')}</span>
                         </h1>
-                        <p className="mt-2.5 text-base text-gray-500">
+                        <p className="mt-1.5 text-sm sm:text-base text-white/80">
                             {t('headerDesc')}
                         </p>
-                        <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
+                        <div className="mt-4 h-0.5 w-20 rounded-full bg-white/30" />
                     </div>
                 </div>
 

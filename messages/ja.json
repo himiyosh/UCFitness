@@ -1001,11 +1001,17 @@
             "MILESTONE_500K": "累計50万歩達成",
             "MILESTONE_1M": "累計100万歩達成",
             "WEEKEND_WARRIOR": "ウィークエンドウォーリアー",
+            "LIFESTYLE_WEEKEND": "ウィークエンドウォーリアー",
             "TITLE_WALKER": "ウォーカー (6k)",
             "TITLE_HIKER": "ハイカー (8k)",
             "TITLE_ACHIEVER": "アチーバー (10k)",
             "TITLE_ATHLETE": "アスリート (15k)",
-            "TITLE_CHAMPION": "チャンピオン (20k)"
+            "TITLE_CHAMPION": "チャンピオン (20k)",
+            "TITLE_AVGST_6K": "ウォーカー (6k)",
+            "TITLE_AVGST_8K": "ハイカー (8k)",
+            "TITLE_AVGST_10K": "アチーバー (10k)",
+            "TITLE_AVGST_15K": "アスリート (15k)",
+            "TITLE_AVGST_20K": "チャンピオン (20k)"
         },
         "badgeDescs": {
             "GLOBAL_DAILY_1": "グローバル日間ランキング1位",
@@ -1033,11 +1039,17 @@
             "MILESTONE_500K": "累計歩数が50万歩に到達",
             "MILESTONE_1M": "累計歩数が100万歩に到達",
             "WEEKEND_WARRIOR": "週末に2万歩以上を歩いた",
+            "LIFESTYLE_WEEKEND": "週末に2万歩以上を歩いた",
             "TITLE_WALKER": "1日平均6,000歩を維持",
             "TITLE_HIKER": "1日平均8,000歩を維持",
             "TITLE_ACHIEVER": "1日平均10,000歩を維持",
             "TITLE_ATHLETE": "1日平均15,000歩を維持",
-            "TITLE_CHAMPION": "1日平均20,000歩を維持"
+            "TITLE_CHAMPION": "1日平均20,000歩を維持",
+            "TITLE_AVGST_6K": "1日平均6,000歩を維持",
+            "TITLE_AVGST_8K": "1日平均8,000歩を維持",
+            "TITLE_AVGST_10K": "1日平均10,000歩を維持",
+            "TITLE_AVGST_15K": "1日平均15,000歩を維持",
+            "TITLE_AVGST_20K": "1日平均20,000歩を維持"
         }
     },
     "Earnings": {
