@@ -126,11 +126,11 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
             {memberships.map((m, index) => (
                 <div
                     key={m.groups.id}
-                    className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group overflow-hidden"
+                    className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group"
                 >
                     <Link href={`/groups/${m.groups.id}`} className="block relative h-full flex flex-col sm:flex-row min-h-0 sm:min-h-[110px]">
                         {/* Banner Section */}
-                        <div className="w-full sm:w-20 h-24 sm:h-auto bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-b sm:border-b-0 sm:border-r border-gray-100">
+                        <div className="w-full sm:w-20 h-24 sm:h-auto bg-[var(--theme-primary-light)] relative overflow-hidden shrink-0 border-b sm:border-b-0 sm:border-r border-gray-100 rounded-t-xl sm:rounded-t-none sm:rounded-l-xl">
                             {/* Rank Badge */}
                             {m.rank && (
                                 <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md

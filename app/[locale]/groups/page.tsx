@@ -109,7 +109,10 @@ export default async function MyGroupsPage() {
         if (best === null) return m.rank;
         return m.rank < best ? m.rank : best;
     }, null as number | null);
-    const bestRankGroup = bestRank ? membershipsWithRank.find((m: any) => m.rank === bestRank) : null;
+    // 全グループのTop3ランクを収集（グループ順に依存せず全て表示）
+    const topRankedGroups = membershipsWithRank
+        .filter((m: any) => m.rank && m.rank <= 3)
+        .sort((a: any, b: any) => a.rank - b.rank);
 
     // Use custom image if available, otherwise fallback to session image
     const finalUser = {
@@ -167,20 +170,22 @@ export default async function MyGroupsPage() {
                         {/* G1/G8: ハイライト + グループサマリー統合パネル */}
                         {sortedMemberships.length > 0 && (
                             <div className="bg-white midnight-solid-panel rounded-xl p-4 sm:p-5 border border-gray-100 shadow-sm mb-4">
-                                {/* ハイライトバナー（Top3 のみ表示） */}
-                                {bestRank && bestRankGroup && bestRank <= 3 && (
-                                    <div className={`p-3 rounded-lg border flex items-center gap-3 mb-3 ${
-                                        bestRank === 1 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' :
-                                        bestRank === 2 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200' :
-                                        'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'
-                                    }`}>
-                                        <span className="text-2xl">{bestRank === 1 ? '🥇' : bestRank === 2 ? '🥈' : '🥉'}</span>
-                                        <div>
-                                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
-                                            <div className="text-sm font-bold text-gray-900">
-                                                {t('topRankedIn', { rank: bestRank, group: bestRankGroup.groups.name })}
+                                {/* ハイライトバナー（全グループのTop3を表示） */}
+                                {topRankedGroups.length > 0 && (
+                                    <div className="mb-3 space-y-2">
+                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">{t('todayHighlight')}</div>
+                                        {topRankedGroups.map((m: any) => (
+                                            <div key={m.groups.id} className={`p-3 rounded-lg border flex items-center gap-3 ${
+                                                m.rank === 1 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200' :
+                                                m.rank === 2 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200' :
+                                                'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'
+                                            }`}>
+                                                <span className="text-2xl">{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
+                                                <div className="text-sm font-bold text-gray-900">
+                                                    {t('topRankedIn', { rank: m.rank, group: m.groups.name })}
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 )}
 
