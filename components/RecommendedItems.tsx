@@ -39,6 +39,7 @@ interface RecommendedItemsProps {
 
 export default function RecommendedItems({ items: initialItems, isOwner, locale }: RecommendedItemsProps) {
     const [items, setItems] = useState<RecommendedItem[]>(initialItems);
+    const [isEditing, setIsEditing] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
@@ -166,7 +167,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     // --- カルーセル: カード幅 + gap ---
     const CARD_W = 167; // 155px + 12px gap
     // +ボタンを含めた全カード数
-    const totalCards = items.length + (isOwner && items.length < 6 ? 1 : 0);
+    const showAddButton = isOwner && items.length < 6 && (isEditing || items.length === 0);
+    const totalCards = items.length + (showAddButton ? 1 : 0);
     // 画面に見えるカード数（概算2.5枚）
     const maxSlide = Math.max(0, totalCards - 2);
 
@@ -205,9 +207,26 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     {locale === 'ja' ? '愛用アイテム' : 'My Picks'}
                 </p>
-                {isOwner && items.length > 0 && (
-                    <span className="text-xs text-gray-400">{items.length}/6</span>
-                )}
+                <div className="flex items-center gap-2">
+                    {isOwner && items.length > 0 && (
+                        <button
+                            onClick={() => setIsEditing(prev => !prev)}
+                            className={`text-xs px-2 py-0.5 rounded-md transition-colors ${
+                                isEditing
+                                    ? 'bg-[var(--theme-primary)] text-white'
+                                    : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'
+                            }`}
+                        >
+                            {isEditing
+                                ? (locale === 'ja' ? '完了' : 'Done')
+                                : (locale === 'ja' ? '編集' : 'Edit')
+                            }
+                        </button>
+                    )}
+                    {isOwner && items.length > 0 && (
+                        <span className="text-xs text-gray-400">{items.length}/6</span>
+                    )}
+                </div>
             </div>
 
             {/* Embla風カルーセル */}
@@ -223,7 +242,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={trackRef}
-                        className="flex gap-3 pt-24 pb-1"
+                        className={`flex gap-3 pb-1 ${items.some(i => i.comment) ? 'pt-16' : 'pt-1'}`}
                         style={{
                             transform: `translateX(-${slideIndex * CARD_W}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
@@ -262,8 +281,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         </div>
                     </a>
 
-                    {/* オーナー: 削除ボタン（カード外に配置してクリップされない） */}
-                    {isOwner && (
+                    {/* オーナー: 削除ボタン（編集モード時のみ表示） */}
+                    {isOwner && isEditing && (
                         <button
                             onClick={(e) => requestDelete(item.id, e)}
                             disabled={deletingId === item.id}
@@ -275,8 +294,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         </button>
                     )}
 
-                    {/* コメント追加アイコン（コメント未設定のオーナーのみ表示） */}
-                    {!item.comment && isOwner && editingCommentId !== item.id && (
+                    {/* コメント追加アイコン（編集モード時 + コメント未設定のオーナーのみ表示） */}
+                    {!item.comment && isOwner && isEditing && editingCommentId !== item.id && (
                         <button
                             onClick={(e) => {
                                 e.preventDefault();
@@ -296,8 +315,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
                     {editingCommentId !== item.id && item.comment && (
                         <div
-                            className={`absolute -top-6 left-1/2 z-20 w-[145px] ${isOwner ? 'cursor-pointer' : 'pointer-events-none'}`}
-                            onClick={isOwner ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
+                            className={`absolute -top-6 left-1/2 z-20 w-[145px] ${isOwner && isEditing ? 'cursor-pointer' : 'pointer-events-none'}`}
+                            onClick={isOwner && isEditing ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
                             style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%) translateY(-100%)' }}
                         >
                             <div className="bg-[var(--theme-primary)] rounded-lg px-2.5 py-2">
@@ -312,8 +331,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     </div>
                 ))}
 
-                {/* オーナー: ＋ボタン（6件未満のとき） */}
-                {isOwner && items.length < 6 && (
+                {/* オーナー: ＋ボタン（編集モード時、または0件時に表示） */}
+                {isOwner && items.length < 6 && (isEditing || items.length === 0) && (
                     <button
                         onClick={() => setShowModal(true)}
                         className="flex-shrink-0 w-[155px] h-[195px] rounded-xl border-2 border-dashed border-gray-200 hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] flex flex-col items-center justify-center gap-2 transition-all group"
