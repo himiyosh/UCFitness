@@ -167,16 +167,16 @@ export default async function MyGroupsPage() {
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                     {/* Group List (Left on Desktop, Top on Mobile) */}
                     <section className="flex-1 w-full">
-                        {/* G1/G8: ハイライト + グループサマリー統合パネル */}
+                        {/* ハイライト + サマリー統合パネル */}
                         {sortedMemberships.length > 0 && (
-                            <div className="bg-white midnight-solid-panel rounded-xl p-4 sm:p-5 border border-gray-100 shadow-sm mb-4">
-                                {/* ハイライトバナー（全グループのTop3をコンパクト表示） */}
+                            <div className="bg-white midnight-solid-panel rounded-xl p-3 sm:p-4 border border-gray-100 shadow-sm mb-3">
+                                {/* ハイライトバナー */}
                                 {topRankedGroups.length > 0 && (
-                                    <div className="mb-3 p-2.5 rounded-lg bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide shrink-0">{t('todayHighlight')}</span>
+                                    <div className="mb-2.5 p-2 rounded-lg bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide shrink-0">{t('todayHighlight')}</span>
                                             {topRankedGroups.map((m: any, i: number) => (
-                                                <span key={m.groups.id} className="inline-flex items-center gap-1 text-sm font-bold text-gray-900">
+                                                <span key={m.groups.id} className="inline-flex items-center gap-1 text-xs font-bold text-gray-900">
                                                     <span>{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
                                                     <span>{t('topRankedIn', { rank: m.rank, group: m.groups.name })}</span>
                                                     {i < topRankedGroups.length - 1 && <span className="text-gray-300 mx-0.5">|</span>}
@@ -186,32 +186,26 @@ export default async function MyGroupsPage() {
                                     </div>
                                 )}
 
-                                {/* グループサマリー */}
-                                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                    <span className="text-lg">📊</span>
-                                    {t('groupSummary')}
-                                </h3>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
-                                        <div className="text-xl font-black text-[var(--theme-primary)]">{sortedMemberships.length}</div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('groupsJoined')}</div>
-                                    </div>
-                                    <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
-                                        <div className="text-xl font-black text-[var(--theme-primary)]">{totalMembers}</div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('totalGroupMembers')}</div>
-                                    </div>
-                                    <div className="text-center p-2 bg-[var(--theme-primary-light)] rounded-lg">
-                                        <div className="text-xl font-black text-[var(--theme-primary)]">
-                                            {bestRank ? `#${bestRank}` : '—'}
-                                        </div>
-                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">{t('bestRank')}</div>
-                                    </div>
+                                {/* サマリー: ラベル+値をインラインでコンパクトに */}
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    <span className="inline-flex items-center gap-1.5 text-xs">
+                                        <span className="font-black text-base text-[var(--theme-primary)]">{sortedMemberships.length}</span>
+                                        <span className="font-medium text-gray-500">{t('groupsJoined')}</span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 text-xs">
+                                        <span className="font-black text-base text-[var(--theme-primary)]">{totalMembers}</span>
+                                        <span className="font-medium text-gray-500">{t('totalGroupMembers')}</span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 text-xs">
+                                        <span className="font-black text-base text-[var(--theme-primary)]">{bestRank ? `#${bestRank}` : '—'}</span>
+                                        <span className="font-medium text-gray-500">{t('bestRank')}</span>
+                                    </span>
                                 </div>
                             </div>
                         )}
 
-                        <div className="mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">{t('yourGroups')}</h2>
+                        <div className="mb-3">
+                            <h2 className="text-base font-bold text-gray-900">{t('yourGroups')}</h2>
                         </div>
 
                         {!memberships || memberships.length === 0 ? (
