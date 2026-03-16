@@ -204,29 +204,36 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
         <div>
             {/* セクションラベル */}
             <div className="flex items-center justify-between mb-2 px-1">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    {locale === 'ja' ? '愛用アイテム' : 'My Picks'}
-                </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        {locale === 'ja' ? '愛用アイテム' : 'My Picks'}
+                    </p>
                     {isOwner && items.length > 0 && (
-                        <button
-                            onClick={() => setIsEditing(prev => !prev)}
-                            className={`text-xs px-2 py-0.5 rounded-md transition-colors ${
-                                isEditing
-                                    ? 'bg-[var(--theme-primary)] text-white'
-                                    : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'
-                            }`}
-                        >
-                            {isEditing
-                                ? (locale === 'ja' ? '完了' : 'Done')
-                                : (locale === 'ja' ? '編集' : 'Edit')
-                            }
-                        </button>
-                    )}
-                    {isOwner && items.length > 0 && (
-                        <span className="text-xs text-gray-400">{items.length}/6</span>
+                        <span className="text-[10px] text-gray-300">{items.length}/6</span>
                     )}
                 </div>
+                {isOwner && items.length > 0 && (
+                    <button
+                        onClick={() => setIsEditing(prev => !prev)}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                            isEditing
+                                ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-105'
+                                : 'text-gray-300 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'
+                        }`}
+                        aria-label={isEditing ? (locale === 'ja' ? '完了' : 'Done') : (locale === 'ja' ? '編集' : 'Edit')}
+                    >
+                        {isEditing ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                                <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
+                                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+                            </svg>
+                        )}
+                    </button>
+                )}
             </div>
 
             {/* Embla風カルーセル */}
