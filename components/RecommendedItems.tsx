@@ -249,7 +249,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={trackRef}
-                        className={`flex gap-3 pb-1 ${items.some(i => i.comment) ? 'pt-16' : 'pt-1'}`}
+                        className={`flex gap-3 pb-1 ${items.some(i => i.comment) ? 'pt-20' : 'pt-1'}`}
                         style={{
                             transform: `translateX(-${slideIndex * CARD_W}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
@@ -326,8 +326,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             onClick={isOwner && isEditing ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
                             style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%) translateY(-100%)' }}
                         >
-                            <div className="bg-[var(--theme-primary)] rounded-lg px-2.5 py-2">
-                                <p className="text-xs text-white leading-snug line-clamp-3 break-words text-center">
+                            <div className="bg-[var(--theme-primary)] rounded-lg px-2.5 py-1.5">
+                                <p className="text-[11px] text-white leading-snug line-clamp-2 break-words text-center">
                                     {item.comment}
                                 </p>
                             </div>
