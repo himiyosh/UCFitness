@@ -21,7 +21,6 @@ export default function LanguageSyncer({ user }: { user: User | undefined }) {
         // If the user's preferred language (from DB/Session) doesn't match the current locale
         // We redirect them. This ensures consistency on login / new device.
         if (user.language !== locale && ['ja', 'en'].includes(user.language)) {
-            console.log(`[LanguageSyncer] Syncing language from ${locale} to ${user.language}`);
             syncedRef.current = true; // Prevent loop
             router.replace(pathname, { locale: user.language });
         }

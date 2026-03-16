@@ -157,7 +157,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     }, [name, username, router, t]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* フルサイズプレビュー用モーダル */}
             <ImageModal
                 isOpen={isImageModalOpen}
@@ -183,7 +183,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     {t('profileSettings')}
                 </h2>
 
-                <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-4">
                     {/* Profile Visuals (Banner + Avatar) */}
                     <div className="relative mb-6">
                         {/* Banner Image */}
@@ -232,7 +232,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     </div>
 
                     {/* Inputs */}
-                    <div className="space-y-6 w-full max-w-xl">
+                    <div className="space-y-4 w-full max-w-xl">
                         <div>
                             <label htmlFor="settings-display-name" className="block text-sm font-bold text-gray-700 mb-1">{t('displayName')}</label>
                             <input
@@ -378,7 +378,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             </div>
 
             {/* Sidebar Column: Preferences */}
-            <div className="space-y-8">
+            <div className="space-y-4">
 
                 {/* Language Switcher */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">

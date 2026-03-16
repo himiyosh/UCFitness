@@ -39,8 +39,6 @@ export async function GET(request: Request): Promise<NextResponse> {
         const today = getJSTDateString();
         const currentHour = getJSTHour();
 
-        console.log(`[Cron] Step reminder: date=${today}, hour=${currentHour} JST`);
-
         // プッシュ通知を購読しているユーザー一覧を取得
         const { data: subscriptionRows, error: subError } = await supabaseAdmin
             .from('push_subscriptions')
@@ -178,10 +176,6 @@ export async function GET(request: Request): Promise<NextResponse> {
                 }
             }
         }
-
-        console.log(
-            `[Cron] Step reminder completed: checked=${userIds.length}, under_goal=${underGoalUserIds.length}, sent=${totalSent}, failed=${totalFailed}`
-        );
 
         return NextResponse.json({
             success: true,

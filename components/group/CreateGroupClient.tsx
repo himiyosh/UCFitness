@@ -186,7 +186,7 @@ export default function CreateGroupClient() {
 
   return (
     <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
         {/* パンくずリスト */}
         <nav className="flex items-center gap-1.5 text-sm text-gray-500">
@@ -440,7 +440,7 @@ export default function CreateGroupClient() {
 
               {/* 検索結果なし */}
               {searchQuery.length >= 3 && !isSearching && searchResults.length === 0 && (
-                <div className="text-center py-6 text-gray-400 text-sm">
+                <div className="text-center py-4 text-gray-400 text-sm">
                   <span className="text-3xl block mb-2">🔍</span>
                   {t('noResultsFound')}
                 </div>

@@ -291,10 +291,10 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                     {/* Content */}
                     <div className="relative z-10 flex flex-col h-full p-16 pb-24 text-white">
                         {/* Header */}
-                        <div className="flex flex-col items-center gap-8 mt-12">
+                        <div className="flex flex-col items-center gap-4 mt-12">
                             <span className="text-3xl font-bold tracking-widest uppercase opacity-70 border-b-2 border-[var(--theme-primary)] pb-2">UCFitness</span>
 
-                            <div className="flex flex-col items-center gap-6">
+                            <div className="flex flex-col items-center gap-4">
                                 <div className="w-32 h-32 rounded-2xl border-4 border-white/20 shadow-2xl overflow-hidden bg-white/10 backdrop-blur-md flex items-center justify-center">
                                     {groupImage ? (
                                         <img src={groupImage} className="w-full h-full object-cover" crossOrigin="anonymous" alt="group" />
@@ -307,7 +307,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         </div>
 
                         {/* Chart Container */}
-                        <div className="flex-1 flex flex-col justify-center gap-8 px-8">
+                        <div className="flex-1 flex flex-col justify-center gap-4 px-8">
                             <h3 className="text-center text-4xl font-bold text-[var(--theme-primary)]/40 mb-8">{title || 'Group Comparison'}</h3>
                             <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10 shadow-2xl h-[800px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">

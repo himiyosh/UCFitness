@@ -89,7 +89,7 @@ export default function GroupAnalytics({
 
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* Header: Tabs & Jump Button */}
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div
@@ -154,7 +154,7 @@ export default function GroupAnalytics({
 
                 {/* メンバーランキング + 比較チャート */}
                 <div className="p-4 sm:p-6">
-                    <div className="flex flex-col xl:flex-row gap-6 items-stretch">
+                    <div className="flex flex-col xl:flex-row gap-4 items-stretch">
                         {/* Leaderboard */}
                         <div className="flex-1 min-w-0">
                             <GroupDetailLeaderboard
@@ -183,7 +183,7 @@ export default function GroupAnalytics({
             </div>
 
             {/* ━━━ パネル2: 全グループランキング + グループ順位 ━━━ */}
-            <div className="flex flex-col xl:flex-row gap-6">
+            <div className="flex flex-col xl:flex-row gap-4">
                 <div className="flex-1 min-w-0">
                     {groupCompetitionRankings && groupCompetitionRankings[period] && isPublic && (
                         <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col transition-all duration-300">

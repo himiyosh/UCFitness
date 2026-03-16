@@ -35,8 +35,6 @@ export async function GET(request: Request) {
         // 前週の月曜日〜日曜日の日付範囲を計算（JST基準）
         const { weekStart, weekEnd } = getPreviousWeekRange();
 
-        console.log(`[Cron] Weekly summary: ${weekStart} ~ ${weekEnd}`);
-
         // プッシュ通知を購読しているユーザーの一覧を取得（ユニークなuser_idのみ）
         const { data: subscriptionRows, error: subError } = await supabaseAdmin
             .from('push_subscriptions')
@@ -126,8 +124,6 @@ export async function GET(request: Request) {
                 }
             }
         }
-
-        console.log(`[Cron] Weekly summary completed: sent=${totalSent}, failed=${totalFailed}`);
 
         return NextResponse.json({
             success: true,

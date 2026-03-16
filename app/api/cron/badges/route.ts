@@ -43,9 +43,7 @@ export async function GET(request: Request) {
         // (00:00 JST に実行されるため、前日のデータが確定している)
         const yesterday = getYesterdayJST();
 
-        console.log(`[Cron] Starting ${type} badge assignment for date: ${yesterday}...`);
         await assignBadges(type, yesterday);
-        console.log(`[Cron] ${type} badge assignment completed.`);
 
         return NextResponse.json({
             success: true,
