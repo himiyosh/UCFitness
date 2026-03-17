@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { RankingEntry } from '@/lib/services/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
@@ -13,6 +14,7 @@ interface TopUsersChartProps {
 
 export default function TopUsersChart({ data, userId, title }: TopUsersChartProps) {
     const { theme } = useTheme();
+    const t = useTranslations('Leaderboard');
     const isMidnight = theme === 'midnight';
 
     // Memoize derived data to prevent recalculation on every render
@@ -24,7 +26,7 @@ export default function TopUsersChart({ data, userId, title }: TopUsersChartProp
             <div className={`p-4 rounded-xl shadow-sm mb-6 ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30' : 'bg-white border border-gray-100'}`}>
                 {title && <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>{title}</h3>}
                 <p className={`text-sm text-center py-8 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>
-                    No data available yet
+                    {t('noData')}
                 </p>
             </div>
         );

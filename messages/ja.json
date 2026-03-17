@@ -108,6 +108,7 @@
         "shop": "ショップ",
         "challenges": "チャレンジ",
         "analytics": "分析",
+        "settings": "設定",
         "refreshSteps": "今すぐ同期",
         "refreshing": "同期中...",
         "refreshFailed": "歩数の同期に失敗しました"
@@ -117,6 +118,7 @@
         "groups": "グループ",
         "ranking": "ランキング",
         "profile": "プロフィール",
+        "more": "その他",
         "label": "メインナビゲーション"
     },
     "Portal": {
@@ -136,6 +138,21 @@
         "title": "デイリーボーナス",
         "claimed": "+{amount} UC! ({streak}日連続)",
         "streak": "ログイン連続: {streak}日"
+    },
+    "Setup": {
+        "welcome": "UCFitness へようこそ！",
+        "subtitle": "プロフィールを設定して始めましょう。",
+        "changePhoto": "写真を変更",
+        "usernameLabel": "ユーザー ID",
+        "usernamePlaceholder": "例: runner_01",
+        "usernameHint": "英数字とアンダースコアのみ使用できます。",
+        "displayNameLabel": "表示名",
+        "displayNamePlaceholder": "例: 太郎",
+        "emailLabel": "メールアドレス（必須）",
+        "emailHint": "Fitbit アカウントからメールが取得できませんでした。入力してください。",
+        "submit": "セットアップ完了",
+        "saving": "保存中...",
+        "loadingSession": "セッションを読み込み中..."
     },
     "Landing": {
         "title": "UCFitness",

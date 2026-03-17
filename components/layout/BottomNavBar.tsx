@@ -1,15 +1,22 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { Link, usePathname } from '@/navigation';
 import { useTranslations } from 'next-intl';
 
 /**
  * ネイティブアプリ風の固定ボトムナビゲーションバー
  * モバイルで常時表示、sm 以上では非表示（ヘッダーナビで代替）
+ * 5つ目の「その他」メニューで Wallet / Shop / Challenges / Settings にアクセス可能
  */
 export default function BottomNavBar() {
   const pathname = usePathname();
   const t = useTranslations('BottomNav');
+  const dashT = useTranslations('Dashboard');
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const toggleMore = useCallback(() => setMoreOpen(prev => !prev), []);
+  const closeMore = useCallback(() => setMoreOpen(false), []);
 
   const navItems = [
     { href: '/' as const, icon: HomeIcon, label: t('home') },
@@ -18,52 +25,128 @@ export default function BottomNavBar() {
     { href: '/profile' as const, icon: ProfileIcon, label: t('profile') },
   ];
 
-  return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/90 backdrop-blur-xl border-t border-gray-200/60 safe-area-bottom m3-nav-bar"
-      role="navigation"
-      aria-label={t('label')}
-    >
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
-        {navItems.map((item) => {
-          // ホームは完全一致、プロフィールは /profile と /user/ の両方に対応、他はプレフィックス一致
-          const isActive = item.href === '/'
-            ? pathname === '/'
-            : item.href === '/profile'
-              ? pathname === '/profile' || pathname.startsWith('/user/')
-              : pathname.startsWith(item.href);
+  // 「その他」メニューの項目
+  const moreItems = [
+    { href: '/wallet' as const, emoji: '💰', label: dashT('wallet') },
+    { href: '/shop' as const, emoji: '🛍️', label: dashT('shop') },
+    { href: '/challenges' as const, emoji: '🎯', label: dashT('challenges') },
+    { href: '/analytics' as const, emoji: '📊', label: dashT('analytics') },
+    { href: '/settings' as const, emoji: '⚙️', label: dashT('settings') },
+  ];
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`relative flex flex-col items-center justify-center min-w-[64px] min-h-[44px] m3-transition ${
-                isActive
-                  ? 'text-[var(--theme-primary)]'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              {/* M3 Active Indicator (pill) — アイコン背景のみ */}
-              <span
-                className={`absolute top-1 w-14 h-7 rounded-full m3-transition ${
+  const isMoreActive = moreItems.some(item => pathname.startsWith(item.href));
+
+  return (
+    <>
+      {/* 「その他」メニューの背景オーバーレイ */}
+      {moreOpen && (
+        <div
+          className="fixed inset-0 z-40 sm:hidden"
+          onClick={closeMore}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* 「その他」ポップアップメニュー */}
+      {moreOpen && (
+        <div className="fixed bottom-[72px] right-2 z-50 sm:hidden safe-area-bottom" role="menu" aria-label={t('more')}>
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/60 p-2 min-w-[160px] animate-fadeInUp">
+            {moreItems.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  role="menuitem"
+                  onClick={closeMore}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px] ${
+                    isActive
+                      ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-base">{item.emoji}</span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/90 backdrop-blur-xl border-t border-gray-200/60 safe-area-bottom m3-nav-bar"
+        role="navigation"
+        aria-label={t('label')}
+      >
+        <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+          {navItems.map((item) => {
+            const isActive = item.href === '/'
+              ? pathname === '/'
+              : item.href === '/profile'
+                ? pathname === '/profile' || pathname.startsWith('/user/')
+                : pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={closeMore}
+                className={`relative flex flex-col items-center justify-center min-w-[56px] min-h-[44px] m3-transition ${
                   isActive
-                    ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
-                    : 'scale-75 opacity-0'
+                    ? 'text-[var(--theme-primary)]'
+                    : 'text-gray-400 hover:text-gray-600'
                 }`}
-                aria-hidden="true"
-              />
-              <span className="relative z-10 mt-1">
-                <item.icon active={isActive} />
-              </span>
-              <span className={`relative z-10 text-[10px] leading-none mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span
+                  className={`absolute top-1 w-14 h-7 rounded-full m3-transition ${
+                    isActive
+                      ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
+                      : 'scale-75 opacity-0'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="relative z-10 mt-1">
+                  <item.icon active={isActive} />
+                </span>
+                <span className={`relative z-10 text-[10px] leading-none mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+
+          {/* 「その他」ボタン */}
+          <button
+            onClick={toggleMore}
+            className={`relative flex flex-col items-center justify-center min-w-[56px] min-h-[44px] m3-transition ${
+              isMoreActive || moreOpen
+                ? 'text-[var(--theme-primary)]'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+            aria-expanded={moreOpen}
+            aria-haspopup="true"
+            aria-label={t('more')}
+          >
+            <span
+              className={`absolute top-1 w-14 h-7 rounded-full m3-transition ${
+                isMoreActive || moreOpen
+                  ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
+                  : 'scale-75 opacity-0'
+              }`}
+              aria-hidden="true"
+            />
+            <span className="relative z-10 mt-1">
+              <MoreIcon active={isMoreActive || moreOpen} />
+            </span>
+            <span className={`relative z-10 text-[10px] leading-none mt-0.5 font-medium ${isMoreActive || moreOpen ? 'font-semibold' : ''}`}>
+              {t('more')}
+            </span>
+          </button>
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -115,6 +198,26 @@ function ProfileIcon({ active }: { active: boolean }) {
         <path d="M12 12a5 5 0 100-10 5 5 0 000 10zM21 20c0-3.866-4.03-7-9-7s-9 3.134-9 7h18z" />
       ) : (
         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      )}
+    </svg>
+  );
+}
+
+function MoreIcon({ active }: { active: boolean }) {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      {active ? (
+        <>
+          <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="19" r="2" fill="currentColor" stroke="none" />
+        </>
+      ) : (
+        <>
+          <circle cx="12" cy="5" r="1.5" />
+          <circle cx="12" cy="12" r="1.5" />
+          <circle cx="12" cy="19" r="1.5" />
+        </>
       )}
     </svg>
   );

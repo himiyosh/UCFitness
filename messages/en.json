@@ -108,6 +108,7 @@
         "shop": "Shop",
         "challenges": "Challenges",
         "analytics": "Analytics",
+        "settings": "Settings",
         "refreshSteps": "Sync Now",
         "refreshing": "Refreshing...",
         "refreshFailed": "Failed to refresh steps"
@@ -117,6 +118,7 @@
         "groups": "Groups",
         "ranking": "Ranking",
         "profile": "Profile",
+        "more": "More",
         "label": "Main navigation"
     },
     "Portal": {
@@ -136,6 +138,21 @@
         "title": "Daily Bonus",
         "claimed": "+{amount} UC! (Day {streak})",
         "streak": "Login Streak: {streak} days"
+    },
+    "Setup": {
+        "welcome": "Welcome to UCFitness!",
+        "subtitle": "Set up your profile to get started.",
+        "changePhoto": "Change photo",
+        "usernameLabel": "User ID",
+        "usernamePlaceholder": "e.g. runner_01",
+        "usernameHint": "Only letters, numbers, and underscores.",
+        "displayNameLabel": "Display Name",
+        "displayNamePlaceholder": "e.g. John Doe",
+        "emailLabel": "Email Address (Required)",
+        "emailHint": "Your Fitbit account didn't provide an email. Please enter one.",
+        "submit": "Complete Setup",
+        "saving": "Saving...",
+        "loadingSession": "Loading session..."
     },
     "Landing": {
         "title": "UCFitness",
