@@ -463,8 +463,14 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                             className="w-full h-full object-contain"
                                             loading="lazy"
                                             onError={(e) => {
-                                                const parent = (e.target as HTMLElement).parentElement;
-                                                if (parent) parent.innerHTML = `<span class="flex items-center justify-center w-full h-full text-lg">${linkTypeIcon(item.type)}</span>`;
+                                                const target = e.target as HTMLElement;
+                                                const parent = target.parentElement;
+                                                if (parent) {
+                                                    const span = document.createElement('span');
+                                                    span.className = 'flex items-center justify-center w-full h-full text-lg';
+                                                    span.textContent = linkTypeIcon(item.type);
+                                                    parent.replaceChildren(span);
+                                                }
                                             }}
                                         />
                                     </div>
