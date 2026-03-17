@@ -1323,11 +1323,16 @@ body {
   html {
     overflow-x: hidden; /* transform で横にはみ出す分だけクリップ */
     overflow-y: hidden;  /* body 内部でスクロールするため html レベルでは不要 */
+    /* scrollbar-gutter: stable がグローバルに設定されているが、
+       overflow-y: hidden の html には不要。stable のままだと html が
+       15px のスクロールバーガターを予約し、body の幅計算がずれて
+       4K 等の高解像度で右端に背景色の隙間が発生する。 */
+    scrollbar-gutter: auto;
   }
 
   body {
     transform: scale(0.9);
-    width: calc(100% / 0.9);    /* 111.11% — スケール後に viewport 幅にフィット */
+    width: calc(100vw / 0.9);   /* viewport 幅基準でスクロールバーの影響を回避 */
     height: calc(100vh / 0.9);  /* 固定高さ — body 内部で overflow-y: auto スクロールを有効化 */
     overflow-y: auto;           /* コンテンツが溢れた場合に body 自体がスクロール */
   }
