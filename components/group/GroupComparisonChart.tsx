@@ -224,7 +224,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                 </button>
             </div>
 
-            <div className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] select-none">
+            <div className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] select-none" role="img" aria-label={`${title || 'Comparison'}: ${data.length} data points, ${users.length} members`}>
                 <style jsx global>{`
                     .recharts-wrapper, .recharts-surface { outline: none !important; }
                     *:focus { outline: none !important; }

@@ -1088,5 +1088,34 @@
         "lessActive": "少ない",
         "moreActive": "多い",
         "yearLabel": "年"
+    },
+    "LeaveGroup": {
+        "memberMessage": "あなたはこのグループのメンバーです。",
+        "leavePrompt": "{name} から退出しますか？",
+        "confirmLeave": "退出する",
+        "leaving": "退出中...",
+        "cancel": "キャンセル",
+        "leaveGroup": "グループを退出",
+        "confirmLabel": "グループ退出を確認",
+        "cancelLabel": "グループ退出をキャンセル",
+        "leaveLabel": "グループ {name} を退出",
+        "leftSuccess": "グループを退出しました",
+        "leftFailed": "グループの退出に失敗しました"
+    },
+    "BannerEditor": {
+        "changeBanner": "バナーを変更",
+        "editTitle": "プロフィールバナーを編集",
+        "uploadLabel": "新しいバナーをアップロード",
+        "recommendedSize": "推奨サイズ: 1200×300px（約4:1）。最大{size}MB。JPEG, PNG, WebP, GIF。",
+        "noImage": "画像が選択されていません",
+        "close": "閉じる",
+        "cancel": "キャンセル",
+        "save": "バナーを保存",
+        "saving": "保存中...",
+        "zoomLabel": "ズームレベル",
+        "dragHint": "ドラッグで位置を調整",
+        "bleedHint": "拡大で表示される領域",
+        "cropArea": "バナー表示領域",
+        "uploadFailed": "バナーの更新に失敗しました。再度お試しください。"
     }
 }

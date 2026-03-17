@@ -1086,5 +1086,34 @@
         "lessActive": "Less",
         "moreActive": "More",
         "yearLabel": "Year"
+    },
+    "LeaveGroup": {
+        "memberMessage": "You are a member of this group.",
+        "leavePrompt": "Leave {name}?",
+        "confirmLeave": "Yes, Leave",
+        "leaving": "Leaving...",
+        "cancel": "Cancel",
+        "leaveGroup": "Leave Group",
+        "confirmLabel": "Confirm leave group",
+        "cancelLabel": "Cancel leave group",
+        "leaveLabel": "Leave group {name}",
+        "leftSuccess": "Left group successfully",
+        "leftFailed": "Failed to leave group"
+    },
+    "BannerEditor": {
+        "changeBanner": "Change Banner",
+        "editTitle": "Edit Profile Banner",
+        "uploadLabel": "Upload New Banner",
+        "recommendedSize": "Recommended size: 1200×300px (approx 4:1). Max {size}MB. JPEG, PNG, WebP, GIF.",
+        "noImage": "No Image Selected",
+        "close": "Close",
+        "cancel": "Cancel",
+        "save": "Save Banner",
+        "saving": "Saving...",
+        "zoomLabel": "Zoom level",
+        "dragHint": "Drag to adjust position",
+        "bleedHint": "Area visible when zoomed",
+        "cropArea": "Banner display area",
+        "uploadFailed": "Failed to update banner. Please try again."
     }
 }

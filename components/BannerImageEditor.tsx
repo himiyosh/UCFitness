@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 import { compressImage } from '@/lib/image-utils';
 
@@ -27,6 +28,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const t = useTranslations('BannerEditor');
 
     // クロップ用 state
     const [imageSize, setImageSize] = useState<{ w: number; h: number } | null>(null);
@@ -210,7 +212,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             setFile(null);
             router.refresh();
         } catch (_) {
-            setError('Failed to update banner. Please try again.');
+            setError(t('uploadFailed'));
         } finally {
             setIsLoading(false);
         }
@@ -225,28 +227,28 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                     onClick={() => setIsOpen(true)}
                     className="text-[var(--theme-primary)] font-medium text-sm hover:underline"
                 >
-                    Change Banner
+                    {t('changeBanner')}
                 </button>
             )}
 
             {isOpen && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 relative" role="dialog" aria-modal="true" aria-label="Edit Profile Banner">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 relative" role="dialog" aria-modal="true" aria-label={t('editTitle')}>
                         <button
                             onClick={() => { setIsOpen(false); setFile(null); setError(null); }}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                            aria-label="Close"
+                            aria-label={t('close')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
 
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">Edit Profile Banner</h3>
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">{t('editTitle')}</h3>
 
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="banner-file-input" className="block text-sm font-medium text-gray-700 mb-1">Upload New Banner</label>
+                                <label htmlFor="banner-file-input" className="block text-sm font-medium text-gray-700 mb-1">{t('uploadLabel')}</label>
                                 <input
                                     id="banner-file-input"
                                     type="file"
@@ -259,7 +261,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         file:bg-[var(--theme-primary-light)] file:text-[var(--theme-primary)]
                                         hover:file:bg-[var(--theme-primary-light)]"
                                 />
-                                <p className="text-xs text-gray-400 mt-1">Recommended size: 1200×300px (approx 4:1). Max {MAX_FILE_SIZE_MB}MB. JPEG, PNG, WebP, GIF.</p>
+                                <p className="text-xs text-gray-400 mt-1">{t('recommendedSize', { size: MAX_FILE_SIZE_MB })}</p>
                                 {error && (
                                     <p className="text-xs text-red-500 mt-1 font-medium" role="alert">{error}</p>
                                 )}
@@ -306,7 +308,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                     className="absolute top-0 left-0 right-0 bg-black/50 pointer-events-none z-10 flex items-center justify-center"
                                                     style={{ height: `${getBleed()}px` }}
                                                 >
-                                                    <span className="text-white/60 text-xs font-medium tracking-wide">拡大で表示される領域</span>
+                                                    <span className="text-white/60 text-xs font-medium tracking-wide">{t('bleedHint')}</span>
                                                 </div>
 
                                                 {/* クロップ領域外オーバーレイ（下） */}
@@ -314,7 +316,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                     className="absolute bottom-0 left-0 right-0 bg-black/50 pointer-events-none z-10 flex items-center justify-center"
                                                     style={{ height: `${getBleed()}px` }}
                                                 >
-                                                    <span className="text-white/60 text-xs font-medium tracking-wide">拡大で表示される領域</span>
+                                                    <span className="text-white/60 text-xs font-medium tracking-wide">{t('bleedHint')}</span>
                                                 </div>
 
                                                 {/* クロップ枠 */}
@@ -323,7 +325,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                                     style={{ top: `${getBleed()}px`, height: `${getCropHeight()}px` }}
                                                 >
                                                     <div className="absolute inset-0 border-2 border-dashed border-white/70 rounded-sm" />
-                                                    <span className="absolute top-1 left-2 text-white/80 text-xs font-bold drop-shadow bg-black/30 px-1.5 py-0.5 rounded">バナー表示領域</span>
+                                                    <span className="absolute top-1 left-2 text-white/80 text-xs font-bold drop-shadow bg-black/30 px-1.5 py-0.5 rounded">{t('cropArea')}</span>
                                                 </div>
                                             </>
                                         )}
@@ -336,14 +338,14 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                             >
                                                 <span className="text-white text-xs font-medium drop-shadow flex items-center justify-center gap-1">
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-                                                    ドラッグで位置を調整
+                                                    {t('dragHint')}
                                                 </span>
                                             </div>
                                         )}
                                     </div>
                                 ) : (
                                     <div className="w-full flex items-center justify-center text-gray-400" style={{ height: `${getCropHeight()}px` }}>
-                                        No Image Selected
+                                        {t('noImage')}
                                     </div>
                                 )}
                             </div>
@@ -362,7 +364,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         value={scale}
                                         onChange={(e) => handleScaleChange(Number(e.target.value))}
                                         className="flex-1 h-1.5 accent-[var(--theme-primary)] cursor-pointer"
-                                        aria-label="Zoom level"
+                                        aria-label={t('zoomLabel')}
                                     />
                                     <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
@@ -376,14 +378,14 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                     onClick={() => { setIsOpen(false); setFile(null); setError(null); }}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                                 >
-                                    Cancel
+                                    {t('cancel')}
                                 </button>
                                 <button
                                     onClick={handleSave}
                                     disabled={isLoading || !file}
                                     className="px-4 py-2 text-sm font-medium text-white bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isLoading ? 'Saving...' : 'Save Banner'}
+                                    {isLoading ? t('saving') : t('save')}
                                 </button>
                             </div>
                         </div>
