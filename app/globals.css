@@ -1370,6 +1370,79 @@ button:not(:disabled) {
   }
 }
 
+/* ==== Forced Colors / High Contrast モード対応 (WCAG 1.4.11) ==== */
+@media (forced-colors: active) {
+  /* ボタン: box-shadow が無効化されるため border で視認性を確保 */
+  .btn-filled,
+  .btn-tonal,
+  button {
+    border: 2px solid ButtonBorder;
+  }
+
+  /* カード: backdrop-filter・box-shadow が無効化されるため border で区切り */
+  .glass-card,
+  .card-elevated,
+  .card-filled,
+  .card-outlined,
+  .midnight-solid-panel {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* フォーカスインジケーター: box-shadow ベースの ring を outline に変換 */
+  *:focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px !important;
+  }
+
+  /* リンク: 標準のリンク色を使用 */
+  a {
+    color: LinkText;
+  }
+
+  /* SVG アイコン: テキスト色に追従 */
+  svg {
+    fill: currentColor;
+    stroke: currentColor;
+  }
+
+  /* プログレスバー: トラックとフィルの区別 */
+  [role="progressbar"] {
+    border: 1px solid CanvasText;
+  }
+
+  /* バッジ・タグ: 背景グラデーションが無効化されるため border で識別 */
+  .rank-row-1,
+  .rank-row-2,
+  .rank-row-3 {
+    border-left: 4px solid Highlight;
+  }
+
+  /* ステートレイヤー: ::after の疑似要素を無効化 */
+  .state-layer::after {
+    display: none;
+  }
+
+  /* 入力フィールド */
+  input,
+  select,
+  textarea {
+    border: 1px solid ButtonBorder;
+    background: Field;
+    color: FieldText;
+  }
+
+  /* トグルスイッチ */
+  [role="switch"] {
+    border: 2px solid ButtonBorder;
+  }
+  [role="switch"][aria-checked="true"] {
+    background: Highlight;
+  }
+}
+
 /* ページ背景色をbodyに設定（mainはtransparentにしたため）
    ↑の body { background: var(--background) } より後に書いて確実に上書き */
 :root body {
@@ -2046,16 +2119,20 @@ body::before {
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
 
-/* ガラスカード (Glassmorphism) */
+/* ガラスカード (Glassmorphism) — M3 デザイントークン連携
+   使用方法: <div className="glass-card rounded-2xl p-4"> */
 .glass-card {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-md);
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.05),
     0 2px 4px -2px rgba(0, 0, 0, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: box-shadow var(--motion-standard-duration) var(--motion-standard),
+              transform var(--motion-standard-duration) var(--motion-standard);
 }
 
 .glass-card:hover {

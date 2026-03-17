@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/Toast';
 
 export default function LeaveGroupButton({
@@ -16,6 +17,7 @@ export default function LeaveGroupButton({
     const processingRef = useRef(false);
     const router = useRouter();
     const toast = useToast();
+    const t = useTranslations('LeaveGroup');
 
     const handleLeave = useCallback(async () => {
         if (processingRef.current) return;
@@ -33,38 +35,38 @@ export default function LeaveGroupButton({
 
             if (!res.ok) {
                 const err = await res.json().catch(() => null);
-                toast.error(err?.error || 'Failed to leave group');
+                toast.error(err?.error || t('leftFailed'));
                 processingRef.current = false;
                 setIsProcessing(false);
                 setShowConfirm(false);
                 return;
             }
 
-            toast.success('Left group successfully');
+            toast.success(t('leftSuccess'));
             router.push('/groups');
             router.refresh();
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+            const message = error instanceof Error ? error.message : t('leftFailed');
             toast.error(message);
             processingRef.current = false;
             setIsProcessing(false);
             setShowConfirm(false);
         }
-    }, [groupKeyword, router, toast]);
+    }, [groupKeyword, router, toast, t]);
 
     return (
         <div className="bg-white rounded-xl p-6 border border-gray-100 text-center shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-sm text-gray-500 mb-4">You are a member of this group.</p>
+            <p className="text-sm text-gray-500 mb-4">{t('memberMessage')}</p>
             {showConfirm ? (
                 <div className="flex flex-col items-center gap-3">
                     <p className="text-sm font-medium text-gray-700">
-                        Leave <strong>{groupName}</strong>?
+                        {t('leavePrompt', { name: groupName })}
                     </p>
                     <div className="flex gap-2">
                         <button
                             onClick={handleLeave}
                             disabled={isProcessing}
-                            aria-label="Confirm leave group"
+                            aria-label={t('confirmLabel')}
                             className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50 transition-colors"
                         >
                             {isProcessing && (
@@ -73,25 +75,25 @@ export default function LeaveGroupButton({
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
                             )}
-                            {isProcessing ? 'Leaving...' : 'Yes, Leave'}
+                            {isProcessing ? t('leaving') : t('confirmLeave')}
                         </button>
                         <button
                             onClick={() => setShowConfirm(false)}
                             disabled={isProcessing}
-                            aria-label="Cancel leave group"
+                            aria-label={t('cancelLabel')}
                             className="px-4 py-1.5 text-sm font-bold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50 transition-colors"
                         >
-                            Cancel
+                            {t('cancel')}
                         </button>
                     </div>
                 </div>
             ) : (
                 <button
                     onClick={() => setShowConfirm(true)}
-                    aria-label={`Leave group ${groupName}`}
+                    aria-label={t('leaveLabel', { name: groupName })}
                     className="text-red-500 hover:text-red-700 text-sm font-bold hover:underline hover:scale-105 active:scale-95 transition-transform"
                 >
-                    Leave Group
+                    {t('leaveGroup')}
                 </button>
             )}
         </div>

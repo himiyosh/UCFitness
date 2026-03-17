@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 
 import { useTheme } from '@/components/ThemeProvider';
+import { useTranslations } from 'next-intl';
 
 interface ChartDataPoint {
     label: string;
@@ -46,6 +47,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     const [isSharing, setIsSharing] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     const shareCardRef = useRef<HTMLDivElement>(null);
+    const t = useTranslations('Leaderboard');
 
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
@@ -125,7 +127,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     if (!data || data.length === 0) {
         return (
             <div className={`p-6 rounded-2xl shadow-sm flex items-center justify-center h-[300px] ${isMidnight ? 'bg-slate-800/50 border border-slate-600/30 text-slate-500' : 'bg-white border border-gray-100 text-gray-400'}`}>
-                No data available for comparison.
+                {t('noData')}
             </div>
         );
     }
@@ -222,7 +224,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                 </button>
             </div>
 
-            <div className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] select-none">
+            <div className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] select-none" role="img" aria-label={`${title || 'Comparison'}: ${data.length} data points, ${users.length} members`}>
                 <style jsx global>{`
                     .recharts-wrapper, .recharts-surface { outline: none !important; }
                     *:focus { outline: none !important; }

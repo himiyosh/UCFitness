@@ -21,7 +21,6 @@ const FloatingEmojis = dynamic(() => import('@/components/dashboard/FloatingEmoj
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   themeColor: '#6366f1',
 };
 

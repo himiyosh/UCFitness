@@ -132,12 +132,16 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     }
 
     return (
-        <div className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+        <div
+            className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow"
+            role="img"
+            aria-label={`${t('assetGrowth')}: ${t('last30days')}. ${t('balance')}: ${chartData.length > 0 ? chartData[chartData.length - 1].balance.toLocaleString() : 0} UC`}
+        >
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2" aria-hidden="true">
                     📈 {t('assetGrowth')}
                 </h3>
-                <span className="text-xs text-gray-400">{t('last30days')}</span>
+                <span className="text-xs text-gray-400" aria-hidden="true">{t('last30days')}</span>
             </div>
 
             <div className="h-72 sm:h-64">
