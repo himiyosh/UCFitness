@@ -17,6 +17,7 @@ UCFitnessAgent は以下の MCP ツールが利用可能。すべて遅延ロー
 |---|---|---|
 | **Playwright** | `tool_search_tool_regex(pattern="mcp_playwright", limit=30)` | 実ブラウザ E2E テスト・スクリーンショット・DOM 検査 |
 | **Supabase** | `tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)` | SQL 実行・マイグレーション・テーブル管理・ログ取得 |
+| **Figma** | `tool_search_tool_regex(pattern="mcp_figma", limit=30)` | Figma デザインデータ取得・コード生成・デザインシステム連携 |
 
 ### Playwright MCP — 主要ツール
 
@@ -44,6 +45,19 @@ UCFitnessAgent は以下の MCP ツールが利用可能。すべて遅延ロー
 | `mcp_com_supabase__list_migrations` | マイグレーション履歴 |
 
 **Supabase プロジェクト ID:** `lmqpkoyypxccdbtgycty`
+
+### Figma MCP — 主要機能
+
+Figma 公式リモート MCP サーバー (`https://mcp.figma.com/mcp`)。OAuth 認証で Figma アカウントに接続。
+
+| 機能 | 用途 |
+|---|---|
+| デザインデータ取得 | Figma ファイル/フレームのレイアウト・スタイル・コンポーネント情報を取得 |
+| コード生成支援 | デザインからコンポーネントコードを生成する際のコンテキスト提供 |
+| デザインシステム連携 | Variables・コンポーネント・スタイル定義の取得 |
+| ライブ UI キャプチャ | Web アプリの UI を Figma ファイルに送信 |
+
+**使い方**: チャットに Figma ファイル/フレームの URL を貼り付けてデザイン実装を依頼する。
 
 ---
 
@@ -138,6 +152,7 @@ UCFitnessAgent は以下の MCP ツールが利用可能。すべて遅延ロー
 
 **専門**: ユーザージャーニー, モバイルファースト, PWA UX, ゲーミフィケーション
 
+- **Figma MCP 活用**: Figma ファイルの URL からデザインデータを直接取得し、デザイン→コード変換の精度を向上。デザインシステムの Variables・コンポーネント定義を参照してテーマカラー・スペーシングの一貫性を保つ
 - ペルソナ: 健康意識の高い社会人（20〜40代）、モバイルメイン
 - 設計原則: 数秒で把握、1 タップ操作、達成感フィードバック、社会性、一貫性
 - デザインシステム: CSS カスタムプロパティ、`rounded-xl` カード、`rounded-lg` ボタン

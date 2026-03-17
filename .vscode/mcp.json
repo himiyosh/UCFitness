@@ -9,6 +9,28 @@
         "--rm",
         "ghcr.io/github/awesome-copilot-mcp-server"
       ]
+    },
+    "figma": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "figma-developer-mcp",
+        "--stdio"
+      ],
+      "env": {
+        "FIGMA_API_KEY": "${input:figma-api-key}"
+      }
     }
-  }
+  },
+  "inputs": [
+    {
+      "id": "figma-api-key",
+      "type": "promptString",
+      "description": "Figma Personal Access Token (https://help.figma.com/hc/en-us/articles/8085703771159)",
+      "password": true
+    }
+  ]
 }
