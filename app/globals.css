@@ -1443,14 +1443,61 @@ button:not(:disabled) {
   }
 }
 
-/* ページ背景色をbodyに設定（mainはtransparentにしたため）
-   ↑の body { background: var(--background) } より後に書いて確実に上書き */
+/* ページ背景色を html と body の両方に設定
+   transform: scale(0.9) で body が縮小された際、body の外側 (html の背景) が
+   見えてしまうため、html にも同じ背景色を設定して途切れを防止 */
+:root {
+  background-color: #F5F5FF;
+}
 :root body {
   background-color: #F5F5FF;
+}
+[data-theme="pop"] {
+  background-color: #FFFAFA;
 }
 [data-theme="pop"] body {
   background-color: #FFFAFA;
 }
+[data-theme="sakura"] {
+  background-color: #FDF2F8;
+}
+[data-theme="sakura"] body {
+  background-color: #FDF2F8;
+}
+[data-theme="ocean"] {
+  background-color: #ECFEFF;
+}
+[data-theme="ocean"] body {
+  background-color: #ECFEFF;
+}
+[data-theme="forest"] {
+  background-color: #ECFDF5;
+}
+[data-theme="forest"] body {
+  background-color: #ECFDF5;
+}
+[data-theme="sunset"] {
+  background-color: #FFF7ED;
+}
+[data-theme="sunset"] body {
+  background-color: #FFF7ED;
+}
+[data-theme="cyberpunk"] {
+  background-color: #F5F3FF;
+}
+[data-theme="cyberpunk"] body {
+  background-color: #F5F3FF;
+}
+[data-theme="galaxy"] {
+  background-color: #EDE9FE;
+}
+[data-theme="galaxy"] body {
+  background-color: #EDE9FE;
+}
+[data-theme="midnight"] {
+  background-color: #0b1220;
+}
+/* midnight body は既に別セクションで定義済み */
 
 @keyframes slideInRight {
   from {
