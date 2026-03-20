@@ -127,6 +127,15 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
     const safePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1);
 
+    // Memoize paginated items to prevent referential instability on hover/render loops
+    const paginatedItems = useMemo(() => {
+        const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+        return currentGlobal.length > 0 ? currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
+            ...entry,
+            originalRank: entry.originalRank ?? (startIndex + idx + 1)
+        })) : [];
+    }, [currentGlobal, safePage]);
+
     // パフォーマンス: ランクバッジのスタイルを事前計算し、レンダーごとの再生成を防止
     const rankBadgeStyles = useMemo(() => ({
         1: isMidnight
@@ -270,14 +279,6 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                     />
                                 </div>
 
-                                {(() => {
-                                    const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
-                                    const paginatedItems = currentGlobal.length > 0 ? currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
-                                        ...entry,
-                                        originalRank: entry.originalRank ?? (startIndex + idx + 1)
-                                    })) : [];
-
-                                    return (
                                         <>
                                 <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
                                     {currentGlobal.length === 0 ? (
@@ -440,8 +441,6 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                     </div>
                                 )}
                                         </>
-                                    );
-                                })()}
 
                             </FadeInWrapper>
                         </div>
