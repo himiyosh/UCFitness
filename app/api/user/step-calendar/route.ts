@@ -17,8 +17,10 @@ export async function GET(request: Request) {
     const userId = searchParams.get("userId");
     const yearParam = searchParams.get("year");
 
-    if (!userId) {
-        return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!userId || !UUID_REGEX.test(userId)) {
+        return NextResponse.json({ error: "userId is required and must be a valid UUID" }, { status: 400 });
     }
 
     const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();

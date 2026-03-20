@@ -78,8 +78,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    if (!userId || typeof userId !== 'string') {
-        return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!userId || typeof userId !== 'string' || !UUID_REGEX.test(userId)) {
+        return NextResponse.json({ error: 'userId is required and must be a valid UUID' }, { status: 400 });
     }
 
     try {
