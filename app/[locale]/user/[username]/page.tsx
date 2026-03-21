@@ -194,7 +194,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     // Viewer Stats (Fetch if logged in and different user)
     // 🛡️ Sentinel: email ではなく ID で所有者判定
     const isOwner = (session?.user as any)?.id === user.id;
-    let viewerStats = { daily: 0, weekly: 0, monthly: 0 };
+    const viewerStats = { daily: 0, weekly: 0, monthly: 0 };
     let hasViewerStats = false;
     let viewerUser = session?.user; // Default to session user
     let viewerHistoryData: any[] = []; // グラフ比較用

@@ -45,7 +45,7 @@ export default async function LeaderboardPage() {
   }
 
   // グループキーワードと画像情報を抽出
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const groupData = (membershipResult.data ?? [])
     .map((m: any) => m.groups)
     .filter(Boolean) as { keyword: string; image_url: string | null }[];

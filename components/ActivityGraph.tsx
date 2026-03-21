@@ -52,7 +52,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
             return `${year}-${month}-${day}`;
         };
 
-        let result: { label: string; value: number; fullDate: string; isToday: boolean }[] = [];
+        const result: { label: string; value: number; fullDate: string; isToday: boolean }[] = [];
 
         if (viewMode === 'WEEKLY') {
             const currentDay = today.getDay(); // 0-6 (Sun-Sat)
@@ -119,7 +119,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 const [y, m, d] = sortedData[0].date.split('-').map(Number);
                 const minDate = new Date(y, m - 1, d);
 
-                let current = new Date(minDate);
+                const current = new Date(minDate);
                 while (current <= today) {
                     const dateStr = toLocalISOString(current);
                     const steps = dataMap.get(dateStr) ?? 0;

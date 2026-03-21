@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         }
 
         // 画像URLがウィジェットURLの場合、高品質な直接URLへの取得を試みる
-        let imageUrl = body.imageUrl || '';
+        const imageUrl = body.imageUrl || '';
         // ウィジェットURL は ws-fe.amazon-adsystem.com 経由でリダイレクトされるため、
         // そのまま保存しても表示は可能だが、直接URLの方が安定する
 

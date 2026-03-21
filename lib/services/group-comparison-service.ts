@@ -247,6 +247,19 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             });
         }
 
+        // ⚡ Bolt Optimization: Pre-calculate week keys for O(1) matching
+        const mapKeys = Array.from(map.keys());
+        let firstWeekMs = 0;
+        const weekMs = 7 * 24 * 60 * 60 * 1000;
+        if (aggregation === 'week' && mapKeys.length > 0) {
+            const firstWeekStr = mapKeys[0];
+            firstWeekMs = Date.UTC(
+                parseInt(firstWeekStr.substring(0, 4), 10),
+                parseInt(firstWeekStr.substring(5, 7), 10) - 1,
+                parseInt(firstWeekStr.substring(8, 10), 10)
+            );
+        }
+
         // Fill Data
         relevantSteps.forEach((row) => {
             // NORMALIZE DATE: Extract YYYY-MM-DD only
@@ -260,25 +273,27 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             if (aggregation === 'month') {
                 key = rowDateStr.substring(0, 7); // YYYY-MM
             } else if (aggregation === 'week') {
-                const rowDate = new Date(rowDateStr);
-                // Find the latest key <= rowDate
-                let bestKey = null;
-                for (const k of map.keys()) {
-                    // k is a YYYY-MM-DD string representing the start of a week
-                    // We need to check if rowDate falls within the week starting at k
-                    const weekStartDate = new Date(k);
-                    const weekEndDate = new Date(weekStartDate);
-                    weekEndDate.setDate(weekEndDate.getDate() + 6); // End of the week
+                // ⚡ Bolt Optimization: O(1) week index calculation
+                // Avoids O(N) array iteration for each step row
+                const rY = parseInt(rowDateStr.substring(0, 4), 10);
+                const rM = parseInt(rowDateStr.substring(5, 7), 10) - 1;
+                const rD = parseInt(rowDateStr.substring(8, 10), 10);
+                const rowMs = Date.UTC(rY, rM, rD);
 
-                    if (rowDate >= weekStartDate && rowDate <= weekEndDate) {
-                        bestKey = k;
-                        break; // Found the correct week
+                const diffMs = rowMs - firstWeekMs;
+                if (diffMs >= 0) {
+                    const weekIndex = Math.floor(diffMs / weekMs);
+                    if (weekIndex >= 0 && weekIndex < mapKeys.length) {
+                        key = mapKeys[weekIndex];
+                    } else {
+                        key = '';
                     }
+                } else {
+                    key = '';
                 }
-                key = bestKey || ''; // If no week found, it won't be added
             }
 
-            if (map.has(key)) {
+            if (key && map.has(key)) {
                 const p = map.get(key)!;
                 const username = userIdToName.get(row.user_id);
                 if (username) {
