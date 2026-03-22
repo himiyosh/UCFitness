@@ -39,19 +39,27 @@ export async function GET(): Promise<NextResponse> {
             monthly: null,
         };
 
-        for (const period of periods) {
-            const entries = Object.entries(rankingMap)
-                .map(([id, stats]) => ({ id, steps: stats[period] }))
-                .sort((a, b) => b.steps - a.steps);
+        // ⚡ Bolt Optimization: O(N log N) sorting replaced with O(N) linear scan
+        // since we only need to know how many users have MORE steps to determine rank.
+        const userStats = rankingMap[userId];
 
-            const userIndex = entries.findIndex((e) => e.id === userId);
-            if (userIndex === -1 || entries[userIndex].steps === 0) {
+        for (const period of periods) {
+            const mySteps = userStats?.[period] || 0;
+
+            if (mySteps === 0) {
                 percentile[periodKeys[period]] = null;
-            } else {
-                // パーセンタイル = (順位 / 全ユーザー数) * 100（上位何%）
-                const rank = userIndex + 1;
-                percentile[periodKeys[period]] = Math.round((rank / totalUsers) * 100);
+                continue;
             }
+
+            let rank = 1; // 1-based ranking
+            for (const stats of Object.values(rankingMap)) {
+                if (stats[period] > mySteps) {
+                    rank++;
+                }
+            }
+
+            // パーセンタイル = (順位 / 全ユーザー数) * 100（上位何%）
+            percentile[periodKeys[period]] = Math.round((rank / totalUsers) * 100);
         }
 
         return NextResponse.json({
