@@ -140,7 +140,13 @@ export async function uploadProfileImage(formData: FormData) {
     // 🛡️ セキュリティ: ファイル検証
     validateImageFile(file);
 
-    const fileExt = file.name.split('.').pop();
+    const MIME_TO_EXT: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/gif': 'gif'
+    };
+    const fileExt = MIME_TO_EXT[file.type];
     const filePath = `${userId}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseAdmin
