@@ -3,7 +3,7 @@ export const runtime = 'edge';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import RefreshButton from '@/components/layout/RefreshButton';
 import UserMenu from '@/components/layout/UserMenu';
 import { auth } from "@/lib/auth";
@@ -15,6 +15,9 @@ import Footer from '@/components/layout/Footer';
 import LandingPage from '@/components/LandingPage';
 import HomePortal from '@/components/dashboard/HomePortal';
 import QuickActions from '@/components/dashboard/QuickActions';
+import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
+import { getEquippedItems } from '@/lib/services/shop-service';
+import { getFrameColor } from '@/components/UserAvatar';
 
 import type { RankingEntry } from '@/lib/services/ranking-utils';
 
@@ -106,8 +109,8 @@ export default async function Home() {
   lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
   const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
 
-  // ⚡ パフォーマンス: ユーザー情報・歩数・グループ情報を並列取得
-  const [userResult, stepsResult, membershipResult, rankingMap] = await Promise.all([
+  // ⚡ パフォーマンス: ユーザー情報・歩数・グループ情報・装備アイテムを並列取得
+  const [userResult, stepsResult, membershipResult, rankingMap, equippedItems] = await Promise.all([
     supabaseAdmin
       .from('users')
       .select('username, step_goal, image, name')
@@ -123,6 +126,7 @@ export default async function Home() {
       .select('groups(keyword, header_image_url)')
       .eq('user_id', userId),
     getCachedGlobalRankingMap(),
+    getEquippedItems(userId),
   ]);
 
   const userData = userResult.data;
@@ -194,10 +198,22 @@ export default async function Home() {
 
   const userImage = dbUserImage || session.user.image || null;
 
+  // サイドバー用: 装備中称号・フレーム情報
+  const currentLocale = await getLocale();
+  const sidebarTitleItem = equippedItems.TITLE;
+  const sidebarFrameItem = equippedItems.ICON_FRAME;
+  const sidebarTitleName = sidebarTitleItem
+    ? (currentLocale === 'ja' ? sidebarTitleItem.shop_items?.name_ja : sidebarTitleItem.shop_items?.name_en) || null
+    : null;
+  const sidebarTitleEmoji = sidebarTitleItem?.shop_items?.preview_value || null;
+  const sidebarFrameColor = sidebarFrameItem?.shop_items?.preview_value
+    ? getFrameColor(sidebarFrameItem.shop_items.preview_value)
+    : null;
+
   return (
     <main className="min-h-screen flex flex-col bg-[var(--theme-page-bg)]">
-      {/* ヘッダー: モバイルではコンパクト (h-12) */}
-      <header className="glass-card border-b border-[var(--theme-primary)]/10 sticky top-0 z-50 !rounded-none">
+      {/* ヘッダー: モバイル〜md では表示、lg 以上ではサイドバーがあるためコンパクト */}
+      <header className="lg:hidden glass-card border-b border-[var(--theme-primary)]/10 sticky top-0 z-50 !rounded-none">
         <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 group">
@@ -209,6 +225,38 @@ export default async function Home() {
               </span>
             </Link>
           </div>
+          <div className="flex items-center gap-1">
+            <RefreshButton />
+            <NotificationBell />
+            <UserMenu user={{
+              id: userId,
+              name: dbUserName || session.user.name,
+              email: session.user.email,
+              image: userImage,
+            }} />
+          </div>
+        </div>
+      </header>
+
+      {/* ===== lg 以上: サイドバー + メインコンテンツの flex 構成 ===== */}
+      <div className="flex flex-1">
+
+      {/* デスクトップサイドバー (lg: 以上) */}
+      <DashboardSidebar
+        userName={dbUserName || session.user.name || null}
+        userImage={userImage}
+        username={username}
+        titleName={sidebarTitleName}
+        titleEmoji={sidebarTitleEmoji}
+        frameColor={sidebarFrameColor}
+      />
+
+      {/* メインコンテンツ領域 */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+      {/* lg 以上のヘッダー（サイドバーと共存するコンパクト版） */}
+      <header className="hidden lg:block glass-card border-b border-[var(--theme-primary)]/10 sticky top-0 z-40 !rounded-none">
+        <div className="w-full px-4 lg:px-6 h-14 flex items-center justify-end">
           <div className="flex items-center gap-1">
             <RefreshButton />
             <NotificationBell />
@@ -292,6 +340,9 @@ export default async function Home() {
         </div>
         <Footer />
       </div>
+
+      </div>{/* /メインコンテンツ領域 */}
+      </div>{/* /flex 構成 */}
 
       {/* 非表示ユーティリティ */}
       <LoginBonusToast userId={userId} />

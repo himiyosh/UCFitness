@@ -121,6 +121,15 @@
         "more": "その他",
         "label": "メインナビゲーション"
     },
+    "Sidebar": {
+        "label": "サイドバーナビゲーション",
+        "dashboard": "ダッシュボード",
+        "missions": "ミッション",
+        "leaderboard": "リーダーボード",
+        "gear": "ギア",
+        "groups": "グループ",
+        "startWorkout": "チャレンジに参加"
+    },
     "Portal": {
         "heroLabel": "今日の歩数と統計",
         "rank": "ランク",

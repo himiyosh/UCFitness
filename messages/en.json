@@ -121,6 +121,15 @@
         "more": "More",
         "label": "Main navigation"
     },
+    "Sidebar": {
+        "label": "Sidebar navigation",
+        "dashboard": "Dashboard",
+        "missions": "Missions",
+        "leaderboard": "Leaderboard",
+        "gear": "Gear",
+        "groups": "Groups",
+        "startWorkout": "Join Challenge"
+    },
     "Portal": {
         "heroLabel": "Today's steps and stats",
         "rank": "Rank",
