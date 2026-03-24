@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 
 /**
  * UserAvatar — 共有アバターコンポーネント
@@ -86,7 +86,14 @@ const SIZE_MAP = {
     },
 } as const;
 
-export default function UserAvatar({
+/**
+ * ⚡ Bolt: Added React.memo() to UserAvatar
+ * 💡 What: Wrapped UserAvatar with React.memo
+ * 🎯 Why: This component is heavily used in large lists (e.g., leaderboards, feeds) and re-renders frequently when the parent state changes, even when its own props haven't changed.
+ * 📊 Impact: Prevents unnecessary DOM diffing and re-renders, making long lists significantly smoother.
+ * 🔬 Measurement: Open React Profiler and verify that UserAvatar skips rendering when the parent component re-renders but the props passed to UserAvatar remain identical.
+ */
+function UserAvatar({
     src,
     name,
     size = 'md',
@@ -227,3 +234,4 @@ export function getFrameColor(previewValue: string): string {
 export function isRainbowFrame(color: string): boolean {
     return color === 'rainbow';
 }
+export default React.memo(UserAvatar);
