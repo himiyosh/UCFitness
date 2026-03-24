@@ -275,6 +275,15 @@ html {
   --accent-pink: #FF85A2;
   --accent-yellow: #FFE66D;
   --accent-purple: #A855F7;
+
+  /* Stitch "Vitreous Pulse" デザイントークン */
+  --theme-tertiary: #FBBF24;          /* ゴールド (メダル・コイン用) */
+  --theme-tertiary-container: #FEF3C7; /* ゴールド背景 */
+  --theme-on-surface: #374151;         /* ウォームグレーテキスト */
+  --theme-on-surface-variant: #6B7280; /* セカンダリテキスト */
+  --theme-outline-variant: rgba(156, 163, 175, 0.15); /* Ghost Border */
+  --theme-ambient-shadow: 0 4px 40px 0 rgba(55, 65, 81, 0.06); /* Diffused shadow */
+  --theme-ambient-shadow-hover: 0 8px 40px 0 rgba(55, 65, 81, 0.1);
 }
 
 /* Pop & Fun Theme */
@@ -2174,24 +2183,18 @@ body::before {
 /* ガラスカード (Glassmorphism) — M3 デザイントークン連携
    使用方法: <div className="glass-card rounded-2xl p-4"> */
 .glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid var(--theme-outline-variant, rgba(156, 163, 175, 0.15));
   border-radius: var(--radius-md);
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.05),
-    0 2px 4px -2px rgba(0, 0, 0, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: var(--theme-ambient-shadow, 0 4px 40px 0 rgba(55, 65, 81, 0.06));
   transition: box-shadow var(--motion-standard-duration) var(--motion-standard),
               transform var(--motion-standard-duration) var(--motion-standard);
 }
 
 .glass-card:hover {
-  box-shadow:
-    0 10px 25px -5px rgba(0, 0, 0, 0.08),
-    0 4px 10px -3px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: var(--theme-ambient-shadow-hover, 0 8px 40px 0 rgba(55, 65, 81, 0.1));
   transform: translateY(-1px);
 }
 

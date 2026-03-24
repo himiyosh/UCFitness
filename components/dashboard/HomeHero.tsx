@@ -63,18 +63,29 @@ export default function HomeHero({
           <svg className="w-[104px] h-[104px] sm:w-[120px] sm:h-[120px] -rotate-90 drop-shadow-lg" viewBox="0 0 100 100" aria-hidden="true">
             {/* 背景リング */}
             <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" />
-            {/* 進捗リング — Round cap + subtle glow */}
+            {/* 進捗リング — Gradient + neon glow (Stitch Vitreous Pulse) */}
+            <defs>
+              <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="var(--theme-gradient-from, #8B5CF6)" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="var(--theme-gradient-to, #3B82F6)" stopOpacity="0.9" />
+              </linearGradient>
+              <filter id="ring-glow-filter">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
             <circle
               cx="50" cy="50" r={ringRadius}
-              fill="none" stroke="#fff" strokeWidth="7"
+              fill="none" stroke="url(#ring-gradient)" strokeWidth="7"
               strokeLinecap="round"
               strokeDasharray={ringCircumference}
               strokeDashoffset={ringOffset}
-              className="transition-all duration-1000 ring-glow"
+              filter="url(#ring-glow-filter)"
+              className="transition-all duration-1000"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl sm:text-2xl font-black leading-none tracking-tight">{todaySteps.toLocaleString()}</span>
+            <span className="text-xl sm:text-2xl font-black leading-none" style={{ letterSpacing: '-0.02em' }}>{todaySteps.toLocaleString()}</span>
             <span className="text-[10px] sm:text-xs opacity-70 mt-0.5 font-medium">/ {stepGoal.toLocaleString()}</span>
           </div>
         </div>

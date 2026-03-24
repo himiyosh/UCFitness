@@ -279,7 +279,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
 
                                     return (
                                         <>
-                                <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
+                                <ul role="list" className={`${isMidnight ? 'divide-y divide-slate-600/20 border-t border-slate-600/20' : 'space-y-0.5'}`}>
                                     {currentGlobal.length === 0 ? (
                                         <li className="list-none"><p className="text-center py-4" style={{ color: 'var(--foreground-muted, #6b7280)' }}>{t('noData')}</p></li>
                                     ) : (

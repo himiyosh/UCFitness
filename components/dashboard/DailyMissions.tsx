@@ -144,7 +144,7 @@ export default function DailyMissions() {
                         🎯 {t('dailyMissions')}
                     </h3>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-[var(--theme-primary)] tabular-nums">
+                        <span className="text-[10px] font-bold text-[var(--theme-primary)] tabular-nums uppercase tracking-wider">
                             {completedCount}/{missions.length}
                         </span>
                         {/* 再チェックボタン */}
@@ -218,7 +218,7 @@ export default function DailyMissions() {
                                     {t('streak', { days: streak })}
                                 </p>
                                 {streak >= 3 && (
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--theme-tertiary-container,#FEF3C7)] text-amber-700 uppercase tracking-wider">
                                         {streak >= 7 ? t('streakAmazing') : t('streakGreat')}
                                     </span>
                                 )}
