@@ -700,6 +700,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 14. **DB FK 参照先チェック** — マイグレーション SQL やテーブル作成で `REFERENCES auth.users(id)` を使用している箇所がないか確認。UCFitness は NextAuth + `public.users` テーブルを使用するため、**必ず `REFERENCES public.users(id)` を指定すること。** `auth.users` への FK はデータ挿入時に制約違反を起こす
 15. **CRUD API 完全性チェック** — 新規リソース（テーブル）に対応する API Route が GET / POST だけでなく、PUT（編集）/ DELETE（削除）も必要に応じて実装されているか確認。UI に「作成」ボタンがあるのに「編集」が不可能な状態はバグとして報告
 16. **Supabase 埋め込みカウント形式チェック** — `(count)` を使った埋め込みクエリの結果を抽出する際、`Array.isArray()` で配列/オブジェクト両形式をハンドルしているか確認。`data?.[0]?.count` のみの抽出はバグの可能性あり
+17. **Server/Client 境界チェック** — Server Component (`page.tsx`, `layout.tsx`, `'use client'` 宣言なしのファイル) が `'use client'` モジュールから**関数を import して呼び出していないか**確認。`tsc --noEmit` はこの違反を原理的に検出できない。`'use client'` モジュールからは React コンポーネントの import のみ許可。ユーティリティ関数（型変換マップ等）は `lib/` の共有モジュールに配置すること
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -1029,6 +1030,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | 参加人数が 0 人表示 (Supabase count レスポンス形式) | `challenge_participants(count)` の返り値を `[{count: N}]` (配列) として扱ったが、Supabase バージョンにより `{count: N}` (単一オブジェクト) を返す場合がある。`challenge.challenge_participants?.[0]?.count` が `undefined` になり 0 にフォールバック | **Supabase の埋め込みカウント (`(count)`) は配列・オブジェクト両方の形式をハンドルする。** `Array.isArray(cp) ? cp[0]?.count : cp?.count` パターンを使用。リファレンス: `app/api/challenge/route.ts` |
 | カードリストのモバイル表示がぐちゃっとなる（縦型バナーカードの過剰適用） | グループ一覧カードを全ビューポートで縦型（バナー画像 `h-24` + オーバーラップアイコン + テキスト + プログレスバー）に統一した結果、モバイルでは各カード ~180px 高 × 3+ で 540px+ の縦スクロールが発生。375px 幅では情報密度が高すぎ「ぐちゃっとした印象」に。初回修正で `sm`(640px) ブレイクポイントを使用したが、タブレット・大型スマホでは 640px+ のビューポートになりリッチレイアウトが表示され間延び問題が再発 | **カードリストのレスポンシブ設計ルール**: (1) ブレイクポイントは `sm`(640px) ではなく **`md`(768px)** を使用 (2) モバイル(<md)は横型コンパクトカード（アイコン`w-10 h-10`左 + テキスト右、`px-2.5 py-2`、カード高さ ~56px） (3) デスクトップ(md+)は縦型リッチカード（バナー + オーバーラップアイコン + プログレスバー） (4) 補助情報は `hidden md:block` でデスクトップのみ (5) グリッドギャップ `gap-1.5 md:gap-3`。リファレンス: `GroupList.tsx`, `app/[locale]/groups/page.tsx` |
 | Playwright ブラウザ閉じ忘れ（ユーザー指摘） | Improvement Loop の Playwright 検証ステップで `mcp_playwright_browser_take_screenshot` / `browser_snapshot` 等を実行した後、`mcp_playwright_browser_close` を呼び出さずにタスク完了を報告。ユーザーの画面に Playwright のブラウザウィンドウが残り続けた | **Playwright MCP 使用後は必ず `mcp_playwright_browser_close` を呼び出す。** (1) テスト実行フローのステップ 13 に「browser_close」を追加（スキップ厳禁） (2) 完了チェックリストに「Playwright ブラウザクローズ」項目を追加 (3) サブエージェント委任テンプレートにもクローズ指示を含める。**ブラウザを開いたまま放置すると、ユーザーの画面を占有し続ける** |
+| Server/Client 境界違反が tsc で検出不可（getFrameColor ランタイムエラー） | `UserAvatar.tsx` (`'use client'`) から export された `getFrameColor()` を Server Component (`page.tsx`) で import・呼び出し。`tsc --noEmit` は TypeScript の型整合性のみチェックし、Next.js の `'use client'` ディレクティブによる Server/Client 境界を**原理的に認識しない**ため、型チェック PASS → ランタイムクラッシュとなった | **Server Component で `import` する前に、インポート先ファイルの先頭に `'use client'` がないか確認する。** `'use client'` モジュールから純粋なユーティリティ関数（型変換マップ等）を使いたい場合は、(1) その関数を `lib/` 配下の共有モジュールに移動するか、(2) Server Component 内にインラインで定義する。**`tsc --noEmit` は Server/Client 境界違反を検出できないことを常に意識する。** Build Validation サブエージェントに「Server/Client 境界チェック」を追加 |
 
 ---
 

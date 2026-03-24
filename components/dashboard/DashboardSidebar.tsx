@@ -49,7 +49,7 @@ export default function DashboardSidebar({
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 shrink-0 sticky top-0 h-screen glass-card !rounded-none border-r border-[var(--theme-primary)]/10 z-40"
+      className="hidden lg:flex flex-col w-64 shrink-0 sticky top-0 h-screen glass-card !rounded-none border-r border-[var(--theme-primary)]/10 z-40 hover:!transform-none hover:!shadow-none"
       role="navigation"
       aria-label={t('label')}
     >

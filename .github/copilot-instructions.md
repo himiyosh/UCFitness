@@ -662,6 +662,13 @@ export const runtime = "edge";
 - Edge Runtime では `fs`, `path`, `child_process` 等の Node.js ネイティブモジュールは使用不可
 - `crypto` は Web Crypto API (`crypto.subtle`) を使用すること
 
+#### Server/Client 境界違反の防止（`tsc` では検出不可）
+
+- **`'use client'` モジュールから export された関数を Server Component で呼び出すとランタイムエラーになる**（`tsc --noEmit` はこの違反を原理的に検出できない）
+- `'use client'` モジュールからは **React コンポーネントの import のみ** Server Component で許可
+- 純粋なユーティリティ関数（型変換マップ、定数等）を Server/Client 両方で使う場合は `lib/` 配下の共有モジュール（`'use client'` 宣言なし）に配置する
+- **import 前に必ずインポート先ファイルの先頭に `'use client'` がないか確認すること**
+
 #### `next/dynamic` の `ssr: false` 制約（ビルドエラー防止）
 
 - **Server Component（`'use client'` 宣言がないファイル）では `dynamic(() => import(...), { ssr: false })` は使用禁止**
