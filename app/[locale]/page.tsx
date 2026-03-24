@@ -17,7 +17,6 @@ import HomePortal from '@/components/dashboard/HomePortal';
 import QuickActions from '@/components/dashboard/QuickActions';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import { getEquippedItems } from '@/lib/services/shop-service';
-import { getFrameColor } from '@/components/UserAvatar';
 
 import type { RankingEntry } from '@/lib/services/ranking-utils';
 
@@ -206,9 +205,16 @@ export default async function Home() {
     ? (currentLocale === 'ja' ? sidebarTitleItem.shop_items?.name_ja : sidebarTitleItem.shop_items?.name_en) || null
     : null;
   const sidebarTitleEmoji = sidebarTitleItem?.shop_items?.preview_value || null;
-  const sidebarFrameColor = sidebarFrameItem?.shop_items?.preview_value
-    ? getFrameColor(sidebarFrameItem.shop_items.preview_value)
-    : null;
+  // フレームカラー変換 (UserAvatar.getFrameColor は 'use client' のため Server Component から呼べない)
+  const FRAME_COLOR_MAP: Record<string, string> = {
+    'ring-green-400': '#4ade80', 'ring-blue-400': '#60a5fa', 'ring-yellow-400': '#facc15',
+    'ring-cyan-300': '#67e8f9', 'ring-purple-500': '#a855f7', 'ring-rose-400': '#fb7185',
+    'ring-orange-400': '#fb923c', 'ring-teal-400': '#2dd4bf', 'ring-red-500': '#ef4444',
+    'ring-indigo-500': '#6366f1', 'ring-emerald-500': '#10b981', 'ring-amber-500': '#f59e0b',
+    'ring-pink-500': '#ec4899', 'ring-sky-400': '#38bdf8', 'ring-rainbow': 'rainbow',
+  };
+  const framePreview = sidebarFrameItem?.shop_items?.preview_value;
+  const sidebarFrameColor = framePreview ? (FRAME_COLOR_MAP[framePreview] || '#d1d5db') : null;
 
   return (
     <main className="min-h-screen flex flex-col bg-[var(--theme-page-bg)]">
