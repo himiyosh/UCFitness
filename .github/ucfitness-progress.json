@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。",
+  "lastUpdated": "2026-03-29T00:00:00Z",
+  "lastAgent": "UCFitnessAgent",
+  "lastCommit": "",
+  "lastBranch": "copilot/ai-harness-system",
+  "summary": "AI Harness システム初期設定 — Session Bootstrap、Progress File、Clean State Protocol、Initializer Step を導入。",
+  "devServerPort": 3000,
+  "environmentStatus": {
+    "tscErrors": 0,
+    "lintErrors": 0,
+    "devServerRunning": false,
+    "lastVerified": "2026-03-29T00:00:00Z"
+  },
+  "knownIssues": [
+    "AdSense 審査未申請",
+    "Creators API 資格未達（10件/30日）",
+    "カードリストのモバイル横スクロールは md ブレイクポイントで切替"
+  ],
+  "featureBacklog": [
+    {
+      "id": "F001",
+      "name": "チャレンジ期間限定イベント",
+      "category": "ゲーミフィケーション",
+      "priority": "P1",
+      "feasibility": "medium",
+      "status": "not-started",
+      "description": "期間限定チャレンジイベントでエンゲージメント向上"
+    },
+    {
+      "id": "F002",
+      "name": "バッジレア度システム",
+      "category": "ゲーミフィケーション",
+      "priority": "P2",
+      "feasibility": "easy",
+      "status": "not-started",
+      "description": "バッジにレア度（Common/Rare/Epic/Legendary）を付与"
+    },
+    {
+      "id": "F003",
+      "name": "ストリーク報酬強化",
+      "category": "リテンション",
+      "priority": "P0",
+      "feasibility": "easy",
+      "status": "not-started",
+      "description": "連続日数に応じた段階的報酬で継続モチベーション向上"
+    }
+  ],
+  "sessionLog": [
+    {
+      "date": "2026-03-29",
+      "agent": "UCFitnessAgent",
+      "action": "AI Harness システム初期導入 — ucfitness-progress.json 作成、Session Bootstrap・Clean State Protocol・Initializer Step を UCFitnessAgent.agent.md に追加",
+      "commit": "",
+      "filesChanged": [
+        ".github/ucfitness-progress.json",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md"
+      ]
+    }
+  ],
+  "instincts": {
+    "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
+    "items": []
+  }
+}

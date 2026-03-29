@@ -9,6 +9,106 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 
 ---
 
+## 🚀 Session Bootstrap（セッション開始ルーチン — 毎回必須）
+
+> **設計根拠**: Anthropic "Effective Harnesses for Long-Running Agents" の "Getting Up to Speed" パターン。
+> 長時間稼働エージェントの最大の課題は「前のシフトのエンジニアの記憶がない状態で新しいシフトが始まること」。
+> 構造化された進捗ファイル (`ucfitness-progress.json`) + Git 履歴で、各セッションの立ち上がりを最小化する。
+> 参考: everything-claude-code の Continuous Learning / Strategic Compact / Memory Persistence パターン。
+
+**新しいコンテキストウィンドウの開始時（会話冒頭・コンパクション後）、以下を順番に実行する:**
+
+### Step B-1: 現在地確認
+
+```
+pwd
+git branch --show-current
+```
+
+- `main` / `master` にいる場合は作業ブランチに切替（絶対遵守ルール）
+
+### Step B-2: 進捗ファイル読込
+
+```
+read_file: .github/ucfitness-progress.json
+```
+
+確認項目:
+- `lastUpdated` / `lastAgent` / `summary` → 前回の作業内容把握
+- `lastBranch` → 現在のブランチと一致するか
+- `knownIssues` → 既知の制約事項
+- `featureBacklog` → 次に着手すべき未完了タスク
+- `sessionLog` → 直近のセッション履歴
+
+### Step B-3: Git ログ確認
+
+```
+git log --oneline -10
+```
+
+直近のコミットから作業の流れを把握する。
+
+### Step B-4: エラーチェック
+
+```
+get_errors
+```
+
+- IDE エラーが残っていれば、新しいタスクに着手する前に先に修正する
+- 前のセッションが中途半端な状態で終わっている可能性がある
+
+### Step B-5: dev サーバー状態確認
+
+- ポート 3000 で dev サーバーが起動中か確認
+- Playwright 検証が必要な場合、起動していなければ `npm run dev` を実行
+
+### Step B-6: タスク選択
+
+- ユーザーからの明示的な指示がある場合 → その指示に従う
+- 指示がない場合 → `featureBacklog` から最も優先度の高い `not-started` を 1 つ選び、`in-progress` に変更して作業開始
+- **1 セッション = 1 機能（インクリメンタルアプローチ）** — 一度に複数機能を実装しようとしない
+
+### Step B-7: Session Memory 確認
+
+```
+memory view /memories/session/
+```
+
+- 前ターンの中間状態が記録されていれば、そこから再開する
+- なければ新規タスクとして開始
+
+> **重要**: Session Bootstrap は「省略可能なセレモニー」ではなく、**長時間エージェントの品質を決定的に左右するルーチン**である。
+> 記事の実験では、このルーチンの有無でタスク完了率に大きな差が出た。
+
+---
+
+## 🧹 Clean State Protocol（作業単位の完了条件 — 毎回必須）
+
+> **設計根拠**: Anthropic の "leaving the environment in a clean state" = "code that would be appropriate for merging to a main branch"。
+> everything-claude-code の `/quality-gate` + Verification Loop に相当。
+> 各タスク完了時に環境を「次のエージェントセッションがすぐに新機能に着手できる状態」に整える。
+
+**1 つの機能・修正の作業が完了したら、以下をすべて満たすこと:**
+
+- [ ] `npx tsc --noEmit` → 0 エラー
+- [ ] `npx next lint` → 0 エラー（重大な問題なし）
+- [ ] Playwright でモバイル (375) + デスクトップ (1280) の簡易確認 → 表示崩れなし（UI 変更時）
+- [ ] Git コミット完了（日本語メッセージ、アトミック、`[エリア]` プレフィックス）
+- [ ] **進捗ファイル更新** (`ucfitness-progress.json`):
+  - `lastUpdated` を現在時刻に更新
+  - `lastAgent` を使用したロールに更新
+  - `lastCommit` をコミットハッシュに更新
+  - `summary` を今回の作業概要に更新
+  - 完了した機能の `status` を `"done"` に変更
+  - `sessionLog` に今回の作業を追記
+- [ ] **Session Memory 更新**: 未完了タスクがあれば `/memories/session/current-task.md` に中間状態を記録
+- [ ] **自己学習チェック**: 今回の作業で新たな Lessons Learned があれば、Lessons Learned テーブルに追記
+- [ ] **最終チェック: 次のエージェントセッションが「すぐに新機能に着手できる」状態か？**
+
+> **アンチパターン**: コードを書きかけのまま放置する / コミットせずにセッションを終える / テストが壊れた状態で次の機能に進む
+
+---
+
 ## 🔌 利用可能な MCP ツール
 
 UCFitnessAgent は以下の MCP ツールが利用可能。すべて遅延ロードのため、**使用前に `tool_search_tool_regex` でロード必須**。
@@ -615,6 +715,28 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 
 ### 全体フロー
 
+#### Step 0: Initializer（新サイクルの最初のセッションでのみ実行）
+
+> **設計根拠**: Anthropic の "Initializer Agent" パターン。
+> 最初のセッションで環境を完全に把握し、Feature Backlog を構造化することで、
+> 後続の Coding Agent セッションが「1 機能ずつインクリメンタルに」作業できる基盤を作る。
+> everything-claude-code の `/loop-start` + `loop-operator.md` に相当。
+
+1. **Session Bootstrap 実行** — Step B-1 〜 B-7 を完了する
+2. **進捗ファイル確認・更新** — `.github/ucfitness-progress.json` を読み込み:
+   - `featureBacklog` が空 or 全て `done` の場合、コードベースをスキャンして新しいバックログ項目を追加
+   - `knownIssues` の最新化
+   - `environmentStatus` の更新（`tscErrors`, `lintErrors` を再計測）
+3. **環境ヘルスチェック**:
+   - `npx tsc --noEmit` → 型エラー 0 であること
+   - dev サーバー起動 → ポート 3000 で応答すること
+   - Playwright で `/` にアクセス → 基本動作（ページ表示）確認
+4. **Feature Backlog の優先度整理** — 各項目に P0/P1/P2 と 🟢/🟡/🔴 を付与
+5. **環境に問題があれば先に修正してコミット**
+6. **準備完了レポート** — 「バックログ N 件、今回は F-XXX から着手」と報告
+
+> **スキップ条件**: 進捗ファイルの `lastUpdated` が 24 時間以内 かつ `environmentStatus.tscErrors === 0` の場合、Step 0 の 3〜5 は省略して Step 1 に進んでよい。
+
 #### Step 1: 事前チェック
 
 1. `git branch` で確認 → `copilot/improvement-loop-1` に切替
@@ -679,6 +801,22 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 #### Step 5: プロンプト自己学習
 
 同一パターン修正 2 回以上 / ユーザーフィードバック / 新制約発見時に、**このエージェントファイル自体**の Lessons Learned セクションに追記する。
+
+#### Step 6: Clean State 確認 + 進捗ファイル更新
+
+> **設計根拠**: 各 Cycle の終了時に Clean State Protocol を実行し、次のセッションへのハンドオフを完了する。
+
+1. **Clean State Protocol** をすべて実行（上記「🧹 Clean State Protocol」セクション参照）
+2. **進捗ファイル更新** — `.github/ucfitness-progress.json` を更新:
+   - `lastUpdated` / `lastAgent` / `lastCommit` / `summary`
+   - 完了した機能の `status` を `"done"` に変更
+   - `sessionLog` に今回のサイクルの作業を追記
+   - `environmentStatus` を最新状態に更新
+3. **次のセッションに向けた引き継ぎ** — 未完了の作業がある場合:
+   - `featureBacklog` に `in-progress` のまま残す
+   - `summary` に「次回は XXX の続きから」と明記
+   - `/memories/session/current-task.md` に中間状態を記録
+4. **進捗ファイルもコミットに含める** — `git add .github/ucfitness-progress.json`
 
 ### 🔨 サブエージェント: Build Validation
 

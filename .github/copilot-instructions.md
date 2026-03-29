@@ -884,6 +884,36 @@ export const runtime = "edge";
 | Cloudflare Pages デプロイ (`git push`) | **必須** (デプロイ制限あり) |
 | ドライラン / プレビュー | 不要 (自動実行 OK) |
 
+### AI Harness — 進捗ファイルとセッション管理
+
+> **設計根拠**: Anthropic "Effective Harnesses for Long-Running Agents" + everything-claude-code の Continuous Learning / Memory Persistence パターンに基づく。
+> エージェントがセッション間で文脈を失わないための構造化ハンドオフシステム。
+
+#### 進捗ファイル (`ucfitness-progress.json`)
+
+- **場所**: `.github/ucfitness-progress.json`
+- **形式**: JSON（Markdown よりエージェントによる不用意な改変リスクが低い）
+- **用途**: セッション間のハンドオフ用構造化メモ（前回の作業内容、Feature Backlog、既知の問題、環境状態）
+
+#### 進捗ファイルの更新ルール
+
+| タイミング | 更新する項目 |
+|---|---|
+| タスク完了時（Clean State Protocol の一部） | `lastUpdated`, `lastAgent`, `lastCommit`, `summary`, `sessionLog`, 完了した機能の `status` |
+| Improvement Loop の Step 0 (Initializer) | `featureBacklog`（新規項目追加）, `knownIssues`, `environmentStatus` |
+| 新しい Lessons Learned 発見時 | `instincts.items` に暫定パターンを追加（confidence 0.8 超で copilot-instructions に昇格） |
+
+#### 進捗ファイルの操作制約
+
+- **`featureBacklog` の `status` フィールドのみ変更可能**。`description` や `name` は初回登録時に確定し、以降は変更しない（Anthropic の "strongly-worded instructions: unacceptable to remove or edit tests" に準拠）
+- **`sessionLog` は追記のみ** — 過去のログを削除・編集しない
+- **コミットに含める** — 進捗ファイルの更新は関連するコード変更と同じコミットに含める
+
+#### Session Memory の活用
+
+- **セッション中**: 複雑なタスクの中間状態を `/memories/session/current-task.md` に記録
+- **セッション終了時**: 未完了タスクがあれば中間状態を記録。完了タスクの場合は `ucfitness-progress.json` を更新
+
 ### 自己改善プロトコル (Lessons Learned)
 
 障害・未検出・誤検出・ワークフロー上の問題が発生した場合、**コード修正 + プロンプト/instruction 更新 + コミットの 3 点セット**を同一セッション内で完了する。
