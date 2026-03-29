@@ -8,18 +8,14 @@ import { NextResponse } from "next/server";
 // 歩数カレンダー用API: 指定年の日別歩数データを返す
 export async function GET(request: Request) {
     const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!session?.user?.id) {
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
     const yearParam = searchParams.get("year");
-
-    if (!userId) {
-        return NextResponse.json({ error: "userId is required" }, { status: 400 });
-    }
 
     const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
     if (isNaN(year) || year < 2000 || year > 2100) {
