@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import UserAvatar from '@/components/UserAvatar';
 
 // 歩数データ型
@@ -118,7 +118,7 @@ function buildGridData(year: number, stepsMap: Map<string, number>) {
 }
 
 // ツールチップコンポーネント
-function HeatmapCell({
+const HeatmapCell = memo(function HeatmapCell({
     date,
     steps,
     col,
@@ -212,7 +212,7 @@ function HeatmapCell({
             )}
         </div>
     );
-}
+});
 
 // パーセンタイルに応じた絵文字・色を決定
 function getPercentileStyle(value: number | null): { emoji: string; color: string; bgColor: string } {
