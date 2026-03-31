@@ -13,13 +13,10 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // 🛡️ Security: Prevent IDOR by using authenticated session user ID instead of query param
+    const userId = session.user.id;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
     const yearParam = searchParams.get("year");
-
-    if (!userId) {
-        return NextResponse.json({ error: "userId is required" }, { status: 400 });
-    }
 
     const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
     if (isNaN(year) || year < 2000 || year > 2100) {
