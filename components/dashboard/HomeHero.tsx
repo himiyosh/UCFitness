@@ -58,12 +58,18 @@ export default function HomeHero({
       <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" aria-hidden="true" />
 
       <div className="relative z-10 flex items-center gap-4 sm:gap-6 max-w-lg mx-auto w-full h-full">
-        {/* 歩数リング — Apple Watch風 */}
+        {/* 歩数リング — Kinetic Studio: アンビエントグロー + Apple Watch風 */}
         <div className="relative flex-shrink-0">
-          <svg className="w-[104px] h-[104px] sm:w-[120px] sm:h-[120px] -rotate-90 drop-shadow-lg" viewBox="0 0 100 100" aria-hidden="true">
+          {/* アンビエントグロー（リング背後のソフトな発光） */}
+          <div
+            className="absolute inset-0 rounded-full blur-xl opacity-40 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, var(--theme-gradient-from, #8B5CF6) 0%, transparent 70%)' }}
+            aria-hidden="true"
+          />
+          <svg className="relative w-[104px] h-[104px] sm:w-[120px] sm:h-[120px] -rotate-90 drop-shadow-lg" viewBox="0 0 100 100" aria-hidden="true">
             {/* 背景リング */}
             <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" />
-            {/* 進捗リング — Gradient + neon glow (Stitch Vitreous Pulse) */}
+            {/* 進捗リング — Gradient + neon glow (Kinetic Studio) */}
             <defs>
               <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="var(--theme-gradient-from, #8B5CF6)" stopOpacity="0.9" />
@@ -110,17 +116,17 @@ export default function HomeHero({
             </span>
           </div>
 
-          {/* 週間・月間・ランク — Apple HIG 風の統計グリッド */}
+          {/* 週間・月間・ランク — Kinetic Studio: ガラスタイル統計グリッド */}
           <div className="grid grid-cols-3 gap-1.5">
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl py-1.5 px-1">
+            <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
               <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(weeklySteps)}</div>
               <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{t('thisWeek')}</div>
             </div>
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl py-1.5 px-1">
+            <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
               <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(monthlySteps)}</div>
               <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{t('thisMonth')}</div>
             </div>
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl py-1.5 px-1">
+            <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
               <div className="text-sm sm:text-base font-bold tracking-tight">
                 {globalRank ? `#${globalRank}` : '—'}
               </div>

@@ -74,20 +74,20 @@ export default function HomePortal({
       {/* ===== クイックアクション ===== */}
       <QuickActions className="bg-transparent sm:bg-transparent shadow-none sm:shadow-none border-none sm:border-none" />
 
-      {/* ===== モバイルタブ切替 ===== */}
+      {/* ===== モバイルタブ切替 (Kinetic Studio: ガラスタブバー) ===== */}
       <div className="flex-1 flex flex-col">
         {/* タブバー */}
-        <div className="flex border-b border-gray-200/60 bg-white/60 backdrop-blur-sm px-2" role="tablist">
+        <div className="flex bg-white/70 backdrop-blur-md px-1.5 py-1.5 mx-3 mt-2 rounded-xl" role="tablist">
           {MOBILE_TABS.map((tab) => (
             <button
               key={tab.key}
               role="tab"
               aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 text-center text-xs font-semibold transition-colors min-h-[36px] ${
+              className={`flex-1 py-2 text-center text-xs font-semibold transition-all duration-200 min-h-[36px] rounded-lg ${
                 activeTab === tab.key
-                  ? 'text-[var(--theme-primary)] border-b-2 border-[var(--theme-primary)]'
-                  : 'text-gray-400'
+                  ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
               }`}
             >
               {tab.emoji} {t(tab.labelKey)}

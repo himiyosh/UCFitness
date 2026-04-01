@@ -276,12 +276,16 @@ html {
   --accent-yellow: #FFE66D;
   --accent-purple: #A855F7;
 
-  /* Stitch "Vitreous Pulse" デザイントークン */
+  /* Stitch "Kinetic Studio" デザイントークン */
   --theme-tertiary: #FBBF24;          /* ゴールド (メダル・コイン用) */
   --theme-tertiary-container: #FEF3C7; /* ゴールド背景 */
   --theme-on-surface: #374151;         /* ウォームグレーテキスト */
   --theme-on-surface-variant: #6B7280; /* セカンダリテキスト */
   --theme-outline-variant: rgba(156, 163, 175, 0.15); /* Ghost Border */
+  --theme-ambient-shadow: 0 4px 40px 0 rgba(55, 65, 81, 0.06); /* Diffused shadow */
+  --theme-ambient-shadow-hover: 0 8px 40px 0 rgba(55, 65, 81, 0.1);
+  /* Kinetic Studio: アンビエントグロー (テーマカラーに応じた柔らかい発光) */
+  --theme-glow-primary: rgba(79, 70, 229, 0.08);
   --theme-ambient-shadow: 0 4px 40px 0 rgba(55, 65, 81, 0.06); /* Diffused shadow */
   --theme-ambient-shadow-hover: 0 8px 40px 0 rgba(55, 65, 81, 0.1);
 }
@@ -2184,17 +2188,21 @@ body::before {
    使用方法: <div className="glass-card rounded-2xl p-4"> */
 .glass-card {
   background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: 1.5px solid var(--theme-outline-variant, rgba(156, 163, 175, 0.15));
   border-radius: var(--radius-md);
-  box-shadow: var(--theme-ambient-shadow, 0 4px 40px 0 rgba(55, 65, 81, 0.06));
+  box-shadow:
+    var(--theme-ambient-shadow, 0 4px 40px 0 rgba(55, 65, 81, 0.06)),
+    0 0 0 0 var(--theme-glow-primary, transparent);
   transition: box-shadow var(--motion-standard-duration) var(--motion-standard),
               transform var(--motion-standard-duration) var(--motion-standard);
 }
 
 .glass-card:hover {
-  box-shadow: var(--theme-ambient-shadow-hover, 0 8px 40px 0 rgba(55, 65, 81, 0.1));
+  box-shadow:
+    var(--theme-ambient-shadow-hover, 0 8px 40px 0 rgba(55, 65, 81, 0.1)),
+    0 0 30px -5px var(--theme-glow-primary, transparent);
   transform: translateY(-1px);
 }
 
