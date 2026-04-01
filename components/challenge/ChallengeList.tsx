@@ -137,7 +137,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
 
             {/* ローディング */}
             {loading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 p-5 animate-pulse">
                             <div className="h-4 bg-gray-200 rounded w-20 mb-3" />
@@ -182,7 +182,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
 
             {/* チャレンジ一覧 */}
             {!loading && !error && challenges.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                     {challenges.map(challenge => (
                         <ChallengeCard
                             key={challenge.id}

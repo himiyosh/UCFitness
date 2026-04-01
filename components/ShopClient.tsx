@@ -352,7 +352,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <p>{t('noItems')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
                             {filteredItems.map(item => (
                                 <ShopItemCard
                                     key={item.id}

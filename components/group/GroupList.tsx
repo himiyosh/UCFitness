@@ -267,7 +267,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                     </button>
                 </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-1.5 md:gap-3">
             {memberships.map((m) => (
                 <div
                     key={m.groups.id}

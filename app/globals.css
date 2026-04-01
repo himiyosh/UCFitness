@@ -1351,6 +1351,26 @@ body {
   }
 }
 
+/* ==== 4K+ 高解像度ディスプレイ最適化 ====
+   3840px+ のモニターでは max-w-7xl (1280px) だと左右の余白が過大になる。
+   段階的にコンテンツ幅を拡張し、グリッドカラム数も増やす。
+   0.9x スケーリング環境では CSS px = viewport px / 0.9 なので、
+   実効ブレイクポイントは表示上 ~2560px (CSS 2844px), ~3840px (CSS 4267px) */
+
+/* QHD+ (2560px 以上): max-w-7xl → 1536px に拡張 */
+@media (min-width: 2560px) {
+  .max-w-7xl {
+    max-width: 1536px; /* Tailwind の max-w-screen-2xl 相当 */
+  }
+}
+
+/* 4K (3840px 以上): max-w-7xl → 1920px に拡張 */
+@media (min-width: 3840px) {
+  .max-w-7xl {
+    max-width: 1920px;
+  }
+}
+
 #main-content {
   flex: 1 1 0%;
   display: flex;
