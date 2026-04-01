@@ -49,7 +49,8 @@ export default function DashboardSidebar({
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 sticky top-0 h-dvh glass-card !rounded-none border-r border-[var(--theme-primary)]/10 z-40 hover:!transform-none hover:!shadow-none"
+      className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 sticky top-0 glass-card !rounded-none border-r border-[var(--theme-primary)]/10 z-40 hover:!transform-none hover:!shadow-none"
+      style={{ height: 'var(--sidebar-h, 100vh)' }}
       role="navigation"
       aria-label={t('label')}
     >

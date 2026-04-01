@@ -1348,6 +1348,9 @@ body {
     width: calc(100vw / 0.9);   /* viewport 幅基準でスクロールバーの影響を回避 */
     height: calc(100vh / 0.9);  /* 固定高さ — body 内部で overflow-y: auto スクロールを有効化 */
     overflow-y: auto;           /* コンテンツが溢れた場合に body 自体がスクロール */
+    /* サイドバー高さ: 0.9x スケーリングで body が 100vh/0.9 に引き伸ばされるため、
+       sticky サイドバーは body の高さに合わせる必要がある */
+    --sidebar-h: calc(100vh / 0.9);
   }
 }
 
