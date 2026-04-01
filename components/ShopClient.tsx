@@ -214,9 +214,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
         <div>
             {/* ショップバナー */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 mb-6 shadow-lg">
-                {/* 背景装飾 */}
-                <div className="absolute top-0 right-0 w-56 h-56 bg-white/10 rounded-full -translate-y-24 translate-x-24" />
-                <div className="absolute bottom-0 left-0 w-44 h-44 bg-white/10 rounded-full translate-y-20 -translate-x-20" />
+                {/* 背景装飾 — デスクトップのみ大きな装飾を表示 */}
+                <div className="hidden md:block absolute top-0 right-0 w-56 h-56 bg-white/10 rounded-full -translate-y-24 translate-x-24" />
+                <div className="hidden md:block absolute bottom-0 left-0 w-44 h-44 bg-white/10 rounded-full translate-y-20 -translate-x-20" />
                 <div className="absolute top-1/3 left-1/2 w-32 h-32 bg-white/5 rounded-full" />
                 <div className="absolute bottom-1/3 right-10 w-24 h-24 bg-yellow-300/10 rounded-full" />
                 <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>

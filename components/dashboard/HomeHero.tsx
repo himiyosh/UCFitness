@@ -92,7 +92,7 @@ export default function HomeHero({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-xl sm:text-2xl font-black leading-none" style={{ letterSpacing: '-0.02em' }}>{todaySteps.toLocaleString()}</span>
-            <span className="text-[10px] sm:text-xs opacity-70 mt-0.5 font-medium">/ {stepGoal.toLocaleString()}</span>
+            <span className="text-xs opacity-70 mt-0.5 font-medium">/ {stepGoal.toLocaleString()}</span>
           </div>
         </div>
 
@@ -120,17 +120,17 @@ export default function HomeHero({
           <div className="grid grid-cols-3 gap-1.5">
             <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
               <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(weeklySteps)}</div>
-              <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{t('thisWeek')}</div>
+              <div className="text-[10px] sm:text-xs opacity-60 font-medium uppercase tracking-wider">{t('thisWeek')}</div>
             </div>
             <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
               <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(monthlySteps)}</div>
-              <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{t('thisMonth')}</div>
+              <div className="text-[10px] sm:text-xs opacity-60 font-medium uppercase tracking-wider">{t('thisMonth')}</div>
             </div>
             <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
               <div className="text-sm sm:text-base font-bold tracking-tight">
                 {globalRank ? `#${globalRank}` : '—'}
               </div>
-              <div className="text-[9px] sm:text-[10px] opacity-60 font-medium uppercase tracking-wider">{pt('rank')}</div>
+              <div className="text-[10px] sm:text-xs opacity-60 font-medium uppercase tracking-wider">{pt('rank')}</div>
             </div>
           </div>
         </div>
