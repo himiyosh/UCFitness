@@ -271,11 +271,11 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
             {memberships.map((m) => (
                 <div
                     key={m.groups.id}
-                    className="relative bg-white midnight-solid-panel rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group"
+                    className="relative bg-white midnight-solid-panel rounded-xl shadow-sm hover:shadow-[0_8px_30px_-4px_var(--theme-glow-primary,rgba(79,70,229,0.1))] transition-all group overflow-hidden"
                 >
                     <Link href={`/groups/${m.groups.id}`} className="block h-full">
                         {/* バナー — md 以上のみフル表示 */}
-                        <div className="hidden md:block w-full h-28 bg-[var(--theme-primary-light)] relative overflow-hidden rounded-t-xl border-b border-gray-100">
+                        <div className="hidden md:block w-full h-28 bg-[var(--theme-primary-light)] relative overflow-hidden rounded-t-xl">
                             {m.rank && (
                                 <div className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-black uppercase tracking-wide shadow-sm border border-white/20 backdrop-blur-md
                                     ${m.rank === 1 ? 'bg-yellow-400 text-yellow-900' :
