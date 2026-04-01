@@ -97,7 +97,7 @@ export default function ShopRecommendations() {
         <div className="mb-6 space-y-4">
             {/* あなたへのおすすめ */}
             {personalData && (
-                <div className="rounded-2xl bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-gradient-to)]/5 border border-[var(--theme-primary)]/10 p-4">
+                <div className="rounded-2xl bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-gradient-to)]/5 p-4">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                             🎁 {t('personalizedTitle')}
@@ -114,7 +114,7 @@ export default function ShopRecommendations() {
                             href={makeSearchUrl(personalData.primaryKeyword)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-md transition-all group"
+                            className="flex items-center gap-3 p-3 rounded-xl bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-[0_4px_20px_-4px_var(--theme-glow-primary,rgba(79,70,229,0.12))] transition-all group"
                         >
                             <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ background: 'var(--theme-primary-light)' }}>
                                 🏃
@@ -154,7 +154,7 @@ export default function ShopRecommendations() {
 
             {/* みんなの愛用ギア */}
             {trendingItems.length > 0 && (
-                <div className="rounded-2xl bg-white border border-[var(--theme-primary)]/10 shadow-sm overflow-hidden">
+                <div className="rounded-2xl bg-white/90 backdrop-blur-sm shadow-sm overflow-hidden">
                     <div className="px-4 pt-4 pb-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="p-1.5 bg-gradient-to-br from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg text-white shadow-sm">
@@ -205,10 +205,10 @@ export default function ShopRecommendations() {
                                     href={item.affiliate_link}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-shrink-0 w-[160px] rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 hover:shadow-lg hover:border-[var(--theme-primary)]/20 hover:scale-[1.02] p-2.5 transition-all duration-200 group"
+                                    className="flex-shrink-0 w-[160px] rounded-xl bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-[0_8px_30px_-4px_var(--theme-glow-primary,rgba(79,70,229,0.12))] hover:scale-[1.02] p-2.5 transition-all duration-200 group"
                                 >
                                     {/* 商品画像 */}
-                                    <div className="w-full h-[100px] rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-2">
+                                    <div className="w-full h-[100px] rounded-lg bg-gray-50/80 flex items-center justify-center overflow-hidden mb-2">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={item.image_url}

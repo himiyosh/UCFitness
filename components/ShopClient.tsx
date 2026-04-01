@@ -298,8 +298,8 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 )}
             </div>
 
-            {/* ショップ / ギア / インベントリ切り替え */}
-            <div className="flex bg-gray-100/80 rounded-lg p-1 mb-4">
+            {/* ショップ / ギア / インベントリ切り替え (Kinetic Studio: ガラスタブバー) */}
+            <div className="flex bg-white/70 backdrop-blur-md rounded-xl p-1.5 mb-4">
                 {[
                     { key: 'shop' as const, icon: '🛍️', label: t('shopTab') },
                     { key: 'gear' as const, icon: '🏋️', label: t('gearTab') },
@@ -308,10 +308,10 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     <button
                         key={tab.key}
                         onClick={() => setViewMode(tab.key)}
-                        className={`flex-1 px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${
+                        className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
                             viewMode === tab.key
-                                ? 'bg-white text-amber-600 shadow-sm'
-                                : 'text-gray-400 hover:text-gray-600'
+                                ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
                         }`}
                     >
                         {tab.icon} {tab.label}
