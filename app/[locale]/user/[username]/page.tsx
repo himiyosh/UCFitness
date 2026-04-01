@@ -313,7 +313,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
 
                         {/* Lifetime Stats */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-200">
+                        <div className="bg-white rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100">
                             <div className="flex items-center justify-between px-4 py-2.5">
                                 <span className="text-xs font-medium text-gray-500">{t('totalStepsRecorded')}</span>
                                 <span className="text-sm font-bold text-gray-900 tabular-nums">{totalSteps.toLocaleString()}</span>
@@ -375,11 +375,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
 
                         {/* Stats Card */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             {isOwner || !hasViewerStats ? (
                                 /* Owner view: simple centered 3-column */
                                 <>
-                                <div className="grid grid-cols-3 divide-x divide-gray-200">
+                                <div className="grid grid-cols-3 divide-x divide-gray-100">
                                     <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
                                         <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
@@ -413,7 +413,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 /* Comparison view: 2-row table with name labels */
                                 <>
                                     {/* Column Headers */}
-                                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] border-b border-gray-200 bg-gray-50/60">
+                                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] border-b border-gray-100 bg-gray-50/40">
                                         <div className="w-20 sm:w-28" />
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
                                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
