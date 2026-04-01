@@ -49,7 +49,7 @@ export default function DashboardSidebar({
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 shrink-0 sticky top-0 h-screen glass-card !rounded-none border-r border-[var(--theme-primary)]/10 z-40 hover:!transform-none hover:!shadow-none"
+      className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 sticky top-0 h-dvh glass-card !rounded-none border-r border-[var(--theme-primary)]/10 z-40 hover:!transform-none hover:!shadow-none"
       role="navigation"
       aria-label={t('label')}
     >
@@ -97,7 +97,7 @@ export default function DashboardSidebar({
       </div>
 
       {/* ナビゲーションリンク */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 2xl:px-4 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = item.href === '/'
             ? pathname === '/' || pathname === ''

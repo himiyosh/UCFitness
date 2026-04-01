@@ -22,7 +22,7 @@ export default function QuickActions({ className = '' }: QuickActionsProps) {
 
   return (
     <section className={`px-4 sm:px-6 py-3 sm:py-4 ${className}`} aria-label={pt('quickActions')}>
-      <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-lg mx-auto w-full">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-lg 2xl:max-w-2xl mx-auto w-full">
         {quickActions.map((action) => (
           <Link
             key={action.href}
