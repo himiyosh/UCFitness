@@ -14,12 +14,8 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const userId = session.user.id;
     const yearParam = searchParams.get("year");
-
-    if (!userId) {
-        return NextResponse.json({ error: "userId is required" }, { status: 400 });
-    }
 
     const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
     if (isNaN(year) || year < 2000 || year > 2100) {
