@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, memo } from 'react';
 
 /**
  * UserAvatar — 共有アバターコンポーネント
@@ -86,7 +86,8 @@ const SIZE_MAP = {
     },
 } as const;
 
-export default function UserAvatar({
+// Performance optimization (Bolt ⚡): Memoize UserAvatar to prevent unnecessary re-renders when used in heavy lists like AnimatedLeaderboard.
+export default memo(function UserAvatar({
     src,
     name,
     size = 'md',
@@ -197,7 +198,7 @@ export default function UserAvatar({
             )}
         </div>
     );
-}
+});
 
 /** フレームカラー変換マップ（モジュールレベルで定義してパフォーマンス最適化） */
 const FRAME_COLOR_MAP: Record<string, string> = {
