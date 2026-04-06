@@ -538,20 +538,35 @@ export async function POST(request: Request) {
       }
 
       // 全メンバーのレガシー group_keyword 配列を同期（並列実行）
-      await Promise.all(memberUserIds.map(async (memberId) => {
-        const { data: memberships } = await supabaseAdmin
+      // ⚡ Bolt: Fixed N+1 query issue by batching select queries for all members
+      if (memberUserIds.length > 0) {
+        const { data: allMemberships } = await supabaseAdmin
           .from('group_members')
-          .select('groups(keyword)')
-          .eq('user_id', memberId);
+          .select('user_id, groups(keyword)')
+          .in('user_id', memberUserIds);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+        // Map memberships by user_id
+        const userKeywordsMap = new Map<string, string[]>();
+        memberUserIds.forEach(id => userKeywordsMap.set(id, []));
 
-        await supabaseAdmin
-          .from('users')
-          .update({ group_keyword: newKeywords })
-          .eq('id', memberId);
-      }));
+        if (allMemberships) {
+          allMemberships.forEach((m: any) => {
+             const keyword = m.groups?.keyword;
+             if (keyword) {
+               userKeywordsMap.get(m.user_id)?.push(keyword);
+             }
+          });
+        }
+
+        // Update each user
+        await Promise.all(memberUserIds.map(async (memberId) => {
+          const newKeywords = userKeywordsMap.get(memberId) || [];
+          await supabaseAdmin
+            .from('users')
+            .update({ group_keyword: newKeywords })
+            .eq('id', memberId);
+        }));
+      }
 
       // ストレージのグループ画像をクリーンアップ
       const imagesToDelete: string[] = [];
