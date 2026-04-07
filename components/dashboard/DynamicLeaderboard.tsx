@@ -72,6 +72,17 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
         [globalRankings, userId]
     );
 
+    // O(1) group lookup map to avoid O(N*M) loop performance overhead during mapping
+    const groupInfoMap = useMemo(() => {
+        const map = new Map<string, { imageUrl: string | null }>();
+        if (groupInfo) {
+            groupInfo.forEach(g => {
+                map.set(g.keyword, { imageUrl: g.imageUrl });
+            });
+        }
+        return map;
+    }, [groupInfo]);
+
     // 配列参照の安定化
     const serializedKeywords = JSON.stringify(groupKeywords);
 
@@ -167,7 +178,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                         {groupRankingsList.map((groupData, index) => {
                             const isActive = activeGroupIndex === index;
                             const shortName = groupData.keyword.replace(/^group:/, '').slice(0, 2).toUpperCase();
-                            const info = groupInfo?.find(g => g.keyword === groupData.keyword);
+                            const info = groupInfoMap.get(groupData.keyword);
                             const imageUrl = info?.imageUrl;
                             return (
                                 <button
@@ -453,4 +464,3 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
         </div>
     );
 }
-
