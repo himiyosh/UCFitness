@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 
 /**
  * UserAvatar — 共有アバターコンポーネント
@@ -86,7 +86,7 @@ const SIZE_MAP = {
     },
 } as const;
 
-export default function UserAvatar({
+const UserAvatarInner = ({
     src,
     name,
     size = 'md',
@@ -98,7 +98,7 @@ export default function UserAvatar({
     onClick,
     alt = '',
     borderClass = 'border-white',
-}: UserAvatarProps) {
+}: UserAvatarProps) => {
     const [imgError, setImgError] = useState(false);
     const sizeConfig = SIZE_MAP[size];
     const initial = (name?.[0] || 'U').toUpperCase();
@@ -197,7 +197,14 @@ export default function UserAvatar({
             )}
         </div>
     );
-}
+};
+
+/**
+ * ⚡ Bolt Optimization:
+ * Wrapped UserAvatar in React.memo to prevent unnecessary re-renders when parent lists (e.g. leaderboards, feeds) re-render.
+ * Re-renders only happen when primitive props (like src, name, size) change.
+ */
+export default React.memo(UserAvatarInner);
 
 /** フレームカラー変換マップ（モジュールレベルで定義してパフォーマンス最適化） */
 const FRAME_COLOR_MAP: Record<string, string> = {
