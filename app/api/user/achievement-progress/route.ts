@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isValidUUID } from '@/lib/validation';
 import { NextRequest, NextResponse } from 'next/server';
 import { reportError } from '@/lib/errors';
 
@@ -80,6 +81,10 @@ export async function GET(request: NextRequest) {
 
     if (!userId || typeof userId !== 'string') {
         return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
+
+    if (!isValidUUID(userId)) {
+        return NextResponse.json({ error: 'Invalid userId format' }, { status: 400 });
     }
 
     try {
