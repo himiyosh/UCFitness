@@ -21,18 +21,18 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 
 ## テキストサイズ階層
 
-| 要素 | モバイル | sm 以上 |
-|---|---|---|
-| 本文 | `text-sm` / `text-xs` | `sm:text-base` |
+| 要素   | モバイル                | sm 以上                        |
+| ------ | ----------------------- | ------------------------------ |
+| 本文   | `text-sm` / `text-xs`   | `sm:text-base`                 |
 | 見出し | `text-xl` ～ `text-2xl` | `sm:text-3xl` ～ `sm:text-4xl` |
-| ラベル | `text-xs` | `sm:text-sm` |
+| ラベル | `text-xs`               | `sm:text-sm`                   |
 
 ## スペーシング
 
-| 要素 | モバイル | sm / lg |
-|---|---|---|
-| パディング | `px-4 py-3` | `sm:px-6 lg:px-8` |
-| グリッド | `grid-cols-1` | `sm:grid-cols-2 lg:grid-cols-3` |
+| 要素       | モバイル      | sm / lg                         |
+| ---------- | ------------- | ------------------------------- |
+| パディング | `px-4 py-3`   | `sm:px-6 lg:px-8`               |
+| グリッド   | `grid-cols-1` | `sm:grid-cols-2 lg:grid-cols-3` |
 
 ## 禁止パターン
 
@@ -46,11 +46,11 @@ UCFitness は 0.9x デスクトップスケーリング (`body { transform: scal
 
 ### コンテンツ幅の段階拡張
 
-| ビューポート幅 | `max-w-7xl` の実効値 | 備考 |
-|---|---|---|
-| 〜2559px | 1280px (デフォルト) | FHD / WQXGA |
-| 2560px〜3839px | 1536px (globals.css で上書き) | QHD / WQHD |
-| 3840px〜 | 1920px (globals.css で上書き) | 4K UHD |
+| ビューポート幅 | `max-w-7xl` の実効値          | 備考        |
+| -------------- | ----------------------------- | ----------- |
+| 〜2559px       | 1280px (デフォルト)           | FHD / WQXGA |
+| 2560px〜3839px | 1536px (globals.css で上書き) | QHD / WQHD  |
+| 3840px〜       | 1920px (globals.css で上書き) | 4K UHD      |
 
 - **globals.css で `@media (min-width: 2560px) / (min-width: 3840px)` により `.max-w-7xl` を上書き済み**
 - 個別ページで `max-w-7xl` を変更する必要はない
@@ -59,11 +59,11 @@ UCFitness は 0.9x デスクトップスケーリング (`body { transform: scal
 
 高解像度ではカード一覧のカラム数を `2xl:` ブレイクポイント (1536px) で拡張する:
 
-| コンテンツ種別 | 通常 | 2xl+ |
-|---|---|---|
+| コンテンツ種別   | 通常             | 2xl+              |
+| ---------------- | ---------------- | ----------------- |
 | ショップアイテム | `lg:grid-cols-4` | `2xl:grid-cols-5` |
-| チャレンジ一覧 | `md:grid-cols-2` | `2xl:grid-cols-3` |
-| グループ一覧 | `md:grid-cols-2` | `2xl:grid-cols-3` |
+| チャレンジ一覧   | `md:grid-cols-2` | `2xl:grid-cols-3` |
+| グループ一覧     | `md:grid-cols-2` | `2xl:grid-cols-3` |
 
 ### 禁止パターン
 
