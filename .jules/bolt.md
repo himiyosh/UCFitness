@@ -1,0 +1,3 @@
+## 2025-02-28 - [Memoize Deeply Nested Primitive Components in Render Loops]
+**Learning:** In inline list maps (like leaderboards) or dense data displays (like heatmaps) that lack dedicated row/cell components with their own state, deeply nested primitive components like `UserAvatar` and `HeatmapCell` will re-render unnecessarily when minor parent state changes (such as hover effects). This can cause performance bottlenecks and laggy interactions.
+**Action:** Always wrap deeply nested primitive components with `React.memo()` if they are rendered inside loops and their props are stable, especially when the parent component has interactive states that trigger frequent re-renders.
