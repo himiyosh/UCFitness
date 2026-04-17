@@ -1,0 +1,3 @@
+## 2024-05-30 - Memoizing UserAvatar for Inline List Rendering
+**Learning:** In this codebase, components like `AnimatedLeaderboard` map rows inline rather than delegating to a dedicated row component. Parent state changes (like hover effects) cause the entire list to re-render. Memoizing nested primitive components like `UserAvatar` is critical for performance here to prevent an O(N) full-grid rendering bottleneck, making interactions much snappier.
+**Action:** Always wrap primitive components (like `UserAvatar`) that are frequently rendered in inline lists with `React.memo()` to prevent full-grid re-renders.
