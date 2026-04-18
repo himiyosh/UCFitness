@@ -1,53 +1,49 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。",
-  "lastUpdated": "2026-03-29T00:00:00Z",
+  "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
+  "lastUpdated": "2026-04-19T00:00:00Z",
   "lastAgent": "UCFitnessAgent",
   "lastCommit": "",
-  "lastBranch": "copilot/ai-harness-system",
-  "summary": "AI Harness システム初期設定 — Session Bootstrap、Progress File、Clean State Protocol、Initializer Step を導入。",
+  "lastBranch": "copilot/improvement-loop-full-stitch-design",
+  "promptVersion": "2.0.0-harness-phase0",
+  "summary": "Harness Engineering Phase 0 実装 — init.sh 作成、ucfitness-features.json に 32 件の構造化バックログ登録、progress.json を features.json 連携に更新、Session Bootstrap を features.json 読込対応に拡張。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "devServerRunning": false,
-    "lastVerified": "2026-03-29T00:00:00Z"
+    "lastVerified": "2026-04-19T00:00:00Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
     "Creators API 資格未達（10件/30日）",
     "カードリストのモバイル横スクロールは md ブレイクポイントで切替"
   ],
-  "featureBacklog": [
-    {
-      "id": "F001",
-      "name": "チャレンジ期間限定イベント",
-      "category": "ゲーミフィケーション",
-      "priority": "P1",
-      "feasibility": "medium",
-      "status": "not-started",
-      "description": "期間限定チャレンジイベントでエンゲージメント向上"
-    },
-    {
-      "id": "F002",
-      "name": "バッジレア度システム",
-      "category": "ゲーミフィケーション",
-      "priority": "P2",
-      "feasibility": "easy",
-      "status": "not-started",
-      "description": "バッジにレア度（Common/Rare/Epic/Legendary）を付与"
-    },
-    {
-      "id": "F003",
-      "name": "ストリーク報酬強化",
-      "category": "リテンション",
-      "priority": "P0",
-      "feasibility": "easy",
-      "status": "not-started",
-      "description": "連続日数に応じた段階的報酬で継続モチベーション向上"
-    }
-  ],
+  "artifacts": {
+    "initScript": ".github/ucfitness-init.sh",
+    "featureList": ".github/ucfitness-features.json",
+    "designDoc": "docs/harness-engineering-design.md",
+    "$comment": "Anthropic 流の永続化アーティファクト群。Session Bootstrap 時に全て参照する。"
+  },
+  "featureBacklogRef": {
+    "file": ".github/ucfitness-features.json",
+    "totalFeatures": 32,
+    "$comment": "個別 feature の詳細 (description / verificationSteps / judgeRubric / status) は features.json を参照。Coding Agent は status フィールドのみ更新可能。"
+  },
   "sessionLog": [
+    {
+      "date": "2026-04-19",
+      "agent": "UCFitnessAgent",
+      "action": "Harness Engineering Phase 0 実装 — docs/harness-engineering-design.md に設計書作成、.github/ucfitness-init.sh 新規作成、.github/ucfitness-features.json に 32 件登録、progress.json を features.json 連携に更新、UCFitnessAgent.agent.md の Session Bootstrap を拡張。",
+      "commit": "",
+      "filesChanged": [
+        "docs/harness-engineering-design.md",
+        ".github/ucfitness-init.sh",
+        ".github/ucfitness-features.json",
+        ".github/ucfitness-progress.json",
+        ".github/agents/UCFitnessAgent.agent.md"
+      ]
+    },
     {
       "date": "2026-03-29",
       "agent": "UCFitnessAgent",

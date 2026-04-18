@@ -1,0 +1,793 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "UCFitness Feature List — Anthropic 'Effective Harnesses for Long-Running Agents' パターンの feature_list.json に相当。Coding Agent は status フィールドのみ変更可能。description / verificationSteps / judgeRubric の改変は原則禁止（仕様変更時は Lead 経由でユーザー確認）。",
+  "version": "1.0.0",
+  "lastUpdated": "2026-04-19T00:00:00Z",
+  "schemaDoc": {
+    "id": "F{3 桁} (F001〜)",
+    "category": "gamification | retention | monetization | ux | a11y | performance | security | analytics | infrastructure",
+    "priority": "P0 (critical) | P1 (high) | P2 (medium) | P3 (low)",
+    "feasibility": "easy (〜1 セッション) | medium (1-2 セッション) | hard (3+ セッション or 新規インフラ必要)",
+    "status": "not-started | in-progress | passing | blocked | deferred",
+    "dependsOn": "先行完了が必要な feature ID の配列",
+    "filesAffected": "変更が予想される主要ファイル / ディレクトリ",
+    "verificationSteps": "End-to-end で機能が動くことを確認する手順（Playwright で再現可能な粒度）",
+    "judgeRubric": "LLM-as-Judge による品質採点の観点（各 0.0〜1.0 で採点）",
+    "lastAttempt": "最後に in-progress になった日時 (ISO8601)",
+    "lastError": "直近の失敗理由サマリ (null = 失敗なし)"
+  },
+  "features": [
+    {
+      "id": "F001",
+      "name": "期間限定チャレンジイベント",
+      "category": "gamification",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "期間限定（開始日〜終了日）のチャレンジイベントを作成・表示・自動クローズできる。イベント終了後は自動でリストから非表示、殿堂入りページで履歴閲覧可能。",
+      "rationale": "短期集中型イベントで既存ユーザーの再訪を促進。エンゲージメント向上 +15% 見込み。",
+      "dependsOn": [],
+      "filesAffected": [
+        "app/[locale]/challenges/",
+        "app/api/challenge/",
+        "lib/services/challenge-*.ts",
+        "components/challenge/",
+        "messages/ja.json",
+        "messages/en.json"
+      ],
+      "verificationSteps": [
+        "管理者が /challenges/create で「期間限定」トグル ON + 開始日/終了日を設定して作成できる",
+        "一覧で「期間限定」バッジ + 残日数カウントダウンが表示される",
+        "終了日経過後はリストから自動非表示 (cron or on-read filter)",
+        "Playwright: モバイル 375px / デスクトップ 1280px で表示崩れなし",
+        "ja/en 両方で「期間限定」「残り N 日」翻訳が正しい"
+      ],
+      "judgeRubric": {
+        "functional_correctness": "期間 toggle が DB に永続化され、終了日後に非表示になる",
+        "ui_consistency": "他のチャレンジカードと同じ rounded-xl + テーマカラーを使用",
+        "i18n_completeness": "ja.json + en.json 両方に翻訳キーが追加されている",
+        "edge_runtime_compat": "新規 page.tsx / route.ts に export const runtime = 'edge' がある"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F002",
+      "name": "バッジレア度システム",
+      "category": "gamification",
+      "priority": "P2",
+      "feasibility": "easy",
+      "description": "バッジに Common / Rare / Epic / Legendary の 4 段階レア度を付与し、プロフィール・バッジ一覧で視覚的に表示する。",
+      "rationale": "コレクション要素の強化で継続モチベーション向上。",
+      "dependsOn": [],
+      "filesAffected": [
+        "lib/services/badge-*.ts",
+        "components/BadgeIcon.tsx",
+        "app/api/badges/",
+        "messages/ja.json",
+        "messages/en.json"
+      ],
+      "verificationSteps": [
+        "badges テーブルに rarity カラムが追加されている",
+        "BadgeIcon が rarity に応じて枠色 (金/紫/青/灰) を変える",
+        "Legendary バッジ獲得時にアニメーション + プッシュ通知が送信される",
+        "モバイルで枠色が視認できる (コントラスト比 3:1 以上)"
+      ],
+      "judgeRubric": {
+        "visual_hierarchy": "4 段階のレア度が色 + サイズで明確に区別できる",
+        "a11y_contrast": "枠色と背景のコントラスト比が WCAG AA 相当",
+        "i18n_completeness": "rarity ラベルが ja/en 両方で翻訳済み"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F003",
+      "name": "ストリーク段階報酬強化",
+      "category": "retention",
+      "priority": "P0",
+      "feasibility": "easy",
+      "description": "連続日数（7/30/100/365 日）の節目で段階的にコイン報酬 + 限定バッジを付与する。",
+      "rationale": "継続モチベーション向上と早期離脱防止。D30 retention +10% 見込み。",
+      "dependsOn": [],
+      "filesAffected": [
+        "lib/services/streak-*.ts",
+        "lib/services/coin-service.ts",
+        "lib/services/badge-awards.ts",
+        "app/api/cron/daily-steps/"
+      ],
+      "verificationSteps": [
+        "7/30/100/365 日の節目でコインとバッジが両方付与される",
+        "プッシュ通知で節目到達を通知する",
+        "テスト用ユーザーの streak_days を 7 に設定して cron を手動実行し、報酬が入ることを確認"
+      ],
+      "judgeRubric": {
+        "functional_correctness": "全節目で重複なく 1 回のみ報酬が付与される",
+        "idempotency": "同日複数回 cron が実行されても二重付与しない",
+        "notification_quality": "プッシュ通知メッセージが ja/en でローカライズ済み"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F004",
+      "name": "フレンド招待ボーナス",
+      "category": "retention",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "招待リンク経由で新規登録されると招待者・被招待者双方にコイン報酬を付与。",
+      "rationale": "バイラルグロース。CAC 削減。",
+      "dependsOn": [],
+      "filesAffected": ["app/api/user/invite/", "app/[locale]/settings/", "lib/services/coin-service.ts"],
+      "verificationSteps": [
+        "/settings で招待リンクを発行できる",
+        "リンク経由で新規登録すると双方に 100 コイン入る",
+        "同一 IP / 同一 device からの自己招待を検出してブロックする"
+      ],
+      "judgeRubric": {
+        "abuse_resistance": "自己招待・ボット招待を検出できる",
+        "functional_correctness": "双方のウォレットに報酬が反映される",
+        "ui_visibility": "招待リンクがモバイルで容易にコピーできる"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F005",
+      "name": "ウィークリーデジタルダイジェストメール",
+      "category": "retention",
+      "priority": "P2",
+      "feasibility": "medium",
+      "description": "毎週月曜朝に前週サマリ（歩数・ランキング変動・獲得バッジ）をメールで送信する。",
+      "rationale": "未ログインユーザーの呼び戻し。",
+      "dependsOn": [],
+      "filesAffected": ["app/api/cron/weekly-summary/", "lib/push-messages.ts"],
+      "verificationSteps": [
+        "cron で前週データを集計してメール送信する",
+        "配信停止設定が反映される",
+        "ja/en でメール本文が切り替わる"
+      ],
+      "judgeRubric": {
+        "i18n_completeness": "メール本文 / 件名が ja/en 両方で自然",
+        "unsubscribe_compliance": "配信停止リンクが機能し、DB にも反映される"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F006",
+      "name": "グループチャレンジ作成",
+      "category": "gamification",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "グループ内限定のチャレンジ（例: 今週合計 50 万歩）を作成でき、進捗バーで集計表示。",
+      "rationale": "グループエンゲージメント強化。",
+      "dependsOn": [],
+      "filesAffected": ["app/[locale]/groups/", "app/api/group/", "components/group/"],
+      "verificationSteps": [
+        "グループ管理者のみチャレンジ作成できる",
+        "全メンバーの歩数合計が進捗バーに反映される",
+        "目標達成時にグループ全員にコイン報酬"
+      ],
+      "judgeRubric": {
+        "authorization": "管理者権限チェックが API 側で実施されている",
+        "realtime_sync": "新規歩数同期が 5 分以内に反映される"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F007",
+      "name": "ソーシャルシェア機能 (OGP 画像動的生成)",
+      "category": "retention",
+      "priority": "P2",
+      "feasibility": "medium",
+      "description": "達成バッジ・週間サマリを動的 OGP 画像にして X/LINE で共有可能にする。",
+      "rationale": "オーガニック流入。",
+      "dependsOn": [],
+      "filesAffected": ["app/api/og/", "components/ShareMilestone.tsx"],
+      "verificationSteps": [
+        "/api/og?userId=xxx&type=weekly で PNG が返る",
+        "X シェアで OGP プレビューが表示される",
+        "Edge Runtime で Satori が動作する"
+      ],
+      "judgeRubric": {
+        "edge_runtime_compat": "Edge Runtime で動作し Node.js API を使わない",
+        "image_quality": "1200×630 で解像度崩れがない"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F008",
+      "name": "Amazon アフィリエイト収益最大化",
+      "category": "monetization",
+      "priority": "P0",
+      "feasibility": "medium",
+      "description": "RecommendedItems / ShopClient / TrendingGear の配置と CTA 文言を A/B テストで最適化。",
+      "rationale": "主要収益源。CTR +30% / CVR +15% 目標。",
+      "dependsOn": [],
+      "filesAffected": [
+        "components/RecommendedItems.tsx",
+        "components/ShopClient.tsx",
+        "components/TrendingGear.tsx",
+        "lib/services/shop-service.ts"
+      ],
+      "verificationSteps": [
+        "CTA 文言 2 パターンを A/B 配信できる",
+        "クリック数を analytics で計測できる",
+        "モバイルでスクロールせずに 1 商品以上が見える"
+      ],
+      "judgeRubric": {
+        "conversion_focus": "CTA が明確 + 価格表示 + 配送情報が視認できる",
+        "compliance": "'Amazon.co.jp への誘導' 等の必要な開示が表示されている"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F009",
+      "name": "Premium プラン設計",
+      "category": "monetization",
+      "priority": "P1",
+      "feasibility": "hard",
+      "description": "月額 500 円で広告非表示 + 上位テーマ + 詳細分析アクセスを提供。Stripe 連携。",
+      "rationale": "安定収益源。ARPU 向上。",
+      "dependsOn": [],
+      "filesAffected": ["app/api/billing/", "app/[locale]/settings/", "lib/services/subscription-*.ts"],
+      "verificationSteps": [
+        "Stripe Checkout でサブスク登録できる",
+        "登録後は広告 UI が非表示",
+        "解約後も期末まで特典が継続する",
+        "Webhook で課金状態が DB に反映される"
+      ],
+      "judgeRubric": {
+        "payment_security": "Stripe Webhook 署名検証が実装されている",
+        "downgrade_grace": "解約後の期末までアクセス維持",
+        "i18n_completeness": "決済画面が ja/en 両対応"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F010",
+      "name": "AdSense 審査準備",
+      "category": "monetization",
+      "priority": "P1",
+      "feasibility": "easy",
+      "description": "プライバシーポリシー・利用規約ページを整備し、AdSense 審査に耐える情報量を確保。",
+      "rationale": "広告収益化の前提条件。",
+      "dependsOn": [],
+      "filesAffected": ["app/[locale]/legal/", "app/[locale]/about/"],
+      "verificationSteps": [
+        "/legal/privacy と /legal/terms が存在する",
+        "ファーストビューにナビゲーションリンクがある",
+        "各ページが 500 文字以上の実質コンテンツを持つ"
+      ],
+      "judgeRubric": {
+        "content_quality": "AdSense ガイドラインに準拠している",
+        "a11y_compliance": "見出し階層が h1 → h2 → h3 で正しい"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F011",
+      "name": "レスポンシブ監査 (全画面 viewport テスト)",
+      "category": "ux",
+      "priority": "P0",
+      "feasibility": "medium",
+      "description": "全ページを 375 / 768 / 1024 / 1920 の 4 解像度で Playwright 自動監査し、表示崩れゼロを達成。",
+      "rationale": "モバイルファースト PWA の品質保証。",
+      "dependsOn": [],
+      "filesAffected": ["app/[locale]/**", "components/**"],
+      "verificationSteps": [
+        "全ページのスクリーンショットが screenshots/ に自動保存される",
+        "横スクロール発生ページをゼロにする",
+        "モバイル 375 で全 CTA が 44px 以上のタッチターゲットを持つ"
+      ],
+      "judgeRubric": {
+        "horizontal_scroll_free": "375px で横スクロールが発生しない",
+        "touch_target_compliance": "全ボタンが 44×44px 以上",
+        "layout_stability": "CLS < 0.1"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F012",
+      "name": "a11y WCAG AA 準拠",
+      "category": "a11y",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "axe-core / Lighthouse a11y で全ページ 95 点以上を達成。コントラスト・キーボード操作・ARIA を修正。",
+      "rationale": "アクセシビリティ遵守・SEO 向上。",
+      "dependsOn": [],
+      "filesAffected": ["components/**", "app/**"],
+      "verificationSteps": [
+        "Lighthouse a11y スコア 95+ (全主要ページ)",
+        "Tab 順序が論理的で全インタラクティブ要素に到達可能",
+        "Reduced-motion 設定時にアニメーションが停止する"
+      ],
+      "judgeRubric": {
+        "wcag_aa_compliance": "axe-core で重大違反ゼロ",
+        "keyboard_navigability": "キーボードのみで主要フロー完遂可",
+        "screen_reader_friendly": "NVDA / VoiceOver で主要コンテンツが読み上げ可能"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F013",
+      "name": "ダークテーマ拡張",
+      "category": "ux",
+      "priority": "P3",
+      "feasibility": "easy",
+      "description": "既存テーマシステムに本格ダークモードを追加。--theme-page-bg ベースで統一。",
+      "rationale": "ユーザビリティ向上（夜間利用）。",
+      "dependsOn": [],
+      "filesAffected": ["app/globals.css", "components/ThemeSelector.tsx"],
+      "verificationSteps": [
+        "Settings でダークテーマを選択できる",
+        "全ページが --theme-page-bg で統一されて表示される",
+        "コントラスト比 WCAG AA を維持"
+      ],
+      "judgeRubric": {
+        "theme_consistency": "dark: クラスを追加せず CSS 変数のみで実現",
+        "a11y_contrast": "WCAG AA 準拠"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F014",
+      "name": "オンボーディングフロー最適化",
+      "category": "ux",
+      "priority": "P0",
+      "feasibility": "medium",
+      "description": "新規ユーザーのオンボーディング（Fitbit 連携・グループ参加・初期目標設定）を 3 ステップに整理。",
+      "rationale": "D1 離脱率低減。",
+      "dependsOn": [],
+      "filesAffected": ["app/[locale]/onboarding/", "app/[locale]/setup/"],
+      "verificationSteps": [
+        "新規ユーザーが 3 画面で完了できる",
+        "各画面にスキップオプションがある",
+        "完了後に /page でダッシュボードが即表示される"
+      ],
+      "judgeRubric": {
+        "completion_rate": "プロトタイプで 80% 以上が完走",
+        "ui_clarity": "各画面で次アクションが明確"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F015",
+      "name": "Fitbit 同期エラーリトライ強化",
+      "category": "infrastructure",
+      "priority": "P1",
+      "feasibility": "easy",
+      "description": "Fitbit API レート制限・一時障害時に指数バックオフで最大 3 回リトライ。失敗は sync_errors テーブルに記録。",
+      "rationale": "データ信頼性向上。",
+      "dependsOn": [],
+      "filesAffected": ["lib/api/fitbit.ts", "app/api/cron/daily-steps/"],
+      "verificationSteps": [
+        "HTTP 429 受信時に 1s / 2s / 4s で再試行",
+        "3 回失敗でエラーログに記録し次ユーザーへ",
+        "sync_errors テーブルで管理画面から可視化できる"
+      ],
+      "judgeRubric": {
+        "resilience": "レート制限突破せず全ユーザー同期完了",
+        "observability": "失敗理由が構造化ログで追跡可能"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F016",
+      "name": "Supabase RLS (Row Level Security) 強化",
+      "category": "security",
+      "priority": "P0",
+      "feasibility": "medium",
+      "description": "全テーブルに RLS を適用し、supabaseAdmin 以外からは自分のデータのみアクセス可能にする。",
+      "rationale": "セキュリティ基盤強化。",
+      "dependsOn": [],
+      "filesAffected": ["supabase/migrations/"],
+      "verificationSteps": [
+        "全テーブルで RLS が有効",
+        "anon key でアクセスしても他人のデータが読めない",
+        "既存機能が全て動作する（リグレッションなし）"
+      ],
+      "judgeRubric": {
+        "isolation": "cross-user データ漏洩がゼロ",
+        "regression_free": "既存機能が全て動作する"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F017",
+      "name": "CSP (Content Security Policy) 導入",
+      "category": "security",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "next.config.ts の headers() で CSP を設定し、XSS 攻撃面を縮小。Amazon / Fitbit / Google 画像 CDN を許可。",
+      "rationale": "XSS 対策。",
+      "dependsOn": [],
+      "filesAffected": ["next.config.ts"],
+      "verificationSteps": [
+        "CSP ヘッダが全レスポンスに付与される",
+        "既存画像・スクリプトがブロックされない",
+        "nonce ベースの strict CSP を採用"
+      ],
+      "judgeRubric": {
+        "xss_protection": "securityheaders.com で A 以上",
+        "zero_regression": "全画像 / スクリプトが正常読込"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F018",
+      "name": "レート制限 API",
+      "category": "security",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "主要 API (/api/steps, /api/push) に IP + user_id ベースのレート制限を適用。",
+      "rationale": "DoS / スクレイピング対策。",
+      "dependsOn": [],
+      "filesAffected": ["middleware.ts", "app/api/**/route.ts"],
+      "verificationSteps": [
+        "同一 user_id からの分当り 60 req 超で 429 を返す",
+        "Upstash Redis または KV で永続化",
+        "Edge Runtime 互換"
+      ],
+      "judgeRubric": {
+        "abuse_resistance": "連続攻撃が緩和される",
+        "edge_runtime_compat": "Node.js API を使わない"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F019",
+      "name": "Core Web Vitals 最適化 (LCP < 2.5s)",
+      "category": "performance",
+      "priority": "P0",
+      "feasibility": "medium",
+      "description": "ダッシュボード / ランキングページの LCP を 2.5 秒以下に。画像最適化・Server Component 分割。",
+      "rationale": "SEO + UX 向上。",
+      "dependsOn": [],
+      "filesAffected": ["app/[locale]/page.tsx", "app/[locale]/leaderboard/"],
+      "verificationSteps": [
+        "Lighthouse Mobile で LCP < 2.5s",
+        "CLS < 0.1",
+        "INP < 200ms"
+      ],
+      "judgeRubric": {
+        "lcp_target": "LCP 実測 2.5s 以下",
+        "cls_target": "CLS < 0.1",
+        "inp_target": "INP < 200ms"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F020",
+      "name": "バンドルサイズ削減 (First Load JS < 200KB)",
+      "category": "performance",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "Recharts 等の大型ライブラリを dynamic import 化。First Load JS を 200KB 以下に。",
+      "rationale": "モバイル通信環境での UX 向上。",
+      "dependsOn": [],
+      "filesAffected": ["components/CoinGrowthChart.tsx", "components/TopUsersChart.tsx"],
+      "verificationSteps": [
+        "next build の出力で全ページ First Load JS < 200KB",
+        "動的 import したチャートが遅延表示される",
+        "SEO 上でもファーストビューに支障なし"
+      ],
+      "judgeRubric": {
+        "bundle_size_target": "全ページ < 200KB",
+        "progressive_enhancement": "JS 無効でも主要情報が読める"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F021",
+      "name": "N+1 クエリ撲滅",
+      "category": "performance",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "Leaderboard / Feed で発生している N+1 を batch query / join に統合。",
+      "rationale": "DB 負荷軽減。",
+      "dependsOn": [],
+      "filesAffected": ["lib/services/ranking-*.ts", "lib/services/feed-*.ts"],
+      "verificationSteps": [
+        "Supabase ログでリクエスト数が N→1 に削減",
+        "p95 応答時間が 50% 改善",
+        "機能的なリグレッションなし"
+      ],
+      "judgeRubric": {
+        "query_count_reduction": "ページロードあたりクエリ数 < 10",
+        "latency_improvement": "p95 改善率 30%+"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F022",
+      "name": "Supabase ISR キャッシュ活用",
+      "category": "performance",
+      "priority": "P2",
+      "feasibility": "medium",
+      "description": "ランキング等の頻繁に読まれ更新頻度の低いデータを Next.js unstable_cache でキャッシュ。",
+      "rationale": "DB 負荷 + レイテンシ削減。",
+      "dependsOn": ["F021"],
+      "filesAffected": ["lib/services/ranking-*.ts"],
+      "verificationSteps": [
+        "unstable_cache で 60 秒キャッシュが効く",
+        "データ更新時に revalidateTag で即時反映",
+        "Edge Runtime 互換"
+      ],
+      "judgeRubric": {
+        "cache_hit_rate": "キャッシュヒット率 80%+",
+        "freshness": "データ更新から 60 秒以内に反映"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F023",
+      "name": "プッシュ通知配信レポート",
+      "category": "analytics",
+      "priority": "P2",
+      "feasibility": "easy",
+      "description": "送信成功/失敗/開封率を notification_logs に記録し、管理画面で可視化。",
+      "rationale": "通知品質改善のための可視化。",
+      "dependsOn": [],
+      "filesAffected": ["lib/api/web-push.ts", "app/api/cron/step-reminder/"],
+      "verificationSteps": [
+        "全通知が notification_logs に記録される",
+        "失敗時はエラー理由が構造化ログに残る",
+        "開封時に analytics を記録"
+      ],
+      "judgeRubric": {
+        "observability": "全通知がトレーサブル",
+        "privacy_compliance": "個人識別可能情報をログに含めない"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F024",
+      "name": "ユーザーアクティビティ分析ダッシュボード (管理者)",
+      "category": "analytics",
+      "priority": "P2",
+      "feasibility": "hard",
+      "description": "管理者専用ページで DAU / WAU / MAU / リテンションコホート分析を可視化。",
+      "rationale": "データドリブン意思決定。",
+      "dependsOn": [],
+      "filesAffected": ["app/[locale]/admin/analytics/"],
+      "verificationSteps": [
+        "管理者ロール以外は 403 を返す",
+        "7 日 / 30 日コホートリテンション表が表示される",
+        "CSV エクスポート可能"
+      ],
+      "judgeRubric": {
+        "authorization": "管理者権限チェックが API 側で実施",
+        "data_accuracy": "別ソース (Supabase 直接クエリ) と一致"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F025",
+      "name": "E2E テストスイート (Playwright)",
+      "category": "infrastructure",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "主要ユーザーフロー 10 本を Playwright で自動化し、PR 時に CI で実行。",
+      "rationale": "リグレッション防止。",
+      "dependsOn": [],
+      "filesAffected": ["tests/", ".github/workflows/"],
+      "verificationSteps": [
+        "ログイン / 歩数同期 / ランキング閲覧 / ショップ購入が自動テスト化",
+        "GitHub Actions で 5 分以内に完了",
+        "flaky テストがゼロ"
+      ],
+      "judgeRubric": {
+        "coverage": "主要 10 フローを網羅",
+        "stability": "連続 10 回実行で合格率 100%"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F026",
+      "name": "ユニットテストカバレッジ 60%",
+      "category": "infrastructure",
+      "priority": "P2",
+      "feasibility": "medium",
+      "description": "lib/ 配下のビジネスロジックに Vitest でユニットテストを追加し、カバレッジ 60% を達成。",
+      "rationale": "リファクタリング耐性向上。",
+      "dependsOn": [],
+      "filesAffected": ["lib/__tests__/"],
+      "verificationSteps": [
+        "lib/ カバレッジ 60%+",
+        "Vitest で 5 秒以内に完走",
+        "モック対象が明確"
+      ],
+      "judgeRubric": {
+        "coverage_target": "lib/ カバレッジ 60%+",
+        "test_quality": "テストが振る舞い駆動で脆弱でない"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F027",
+      "name": "ログイン・登録フロー再設計",
+      "category": "ux",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "LandingPage から NextAuth Fitbit OAuth まで 1 クリックで到達できる設計に整理。",
+      "rationale": "新規登録 CVR 改善。",
+      "dependsOn": [],
+      "filesAffected": ["components/LandingPage.tsx", "lib/auth.ts"],
+      "verificationSteps": [
+        "ランディングページの CTA が明確",
+        "OAuth コールバック後 /setup に遷移",
+        "エラー時のメッセージが ja/en で表示"
+      ],
+      "judgeRubric": {
+        "cta_clarity": "ファーストビューで CTA が即認識",
+        "error_handling": "OAuth 失敗時にユーザーに明示"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F028",
+      "name": "プロフィールページ拡張 (過去チャレンジ履歴)",
+      "category": "ux",
+      "priority": "P2",
+      "feasibility": "easy",
+      "description": "プロフィールに過去参加チャレンジ + 獲得バッジの年表を追加。",
+      "rationale": "自己成長可視化。",
+      "dependsOn": [],
+      "filesAffected": ["app/[locale]/user/[username]/", "components/profile/"],
+      "verificationSteps": [
+        "年表が月別にグループ化される",
+        "無限スクロールで過去データを遡れる",
+        "ページング性能が良好 (LCP < 2.5s)"
+      ],
+      "judgeRubric": {
+        "information_density": "モバイルでも読みやすい",
+        "performance": "LCP < 2.5s"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F029",
+      "name": "コインエコノミー調整 (インフレ防止)",
+      "category": "gamification",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "日次獲得上限・チャレンジ報酬量を調整し、コインインフレを防止。",
+      "rationale": "ショップ価格設定の持続可能性。",
+      "dependsOn": [],
+      "filesAffected": ["lib/services/coin-service.ts", "lib/services/shop-service.ts"],
+      "verificationSteps": [
+        "1 日獲得上限が適用される",
+        "既存保有者にリセット通知",
+        "トランザクションログが完全監査可能"
+      ],
+      "judgeRubric": {
+        "economy_balance": "シミュレーションでインフレ率 < 10%/月",
+        "user_communication": "既存ユーザーに変更を告知"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F030",
+      "name": "グループ招待リンク発行",
+      "category": "retention",
+      "priority": "P1",
+      "feasibility": "easy",
+      "description": "グループ管理者が招待リンク (7 日有効) を発行でき、リンク経由で即参加可能。",
+      "rationale": "グループ成長促進。",
+      "dependsOn": [],
+      "filesAffected": ["app/api/group/invite/", "app/[locale]/groups/"],
+      "verificationSteps": [
+        "管理者のみ発行可能",
+        "7 日後に自動失効",
+        "参加承認フローと排他制御"
+      ],
+      "judgeRubric": {
+        "expiration_handling": "失効リンクで 410 Gone を返す",
+        "authorization": "管理者のみが発行可能"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F031",
+      "name": "画像アップロードの Cloudflare R2 移行",
+      "category": "infrastructure",
+      "priority": "P2",
+      "feasibility": "medium",
+      "description": "プロフィール画像・バナー画像を Supabase Storage から Cloudflare R2 に移行しコスト削減。",
+      "rationale": "コスト最適化。",
+      "dependsOn": [],
+      "filesAffected": ["lib/image-utils.ts", "app/api/upload/"],
+      "verificationSteps": [
+        "新規アップロードが R2 に保存される",
+        "既存画像のマイグレーションスクリプト動作確認",
+        "CDN キャッシュヒット率 80%+"
+      ],
+      "judgeRubric": {
+        "migration_safety": "既存画像へのアクセス断なく切替",
+        "cost_reduction": "月次ストレージコスト 50%+ 削減"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    },
+    {
+      "id": "F032",
+      "name": "i18n 英語翻訳の品質向上",
+      "category": "ux",
+      "priority": "P2",
+      "feasibility": "easy",
+      "description": "messages/en.json の直訳感を修正しネイティブ表現に。プロダクトコピーとして自然に。",
+      "rationale": "海外ユーザー獲得準備。",
+      "dependsOn": [],
+      "filesAffected": ["messages/en.json"],
+      "verificationSteps": [
+        "全キーがネイティブレビュー済み",
+        "文脈に応じた表現 (フォーマル/カジュアル) が適切",
+        "マーケティングコピーとして自然"
+      ],
+      "judgeRubric": {
+        "naturalness": "ネイティブが違和感を持たない",
+        "consistency": "用語が全体で統一"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
+    }
+  ]
+}

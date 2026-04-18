@@ -27,18 +27,39 @@ git branch --show-current
 
 - `main` / `master` にいる場合は作業ブランチに切替（絶対遵守ルール）
 
-### Step B-2: 進捗ファイル読込
+### Step B-2: 進捗ファイル + Feature List 読込
 
 ```
 read_file: .github/ucfitness-progress.json
+read_file: .github/ucfitness-features.json
 ```
 
-確認項目:
+進捗ファイル (`progress.json`) 確認項目:
 - `lastUpdated` / `lastAgent` / `summary` → 前回の作業内容把握
 - `lastBranch` → 現在のブランチと一致するか
+- `promptVersion` → プロンプト互換性チェック (非互換時は警告)
 - `knownIssues` → 既知の制約事項
-- `featureBacklog` → 次に着手すべき未完了タスク
+- `artifacts` → init.sh / features.json / 設計書のパス確認
+- `featureBacklogRef` → features.json の総件数
 - `sessionLog` → 直近のセッション履歴
+
+Feature List (`features.json`) 確認項目:
+- `features[].status` — 各機能の状態 (not-started / in-progress / passing / blocked / deferred)
+- **原則: Coding Agent は `status` / `lastAttempt` / `lastError` のみ変更可能。`description` / `verificationSteps` / `judgeRubric` の改変は禁止**（仕様変更が必要な場合は Lead 経由でユーザー確認）
+- `status: in-progress` の機能があれば、前セッションの中断タスクとして優先着手候補
+
+### Step B-2.5: Initializer スクリプト (環境セットアップ)
+
+ユーザーからの指示が「新機能実装」「長時間自走タスク」の場合、以下を実行する:
+
+```
+bash .github/ucfitness-init.sh
+```
+
+- 処理内容: ポート 3000 解放 → `.next` キャッシュ削除 → 依存関係確認 → `tsc --noEmit` → dev サーバー起動 (最大 30 秒待機)
+- 失敗時: エラー内容を確認し、Clean State を回復してから作業開始
+- スキップ可能なケース: 「コードレビューのみ」「設計相談のみ」等、実行環境が不要な場合 → `SKIP_DEV=1 bash .github/ucfitness-init.sh` で型チェックのみ実施
+
 
 ### Step B-3: Git ログ確認
 
@@ -65,8 +86,13 @@ get_errors
 ### Step B-6: タスク選択
 
 - ユーザーからの明示的な指示がある場合 → その指示に従う
-- 指示がない場合 → `featureBacklog` から最も優先度の高い `not-started` を 1 つ選び、`in-progress` に変更して作業開始
+- 指示がない場合 → `features.json` の `features` から以下の優先順位で 1 件を選び、`status` を `in-progress` に変更して作業開始:
+  1. `status: in-progress` の機能 (前セッションの中断タスク) を最優先
+  2. `status: not-started` + `priority: P0` の機能
+  3. `status: not-started` + `priority: P1` の機能 (依存関係 `dependsOn` が全て `passing` のものから)
+  4. 以降 P2 → P3 の順
 - **1 セッション = 1 機能（インクリメンタルアプローチ）** — 一度に複数機能を実装しようとしない
+- 選択した機能の `verificationSteps` を事前に確認し、完了条件を明確にする
 
 ### Step B-7: Session Memory 確認
 
@@ -94,18 +120,18 @@ memory view /memories/session/
 - [ ] `npx next lint` → 0 エラー（重大な問題なし）
 - [ ] Playwright でモバイル (375) + デスクトップ (1280) の簡易確認 → 表示崩れなし（UI 変更時）
 - [ ] Git コミット完了（日本語メッセージ、アトミック、`[エリア]` プレフィックス）
+- [ ] **Feature List 更新** (`ucfitness-features.json`): 対象 feature の全 `verificationSteps` が PASS していることを確認し、`status` を `"passing"` に変更。失敗していれば `lastError` に失敗理由を記録して `status` は `"in-progress"` のまま
 - [ ] **進捗ファイル更新** (`ucfitness-progress.json`):
   - `lastUpdated` を現在時刻に更新
   - `lastAgent` を使用したロールに更新
   - `lastCommit` をコミットハッシュに更新
   - `summary` を今回の作業概要に更新
-  - 完了した機能の `status` を `"done"` に変更
   - `sessionLog` に今回の作業を追記
 - [ ] **Session Memory 更新**: 未完了タスクがあれば `/memories/session/current-task.md` に中間状態を記録
 - [ ] **自己学習チェック**: 今回の作業で新たな Lessons Learned があれば、Lessons Learned テーブルに追記
 - [ ] **最終チェック: 次のエージェントセッションが「すぐに新機能に着手できる」状態か？**
 
-> **アンチパターン**: コードを書きかけのまま放置する / コミットせずにセッションを終える / テストが壊れた状態で次の機能に進む
+> **アンチパターン**: コードを書きかけのまま放置する / コミットせずにセッションを終える / テストが壊れた状態で次の機能に進む / `verificationSteps` を実施せずに `status: passing` にマークする
 
 ---
 
@@ -1169,6 +1195,8 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | カードリストのモバイル表示がぐちゃっとなる（縦型バナーカードの過剰適用） | グループ一覧カードを全ビューポートで縦型（バナー画像 `h-24` + オーバーラップアイコン + テキスト + プログレスバー）に統一した結果、モバイルでは各カード ~180px 高 × 3+ で 540px+ の縦スクロールが発生。375px 幅では情報密度が高すぎ「ぐちゃっとした印象」に。初回修正で `sm`(640px) ブレイクポイントを使用したが、タブレット・大型スマホでは 640px+ のビューポートになりリッチレイアウトが表示され間延び問題が再発 | **カードリストのレスポンシブ設計ルール**: (1) ブレイクポイントは `sm`(640px) ではなく **`md`(768px)** を使用 (2) モバイル(<md)は横型コンパクトカード（アイコン`w-10 h-10`左 + テキスト右、`px-2.5 py-2`、カード高さ ~56px） (3) デスクトップ(md+)は縦型リッチカード（バナー + オーバーラップアイコン + プログレスバー） (4) 補助情報は `hidden md:block` でデスクトップのみ (5) グリッドギャップ `gap-1.5 md:gap-3`。リファレンス: `GroupList.tsx`, `app/[locale]/groups/page.tsx` |
 | Playwright ブラウザ閉じ忘れ（ユーザー指摘） | Improvement Loop の Playwright 検証ステップで `mcp_playwright_browser_take_screenshot` / `browser_snapshot` 等を実行した後、`mcp_playwright_browser_close` を呼び出さずにタスク完了を報告。ユーザーの画面に Playwright のブラウザウィンドウが残り続けた | **Playwright MCP 使用後は必ず `mcp_playwright_browser_close` を呼び出す。** (1) テスト実行フローのステップ 13 に「browser_close」を追加（スキップ厳禁） (2) 完了チェックリストに「Playwright ブラウザクローズ」項目を追加 (3) サブエージェント委任テンプレートにもクローズ指示を含める。**ブラウザを開いたまま放置すると、ユーザーの画面を占有し続ける** |
 | Server/Client 境界違反が tsc で検出不可（getFrameColor ランタイムエラー） | `UserAvatar.tsx` (`'use client'`) から export された `getFrameColor()` を Server Component (`page.tsx`) で import・呼び出し。`tsc --noEmit` は TypeScript の型整合性のみチェックし、Next.js の `'use client'` ディレクティブによる Server/Client 境界を**原理的に認識しない**ため、型チェック PASS → ランタイムクラッシュとなった | **Server Component で `import` する前に、インポート先ファイルの先頭に `'use client'` がないか確認する。** `'use client'` モジュールから純粋なユーティリティ関数（型変換マップ等）を使いたい場合は、(1) その関数を `lib/` 配下の共有モジュールに移動するか、(2) Server Component 内にインラインで定義する。**`tsc --noEmit` は Server/Client 境界違反を検出できないことを常に意識する。** Build Validation サブエージェントに「Server/Client 境界チェック」を追加 |
+| Harness Engineering Phase 0: Feature List が不足 (3 件のみ) | `ucfitness-progress.json` の `featureBacklog` に 3 件しか登録されておらず、Anthropic 流の「200+ 機能を `passes: false` 初期化」パターンを再現できていなかった。Coding Agent がバックログ駆動でタスク選択する基盤が不十分 | **`.github/ucfitness-features.json` に feature list を分離し、32 件の構造化バックログ（`verificationSteps` + `judgeRubric` 付き）を登録**。`progress.json` は `featureBacklogRef` で参照するだけにする。**Coding Agent は `status` / `lastAttempt` / `lastError` のみ変更可能**（`description` / `verificationSteps` / `judgeRubric` の改変は禁止 — Anthropic 流の保護ルール）。Session Bootstrap Step B-2 を features.json も読み込むよう拡張 |
+| Harness Engineering Phase 0: init.sh 不在 | 各セッション開始時に「ポート 3000 解放 → `.next` クリア → dev サーバー起動」を手動で実行しており、毎回時間を浪費していた。Anthropic 記事の "init.sh" パターン未実装 | **`.github/ucfitness-init.sh` を作成**。ポート解放 → キャッシュ削除 → 依存確認 → 型チェック → dev サーバー起動 (30s タイムアウト) を 1 コマンドで実行。`SKIP_DEV=1` で型チェックのみ実施可能（コードレビュー用途）。Session Bootstrap Step B-2.5 で「新機能実装・長時間自走タスク」時に必ず実行する |
 
 ---
 
