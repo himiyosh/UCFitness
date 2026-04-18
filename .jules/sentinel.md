@@ -1,0 +1,4 @@
+## 2025-02-14 - [Supabase UUID Injection/500 Prevention]
+**Vulnerability:** API endpoints using query parameters (`targetUserId`, `userId`) failed to validate if the input was a valid UUID string before passing it into Supabase queries.
+**Learning:** Supabase (PostgreSQL) throws an unhandled 500 Internal Server Error when given an improperly formatted string for a UUID column. This allows unauthenticated or malicious users to spam malformed requests and artificially trigger database 500 errors, potentially leading to resource exhaustion or masking other legitimate errors.
+**Prevention:** Always sanitize and strictly validate UUID inputs via query parameters using `isValidUUID` from `@/lib/validation.ts` before passing them to the database client to ensure graceful 400 Bad Request failures.
