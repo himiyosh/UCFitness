@@ -18,6 +18,15 @@ if git diff --quiet && git diff --staged --quiet; then
   exit 0
 fi
 
+# UCFitness プロジェクト固有ルールの検査 (違反があればコミットをブロック)
+if [ -f "scripts/check-ucfitness-rules.sh" ]; then
+  if ! bash scripts/check-ucfitness-rules.sh; then
+    echo "❌ UCFitness rule-check 失敗 — コミットを中止します"
+    echo "   違反を修正してから再度コミットしてください"
+    exit 1
+  fi
+fi
+
 # ステージングされていない変更をステージング
 git add -A
 

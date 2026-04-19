@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:rules": "bash scripts/check-ucfitness-rules.sh",
+    "check:all": "npm run check:rules && npx tsc --noEmit && npm run lint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

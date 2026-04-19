@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-04-19T00:00:00Z",
+  "lastUpdated": "2026-04-19T10:00:00Z",
   "lastAgent": "UCFitnessAgent",
-  "lastCommit": "650e068",
+  "lastCommit": "73b785f",
   "lastBranch": "copilot/improvement-loop-stitch-design",
-  "promptVersion": "2.0.0-harness-phase0",
-  "summary": "Harness Engineering Phase 0 実装 — init.sh 作成、ucfitness-features.json に 32 件の構造化バックログ登録、progress.json を features.json 連携に更新、Session Bootstrap を features.json 読込対応に拡張。",
+  "promptVersion": "2.0.1-rule-enforcement",
+  "summary": "ルール強制メカニズム導入 — scripts/check-ucfitness-rules.sh (grep 静的検査)、eslint.config.mjs に no-restricted-imports/syntax 追加、session-auto-commit が違反時コミットをブロック、ucfitness-rule-enforcement skill を作成。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
@@ -24,7 +24,9 @@
     "initScript": ".github/ucfitness-init.sh",
     "featureList": ".github/ucfitness-features.json",
     "designDoc": "docs/harness-engineering-design.md",
-    "$comment": "Anthropic 流の永続化アーティファクト群。Session Bootstrap 時に全て参照する。"
+    "ruleCheckScript": "scripts/check-ucfitness-rules.sh",
+    "ruleEnforcementSkill": ".github/skills/ucfitness-rule-enforcement/SKILL.md",
+    "$comment": "Anthropic 流の永続化アーティファクト群。Session Bootstrap 時に全て参照する。ruleCheckScript はコミット前に必ず実行。"
   },
   "featureBacklogRef": {
     "file": ".github/ucfitness-features.json",
