@@ -788,6 +788,38 @@
       "status": "not-started",
       "lastAttempt": null,
       "lastError": null
+    },
+    {
+      "id": "F033",
+      "name": "型安全性向上 (any → unknown / 型定義)",
+      "category": "performance",
+      "priority": "P1",
+      "feasibility": "medium",
+      "description": "プロジェクト全体で @typescript-eslint/no-explicit-any lint エラー 163 件を段階的に解消。Supabase 応答型 (Database['public']['Tables']) を活用し、裸の any を unknown または具体的な型に置換する。やむを得ない場合は // eslint-disable-next-line コメントでマーク。",
+      "rationale": "型安全性低下により Copilot の推論精度が落ちるほか、ランタイム不具合の温床になる。copilot-instructions.md のルール『any より unknown を使用』が実装で守られていない。",
+      "dependsOn": [],
+      "filesAffected": [
+        "app/api/amazon/recommended/route.ts",
+        "app/api/user/*/route.ts",
+        "components/AnimatedLeaderboard.tsx",
+        "app/actions.ts",
+        "lib/services/"
+      ],
+      "verificationSteps": [
+        "npx next lint で @typescript-eslint/no-explicit-any エラーが 0 になる",
+        "Supabase クエリの応答が Database 型で推論される (カラム名補完が効く)",
+        "npx tsc --noEmit が 0 エラー維持",
+        "eslint-disable コメントが必要な箇所には理由コメントを必ず付与"
+      ],
+      "judgeRubric": {
+        "typeSafety": "裸の any が残っていない",
+        "supabaseTyping": "Supabase 応答に Database 型が活用されている",
+        "buildStability": "tsc・lint 両方 PASS",
+        "maintainability": "eslint-disable に理由コメントがある"
+      },
+      "status": "not-started",
+      "lastAttempt": null,
+      "lastError": null
     }
   ]
 }
