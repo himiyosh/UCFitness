@@ -198,6 +198,3 @@ export default function UserAvatar({
         </div>
     );
 }
-
-// フレームカラー変換は共有モジュールから re-export (Server/Client 両方で使用可能にするため)
-export { getFrameColor, isRainbowFrame } from '@/lib/frame-utils';

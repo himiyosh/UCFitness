@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
-import { getFrameColor } from '@/components/UserAvatar';
+import { getFrameColor } from '@/lib/frame-utils';
 import { useToast } from '@/components/ui/Toast';
 
 export interface OwnedFrame {

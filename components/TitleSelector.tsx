@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter } from '@/navigation';
+import { useRouter, Link } from '@/navigation';
 import { useToast } from '@/components/ui/Toast';
 
 export interface OwnedTitle {
@@ -115,9 +115,9 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
             <p className="mt-2 text-xs text-gray-400 font-medium">
                 ✨ {t('titleAchievementHint')}
             </p>
-            <a href="/shop" onClick={(e) => { e.preventDefault(); router.push('/shop'); }} className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--theme-primary)] hover:underline cursor-pointer font-medium hover:scale-105 active:scale-95 transition-transform">
+            <Link href="/shop" className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--theme-primary)] hover:underline cursor-pointer font-medium hover:scale-105 active:scale-95 transition-transform">
                 🛍️ {t('moreTitles')} →
-            </a>
+            </Link>
         </div>
     );
 }

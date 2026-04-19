@@ -136,7 +136,7 @@ export default function DashboardChallenges() {
                         <Link
                             key={challenge.id}
                             href="/challenges"
-                            className="block p-3 rounded-xl border border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-sm transition-all"
+                            className="block p-3 rounded-xl border border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-sm transition-[border-color,box-shadow] duration-200"
                         >
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-gray-800 truncate">{challenge.title}</p>

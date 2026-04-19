@@ -4,7 +4,8 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useTheme } from '@/components/ThemeProvider';
-import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
+import UserAvatar from '@/components/UserAvatar';
+import { getFrameColor } from '@/lib/frame-utils';
 import Spinner from '@/components/ui/Spinner';
 
 import type { Theme } from '@/components/ThemeProvider';

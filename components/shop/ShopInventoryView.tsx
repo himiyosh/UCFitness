@@ -1,6 +1,7 @@
 'use client';
 
-import UserAvatar, { getFrameColor } from '@/components/UserAvatar';
+import UserAvatar from '@/components/UserAvatar';
+import { getFrameColor } from '@/lib/frame-utils';
 import Spinner from '@/components/ui/Spinner';
 
 import type { UserItem, EquippedItems } from '@/lib/services/shop-service';

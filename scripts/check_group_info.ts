@@ -56,7 +56,7 @@ async function checkGroupInfo() {
 
     const { data: member } = await supabaseAdmin
         .from('group_members')
-        .select('*')
+        .select('user_id, group_id, joined_at')
         .eq('group_id', group.id)
         .eq('user_id', user.id)
         .single();

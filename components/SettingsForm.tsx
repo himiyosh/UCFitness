@@ -11,7 +11,7 @@ import { useTheme, Theme } from '@/components/ThemeProvider';
 import Spinner from '@/components/ui/Spinner';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import UserAvatar from '@/components/UserAvatar';
-import { getFrameColor } from '@/components/UserAvatar';
+import { getFrameColor } from '@/lib/frame-utils';
 import TitleSelector, { type OwnedTitle } from '@/components/TitleSelector';
 import FrameSelector, { type OwnedFrame } from '@/components/FrameSelector';
 import ThemeSelector, { type OwnedTheme } from '@/components/ThemeSelector';
