@@ -1,0 +1,4 @@
+## 2025-02-28 - Missing UUID Validation on Query Parameters
+**Vulnerability:** Several API endpoints (e.g., `/api/user/follow/status`, `/api/user/step-calendar`, `/api/user/achievement-progress`, `/api/reactions`) extracted User IDs from query parameters (`searchParams.get()`) without strictly validating them as UUIDv4 strings before passing them to Supabase database queries.
+**Learning:** Supabase (PostgreSQL) throws unhandled 500 Internal Server Error exceptions if an improperly formatted string is passed into a query expecting a UUID type. This can be exploited to cause application errors and potentially test injection vulnerabilities.
+**Prevention:** Always sanitize and strictly validate UUID inputs derived from URLs or untrusted user input using `isValidUUID` (from `lib/validation.ts`) before passing them to the database client to ensure graceful failures.

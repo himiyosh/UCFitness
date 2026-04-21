@@ -1,5 +1,6 @@
 export const runtime = 'edge';
 
+import { isValidUUID } from "@/lib/validation";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { reportError } from "@/lib/errors";
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     const userId = searchParams.get("userId");
     const yearParam = searchParams.get("year");
 
-    if (!userId) {
+    if (!userId || !isValidUUID(userId)) {
         return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 

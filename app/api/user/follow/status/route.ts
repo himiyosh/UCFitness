@@ -1,4 +1,5 @@
 export const runtime = 'edge';
+import { isValidUUID } from "@/lib/validation";
 
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const targetUserId = searchParams.get("targetUserId");
 
-        if (!targetUserId) {
+        if (!targetUserId || !isValidUUID(targetUserId)) {
             return NextResponse.json({ error: "Missing targetUserId" }, { status: 400 });
         }
 

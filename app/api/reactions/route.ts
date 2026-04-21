@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidUUID } from '@/lib/validation';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
@@ -121,7 +122,7 @@ export async function DELETE(request: NextRequest) {
         const emoji = searchParams.get('emoji');
         const period = searchParams.get('period');
 
-        if (!toUserId || !emoji || !period) {
+        if (!toUserId || !emoji || !period || !isValidUUID(toUserId)) {
             return NextResponse.json({ error: 'toUserId, emoji, period are required' }, { status: 400 });
         }
 
