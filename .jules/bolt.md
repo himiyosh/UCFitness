@@ -1,0 +1,3 @@
+## 2024-04-22 - [O(N) Percentile Calculation Avoids Sorting Overhead]
+**Learning:** To calculate a user's relative rank or percentile efficiently against large datasets (e.g., in `app/api/user/percentile/route.ts`), O(N log N) array sorting using `Object.entries().map().sort()` creates unnecessary memory allocations and is computationally heavy when only a single user's rank is needed.
+**Action:** Replace sorting with an O(N) linear scan that simply counts entries with strictly greater values to determine rank. This avoids array creation and drastically reduces execution time, especially for large datasets.

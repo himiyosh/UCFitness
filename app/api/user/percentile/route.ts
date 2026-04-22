@@ -40,16 +40,21 @@ export async function GET(): Promise<NextResponse> {
         };
 
         for (const period of periods) {
-            const entries = Object.entries(rankingMap)
-                .map(([id, stats]) => ({ id, steps: stats[period] }))
-                .sort((a, b) => b.steps - a.steps);
+            const userSteps = rankingMap[userId]?.[period];
 
-            const userIndex = entries.findIndex((e) => e.id === userId);
-            if (userIndex === -1 || entries[userIndex].steps === 0) {
+            if (userSteps === undefined || userSteps === 0) {
                 percentile[periodKeys[period]] = null;
             } else {
+                // O(N) 線形スキャンで自分より歩数が多いユーザーをカウント
+                let higherCount = 0;
+                for (const id in rankingMap) {
+                    if (rankingMap[id][period] > userSteps) {
+                        higherCount++;
+                    }
+                }
+
                 // パーセンタイル = (順位 / 全ユーザー数) * 100（上位何%）
-                const rank = userIndex + 1;
+                const rank = higherCount + 1;
                 percentile[periodKeys[period]] = Math.round((rank / totalUsers) * 100);
             }
         }
