@@ -1,0 +1,34 @@
+--- components/UserAvatar.tsx
++++ components/UserAvatar.tsx
+@@ -1,6 +1,6 @@
+ 'use client';
+
+-import { useState, useCallback, useMemo, useEffect } from 'react';
++import { useState, useCallback, useMemo, useEffect, memo } from 'react';
+
+ /**
+  * UserAvatar — 共有アバターコンポーネント
+@@ -62,7 +62,7 @@
+     '2xl': {
+         container: 'w-24 h-24 sm:w-32 sm:h-32',
+         text: 'text-4xl',
+         frame: 4,
+         titleText: 'text-xs',
+     },
+ } as const;
+
+-export default function UserAvatar({
++const UserAvatar = memo(function UserAvatar({
+     src,
+     name,
+     size = 'md',
+@@ -181,6 +181,8 @@
+             )}
+         </div>
+     );
+-}
++});
++
++export default UserAvatar;
+
+ /** フレームカラー変換マップ（モジュールレベルで定義してパフォーマンス最適化） */
