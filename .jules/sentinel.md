@@ -1,0 +1,4 @@
+## 2025-02-23 - [UUID Validation Missing in GET Request Parameters]
+**Vulnerability:** Several GET request endpoints (`/api/user/follow/status`, `/api/user/achievement-progress`, `/api/user/step-calendar`) were accepting `userId` or `targetUserId` from query parameters and directly inserting them into Supabase queries without `UUIDv4` validation.
+**Learning:** Supabase (PostgreSQL) throws unhandled `500 Internal Server Error` exceptions if an improperly formatted string is passed into a query expecting a `UUID` type. This can be maliciously or accidentally triggered, resulting in unhandled server errors. In contrast to path parameters, URL query parameters are easier to modify on the client side without router-level constraints.
+**Prevention:** Always validate UUID query string variables using `isValidUUID` from `@/lib/validation` *before* hitting the Supabase client API. Always respond with an explicit `400 Bad Request` instead of letting the DB query fail.

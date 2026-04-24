@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isValidUUID } from "@/lib/validation";
 import { reportError } from "@/lib/errors";
 import { NextResponse } from "next/server";
 
@@ -17,8 +18,8 @@ export async function GET(request: Request) {
     const userId = searchParams.get("userId");
     const yearParam = searchParams.get("year");
 
-    if (!userId) {
-        return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    if (!userId || !isValidUUID(userId)) {
+        return NextResponse.json({ error: "userId is missing or invalid format" }, { status: 400 });
     }
 
     const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
