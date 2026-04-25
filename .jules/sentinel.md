@@ -1,0 +1,4 @@
+## 2025-03-09 - [Fix Missing UUID Validation in API Routes]
+**Vulnerability:** Multiple API endpoints (`/api/user/step-calendar`, `/api/user/achievement-progress`, `/api/user/follow/status`) were passing unsanitized user IDs directly from query parameters to Supabase query builders targeting UUID columns.
+**Learning:** Supabase (PostgreSQL) throws an unhandled 500 Internal Server Error when an improperly formatted string is passed to a query that expects a UUID type. This results in error leakage, unhandled exceptions, and a potential DoS vector if repeatedly called.
+**Prevention:** Always sanitize and strictly validate UUID inputs (e.g., using the `isValidUUID` utility function in `lib/validation.ts`) before passing them to the database client to ensure graceful failures and return a 400 Bad Request response.
