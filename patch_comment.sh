@@ -1,0 +1,1 @@
+sed -i -e '9s/ \* サイズプリセット:/\n \* ⚡ Bolt Optimization: Wrapped in React.memo() to prevent unnecessary\n \* re-renders of this primitive component in list views (like Leaderboard),\n \* especially when parents trigger minor state changes like hover.\n \*\n \* サイズプリセット:/' components/UserAvatar.tsx

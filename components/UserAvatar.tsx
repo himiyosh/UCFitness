@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, memo } from 'react';
 
 /**
  * UserAvatar — 共有アバターコンポーネント
  * アイコンフレーム（装備中）と称号を表示対応
  * 
+
+ * ⚡ Bolt Optimization: Wrapped in React.memo() to prevent unnecessary
+ * re-renders of this primitive component in list views (like Leaderboard),
+ * especially when parents trigger minor state changes like hover.
+ *
  * サイズプリセット:
  *   xs: 24px (w-6 h-6)   — チャート内
  *   sm: 32px (w-8 h-8)   — 検索結果
@@ -86,7 +91,7 @@ const SIZE_MAP = {
     },
 } as const;
 
-export default function UserAvatar({
+const UserAvatar = memo(function UserAvatar({
     src,
     name,
     size = 'md',
@@ -197,7 +202,9 @@ export default function UserAvatar({
             )}
         </div>
     );
-}
+});
+
+export default UserAvatar;
 
 /** フレームカラー変換マップ（モジュールレベルで定義してパフォーマンス最適化） */
 const FRAME_COLOR_MAP: Record<string, string> = {
