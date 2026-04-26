@@ -1,0 +1,4 @@
+## 2024-05-24 - Missing UUID Validation in Public API Endpoints
+**Vulnerability:** Several API endpoints (`/api/user/follow/status`, `/api/user/step-calendar`, `/api/user/achievement-progress`) read `userId` or `targetUserId` from query parameters and passed them directly to Supabase queries without ensuring they were valid UUIDs.
+**Learning:** Supabase (PostgreSQL) expects UUID format for UUID columns. Passing malformed strings (like generic injection payloads) can result in unhandled 500 Internal Server Errors from the database client, or potentially unexpected query behavior (though Supabase's generated clients offer some protection against full SQL injection, improper formatting still causes crashes).
+**Prevention:** Always use the `isValidUUID` utility from `@/lib/validation` on any user-supplied ID (especially from query parameters) before passing it to database queries.
