@@ -537,21 +537,40 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Failed to delete group" }, { status: 500 });
       }
 
-      // 全メンバーのレガシー group_keyword 配列を同期（並列実行）
-      await Promise.all(memberUserIds.map(async (memberId) => {
-        const { data: memberships } = await supabaseAdmin
-          .from('group_members')
-          .select('groups(keyword)')
-          .eq('user_id', memberId);
+      // 全メンバーのレガシー group_keyword 配列を同期（バッチ取得でN+1防止、URL長/1000件制限対策でチャンク化）
+      if (memberUserIds.length > 0) {
+        const CHUNK_SIZE = 20;
+        const userKeywordsMap = new Map<string, string[]>();
+        memberUserIds.forEach(id => userKeywordsMap.set(id, []));
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+        for (let i = 0; i < memberUserIds.length; i += CHUNK_SIZE) {
+          const chunk = memberUserIds.slice(i, i + CHUNK_SIZE);
 
-        await supabaseAdmin
-          .from('users')
-          .update({ group_keyword: newKeywords })
-          .eq('id', memberId);
-      }));
+          const { data: chunkMemberships } = await supabaseAdmin
+            .from('group_members')
+            .select('user_id, groups(keyword)')
+            .in('user_id', chunk);
+
+          if (chunkMemberships) {
+            for (const m of chunkMemberships) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const groupData = Array.isArray(m.groups) ? m.groups[0] : m.groups;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const kw = (groupData as any)?.keyword;
+              if (kw) {
+                userKeywordsMap.get(m.user_id)?.push(kw);
+              }
+            }
+          }
+
+          await Promise.all(chunk.map(memberId =>
+            supabaseAdmin
+              .from('users')
+              .update({ group_keyword: userKeywordsMap.get(memberId) || [] })
+              .eq('id', memberId)
+          ));
+        }
+      }
 
       // ストレージのグループ画像をクリーンアップ
       const imagesToDelete: string[] = [];
