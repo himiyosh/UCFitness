@@ -1,0 +1,4 @@
+## 2024-04-28 - Missing UUID Validation on API Query Parameters Leads to Unhandled Errors
+**Vulnerability:** API endpoints (`/api/user/follow/status`, `/api/user/achievement-progress`, `/api/user/step-calendar`) that accept `userId` or `targetUserId` via query parameters and pass them directly to Supabase `.eq()` queries cause unhandled 500 errors if the input is not a valid UUID format.
+**Learning:** PostgREST throws an unhandled 500 error when an invalid UUID string is passed into a query expecting a UUID type. The application does not catch this gracefully, creating a potential denial-of-service vector and exposing database implementation details through errors.
+**Prevention:** All external inputs representing UUIDs (such as user IDs from route params or query params) must be explicitly validated using `isValidUUID` from `@/lib/validation` before being used in Supabase queries.
