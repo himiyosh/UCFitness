@@ -1,0 +1,3 @@
+## 2025-04-29 - [React Performance: Memoizing Child List Items]
+**Learning:** In highly interactive React lists (like `AnimatedLeaderboard` with hover and long-press state updates), primitive components rendered inline without memoization (like `UserAvatar`) suffer severe performance drops by causing full-grid re-renders on minor parent state changes. Furthermore, creating new array references using `.map` inline in the render cycle breaks referential stability, invalidating memoization logic on child components.
+**Action:** Always wrap deeply nested primitive UI components in `React.memo` and memoize derived arrays (like paginated results) in parent components using `useMemo` to maintain referential stability.

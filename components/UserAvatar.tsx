@@ -86,7 +86,9 @@ const SIZE_MAP = {
     },
 } as const;
 
-export default function UserAvatar({
+import React from 'react';
+
+const UserAvatar = React.memo(function UserAvatar({
     src,
     name,
     size = 'md',
@@ -197,7 +199,9 @@ export default function UserAvatar({
             )}
         </div>
     );
-}
+});
+
+export default UserAvatar;
 
 /** フレームカラー変換マップ（モジュールレベルで定義してパフォーマンス最適化） */
 const FRAME_COLOR_MAP: Record<string, string> = {
