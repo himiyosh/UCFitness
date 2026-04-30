@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isValidUUID } from "@/lib/validation";
 import { NextResponse } from "next/server";
 
 // ============================================
@@ -21,8 +22,8 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const targetUserId = searchParams.get("targetUserId");
 
-        if (!targetUserId) {
-            return NextResponse.json({ error: "Missing targetUserId" }, { status: 400 });
+        if (!targetUserId || !isValidUUID(targetUserId)) {
+            return NextResponse.json({ error: "Invalid targetUserId" }, { status: 400 });
         }
 
         const { data, error } = await supabaseAdmin
