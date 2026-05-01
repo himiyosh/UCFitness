@@ -1,0 +1,4 @@
+## 2025-02-24 - Supabase Unhandled 500 Exceptions on Malformed UUIDs
+**Vulnerability:** API endpoints that take a `userId` or similar UUID directly from query parameters without validation cause unhandled 500 Internal Server Errors in PostgreSQL via Supabase when malformed string are provided, bypassing typical input validation boundaries.
+**Learning:** Supabase queries expecting UUIDs (like querying by `user_id`) throw a PostgreSQL `22P02` (invalid_text_representation) exception that crashes the route handler logic if the provided string format is not a valid UUID, returning a 500 error instead of a graceful 400 Bad Request.
+**Prevention:** Always sanitize and strictly validate string query parameters using `isValidUUID` (from `lib/validation.ts`) before passing them to the Supabase client whenever querying UUID fields.
