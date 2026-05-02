@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { isValidUUID } from '@/lib/validation';
 
-// UUID形式バリデーション（IDOR攻撃防止）
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // グローバルリーダーボード用リアクションAPI
@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
         const { toUserId, emoji, period } = body;
 
         // バリデーション
-        if (!toUserId || typeof toUserId !== 'string' || !UUID_REGEX.test(toUserId)) {
-            return NextResponse.json({ error: 'toUserId is required' }, { status: 400 });
+        if (!toUserId || typeof toUserId !== 'string' || !isValidUUID(toUserId)) {
+            return NextResponse.json({ error: 'toUserId is required and must be a valid UUID' }, { status: 400 });
         }
         if (!VALID_EMOJIS.includes(emoji)) {
             return NextResponse.json({ error: 'Invalid emoji' }, { status: 400 });
@@ -123,6 +123,9 @@ export async function DELETE(request: NextRequest) {
 
         if (!toUserId || !emoji || !period) {
             return NextResponse.json({ error: 'toUserId, emoji, period are required' }, { status: 400 });
+        }
+        if (!isValidUUID(toUserId)) {
+            return NextResponse.json({ error: 'Invalid toUserId format' }, { status: 400 });
         }
 
         const { error } = await supabaseAdmin

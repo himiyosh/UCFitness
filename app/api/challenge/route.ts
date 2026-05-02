@@ -23,6 +23,10 @@ export async function GET(req: NextRequest) {
         }
         const userId = session.user.id;
 
+        if (groupId && !isValidUUID(groupId)) {
+            return NextResponse.json({ error: 'Invalid groupId format' }, { status: 400 });
+        }
+
         const today = new Date().toISOString().split('T')[0];
 
         let query = supabaseAdmin
