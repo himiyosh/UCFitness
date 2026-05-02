@@ -1,0 +1,3 @@
+## 2026-05-02 - Prevent React Grid Re-renders
+**Learning:** Deeply nested UI grids or inline list items (like the 365-cell `HeatmapCell` grid in `StepCalendar.tsx` and `UserAvatar` in `AnimatedLeaderboard`) suffer severe performance hits when the parent component re-renders due to unrelated state changes. Unlike isolated list components, these primitive nested structures must be explicitly wrapped in `React.memo` to maintain application snappiness, especially on mobile devices.
+**Action:** Always wrap dense grid cell primitives and deeply nested map-rendered elements (like `UserAvatar`) with `React.memo()` to prevent large-scale cascading re-renders across the DOM hierarchy.
