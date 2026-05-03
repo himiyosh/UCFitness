@@ -1,0 +1,3 @@
+## 2025-02-28 - Missing Memoization for Deeply Nested Primitive Components
+**Learning:** In dense data visualizations like `StepCalendar` with 365+ `HeatmapCell` instances, or inline list maps like `AnimatedLeaderboard` rendering `UserAvatar` without dedicated row components, minor parent state changes (e.g., hover effects, minor prop shifts) cause catastrophic O(N) full-grid re-renders. The architecture relies heavily on these basic primitives.
+**Action:** Always wrap small primitive components (`HeatmapCell`, `UserAvatar`) rendered in large quantities in `React.memo()`. Ensure the named function structure (`const Component = React.memo(function Component(...)`) is retained to preserve React DevTools traceability.
