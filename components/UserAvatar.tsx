@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, memo } from 'react';
 
 /**
  * UserAvatar — 共有アバターコンポーネント
@@ -86,7 +86,10 @@ const SIZE_MAP = {
     },
 } as const;
 
-export default function UserAvatar({
+// ⚡ Bolt Optimization: Wrapped deeply nested primitive component in React.memo()
+// This prevents O(N) re-renders in inline list maps (like AnimatedLeaderboard)
+// caused by minor parent state changes (e.g. hover interactions)
+const UserAvatar = memo(function UserAvatar({
     src,
     name,
     size = 'md',
@@ -197,7 +200,9 @@ export default function UserAvatar({
             )}
         </div>
     );
-}
+});
+
+export default UserAvatar;
 
 /** フレームカラー変換マップ（モジュールレベルで定義してパフォーマンス最適化） */
 const FRAME_COLOR_MAP: Record<string, string> = {
