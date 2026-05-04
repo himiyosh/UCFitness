@@ -1,0 +1,4 @@
+## 2024-05-04 - [Missing input validation on UUID parameters in GET requests]
+**Vulnerability:** User IDs passed via query parameters (`targetUserId` in `/api/user/follow/status`, `userId` in `/api/user/step-calendar` and `/api/user/achievement-progress`) are passed directly to Supabase without validating that they are proper UUIDs. This can cause unhandled 500 Internal Server Error exceptions from PostgreSQL if an improperly formatted string is passed.
+**Learning:** API endpoints that legitimately accept user IDs via query parameters must strictly validate the input against a UUIDv4 regular expression (using `isValidUUID`) before passing them to the database client to ensure graceful failures.
+**Prevention:** Always use `isValidUUID(param)` to validate UUID parameters passed via query parameters before passing them to the database.
