@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { reportError } from "@/lib/errors";
 import { NextResponse } from "next/server";
+import { isValidUUID } from "@/lib/validation";
 
 // 歩数カレンダー用API: 指定年の日別歩数データを返す
 export async function GET(request: Request) {
@@ -17,8 +18,8 @@ export async function GET(request: Request) {
     const userId = searchParams.get("userId");
     const yearParam = searchParams.get("year");
 
-    if (!userId) {
-        return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    if (!userId || !isValidUUID(userId)) {
+        return NextResponse.json({ error: "userId is required and must be a valid UUID" }, { status: 400 });
     }
 
     const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
