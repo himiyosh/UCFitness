@@ -1,0 +1,3 @@
+## 2026-05-06 - [Memoize Deeply Nested Primitive Components]
+**Learning:** In components rendering inline list maps (e.g., `AnimatedLeaderboard`, `FollowingPanel`'s activity list) that lack dedicated row components, minor parent state changes (like hover effects) trigger full-list re-renders. Deeply nested primitive components like `UserAvatar` become performance bottlenecks if not memoized.
+**Action:** Always wrap functional React components representing shared, primitive elements (like `UserAvatar`) with `React.memo()`. Retain the named function declaration (`const Component = memo(function Component(...) { ... })`) so React DevTools can accurately display the component's original name.
