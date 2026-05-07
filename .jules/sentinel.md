@@ -1,0 +1,4 @@
+## 2025-03-01 - [Supabase Unhandled UUID Cast Exception]
+**Vulnerability:** Supabase/PostgreSQL throws unhandled 500 Internal Server Error exceptions when querying endpoints expecting UUID parameters (e.g., `userId`, `targetUserId`) if the inputs do not exactly match the strict UUIDv4 format, exposing internal application states or potentially leading to DoS vectors if improperly logged.
+**Learning:** This is a codebase-specific gap where parameter existence was checked, but exact format validation was omitted before passing the string to the `.eq('user_id', ...)` Supabase filters.
+**Prevention:** All API endpoints that accept user IDs or entity IDs meant for PostgreSQL UUID columns via query parameters MUST explicitly validate the string using `isValidUUID` or an equivalent strict regex check (and fail gracefully with a 400 Bad Request) before proceeding to database queries.

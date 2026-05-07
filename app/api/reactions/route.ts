@@ -125,6 +125,10 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'toUserId, emoji, period are required' }, { status: 400 });
         }
 
+        if (!UUID_REGEX.test(toUserId)) {
+            return NextResponse.json({ error: 'Invalid toUserId format' }, { status: 400 });
+        }
+
         const { error } = await supabaseAdmin
             .from('group_reactions')
             .delete()
