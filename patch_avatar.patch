@@ -1,0 +1,12 @@
+--- components/UserAvatar.tsx
++++ components/UserAvatar.tsx
+@@ -86,7 +86,8 @@
+     },
+ } as const;
+
+-const UserAvatar = memo(function UserAvatar({
++// Wrapped in React.memo to prevent unnecessary re-renders in large inline lists (e.g., AnimatedLeaderboard)
++const UserAvatar = memo(function UserAvatar({
+     src,
+     name,
+     size = 'md',
