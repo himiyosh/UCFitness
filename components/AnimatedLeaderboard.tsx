@@ -112,20 +112,29 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
         setPage(1); // Reset to page 1 on tab switch
     }, [period]);
 
-    // Filter current view data
-    const currentGlobal = allGlobalRankings[period] ?? [];
-
     // Pagination safety — must be at top level (not inside conditional JSX)
     const ITEMS_PER_PAGE = 5;
+
+    // Filter current view data and memoize to maintain referential stability
+    const currentGlobal = useMemo(() => allGlobalRankings[period] ?? [], [allGlobalRankings, period]);
+
+    const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
+    const safePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1);
+    const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+
+    // Memoize paginated items to avoid new array reference on every render
+    const paginatedItems = useMemo(() => {
+        return currentGlobal.length > 0 ? currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
+            ...entry,
+            originalRank: entry.originalRank ?? (startIndex + idx + 1)
+        })) : [];
+    }, [currentGlobal, startIndex]);
 
     // Memoize chart data to avoid new array reference each render
     const chartData = useMemo(
         () => currentGlobal.map((r, i) => ({ ...r, originalRank: i + 1 })),
         [currentGlobal]
     );
-
-    const totalPages = Math.ceil(currentGlobal.length / ITEMS_PER_PAGE);
-    const safePage = Math.min(Math.max(1, page), totalPages > 0 ? totalPages : 1);
 
     // パフォーマンス: ランクバッジのスタイルを事前計算し、レンダーごとの再生成を防止
     const rankBadgeStyles = useMemo(() => ({
@@ -271,12 +280,6 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
                                 </div>
 
                                 {(() => {
-                                    const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
-                                    const paginatedItems = currentGlobal.length > 0 ? currentGlobal.slice(startIndex, startIndex + ITEMS_PER_PAGE).map((entry, idx) => ({
-                                        ...entry,
-                                        originalRank: entry.originalRank ?? (startIndex + idx + 1)
-                                    })) : [];
-
                                     return (
                                         <>
                                 <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20 border-t border-slate-600/20' : 'divide-gray-50 border-t border-gray-50'}`}>
