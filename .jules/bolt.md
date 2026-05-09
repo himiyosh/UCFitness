@@ -1,0 +1,3 @@
+## 2026-05-09 - [Inline List Rendering Performance]
+**Learning:** In components mapping over large lists inline (like AnimatedLeaderboard), hover states and other parent state changes can trigger re-renders of the entire list. Primitive leaf components like `UserAvatar` need to be memoized with `React.memo` to prevent performance drops during interactive interactions. Retaining the named function declaration (e.g. `const UserAvatar = memo(function UserAvatar(...)`) is necessary to keep React DevTools readable.
+**Action:** Always verify if deeply nested primitive components rendered inside maps need to be memoized, especially when avoiding dedicated row components.
