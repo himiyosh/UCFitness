@@ -298,6 +298,7 @@ npm run pages:build
 │   └── .github/instructions/ (18 files)   a11y / hooks / security / mobile 等
 │
 └── 🔧 Skills (再利用可能なドメイン知識)
+    ├── modern-web-guidance                モダン Web API ベストプラクティス検索 (Google Chrome 公式)
     ├── web-design-reviewer                UI/UX ビジュアルチェック・レスポンシブ検証
     ├── postgresql-optimization            PostgreSQL クエリ最適化・パフォーマンス分析
     └── next-intl-add-language             next-intl 翻訳キー追加ワークフロー
@@ -345,6 +346,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 
 | スキル | 用途 |
 |---|---|
+| [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | モダン Web プラットフォーム API のベストプラクティス検索 (Google Chrome 公式 / Baseline 2024) |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
 | [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |
 | [next-intl-add-language](.github/skills/next-intl-add-language/SKILL.md) | next-intl 翻訳キー追加ワークフロー |
