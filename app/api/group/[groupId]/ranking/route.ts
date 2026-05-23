@@ -1,14 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getGroupRankings } from '@/lib/services/ranking-service';
 import { reportError } from '@/lib/errors';
-import { Period } from '@/components/dashboard/LeaderboardTabs';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 interface RouteParams {
     params: Promise<{
         groupId: string;
     }>;
+}
+
+interface ApiKeyData {
+    id?: string;
+    user_id: string;
+    scopes: string[] | null;
+    is_admin: boolean | null;
+    expires_at?: string | null;
+    revoked_at?: string | null;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+    const bytes = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+async function queryApiKey(column: 'key' | 'key_hash', value: string): Promise<ApiKeyData | null> {
+    const fullResult = await supabaseAdmin
+        .from('api_keys')
+        .select('id, user_id, scopes, is_admin, expires_at, revoked_at')
+        .eq(column, value)
+        .maybeSingle();
+
+    if (fullResult.data) {
+        return fullResult.data as ApiKeyData;
+    }
+
+    if (!fullResult.error || column === 'key_hash') {
+        return null;
+    }
+
+    const legacyResult = await supabaseAdmin
+        .from('api_keys')
+        .select('id, user_id, scopes, is_admin')
+        .eq(column, value)
+        .maybeSingle();
+
+    return (legacyResult.data as ApiKeyData | null) ?? null;
+}
+
+async function findApiKey(apiKey: string): Promise<ApiKeyData | null> {
+    const keyHash = await sha256Hex(apiKey);
+    return await queryApiKey('key_hash', keyHash) ?? await queryApiKey('key', apiKey);
 }
 
 export async function GET(
@@ -36,20 +82,26 @@ export async function GET(
         }
 
         if (apiKey) {
-            // Use supabaseAdmin to bypass RLS for API Key lookup
-            const { data: keyData, error: keyError } = await supabaseAdmin
-                .from('api_keys')
-                .select('user_id, scopes, is_admin')
-                .eq('key', apiKey)
-                .single();
+            const keyData = await findApiKey(apiKey);
 
-            if (keyError || !keyData) {
+            if (!keyData) {
                 return NextResponse.json({ error: 'Unauthorized: Invalid API Key' }, { status: 401 });
+            }
+
+            if (keyData.revoked_at || (keyData.expires_at && new Date(keyData.expires_at) <= new Date())) {
+                return NextResponse.json({ error: 'Unauthorized: API Key expired or revoked' }, { status: 401 });
             }
 
             // Check Scope
             if (!keyData.scopes || !keyData.scopes.includes('ranking:read')) {
                 return NextResponse.json({ error: 'Forbidden: Insufficient scope' }, { status: 403 });
+            }
+
+            if (keyData.id) {
+                await supabaseAdmin
+                    .from('api_keys')
+                    .update({ last_used_at: new Date().toISOString() })
+                    .eq('id', keyData.id);
             }
 
             userId = keyData.user_id;

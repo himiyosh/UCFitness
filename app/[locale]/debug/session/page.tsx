@@ -106,8 +106,8 @@ export default async function SessionDebugPage() {
                             !dbUser ? "Session exists but DB user missing. Email mismatch?" :
                                 !stepsRecord ? "User exists but steps missing. Refresh required?" :
                                     (session?.user as any)?.id !== dbUser.id ?
-                                        <span className="text-red-600 font-bold">CRITICAL: Session ID ({(session?.user as any)?.id}) does not match DB ID ({dbUser.id}). "My Stats" will fail.</span> :
-                                        <span className="text-green-600 font-bold">IDs match. "My Stats" should work.</span>
+                                        <span className="text-red-600 font-bold">CRITICAL: Session ID ({(session?.user as any)?.id}) does not match DB ID ({dbUser.id}). &quot;My Stats&quot; will fail.</span> :
+                                        <span className="text-green-600 font-bold">IDs match. &quot;My Stats&quot; should work.</span>
                         }
                     </p>
                 </div>

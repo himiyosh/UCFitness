@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendWebPushNotification } from '@/lib/api/web-push';
 import { reportError } from '@/lib/errors';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'edge';
 
@@ -14,6 +15,10 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.user.id;
+    const rateLimit = checkRateLimit(`push-send:${userId}`, 5, 60_000);
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
 
     try {
         const { message } = await request.json();

@@ -19,6 +19,9 @@ const MAX_RECOMMENDED_ITEMS = 6;
 
 /** コメントの最大文字数 */
 const MAX_COMMENT_LENGTH = 100;
+const AMAZON_PARTNER_TAG = process.env.AMAZON_PARTNER_TAG || 'studio344-22';
+const AMAZON_LINK_HOSTS = new Set(['amazon.co.jp', 'www.amazon.co.jp']);
+const AMAZON_IMAGE_HOSTS = new Set(['m.media-amazon.com', 'ws-fe.amazon-adsystem.com']);
 
 // --- POST: アイテム追加 ---
 interface AddItemRequest {
@@ -27,6 +30,40 @@ interface AddItemRequest {
     imageUrl: string;
     affiliateLink: string;
     comment?: string;
+}
+
+function normalizeAffiliateLink(link: string, asin: string): string | null {
+    try {
+        const url = new URL(link);
+        if (url.protocol !== 'https:' || !AMAZON_LINK_HOSTS.has(url.hostname)) {
+            return null;
+        }
+
+        const upperAsin = asin.toUpperCase();
+        if (!url.pathname.includes(upperAsin) && !url.searchParams.get('k')) {
+            return null;
+        }
+
+        url.searchParams.set('tag', AMAZON_PARTNER_TAG);
+        return url.toString();
+    } catch {
+        return null;
+    }
+}
+
+function normalizeImageUrl(imageUrl: string): string {
+    if (!imageUrl) return '';
+
+    try {
+        const url = new URL(imageUrl);
+        if (url.protocol !== 'https:' || !AMAZON_IMAGE_HOSTS.has(url.hostname)) {
+            return '';
+        }
+
+        return url.toString();
+    } catch {
+        return '';
+    }
 }
 
 export async function POST(request: Request) {
@@ -46,6 +83,12 @@ export async function POST(request: Request) {
         }
         if (!body.affiliateLink) {
             return NextResponse.json({ error: 'アフィリエイトリンクが必要です' }, { status: 400 });
+        }
+
+        const asin = body.asin.toUpperCase();
+        const affiliateLink = normalizeAffiliateLink(body.affiliateLink, asin);
+        if (!affiliateLink) {
+            return NextResponse.json({ error: '許可されていないアフィリエイトリンクです' }, { status: 400 });
         }
 
         // 現在の登録数チェック
@@ -86,14 +129,14 @@ export async function POST(request: Request) {
         let title = body.title || '';
         if (!title.trim()) {
             try {
-                title = await fetchProductTitle(body.asin.toUpperCase());
+                title = await fetchProductTitle(asin);
             } catch {
                 // タイトル取得失敗してもアイテム追加は続行
             }
         }
 
         // 画像URLがウィジェットURLの場合、高品質な直接URLへの取得を試みる
-        let imageUrl = body.imageUrl || '';
+        const imageUrl = normalizeImageUrl(body.imageUrl || '');
         // ウィジェットURL は ws-fe.amazon-adsystem.com 経由でリダイレクトされるため、
         // そのまま保存しても表示は可能だが、直接URLの方が安定する
 
@@ -101,10 +144,10 @@ export async function POST(request: Request) {
             .from('recommended_items')
             .upsert({
                 user_id: userId,
-                asin: body.asin.toUpperCase(),
+                asin,
                 title,
                 image_url: imageUrl,
-                affiliate_link: body.affiliateLink,
+                affiliate_link: affiliateLink,
                 display_order: nextOrder,
                 comment,
                 updated_at: new Date().toISOString(),

@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { hasValidImageSignature } from "@/lib/image-validation";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -11,6 +13,11 @@ export async function POST(request: Request) {
     }
 
     try {
+        const rateLimit = checkRateLimit(`group-upload:${session.user.id}`, 10, 60 * 60 * 1000);
+        if (!rateLimit.allowed) {
+            return rateLimitResponse(rateLimit.retryAfterSeconds);
+        }
+
         const formData = await request.formData();
         const file = formData.get("file") as File;
         const groupId = formData.get("groupId") as string;
@@ -75,6 +82,10 @@ export async function POST(request: Request) {
         // Convert file to Uint8Array (edge-compatible)
         const arrayBuffer = await file.arrayBuffer();
         const buffer = new Uint8Array(arrayBuffer);
+
+        if (!hasValidImageSignature(buffer, file.type)) {
+            return NextResponse.json({ error: "Invalid image signature" }, { status: 400 });
+        }
 
         // Upload to 'group-assets'
         const { error: uploadError } = await supabaseAdmin

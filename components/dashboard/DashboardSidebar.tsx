@@ -59,7 +59,7 @@ export default function DashboardSidebar({
         <Link href="/" className="flex items-center gap-2 group">
           <h2
             className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity"
-            style={{ fontFamily: '"Inter", sans-serif' }}
+            style={{ fontFamily: 'var(--font-inter), sans-serif' }}
           >
             {dashT('title', { defaultMessage: 'UCFitness' })}
           </h2>

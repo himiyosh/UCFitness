@@ -12,7 +12,8 @@
     "start": "next start",
     "lint": "eslint",
     "check:rules": "bash scripts/check-ucfitness-rules.sh",
-    "check:all": "npm run check:rules && npx tsc --noEmit && npm run lint",
+    "check:i18n": "node scripts/check-i18n-keys.mjs",
+    "check:all": "npm run check:rules && npm run check:i18n && npx tsc --noEmit && npm run lint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

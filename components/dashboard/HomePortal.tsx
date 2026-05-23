@@ -84,7 +84,7 @@ export default function HomePortal({
               role="tab"
               aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 text-center text-xs font-semibold transition-all duration-200 min-h-[36px] rounded-lg ${
+              className={`flex-1 py-2 text-center text-xs font-semibold transition-all duration-200 min-h-[44px] rounded-lg ${
                 activeTab === tab.key
                   ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'

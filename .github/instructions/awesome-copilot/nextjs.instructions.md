@@ -1,9 +1,10 @@
 ---
-description: "Best practices for building Next.js (App Router) apps with modern caching, tooling, and server/client boundaries (aligned with Next.js 16.1.1)."
-applyTo: '**/*.tsx, **/*.ts, **/*.jsx, **/*.js, **/*.css'
+description: "Reference only: upstream Next.js 16.1.1 guidance. Do not auto-apply in UCFitness; use project Next.js 15 instructions as the source of truth."
 ---
 
-# Next.js Best Practices for LLMs (2026)
+# Next.js 16 Reference Notes
+
+> UCFitness currently uses Next.js 15.5.9. This upstream reference is intentionally not bound with `applyTo`; consult `.github/instructions/nextjs-app-router.instructions.md` and `.github/agents/expert-nextjs-developer.agent.md` first.
 
 _Last updated: January 2026 (aligned to Next.js 16.1.1)_
 

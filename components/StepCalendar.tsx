@@ -461,7 +461,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                                 )}
                             </div>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: '"Inter", sans-serif', letterSpacing: '-0.02em' }}>
+                                <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: 'var(--font-inter), sans-serif', letterSpacing: '-0.02em' }}>
                                     {activity.todaySteps.toLocaleString()}
                                 </span>
                                 <span className="text-xs text-gray-400">{dashT('stepsToday')}</span>

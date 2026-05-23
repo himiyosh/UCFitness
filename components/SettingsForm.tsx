@@ -500,7 +500,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                 role="switch"
                                 aria-checked={notifyReactions}
                                 disabled={isSavingNotify}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${notifyReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'} ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={async () => {
                                     const newVal = !notifyReactions;
                                     setNotifyReactions(newVal);
@@ -515,7 +515,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     finally { setIsSavingNotify(false); }
                                 }}
                             >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                                <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifyReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'}`}>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </span>
                             </button>
                         </label>
                         <label className="flex items-center justify-between cursor-pointer group">
@@ -528,7 +530,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                 role="switch"
                                 aria-checked={notifyGearReactions}
                                 disabled={isSavingNotify}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${notifyGearReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'} ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={async () => {
                                     const newVal = !notifyGearReactions;
                                     setNotifyGearReactions(newVal);
@@ -543,7 +545,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     finally { setIsSavingNotify(false); }
                                 }}
                             >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyGearReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                                <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifyGearReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'}`}>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyGearReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </span>
                             </button>
                         </label>
                     </div>

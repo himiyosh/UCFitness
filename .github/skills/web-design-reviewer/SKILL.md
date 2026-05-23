@@ -180,16 +180,12 @@ Identify source files from problematic elements:
 
 3. **File Pattern Filtering**
    ```
-   Style files: src/**/*.css, styles/**/*
-   Components: src/components/**/*
-   Pages: src/pages/**, app/**
+   Style files: app/**/*.css
+   Components: components/**/*
+   Pages: app/**
    ```
 
 ### 3.3 Applying Fixes
-
-#### Framework-specific Fix Guidelines
-
-See [references/framework-fixes.md](references/framework-fixes.md) for details.
 
 #### Fix Principles
 

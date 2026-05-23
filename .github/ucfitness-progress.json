@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-04-19T10:00:00Z",
+  "lastUpdated": "2026-05-23T20:57:00+09:00",
   "lastAgent": "UCFitnessAgent",
   "lastCommit": "73b785f",
-  "lastBranch": "copilot/improvement-loop-stitch-design",
+  "lastBranch": "agents/ui-functionality-improvement-research-1402d7c8",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "ルール強制メカニズム導入 — scripts/check-ucfitness-rules.sh (grep 静的検査)、eslint.config.mjs に no-restricted-imports/syntax 追加、session-auto-commit が違反時コミットをブロック、ucfitness-rule-enforcement skill を作成。",
+  "summary": "監査結果の P0/P1 対応 — Hooks 違反修正、CreateChallengeModal a11y/i18n 改善、Push API 統一、URL/CSP/rate-limit/log redaction、CI と安全な hooks、README/Skill/Agent 整合性を更新。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
-    "lintErrors": 163,
-    "lintErrorsNote": "大半が @typescript-eslint/no-explicit-any（30+ ファイル）。ビルドはブロックされないが F033 として型安全性向上を features.json に追加済み。",
-    "devServerRunning": true,
-    "lastVerified": "2026-04-19T09:10:00Z"
+    "lintErrors": 0,
+    "lintErrorsNote": "@typescript-eslint/no-explicit-any は F033 継続対応として一時 warning 化。npm run lint -- --quiet は 0 error。",
+    "devServerRunning": false,
+    "lastVerified": "2026-05-23T20:57:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -34,6 +34,22 @@
     "$comment": "個別 feature の詳細 (description / verificationSteps / judgeRubric / status) は features.json を参照。Coding Agent は status フィールドのみ更新可能。"
   },
   "sessionLog": [
+    {
+      "date": "2026-05-23",
+      "agent": "UCFitnessAgent",
+      "action": "監査結果対応 — FrameSelector Hooks 違反修正、CreateChallengeModal の a11y/i18n 改善、Push subscribe API 統一、URL allowlist/CSP/rate-limit/log redaction/API key hash migration/画像署名検証/CI/hooks 安全化/README・Skill・Agent 整合性修正を実施。",
+      "commit": "",
+      "filesChanged": [
+        "components/FrameSelector.tsx",
+        "components/challenge/CreateChallengeModal.tsx",
+        "components/PushNotificationManager.tsx",
+        "app/api/amazon/recommended/route.ts",
+        "app/api/group/[groupId]/ranking/route.ts",
+        ".github/workflows/validate.yml",
+        ".github/hooks/hooks.json",
+        "README.md"
+      ]
+    },
     {
       "date": "2026-04-19",
       "agent": "UCFitnessAgent",

@@ -2,9 +2,9 @@
 applyTo: "components/**/*.tsx"
 ---
 
-# React 19 コンポーネント開発ガイドライン
+# React 18.3 コンポーネント開発ガイドライン
 
-UCFitness (React 19, TypeScript) のコンポーネント設計・実装パターン。
+UCFitness (React 18.3.1, TypeScript) のコンポーネント設計・実装パターン。
 
 ## コンポーネント設計原則
 

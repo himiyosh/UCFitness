@@ -53,12 +53,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (!account) return false;
 
             // 1. Try to find user by Provider Account ID (Fitbit ID) first - This is stable
-            let { data: existingUser, error: selectError } = await supabaseAdmin
+            const { data: providerUser, error: selectError } = await supabaseAdmin
                 .from("users")
                 .select("id, is_custom_image, email, provider, provider_account_id")
                 .eq("provider", account.provider)
                 .eq("provider_account_id", account.providerAccountId)
                 .single();
+            let existingUser = providerUser;
 
             if (selectError && selectError.code !== 'PGRST116') {
                 reportError('auth.signIn:lookupByProvider', selectError);

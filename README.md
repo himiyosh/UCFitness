@@ -1,7 +1,7 @@
 # UCFitness
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
+![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
 ![Cloudflare Pages](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?logo=cloudflarepages)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
@@ -32,7 +32,7 @@ UCFitness は **Fitbit 連携の歩数トラッキング・フィットネス競
 | カテゴリ | 技術 |
 |---|---|
 | **フレームワーク** | Next.js 15 (App Router) |
-| **UI** | React 19, Tailwind CSS v4, CSS カスタムプロパティ (テーマ) |
+| **UI** | React 18.3.1, Tailwind CSS v4, CSS カスタムプロパティ (テーマ) |
 | **言語** | TypeScript 5 |
 | **認証** | NextAuth v5 (beta) / Fitbit OAuth 2.0 |
 | **DB** | Supabase (PostgreSQL) |
@@ -90,7 +90,7 @@ UCFitness/
 |   |   +-- ...
 |   +-- actions.ts           # Server Actions
 |   +-- globals.css          # グローバルスタイル (テーマ変数)
-+-- components/              # React コンポーネント (~100 ファイル)
++-- components/              # React コンポーネント (カテゴリ別サブフォルダ + 既存ルート配置)
 +-- hooks/                   # カスタム Hooks
 |   +-- useGearReactions.ts
 |   +-- useGroupReactions.ts
@@ -122,7 +122,6 @@ UCFitness/
 |   |   +-- awesome-copilot/     # awesome-copilot から導入 (8 ファイル)
 │   +-- agents/                  # Copilot カスタムエージェント (9 ファイル)
 |   +-- skills/                  # Copilot スキル (3 スキル)
-|   +-- prompts/                 # Copilot カスタムプロンプト
 |   +-- prompts/                 # Copilot カスタムプロンプト
 +-- .agents/
 |   +-- skills/
@@ -314,7 +313,7 @@ npm run pages:build
 |---|---|---|---|
 | **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。リクエストのキーワード・文脈から専門ロールを自動判定し、委任する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15 App Router / Server Components / Edge Runtime / next-intl 専門 |
-| React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 19.2 Hooks / Server Components / Actions / パフォーマンス最適化 |
+| React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
 | SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
 | Accessibility Expert | [accessibility.agent.md](.github/agents/accessibility.agent.md) | GPT-4.1 | WCAG 2.1/2.2 準拠 / ARIA / キーボードナビ / スクリーンリーダー対応 |

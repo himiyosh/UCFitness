@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
 import { generateAffiliateLink, searchProductCandidates, detectInputType } from '@/lib/api/amazon-creators-api';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,11 @@ export async function POST(request: Request) {
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit(`amazon-search:${session.user.id}`, 20, 60_000);
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.retryAfterSeconds);
     }
 
     try {

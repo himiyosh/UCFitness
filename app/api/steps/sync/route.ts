@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { auth } from "@/lib/auth";
 import { updateUserSteps, backfillUserSteps } from '@/lib/services/step-manager';
 import { reportError } from '@/lib/errors';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,10 @@ export async function POST() {
     }
 
     const userId = session.user.id;
+    const rateLimit = checkRateLimit(`steps-sync:${userId}`, 3, 60 * 60 * 1000);
+    if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
 
     try {
         // 過去1年分の履歴を同期（バックフィル）

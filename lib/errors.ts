@@ -15,6 +15,25 @@ export class AppError extends Error {
     }
 }
 
+const SENSITIVE_KEY_PATTERN = /(authorization|cookie|token|secret|password|email|endpoint|p256dh|auth|key)/i;
+
+function redactValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map((item) => redactValue(item));
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value as Record<string, unknown>).map(([key, entryValue]) => [
+                key,
+                SENSITIVE_KEY_PATTERN.test(key) ? '[REDACTED]' : redactValue(entryValue),
+            ]),
+        );
+    }
+
+    return value;
+}
+
 /**
  * 構造化エラーログを出力
  * タイムスタンプ、操作名、コンテキスト、エラー詳細を含む
@@ -24,19 +43,23 @@ export function reportError(
     error: unknown,
     context?: Record<string, unknown>
 ): void {
+    const redactedContext = redactValue(context) as Record<string, unknown> | undefined;
     const errorDetail: Record<string, unknown> = error instanceof Error
         ? {
             message: error.message,
             name: error.name,
-            stack: error.stack,
-            ...(error instanceof AppError ? { code: error.code, errorContext: error.context } : {}),
+            ...(process.env.NODE_ENV !== 'production' ? { stack: error.stack } : {}),
+            ...(error instanceof AppError ? { code: error.code, errorContext: redactValue(error.context) } : {}),
         }
         : typeof error === 'object' && error !== null
-            ? { message: JSON.stringify(error), ...error as Record<string, unknown> }
+            ? {
+                message: JSON.stringify(redactValue(error)),
+                ...(redactValue(error) as Record<string, unknown>),
+            }
             : { message: String(error) };
 
     const entry = {
-        ...context,
+        ...redactedContext,
         timestamp: new Date().toISOString(),
         operation,
         error: errorDetail,

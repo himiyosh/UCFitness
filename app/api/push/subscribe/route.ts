@@ -5,6 +5,34 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'edge';
 
+const PUSH_ENDPOINT_HOSTS = [
+    'fcm.googleapis.com',
+    'updates.push.services.mozilla.com',
+    'web.push.apple.com',
+    'notify.windows.com',
+];
+
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
+
+function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
+    if (typeof endpoint !== 'string' || endpoint.length > 2048) return false;
+
+    try {
+        const url = new URL(endpoint);
+        if (url.protocol !== 'https:') return false;
+        return PUSH_ENDPOINT_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
+    } catch {
+        return false;
+    }
+}
+
+function isValidPushKey(value: unknown, maxLength: number): value is string {
+    return typeof value === 'string'
+        && value.length > 0
+        && value.length <= maxLength
+        && BASE64URL_PATTERN.test(value);
+}
+
 export async function POST(request: NextRequest) {
     const session = await auth();
     const user = session?.user;
@@ -19,6 +47,12 @@ export async function POST(request: NextRequest) {
         // 🛡️ セキュリティ: サブスクリプションオブジェクトとキーの検証
         if (!subscription || !subscription.endpoint || !subscription.keys
             || !subscription.keys.p256dh || !subscription.keys.auth) {
+            return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
+        }
+
+        if (!isAllowedPushEndpoint(subscription.endpoint)
+            || !isValidPushKey(subscription.keys.p256dh, 256)
+            || !isValidPushKey(subscription.keys.auth, 128)) {
             return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
         }
 
@@ -56,7 +90,7 @@ export async function DELETE(request: NextRequest) {
     try {
         const { endpoint } = await request.json();
 
-        if (!endpoint) {
+        if (!isAllowedPushEndpoint(endpoint)) {
             return NextResponse.json({ error: 'Endpoint required' }, { status: 400 });
         }
 

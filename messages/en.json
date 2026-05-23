@@ -233,6 +233,7 @@
         "missingKey": "VAPID Public Key is missing!",
         "success": "Notifications enabled!",
         "error": "Failed to enable notifications.",
+        "disableError": "Failed to disable notifications.",
         "disabled": "Notifications disabled."
     },
     "Profile": {
@@ -739,6 +740,11 @@
         "cancelEdit": "Cancel",
         "activeToggle": "Active",
         "titleRequired": "Title is required",
+        "targetStepsPositive": "Target steps must be greater than 0",
+        "endDateAfterStart": "End date must be after start date",
+        "createFailed": "Failed to create challenge",
+        "unknownError": "An unexpected error occurred",
+        "closeCreateDialog": "Close create challenge dialog",
         "detailViewDetail": "View details",
         "detailViewParticipants": "View participants",
         "detailParticipants": "{count} challengers",

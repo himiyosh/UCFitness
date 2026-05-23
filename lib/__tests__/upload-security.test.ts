@@ -95,7 +95,7 @@ describe('POST /api/upload/group', () => {
     it('should use extension from MIME type instead of filename (SECURITY FIX VERIFIED)', async () => {
         const formData = new FormData();
         // Create a file that claims to be an image but has a .php extension
-        const file = new File(['content'], 'malicious.php', { type: 'image/png' });
+        const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'malicious.php', { type: 'image/png' });
 
         formData.append('file', file);
         formData.append('groupId', '12345678-1234-1234-1234-123456789012');

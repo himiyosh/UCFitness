@@ -140,7 +140,7 @@ Tailwind `@theme` でオーバーライド済み:
 
 ```css
 body {
-  font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+  font-family: var(--font-inter), var(--font-noto-sans-jp), -apple-system, BlinkMacSystemFont,
     'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 ```

@@ -370,7 +370,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                                 e.stopPropagation();
                                 handleShareInvite(m.groups.keyword, m.groups.id);
                             }}
-                            className="cursor-pointer p-1 rounded-full bg-white/80 shadow-sm border border-gray-200 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all flex items-center justify-center"
+                            className="cursor-pointer min-h-[44px] min-w-[44px] rounded-full bg-white/80 shadow-sm border border-gray-200 text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all flex items-center justify-center"
                             title={copiedId === m.groups.id ? t('copiedLink') : t('shareInvite')}
                             aria-label={t('shareInvite')}
                         >

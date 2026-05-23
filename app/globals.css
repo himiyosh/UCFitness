@@ -14,7 +14,7 @@
 
 /* --- グローバルフォント & スムージング --- */
 body {
-  font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+  font-family: var(--font-inter), var(--font-noto-sans-jp), -apple-system, BlinkMacSystemFont,
     'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -166,7 +166,7 @@ body {
 .state-layer:focus-visible::after { opacity: 0.12; }
 .state-layer:active::after { opacity: 0.12; }
 
-/* Noto Sans JP フォント読み込み ==== */
+/* next/font variables are attached in app/[locale]/layout.tsx */
 
 /* ==== SAFE AREA (iPhone ノッチ・ジェスチャーバー対応) ==== */
 .safe-area-bottom {
@@ -1291,7 +1291,7 @@ html {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  --font-sans: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   --font-mono: var(--font-geist-mono);
   /* Accent Colors for Tailwind */
   --color-coral: var(--accent-coral);
@@ -1317,7 +1317,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  font-family: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   transform: none;
   transform-origin: top left;
   width: 100%;
@@ -2470,5 +2470,3 @@ body::before {
     transform: none !important;
   }
 }
-
-

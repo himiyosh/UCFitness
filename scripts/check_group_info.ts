@@ -16,10 +16,11 @@ async function checkGroupInfo() {
     const targetUsername = 'samwalkman';
 
     // 1. Find Group
-    let { data: groups, error } = await supabaseAdmin
+    const { data: exactGroups, error } = await supabaseAdmin
         .from('groups')
         .select('id, name')
         .eq('name', groupName);
+    let groups = exactGroups || [];
 
     if (error || !groups || groups.length === 0) {
         const { data: groupsSearch } = await supabaseAdmin

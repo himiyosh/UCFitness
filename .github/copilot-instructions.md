@@ -6,7 +6,7 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 
 ## 技術スタック
 
-- **フレームワーク**: Next.js 15 (App Router), React 19, TypeScript
+- **フレームワーク**: Next.js 15 (App Router), React 18.3.1, TypeScript
 - **スタイリング**: Tailwind CSS v4, CSS カスタムプロパティ (テーマ)
 - **認証**: NextAuth v5 (beta)
 - **DB**: Supabase (PostgreSQL)
@@ -452,7 +452,6 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 
 - コミットメッセージ: 日本語
 - コードコメント: 日本語 OK
-- ユーザーへの応答: 日本語サマリー + 英語本文
 
 #### コミットメッセージフォーマット
 
@@ -564,7 +563,7 @@ if (!dbUser?.username) {
       <Link href="/" className="flex items-center gap-2 group">
         <h1
           className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity"
-          style={{ fontFamily: '"Inter", sans-serif' }}
+          style={{ fontFamily: 'var(--font-inter), sans-serif' }}
         >
           {dashboardT("title")}
         </h1>

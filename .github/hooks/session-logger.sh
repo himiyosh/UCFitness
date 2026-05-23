@@ -16,4 +16,4 @@ echo "  時刻: $TIMESTAMP" >> "$LOG_FILE"
 echo "  ブランチ: $BRANCH" >> "$LOG_FILE"
 echo "  未コミット変更数: $DIRTY_FILES" >> "$LOG_FILE"
 
-echo "📝 セッション開始をログに記録: $TIMESTAMP"
+echo "OK: セッション開始をログに記録: $TIMESTAMP"

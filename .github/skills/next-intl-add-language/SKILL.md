@@ -7,13 +7,14 @@ This is a guide to add a new language to a Next.js project using next-intl for i
 
 - For i18n, the application uses next-intl.
 - All translations are in the directory `./messages`.
-- The UI component is `src/components/language-toggle.tsx`.
 - Routing and middleware configuration are handled in:
-  - `src/i18n/routing.ts`
-  - `src/middleware.ts`
+  - `./i18n.ts`
+  - `./navigation.ts`
+  - `./middleware.ts`
 
 When adding a new language:
 
 - Translate all the content of `en.json` to the new language. The goal is to have all the JSON entries in the new language for a complete translation.
-- Add the path in `routing.ts` and `middleware.ts`.
-- Add the language to `language-toggle.tsx`.
+- Add the locale to `routing.locales` in `navigation.ts`.
+- Update `i18n.ts` and `middleware.ts` only if their locale handling changes.
+- Add or update any visible language switcher options in the current UI.

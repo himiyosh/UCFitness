@@ -19,6 +19,7 @@ const eslintConfig = [
     // UCFitness プロジェクト固有の禁止ルール
     files: ["**/*.{ts,tsx,js,jsx}"],
     rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
       "no-restricted-imports": [
         "error",
         {
@@ -40,6 +41,12 @@ const eslintConfig = [
             "window.confirm/alert/prompt は禁止です。createPortal でカスタムダイアログを実装してください (copilot-instructions.md)。",
         },
       ],
+    },
+  },
+  {
+    files: ["scripts/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 ];

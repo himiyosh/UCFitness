@@ -1,9 +1,17 @@
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
+import { hasValidImageSignature } from "@/lib/image-validation";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 export const runtime = 'edge';
+
+const MIME_TO_EXT: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+};
 
 export async function POST(request: Request) {
     const session = await auth();
@@ -13,6 +21,12 @@ export async function POST(request: Request) {
     }
 
     try {
+        const userId = (session.user as { id: string }).id;
+        const rateLimit = checkRateLimit(`banner-upload:${userId}`, 10, 60 * 60 * 1000);
+        if (!rateLimit.allowed) {
+            return rateLimitResponse(rateLimit.retryAfterSeconds);
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
@@ -21,7 +35,7 @@ export async function POST(request: Request) {
         }
 
         // 🛡️ Sentinel: ファイルタイプとサイズのバリデーション
-        const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+        const ALLOWED_MIME_TYPES = Object.keys(MIME_TO_EXT);
         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
             return NextResponse.json({ error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." }, { status: 400 });
         }
@@ -31,15 +45,19 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "File too large. Max 5MB." }, { status: 400 });
         }
 
-        const userId = (session.user as any).id;
-        // Client compresses to JPEG, so we enforce .jpg extension to match content type
-        const fileExt = 'jpg';
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuffer);
+        if (!hasValidImageSignature(buffer, file.type)) {
+            return NextResponse.json({ error: "Invalid image signature" }, { status: 400 });
+        }
+
+        const fileExt = MIME_TO_EXT[file.type];
         const filePath = `${userId}-banner-${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabaseAdmin
             .storage
             .from('avatars') // Reusing avatars bucket
-            .upload(filePath, file, {
+            .upload(filePath, buffer, {
                 contentType: file.type,
                 upsert: true
             });

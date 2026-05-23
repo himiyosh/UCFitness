@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter } from '@/navigation';
+import { Link, useRouter } from '@/navigation';
 import { getFrameColor } from '@/lib/frame-utils';
 import { useToast } from '@/components/ui/Toast';
 
@@ -30,6 +30,8 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
 
     const equippedFrame = useMemo(() => frames.find(f => f.isEquipped), [frames]);
     const currentValue = useMemo(() => equippedFrame?.userItemId || 'none', [equippedFrame]);
+    const selectedFrame = useMemo(() => frames.find(f => f.userItemId === currentValue), [frames, currentValue]);
+    const previewColor = useMemo(() => selectedFrame ? getFrameColor(selectedFrame.previewValue) : null, [selectedFrame]);
 
     const handleChange = useCallback(async (value: string) => {
         if (loading) return;
@@ -75,19 +77,15 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
                     🖼️ {t('frameLabel')}
                 </label>
                 <p className="text-xs text-gray-500 mb-2">{t('frameDescription')}</p>
-                <div className="px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-400 flex items-center justify-between">
+                <div className="px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span>{t('noFrames')}</span>
-                    <a href="/shop" className="text-xs text-[var(--theme-primary)] font-bold hover:underline">
+                    <Link href="/shop" className="inline-flex min-h-[44px] items-center text-xs text-[var(--theme-primary)] font-bold hover:underline">
                         {t('goToShop')} →
-                    </a>
+                    </Link>
                 </div>
             </div>
         );
     }
-
-    // 選択中のフレームカラーをプレビュー
-    const selectedFrame = useMemo(() => frames.find(f => f.userItemId === currentValue), [frames, currentValue]);
-    const previewColor = useMemo(() => selectedFrame ? getFrameColor(selectedFrame.previewValue) : null, [selectedFrame]);
 
     return (
         <div className="border-t border-gray-200 pt-6">
@@ -144,9 +142,9 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
                     </div>
                 </div>
             </div>
-            <a href="/shop" className="mt-2 flex items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
+            <Link href="/shop" className="mt-2 inline-flex min-h-[44px] items-center gap-1 text-xs text-[var(--theme-primary)] font-medium hover:underline">
                 {t('moreFrames')} →
-            </a>
+            </Link>
         </div>
     );
 }

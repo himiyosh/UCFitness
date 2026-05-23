@@ -16,7 +16,7 @@ if (!connectionString) {
 
 const pool = new Pool({
     connectionString,
-    ssl: { rejectUnauthorized: false } // Supabase requires SSL, usually
+    ssl: { rejectUnauthorized: process.env.PG_INSECURE_SKIP_VERIFY !== '1' }
 });
 
 async function runMigration() {

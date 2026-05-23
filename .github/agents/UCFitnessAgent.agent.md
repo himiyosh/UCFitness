@@ -238,7 +238,7 @@ Figma 公式リモート MCP サーバー (`https://mcp.figma.com/mcp`)。OAuth 
 
 ### 🟩 React Expert
 
-**専門**: React 19, Hooks, パフォーマンス最適化, コンポーネント設計
+**専門**: React 18.3.1, Hooks, パフォーマンス最適化, コンポーネント設計
 
 - **Hooks 配置ルール（厳守）**: すべての Hooks は早期 return の前に配置 — 違反は本番クラッシュ (Error #310)
 - `useMemo` / `useCallback` が外部データを参照する場合は null-safe（`data ?? []`）

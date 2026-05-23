@@ -19,4 +19,4 @@ echo "  最終コミット: $LAST_COMMIT" >> "$LOG_FILE"
 echo "  未コミット変更数: $DIRTY_FILES" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
 
-echo "📝 セッション終了をログに記録: $TIMESTAMP"
+echo "OK: セッション終了をログに記録: $TIMESTAMP"

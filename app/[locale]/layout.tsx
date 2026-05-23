@@ -1,18 +1,34 @@
 import type { Metadata, Viewport } from "next";
-import "../globals.css";
-import { AuthProvider } from "@/components/auth/AuthProvider";
-import { ToastProvider } from "@/components/ui/Toast";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import GlobalLoader from "@/components/auth/GlobalLoader";
+import { Inter, Noto_Sans_JP } from "next/font/google";
 import dynamic from 'next/dynamic';
 
 import { Suspense } from "react";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+
+import "../globals.css";
+
 import { auth } from "@/lib/auth";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ToastProvider } from "@/components/ui/Toast";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import GlobalLoader from "@/components/auth/GlobalLoader";
 import LanguageSyncer from "@/components/layout/LanguageSyncer";
 import BottomNavBar from "@/components/layout/BottomNavBar";
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['700', '800', '900'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const notoSansJp = Noto_Sans_JP({
+  weight: ['400', '500', '700', '800', '900'],
+  variable: '--font-noto-sans-jp',
+  display: 'swap',
+});
 
 // ⚡ パフォーマンス: 装飾用クライアントコンポーネントを遅延読み込み
 const SplashScreen = dynamic(() => import('@/components/auth/SplashScreen'));
@@ -68,12 +84,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&family=Inter:wght@700;800;900&display=swap" rel="stylesheet" />
-      </head>
-      <body>
+      <body className={`${inter.variable} ${notoSansJp.variable}`}>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <ToastProvider>

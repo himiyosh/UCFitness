@@ -194,7 +194,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     // Viewer Stats (Fetch if logged in and different user)
     // 🛡️ Sentinel: email ではなく ID で所有者判定
     const isOwner = (session?.user as any)?.id === user.id;
-    let viewerStats = { daily: 0, weekly: 0, monthly: 0 };
+    const viewerStats = { daily: 0, weekly: 0, monthly: 0 };
     let hasViewerStats = false;
     let viewerUser = session?.user; // Default to session user
     let viewerHistoryData: any[] = []; // グラフ比較用
@@ -254,7 +254,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                 <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: '"Inter", sans-serif' }}>
+                            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
                                 {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">

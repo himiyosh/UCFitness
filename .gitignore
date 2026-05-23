@@ -33,6 +33,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.local.example
 
 # vercel
 .vercel
@@ -46,7 +47,6 @@ __pycache__/
 *.pyc
 
 # プロジェクト固有の除外
-migrations/
 .jules/
 
 # Playwright / ブラウザ検証スクリーンショット（ルート散乱防止）

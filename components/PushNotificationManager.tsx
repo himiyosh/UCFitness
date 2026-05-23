@@ -45,15 +45,18 @@ export default function PushNotificationManager() {
                 applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
             });
 
-            setSubscription(sub);
-
-            // Send to server
-            await fetch('/api/web-push/subscribe', {
+            const res = await fetch('/api/push/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(sub)
             });
 
+            if (!res.ok) {
+                await sub.unsubscribe();
+                throw new Error('Failed to save subscription');
+            }
+
+            setSubscription(sub);
             setMessage(t('success'));
             setMessageType('success');
         } catch (error) {
@@ -69,15 +72,26 @@ export default function PushNotificationManager() {
         setLoading(true);
         try {
             if (subscription) {
+                const endpoint = subscription.endpoint;
+                const res = await fetch('/api/push/subscribe', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint }),
+                });
+
+                if (!res.ok) {
+                    throw new Error('Failed to delete subscription');
+                }
+
                 await subscription.unsubscribe();
                 setSubscription(null);
-                // Optional: Notify server to delete subscription
-                // await fetch('/api/web-push/unsubscribe', ...); 
                 setMessage(t('disabled'));
                 setMessageType('success');
             }
         } catch (error) {
             console.error('Unsubscribe failed:', error);
+            setMessage(t('disableError'));
+            setMessageType('error');
         } finally {
             setLoading(false);
         }
@@ -97,7 +111,7 @@ export default function PushNotificationManager() {
                 <button
                     onClick={subscribeToPush}
                     disabled={loading}
-                    className="w-full px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
+                    className="w-full min-h-[44px] px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
                 >
                     {loading ? (
                         <>
@@ -118,7 +132,7 @@ export default function PushNotificationManager() {
                     <button
                         onClick={unsubscribeFromPush}
                         disabled={loading}
-                        className="text-xs text-gray-400 hover:text-gray-600 underline"
+                        className="min-h-[44px] px-3 text-xs text-gray-400 hover:text-gray-600 underline"
                     >
                         {t('disable')}
                     </button>
@@ -126,7 +140,7 @@ export default function PushNotificationManager() {
             )}
 
             {message && (
-                <p className={`mt-3 text-xs font-bold text-center animate-in fade-in slide-in-from-bottom-1 ${messageType === 'error' ? 'text-red-500' : 'text-[var(--theme-primary)]'}`}>
+                <p role="status" className={`mt-3 text-xs font-bold text-center animate-in fade-in slide-in-from-bottom-1 ${messageType === 'error' ? 'text-red-500' : 'text-[var(--theme-primary)]'}`}>
                     {message} {messageType === 'success' && message === t('success') ? '🎉' : ''}
                 </p>
             )}

@@ -1,6 +1,5 @@
 ---
 description: 'ReactJS development standards and best practices'
-applyTo: '**/*.jsx, **/*.tsx, **/*.js, **/*.ts, **/*.css, **/*.scss'
 ---
 
 # ReactJS Development Instructions
@@ -8,7 +7,7 @@ applyTo: '**/*.jsx, **/*.tsx, **/*.js, **/*.ts, **/*.css, **/*.scss'
 Instructions for building high-quality ReactJS applications with modern patterns, hooks, and best practices following the official React documentation at https://react.dev.
 
 ## Project Context
-- Latest React version (React 19+)
+- UCFitness uses React 18.3.1. Do not suggest React 19-only APIs unless dependencies are upgraded first.
 - TypeScript for type safety (when applicable)
 - Functional components with hooks as default
 - Follow React's official style guide and best practices

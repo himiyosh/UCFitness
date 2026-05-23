@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useId, useRef } from 'react';
 
 // ============================================
 // チャレンジ作成モーダル コンポーネント
@@ -15,6 +15,9 @@ interface CreateChallengeModalProps {
 
 export default function CreateChallengeModal({ isOpen, onClose, onCreated }: CreateChallengeModalProps) {
     const t = useTranslations('Challenge');
+    const baseId = useId();
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const titleInputRef = useRef<HTMLInputElement>(null);
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -32,6 +35,52 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const titleId = `${baseId}-title`;
+    const descriptionId = `${baseId}-description`;
+    const typeId = `${baseId}-type`;
+    const targetStepsId = `${baseId}-target-steps`;
+    const startDateId = `${baseId}-start-date`;
+    const endDateId = `${baseId}-end-date`;
+    const rewardUCId = `${baseId}-reward-uc`;
+    const errorId = `${baseId}-error`;
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        titleInputRef.current?.focus();
+
+        const handleKeyDown = (event: KeyboardEvent): void => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                onClose();
+                return;
+            }
+
+            if (event.key !== 'Tab' || !dialogRef.current) return;
+
+            const focusableElements = Array.from(
+                dialogRef.current.querySelectorAll<HTMLElement>(
+                    'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+                ),
+            ).filter((element) => element.offsetParent !== null);
+
+            if (focusableElements.length === 0) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus();
+            } else if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,15 +88,15 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
 
         // クライアント側バリデーション
         if (!title.trim()) {
-            setError('Title is required');
+            setError(t('titleRequired'));
             return;
         }
         if (targetSteps <= 0) {
-            setError('Target steps must be positive');
+            setError(t('targetStepsPositive'));
             return;
         }
         if (new Date(endDate) <= new Date(startDate)) {
-            setError('End date must be after start date');
+            setError(t('endDateAfterStart'));
             return;
         }
 
@@ -71,7 +120,7 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to create challenge');
+                throw new Error(data.error || t('createFailed'));
             }
 
             // リセット & 閉じる
@@ -82,47 +131,64 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
             onCreated?.();
             onClose();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Unknown error');
+            setError(err instanceof Error ? err.message : t('unknownError'));
         } finally {
             setSubmitting(false);
         }
-    }, [title, description, type, targetSteps, rewardUC, startDate, endDate, submitting, onCreated, onClose]);
+    }, [title, description, type, targetSteps, rewardUC, startDate, endDate, submitting, onCreated, onClose, t]);
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
             {/* オーバーレイ */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={onClose}
+            />
 
             {/* モーダル */}
-            <div className="relative w-full max-w-lg bg-white midnight-solid-panel rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`${baseId}-heading`}
+                aria-describedby={error ? errorId : undefined}
+                className="relative w-full max-w-lg bg-white midnight-solid-panel rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
                 {/* ヘッダー */}
-                <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <div className="flex items-center justify-between p-3 sm:p-5 border-b border-gray-100">
+                    <h2 id={`${baseId}-heading`} className="text-lg font-bold text-gray-900 flex items-center gap-2">
                         🎯 {t('create')}
                     </h2>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+                        aria-label={t('closeCreateDialog')}
+                        className="min-h-[44px] min-w-[44px] rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600 flex items-center justify-center"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
                 {/* フォーム */}
-                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                <form onSubmit={handleSubmit} className="p-3 sm:p-5 space-y-3 sm:space-y-4">
                     {/* タイトル */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">{t('titleLabel')}</label>
+                        <label htmlFor={titleId} className="block text-sm font-semibold text-gray-700 mb-1">{t('titleLabel')}</label>
                         <input
+                            ref={titleInputRef}
+                            id={titleId}
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             maxLength={100}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                            aria-invalid={Boolean(error && !title.trim())}
+                            aria-describedby={error ? errorId : undefined}
+                            className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
                             placeholder={t('titlePlaceholder')}
                             required
                         />
@@ -130,24 +196,26 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
 
                     {/* 説明 */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">{t('description')}</label>
+                        <label htmlFor={descriptionId} className="block text-sm font-semibold text-gray-700 mb-1">{t('description')}</label>
                         <textarea
+                            id={descriptionId}
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             rows={2}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent resize-none"
+                            className="w-full min-h-[72px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent resize-none"
                             placeholder={t('descriptionPlaceholder')}
                         />
                     </div>
 
                     {/* タイプ */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">{t('type')}</label>
-                        <div className="flex gap-2">
+                        <p id={typeId} className="block text-sm font-semibold text-gray-700 mb-1">{t('type')}</p>
+                        <div className="flex flex-col sm:flex-row gap-2" role="group" aria-labelledby={typeId}>
                             <button
                                 type="button"
                                 onClick={() => setType('INDIVIDUAL')}
-                                className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${
+                                aria-pressed={type === 'INDIVIDUAL'}
+                                className={`flex-1 min-h-[44px] py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${
                                     type === 'INDIVIDUAL'
                                         ? 'bg-blue-50 text-blue-700 border-blue-300'
                                         : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
@@ -158,7 +226,8 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
                             <button
                                 type="button"
                                 onClick={() => setType('GROUP')}
-                                className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${
+                                aria-pressed={type === 'GROUP'}
+                                className={`flex-1 min-h-[44px] py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${
                                     type === 'GROUP'
                                         ? 'bg-purple-50 text-purple-700 border-purple-300'
                                         : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
@@ -171,37 +240,44 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
 
                     {/* 目標歩数 */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">{t('targetSteps')}</label>
+                        <label htmlFor={targetStepsId} className="block text-sm font-semibold text-gray-700 mb-1">{t('targetSteps')}</label>
                         <input
+                            id={targetStepsId}
                             type="number"
                             value={targetSteps}
                             onChange={e => setTargetSteps(Number(e.target.value))}
                             min={1000}
                             step={1000}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                            aria-invalid={Boolean(error && targetSteps <= 0)}
+                            aria-describedby={error ? errorId : undefined}
+                            className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
                             required
                         />
                     </div>
 
                     {/* 日付 */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">{t('startDate')}</label>
+                            <label htmlFor={startDateId} className="block text-sm font-semibold text-gray-700 mb-1">{t('startDate')}</label>
                             <input
+                                id={startDateId}
                                 type="date"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                                className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">{t('endDate')}</label>
+                            <label htmlFor={endDateId} className="block text-sm font-semibold text-gray-700 mb-1">{t('endDate')}</label>
                             <input
+                                id={endDateId}
                                 type="date"
                                 value={endDate}
                                 onChange={e => setEndDate(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                                aria-invalid={Boolean(error && new Date(endDate) <= new Date(startDate))}
+                                aria-describedby={error ? errorId : undefined}
+                                className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
                                 required
                             />
                         </div>
@@ -209,22 +285,23 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
 
                     {/* 報酬UC */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">{t('rewardUC')}</label>
+                        <label htmlFor={rewardUCId} className="block text-sm font-semibold text-gray-700 mb-1">{t('rewardUC')}</label>
                         <input
+                            id={rewardUCId}
                             type="number"
                             value={rewardUC}
                             onChange={e => setRewardUC(Number(e.target.value))}
                             min={100}
                             max={10000}
                             step={100}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                            className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
                             required
                         />
                     </div>
 
                     {/* エラー */}
                     {error && (
-                        <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm border border-red-200">
+                        <div id={errorId} className="p-3 rounded-lg bg-red-50 text-red-600 text-sm border border-red-200" role="alert">
                             {error}
                         </div>
                     )}
@@ -233,7 +310,7 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[var(--theme-primary)] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full min-h-[44px] py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-[var(--theme-primary)] hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {submitting ? (
                             <>
