@@ -124,6 +124,10 @@ UCFitness/
 |   +-- skills/                  # Copilot スキル (3 スキル)
 |   +-- prompts/                 # Copilot カスタムプロンプト
 |   +-- prompts/                 # Copilot カスタムプロンプト
++-- .agents/
+|   +-- skills/
+|       +-- modern-web-guidance/ # Chrome Modern Web Guidance skill
++-- skills-lock.json        # 導入済み skill のロックファイル
 +-- middleware.ts            # i18n ミドルウェア
 +-- navigation.ts            # next-intl ナビゲーション設定
 +-- i18n.ts                  # next-intl 設定
@@ -142,7 +146,7 @@ cd UCFitness
 
 ### 2. 前提条件
 
-- **Node.js** 18 以上
+- **Node.js** 22 以上（`.nvmrc` で固定。`nvm use` 推奨。Cloudflare Pages の `NODE_VERSION` も 22）
 - **npm** 9 以上
 - **Fitbit 開発者アカウント** (OAuth 2.0 アプリ登録)
 - **Supabase プロジェクト** (PostgreSQL)
@@ -298,7 +302,7 @@ npm run pages:build
 │   └── .github/instructions/ (18 files)   a11y / hooks / security / mobile 等
 │
 └── 🔧 Skills (再利用可能なドメイン知識)
-    ├── modern-web-guidance                モダン Web API ベストプラクティス検索 (Google Chrome 公式)
+    ├── modern-web-guidance                Chrome Modern Web Guidance / Baseline 2024 / Web 標準ベストプラクティス
     ├── web-design-reviewer                UI/UX ビジュアルチェック・レスポンシブ検証
     ├── postgresql-optimization            PostgreSQL クエリ最適化・パフォーマンス分析
     └── next-intl-add-language             next-intl 翻訳キー追加ワークフロー
@@ -346,7 +350,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 
 | スキル | 用途 |
 |---|---|
-| [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | モダン Web プラットフォーム API のベストプラクティス検索 (Google Chrome 公式 / Baseline 2024) |
+| [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | Chrome Modern Web Guidance。HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善時に guide を検索・取得して適用する |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
 | [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |
 | [next-intl-add-language](.github/skills/next-intl-add-language/SKILL.md) | next-intl 翻訳キー追加ワークフロー |
@@ -380,6 +384,7 @@ npm run test:coverage
 - **ポート 3000 固定** --- NextAuth OAuth コールバック URL の制約。開発サーバーは必ずポート 3000 で起動すること
 - **`framer-motion` 使用禁止** --- CSS アニメーション + Tailwind で代替すること
 - **`dark:` 使用禁止** --- テーマシステム (CSS カスタムプロパティ) で管理
+- **Modern Web Guidance 適用** --- HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善では `modern-web-guidance` skill を先に参照する。ブラウザサポート方針は Baseline 2024
 - **`supabaseAdmin` 必須** --- サーバーサイドの DB アクセスは `supabase` ではなく `supabaseAdmin` を使用
 - **デプロイ制限あり** --- Cloudflare Pages のデプロイ制限があるため、`git push` は明示的な許可後に実行すること
 

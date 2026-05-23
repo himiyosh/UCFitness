@@ -187,6 +187,16 @@ Figma 公式リモート MCP サーバー (`https://mcp.figma.com/mcp`)。OAuth 
 
 ---
 
+## 🔧 利用可能な Skills
+
+| Skill | 使用タイミング | 適用フロー |
+|---|---|---|
+| **modern-web-guidance** | HTML / CSS / クライアントサイド JS / React UI / フォーム / ダイアログ / ポップオーバー / スクロール / モーション / Web Vitals 改善 | `modern-web-guidance` skill を呼び出し、`npx -y modern-web-guidance@latest search "<具体的なユースケース>" --skill-version 2026_05_16-c5e7870` で guide ID を特定し、必要な guide を retrieve してから実装する |
+
+**ブラウザサポート方針:** UCFitness は Baseline 2024 を基準にする。Baseline 2025 以降または Newly available の機能は、機能検出と軽量フォールバックを用意できる場合のみ採用し、新規 polyfill / 外部ライブラリは事前確認する。
+
+---
+
 ## 🎯 ロール自動選択ルール
 
 リクエストのキーワードや文脈から、以下のロールを自動判定する。
@@ -199,6 +209,7 @@ Figma 公式リモート MCP サーバー (`https://mcp.figma.com/mcp`)。OAuth 
 | 脆弱性、認証、OWASP、XSS、IDOR、入力検証                                     | **Security Expert**      |
 | テスト、テストケース、バグ、品質、エッジケース                               | **QA**                   |
 | エラー、バグ修正、クラッシュ、動かない、原因調査                             | **Debug Mode**           |
+| HTML、CSS、クライアントサイド JS、フォーム、ダイアログ、ポップオーバー、Web Vitals、LCP、INP、CLS、モダン Web | **Modern Web Guidance + 関連ロール** |
 | UI、UX、ユーザー体験、レイアウト、デザイン                                   | **UX Designer**          |
 | アクセシビリティ、WCAG、a11y、スクリーンリーダー                             | **Accessibility Expert** |
 | E2E テスト、ブラウザテスト、Playwright、表示確認、モバイル表示、画面チェック | **Playwright Tester**    |
@@ -777,10 +788,17 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 
 ファイル種別ごとの適用サブエージェント:
 
-- `.tsx` / `.jsx` → Build + UI/UX + Monetization + Performance + FeatureEnhancement
-- `.ts` / `.js` (API, lib/) → Build + Performance + Security
-- `.css` → UI/UX
+- `.tsx` / `.jsx` → Build + Modern Web Guidance + UI/UX + Monetization + Performance + FeatureEnhancement
+- `.ts` / `.js` (API, lib/) → Build + Performance + Security（クライアント処理を含む場合は Modern Web Guidance も適用）
+- `.css` → Modern Web Guidance + UI/UX
 - `.json` (messages/) → Build (i18n キー検証)
+
+#### Step 2.1: Modern Web Guidance 参照（Web UI 変更時は必須）
+
+1. 対象変更を具体的なユースケースに落とし込む（例: LCP 画像最適化、フォーム検証、長いリストの INP 改善）
+2. `modern-web-guidance` skill を呼び出し、`search` で関連 guide ID を特定する
+3. 実装に必要な guide を retrieve し、UCFitness の既存ルール（Tailwind v4、テーマ変数、モバイルファースト、Edge Runtime、外部ライブラリ追加禁止）に適合する形へ翻訳する
+4. Baseline 2024 を超える API を採用する場合は、機能検出・フォールバック・不採用理由のいずれかを明記する
 
 #### Step 2.5: NewFeatureDiscovery（必須 — スキップ厳禁）
 
@@ -878,6 +896,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 
 **UI 頻出バグルール:**
 
+- **Modern Web Guidance の参照必須** — HTML / CSS / クライアントサイド JS / フォーム / ダイアログ / ポップオーバー / スクロール / モーションの変更では、実装前に関連 guide を検索・取得し、UCFitness の既存 UI ルールへ適用する
+- **ブラウザ標準セレクタ優先** — 親要素の状態表現は、不要な JS state やクラス付けより `:has()` / `:where()` / `:not()` を優先する。ただしセレクタは狭く保ち、広域 `:has()` は避ける
+- **intrinsic layout 優先** — 固定幅・固定高さより `aspect-ratio`、`minmax()`、`fit-content()`、container query units、`min-width: 0` を優先し、横スクロールと CLS を防ぐ
 - **`flex` / `flex-row` 横並びにはレスポンシブプレフィックス必須** — 複数カード・パネルを横並びにする場合、`flex` のみ / `flex-row` のみは **禁止**。必ず `flex flex-col sm:flex-row` とし、モバイルでは縦積みにする。`flex-1` で均等分割する 3 カード以上のレイアウトは特に注意（モバイル幅 375px ÷ 3 = 125px/カードで内容が潰れる）。リファレンス: `GroupWeeklyReport.tsx`
 - Flexbox 中央揃え: `flex items-center gap-2` のみ使用（`items-stretch` + `justify-center` 禁止）
 - 最小テキスト: `text-[9px]`〜`text-[11px]` 禁止 → `text-xs` (12px) 以上
@@ -941,6 +962,10 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 3. **計算量削減** — `filter().map()` → `reduce`、ループ内 `find` → `Map`/`Set`
 4. **API・DB 最適化** — 並列 `await` → `Promise.all()`、`select('*')` 排除
 5. **バンドルサイズ** — 未使用 import 削除、大きなライブラリの遅延ロード
+6. **LCP 画像最適化** — Above-the-fold の LCP 候補は lazy load しない。`width` / `height` / `sizes` / 必要に応じて単一の `fetchpriority="high"` を明示する
+7. **INP 改善** — 50ms を超えるクライアント処理は分割し、`scheduler.yield()` + `setTimeout` フォールバック、または Web Worker を検討する
+8. **CSS containment** — 長いリストや重い下部セクションでは `content-visibility: auto` + `contain-intrinsic-size` を検討する。ファーストビューには使わない
+9. **レイアウトスラッシング禁止** — DOM read (`getBoundingClientRect` 等) と write (`style` 更新等) を同じループで交互に実行しない。読む処理と書く処理を分離する
 
 ### 🔒 サブエージェント: Security
 
@@ -1059,6 +1084,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 ### 1. コンテキスト収集
 
 - `.github/copilot-instructions.md` を最初に確認する
+- HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals のタスクでは、`modern-web-guidance` skill を最初に呼び出して関連 guide を検索・取得する
 - 関連ファイルをすべて読み込み、影響範囲を把握する
 - 不明点があればユーザーに確認する
 
@@ -1083,6 +1109,7 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 
 - [ ] `npx tsc --noEmit` パス
 - [ ] 既存 export が削除されていない
+- [ ] Modern Web Guidance 対象タスクでは、参照した guide と Baseline 2024 方針への適合を確認している
 - [ ] i18n: ja/en 両方の翻訳キーが追加されている（該当する場合）
 - [ ] モバイルレスポンシブを考慮している
 - [ ] `main` / `master` ブランチでないことを確認

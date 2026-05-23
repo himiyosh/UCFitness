@@ -32,6 +32,16 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - 既存の関数・export は絶対に削除しない
 - ファイル末尾には必ず改行を入れる
 
+### Modern Web Guidance 適用ルール
+
+- **対象タスク**: HTML / CSS / クライアントサイド JS / React UI / フォーム / ダイアログ / ポップオーバー / スクロール / モーション / LCP・INP・CLS 改善では、実装前に必ず `modern-web-guidance` skill を参照する
+- **検索優先**: まず `npx -y modern-web-guidance@latest search "<具体的なユースケース>" --skill-version 2026_05_16-c5e7870` で関連 guide ID を特定し、必要な guide を retrieve してから設計・実装する
+- **ブラウザサポート方針**: UCFitness は Baseline 2024 を基準にする。Baseline 2024 以内の機能はフォールバックなしで使用可。Baseline 2025 以降または Newly available の機能は、機能検出と軽量フォールバックを用意できる場合のみ採用する。新規 polyfill や外部ライブラリ追加は事前確認必須
+- **CSS 方針**: 既存の Tailwind + CSS カスタムプロパティを維持しつつ、状態表現は不要な JS state より `:has()` / `:where()` / `:not()` 等のブラウザ標準セレクタを優先する。ただしセレクタは狭く保ち、`body:has(...)` のような広域監視は避ける
+- **レイアウト方針**: 固定幅・固定高さより intrinsic sizing、`aspect-ratio`、`minmax()`、container query units、`min-width: 0` を優先し、横スクロールと CLS を防ぐ
+- **パフォーマンス方針**: Above-the-fold の LCP 画像は lazy load しない。必要な `width` / `height` / `sizes` / `fetchpriority` を明示する。長いクライアント処理は 50ms を目安に分割し、重い処理は `scheduler.yield()` フォールバックまたは Web Worker を検討する
+- **content-visibility 方針**: 長いリストや下部の重いセクションに限定して `content-visibility: auto` + `contain-intrinsic-size` を検討する。ファーストビューや検索・アクセシビリティ上 discoverable であるべき内容には安易に使わない
+
 #### Import 整理ルール
 
 import 文は以下の順序でグループ化し、グループ間に空行を入れること:

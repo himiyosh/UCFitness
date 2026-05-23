@@ -2,6 +2,9 @@
   "name": "step-tracker",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "pages:build": "npx @cloudflare/next-on-pages",
