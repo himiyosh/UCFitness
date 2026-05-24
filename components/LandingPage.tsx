@@ -1,10 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
+import { useLocale, useTranslations } from 'next-intl';
+
+import { usePathname, useRouter } from '@/navigation';
+
 import AuthButtons from '@/components/auth/AuthButtons';
-import { useTranslations } from 'next-intl';
-import { useLocale } from 'next-intl';
-import { useRouter, usePathname } from '@/navigation';
+
+interface BenefitItem {
+    metric: string;
+    title: string;
+    description: string;
+}
 
 export default function LandingPage() {
     const t = useTranslations('Landing');
@@ -13,12 +21,10 @@ export default function LandingPage() {
     const pathname = usePathname();
     const [switching, setSwitching] = useState(false);
 
-    // ロケール変更完了後に switching 状態をリセット
     useEffect(() => {
         setSwitching(false);
     }, [locale]);
 
-    // ナビゲーション失敗時のフォールバック（5秒後に自動リセット）
     useEffect(() => {
         if (!switching) return;
         const timer = setTimeout(() => setSwitching(false), 5000);
@@ -32,109 +38,231 @@ export default function LandingPage() {
         router.replace(pathname, { locale: next });
     };
 
+    const benefits: BenefitItem[] = [
+        {
+            metric: t('benefits.habit.metric'),
+            title: t('benefits.habit.title'),
+            description: t('benefits.habit.desc'),
+        },
+        {
+            metric: t('benefits.compete.metric'),
+            title: t('benefits.compete.title'),
+            description: t('benefits.compete.desc'),
+        },
+        {
+            metric: t('benefits.reward.metric'),
+            title: t('benefits.reward.title'),
+            description: t('benefits.reward.desc'),
+        },
+    ];
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex flex-col items-center relative overflow-x-hidden">
-            {/* 言語切替ボタン — 右上固定 */}
-            <button
-                onClick={toggleLocale}
-                disabled={switching}
-                aria-label={locale === 'ja' ? 'Switch to English' : '日本語に切り替え'}
-                className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200 shadow-sm hover:shadow-md hover:bg-white transition-all text-sm font-medium text-gray-700 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2"
-            >
-                {switching ? (
-                    <svg className="w-4 h-4 text-indigo-500 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                ) : (
-                    <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-                    </svg>
-                )}
-                {locale === 'ja' ? 'English' : '日本語'}
-            </button>
-
-            {/* Background Decorations - More colorful! */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none" aria-hidden="true">
-                <div className="absolute -top-1/2 -left-1/2 w-[1000px] h-[1000px] bg-gradient-to-r from-[var(--accent-coral)]/20 to-[var(--accent-pink)]/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute top-1/2 -right-1/2 w-[800px] h-[800px] bg-gradient-to-r from-[var(--accent-turquoise)]/20 to-[var(--accent-lime)]/20 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-gradient-to-r from-[var(--accent-yellow)]/20 to-[var(--accent-coral)]/20 rounded-full blur-3xl"></div>
-
-                {/* Floating emojis for fun atmosphere */}
-                <div className="absolute top-20 left-[10%] text-4xl animate-float opacity-60">🏃</div>
-                <div className="absolute top-40 right-[15%] text-3xl animate-float-delayed opacity-60">💪</div>
-                <div className="absolute bottom-32 left-[20%] text-3xl animate-float opacity-60">🎯</div>
-                <div className="absolute top-1/3 left-[5%] text-2xl animate-float-delayed opacity-50">✨</div>
-                <div className="absolute bottom-20 right-[10%] text-4xl animate-float opacity-60">🏆</div>
-                <div className="absolute top-1/4 right-[25%] text-2xl animate-float-delayed opacity-50">⚡</div>
+        <main className="relative min-h-screen overflow-x-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+            {/* ページ背景グラデーション装飾 */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                <div className="absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-br from-[var(--theme-primary)]/12 via-[var(--theme-gradient-to)]/8 to-transparent blur-3xl" />
+                <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-[var(--theme-gradient-to)]/6 blur-3xl" />
             </div>
 
-            <div className="relative z-10 w-full max-w-4xl px-6 text-center flex-1 flex flex-col justify-center py-20 sm:py-8">
-                {/* Logo / Icon - Rainbow border */}
-                <div className="mx-auto mb-8 w-24 h-24 p-1 rounded-3xl animate-rainbow transform rotate-12 hover:rotate-0 transition-transform duration-500 shadow-xl">
-                    <div className="w-full h-full bg-[var(--theme-primary)] rounded-[20px] flex items-center justify-center">
-                        <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <header className="relative mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--theme-primary)] to-[var(--theme-gradient-to)] text-white shadow-md">
+                        <BrandMark />
+                    </div>
+                    <div>
+                        <p className="text-base font-bold tracking-tight bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">{t('title')}</p>
+                        <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('headerTagline')}</p>
+                    </div>
+                </div>
+
+                <button
+                    onClick={toggleLocale}
+                    disabled={switching}
+                    aria-label={locale === 'ja' ? 'Switch to English' : '日本語に切り替え'}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] shadow-sm transition-colors hover:border-[var(--theme-primary)] hover:text-[var(--theme-primary)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2"
+                >
+                    {switching && (
+                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
+                    )}
+                    {locale === 'ja' ? 'English' : '日本語'}
+                </button>
+            </header>
+
+            <section className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 pb-12 pt-8 sm:px-6 lg:grid-cols-[minmax(0,1.02fr)_minmax(360px,0.98fr)] lg:px-8 lg:pb-20 lg:pt-14">
+                <div className="max-w-3xl">
+                    <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--theme-primary)]/20 bg-[var(--theme-primary)]/8 px-3 py-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--theme-primary)] animate-pulse" aria-hidden="true" />
+                        <p className="text-xs font-semibold text-[var(--theme-primary)]">{t('eyebrow')}</p>
                     </div>
-                </div>
-
-                <h1 className="text-5xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-coral)] via-indigo-600 to-[var(--accent-turquoise)] mb-6 tracking-tight drop-shadow-sm">
-                    {t('title')}
-                </h1>
-
-                <p className="text-xl sm:text-2xl text-gray-600 mb-6 max-w-3xl mx-auto font-medium leading-relaxed lg:whitespace-nowrap">
-                    {t('subtitle')}
-                    <br />
-                    <span className="text-[var(--accent-coral)] font-bold">{t('compete')}</span>, <span className="text-[var(--accent-turquoise)] font-bold">{t('collectBadges')}</span>, {t.rich('stayActive', { span: (chunks) => <span className="text-[var(--accent-lime)] font-bold">{chunks}</span> })}
-                </p>
-
-                <p className="text-sm text-gray-400 mb-12 max-w-xl mx-auto leading-relaxed">
-                    💰 {t('conceptDesc')}
-                </p>
-
-                {/* Features Grid - Colorful cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-16 text-left">
-                    <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border-2 border-transparent hover:border-[var(--accent-coral)] shadow-lg hover:shadow-xl hover:shadow-[var(--accent-coral)]/20 transition-all duration-300 animate-bounce-hover group">
-                        <div className="w-12 h-12 bg-gradient-to-br from-[var(--accent-coral)] to-[var(--accent-pink)] rounded-xl flex items-center justify-center mb-4 text-white shadow-lg group-hover:scale-110 transition-transform">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2">{t('features.leaderboards.title')}</h3>
-                        <p className="text-sm text-gray-600">{t('features.leaderboards.desc')}</p>
-                    </div>
-
-                    <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border-2 border-transparent hover:border-[var(--accent-turquoise)] shadow-lg hover:shadow-xl hover:shadow-[var(--accent-turquoise)]/20 transition-all duration-300 animate-bounce-hover group">
-                        <div className="w-12 h-12 bg-gradient-to-br from-[var(--accent-turquoise)] to-[var(--accent-lime)] rounded-xl flex items-center justify-center mb-4 text-white shadow-lg group-hover:scale-110 transition-transform">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2">{t('features.battles.title')}</h3>
-                        <p className="text-sm text-gray-600">{t('features.battles.desc')}</p>
-                    </div>
-
-                    <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border-2 border-transparent hover:border-[var(--accent-yellow)] shadow-lg hover:shadow-xl hover:shadow-[var(--accent-yellow)]/20 transition-all duration-300 animate-bounce-hover group">
-                        <div className="w-12 h-12 bg-gradient-to-br from-[var(--accent-yellow)] to-[var(--accent-coral)] rounded-xl flex items-center justify-center mb-4 text-white shadow-lg group-hover:scale-110 transition-transform">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2">{t('features.badges.title')}</h3>
-                        <p className="text-sm text-gray-600">{t('features.badges.desc')}</p>
-                    </div>
-                </div>
-
-                {/* Call to Action - More vibrant */}
-                <div className="flex flex-col items-center">
-                    <div className="scale-125 transform transition-transform hover:scale-130">
-                        <AuthButtons />
-                    </div>
-                    <p className="mt-6 text-sm text-gray-500 font-medium flex items-center gap-2">
-                        <span className="text-lg">📱</span>
-                        {t('connectFitbit')}
+                    <h1 className="text-balance text-4xl font-bold leading-[1.1] tracking-[-0.03em] sm:text-5xl lg:text-5xl xl:text-6xl">
+                        <span className="text-[var(--color-text)]">{t('headlinePart1')}</span>
+                        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent"> {t('headlinePart2')}</span>
+                    </h1>
+                    <p className="mt-5 max-w-2xl text-base leading-8 text-[var(--color-text-muted)] sm:text-lg">
+                        {t('heroDesc')}
                     </p>
+
+                    <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <AuthButtons />
+                        <p className="text-sm font-medium text-[var(--color-text-muted)]">{t('connectFitbit')}</p>
+                    </div>
+
+                    <div className="mt-8 flex flex-wrap gap-2" aria-label={t('trustLabel')}>
+                        <TrustItem label={t('trust.fitbit')} />
+                        <TrustItem label={t('trust.pwa')} />
+                        <TrustItem label={t('trust.privacy')} />
+                        <TrustItem label={t('trust.i18n')} />
+                    </div>
                 </div>
+
+                <div className="relative mx-auto w-full max-w-[440px]">
+                    <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-[var(--theme-primary)]/20 to-[var(--theme-gradient-to)]/15 blur-2xl" aria-hidden="true" />
+                    <div className="relative rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-xl">
+                        <ProductPreview t={t} />
+                    </div>
+                </div>
+            </section>
+
+            {/* 統計バー */}
+            <section className="relative mx-auto w-full max-w-7xl px-4 pb-6 sm:px-6 lg:px-8" aria-label={t('statsLabel')}>
+                <div className="rounded-2xl border border-[var(--color-border)] bg-gradient-to-r from-[var(--theme-primary)]/5 via-[var(--color-surface)] to-[var(--theme-gradient-to)]/5 px-6 py-5">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <StatItem value={t('stats.users.value')} label={t('stats.users.label')} />
+                        <StatItem value={t('stats.steps.value')} label={t('stats.steps.label')} />
+                        <StatItem value={t('stats.challenges.value')} label={t('stats.challenges.label')} />
+                        <StatItem value={t('stats.groups.value')} label={t('stats.groups.label')} />
+                    </div>
+                </div>
+            </section>
+
+            <section className="relative mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+                <div className="grid gap-3 md:grid-cols-3">
+                    {benefits.map((benefit, i) => (
+                        <article
+                            key={benefit.metric}
+                            className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm transition-shadow hover:shadow-md"
+                        >
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--theme-primary)]/12 to-[var(--theme-gradient-to)]/8">
+                                    <BenefitIcon index={i} />
+                                </div>
+                                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--theme-primary)]">
+                                    {benefit.metric}
+                                </p>
+                            </div>
+                            <h2 className="text-base font-semibold tracking-tight text-[var(--color-text)]">
+                                {benefit.title}
+                            </h2>
+                            <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
+                                {benefit.description}
+                            </p>
+                        </article>
+                    ))}
+                </div>
+            </section>
+
+            <footer className="relative mx-auto w-full max-w-7xl px-4 pb-8 text-xs text-[var(--color-text-muted)] sm:px-6 lg:px-8">
+                <div className="border-t border-[var(--color-border)] pt-6">
+                    &copy; {new Date().getFullYear()} {t('copyright')}
+                </div>
+            </footer>
+        </main>
+    );
+}
+
+function TrustItem({ label }: { label: string }) {
+    return (
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 shadow-sm">
+            <svg className="h-3.5 w-3.5 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+            <span className="text-xs font-medium text-[var(--color-text)]">{label}</span>
+        </div>
+    );
+}
+
+function StatItem({ value, label }: { value: string; label: string }) {
+    return (
+        <div className="text-center">
+            <p className="text-2xl font-bold tracking-[-0.02em] bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent sm:text-3xl">
+                {value}
+            </p>
+            <p className="mt-0.5 text-xs font-medium text-[var(--color-text-muted)]">{label}</p>
+        </div>
+    );
+}
+
+function BenefitIcon({ index }: { index: number }) {
+    if (index === 0) {
+        return (
+            <svg className="h-5 w-5 text-[var(--theme-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+        );
+    }
+    if (index === 1) {
+        return (
+            <svg className="h-5 w-5 text-[var(--theme-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+            </svg>
+        );
+    }
+    return (
+        <svg className="h-5 w-5 text-[var(--theme-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
+        </svg>
+    );
+}
+
+function ProductPreview({ t }: { t: ReturnType<typeof useTranslations<'Landing'>> }) {
+    return (
+        <div className="rounded-[1.55rem] bg-[#0f172a] p-4 text-white">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-xs font-medium text-slate-300">{t('preview.today')}</p>
+                    <p className="mt-1 text-4xl font-semibold tracking-[-0.04em] tabular-nums">{t('preview.steps')}</p>
+                </div>
+                <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
+                    {t('preview.sync')}
+                </span>
             </div>
 
-            <footer className="relative z-10 shrink-0 pb-4 text-center text-xs text-gray-400">
-                &copy; {new Date().getFullYear()} Studio344
-            </footer>
+            <div className="mt-6">
+                <div className="flex items-center justify-between text-xs text-slate-300">
+                    <span>{t('preview.goal')}</span>
+                    <span>{t('preview.percent')}</span>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-white/10">
+                    <div className="h-full w-[78%] rounded-full bg-blue-400" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-blue-100">{t('preview.remaining')}</p>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+                <PreviewMetric label={t('preview.rankLabel')} value={t('preview.rankValue')} />
+                <PreviewMetric label={t('preview.rewardLabel')} value={t('preview.rewardValue')} />
+            </div>
         </div>
+    );
+}
+
+function PreviewMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-2xl bg-white/8 p-3">
+            <p className="text-xs text-slate-300">{label}</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
+        </div>
+    );
+}
+
+function BrandMark() {
+    return (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 15.5 8.5 11l3 3L20 5.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 19h14" />
+        </svg>
     );
 }
