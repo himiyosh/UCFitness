@@ -307,6 +307,7 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 2. **グリッドに `items-stretch`** — 左右カラムが同じ高さになる
 3. **カード内部: `flex flex-col h-full`** — リスト部分に `flex-1` で余剰高さを吸収させる
 4. **フッター要素に `mt-auto`** — 常にカード下端に固定
+
 - リファレンス: `DynamicLeaderboard.tsx`, `GroupRankingPanel.tsx`
 
 #### 原則
@@ -452,6 +453,7 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 
 - コミットメッセージ: 日本語
 - コードコメント: 日本語 OK
+- ユーザーへの応答: 日本語
 
 #### コミットメッセージフォーマット
 
@@ -708,14 +710,14 @@ export const runtime = "edge";
 
 #### 更新トリガー
 
-| 変更内容 | 更新対象 |
-|---|---|
-| `.agent.md` の追加・削除・リネーム | 階層図 + エージェント詳細一覧テーブル + ロール自動選択テーブル |
-| `.prompt.md` の追加・削除 (agents/ 配下) | 階層図の「Agent Sub-Prompts」ノード |
-| `.prompt.md` の追加・削除 (prompts/ 直下) | 階層図の「Slash Commands」ノード |
-| `SKILL.md` の追加・削除 | 階層図の「Skills」ノード + Skills テーブル |
-| `.instructions.md` の追加・削除 | 階層図の「Shared Instructions」ノードのファイル数 |
-| `UCFitnessAgent.agent.md` のロール追加・変更 | 階層図のロール配置 + ロール自動選択テーブル |
+| 変更内容                                     | 更新対象                                                       |
+| -------------------------------------------- | -------------------------------------------------------------- |
+| `.agent.md` の追加・削除・リネーム           | 階層図 + エージェント詳細一覧テーブル + ロール自動選択テーブル |
+| `.prompt.md` の追加・削除 (agents/ 配下)     | 階層図の「Agent Sub-Prompts」ノード                            |
+| `.prompt.md` の追加・削除 (prompts/ 直下)    | 階層図の「Slash Commands」ノード                               |
+| `SKILL.md` の追加・削除                      | 階層図の「Skills」ノード + Skills テーブル                     |
+| `.instructions.md` の追加・削除              | 階層図の「Shared Instructions」ノードのファイル数              |
+| `UCFitnessAgent.agent.md` のロール追加・変更 | 階層図のロール配置 + ロール自動選択テーブル                    |
 
 #### 階層図のフォーマットルール
 
@@ -754,6 +756,7 @@ export const runtime = "edge";
 ```
 
 **スタイル規則:**
+
 - **ルートノード**: `👤 User` — ユーザーが起点
 - **オーケストレーター**: `⚙️` + `[Orchestrator — Layer N]` で階層レベルを明示
 - **エージェントロール**: 色付き四角絵文字 (🟦🟩🟥🟨🟪🟧🟫) で視認性を確保。同じロールには同じ色を維持する
@@ -781,25 +784,25 @@ export const runtime = "edge";
 
 新規コンポーネント作成時は、該当するサブフォルダに配置する。既存のフラットファイルは計画的なリファクタリングで段階移行する（import パス変更を伴うため、専用ブランチで実施）。
 
-| サブフォルダ | 対象コンポーネント |
-|---|---|
-| `components/leaderboard/` | ランキング・リーダーボード系 |
-| `components/shop/` | ショップ・購入系 |
-| `components/group/` | グループ関連（`Group*.tsx`） |
-| `components/challenge/` | チャレンジ関連（`Challenge*.tsx`） |
-| `components/dashboard/` | ダッシュボード専用ウィジェット（`Dashboard*.tsx`, `HomePortal`, `QuickActions` 等） |
-| `components/profile/` | プロフィール関連（`Profile*.tsx`） |
-| `components/auth/` | 認証関連（`Auth*.tsx`, `LoginBonusToast`） |
-| `components/ui/` | 汎用 UI 部品（`Spinner`, `Toast`, `Breadcrumbs` 等） |
-| `components/layout/` | レイアウト系（`Footer`, `UserMenu`, `BottomNavBar`, `RefreshButton` 等） |
+| サブフォルダ              | 対象コンポーネント                                                                  |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| `components/leaderboard/` | ランキング・リーダーボード系                                                        |
+| `components/shop/`        | ショップ・購入系                                                                    |
+| `components/group/`       | グループ関連（`Group*.tsx`）                                                        |
+| `components/challenge/`   | チャレンジ関連（`Challenge*.tsx`）                                                  |
+| `components/dashboard/`   | ダッシュボード専用ウィジェット（`Dashboard*.tsx`, `HomePortal`, `QuickActions` 等） |
+| `components/profile/`     | プロフィール関連（`Profile*.tsx`）                                                  |
+| `components/auth/`        | 認証関連（`Auth*.tsx`, `LoginBonusToast`）                                          |
+| `components/ui/`          | 汎用 UI 部品（`Spinner`, `Toast`, `Breadcrumbs` 等）                                |
+| `components/layout/`      | レイアウト系（`Footer`, `UserMenu`, `BottomNavBar`, `RefreshButton` 等）            |
 
 #### `lib/` のサブフォルダ分類
 
-| サブフォルダ | 対象モジュール |
-|---|---|
-| `lib/` (直下) | 共通ユーティリティ（`auth.ts`, `supabase.ts`, `constants.ts`, `env.ts`, `errors.ts`, `validation.ts`, `date-utils.ts`） |
-| `lib/services/` | ビジネスロジック（`badge-*.ts`, `coin-service.ts`, `shop-service.ts`, `ranking-*.ts`, `step-manager.ts`） |
-| `lib/api/` | 外部 API 連携（`fitbit.ts`, `amazon-creators-api.ts`, `web-push.ts`, `teams.ts`） |
+| サブフォルダ    | 対象モジュール                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `lib/` (直下)   | 共通ユーティリティ（`auth.ts`, `supabase.ts`, `constants.ts`, `env.ts`, `errors.ts`, `validation.ts`, `date-utils.ts`） |
+| `lib/services/` | ビジネスロジック（`badge-*.ts`, `coin-service.ts`, `shop-service.ts`, `ranking-*.ts`, `step-manager.ts`）               |
+| `lib/api/`      | 外部 API 連携（`fitbit.ts`, `amazon-creators-api.ts`, `web-push.ts`, `teams.ts`）                                       |
 
 #### `screenshots/` のクリーンアップ
 
@@ -836,6 +839,7 @@ export const runtime = "edge";
 ### 社内コンプライアンスポリシー (CSS Data Policy)
 
 > **参照ポリシー**:
+>
 > - Article 5072448: [Guidance for Support Engineers in using Copilot Chat/Agent](https://internal.evergreen.microsoft.com/en-us/topic/2551d022-d53d-4abc-c733-4aa959b7fb87)
 > - Article 4457137: [Handling support data (commercial customers)](https://internal.evergreen.microsoft.com/en-us/topic/e7f0b758-57f8-41e9-1b42-fbea2fab36cf)
 
@@ -883,15 +887,15 @@ export const runtime = "edge";
 
 #### 自動実行の原則
 
-| 操作 | ユーザー確認 |
-|---|---|
-| 作業ブランチへの `git push` | 不要 (自動実行 OK) |
-| PR の作成 (`gh pr create`) | 不要 (自動実行 OK) |
-| PR のマージ (`gh pr merge`) | **必須** |
-| `main` / `master` への直接 push | **禁止** |
-| 本番データの変更 (Supabase) | **必須** |
+| 操作                                   | ユーザー確認                |
+| -------------------------------------- | --------------------------- |
+| 作業ブランチへの `git push`            | 不要 (自動実行 OK)          |
+| PR の作成 (`gh pr create`)             | 不要 (自動実行 OK)          |
+| PR のマージ (`gh pr merge`)            | **必須**                    |
+| `main` / `master` への直接 push        | **禁止**                    |
+| 本番データの変更 (Supabase)            | **必須**                    |
 | Cloudflare Pages デプロイ (`git push`) | **必須** (デプロイ制限あり) |
-| ドライラン / プレビュー | 不要 (自動実行 OK) |
+| ドライラン / プレビュー                | 不要 (自動実行 OK)          |
 
 ### AI Harness — 進捗ファイルとセッション管理
 
@@ -906,11 +910,11 @@ export const runtime = "edge";
 
 #### 進捗ファイルの更新ルール
 
-| タイミング | 更新する項目 |
-|---|---|
+| タイミング                                  | 更新する項目                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | タスク完了時（Clean State Protocol の一部） | `lastUpdated`, `lastAgent`, `lastCommit`, `summary`, `sessionLog`, 完了した機能の `status` |
-| Improvement Loop の Step 0 (Initializer) | `featureBacklog`（新規項目追加）, `knownIssues`, `environmentStatus` |
-| 新しい Lessons Learned 発見時 | `instincts.items` に暫定パターンを追加（confidence 0.8 超で copilot-instructions に昇格） |
+| Improvement Loop の Step 0 (Initializer)    | `featureBacklog`（新規項目追加）, `knownIssues`, `environmentStatus`                       |
+| 新しい Lessons Learned 発見時               | `instincts.items` に暫定パターンを追加（confidence 0.8 超で copilot-instructions に昇格）  |
 
 #### 進捗ファイルの操作制約
 
@@ -931,6 +935,7 @@ export const runtime = "edge";
 
 ```markdown
 ### LL-XXX: {タイトル}
+
 - **事象**: {何が起きたか}
 - **根本原因**: {なぜ起きたか}
 - **対策**: {どう修正/予防したか}
