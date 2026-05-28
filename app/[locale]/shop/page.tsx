@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
@@ -28,7 +29,10 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     ]);
 
     if (!session || !session.user) {
-        redirect("/");
+        const nextPath = resolvedParams.view
+            ? `/shop?view=${encodeURIComponent(resolvedParams.view)}`
+            : "/shop";
+        redirect(createLoginRequiredRedirect(locale, nextPath));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

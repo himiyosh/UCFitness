@@ -98,8 +98,11 @@ UCFitness/
 |   +-- ...
 +-- lib/                     # ビジネスロジック・ユーティリティ
 |   +-- auth.ts              # NextAuth 設定
+|   +-- auth-redirect.ts     # 未ログイン深いリンクのログイン導線
 |   +-- supabase.ts          # Supabase クライアント (supabaseAdmin)
 |   +-- fitbit.ts            # Fitbit API 連携
+|   +-- services/
+|   |   +-- analytics-service.ts # 個人分析集計ロジック
 |   +-- coin-service.ts      # コイン経済ロジック
 |   +-- badge-service.ts     # バッジ判定・付与
 |   +-- push-messages.ts     # プッシュ通知メッセージ (i18n)
@@ -120,8 +123,8 @@ UCFitness/
 |   +-- copilot-instructions.md  # Copilot 共通指示
 |   +-- instructions/            # 補助 Instructions (18 ファイル)
 |   |   +-- awesome-copilot/     # awesome-copilot から導入 (8 ファイル)
-│   +-- agents/                  # Copilot カスタムエージェント (9 ファイル)
-|   +-- skills/                  # Copilot スキル (3 スキル)
+│   +-- agents/                  # Copilot カスタムエージェント (14 ファイル)
+|   +-- skills/                  # Copilot スキル (5 スキル)
 |   +-- prompts/                 # Copilot カスタムプロンプト
 +-- .agents/
 |   +-- skills/
@@ -262,6 +265,13 @@ npm run pages:build
 │   │
 │   ├── 🎭 Playwright Tester               全要素精査型 E2E テスト / レスポンシブ検証
 │   │
+│   ├── 🧭 Persona Journey Review           実ユーザー行動パターン回遊監査
+│   │   ├── 🟦 Persona Mobile Beginner      375px 初回/ライトユーザー
+│   │   ├── 🟩 Persona Competitive Athlete  ランキング・競争モチベーション
+│   │   ├── 🟨 Persona Returning Low Activity 低活動・復帰ユーザー
+│   │   ├── 🟪 Persona Reward Shop Explorer コイン・ショップ・報酬理解
+│   │   └── 🟫 Persona Accessibility Keyboard キーボード・低視力・a11y
+│   │
 │   ├── 📐 Plan Mode                       計画 / アーキテクチャ / 要件整理
 │   │
 │   ├── 🧹 Universal Janitor              クリーンアップ / リファクタリング / 技術負債
@@ -270,6 +280,7 @@ npm run pages:build
 │   ├── 💰 Monetization Consultant       収益化戦略 / Amazon アフィリエイト / 広告 / Premium
 │   │
 │   └── 🔴 Self-Critique                   成果物の 6 軸批判・品質ゲート (自動起動)
+│       ├── 🔧 [self-critique-gate skill]
 │       └── 批判→修正→再批判ループ (全軸 PASS まで最大 3 回)
 │
 ├── ⚡ Slash Commands (Prompts) — ユーザーが直接呼び出す定型タスク
@@ -302,7 +313,9 @@ npm run pages:build
 │
 └── 🔧 Skills (再利用可能なドメイン知識)
     ├── modern-web-guidance                Chrome Modern Web Guidance / Baseline 2024 / Web 標準ベストプラクティス
+    ├── self-critique-gate                 完了前の自己批判・回帰防止・Lessons Learned ゲート
     ├── web-design-reviewer                UI/UX ビジュアルチェック・レスポンシブ検証
+    ├── ucfitness-rule-enforcement         UCFitness 固有ルールの静的検出・強制
     ├── postgresql-optimization            PostgreSQL クエリ最適化・パフォーマンス分析
     └── next-intl-add-language             next-intl 翻訳キー追加ワークフロー
 ```
@@ -312,12 +325,17 @@ npm run pages:build
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
 | **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。リクエストのキーワード・文脈から専門ロールを自動判定し、委任する |
-| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15 App Router / Server Components / Edge Runtime / next-intl 専門 |
+| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
 | SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
 | Accessibility Expert | [accessibility.agent.md](.github/agents/accessibility.agent.md) | GPT-4.1 | WCAG 2.1/2.2 準拠 / ARIA / キーボードナビ / スクリーンリーダー対応 |
 | Playwright Tester | [playwright-tester.agent.md](.github/agents/playwright-tester.agent.md) | Claude Sonnet 4 | Playwright MCP による全要素精査型 E2E テスト / レスポンシブ検証 |
+| Persona Mobile Beginner | [persona-mobile-beginner.agent.md](.github/agents/persona-mobile-beginner.agent.md) | GPT-5.4 | 375px モバイル、初回/ライトユーザー、次アクション理解を回遊監査 |
+| Persona Competitive Athlete | [persona-competitive-athlete.agent.md](.github/agents/persona-competitive-athlete.agent.md) | Claude Sonnet 4.6 | ランキング、グループ、チャレンジ、競争モチベーションを回遊監査 |
+| Persona Returning Low Activity | [persona-returning-low-activity.agent.md](.github/agents/persona-returning-low-activity.agent.md) | GPT-5.2 | 低活動・復帰ユーザー、再開導線、励まし、空状態を回遊監査 |
+| Persona Reward Shop Explorer | [persona-reward-shop-explorer.agent.md](.github/agents/persona-reward-shop-explorer.agent.md) | GPT-4.1 | コイン、ショップ、ウォレット、報酬理解、購入前不安を回遊監査 |
+| Persona Accessibility Keyboard | [persona-accessibility-keyboard.agent.md](.github/agents/persona-accessibility-keyboard.agent.md) | GPT-4.1 | キーボード、スクリーンリーダー、低視力、フォーカス、a11y を回遊監査 |
 | Monetization Consultant | [monetization-consultant.agent.md](.github/agents/monetization-consultant.agent.md) | - | 収益化戦略立案 / Amazon アフィリエイト最適化 / 広告戦略 / Premium 機能設計 |
 | Self-Critique | [self-critique.agent.md](.github/agents/self-critique.agent.md) | - | 成果物の 6 軸批判 (デザイン一貫性・余白密度・レスポンシブ・翻訳・インタラクション・コード品質) |
 
@@ -335,6 +353,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | UI、UX、ユーザー体験、レイアウト、デザイン | 🟧 **UX Designer** |
 | アクセシビリティ、WCAG、a11y、スクリーンリーダー | 🟫 **Accessibility Expert** |
 | E2E テスト、ブラウザテスト、Playwright、表示確認 | 🎭 **Playwright Tester** |
+| ペルソナ、実ユーザー、回遊、行動パターン、ユーザージャーニー、迷い、離脱、改善点 | 🧭 **Persona Journey Review** |
 | 計画、設計、アーキテクチャ、見積もり、要件整理 | 📐 **Plan Mode** |
 | クリーンアップ、リファクタリング、技術負債、整理 | 🧹 **Universal Janitor** |
 | 改善ループ、品質改善、全体チェック、ループ回して | 🔄 **Improvement Loop** |
@@ -350,7 +369,9 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | スキル | 用途 |
 |---|---|
 | [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | Chrome Modern Web Guidance。HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善時に guide を検索・取得して適用する |
+| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。要件充足・回帰防止・検証証拠・Lessons Learned・README 同期を確認し、NG があれば修正→再批判を繰り返す |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
+| [ucfitness-rule-enforcement](.github/skills/ucfitness-rule-enforcement/SKILL.md) | UCFitness 固有ルール違反の静的検出・強制メカニズム |
 | [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |
 | [next-intl-add-language](.github/skills/next-intl-add-language/SKILL.md) | next-intl 翻訳キー追加ワークフロー |
 
@@ -385,6 +406,8 @@ npm run test:coverage
 - **`dark:` 使用禁止** --- テーマシステム (CSS カスタムプロパティ) で管理
 - **Modern Web Guidance 適用** --- HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善では `modern-web-guidance` skill を先に参照する。ブラウザサポート方針は Baseline 2024
 - **`supabaseAdmin` 必須** --- サーバーサイドの DB アクセスは `supabase` ではなく `supabaseAdmin` を使用
+- **共通 App Shell** --- 認証済みデスクトップ画面の左サイドバーは `app/[locale]/layout.tsx` で一元表示し、ページ単位で表示有無をばらつかせない
+- **自然スクロール優先** --- root の transform スケーリングや `html/body` のスクロールロックは禁止。閲覧不能な情報を作らない
 - **デプロイ制限あり** --- Cloudflare Pages のデプロイ制限があるため、`git push` は明示的な許可後に実行すること
 
 ## 関連ドキュメント
@@ -392,6 +415,8 @@ npm run test:coverage
 | ドキュメント | 説明 |
 |---|---|
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Copilot 共通指示 (コーディング規約、ページパターン等) |
+| [docs/professional-ui-redesign-spec.md](docs/professional-ui-redesign-spec.md) | プロ品質 UI への大幅リデザイン設計書（殺風景化フィードバック対応を含む） |
+| [docs/DESIGN_TOKENS.md](docs/DESIGN_TOKENS.md) | デザイントークンシステム |
 | [docs/improvement-report.md](docs/improvement-report.md) | 改善レポート |
 | [docs/security-hardening-notes.md](docs/security-hardening-notes.md) | セキュリティ強化メモ |
 | [.env.local.example](.env.local.example) | 環境変数テンプレート |

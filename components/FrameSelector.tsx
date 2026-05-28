@@ -72,7 +72,7 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
     // フレームを1つも持っていない場合
     if (frames.length === 0) {
         return (
-            <div className="border-t border-gray-200 pt-6">
+            <div className="border-t border-gray-200 pt-3">
                 <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5">
                     🖼️ {t('frameLabel')}
                 </label>
@@ -88,7 +88,7 @@ export default function FrameSelector({ ownedFrames, onFrameChange }: FrameSelec
     }
 
     return (
-        <div className="border-t border-gray-200 pt-6">
+        <div className="border-t border-gray-200 pt-3">
             <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5">
                 🖼️ {t('frameLabel')}
             </label>

@@ -13,7 +13,7 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals"),
   ...compat.extends("next/typescript"),
   {
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"],
+    ignores: [".next/**", ".vercel/**", "out/**", "build/**", "next-env.d.ts"],
   },
   {
     // UCFitness プロジェクト固有の禁止ルール

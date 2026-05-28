@@ -47,7 +47,7 @@ export default function ShopItemCard({
             {/* プレビュー + バッジ ラッパー */}
             <div className="relative">
                 {/* プレビュー領域（Coming Soon時はぼかし / 背景は常に表示） */}
-                <div className={`h-24 flex items-center justify-center midnight-preserve-bg ${isComingSoon ? 'opacity-40' : ''}`} style={{
+                <div className={`flex h-16 items-center justify-center midnight-preserve-bg sm:h-20 ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
                         ? '#e5e7eb'
                         : item.category === 'THEME_COLOR'
@@ -61,11 +61,11 @@ export default function ShopItemCard({
                         )}
                         {item.category === 'TITLE' && (
                             <div className="text-center">
-                                <span className="text-3xl">{item.preview_value}</span>
+                                <span className="text-2xl">{item.preview_value}</span>
                             </div>
                         )}
                         {item.category === 'THEME_COLOR' && (
-                            <div className="w-12 h-12 rounded-full shadow-lg border-2 border-white/40" style={{ backgroundColor: item.preview_value }} />
+                            <div className="h-9 w-9 rounded-full border-2 border-white/40 shadow-lg" style={{ backgroundColor: item.preview_value }} />
                         )}
                     </div>
                 </div>
@@ -84,19 +84,19 @@ export default function ShopItemCard({
             </div>
 
             {/* 情報 + アクション */}
-            <div className={`p-2 sm:p-3 ${isComingSoon ? 'text-gray-400' : ''}`}>
+            <div className={`p-2 ${isComingSoon ? 'text-gray-400' : ''}`}>
                 <h3 className={`font-bold text-xs sm:text-sm mb-0.5 truncate ${isComingSoon ? 'text-gray-400' : 'text-gray-900'}`}>{name}</h3>
-                <p className={`text-xs mb-2 line-clamp-1 sm:line-clamp-2 ${isComingSoon ? 'text-gray-300' : 'text-gray-600'}`}>{desc}</p>
+                <p className={`mb-1.5 line-clamp-1 text-xs ${isComingSoon ? 'text-gray-300' : 'text-gray-600'}`}>{desc}</p>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                        <span className={`text-sm font-bold ${isComingSoon ? 'text-gray-400' : 'text-amber-700'}`}>{item.price.toLocaleString()}</span>
+                        <span className={`text-xs font-bold sm:text-sm ${isComingSoon ? 'text-gray-400' : 'text-amber-700'}`}>{item.price.toLocaleString()}</span>
                         <span className="text-xs text-gray-500">{t('uc')}</span>
                     </div>
                     {!isOwned && !isComingSoon && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onBuy(); }}
                             disabled={!canAfford || !meetsRank || isLoading}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`min-h-[44px] rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
                                 canAfford && meetsRank
                                     ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-95'
                                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'

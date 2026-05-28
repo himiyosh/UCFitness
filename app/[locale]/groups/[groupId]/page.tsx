@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { supabaseAdmin } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +17,7 @@ import { getGroupCompetitionRankings } from "@/lib/services/group-ranking-servic
 import JoinGroupPreview from "@/components/group/JoinGroupPreview";
 import nextDynamic from 'next/dynamic';
 import { getAllGroupComparisonData } from "@/lib/services/group-comparison-service";
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import Footer from '@/components/layout/Footer';
 import GroupEventList from "@/components/group/GroupEventList";
 import GroupWeeklyReport from "@/components/group/GroupWeeklyReport";
@@ -30,10 +31,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function GroupDetailPage(props: { params: Promise<{ groupId: string }> }) {
     const params = await props.params;
-    const session = await auth();
+    const [session, locale] = await Promise.all([auth(), getLocale()]);
 
     if (!session || !session.user) {
-        redirect("/api/auth/signin");
+        redirect(createLoginRequiredRedirect(locale, `/groups/${encodeURIComponent(params.groupId)}`));
     }
 
     const userId = (session.user as any).id;

@@ -3,25 +3,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
-interface AnalyticsData {
-    dailyAverage: number;
-    weekdayAverages: number[];
-    bestDay: { date: string; steps: number } | null;
-    monthlyTotals: Array<{
-        month: string;
-        totalSteps: number;
-        avgSteps: number;
-        activeDays: number;
-    }>;
-    currentMonthVsPrev: {
-        current: number;
-        previous: number;
-        changePercent: number;
-    } | null;
-}
+import type { AnalyticsData } from '@/lib/services/analytics-service';
 
 interface PersonalAnalyticsProps {
-    userId: string;
+    userId?: string;
+    initialData?: AnalyticsData | null;
 }
 
 // 曜日ラベル (Sun=0 … Sat=6 → 表示は Mon-Sun)
@@ -40,21 +26,21 @@ function formatMonth(monthStr: string): string {
 // ローディングスケルトン
 function Skeleton() {
     return (
-        <div className="space-y-4 animate-pulse">
-            <div className="h-48 rounded-3xl bg-gradient-to-br from-gray-200 to-gray-100" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="h-[340px] rounded-2xl bg-gray-100" />
-                <div className="h-[340px] rounded-2xl bg-gray-100" />
+        <div className="animate-pulse space-y-3">
+            <div className="h-32 rounded-3xl bg-gradient-to-br from-gray-200 to-gray-100" />
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="h-64 rounded-2xl bg-gray-100" />
+                <div className="h-64 rounded-2xl bg-gray-100" />
             </div>
-            <div className="h-44 rounded-2xl bg-gray-100" />
+            <div className="h-32 rounded-2xl bg-gray-100" />
         </div>
     );
 }
 
-export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
+export default function PersonalAnalytics({ initialData = null }: PersonalAnalyticsProps) {
     const t = useTranslations('Analytics');
-    const [data, setData] = useState<AnalyticsData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState<AnalyticsData | null>(initialData);
+    const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState(false);
     const [animated, setAnimated] = useState(false);
 
@@ -75,8 +61,10 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
     }, []);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (!initialData) {
+            fetchData();
+        }
+    }, [fetchData, initialData]);
 
     // バーアニメーション: データ到着後に遅延トリガー
     useEffect(() => {
@@ -136,19 +124,19 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {/* ============ ヒーローカード: 今月サマリー ============ */}
             <div
-                className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white"
+                className="relative overflow-hidden rounded-3xl p-4 text-white sm:p-5"
                 style={{
                     background: `linear-gradient(135deg, var(--theme-primary) 0%, color-mix(in srgb, var(--theme-gradient-to) 80%, #1a1a2e) 50%, color-mix(in srgb, var(--theme-primary) 60%, #0f0f23) 100%)`,
                     boxShadow: '0 20px 60px -12px color-mix(in srgb, var(--theme-primary) 40%, transparent)',
                 }}
             >
                 {/* 装飾的な背景要素 */}
-                <div className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-[0.07] bg-white -translate-y-1/3 translate-x-1/4" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-[0.05] bg-white translate-y-1/3 -translate-x-1/4" />
-                <div className="absolute top-1/2 right-1/4 w-24 h-24 rounded-full opacity-[0.04] bg-white" />
+                <div className="absolute top-0 right-0 h-48 w-48 -translate-y-1/3 translate-x-1/4 rounded-full bg-white opacity-[0.07]" />
+                <div className="absolute bottom-0 left-0 h-32 w-32 translate-y-1/3 -translate-x-1/4 rounded-full bg-white opacity-[0.05]" />
+                <div className="absolute top-1/2 right-1/4 h-20 w-20 rounded-full bg-white opacity-[0.04]" />
                 {/* ドットパターン */}
                 <div className="absolute inset-0 opacity-[0.03]" style={{
                     backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
@@ -164,20 +152,20 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                             {t('totalSteps')}
                         </span>
                     </div>
-                    <p className="text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none mt-2">
+                    <p className="mt-1 text-3xl font-black leading-none tracking-tight tabular-nums sm:text-4xl">
                         {currentMonthData ? formatNumber(currentMonthData.totalSteps) : '—'}
                     </p>
 
-                    <div className="grid grid-cols-3 gap-3 mt-6">
+                    <div className="mt-4 grid grid-cols-3 gap-2">
                         {[
                             { icon: '📊', label: t('dailyAverage'), value: formatNumber(data.dailyAverage) },
                             { icon: '🏆', label: t('bestDay'), value: data.bestDay ? formatNumber(data.bestDay.steps) : '—' },
                             { icon: '🔥', label: t('activeDays'), value: `${currentMonthData ? currentMonthData.activeDays : 0}`, suffix: t('days') },
                         ].map((stat, i) => (
-                            <div key={i} className="bg-white/[0.12] backdrop-blur-md rounded-2xl p-3 sm:p-4 text-center border border-white/[0.08] hover:bg-white/[0.18] transition-colors">
-                                <div className="text-lg mb-1">{stat.icon}</div>
+                            <div key={i} className="rounded-2xl border border-white/[0.08] bg-white/[0.12] p-2.5 text-center backdrop-blur-md transition-colors hover:bg-white/[0.18]">
+                                <div className="mb-0.5 text-base">{stat.icon}</div>
                                 <p className="text-white/50 text-xs sm:text-sm font-bold uppercase tracking-wider">{stat.label}</p>
-                                <p className="text-xl sm:text-2xl font-black tabular-nums mt-0.5 leading-tight">
+                                <p className="mt-0.5 text-lg font-black leading-tight tabular-nums sm:text-xl">
                                     {stat.value}
                                     {stat.suffix && <span className="text-xs font-normal text-white/50 ml-0.5">{stat.suffix}</span>}
                                 </p>
@@ -188,16 +176,16 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
             </div>
 
             {/* ============ 2カラムグリッド: 曜日 + 月別 ============ */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {/* ---- 曜日別平均チャート ---- */}
                 <div className="midnight-solid-panel bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="px-5 py-4 border-b border-gray-100/80">
+                    <div className="border-b border-gray-100/80 px-4 py-3">
                         <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                             <span className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-base">📅</span>
                             {t('weekdayChart')}
                         </h3>
                     </div>
-                    <div className="p-4 space-y-1">
+                    <div className="space-y-1 p-3">
                         {WEEKDAY_ORDER.map((dayIndex, i) => {
                             const avg = data.weekdayAverages[dayIndex];
                             const pct = (avg / maxWeekday) * 100;
@@ -205,7 +193,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                             return (
                                 <div
                                     key={dayIndex}
-                                    className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
+                                    className={`flex items-center gap-3 rounded-xl px-3 py-1.5 transition-colors ${
                                         isBest ? 'bg-[var(--theme-primary-light)]' : i % 2 === 0 ? 'bg-gray-50/50' : ''
                                     }`}
                                 >
@@ -214,7 +202,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                     }`}>
                                         {WEEKDAY_KEYS[i].toUpperCase()}
                                     </span>
-                                    <div className="flex-1 h-8 bg-gray-100/80 rounded-full overflow-hidden">
+                                     <div className="h-6 flex-1 overflow-hidden rounded-full bg-gray-100/80">
                                         <div
                                             className="h-full rounded-full transition-all duration-1000 ease-out"
                                             style={{
@@ -242,13 +230,13 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
 
                 {/* ---- 月別トレンド ---- */}
                 <div className="midnight-solid-panel bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="px-5 py-4 border-b border-gray-100/80">
+                    <div className="border-b border-gray-100/80 px-4 py-3">
                         <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                             <span className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-base">📈</span>
                             {t('monthlyTrend')}
                         </h3>
                     </div>
-                    <div className="p-4 space-y-3">
+                    <div className="space-y-2 p-3">
                         {data.monthlyTotals.map((m, idx) => {
                             const pct = (m.totalSteps / maxMonthly) * 100;
                             const isLatest = idx === data.monthlyTotals.length - 1;
@@ -258,7 +246,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                             return (
                                 <div
                                     key={m.month}
-                                    className={`rounded-xl p-3.5 transition-colors ${
+                                    className={`rounded-xl p-2.5 transition-colors ${
                                         isLatest
                                             ? 'bg-[var(--theme-primary-light)] border-l-4 border-[var(--theme-primary)]'
                                             : 'bg-gray-50/50 border-l-4 border-transparent'
@@ -286,7 +274,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="h-3 bg-white/80 rounded-full overflow-hidden">
+                                     <div className="h-2.5 overflow-hidden rounded-full bg-white/80">
                                         <div
                                             className="h-full rounded-full transition-all duration-1000 ease-out"
                                             style={{
@@ -312,18 +300,18 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
 
             {/* ============ 今月 vs 先月 比較カード ============ */}
             {data.currentMonthVsPrev && (
-                <div className="midnight-solid-panel bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="px-5 py-4 border-b border-gray-100/80">
+                <div className="midnight-solid-panel overflow-hidden rounded-2xl border border-gray-200/50 bg-white/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
+                    <div className="border-b border-gray-100/80 px-4 py-3">
                         <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                             <span className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-base">⚡</span>
                             {t('monthComparison')}
                         </h3>
                     </div>
-                    <div className="p-5">
-                        <div className="flex items-stretch gap-4">
+                    <div className="p-3">
+                        <div className="flex items-stretch gap-3">
                             {/* 今月 */}
                             <div
-                                className="flex-1 relative overflow-hidden rounded-2xl p-5 text-white text-center"
+                                className="relative flex-1 overflow-hidden rounded-2xl p-3 text-center text-white"
                                 style={{
                                     background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))',
                                     boxShadow: '0 8px 32px -8px color-mix(in srgb, var(--theme-primary) 40%, transparent)',
@@ -331,10 +319,10 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                             >
                                 <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 bg-white -translate-y-6 translate-x-6" />
                                 <p className="text-white/60 text-xs font-bold uppercase tracking-wider">{t('totalSteps')}</p>
-                                <p className="text-3xl sm:text-4xl font-black tabular-nums mt-2 leading-none">
+                                <p className="mt-1.5 text-2xl font-black leading-none tabular-nums sm:text-3xl">
                                     {formatNumber(data.currentMonthVsPrev.current)}
                                 </p>
-                                <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
                                     <div
                                         className="h-full bg-white/60 rounded-full transition-all duration-1000 ease-out"
                                         style={{
@@ -349,7 +337,7 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                             {/* 変化率バッジ */}
                             <div className="flex flex-col items-center justify-center">
                                 <div
-                                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex flex-col items-center justify-center font-black shadow-lg transition-transform hover:scale-110 ${
+                                    className={`flex h-14 w-14 flex-col items-center justify-center rounded-2xl font-black shadow-lg transition-transform hover:scale-110 sm:h-16 sm:w-16 ${
                                         data.currentMonthVsPrev.changePercent >= 0
                                             ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white'
                                             : 'bg-gradient-to-br from-rose-400 to-rose-600 text-white'
@@ -362,19 +350,19 @@ export default function PersonalAnalytics({ userId }: PersonalAnalyticsProps) {
                                         {Math.abs(data.currentMonthVsPrev.changePercent)}%
                                     </span>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-2 font-bold text-center">
+                                <p className="mt-1.5 text-center text-xs font-bold text-gray-400">
                                     {data.currentMonthVsPrev.changePercent >= 0 ? t('changeUp') : t('changeDown')}
                                 </p>
                             </div>
 
                             {/* 先月 */}
-                            <div className="flex-1 rounded-2xl bg-gray-100/80 p-5 text-center relative overflow-hidden">
+                            <div className="relative flex-1 overflow-hidden rounded-2xl bg-gray-100/80 p-3 text-center">
                                 <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-5 bg-gray-400 -translate-y-6 translate-x-6" />
                                 <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">PREV</p>
-                                <p className="text-3xl sm:text-4xl font-black text-gray-400 tabular-nums mt-2 leading-none">
+                                <p className="mt-1.5 text-2xl font-black leading-none text-gray-400 tabular-nums sm:text-3xl">
                                     {formatNumber(data.currentMonthVsPrev.previous)}
                                 </p>
-                                <div className="mt-3 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200">
                                     <div
                                         className="h-full bg-gray-300 rounded-full transition-all duration-1000 ease-out"
                                         style={{

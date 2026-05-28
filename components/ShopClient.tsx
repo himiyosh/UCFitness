@@ -214,24 +214,24 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
     return (
         <div>
             {/* ショップバナー */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 mb-6 shadow-lg">
+            <div className="relative mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 shadow-lg">
                 {/* 背景装飾 — デスクトップのみ大きな装飾を表示 */}
                 <div className="hidden md:block absolute top-0 right-0 w-56 h-56 bg-white/10 rounded-full -translate-y-24 translate-x-24" />
                 <div className="hidden md:block absolute bottom-0 left-0 w-44 h-44 bg-white/10 rounded-full translate-y-20 -translate-x-20" />
                 <div className="absolute top-1/3 left-1/2 w-32 h-32 bg-white/5 rounded-full" />
                 <div className="absolute bottom-1/3 right-10 w-24 h-24 bg-yellow-300/10 rounded-full" />
-                <div className="absolute top-6 right-1/4 text-white/10 text-6xl select-none pointer-events-none">✨</div>
+                <div className="absolute top-6 right-1/4 text-4xl text-white/10 select-none pointer-events-none">✨</div>
 
                 {/* メイン: ロゴ+残高 / Featured（モバイル縦並び / デスクトップ横並び） */}
-                <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 sm:justify-between">
+                <div className="relative flex flex-col gap-3 p-3 sm:flex-row sm:justify-between sm:p-4">
                     {/* UCShop ロゴ + 残高（モバイル中央寄せ） */}
                     <div className="flex flex-col items-center sm:items-start justify-center shrink-0">
-                        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] leading-none">
+                        <h1 className="text-3xl font-black leading-none tracking-tighter text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] sm:text-4xl">
                             UC<span className="text-yellow-200 drop-shadow-[0_0_20px_rgba(253,224,71,0.4)]">Shop</span>
                         </h1>
-                        <div className="flex items-center gap-2 mt-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-1.5 border border-white/20">
+                        <div className="mt-2 flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 backdrop-blur-sm">
                             <span className="text-base">💰</span>
-                            <p className="text-lg font-black text-white tabular-nums">
+                            <p className="text-base font-black text-white tabular-nums">
                                 {currentBalance.toLocaleString()}
                                 <span className="text-xs text-white/80 ml-1 font-bold">{t('uc')}</span>
                             </p>
@@ -241,18 +241,18 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     {/* Featured アイテム */}
                     {featuredItems.length > 0 && (
                         <div className="w-full sm:w-1/2 min-w-0">
-                            <p className="text-xs font-bold text-white/90 uppercase tracking-widest mb-1.5">⭐ {t('featured')}</p>
-                            <div className="flex flex-col gap-1.5">
+                             <p className="mb-1 text-xs font-bold uppercase tracking-widest text-white/90">⭐ {t('featured')}</p>
+                             <div className="flex flex-col gap-1.5">
                                 {featuredItems.map(item => {
                                     const name = locale === 'ja' ? item.name_ja : item.name_en;
                                     return (
                                         <button
                                             key={item.id}
                                             onClick={() => setConfirmDialog({ item })}
-                                            className="group flex items-center gap-2.5 bg-white/20 hover:bg-white/30 active:scale-[0.98] backdrop-blur-sm rounded-lg px-3 py-2 border border-white/30 transition-all text-left"
+                                            className="group flex min-h-[44px] items-center gap-2.5 rounded-lg border border-white/30 bg-white/20 px-2.5 py-1.5 text-left backdrop-blur-sm transition-all hover:bg-white/30 active:scale-[0.98]"
                                         >
                                             {/* ミニプレビュー */}
-                                            <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center" style={{
+                                             <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{
                                                 background: item.category === 'THEME_COLOR'
                                                     ? `linear-gradient(135deg, ${item.preview_value}66, ${item.preview_value}aa)`
                                                     : 'rgba(255,255,255,0.2)',
@@ -262,7 +262,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                                 )}
                                                 {item.category === 'TITLE' && <span className="text-base">{item.preview_value}</span>}
                                                 {item.category === 'THEME_COLOR' && (
-                                                    <div className="w-7 h-7 rounded-full shadow-inner border border-white/30" style={{ backgroundColor: item.preview_value }} />
+                                                     <div className="h-6 w-6 rounded-full border border-white/30 shadow-inner" style={{ backgroundColor: item.preview_value }} />
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -280,7 +280,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
 
                 {/* 下部: カテゴリ統計 */}
                 {(
-                <div className="relative border-t border-white/25 px-5 sm:px-6 py-3 flex items-center justify-center gap-4 sm:gap-8">
+                 <div className="relative flex items-center justify-center gap-2 border-t border-white/25 px-3 py-2 sm:gap-6">
                     {[
                         { icon: '🖼️', label: t('iconFrames'), count: categoryStats.ICON_FRAME },
                         { icon: '🏷️', label: t('titles'), count: categoryStats.TITLE },
@@ -300,7 +300,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             </div>
 
             {/* ショップ / ギア / インベントリ切り替え (Kinetic Studio: ガラスタブバー) */}
-            <div className="flex bg-white/70 backdrop-blur-md rounded-xl p-1.5 mb-4">
+            <div className="mb-3 flex rounded-xl bg-white/70 p-1 backdrop-blur-md">
                 {[
                     { key: 'shop' as const, icon: '🛍️', label: t('shopTab') },
                     { key: 'gear' as const, icon: '🏋️', label: t('gearTab') },
@@ -309,7 +309,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     <button
                         key={tab.key}
                         onClick={() => setViewMode(tab.key)}
-                        className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                        className={`flex-1 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
                             viewMode === tab.key
                                 ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
@@ -329,12 +329,12 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             {viewMode === 'shop' && (
                 <>
                     {/* カテゴリタブ */}
-                    <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+                    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
                         {TABS.map(tab => (
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all hover:scale-105 active:scale-95 ${
+                                 className={`flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-all hover:scale-105 active:scale-95 ${
                                     activeTab === tab.key
                                         ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                         : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -353,7 +353,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <p>{t('noItems')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
+                         <div className="grid max-h-[calc(100dvh-20rem)] grid-cols-2 gap-2 overflow-y-auto pr-1 styled-scrollbar sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
                             {filteredItems.map(item => (
                                 <ShopItemCard
                                     key={item.id}
@@ -425,5 +425,4 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
         </div>
     );
 }
-
 

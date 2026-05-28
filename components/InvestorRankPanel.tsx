@@ -64,7 +64,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
             }}
         >
             <h3
-                className="text-base font-bold mb-4 flex items-center gap-2"
+                className="mb-3 flex items-center gap-2 text-sm font-bold"
                 style={{ color: 'var(--theme-primary)' }}
             >
                 🏅 {t('investorRank')}
@@ -72,9 +72,9 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
 
             <div className="relative" role="list" aria-label={t('investorRank')}>
                 {/* 縦のコネクティングライン */}
-                <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-gray-200 z-0" />
+                <div className="absolute left-[17px] top-4 bottom-4 z-0 w-0.5 bg-gray-200" />
 
-                <div className="space-y-2 relative z-10">
+                <div className="relative z-10 space-y-1.5">
                     {rankStates.map(({ rank, isCurrentRank, isAchieved, isNext, progressPercent }) => (
                         <div
                             key={rank.rank}
@@ -82,7 +82,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
                             aria-current={isCurrentRank ? 'true' : undefined}
                             aria-label={`${t(`ranks.${rank.rank}`)}${isCurrentRank ? ` — ${t('currentLabel')}` : ''}`}
                             className={`
-                                relative flex items-center gap-2 p-2 rounded-lg transition-all duration-300
+                                relative flex items-center gap-2 rounded-lg p-1.5 transition-all duration-300
                                 hover:scale-[1.02] hover:shadow-md cursor-default
                                 ${isCurrentRank
                                     ? `${rank.bg} border-2 ${rank.border} shadow-md ${rank.glow}`
@@ -95,7 +95,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
                             {/* ランクアイコン */}
                             <div
                                 className={`
-                                    flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg
+                                     flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-base
                                     ${isAchieved || isCurrentRank
                                         ? `bg-gradient-to-br ${rank.color} shadow-sm`
                                         : 'bg-gray-200'

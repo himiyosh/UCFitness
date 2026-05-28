@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
@@ -24,7 +25,7 @@ export default async function RecommendationsPage() {
     ]);
 
     if (!session || !session.user) {
-        redirect("/");
+        redirect(createLoginRequiredRedirect(locale, "/recommendations"));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

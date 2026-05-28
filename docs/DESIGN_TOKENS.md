@@ -7,22 +7,56 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 
 ## カラートークン
 
+### プロ品質リデザイン用セマンティックトークン
+
+大幅リデザイン以降は、画面実装ではまず意味ベースの `--color-*` を優先する。
+既存の `--theme-*` は互換性とテーマ切替のために残すが、通常 UI の色判断は以下の契約に寄せる。
+
+| トークン | 用途 | Default |
+|----------|------|---------|
+| `--color-bg` | ページ背景 | `#F6F7F9` |
+| `--color-surface` | 基本カード・面 | `#FFFFFF` |
+| `--color-surface-muted` | 進捗バー背景・薄い面 | `#EEF1F5` |
+| `--color-surface-raised` | 強調面 | `#FFFFFF` |
+| `--color-text` | 主要テキスト | `#111827` |
+| `--color-text-muted` | 補助テキスト | `#5B6472` |
+| `--color-border` | 境界線 | `#DDE3EA` |
+| `--color-primary` | 主 CTA・選択状態 | `#2563EB` |
+| `--color-primary-soft` | 主 CTA の淡い背景 | `#DBEAFE` |
+| `--color-primary-solid` | 白文字を載せるプライマリ塗り面 | `#1D4ED8` |
+| `--color-success` | 達成・同期成功 | `#16A34A` |
+| `--color-warning` | 注意・期限間近 | `#D97706` |
+| `--color-danger` | エラー・破壊的操作 | `#DC2626` |
+| `--color-reward` | UC・報酬・バッジ | `#B7791F` |
+| `--color-inverse-surface` | 濃色ヒーロー・黒系CTA・プロダクトモック背景 | `#0F172A` |
+| `--color-inverse-text` | 濃色面の文字 | `#FFFFFF` |
+
+#### 使用ルール
+
+- 通常画面は `--color-bg` と `--color-surface` を基本にし、装飾目的の全面グラデーションを避ける。
+- `--color-primary` はアクセント文字、選択状態、重要な進捗だけに使う。
+- 白文字を載せる塗り CTA には `--color-primary` ではなく `--color-primary-solid` を使う。
+- 報酬表現は `--color-reward` に限定し、健康データより前面に出しすぎない。
+- 濃色面や黒系 CTA には `--color-text` を背景として使わず、必ず `--color-inverse-surface` と `--color-inverse-text` を使う。
+- 半透明テキストや低コントラストの淡色文字は避ける。
+- 旧 `--accent-*` は Pop テーマや限定演出用とし、通常 UI では新規使用しない。
+
 ### テーマカラー (CSS カスタムプロパティ)
 
 全テーマ共通の契約。テーマ切替は `data-theme` 属性で制御。
 
 | トークン | 用途 | Classic (デフォルト) |
 |----------|------|---------------------|
-| `--theme-primary` | メインブランドカラー | `#4F46E5` |
-| `--theme-primary-light` | 淡い背景・バッジ | `#EEF2FF` |
-| `--theme-secondary` | セカンダリカラー | `#9333EA` |
-| `--theme-accent` | アクセント | `#4F46E5` |
-| `--theme-gradient-from` | グラデーション開始 | `#4F46E5` |
-| `--theme-gradient-to` | グラデーション終了 | `#9333EA` |
-| `--theme-badge-bg` | バッジ背景 | `#EEF2FF` |
-| `--theme-badge-text` | バッジテキスト | `#4F46E5` |
-| `--theme-page-bg` | ページ背景 | `transparent` |
-| `--theme-header-bg` | ヘッダー背景 | `#EEF2FF` |
+| `--theme-primary` | メインブランドカラー | `var(--color-primary)` |
+| `--theme-primary-light` | 淡い背景・バッジ | `var(--color-primary-soft)` |
+| `--theme-secondary` | セカンダリカラー | `#1D4ED8` |
+| `--theme-accent` | アクセント | `var(--color-primary)` |
+| `--theme-gradient-from` | 限定グラデーション開始 | `var(--color-primary)` |
+| `--theme-gradient-to` | 限定グラデーション終了 | `#0F172A` |
+| `--theme-badge-bg` | バッジ背景 | `var(--color-primary-soft)` |
+| `--theme-badge-text` | バッジテキスト | `var(--color-primary)` |
+| `--theme-page-bg` | ページ背景 | `var(--color-bg)` |
+| `--theme-header-bg` | ヘッダー背景 | `var(--color-surface)` |
 
 ### テーマ一覧
 
@@ -104,11 +138,14 @@ Tailwind `@theme` でオーバーライド済み:
 
 | クラス | 用途 | 特徴 |
 |--------|------|------|
-| `.glass-card` | ガラスモーフィズムカード | `backdrop-blur(12px)`, 半透明白背景 |
+| `.glass-card` | 限定的なガラスモーフィズムカード | ヘッダー・特別演出のみ。通常カードには使わない |
 | `.card-elevated` | M3 浮き上がりカード | `surface-container-low` + 多層シャドウ |
 | `.card-filled` | M3 塗りつぶしカード | `surface-container-high` |
 | `.card-outlined` | M3 アウトラインカード | 白背景 + ボーダー |
 | `.midnight-solid-panel` | Midnight テーマ専用の不透明パネル | 多層グラデーション + `backdrop-filter` |
+
+通常の情報カードは `bg-[var(--color-surface)] border border-[var(--color-border)]` を基本とし、
+影は `shadow-sm` または `--shadow-professional-soft` までに抑える。
 
 ### ボタンスタイル
 
@@ -185,7 +222,7 @@ Forced Colors モードでは `backdrop-filter`, `box-shadow`, グラデーシ�
 
 ```tsx
 // プライマリボタン
-<button className="bg-[var(--theme-primary)] text-white rounded-full px-6 py-2">
+<button className="bg-[var(--color-primary-solid)] text-white rounded-full px-6 py-2">
   アクション
 </button>
 

@@ -1,32 +1,37 @@
 export const runtime = 'edge';
 
-import { auth } from "@/lib/auth";
+import { Suspense } from "react";
+
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+
+import { getLocale, getTranslations } from "next-intl/server";
+
 import { Link } from "@/navigation";
+import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { getPersonalAnalytics } from "@/lib/services/analytics-service";
+import { supabaseAdmin } from "@/lib/supabase";
+
+import Breadcrumbs from "@/components/layout/Breadcrumbs";
+import Footer from '@/components/layout/Footer';
+import NotificationBell from '@/components/layout/NotificationBell';
 import UserMenu from "@/components/layout/UserMenu";
 import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
-import Breadcrumbs from "@/components/layout/Breadcrumbs";
-import nextDynamic from 'next/dynamic';
-import { supabaseAdmin } from "@/lib/supabase";
-import Footer from '@/components/layout/Footer';
-
-// ⚡ パフォーマンス: クライアントコンポーネントを遅延読み込み
-const PersonalAnalytics = nextDynamic(() => import('@/components/profile/PersonalAnalytics'));
+import PersonalAnalytics from '@/components/profile/PersonalAnalytics';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsPage() {
-    const session = await auth();
     // ⚡ パフォーマンス: 翻訳取得を並列化
-    const [t, dashboardT] = await Promise.all([
+    const [session, t, dashboardT, locale] = await Promise.all([
+        auth(),
         getTranslations('Analytics'),
         getTranslations('Dashboard'),
+        getLocale(),
     ]);
 
     if (!session?.user) {
-        redirect("/");
+        redirect(createLoginRequiredRedirect(locale, "/analytics"));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -94,9 +99,37 @@ export default async function AnalyticsPage() {
                     <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
                 </div>
 
-                <PersonalAnalytics userId={userId} />
+                <Suspense fallback={<AnalyticsInlineSkeleton />}>
+                    <PersonalAnalyticsSection userId={userId} />
+                </Suspense>
             </div>
             <Footer />
         </main>
+    );
+}
+
+async function PersonalAnalyticsSection({ userId }: { userId: string }) {
+    const analyticsData = await getPersonalAnalytics(userId, 3);
+
+    return <PersonalAnalytics initialData={analyticsData} />;
+}
+
+function AnalyticsInlineSkeleton() {
+    return (
+        <div className="space-y-3" aria-busy="true" aria-label="分析データを読み込み中">
+            <div className="rounded-3xl border border-white/40 bg-white/80 p-4 shadow-sm">
+                <div className="h-4 w-24 rounded-full bg-gray-200" />
+                <div className="mt-3 h-8 w-40 rounded-full bg-gray-200" />
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="h-16 rounded-2xl bg-gray-100" />
+                    <div className="h-16 rounded-2xl bg-gray-100" />
+                    <div className="h-16 rounded-2xl bg-gray-100" />
+                </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="h-48 rounded-2xl bg-white/80 shadow-sm" />
+                <div className="h-48 rounded-2xl bg-white/80 shadow-sm" />
+            </div>
+        </div>
     );
 }

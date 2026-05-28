@@ -155,10 +155,10 @@ export default function UCHintBalloon({ size = 'sm' }: { size?: 'sm' | 'md' }) {
         if (isOpen) updatePosition();
     }, [isOpen, updatePosition]);
 
-    const iconSize = size === 'md' ? 'w-5 h-5 text-xs' : 'w-4 h-4 text-xs';
+    const iconSize = size === 'md' ? 'h-5 w-5 text-xs' : 'h-4 w-4 text-xs';
 
     return (
-        <span className="relative inline-flex items-center">
+        <span className="relative -my-3 inline-flex min-h-[44px] min-w-[44px] items-center justify-center align-middle">
             <button
                 ref={buttonRef}
                 type="button"
@@ -168,7 +168,7 @@ export default function UCHintBalloon({ size = 'sm' }: { size?: 'sm' | 'md' }) {
                 onClick={() => setIsOpen(!isOpen)}
                 onMouseEnter={() => setIsOpen(true)}
                 onMouseLeave={() => setIsOpen(false)}
-                className={`${iconSize} inline-flex items-center justify-center rounded-full 
+                className={`${iconSize} inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full
                     transition-colors cursor-help font-bold leading-none ml-1`}
                 style={{
                     backgroundColor: styles.btnBg,

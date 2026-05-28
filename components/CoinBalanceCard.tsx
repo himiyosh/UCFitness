@@ -73,27 +73,27 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
     }, [balance.investor_rank, balance.total_earned, balance.total_bonus, balance.current_streak]);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {/* 💰 総残高カード */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500 p-6 text-white shadow-xl">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500 p-4 text-white shadow-xl">
                 {/* 背景装飾 */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8" />
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
 
                 <div className="relative">
                     <div className="flex items-center justify-between mb-1">
-                        <p className="text-amber-100 text-base font-medium">{t('totalBalance')}</p>
-                        <span className="text-2xl">{rankIcon}</span>
+                        <p className="text-sm font-semibold text-amber-100">{t('totalBalance')}</p>
+                        <span className="text-xl">{rankIcon}</span>
                     </div>
                     <div className="flex items-baseline gap-2" aria-live="polite">
-                        <span className="text-4xl sm:text-5xl font-black tracking-tight tabular-nums">
+                        <span className="text-3xl font-black tracking-tight tabular-nums">
                             {animatedBalance.toLocaleString()}
                         </span>
-                        <span className="text-amber-200 text-lg font-bold">{t('uc')}</span>
+                        <span className="text-sm font-bold text-amber-200">{t('uc')}</span>
                     </div>
 
                     {/* 投資家ランク */}
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm">
                             {rankIcon} {t(`ranks.${balance.investor_rank}`)}
                         </span>
@@ -106,7 +106,7 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
 
                     {/* 次のランクへのプログレス */}
                     {nextRank && (
-                        <div className="mt-4">
+                        <div className="mt-3">
                             <div className="flex items-center justify-between text-xs text-amber-100 mb-1">
                                 <span>{t('nextRank')}: {nextRank.icon} {t(`ranks.${nextRank.rank}`)}</span>
                                 <span>{t('remaining', { amount: nextRank.remaining.toLocaleString() })}</span>
@@ -127,12 +127,12 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
             </div>
 
             {/* 📊 統計カード群 */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 {/* 通算獲得 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
-                    <p className="text-sm text-gray-500 font-medium mb-1">{t('lifetimeEarnings')}</p>
+                <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+                    <p className="mb-0.5 text-xs font-semibold text-gray-500">{t('lifetimeEarnings')}</p>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold text-amber-600 tabular-nums">
+                        <span className="text-base font-bold text-amber-600 tabular-nums">
                             {lifetimeEarnings.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-400">{t('uc')}</span>
@@ -140,10 +140,10 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 </div>
 
                 {/* 今日の入金 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
-                    <p className="text-sm text-gray-500 font-medium mb-1">{t('todayEarned')}</p>
+                <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+                    <p className="mb-0.5 text-xs font-semibold text-gray-500">{t('todayEarned')}</p>
                     <div className="flex items-baseline gap-1">
-                        <span className={`text-xl font-bold tabular-nums ${animatedToday >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        <span className={`text-base font-bold tabular-nums ${animatedToday >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                             {animatedToday >= 0 ? '+' : ''}{animatedToday.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-400">{t('uc')}</span>
@@ -151,25 +151,25 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 </div>
 
                 {/* ストリーク */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
-                    <p className="text-sm text-gray-500 font-medium mb-1">{t('currentStreak')}</p>
+                <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+                    <p className="mb-0.5 text-xs font-semibold text-gray-500">{t('currentStreak')}</p>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold text-orange-500 tabular-nums">
+                        <span className="text-base font-bold text-orange-500 tabular-nums">
                             {balance.current_streak}
                         </span>
                         <span className="text-xs text-gray-400">{t('days')}</span>
                         {balance.current_streak >= 3 && <span className="text-sm">🔥</span>}
                     </div>
-                    <div className="mt-2">
+                    <div className="mt-1.5">
                         <StreakShieldIndicator />
                     </div>
                 </div>
 
                 {/* 歩数獲得分 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
-                    <p className="text-sm text-gray-500 font-medium mb-1">{t('totalEarned')}</p>
+                <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+                    <p className="mb-0.5 text-xs font-semibold text-gray-500">{t('totalEarned')}</p>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold text-gray-900 tabular-nums">
+                        <span className="text-base font-bold text-gray-900 tabular-nums">
                             {balance.total_earned.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-400">{t('uc')}</span>
@@ -177,10 +177,10 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                 </div>
 
                 {/* ボーナス獲得分 */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
-                    <p className="text-sm text-gray-500 font-medium mb-1">{t('totalBonus')}</p>
+                <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+                    <p className="mb-0.5 text-xs font-semibold text-gray-500">{t('totalBonus')}</p>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold text-purple-600 tabular-nums">
+                        <span className="text-base font-bold text-purple-600 tabular-nums">
                             {balance.total_bonus.toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-400">{t('uc')}</span>

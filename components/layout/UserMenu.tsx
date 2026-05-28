@@ -52,11 +52,11 @@ export default function UserMenu({ user }: UserMenuProps) {
     }, []);
 
     return (
-        <div className="relative ml-3 flex-shrink-0" ref={menuRef}>
+        <div className="relative ml-1 flex-shrink-0 sm:ml-3" ref={menuRef}>
             <div>
                 <button
                     onClick={toggleMenu}
-                    className="relative flex flex-shrink-0 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2"
+                    className="relative flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2"
                     id="user-menu-button"
                     aria-expanded={isOpen}
                     aria-haspopup="true"

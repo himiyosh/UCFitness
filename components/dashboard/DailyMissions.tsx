@@ -80,12 +80,12 @@ export default function DailyMissions() {
 
     if (isLoading) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-center">
+            <div className="flex flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="animate-pulse">
-                    <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
+                    <div className="mb-4 h-5 w-40 rounded bg-[var(--color-surface-muted)]" />
                     <div className="space-y-3">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-14 bg-gray-100 rounded-xl" />
+                            <div key={i} className="h-14 rounded-xl bg-[var(--color-surface-muted)]" />
                         ))}
                     </div>
                 </div>
@@ -95,14 +95,13 @@ export default function DailyMissions() {
 
     if (error) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-center">
+            <div className="flex flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="flex flex-col items-center py-4 text-center">
-                    <span className="text-3xl mb-2">⚠️</span>
-                    <p className="text-sm font-semibold text-gray-700">{t('loadError')}</p>
+                    <StatusIcon tone="danger" />
+                    <p className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('loadError')}</p>
                     <button
                         onClick={fetchMissions}
-                        className="mt-3 px-4 py-1.5 rounded-lg text-white text-xs font-medium hover:scale-105 transition-transform"
-                        style={{ background: 'var(--theme-primary)' }}
+                        className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-[var(--color-inverse-surface)]"
                     >
                         {t('retry')}
                     </button>
@@ -113,11 +112,11 @@ export default function DailyMissions() {
 
     if (missions.length === 0) {
         return (
-            <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-center">
+            <div className="flex flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="flex flex-col items-center py-4 text-center">
-                    <span className="text-4xl mb-3">🎯</span>
-                    <p className="text-sm font-bold text-gray-700 mb-1">{t('dailyMissions')}</p>
-                    <p className="text-xs text-[var(--foreground-muted)]">{t('noMissions')}</p>
+                    <StatusIcon tone="neutral" />
+                    <p className="mb-1 mt-3 text-sm font-bold text-[var(--color-text)]">{t('dailyMissions')}</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{t('noMissions')}</p>
                 </div>
             </div>
         );
@@ -126,25 +125,25 @@ export default function DailyMissions() {
     const completedCount = missions.filter(m => m.is_completed).length;
 
     const bottomMessage = !allCompleted ? (
-        <p className="text-xs text-gray-400 text-center">
-            🎁 {t('bonusHint')}
+        <p className="text-center text-xs text-[var(--color-text-muted)]">
+            {t('bonusHint')}
         </p>
     ) : (
-        <p className="text-xs font-bold text-emerald-600 text-center">
-            ✨ {t('allCompleted')}
+        <p className="text-center text-xs font-bold text-[var(--color-success)]">
+            {t('allCompleted')}
         </p>
     );
 
     return (
-        <div className="glass-card rounded-2xl overflow-hidden transition-all duration-200 flex flex-col">
+        <div className="flex flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
             {/* ヘッダー */}
-            <div className="px-3 pt-3 pb-2 sm:px-5 sm:pt-5 sm:pb-3 flex-shrink-0">
+            <div className="px-3 pt-3 pb-1.5 sm:px-4 sm:pt-3 sm:pb-2 flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                    <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                        🎯 {t('dailyMissions')}
+                    <h3 className="text-sm font-bold text-[var(--color-text)]">
+                        {t('dailyMissions')}
                     </h3>
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-[var(--theme-primary)] tabular-nums uppercase tracking-wider">
+                        <span className="text-[10px] font-bold text-[var(--color-primary)] tabular-nums uppercase tracking-wider">
                             {completedCount}/{missions.length}
                         </span>
                         {/* 再チェックボタン */}
@@ -152,11 +151,11 @@ export default function DailyMissions() {
                             <button
                                 onClick={refreshMissions}
                                 disabled={refreshing}
-                                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 transition-colors hover:bg-[var(--color-surface-muted)] disabled:opacity-50"
                                 title={t('refresh')}
                                 aria-label={t('refresh')}
                             >
-                                <svg className={`w-4 h-4 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className={`h-4 w-4 text-[var(--color-text-muted)] ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
                             </button>
@@ -167,15 +166,15 @@ export default function DailyMissions() {
             </div>
 
             {/* ミッションリスト */}
-            <div className="px-3 pb-2 sm:px-5 sm:pb-4 flex flex-col min-h-0">
+            <div className="px-3 pb-2 sm:px-4 sm:pb-3 flex flex-col min-h-0">
                 <div className="grid auto-rows-auto gap-1.5 sm:gap-2 min-h-0">
                     {missions.map(mission => (
                         <div
                             key={mission.id}
-                            className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border transition-all duration-200 ${
+                            className={`flex items-center gap-2 p-2 rounded-lg border transition-colors duration-200 ${
                                 mission.is_completed
-                                    ? 'bg-emerald-50 border-emerald-200'
-                                    : 'bg-gray-50/80 border-gray-100 hover:bg-white hover:border-[var(--theme-primary)]/20 hover:shadow-sm'
+                                    ? 'border-emerald-200 bg-emerald-50'
+                                    : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--theme-primary)]/25 hover:bg-[var(--color-surface)]'
                             }`}
                         >
                             {/* ステータスアイコン（自動判定 — クリック不可） */}
@@ -193,14 +192,16 @@ export default function DailyMissions() {
 
                             {/* ミッション詳細 */}
                             <div className="flex-1 min-w-0">
-                                <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-gray-800'}`}>
-                                    {mission.title}
+                                <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-[var(--color-text)]'}`}>
+                                    {getMissionTitle(mission.mission_type, mission.title, t)}
                                 </p>
-                                <p className="text-xs text-gray-400 mt-0 sm:mt-0.5">{mission.description}</p>
+                                <p className="mt-0 text-xs text-[var(--color-text-muted)] sm:mt-0.5">
+                                    {getMissionDescription(mission.mission_type, mission.description, t)}
+                                </p>
                             </div>
 
                             {/* 報酬 */}
-                            <span className={`text-xs font-bold flex-shrink-0 ${mission.is_completed ? 'text-emerald-600' : 'text-[var(--theme-primary)]'}`}>
+                            <span className={`text-xs font-bold flex-shrink-0 ${mission.is_completed ? 'text-emerald-600' : 'text-[var(--color-primary)]'}`}>
                                 +{mission.reward_uc} UC
                             </span>
                         </div>
@@ -208,13 +209,12 @@ export default function DailyMissions() {
                 </div>
 
                 <div className="pt-2.5">
-                    <div className="border-t border-gray-100 pt-2.5 space-y-2">
+                    <div className="space-y-2 border-t border-[var(--color-border)] pt-2.5">
                         {bottomMessage}
 
                         {streak > 0 && (
                             <div className="flex items-center justify-center gap-2 py-1.5">
-                                <span className="text-lg">{streak >= 7 ? '🌟' : '🔥'}</span>
-                                <p className="text-sm font-bold text-gray-700">
+                                <p className="text-sm font-bold text-[var(--color-text)]">
                                     {t('streak', { days: streak })}
                                 </p>
                                 {streak >= 3 && (
@@ -231,13 +231,85 @@ export default function DailyMissions() {
             {/* ボーナスアニメーション */}
             {showBonus && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-                    <div className="bg-white rounded-2xl shadow-2xl p-8 text-center animate-bounce">
-                        <span className="text-5xl">🎉</span>
-                        <p className="text-lg font-black text-[var(--theme-primary)] mt-3">+100 UC</p>
+                    <div className="rounded-2xl bg-[var(--color-surface)] p-8 text-center shadow-2xl">
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-primary)]">{t('allCompleted')}</p>
+                        <p className="mt-3 text-lg font-black text-[var(--color-primary)]">+100 UC</p>
                         <p className="text-sm text-gray-600 mt-1">{t('bonusReward')}</p>
                     </div>
                 </div>
             )}
         </div>
+    );
+}
+
+function stripLeadingEmoji(text: string): string {
+    return text.replace(/^\p{Extended_Pictographic}[\uFE0F]?\s*/u, '');
+}
+
+function getMissionTitle(
+    missionType: string,
+    fallback: string,
+    t: ReturnType<typeof useTranslations<'Mission'>>
+): string {
+    switch (missionType) {
+        case 'WALK_1K':
+            return t('templates.walk1k.title');
+        case 'WALK_3K':
+            return t('templates.walk3k.title');
+        case 'WALK_5K':
+            return t('templates.walk5k.title');
+        case 'WALK_8K':
+            return t('templates.walk8k.title');
+        case 'WALK_10K':
+            return t('templates.walk10k.title');
+        case 'WALK_15K':
+            return t('templates.walk15k.title');
+        case 'LOGIN':
+            return t('templates.login.title');
+        default:
+            return stripLeadingEmoji(fallback);
+    }
+}
+
+function getMissionDescription(
+    missionType: string,
+    fallback: string,
+    t: ReturnType<typeof useTranslations<'Mission'>>
+): string {
+    switch (missionType) {
+        case 'WALK_1K':
+            return t('templates.walk1k.desc');
+        case 'WALK_3K':
+            return t('templates.walk3k.desc');
+        case 'WALK_5K':
+            return t('templates.walk5k.desc');
+        case 'WALK_8K':
+            return t('templates.walk8k.desc');
+        case 'WALK_10K':
+            return t('templates.walk10k.desc');
+        case 'WALK_15K':
+            return t('templates.walk15k.desc');
+        case 'LOGIN':
+            return t('templates.login.desc');
+        default:
+            return stripLeadingEmoji(fallback);
+    }
+}
+
+function StatusIcon({ tone }: { tone: 'danger' | 'neutral' }) {
+    const className = tone === 'danger'
+        ? 'text-[var(--color-danger)] bg-red-50'
+        : 'text-[var(--color-primary)] bg-[var(--color-primary-soft)]';
+
+    return (
+        <span className={`flex h-10 w-10 items-center justify-center rounded-full ${className}`} aria-hidden="true">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                {tone === 'danger' ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M12 3.75a8.25 8.25 0 1 0 0 16.5 8.25 8.25 0 0 0 0-16.5Z" />
+                )}
+            </svg>
+        </span>
     );
 }

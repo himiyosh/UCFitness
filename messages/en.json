@@ -134,7 +134,9 @@
     "rankGapPending": "Pending",
     "rewardInsight": "Next UC",
     "nextRewardUc": "+{amount} UC",
-    "goalBonusReady": "Complete"
+    "goalBonusReady": "Complete",
+    "walkMinutes": "About {minutes} minutes of walking gets you there",
+    "openChallenges": "View challenges"
   },
   "BottomNav": {
     "home": "Home",
@@ -198,6 +200,11 @@
     "collectBadges": "Collect Badges",
     "stayActive": "<span>Stay Active</span>",
     "connectFitbit": "Connect in about 30 seconds. Steps sync automatically.",
+    "heroHighlights": {
+      "goal": "See today's remaining steps instantly",
+      "rank": "Know the gap to the next rank",
+      "reward": "Track the distance to UC rewards"
+    },
     "trustLabel": "Trust and platform support",
     "trust": {
       "fitbit": "Fitbit connected",
@@ -215,7 +222,57 @@
       "rankLabel": "Weekly rank",
       "rankValue": "#12",
       "rewardLabel": "Next reward",
-      "rewardValue": "+22 UC"
+      "rewardValue": "+22 UC",
+      "challengeLabel": "Active challenge",
+      "challengeValue": "Weekend 50,000 step league"
+    },
+    "floating": {
+      "rank": {
+        "label": "Rank up",
+        "value": "860 steps"
+      },
+      "reward": {
+        "label": "Reward",
+        "value": "+22 UC"
+      }
+    },
+    "mobileInsightsLabel": "Mobile competition and reward highlights",
+    "nav": {
+      "label": "Landing page navigation",
+      "how": "How it works",
+      "rewards": "UC rewards",
+      "proof": "Proof",
+      "start": "Start"
+    },
+    "authGate": {
+      "default": {
+        "title": "Sign in to continue where you left off",
+        "desc": "Connect Fitbit to see steps, rankings, challenges, and UC rewards personalized to your activity."
+      },
+      "groups": {
+        "title": "Sign in to view your groups",
+        "desc": "After signing in, you can return to your groups and see the gap to your teammates."
+      },
+      "leaderboard": {
+        "title": "Sign in to view rankings",
+        "desc": "After signing in, you can return to the leaderboard and see your rank gap."
+      },
+      "challenges": {
+        "title": "Sign in to view challenges",
+        "desc": "After signing in, you can see available challenges and how close you are to rewards."
+      },
+      "shop": {
+        "title": "Sign in to view the UC shop",
+        "desc": "After signing in, you can spend UC earned from steps on titles, frames, and themes."
+      },
+      "wallet": {
+        "title": "Sign in to view your wallet",
+        "desc": "After signing in, you can review UC from steps, bonuses, and recent history."
+      },
+      "profile": {
+        "title": "Sign in to view your profile",
+        "desc": "After signing in, you can see badges, titles, and your step progress in one profile."
+      }
     },
     "benefits": {
       "habit": {
@@ -269,6 +326,71 @@
         "value": "200+",
         "label": "Active groups"
       }
+    },
+    "journeyLabel": "Habit loop",
+    "journeyTitle": "From opening the app to taking the next step, without confusion.",
+    "journeyDesc": "UCFitness does more than show Fitbit steps. It connects today's decision, competition, and reward into one flow.",
+    "journey": {
+      "sync": {
+        "label": "Sync",
+        "title": "Import steps automatically",
+        "desc": "Fitbit sync status is visible so people know whether their activity is reflected."
+      },
+      "move": {
+        "label": "Move",
+        "title": "Turn remaining steps into action",
+        "desc": "The first view explains how many steps are left and whether it is worth taking another walk."
+      },
+      "compete": {
+        "label": "Compete",
+        "title": "Show reachable gaps",
+        "desc": "Competition feels concrete by showing the gap to the next person, not just a long ranking table."
+      },
+      "reward": {
+        "label": "Reward",
+        "title": "Make effort feel cumulative",
+        "desc": "UC, badges, and challenge progress are framed as visible proof of consistency."
+      }
+    },
+    "showcaseLabel": "Product feel",
+    "showcaseTitle": "Not just white cards: energy that still feels professional.",
+    "showcaseDesc": "A polished fitness product needs purposeful color fields, clear numbers, progress, and community momentum—not minimalism alone.",
+    "showcase": {
+      "today": {
+        "title": "Today stays primary",
+        "desc": "Steps, progress, sync, and next action are grouped into one strong surface."
+      },
+      "league": {
+        "title": "Competition and rewards are visible",
+        "desc": "Rankings, challenges, and UC are presented as one habit loop, not separate features."
+      }
+    },
+    "rewardPreview": {
+      "label": "Reward loop",
+      "title": "Even a low-step day still leaves progress behind.",
+      "desc": "A return day, a short walk, and a small effort can still become visible progress through UC and profile upgrades.",
+      "restart": {
+        "label": "Restart",
+        "title": "Restart gently",
+        "desc": "Even 300 steps or a three-minute walk can build today's momentum.",
+        "value": "300 steps"
+      },
+      "earn": {
+        "label": "Earn",
+        "title": "Steps become UC",
+        "desc": "Example: 7,820 steps becomes 7,820 UC. Goal bonuses add another reason to finish.",
+        "value": "1 step=1 UC"
+      },
+      "spend": {
+        "label": "Spend",
+        "title": "Grow your profile",
+        "desc": "Titles, frames, and themes make consistent activity visible.",
+        "value": "Titles/frames"
+      }
+    },
+    "finalCta": {
+      "title": "Turn today's steps into progress you want to continue.",
+      "desc": "Connect Fitbit and see goals, rankings, challenges, and UC rewards in one dashboard."
     }
   },
   "Leaderboard": {

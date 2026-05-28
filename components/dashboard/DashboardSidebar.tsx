@@ -6,8 +6,9 @@ import { Link, usePathname } from '@/navigation';
 import UserAvatar from '@/components/UserAvatar';
 
 interface SidebarNavItem {
-  href: '/' | '/challenges' | '/leaderboard' | '/shop' | '/groups';
+  href: '/' | '/challenges' | '/leaderboard' | '/groups' | '/shop' | '/wallet' | '/profile';
   labelKey: string;
+  labelNamespace?: 'sidebar' | 'dashboard' | 'bottomNav';
   icon: React.ReactNode;
 }
 
@@ -25,7 +26,7 @@ interface DashboardSidebarProps {
 
 /**
  * デスクトップ用サイドバーナビゲーション (lg: 以上のみ表示)
- * Stitch デザイン仕様: 左固定 w-64, glassmorphism, ユーザーアバター + ナビリンク + CTA
+ * デスクトップの恒久ナビゲーション。余白と不透明サーフェスでプロ品質の安定感を出す。
  */
 export default function DashboardSidebar({
   userName,
@@ -37,68 +38,74 @@ export default function DashboardSidebar({
 }: DashboardSidebarProps) {
   const t = useTranslations('Sidebar');
   const dashT = useTranslations('Dashboard');
+  const navT = useTranslations('BottomNav');
   const pathname = usePathname();
 
   const navItems = useMemo<SidebarNavItem[]>(() => [
-    { href: '/', labelKey: 'dashboard', icon: <DashboardIcon /> },
-    { href: '/challenges', labelKey: 'missions', icon: <MissionsIcon /> },
-    { href: '/leaderboard', labelKey: 'leaderboard', icon: <LeaderboardIcon /> },
-    { href: '/shop', labelKey: 'gear', icon: <GearIcon /> },
+    { href: '/', labelKey: 'home', labelNamespace: 'bottomNav', icon: <DashboardIcon /> },
+    { href: '/leaderboard', labelKey: 'ranking', labelNamespace: 'bottomNav', icon: <LeaderboardIcon /> },
+    { href: '/challenges', labelKey: 'challenges', labelNamespace: 'dashboard', icon: <MissionsIcon /> },
     { href: '/groups', labelKey: 'groups', icon: <GroupsIcon /> },
-  ], []);
+    { href: '/shop', labelKey: 'gear', icon: <GearIcon /> },
+    { href: '/wallet', labelKey: 'wallet', labelNamespace: 'dashboard', icon: <WalletIcon /> },
+    { href: '/profile', labelKey: 'profile', labelNamespace: 'dashboard', icon: <ProfileIcon /> },
+  ], [dashT, navT]);
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 2xl:w-72 shrink-0 sticky top-0 glass-card !rounded-none border-r border-[var(--theme-primary)]/10 z-40 hover:!transform-none hover:!shadow-none"
+      className="sticky top-0 z-40 hidden w-48 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] 2xl:w-52 lg:flex"
       style={{ height: 'var(--sidebar-h, 100vh)' }}
       role="navigation"
       aria-label={t('label')}
     >
       {/* ロゴ */}
-      <div className="px-5 pt-5 pb-2">
+      <div className="px-3 pb-1.5 pt-3">
         <Link href="/" className="flex items-center gap-2 group">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-inverse-surface)] text-[var(--color-inverse-text)]">
+            <BrandMark />
+          </span>
           <h2
-            className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity"
+             className="text-base font-semibold tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]"
             style={{ fontFamily: 'var(--font-inter), sans-serif' }}
           >
             {dashT('title', { defaultMessage: 'UCFitness' })}
           </h2>
-          <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white text-[9px] font-bold tracking-wide uppercase shadow-sm">
+          <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
             {dashT('beta')}
           </span>
         </Link>
       </div>
 
       {/* ユーザーセクション */}
-      <div className="px-5 py-4">
+      <div className="px-3 py-2">
         <Link
           href={`/user/${username}`}
-          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[var(--theme-primary)]/5 transition-colors group"
+          className="group flex items-center gap-2 rounded-xl p-2 transition-colors hover:bg-[var(--color-surface-muted)]"
         >
           <UserAvatar
             src={userImage}
             name={userName}
-            size="md"
+            size="sm"
             frameColor={frameColor}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-[var(--theme-primary)] transition-colors">
+            <p className="truncate text-sm font-semibold text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]">
               {userName || username}
             </p>
             {titleName ? (
-              <p className="text-xs text-gray-500 truncate">
+              <p className="truncate text-xs text-[var(--color-text-muted)]">
                 {titleEmoji && <span className="mr-0.5">{titleEmoji}</span>}
                 {titleName}
               </p>
             ) : (
-              <p className="text-xs text-gray-400">@{username}</p>
+              <p className="text-xs text-[var(--color-text-muted)]">@{username}</p>
             )}
           </div>
         </Link>
       </div>
 
       {/* ナビゲーションリンク */}
-      <nav className="flex-1 px-3 2xl:px-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5">
         {navItems.map((item) => {
           const isActive = item.href === '/'
             ? pathname === '/' || pathname === ''
@@ -108,27 +115,33 @@ export default function DashboardSidebar({
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+              className={`flex min-h-[40px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
                 isActive
-                  ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
-                  : 'text-gray-600 hover:bg-gray-100/80 hover:text-gray-900'
+                  ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]'
               }`}
               aria-current={isActive ? 'page' : undefined}
             >
-              <span className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-400'}`}>
+              <span className={`h-4 w-4 ${isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}>
                 {item.icon}
               </span>
-              <span>{t(item.labelKey)}</span>
+               <span>
+                 {item.labelNamespace === 'dashboard'
+                   ? dashT(item.labelKey)
+                   : item.labelNamespace === 'bottomNav'
+                     ? navT(item.labelKey)
+                     : t(item.labelKey)}
+               </span>
             </Link>
           );
         })}
       </nav>
 
       {/* CTA: Start Workout (歩数同期) */}
-      <div className="px-4 py-4 mt-auto">
+      <div className="mt-auto px-3 py-3">
         <Link
           href="/challenges"
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white text-sm font-bold shadow-lg shadow-[var(--theme-primary)]/25 hover:shadow-xl hover:shadow-[var(--theme-primary)]/30 hover:-translate-y-0.5 transition-all min-h-[44px]"
+          className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--color-inverse-surface)] px-3 py-2 text-xs font-semibold text-[var(--color-inverse-text)] transition-colors hover:bg-[var(--color-primary-solid)]"
         >
           <StartWorkoutIcon />
           <span>{t('startWorkout')}</span>
@@ -144,6 +157,15 @@ function DashboardIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
       <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
+    </svg>
+  );
+}
+
+function BrandMark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-5 w-5" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 15.5 8.5 11l3 3L20 5.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 19h14" />
     </svg>
   );
 }
@@ -164,18 +186,35 @@ function LeaderboardIcon() {
   );
 }
 
-function GearIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
-      <path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z" />
-    </svg>
-  );
-}
-
 function GroupsIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
       <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+    </svg>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
+      <path d="M12 12a5 5 0 100-10 5 5 0 000 10zM21 20c0-3.866-4.03-7-9-7s-9 3.134-9 7h18z" />
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
+      <path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65a.5.5 0 00.12-.64l-2-3.46a.5.5 0 00-.6-.22l-2.49 1a7.28 7.28 0 00-1.69-.98L14.5 2.42A.5.5 0 0014 2h-4a.5.5 0 00-.5.42L9.12 5.07c-.61.24-1.18.57-1.69.98l-2.49-1a.5.5 0 00-.6.22l-2 3.46a.5.5 0 00.12.64l2.11 1.65c-.04.32-.08.65-.08.98s.03.66.08.98l-2.11 1.65a.5.5 0 00-.12.64l2 3.46c.13.23.4.32.6.22l2.49-1c.51.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.38-2.65c.61-.25 1.18-.58 1.69-.98l2.49 1c.2.1.47.01.6-.22l2-3.46a.5.5 0 00-.12-.64l-2.11-1.65zM12 15.5A3.5 3.5 0 1112 8a3.5 3.5 0 010 7.5z" />
+    </svg>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
+      <path d="M4 6.5A2.5 2.5 0 016.5 4H18a2 2 0 012 2v1H6.5A2.5 2.5 0 004 9.5v7A2.5 2.5 0 006.5 19H20v1a2 2 0 01-2 2H6.5A4.5 4.5 0 012 17.5v-7a4.5 4.5 0 012-4z" />
+      <path d="M6.5 8H21a1 1 0 011 1v8a1 1 0 01-1 1H6.5A1.5 1.5 0 015 16.5v-7A1.5 1.5 0 016.5 8zm11 6.25a1.25 1.25 0 100-2.5 1.25 1.25 0 000 2.5z" />
     </svg>
   );
 }

@@ -157,7 +157,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     }, [name, username, router, t]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid max-h-[calc(100dvh-10.5rem)] min-h-0 grid-cols-1 gap-3 overflow-y-auto pr-1 styled-scrollbar lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:overflow-hidden">
             {/* フルサイズプレビュー用モーダル */}
             <ImageModal
                 isOpen={isImageModalOpen}
@@ -173,21 +173,21 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             />
 
             {/* Main Column */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1 styled-scrollbar">
 
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+            <section className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
                 {/* S8: 装飾的な背景グラデーション */}
                 <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[var(--theme-primary)]/5 to-transparent rounded-full -translate-y-20 translate-x-20 pointer-events-none" />
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <span className="text-2xl">👤</span>
+                <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900">
+                    <span className="text-xl">👤</span>
                     {t('profileSettings')}
                 </h2>
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                     {/* Profile Visuals (Banner + Avatar) */}
-                    <div className="relative mb-6">
+                    <div className="relative mb-3">
                         {/* Banner Image */}
-                        <div className="relative group w-full h-48 sm:h-64 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="relative group h-24 w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm sm:h-32">
                             {user.banner_url ? (
                                 <img
                                     className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
@@ -202,9 +202,9 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                             )}
 
                             {/* Edit Banner Button (Bottom Right) */}
-                            <div className="absolute bottom-4 right-4 z-10">
+                            <div className="absolute bottom-2 right-2 z-10">
                                 <BannerImageEditor currentBanner={user.banner_url || null}>
-                                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-sm border border-gray-200 text-gray-700 hover:text-[var(--theme-primary)] transition-all cursor-pointer flex items-center gap-2 font-bold text-xs hover:bg-white">
+                                    <div className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm backdrop-blur-sm transition-all hover:bg-white hover:text-[var(--theme-primary)]">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                             <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
                                             <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
@@ -216,12 +216,12 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         </div>
 
                         {/* Avatar Image (Overlapping) */}
-                        <div className="absolute -bottom-12 left-6 sm:left-10">
+                        <div className="absolute -bottom-8 left-4 sm:left-6">
                             <div className="relative group">
                                 <UserAvatar
                                     src={user.image}
                                     name={name}
-                                    size="2xl"
+                                    size="xl"
                                     borderClass="border-white"
                                     frameColor={activeFrameColor}
                                     onClick={user.image ? () => setIsImageModalOpen(true) : undefined}
@@ -232,7 +232,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                     </div>
 
                     {/* Inputs */}
-                    <div className="space-y-4 w-full max-w-xl">
+                    <div className="w-full max-w-xl space-y-3 pt-5">
                         <div>
                             <label htmlFor="settings-display-name" className="block text-sm font-bold text-gray-700 mb-1">{t('displayName')}</label>
                             <input
@@ -240,7 +240,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm py-2.5 text-gray-900"
+                                className="block min-h-[44px] w-full rounded-lg border-gray-300 py-2 text-gray-900 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm"
                                 maxLength={50}
                             />
                         </div>
@@ -253,7 +253,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    className="block w-full rounded-lg border-gray-300 pl-8 focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm py-2.5 text-gray-900"
+                                    className="block min-h-[44px] w-full rounded-lg border-gray-300 py-2 pl-8 text-gray-900 focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm"
                                     maxLength={20}
                                     minLength={6}
                                     pattern="[a-zA-Z0-9_\-\.]+"
@@ -337,7 +337,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
             {/* Shop CTA Banner — 独立パネル（リッチ版） */}
             <Link href="/shop" className="block group">
-                <section className="relative overflow-hidden rounded-2xl border-2 border-[var(--theme-primary)]/25 bg-gradient-to-br from-[var(--theme-primary)] via-[var(--theme-primary)]/80 to-purple-600 p-6 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300">
+                    <section className="relative overflow-hidden rounded-2xl border-2 border-[var(--theme-primary)]/25 bg-gradient-to-br from-[var(--theme-primary)] via-[var(--theme-primary)]/80 to-purple-600 p-4 shadow-md transition-all duration-300 hover:shadow-xl">
                     {/* 背景装飾 */}
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
                     <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
@@ -345,17 +345,17 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
 
                     <div className="relative">
                         {/* アイコン行 */}
-                        <div className="flex items-center gap-2 mb-3">
-                            <span className="text-3xl drop-shadow-md">🛍️</span>
-                            <span className="text-2xl drop-shadow-md">✨</span>
+                        <div className="mb-2 flex items-center gap-2">
+                            <span className="text-2xl drop-shadow-md">🛍️</span>
+                            <span className="text-xl drop-shadow-md">✨</span>
                         </div>
 
                         {/* テキスト */}
-                        <h3 className="text-xl font-extrabold text-white mb-1 drop-shadow-sm">{t('shopCta')}</h3>
-                        <p className="text-sm text-white/80 mb-4 leading-relaxed">{t('shopCtaDescription')}</p>
+                        <h3 className="mb-1 text-base font-extrabold text-white drop-shadow-sm">{t('shopCta')}</h3>
+                        <p className="mb-3 text-xs leading-relaxed text-white/80">{t('shopCtaDescription')}</p>
 
                         {/* アイテムプレビュー */}
-                        <div className="flex items-center gap-3 mb-5">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/30 backdrop-blur-sm text-white text-xs font-semibold border border-white/30">
                                 🏷️ {t('titleLabel')}
                             </span>
@@ -368,7 +368,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         </div>
 
                         {/* ボタン */}
-                        <span className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[var(--theme-primary)] text-sm font-extrabold shadow-lg group-hover:shadow-xl group-hover:gap-3 transition-all duration-300">
+                        <span className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-[var(--theme-primary)] shadow-lg transition-all duration-300 group-hover:gap-3 group-hover:shadow-xl">
                             {t('shopCtaButton')}
                             <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                         </span>
@@ -378,7 +378,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             </div>
 
             {/* Sidebar Column: Preferences */}
-            <div className="space-y-4">
+            <div className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1 styled-scrollbar">
 
                 {/* Language Switcher */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">

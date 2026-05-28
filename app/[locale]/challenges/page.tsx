@@ -1,9 +1,10 @@
 export const runtime = 'edge';
 
 import { auth } from '@/lib/auth';
+import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/navigation';
 import UserMenu from '@/components/layout/UserMenu';
 import RefreshButton from '@/components/layout/RefreshButton';
@@ -21,14 +22,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function ChallengesPage() {
     // ⭐ パフォーマンス: 認証と翻訳を並列取得
-    const [session, t, dashboardT] = await Promise.all([
+    const [session, t, dashboardT, locale] = await Promise.all([
         auth(),
         getTranslations('Challenge'),
         getTranslations('Dashboard'),
+        getLocale(),
     ]);
 
     if (!session?.user) {
-        redirect('/');
+        redirect(createLoginRequiredRedirect(locale, '/challenges'));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

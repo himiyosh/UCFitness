@@ -1,152 +1,69 @@
 'use client';
 
-import { useState, useCallback } from 'react';
 import { Link, usePathname } from '@/navigation';
 import { useTranslations } from 'next-intl';
 
 /**
  * ネイティブアプリ風の固定ボトムナビゲーションバー
  * モバイルで常時表示、sm 以上では非表示（ヘッダーナビで代替）
- * 5つ目の「その他」メニューで Wallet / Shop / Challenges / Settings にアクセス可能
  */
 export default function BottomNavBar() {
   const pathname = usePathname();
   const t = useTranslations('BottomNav');
   const dashT = useTranslations('Dashboard');
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  const toggleMore = useCallback(() => setMoreOpen(prev => !prev), []);
-  const closeMore = useCallback(() => setMoreOpen(false), []);
 
   const navItems = [
     { href: '/' as const, icon: HomeIcon, label: t('home') },
-    { href: '/groups' as const, icon: GroupIcon, label: t('groups') },
     { href: '/leaderboard' as const, icon: RankingIcon, label: t('ranking') },
+    { href: '/challenges' as const, icon: ChallengeIcon, label: dashT('challenges') },
+    { href: '/groups' as const, icon: GroupIcon, label: t('groups') },
     { href: '/profile' as const, icon: ProfileIcon, label: t('profile') },
   ];
 
-  // 「その他」メニューの項目
-  const moreItems = [
-    { href: '/wallet' as const, emoji: '💰', label: dashT('wallet') },
-    { href: '/shop' as const, emoji: '🛍️', label: dashT('shop') },
-    { href: '/challenges' as const, emoji: '🎯', label: dashT('challenges') },
-    { href: '/analytics' as const, emoji: '📊', label: dashT('analytics') },
-    { href: '/settings' as const, emoji: '⚙️', label: dashT('settings') },
-  ];
-
-  const isMoreActive = moreItems.some(item => pathname.startsWith(item.href));
-
   return (
-    <>
-      {/* 「その他」メニューの背景オーバーレイ */}
-      {moreOpen && (
-        <div
-          className="fixed inset-0 z-40 sm:hidden"
-          onClick={closeMore}
-          aria-hidden="true"
-        />
-      )}
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 safe-area-bottom sm:hidden"
+      role="navigation"
+      aria-label={t('label')}
+    >
+      <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
+        {navItems.map((item) => {
+          const isActive = item.href === '/'
+            ? pathname === '/'
+            : item.href === '/profile'
+              ? pathname === '/profile' || pathname.startsWith('/user/')
+              : pathname.startsWith(item.href);
 
-      {/* 「その他」ポップアップメニュー */}
-      {moreOpen && (
-        <div className="fixed bottom-[72px] right-2 z-50 sm:hidden safe-area-bottom" role="menu" aria-label={t('more')}>
-          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/60 p-2 min-w-[160px] animate-fadeInUp">
-            {moreItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  role="menuitem"
-                  onClick={closeMore}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px] ${
-                    isActive
-                      ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="text-base">{item.emoji}</span>
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/90 backdrop-blur-xl border-t border-gray-200/60 safe-area-bottom m3-nav-bar"
-        role="navigation"
-        aria-label={t('label')}
-      >
-        <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
-          {navItems.map((item) => {
-            const isActive = item.href === '/'
-              ? pathname === '/'
-              : item.href === '/profile'
-                ? pathname === '/profile' || pathname.startsWith('/user/')
-                : pathname.startsWith(item.href);
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={closeMore}
-                className={`relative flex flex-col items-center justify-center min-w-[56px] min-h-[44px] m3-transition ${
-                  isActive
-                    ? 'text-[var(--theme-primary)]'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span
-                  className={`absolute top-1 w-14 h-7 rounded-full m3-transition ${
-                    isActive
-                      ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
-                      : 'scale-75 opacity-0'
-                  }`}
-                  aria-hidden="true"
-                />
-                <span className="relative z-10 mt-1">
-                  <item.icon active={isActive} />
-                </span>
-                <span className={`relative z-10 text-[10px] leading-none mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-
-          {/* 「その他」ボタン */}
-          <button
-            onClick={toggleMore}
-            className={`relative flex flex-col items-center justify-center min-w-[56px] min-h-[44px] m3-transition ${
-              isMoreActive || moreOpen
-                ? 'text-[var(--theme-primary)]'
-                : 'text-gray-400 hover:text-gray-600'
-            }`}
-            aria-expanded={moreOpen}
-            aria-haspopup="true"
-            aria-label={t('more')}
-          >
-            <span
-              className={`absolute top-1 w-14 h-7 rounded-full m3-transition ${
-                isMoreActive || moreOpen
-                  ? 'bg-[var(--theme-primary-light)] scale-100 opacity-100'
-                  : 'scale-75 opacity-0'
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`relative flex min-h-[44px] min-w-[56px] flex-col items-center justify-center transition-colors ${
+                isActive
+                  ? 'text-[var(--theme-primary)]'
+                  : 'text-gray-400 hover:text-gray-600'
               }`}
-              aria-hidden="true"
-            />
-            <span className="relative z-10 mt-1">
-              <MoreIcon active={isMoreActive || moreOpen} />
-            </span>
-            <span className={`relative z-10 text-[10px] leading-none mt-0.5 font-medium ${isMoreActive || moreOpen ? 'font-semibold' : ''}`}>
-              {t('more')}
-            </span>
-          </button>
-        </div>
-      </nav>
-    </>
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <span
+                className={`absolute top-1 h-7 w-14 rounded-full transition-transform ${
+                  isActive
+                    ? 'scale-100 bg-[var(--color-primary-soft)] opacity-100'
+                    : 'scale-75 opacity-0'
+                }`}
+                aria-hidden="true"
+              />
+              <span className="relative z-10 mt-1">
+                <item.icon active={isActive} />
+              </span>
+              <span className={`relative z-10 mt-0.5 text-[10px] font-medium leading-none ${isActive ? 'font-semibold' : ''}`}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
@@ -203,22 +120,10 @@ function ProfileIcon({ active }: { active: boolean }) {
   );
 }
 
-function MoreIcon({ active }: { active: boolean }) {
+function ChallengeIcon({ active }: { active: boolean }) {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-      {active ? (
-        <>
-          <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
-          <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
-          <circle cx="12" cy="19" r="2" fill="currentColor" stroke="none" />
-        </>
-      ) : (
-        <>
-          <circle cx="12" cy="5" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="19" r="1.5" />
-        </>
-      )}
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4m12.95-4.95-9.9 9.9m0-9.9 9.9 9.9" />
     </svg>
   );
 }

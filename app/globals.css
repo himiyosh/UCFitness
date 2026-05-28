@@ -251,22 +251,41 @@ html {
   --background: #ffffff;
   --foreground: #171717;
 
+  /* Professional semantic tokens — large-scale redesign foundation */
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef1f5;
+  --color-surface-raised: #ffffff;
+  --color-text: #111827;
+  --color-text-muted: #5b6472;
+  --color-border: #dde3ea;
+  --color-primary: #2563eb;
+  --color-primary-soft: #dbeafe;
+  --color-primary-solid: #1d4ed8;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-reward: #b7791f;
+  --color-inverse-surface: #0f172a;
+  --color-inverse-text: #ffffff;
+  --shadow-professional: 0 18px 50px rgba(15, 23, 42, 0.08);
+  --shadow-professional-soft: 0 10px 30px rgba(15, 23, 42, 0.06);
+
   /* Classic Theme (Default) - シンプルなindigo/purpleベース */
-  --theme-primary: #4F46E5;
+  --theme-primary: var(--color-primary);
   /* indigo-600 */
-  --theme-primary-light: #EEF2FF;
+  --theme-primary-light: var(--color-primary-soft);
   /* indigo-50 */
-  --theme-secondary: #9333EA;
+  --theme-secondary: #1d4ed8;
   /* purple-600 */
-  --theme-accent: #4F46E5;
+  --theme-accent: var(--color-primary);
   /* indigo-600 */
-  --theme-gradient-from: #4F46E5;
-  --theme-gradient-to: #9333EA;
-  --theme-badge-bg: #EEF2FF;
-  --theme-badge-text: #4F46E5;
-  /* Page backgrounds: 透明にして絵文字がパネル間から見えるように */
-  --theme-page-bg: transparent;
-  --theme-header-bg: #EEF2FF;
+  --theme-gradient-from: var(--color-primary);
+  --theme-gradient-to: #0f172a;
+  --theme-badge-bg: var(--color-primary-soft);
+  --theme-badge-text: var(--color-primary);
+  --theme-page-bg: var(--color-bg);
+  --theme-header-bg: var(--color-surface);
 
   /* Pop & Fun Colors (available for both themes) */
   --accent-coral: #FF6B6B;
@@ -277,13 +296,13 @@ html {
   --accent-purple: #A855F7;
 
   /* Stitch "Kinetic Studio" デザイントークン */
-  --theme-tertiary: #FBBF24;          /* ゴールド (メダル・コイン用) */
+  --theme-tertiary: var(--color-reward);          /* ゴールド (メダル・コイン用) */
   --theme-tertiary-container: #FEF3C7; /* ゴールド背景 */
-  --theme-on-surface: #374151;         /* ウォームグレーテキスト */
-  --theme-on-surface-variant: #6B7280; /* セカンダリテキスト */
-  --theme-outline-variant: rgba(156, 163, 175, 0.15); /* Ghost Border */
-  --theme-ambient-shadow: 0 4px 40px 0 rgba(55, 65, 81, 0.06); /* Diffused shadow */
-  --theme-ambient-shadow-hover: 0 8px 40px 0 rgba(55, 65, 81, 0.1);
+  --theme-on-surface: var(--color-text);         /* ウォームグレーテキスト */
+  --theme-on-surface-variant: var(--color-text-muted); /* セカンダリテキスト */
+  --theme-outline-variant: rgba(148, 163, 184, 0.28); /* Ghost Border */
+  --theme-ambient-shadow: var(--shadow-professional-soft); /* Diffused shadow */
+  --theme-ambient-shadow-hover: var(--shadow-professional);
   /* Kinetic Studio: アンビエントグロー (テーマカラーに応じた柔らかい発光) */
   --theme-glow-primary: rgba(79, 70, 229, 0.08);
   --theme-ambient-shadow: 0 4px 40px 0 rgba(55, 65, 81, 0.06); /* Diffused shadow */
@@ -406,6 +425,22 @@ html {
 
   --theme-gradient-from: #6366f1;
   --theme-gradient-to: #a855f7;
+  --color-bg: #0b1220;
+  --color-surface: #111827;
+  --color-surface-muted: #1f2937;
+  --color-surface-raised: #172033;
+  --color-text: #f8fafc;
+  --color-text-muted: #cbd5e1;
+  --color-border: rgba(148, 163, 184, 0.28);
+  --color-primary: #818cf8;
+  --color-primary-soft: rgba(129, 140, 248, 0.16);
+  --color-primary-solid: #4338ca;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-reward: #facc15;
+  --color-inverse-surface: #020617;
+  --color-inverse-text: #f8fafc;
 
   --theme-ring-color: #a78bfa;
 
@@ -1304,12 +1339,8 @@ html {
 /* OSのdark modeはアプリのdata-themeシステムで管理するため無効化 */
 /* @media (prefers-color-scheme: dark) {} */
 
-/* === 0.9x スケーリング ===
-   zoom プロパティはブラウザによってビューポート端にギャップが生じる。
-   代わりに transform: scale を使用し、width/height を 1/0.9 に拡張して
-   ビューポート全体をカバーする方式に変更。 */
 html {
-  height: 100%;
+  min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -1322,43 +1353,34 @@ body {
   transform-origin: top left;
   width: 100%;
   min-height: 100vh;
+  height: auto;
   overflow-x: hidden;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  --sidebar-h: 100vh;
 }
 
-/* デスクトップのみ 0.9x スケーリングを適用（モバイルは通常スクロールを優先）
-   注意: 以下の overflow 制御は 0.9x スケーリングのために必要な最低限の設定。
-   コンポーネント単位での overflow-hidden / max-h は各コンポーネントが
-   必要に応じて判断してよい（root スクロールを殺す設定だけ避ける） */
 @media (min-width: 1024px) {
   html {
-    overflow-x: hidden; /* transform で横にはみ出す分だけクリップ */
-    overflow-y: hidden;  /* body 内部でスクロールするため html レベルでは不要 */
-    /* scrollbar-gutter: stable がグローバルに設定されているが、
-       overflow-y: hidden の html には不要。stable のままだと html が
-       15px のスクロールバーガターを予約し、body の幅計算がずれて
-       4K 等の高解像度で右端に背景色の隙間が発生する。 */
-    scrollbar-gutter: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   body {
-    transform: scale(0.9);
-    width: calc(100vw / 0.9);   /* viewport 幅基準でスクロールバーの影響を回避 */
-    height: calc(100vh / 0.9);  /* 固定高さ — body 内部で overflow-y: auto スクロールを有効化 */
-    overflow-y: auto;           /* コンテンツが溢れた場合に body 自体がスクロール */
-    /* サイドバー高さ: 0.9x スケーリングで body が 100vh/0.9 に引き伸ばされるため、
-       sticky サイドバーは body の高さに合わせる必要がある */
-    --sidebar-h: calc(100vh / 0.9);
+    transform: none;
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    --sidebar-h: 100vh;
   }
 }
 
 /* ==== 4K+ 高解像度ディスプレイ最適化 ====
    3840px+ のモニターでは max-w-7xl (1280px) だと左右の余白が過大になる。
-   段階的にコンテンツ幅を拡張し、グリッドカラム数も増やす。
-   0.9x スケーリング環境では CSS px = viewport px / 0.9 なので、
-   実効ブレイクポイントは表示上 ~2560px (CSS 2844px), ~3840px (CSS 4267px) */
+   段階的にコンテンツ幅を拡張し、グリッドカラム数も増やす。 */
 
 /* QHD+ (2560px 以上): max-w-7xl → 1536px に拡張 */
 @media (min-width: 2560px) {
@@ -1378,6 +1400,123 @@ body {
   flex: 1 1 0%;
   display: flex;
   flex-direction: column;
+}
+
+#main-content.uc-auth-shell {
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  #main-content.uc-auth-shell {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .uc-auth-content > main > header > div.justify-between,
+  .uc-auth-content > * > main > header > div.justify-between {
+    height: 2.75rem;
+    padding-inline: 1rem;
+    justify-content: flex-end;
+  }
+
+  .uc-auth-content > main > header > div.justify-between > div:first-child,
+  .uc-auth-content > * > main > header > div.justify-between > div:first-child {
+    display: none;
+  }
+}
+
+.uc-auth-content :where(main) {
+  min-height: 0;
+}
+
+.uc-auth-content :where(footer) {
+  display: none;
+}
+
+.uc-auth-content :where(main > header a, main > header button) {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl) {
+  max-height: calc(100dvh - 2.9rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 0.75rem !important;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 1023px) {
+  .uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl) {
+    max-height: calc(100dvh - 7rem);
+  }
+}
+
+.uc-auth-content :where(main h2) {
+  font-size: clamp(1.25rem, 1.65vw, 1.55rem) !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.03em;
+}
+
+.uc-auth-content :where(main h3) {
+  font-size: clamp(0.95rem, 1.05vw, 1.08rem) !important;
+  line-height: 1.25 !important;
+}
+
+.uc-auth-content :where(main .mb-8) {
+  margin-bottom: 1rem !important;
+}
+
+.uc-auth-content :where(main .mb-6) {
+  margin-bottom: 0.75rem !important;
+}
+
+.uc-auth-content :where(main .mt-4) {
+  margin-top: 0.75rem !important;
+}
+
+.uc-auth-content :where(main .space-y-6 > :not([hidden]) ~ :not([hidden])) {
+  margin-top: 0.875rem !important;
+}
+
+.uc-auth-content :where(main .gap-6) {
+  gap: 0.875rem !important;
+}
+
+.uc-auth-content :where(main .p-6) {
+  padding: 1rem !important;
+}
+
+.uc-auth-content :where(main .p-5) {
+  padding: 0.875rem !important;
+}
+
+.uc-auth-content :where(main .py-8) {
+  padding-top: 0.875rem !important;
+  padding-bottom: 0.875rem !important;
+}
+
+.uc-auth-content :where(main .text-4xl) {
+  font-size: 1.65rem !important;
+  line-height: 1.15 !important;
+}
+
+.uc-auth-content :where(main .text-3xl) {
+  font-size: 1.4rem !important;
+  line-height: 1.18 !important;
+}
+
+.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl)::-webkit-scrollbar {
+  width: 6px;
+}
+
+.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl)::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--theme-primary) 28%, transparent);
+  border-radius: 9999px;
 }
 
 /* template.tsx のラッパー div を経由するため > * > main でマッチ */
@@ -1484,14 +1623,12 @@ button:not(:disabled) {
   }
 }
 
-/* ページ背景色を html と body の両方に設定
-   transform: scale(0.9) で body が縮小された際、body の外側 (html の背景) が
-   見えてしまうため、html にも同じ背景色を設定して途切れを防止 */
+/* ページ背景色を html と body の両方に設定 */
 :root {
-  background-color: #F5F5FF;
+  background-color: var(--color-bg);
 }
 :root body {
-  background-color: #F5F5FF;
+  background-color: var(--color-bg);
 }
 [data-theme="pop"] {
   background-color: #FFFAFA;
@@ -2110,7 +2247,7 @@ a, button, [role="button"] {
     backdrop-filter: blur(24px) saturate(150%);
     border-radius: var(--radius-2xl, 24px);
     border: 1px solid rgba(255, 255, 255, 0.8);
-    box-shadow: 
+    box-shadow:
       0 4px 24px -6px rgba(0, 0, 0, 0.04),
       0 1px 3px rgba(0, 0, 0, 0.02),
       inset 0 1px 1px rgba(255, 255, 255, 0.6);
@@ -2123,23 +2260,23 @@ a, button, [role="button"] {
     transform: translateY(-2px);
     border: 1px solid rgba(255, 255, 255, 1);
     background: rgba(255, 255, 255, 0.85);
-    box-shadow: 
+    box-shadow:
       0 12px 32px -8px rgba(0, 0, 0, 0.08),
       0 4px 8px -2px rgba(0, 0, 0, 0.04),
       inset 0 1px 1px rgba(255, 255, 255, 0.8);
   }
-  
+
   [data-theme='midnight'] .premium-card {
     background: rgba(30, 41, 59, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 
+    box-shadow:
       0 4px 24px -6px rgba(0, 0, 0, 0.3),
       inset 0 1px 1px rgba(255, 255, 255, 0.05);
   }
   [data-theme='midnight'] .premium-card:hover {
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(30, 41, 59, 0.7);
-    box-shadow: 
+    box-shadow:
       0 12px 32px -8px rgba(0, 0, 0, 0.5),
       inset 0 1px 1px rgba(255, 255, 255, 0.08);
   }
@@ -2153,13 +2290,13 @@ body::before {
   position: fixed;
   top: 0; left: 0; width: 100vw; height: 100vh;
   z-index: -10;
-  background-image: 
+  background-image:
     radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.05), transparent 45%),
     radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.05), transparent 45%);
   pointer-events: none;
 }
 [data-theme='midnight'] body::before {
-  background-image: 
+  background-image:
     radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.15), transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.15), transparent 50%);
 }

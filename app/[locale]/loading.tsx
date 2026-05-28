@@ -5,11 +5,17 @@
  */
 export default function Loading() {
     return (
-        <div className="flex items-center justify-center min-h-[50vh] p-8" role="status" aria-label="Loading">
-            <div className="flex flex-col items-center gap-4">
-                <div className="relative">
-                    <div className="h-12 w-12 rounded-full border-t-4 border-b-4 border-[var(--theme-primary)] animate-spin"></div>
-                    <div className="absolute top-0 left-0 h-12 w-12 rounded-full border-t-4 border-b-4 border-[var(--theme-primary)]/20 opacity-30 animate-pulse"></div>
+        <div className="flex min-h-[calc(100dvh-7rem)] items-center justify-center p-4 lg:min-h-[calc(100dvh-3rem)]" role="status" aria-label="Loading">
+            <div className="w-full max-w-xl rounded-3xl border border-white/40 bg-white/80 p-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                    <div className="relative h-10 w-10 shrink-0">
+                        <div className="h-10 w-10 rounded-full border-b-4 border-t-4 border-[var(--theme-primary)] animate-spin"></div>
+                        <div className="absolute left-0 top-0 h-10 w-10 rounded-full border-b-4 border-t-4 border-[var(--theme-primary)]/20 opacity-30 animate-pulse"></div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="h-3 w-28 rounded-full bg-[var(--theme-primary)]/20" />
+                        <div className="mt-2 h-2 w-full rounded-full bg-gray-100" />
+                    </div>
                 </div>
                 <span className="sr-only">Loading</span>
             </div>

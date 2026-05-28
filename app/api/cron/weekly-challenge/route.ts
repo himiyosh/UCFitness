@@ -12,11 +12,11 @@ export const dynamic = 'force-dynamic';
  * 毎週ランダムに1つ選ばれる
  */
 const CHALLENGE_TEMPLATES = [
-    { title: '🏃 ウィークリー50Kチャレンジ', titleEn: '🏃 Weekly 50K Challenge', targetSteps: 50000, rewardUc: 500 },
-    { title: '🔥 ウィークリー70Kチャレンジ', titleEn: '🔥 Weekly 70K Challenge', targetSteps: 70000, rewardUc: 800 },
-    { title: '💪 ウィークリー100Kチャレンジ', titleEn: '💪 Weekly 100K Challenge', targetSteps: 100000, rewardUc: 1200 },
-    { title: '⭐ ウィークリー30Kチャレンジ', titleEn: '⭐ Weekly 30K Challenge', targetSteps: 30000, rewardUc: 300 },
-    { title: '🎯 ウィークリー80Kチャレンジ', titleEn: '🎯 Weekly 80K Challenge', targetSteps: 80000, rewardUc: 1000 },
+    { title: 'ウィークリー50Kチャレンジ', titleEn: 'Weekly 50K Challenge', targetSteps: 50000, rewardUc: 500 },
+    { title: 'ウィークリー70Kチャレンジ', titleEn: 'Weekly 70K Challenge', targetSteps: 70000, rewardUc: 800 },
+    { title: 'ウィークリー100Kチャレンジ', titleEn: 'Weekly 100K Challenge', targetSteps: 100000, rewardUc: 1200 },
+    { title: 'ウィークリー30Kチャレンジ', titleEn: 'Weekly 30K Challenge', targetSteps: 30000, rewardUc: 300 },
+    { title: 'ウィークリー80Kチャレンジ', titleEn: 'Weekly 80K Challenge', targetSteps: 80000, rewardUc: 1000 },
 ];
 
 /**

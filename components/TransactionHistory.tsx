@@ -80,7 +80,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
             </div>
 
             {/* トランザクション行 */}
-            <div className="max-h-[400px] overflow-y-auto styled-scrollbar">
+            <div className="max-h-64 overflow-y-auto styled-scrollbar">
                 {filteredTransactions.map((tx, i) => {
                     const config = TYPE_CONFIG[tx.type] || TYPE_CONFIG.STEPS;
                     const isPositive = tx.amount >= 0;

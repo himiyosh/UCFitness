@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation"; // Standard redirect works fine for root
 import UserMenu from "@/components/layout/UserMenu";
@@ -9,7 +10,7 @@ import Breadcrumbs from "@/components/layout/Breadcrumbs";
 import SettingsForm from "@/components/SettingsForm";
 import ExportButton from "@/components/ExportButton";
 import SmartGoalAdvisor from "@/components/SmartGoalAdvisor";
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { getCoinBalance } from "@/lib/services/coin-service";
 import Footer from '@/components/layout/Footer';
 
@@ -18,16 +19,17 @@ export const runtime = 'edge';
 
 
 export default async function SettingsPage() {
-    const session = await auth();
     // ⚡ パフォーマンス: 翻訳取得を並列化
-    const [t, commonT, dashboardT] = await Promise.all([
+    const [session, t, commonT, dashboardT, locale] = await Promise.all([
+        auth(),
         getTranslations('Settings'),
         getTranslations('Common'),
         getTranslations('Dashboard'),
+        getLocale(),
     ]);
 
     if (!session || !session.user) {
-        redirect("/");
+        redirect(createLoginRequiredRedirect(locale, "/settings"));
     }
 
     // ⚡ パフォーマンス: supabaseAdmin を使用し必要なカラムのみ取得

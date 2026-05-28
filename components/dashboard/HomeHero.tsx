@@ -2,149 +2,187 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+
+import { Link } from '@/navigation';
+
 import UserAvatar from '@/components/UserAvatar';
 
 interface HomeHeroProps {
   todaySteps: number;
-  yesterdaySteps: number;
-  weeklySteps: number;
-  monthlySteps: number;
   stepGoal: number;
   userName: string | null;
   userImage: string | null;
   username: string;
   globalRank: number | null;
+  hasTodaySteps?: boolean;
+  nextRankGap?: number | null;
   className?: string; // 外からスタイルを指定可能にする
+  compact?: boolean;
+  showMetricTiles?: boolean;
 }
 
 export default function HomeHero({
   todaySteps,
-  yesterdaySteps,
-  weeklySteps,
-  monthlySteps,
   stepGoal,
   userName,
   userImage,
   username,
   globalRank,
+  hasTodaySteps = false,
+  nextRankGap = null,
   className = '',
+  compact = false,
+  showMetricTiles = true,
 }: HomeHeroProps) {
   const t = useTranslations('Dashboard');
-  const pt = useTranslations('Portal');
+  const normalizedStepGoal = Math.max(1, stepGoal);
 
-  // 歩数の達成率 (0〜100)
   const progressPercent = useMemo(
-    () => Math.min(100, Math.round((todaySteps / stepGoal) * 100)),
-    [todaySteps, stepGoal]
+    () => Math.min(100, Math.round((todaySteps / normalizedStepGoal) * 100)),
+    [todaySteps, normalizedStepGoal]
   );
 
-  // 昨日比の差分
-  const vsDiff = todaySteps - yesterdaySteps;
-  const vsSign = vsDiff >= 0 ? '+' : '';
-
-  // SVG リングのパラメータ
-  const ringRadius = 44;
-  const ringCircumference = 2 * Math.PI * ringRadius;
-  const ringOffset = ringCircumference - (progressPercent / 100) * ringCircumference;
+  const remainingSteps = Math.max(0, normalizedStepGoal - todaySteps);
+  const todayProgressLabel = t('todayProgressLabel', {
+    steps: todaySteps.toLocaleString(),
+    goal: normalizedStepGoal.toLocaleString(),
+    percent: progressPercent,
+  });
+  const momentumMessage = progressPercent >= 100
+    ? t('momentumDone')
+    : progressPercent >= 80
+      ? t('momentumNear')
+      : progressPercent >= 50
+        ? t('momentumHalf')
+        : t('momentumStart');
+  const syncMessage = hasTodaySteps ? t('fitbitSyncedToday') : t('fitbitSyncPending');
+  const rankGapMessage = globalRank === 1
+    ? t('rankTop')
+    : nextRankGap !== null
+      ? t('rankGap', { amount: nextRankGap.toLocaleString() })
+      : t('rankGapPending');
+  const walkingMinutes = Math.max(5, Math.ceil(remainingSteps / 120));
+  const actionMinutesLabel = remainingSteps > 0
+    ? t('walkMinutes', { minutes: walkingMinutes.toLocaleString() })
+    : t('goalBonusReady');
 
   return (
     <section
-      className={`relative flex-shrink-0 bg-gradient-to-br from-[var(--theme-gradient-from)] via-[var(--theme-secondary)] to-[var(--theme-gradient-to)] text-white px-4 pt-5 pb-6 sm:px-6 sm:pt-6 sm:pb-8 overflow-hidden rounded-none sm:rounded-2xl ${className}`}
-      aria-label={pt('heroLabel')}
+      className={`relative flex-shrink-0 overflow-hidden rounded-none bg-[var(--color-inverse-surface)] px-3 pb-3 pt-2.5 text-[var(--color-inverse-text)] shadow-xl sm:rounded-xl sm:px-4 sm:py-4 ${className}`}
+      aria-label={t('todayCommandCenter')}
     >
-      {/* 装飾 — Apple-style mesh gradient feel */}
-      <div className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 bg-white/8 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
-      <div className="absolute bottom-0 left-0 -ml-12 -mb-12 w-40 h-40 bg-white/8 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
-      <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" aria-hidden="true" />
+      <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[var(--theme-primary)]/30 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute -bottom-24 left-0 h-56 w-56 rounded-full bg-[var(--theme-gradient-to)]/25 blur-3xl" aria-hidden="true" />
 
-      <div className="relative z-10 flex items-center gap-4 sm:gap-6 max-w-lg mx-auto w-full h-full">
-        {/* 歩数リング — Kinetic Studio: アンビエントグロー + Apple Watch風 */}
-        <div className="relative flex-shrink-0">
-          {/* アンビエントグロー（リング背後のソフトな発光） */}
-          <div
-            className="absolute inset-0 rounded-full blur-xl opacity-40 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, var(--theme-gradient-from, #8B5CF6) 0%, transparent 70%)' }}
-            aria-hidden="true"
-          />
-          <svg className="relative w-[104px] h-[104px] sm:w-[120px] sm:h-[120px] -rotate-90 drop-shadow-lg" viewBox="0 0 100 100" aria-hidden="true">
-            {/* 背景リング */}
-            <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" />
-            {/* 進捗リング — Gradient + neon glow (Kinetic Studio) */}
-            <defs>
-              <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="var(--theme-gradient-from, #8B5CF6)" stopOpacity="0.9" />
-                <stop offset="100%" stopColor="var(--theme-gradient-to, #3B82F6)" stopOpacity="0.9" />
-              </linearGradient>
-              <filter id="ring-glow-filter">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-            </defs>
-            <circle
-              cx="50" cy="50" r={ringRadius}
-              fill="none" stroke="url(#ring-gradient)" strokeWidth="7"
-              strokeLinecap="round"
-              strokeDasharray={ringCircumference}
-              strokeDashoffset={ringOffset}
-              filter="url(#ring-glow-filter)"
-              className="transition-all duration-1000"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl sm:text-2xl font-black leading-none" style={{ letterSpacing: '-0.02em' }}>{todaySteps.toLocaleString()}</span>
-            <span className="text-xs opacity-70 mt-0.5 font-medium">/ {stepGoal.toLocaleString()}</span>
-          </div>
-        </div>
-
-        {/* 統計情報 */}
-        <div className="flex-1 min-w-0 space-y-2">
-          {/* ユーザー挨拶 */}
-          <div className="flex items-center gap-2">
+      <div className="relative mx-auto w-full max-w-3xl">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
             <UserAvatar src={userImage} name={userName || username} size="sm" />
-            <p className="text-sm sm:text-base font-bold truncate tracking-tight">
-              {userName || username}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">
+                {userName || username}
+              </p>
+              <p className="text-xs font-medium text-white/60">{t('todayLabel')}</p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+            {progressPercent}%
+          </span>
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_84px] sm:items-center">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/60">
+              {t('stepsToday')}
             </p>
+            <div className="mt-1 flex items-end gap-2">
+              <span className="text-3xl font-bold tracking-[-0.06em] text-white tabular-nums sm:text-4xl">
+                {todaySteps.toLocaleString()}
+              </span>
+              <span className="pb-1.5 text-xs font-semibold text-white/60">
+                / {normalizedStepGoal.toLocaleString()}
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs leading-5 text-white/70 sm:text-sm">{momentumMessage}</p>
           </div>
 
-          {/* 歩数達成率 — M3 chip 風 */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-xs font-semibold bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1">
-              {progressPercent}% {progressPercent >= 100 ? '🎉' : progressPercent >= 50 ? '🔥' : '👟'}
-            </span>
-            <span className={`text-xs font-medium ${vsDiff >= 0 ? 'text-green-200' : 'text-red-200'}`}>
-              {vsSign}{vsDiff.toLocaleString()} {pt('stepsUnit')} {t('vsYesterday')}
-            </span>
-          </div>
-
-          {/* 週間・月間・ランク — Kinetic Studio: ガラスタイル統計グリッド */}
-          <div className="grid grid-cols-3 gap-1.5">
-            <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
-              <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(weeklySteps)}</div>
-              <div className="text-[10px] sm:text-xs opacity-60 font-medium uppercase tracking-wider">{t('thisWeek')}</div>
-            </div>
-            <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
-              <div className="text-sm sm:text-base font-bold tracking-tight">{formatK(monthlySteps)}</div>
-              <div className="text-[10px] sm:text-xs opacity-60 font-medium uppercase tracking-wider">{t('thisMonth')}</div>
-            </div>
-            <div className="text-center bg-white/12 backdrop-blur-sm rounded-xl py-1.5 px-1 border border-white/10">
-              <div className="text-sm sm:text-base font-bold tracking-tight">
-                {globalRank ? `#${globalRank}` : '—'}
+          <div className="hidden justify-self-end sm:flex">
+            <div
+              className="relative flex h-20 w-20 items-center justify-center rounded-full"
+              role="progressbar"
+              aria-label={todayProgressLabel}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progressPercent}
+              style={{ background: `conic-gradient(var(--theme-primary) ${progressPercent}%, rgba(255,255,255,0.14) 0)` }}
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-inverse-surface)]">
+                <span className="text-base font-bold tabular-nums text-white">{progressPercent}%</span>
               </div>
-              <div className="text-[10px] sm:text-xs opacity-60 font-medium uppercase tracking-wider">{pt('rank')}</div>
             </div>
           </div>
         </div>
+
+        <div
+          className="mt-4 sm:hidden"
+          role="progressbar"
+          aria-label={todayProgressLabel}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progressPercent}
+        >
+          <div className="h-2 rounded-full bg-white/20">
+            <div
+              className="h-full rounded-full bg-white transition-[width] duration-700"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {!compact && (
+        <div className="mt-2.5 rounded-xl bg-white p-2.5 text-[var(--color-text)] shadow-lg">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                {remainingSteps > 0 ? t('nextActionWalk') : t('nextActionCelebrate')}
+              </p>
+              <p className="mt-0.5 text-sm font-bold sm:text-base">
+                {remainingSteps > 0
+                  ? t('stepsRemaining', { amount: remainingSteps.toLocaleString() })
+                  : t('goalComplete')}
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-[var(--color-text-muted)] sm:text-sm">{actionMinutesLabel}</p>
+            </div>
+            <Link
+              href="/challenges"
+               className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-inverse-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-inverse-text)] transition-colors hover:bg-[var(--color-primary-solid)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+            >
+              {t('openChallenges')}
+            </Link>
+          </div>
+        </div>
+        )}
+
+        {showMetricTiles && (
+        <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+          <MetricTile label={t('syncStatus')} value={syncMessage} />
+          <MetricTile label={t('rankInsight')} value={rankGapMessage} />
+        </div>
+        )}
       </div>
     </section>
   );
 }
 
-/**
- * 歩数を読みやすい形式に短縮（52340 → 52.3K）
- */
-function formatK(steps: number): string {
-  if (steps >= 1000) {
-    return `${(steps / 1000).toFixed(steps % 1000 < 100 ? 0 : 1)}K`;
-  }
-  return steps.toLocaleString();
+function MetricTile({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/10 px-2.5 py-2 backdrop-blur-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/60">
+        {label}
+      </p>
+      <p className={`mt-1 font-semibold tracking-tight text-white tabular-nums ${compact ? 'text-base' : 'text-sm sm:text-base'}`}>
+        {value}
+      </p>
+    </div>
+  );
 }

@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
@@ -11,16 +12,16 @@ import NotificationBell from '@/components/layout/NotificationBell';
 import GroupSettings from "@/components/group/GroupSettings";
 import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/services/ranking-service";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MyGroupsPage() {
-    const session = await auth();
+    const [session, locale] = await Promise.all([auth(), getLocale()]);
 
     if (!session || !session.user) {
-        redirect("/");
+        redirect(createLoginRequiredRedirect(locale, "/groups"));
     }
 
     const userId = (session.user as any).id;
@@ -234,7 +235,7 @@ export default async function MyGroupsPage() {
                                 {/* 装飾 — デスクトップのみ */}
                                 <div className="hidden md:block absolute right-0 top-0 w-32 h-32 bg-[var(--theme-primary)]/5 rounded-bl-full translate-x-8 -translate-y-8" />
                                 <div className="hidden md:block absolute left-0 bottom-0 w-24 h-24 bg-[var(--theme-primary)]/5 rounded-tr-full -translate-x-8 translate-y-8" />
-                                
+
                                 <div className="relative p-3 md:p-5 md:pb-6">
                                     {/* アイキャッチ — デスクトップのみ */}
                                     <div className="hidden md:flex justify-center mb-4">

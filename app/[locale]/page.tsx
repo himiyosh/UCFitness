@@ -3,57 +3,35 @@ export const runtime = 'edge';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { redirect } from 'next/navigation';
-import { getTranslations, getLocale } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import RefreshButton from '@/components/layout/RefreshButton';
 import UserMenu from '@/components/layout/UserMenu';
 import { auth } from "@/lib/auth";
-import { getCachedGlobalRankingMap, transformRankingMapToLists } from '@/lib/services/ranking-service';
 import nextDynamic from 'next/dynamic';
-import { optimizeRankingsForPayload } from '@/lib/services/ranking-utils';
 import AutoSync from '@/components/AutoSync';
 import Footer from '@/components/layout/Footer';
 import LandingPage from '@/components/LandingPage';
 import HomePortal from '@/components/dashboard/HomePortal';
 import QuickActions from '@/components/dashboard/QuickActions';
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
-import { getEquippedItems } from '@/lib/services/shop-service';
-import { getFrameColor } from '@/lib/frame-utils';
-
-import type { RankingEntry } from '@/lib/services/ranking-utils';
+import HomeHero from '@/components/dashboard/HomeHero';
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const LoginBonusToast = nextDynamic(() => import('@/components/auth/LoginBonusToast'));
 const NotificationBell = nextDynamic(() => import('@/components/layout/NotificationBell'));
 
 // スケルトンローディングプレースホルダー（チャンク読み込み中に表示）
-const CardSkeleton = ({ h = 'h-32', title }: { h?: string; title?: string }) => (
+const CardSkeleton = ({ h = 'h-32' }: { h?: string }) => (
   <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-5 animate-pulse">
-    {title && <div className="flex items-center gap-2 mb-3"><span className="text-lg">{title}</span><div className="h-4 w-28 bg-gray-200 rounded" /></div>}
+    <div className="mb-3 h-4 w-28 rounded bg-gray-200" />
     <div className={`${h} bg-gray-100 rounded-lg`} />
   </div>
 );
 
-// デスクトップ用コンポーネント（右カラムウィジェット群）
-const StepCalendar = nextDynamic(() => import('@/components/StepCalendar'), {
-  loading: () => <CardSkeleton h="h-48" title="📊" />,
-});
 const DashboardChallenges = nextDynamic(() => import('@/components/dashboard/DashboardChallenges'), {
-  loading: () => <CardSkeleton h="h-24" title="🏆" />,
+  loading: () => <CardSkeleton h="h-24" />,
 });
 const DailyMissions = nextDynamic(() => import('@/components/dashboard/DailyMissions'), {
-  loading: () => <CardSkeleton h="h-40" title="🎯" />,
-});
-const FollowingPanel = nextDynamic(() => import('@/components/dashboard/FollowingPanel'), {
-  loading: () => <CardSkeleton h="h-32" title="👥" />,
-});
-const PersonalizedGear = nextDynamic(() => import('@/components/PersonalizedGear'), {
-  loading: () => <CardSkeleton h="h-36" title="🎁" />,
-});
-const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'), {
-  loading: () => <CardSkeleton h="h-36" title="🔥" />,
-});
-const DynamicLeaderboard = nextDynamic(() => import('@/components/dashboard/DynamicLeaderboard'), {
-  loading: () => <CardSkeleton h="h-64" title="🏅" />,
+  loading: () => <CardSkeleton h="h-40" />,
 });
 
 export const dynamic = 'force-dynamic';
@@ -70,11 +48,6 @@ export default async function Home() {
   const userId = (session.user as any).id;
   let username = '';
   let mySteps = 0;
-  let yesterdaySteps = 0;
-  let weeklySteps = 0;
-  let monthlySteps = 0;
-  let lastWeekSteps = 0;
-  let lastMonthSteps = 0;
   let stepGoal = 10000;
   let dbUserName: string | null = null;
   let dbUserImage: string | null = null;
@@ -84,33 +57,9 @@ export default async function Home() {
   const now = new Date();
   const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const today = jstDate.toISOString().split('T')[0];
-  const yesterdayDate = new Date(jstDate);
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterday = yesterdayDate.toISOString().split('T')[0];
 
-  // 週間計算
-  const currentDate = new Date(`${today}T00:00:00Z`);
-  const utcDay = currentDate.getUTCDay();
-  const daysToSubtract = (utcDay + 6) % 7;
-  const thisWeekMonday = new Date(currentDate);
-  thisWeekMonday.setUTCDate(currentDate.getUTCDate() - daysToSubtract);
-  const thisWeekStartStr = thisWeekMonday.toISOString().split('T')[0];
-  // 先週の計算（デスクトップ StepCalendar 用）
-  const lastWeekMonday = new Date(thisWeekMonday);
-  lastWeekMonday.setUTCDate(thisWeekMonday.getUTCDate() - 7);
-  const lastWeekStartStr = lastWeekMonday.toISOString().split('T')[0];
-
-  // 月間計算
-  const [y, m] = today.split('-');
-  const thisMonthStartStr = `${y}-${m}-01`;
-  // 先月の計算（デスクトップ StepCalendar 用）
-  const thisMonthDate = new Date(`${thisMonthStartStr}T00:00:00Z`);
-  const lastMonthDate = new Date(thisMonthDate);
-  lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1);
-  const lastMonthStartStr = lastMonthDate.toISOString().split('T')[0];
-
-  // ⚡ パフォーマンス: ユーザー情報・歩数・グループ情報・装備アイテムを並列取得
-  const [userResult, stepsResult, membershipResult, rankingMap, equippedItems] = await Promise.all([
+  // ⚡ パフォーマンス: 初期表示に必要なユーザー情報・歩数だけを並列取得
+  const [userResult, stepsResult] = await Promise.all([
     supabaseAdmin
       .from('users')
       .select('username, step_goal, image, name')
@@ -120,13 +69,7 @@ export default async function Home() {
       .from('daily_steps')
       .select('steps, date')
       .eq('user_id', userId)
-      .gte('date', lastMonthStartStr),
-    supabaseAdmin
-      .from('group_members')
-      .select('groups(keyword, header_image_url)')
-      .eq('user_id', userId),
-    getCachedGlobalRankingMap(),
-    getEquippedItems(userId),
+      .eq('date', today),
   ]);
 
   const userData = userResult.data;
@@ -145,75 +88,22 @@ export default async function Home() {
     redirect('/setup');
   }
 
-  // グループキーワード・バナー画像を抽出
-  const groupInfo = (membershipResult.data ?? [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((m: any) => ({
-      keyword: m.groups?.keyword as string,
-      imageUrl: m.groups?.header_image_url as string | null
-    }))
-    .filter(g => Boolean(g.keyword));
-
-  const groupKeywords = groupInfo.map(g => g.keyword);
-
   // 歩数をメモリ内で集計
   const stepsMap = new Map<string, number>();
   stepsResult.data?.forEach(row => {
     stepsMap.set(row.date, row.steps);
   });
+  const hasTodayStepRecord = stepsMap.has(today);
   mySteps = stepsMap.get(today) || 0;
-  yesterdaySteps = stepsMap.get(yesterday) || 0;
 
-  // 週間歩数: 今週月曜日〜今日
-  weeklySteps = (stepsResult.data ?? [])
-    .filter(row => row.date >= thisWeekStartStr && row.date <= today)
-    .reduce((sum, row) => sum + row.steps, 0);
-
-  // 先週歩数: 先週月曜日〜先週日曜日
-  const lastWeekSundayDate = new Date(thisWeekMonday);
-  lastWeekSundayDate.setUTCDate(thisWeekMonday.getUTCDate() - 1);
-  const lastWeekSundayStr = lastWeekSundayDate.toISOString().split('T')[0];
-  lastWeekSteps = (stepsResult.data ?? [])
-    .filter(row => row.date >= lastWeekStartStr && row.date <= lastWeekSundayStr)
-    .reduce((sum, row) => sum + row.steps, 0);
-
-  // 月間歩数: 今月1日〜今日
-  monthlySteps = (stepsResult.data ?? [])
-    .filter(row => row.date >= thisMonthStartStr && row.date <= today)
-    .reduce((sum, row) => sum + row.steps, 0);
-
-  // 先月歩数
-  const lastMonthEndDate = new Date(thisMonthDate);
-  lastMonthEndDate.setUTCDate(lastMonthEndDate.getUTCDate() - 1);
-  const lastMonthEndStr = lastMonthEndDate.toISOString().split('T')[0];
-  lastMonthSteps = (stepsResult.data ?? [])
-    .filter(row => row.date >= lastMonthStartStr && row.date <= lastMonthEndStr)
-    .reduce((sum, row) => sum + row.steps, 0);
-
-  // グローバルランキングからユーザーの週間順位を取得
-  const rawGlobalRankings = transformRankingMapToLists(rankingMap);
-  const optimizedRankings = optimizeRankingsForPayload(rawGlobalRankings, userId, 100);
-  const myWeeklyEntry = optimizedRankings['WEEKLY'].find((r: RankingEntry) => r.users.id === userId);
-  const globalRank = myWeeklyEntry ? optimizedRankings['WEEKLY'].indexOf(myWeeklyEntry) + 1 : null;
-
+  const globalRank = null;
+  const nextRankGap = null;
   const userImage = dbUserImage || session.user.image || null;
 
-  // サイドバー用: 装備中称号・フレーム情報
-  const currentLocale = await getLocale();
-  const sidebarTitleItem = equippedItems.TITLE;
-  const sidebarFrameItem = equippedItems.ICON_FRAME;
-  const sidebarTitleName = sidebarTitleItem
-    ? (currentLocale === 'ja' ? sidebarTitleItem.shop_items?.name_ja : sidebarTitleItem.shop_items?.name_en) || null
-    : null;
-  const sidebarTitleEmoji = sidebarTitleItem?.shop_items?.preview_value || null;
-  const sidebarFrameColor = sidebarFrameItem?.shop_items?.preview_value
-    ? getFrameColor(sidebarFrameItem.shop_items.preview_value)
-    : null;
-
   return (
-    <main className="min-h-screen flex flex-col bg-[var(--theme-page-bg)]">
+    <main className="flex min-h-0 flex-1 flex-col bg-[var(--theme-page-bg)]">
       {/* ヘッダー: モバイル〜md では表示、lg 以上ではサイドバーがあるためコンパクト */}
-      <header className="lg:hidden glass-card border-b border-[var(--theme-primary)]/10 sticky top-0 z-50 !rounded-none">
+      <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:hidden">
         <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 group">
@@ -238,25 +128,11 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* ===== lg 以上: サイドバー + メインコンテンツの flex 構成 ===== */}
-      <div className="flex flex-1">
-
-      {/* デスクトップサイドバー (lg: 以上) */}
-      <DashboardSidebar
-        userName={dbUserName || session.user.name || null}
-        userImage={userImage}
-        username={username}
-        titleName={sidebarTitleName}
-        titleEmoji={sidebarTitleEmoji}
-        frameColor={sidebarFrameColor}
-      />
-
-      {/* メインコンテンツ領域 */}
       <div className="flex-1 flex flex-col min-w-0">
 
       {/* lg 以上のヘッダー（サイドバーと共存するコンパクト版） */}
-      <header className="hidden lg:block glass-card border-b border-[var(--theme-primary)]/10 sticky top-0 z-40 !rounded-none">
-        <div className="w-full px-4 lg:px-6 h-14 flex items-center justify-end">
+      <header className="sticky top-0 z-40 hidden border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
+        <div className="mx-auto flex h-11 w-full max-w-7xl items-center justify-end px-3 lg:px-4 xl:px-5">
           <div className="flex items-center gap-1">
             <RefreshButton />
             <NotificationBell />
@@ -274,67 +150,44 @@ export default async function Home() {
       <div className="sm:hidden flex-1 flex flex-col">
         <HomePortal
           todaySteps={mySteps}
-          yesterdaySteps={yesterdaySteps}
-          weeklySteps={weeklySteps}
-          monthlySteps={monthlySteps}
           stepGoal={stepGoal}
           userName={dbUserName || session.user.name || null}
           userImage={userImage}
           username={username}
           globalRank={globalRank}
+          hasTodaySteps={hasTodayStepRecord}
+          nextRankGap={nextRankGap}
         />
       </div>
 
       {/* ===== デスクトップ: 1カラムレイアウト (sm以上のみ表示) ===== */}
       <div className="hidden sm:flex flex-1 flex-col mx-auto max-w-7xl w-full">
-        <div className="w-full px-4 lg:px-6 xl:px-8 py-3 lg:py-4 pb-4 flex flex-col gap-3">
+        <div className="w-full px-3 lg:px-4 xl:px-5 py-2 pb-3 flex flex-col gap-2">
 
-            {/* 上部: アクティビティサマリー (左) / デイリーミッション & クイックアクション (右) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start lg:items-stretch">
-              <div className="animate-fadeInUp">
-                <StepCalendar
-                  userId={userId}
+            {/* 上部: Today Command Center / デイリーミッション */}
+            <div className="grid grid-cols-1 gap-2 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(220px,0.55fr)] lg:items-stretch">
+              <div>
+                <HomeHero
+                  todaySteps={mySteps}
+                  stepGoal={stepGoal}
                   userName={dbUserName || session.user.name || null}
                   userImage={userImage}
                   username={username}
-                  showCalendar={false}
-                  activity={{
-                    todaySteps: mySteps,
-                    yesterdaySteps,
-                    weeklySteps,
-                    lastWeekSteps,
-                    monthlySteps,
-                    lastMonthSteps,
-                    stepGoal,
-                  }}
+                  globalRank={globalRank}
+                  hasTodaySteps={hasTodayStepRecord}
+                  nextRankGap={nextRankGap}
                 />
               </div>
-              <div className="animate-fadeInUp delay-100">
+              <div>
                 <DailyMissions />
+              </div>
+              <div>
+                <DashboardChallenges />
               </div>
             </div>
 
-            <div className="animate-fadeInUp delay-150">
+            <div>
               <QuickActions />
-            </div>
-
-            {/* リーダーボード */}
-            <div className="animate-fadeInUp delay-300">
-              <DynamicLeaderboard userId={userId} groupKeywords={groupKeywords} groupInfo={groupInfo} />
-            </div>
-
-            {/* 追加パネル */}
-            <div className="flex flex-col gap-4 animate-fadeInUp delay-400">
-                <DashboardChallenges />
-
-                {/* フォロー中ユーザー */}
-                <FollowingPanel />
-
-                {/* おすすめギア + 人気ギア */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <PersonalizedGear />
-                  <TrendingGear userId={userId} />
-                </div>
             </div>
 
         </div>
@@ -342,7 +195,6 @@ export default async function Home() {
       </div>
 
       </div>{/* /メインコンテンツ領域 */}
-      </div>{/* /flex 構成 */}
 
       {/* 非表示ユーティリティ */}
       <LoginBonusToast userId={userId} />
@@ -350,6 +202,3 @@ export default async function Home() {
     </main>
   );
 }
-
-
-

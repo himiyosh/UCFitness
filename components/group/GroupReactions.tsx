@@ -164,7 +164,7 @@ export default function GroupReactions({
         }
     }, [forceShow]);
 
-    // body { zoom: 0.9 } がある場合、getBoundingClientRect() は viewport 座標を返すが、
+    // 過去の root zoom 環境では、getBoundingClientRect() と fixed 座標系がずれることがあったため、
     // position: fixed の top/left は zoom 後の座標系で解釈される。
     // 2 つの probe 要素（0,0 と 100,100）で affine 変換パラメータ（offset + scale）を検出し、
     // viewport 座標 → fixed CSS 座標への逆変換を行う。

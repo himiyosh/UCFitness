@@ -67,7 +67,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
     // 称号を1つも持っていない場合
     if (titles.length === 0) {
         return (
-            <div className="border-t border-gray-200 pt-6">
+            <div className="border-t border-gray-200 pt-3">
                 <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5">
                     🏷️ {t('titleLabel')}
                 </label>
@@ -80,7 +80,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
     }
 
     return (
-        <div className="border-t border-gray-200 pt-6">
+        <div className="border-t border-gray-200 pt-3">
             <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5">
                 🏷️ {t('titleLabel')}
             </label>
@@ -115,7 +115,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
             <p className="mt-2 text-xs text-gray-400 font-medium">
                 ✨ {t('titleAchievementHint')}
             </p>
-            <Link href="/shop" className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--theme-primary)] hover:underline cursor-pointer font-medium hover:scale-105 active:scale-95 transition-transform">
+            <Link href="/shop" className="mt-1 inline-flex min-h-[44px] items-center gap-1 text-xs font-medium text-[var(--theme-primary)] transition-transform hover:scale-105 hover:underline active:scale-95">
                 🛍️ {t('moreTitles')} →
             </Link>
         </div>

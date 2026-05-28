@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
@@ -10,10 +12,10 @@ export const runtime = 'edge';
  * プロフィールページは /user/[username] に統一済み
  */
 export default async function ProfileRedirect() {
-    const session = await auth();
+    const [session, locale] = await Promise.all([auth(), getLocale()]);
 
     if (!session || !session.user) {
-        redirect("/");
+        redirect(createLoginRequiredRedirect(locale, "/profile"));
     }
 
     const userId = (session.user as any).id;

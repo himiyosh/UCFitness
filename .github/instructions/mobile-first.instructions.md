@@ -41,7 +41,8 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 
 ## 高解像度ディスプレイ対応 (QHD+ / 4K+)
 
-UCFitness は 0.9x デスクトップスケーリング (`body { transform: scale(0.9) }`) を 1024px+ で適用している。
+UCFitness は root の `zoom` / `transform: scale()` による全体縮小を使用しない。
+100% 表示で密度が不足する場合は、コンポーネント単位の typography / spacing / card height / sidebar width を調整する。
 高解像度ディスプレイでは `max-w-7xl` (1280px) だと左右の余白が過大になるため、以下の対応が必要。
 
 ### コンテンツ幅の段階拡張

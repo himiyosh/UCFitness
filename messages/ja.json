@@ -134,7 +134,9 @@
     "rankGapPending": "集計待ち",
     "rewardInsight": "次のUC",
     "nextRewardUc": "+{amount} UC",
-    "goalBonusReady": "達成済み"
+    "goalBonusReady": "達成済み",
+    "walkMinutes": "目安 {minutes} 分のウォーキングで届きます",
+    "openChallenges": "チャレンジを見る"
   },
   "BottomNav": {
     "home": "ホーム",
@@ -198,6 +200,11 @@
     "collectBadges": "バッジを集めて",
     "stayActive": "<span>毎日をアクティブに</span>",
     "connectFitbit": "30秒で連携。歩数は自動で反映されます。",
+    "heroHighlights": {
+      "goal": "今日の残り歩数がすぐ分かる",
+      "rank": "次の順位までの差が見える",
+      "reward": "UC報酬までの距離を追える"
+    },
     "trustLabel": "信頼性と対応環境",
     "trust": {
       "fitbit": "Fitbit 連携",
@@ -215,7 +222,57 @@
       "rankLabel": "今週の順位",
       "rankValue": "#12",
       "rewardLabel": "次の報酬",
-      "rewardValue": "+22 UC"
+      "rewardValue": "+22 UC",
+      "challengeLabel": "参加中チャレンジ",
+      "challengeValue": "週末 50,000 歩リーグ"
+    },
+    "floating": {
+      "rank": {
+        "label": "順位アップ",
+        "value": "あと 860 歩"
+      },
+      "reward": {
+        "label": "報酬",
+        "value": "+22 UC"
+      }
+    },
+    "mobileInsightsLabel": "モバイル向けの競争と報酬の見どころ",
+    "nav": {
+      "label": "ランディングページ内ナビゲーション",
+      "how": "使い方",
+      "rewards": "UC報酬",
+      "proof": "実績",
+      "start": "始める"
+    },
+    "authGate": {
+      "default": {
+        "title": "ログインすると続きから確認できます",
+        "desc": "Fitbit と連携すると、歩数・ランキング・チャレンジ・UC 報酬をあなたの状態に合わせて表示します。"
+      },
+      "groups": {
+        "title": "グループを見るにはログインが必要です",
+        "desc": "ログイン後、参加中グループや仲間との差分をそのまま確認できます。"
+      },
+      "leaderboard": {
+        "title": "ランキングを見るにはログインが必要です",
+        "desc": "ログイン後、あなたの順位と次の相手までの差を確認できます。"
+      },
+      "challenges": {
+        "title": "チャレンジを見るにはログインが必要です",
+        "desc": "ログイン後、参加できるチャレンジや報酬までの距離を確認できます。"
+      },
+      "shop": {
+        "title": "UCショップを見るにはログインが必要です",
+        "desc": "ログイン後、歩いて貯めたUCで称号・フレーム・テーマを確認できます。"
+      },
+      "wallet": {
+        "title": "ウォレットを見るにはログインが必要です",
+        "desc": "ログイン後、歩数から得たUC、ボーナス、履歴を確認できます。"
+      },
+      "profile": {
+        "title": "プロフィールを見るにはログインが必要です",
+        "desc": "ログイン後、バッジ・称号・歩数の積み上がりをプロフィールで確認できます。"
+      }
     },
     "benefits": {
       "habit": {
@@ -269,6 +326,71 @@
         "value": "200+",
         "label": "アクティブグループ"
       }
+    },
+    "journeyLabel": "Habit loop",
+    "journeyTitle": "アプリを開いた瞬間から、次の一歩まで迷わせない。",
+    "journeyDesc": "Fitbit の歩数をただ表示するだけではなく、今日の判断、競争、報酬までをひとつの流れにします。",
+    "journey": {
+      "sync": {
+        "label": "Sync",
+        "title": "歩数を自動で取り込む",
+        "desc": "Fitbit の同期状態を明示し、データが反映されているかを不安にさせません。"
+      },
+      "move": {
+        "label": "Move",
+        "title": "残り歩数を行動に変える",
+        "desc": "あと何歩か、どれくらい歩けばよいかをファーストビューで判断できます。"
+      },
+      "compete": {
+        "label": "Compete",
+        "title": "追いつける差分を見せる",
+        "desc": "順位表ではなく、次の相手までの差を見せて競争を具体的にします。"
+      },
+      "reward": {
+        "label": "Reward",
+        "title": "努力を積み上がる成果にする",
+        "desc": "UC、バッジ、チャレンジ達成を、続けたくなる達成感として見せます。"
+      }
+    },
+    "showcaseLabel": "Product feel",
+    "showcaseTitle": "白いカードだけで終わらせない、フィットネスアプリらしい熱量。",
+    "showcaseDesc": "プロ品質はシンプルさだけではなく、目的に沿った色面・数値・進捗・コミュニティ感の組み合わせで生まれます。",
+    "showcase": {
+      "today": {
+        "title": "今日の状態が主役",
+        "desc": "歩数、進捗、同期、次アクションをひとつの強い面に集約します。"
+      },
+      "league": {
+        "title": "競争と報酬が見える",
+        "desc": "ランキング、チャレンジ、UCを別々の機能ではなく習慣化ループとして見せます。"
+      }
+    },
+    "rewardPreview": {
+      "label": "Reward loop",
+      "title": "少ない日も、歩いた分がちゃんと残る。",
+      "desc": "復帰した日も、短い散歩も、UC とプロフィール装飾につながる小さな成果として見える化します。",
+      "restart": {
+        "label": "Restart",
+        "title": "まずは小さく再開",
+        "desc": "300歩や3分の散歩からでも、今日の流れを作れます。",
+        "value": "300歩"
+      },
+      "earn": {
+        "label": "Earn",
+        "title": "歩数がUCになる",
+        "desc": "例: 7,820歩なら7,820UC。目標達成でボーナスも狙えます。",
+        "value": "1歩=1UC"
+      },
+      "spend": {
+        "label": "Spend",
+        "title": "プロフィールを育てる",
+        "desc": "称号・フレーム・テーマで、続けた成果を見える形にできます。",
+        "value": "称号/フレーム"
+      }
+    },
+    "finalCta": {
+      "title": "今日の歩数を、続けたくなる成果に変えよう。",
+      "desc": "Fitbit と連携して、目標・ランキング・チャレンジ・UC 報酬をひとつのダッシュボードで確認できます。"
     }
   },
   "Leaderboard": {

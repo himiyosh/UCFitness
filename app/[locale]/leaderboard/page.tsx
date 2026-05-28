@@ -1,9 +1,10 @@
 export const runtime = 'edge';
 
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 import { auth } from '@/lib/auth';
+import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import RefreshButton from '@/components/layout/RefreshButton';
@@ -15,12 +16,15 @@ import DynamicLeaderboard from '@/components/dashboard/DynamicLeaderboard';
 export const dynamic = 'force-dynamic';
 
 export default async function LeaderboardPage() {
-  const session = await auth();
-  const t = await getTranslations('Leaderboard');
-  const dashboardT = await getTranslations('Dashboard');
+  const [session, t, dashboardT, locale] = await Promise.all([
+    auth(),
+    getTranslations('Leaderboard'),
+    getTranslations('Dashboard'),
+    getLocale(),
+  ]);
 
   if (!session?.user) {
-    redirect('/');
+    redirect(createLoginRequiredRedirect(locale, '/leaderboard'));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

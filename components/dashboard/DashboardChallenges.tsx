@@ -78,11 +78,11 @@ export default function DashboardChallenges() {
 
     if (loading) {
         return (
-            <div className="premium-card p-5">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="animate-pulse">
-                    <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
-                    <div className="h-16 bg-gray-200 rounded mb-2" />
-                    <div className="h-16 bg-gray-200 rounded" />
+                    <div className="mb-4 h-5 w-40 rounded bg-[var(--color-surface-muted)]" />
+                    <div className="mb-2 h-16 rounded bg-[var(--color-surface-muted)]" />
+                    <div className="h-16 rounded bg-[var(--color-surface-muted)]" />
                 </div>
             </div>
         );
@@ -91,14 +91,13 @@ export default function DashboardChallenges() {
     // エラーチェックを空チェックより先に行う（デフォルト空配列でエラーが隠れるバグ修正）
     if (error) {
         return (
-            <div className="premium-card p-5">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="flex flex-col items-center py-6 text-center">
-                    <span className="text-3xl mb-2">⚠️</span>
-                    <p className="text-sm font-semibold text-gray-600">{t('activeChallenges')}</p>
+                    <StatusIcon />
+                    <p className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('activeChallenges')}</p>
                     <button
                         onClick={fetchChallenges}
-                        className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-semibold min-h-[44px] hover:scale-105 active:scale-95 transition-all"
-                        style={{ background: 'var(--theme-primary)' }}
+                        className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--color-inverse-surface)]"
                     >
                         {t('retry') || '再試行'}
                     </button>
@@ -107,23 +106,38 @@ export default function DashboardChallenges() {
         );
     }
 
-    if (challenges.length === 0) return null;
+    if (challenges.length === 0) {
+        return (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-center shadow-sm">
+                <p className="text-base font-bold text-[var(--color-text)]">{t('activeChallenges')}</p>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]">
+                    {t('noActive')}
+                </p>
+                <Link
+                    href="/challenges"
+                    className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--color-primary-solid)] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-inverse-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                >
+                    {t('viewAll')}
+                </Link>
+            </div>
+        );
+    }
 
     return (
-        <div className="premium-card hover:shadow-lg transition-shadow p-5">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                    🎯 {t('activeChallenges')}
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-[var(--color-text)]">
+                    {t('activeChallenges')}
                 </h3>
                 <Link
                     href="/challenges"
-                    className="text-xs font-semibold text-[var(--theme-primary)] hover:underline"
+                    className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
                 >
                     {t('viewAll')}
                 </Link>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
                 {challenges.map(challenge => {
                     const endDate = new Date(challenge.end_date + 'T23:59:59');
                     const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -136,13 +150,15 @@ export default function DashboardChallenges() {
                         <Link
                             key={challenge.id}
                             href="/challenges"
-                            className="block p-3 rounded-xl border border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-sm transition-[border-color,box-shadow] duration-200"
+                            className="block rounded-lg border border-[var(--color-border)] p-2.5 transition-colors duration-200 hover:border-[var(--theme-primary)]/30 hover:bg-[var(--color-bg)]"
                         >
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-800 truncate">{challenge.title}</p>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-[var(--foreground-muted)]">
-                                    <span>🪙 {challenge.reward_uc} UC</span>
-                                    <span>🕐 {t('daysLeft', { count: daysLeft })}</span>
+                                <p className="truncate text-sm font-semibold text-[var(--color-text)]">
+                                    {formatChallengeTitle(challenge.title, challenge.target_steps, t)}
+                                </p>
+                                <div className="mt-1 flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
+                                    <span>{t('reward')}: {challenge.reward_uc} UC</span>
+                                    <span>{t('daysLeft', { count: daysLeft })}</span>
                                 </div>
                             </div>
 
@@ -153,7 +169,7 @@ export default function DashboardChallenges() {
                                         {currentSteps.toLocaleString()} / {challenge.target_steps.toLocaleString()} {t('stepsUnit')}
                                     </span>
                                     <span className={`text-[10px] font-bold ${isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
-                                        {isCompleted ? '🎉 ' : ''}{stepsPercent}%
+                                        {stepsPercent}%
                                     </span>
                                 </div>
                                 <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -204,5 +220,32 @@ export default function DashboardChallenges() {
                 })}
             </div>
         </div>
+    );
+}
+
+function stripLeadingEmoji(text: string): string {
+    return text.replace(/^\p{Extended_Pictographic}[\uFE0F]?\s*/u, '');
+}
+
+function formatChallengeTitle(
+    title: string,
+    targetSteps: number,
+    t: ReturnType<typeof useTranslations<'Challenge'>>
+): string {
+    const plainTitle = stripLeadingEmoji(title);
+    const lowerTitle = plainTitle.toLowerCase();
+    if (plainTitle.includes('ウィークリー') || lowerTitle.includes('weekly')) {
+        return t('weeklyChallengeTitle', { steps: targetSteps.toLocaleString() });
+    }
+    return plainTitle;
+}
+
+function StatusIcon() {
+    return (
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-[var(--color-danger)]" aria-hidden="true">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+            </svg>
+        </span>
     );
 }

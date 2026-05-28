@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
     Area,
@@ -8,7 +8,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer,
     Bar,
     ComposedChart,
     Cell,
@@ -53,6 +52,8 @@ interface CustomTooltipProps {
 
 export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     const t = useTranslations('Bank');
+    const chartHostRef = useRef<HTMLDivElement>(null);
+    const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
     // パフォーマンス: Recharts の props オブジェクトを安定化し、不要な再マウントを防止
     const chartMargin = useMemo(() => ({ top: 5, right: 0, left: -20, bottom: 5 }), []);
@@ -119,6 +120,24 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
         return null;
     }, [t]);
 
+    useEffect(() => {
+        const element = chartHostRef.current;
+        if (!element) return;
+
+        const updateSize = () => {
+            setChartSize({
+                width: Math.max(0, Math.floor(element.clientWidth)),
+                height: Math.max(0, Math.floor(element.clientHeight)),
+            });
+        };
+
+        updateSize();
+        const observer = new ResizeObserver(updateSize);
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, []);
+
     if (!data || data.length === 0) {
         return (
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -144,9 +163,9 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                 <span className="text-xs text-gray-400" aria-hidden="true">{t('last30days')}</span>
             </div>
 
-            <div className="h-72 sm:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={chartMargin}>
+            <div ref={chartHostRef} className="h-48 min-w-0 overflow-hidden sm:h-52">
+                {chartSize.width > 0 && chartSize.height > 0 && (
+                    <ComposedChart width={chartSize.width} height={chartSize.height} data={chartData} margin={chartMargin}>
                         <defs>
                             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
@@ -209,7 +228,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                             activeDot={activeDotStyle}
                         />
                     </ComposedChart>
-                </ResponsiveContainer>
+                )}
             </div>
         </div>
     );

@@ -352,13 +352,13 @@ interface MissionTemplate {
 }
 
 const MISSION_POOL: MissionTemplate[] = [
-    { type: 'WALK_1K', title: '👣 1,000歩を歩こう', description: '今日1,000歩以上歩く', rewardUc: 15 },
-    { type: 'WALK_3K', title: '🚶 3,000歩を歩こう', description: '今日3,000歩以上歩く', rewardUc: 30 },
-    { type: 'WALK_5K', title: '🏃 5,000歩チャレンジ', description: '今日5,000歩以上歩く', rewardUc: 50 },
-    { type: 'WALK_8K', title: '💪 8,000歩を目指せ', description: '今日8,000歩以上歩く', rewardUc: 80 },
-    { type: 'WALK_10K', title: '🔥 10,000歩の壁を越えろ', description: '今日10,000歩以上歩く', rewardUc: 100 },
-    { type: 'WALK_15K', title: '🏆 15,000歩マスター', description: '今日15,000歩以上歩く', rewardUc: 150 },
-    { type: 'LOGIN', title: '📱 ログインしよう', description: 'UCFitnessにログインする', rewardUc: 10 },
+    { type: 'WALK_1K', title: '1,000歩を歩こう', description: '今日1,000歩以上歩く', rewardUc: 15 },
+    { type: 'WALK_3K', title: '3,000歩を歩こう', description: '今日3,000歩以上歩く', rewardUc: 30 },
+    { type: 'WALK_5K', title: '5,000歩チャレンジ', description: '今日5,000歩以上歩く', rewardUc: 50 },
+    { type: 'WALK_8K', title: '8,000歩を目指せ', description: '今日8,000歩以上歩く', rewardUc: 80 },
+    { type: 'WALK_10K', title: '10,000歩の壁を越えよう', description: '今日10,000歩以上歩く', rewardUc: 100 },
+    { type: 'WALK_15K', title: '15,000歩マスター', description: '今日15,000歩以上歩く', rewardUc: 150 },
+    { type: 'LOGIN', title: 'ログインしよう', description: 'UCFitnessにログインする', rewardUc: 10 },
 ];
 
 function generateDailyMissions(date: string): MissionTemplate[] {
