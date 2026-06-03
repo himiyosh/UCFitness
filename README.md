@@ -118,6 +118,7 @@ UCFitness/
 +-- docs/                    # ドキュメント
 |   +-- CLOUDFLARE_SETUP.md  # Cloudflare Pages セットアップ手順
 |   +-- improvement-report.md
+|   +-- common-agentic-project-rules.md
 |   +-- security-hardening-notes.md
 +-- .github/
 |   +-- copilot-instructions.md  # Copilot 共通指示
@@ -285,6 +286,7 @@ npm run pages:build
 │
 ├── ⚡ Slash Commands (Prompts) — ユーザーが直接呼び出す定型タスク
 │   ├── 📋 /context-map                    プロジェクトコンテキストマップ生成
+│   ├── 🧭 /common-agentic-rules-maintainer 共通 Agentic Engineering ルール継続改善
 │   ├── 📝 /conventional-commit            コミットメッセージ生成
 │   ├── 📖 /copilot-instructions-blueprint Copilot Instructions テンプレート
 │   ├── 📐 /create-implementation-plan     実装計画作成
