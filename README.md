@@ -219,7 +219,7 @@ npm run pages:build
 | ファイル | 概要 |
 |---|---|
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | メイン指示 (コーディング規約、ページパターン、UI ルール等) |
-| [.github/instructions/](.github/instructions/) | 補助 Instructions (18 ファイル: a11y, hooks, security, mobile 等) |
+| [.github/instructions/](.github/instructions/) | 補助 Instructions (20 ファイル: 共通 Agentic Engineering, Persona, a11y, hooks, security, mobile 等) |
 
 <details>
 <summary>awesome-copilot Instructions (クリックで展開)</summary>
@@ -311,7 +311,7 @@ npm run pages:build
 │
 ├── 📋 Shared Instructions (全エージェント共通ルール)
 │   ├── copilot-instructions.md            リポジトリ共通ルール・コーディング規約
-│   └── .github/instructions/ (18 files)   a11y / hooks / security / mobile 等
+│   └── .github/instructions/ (20 files)   agentic engineering / persona / a11y / hooks / security / mobile 等
 │
 └── 🔧 Skills (再利用可能なドメイン知識)
     ├── modern-web-guidance                Chrome Modern Web Guidance / Baseline 2024 / Web 標準ベストプラクティス

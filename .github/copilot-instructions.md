@@ -15,6 +15,13 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - **チャート**: Recharts
 - **MCP サーバー**: Supabase MCP (`com.supabase/mcp`) — SQL 実行・テーブル管理・マイグレーション・ログ取得に使用。プロジェクト ID: `lmqpkoyypxccdbtgycty`
 
+## 共通ルール参照
+
+- `.github/instructions/agentic-engineering-rules.md` を共通の作業プロセス・安全運用・検証ルールとして参照する。
+- `.github/instructions/agent-persona-rules.md` を共通の振る舞いルールとして参照する。
+- ただし、UCFitness 固有の絶対制約（日本語応答、Next.js 15 / Edge Runtime、左サイドバーなし App Shell、Fitbit / Supabase / next-intl、デプロイ制限など）は本ファイルを優先する。
+- 共通ルールと本ファイルが矛盾する場合は、勝手に統合せずユーザーに確認する。
+
 ## 絶対遵守ルール
 
 ### ブランチ保護
