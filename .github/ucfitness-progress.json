@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-12T05:11:51+09:00",
+  "lastUpdated": "2026-07-12T05:25:25+09:00",
   "lastAgent": "UCFitnessAgent (Next.js + React + UX + Self-Critique)",
-  "lastCommit": "59acce37345891d708c3924471978cf3becc24c0",
+  "lastCommit": "71e0b58fd5a46dc932319990596a9decb32a9acb",
   "lastBranch": "himiyosh-improve-authenticated-ui",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "認証後ホームと共通App Shellを、今日の進捗、週間順位の追いつける差、UC報酬、次の行動の順へ再構成した。Classic/Midnightの意味トークン、44px操作領域、自然スクロール、キーボード操作を整え、ランキング・健康データ同期・Safari localhost CSSの契約を変更せずに密度とフィードバックを改善した。",
+  "summary": "認証後ホームと共通App Shellを、今日の進捗、週間順位の追いつける差、UC報酬、次の行動の順へ再構成した。Classic/Midnightの意味トークン、44px操作領域、自然スクロール、キーボード操作を整え、ホームのデスクトップFooterは既存の全認証ページ向け非表示契約を壊さないopt-in規則で表示し、ヘッダー・本文・Footerの左右基準を統一した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warningはF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-12T05:11:51+09:00"
+    "lastVerified": "2026-07-12T05:22:36+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -231,6 +231,29 @@
         "messages/ja.json",
         "messages/en.json",
         "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Final Review Fix)",
+      "action": "最終コードレビューで検出されたホームのデスクトップFooter非表示を修正。全認証ページ向けのFooter非表示契約は維持し、home-desktop-footer配下だけを768px以上で明示表示するopt-in CSSを追加した。実CSSのカスケードを375px/1280pxで検証し、モバイル非表示・デスクトップ表示・横あふれなしを確認した。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Final Review Fix)",
+      "action": "Footer例外の自己批判で検出したホーム内側コンテナの左右基準を、既存Footerと同じpx-4/sm:px-6/lg:px-8へ統一した。unlayered CSS例外の確認不足はLL-032として固定し、ホーム機能説明と変更記録を同期した。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "README.md",
+        ".github/copilot-instructions.md",
         ".github/ucfitness-progress.json"
       ]
     }

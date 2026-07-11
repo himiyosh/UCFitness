@@ -1213,3 +1213,10 @@ export const runtime = "edge";
 - **根本原因**: `next.config.ts` が開発環境にも `upgrade-insecure-requests` を送信していた。Safariは相対URLの `/_next/static/css/...` もHTTPSへ変換するため、HTTPだけを提供するNext.js開発サーバーへのCSS取得がTLSエラーになった。
 - **対策**: `upgrade-insecure-requests` を本番環境だけのCSPディレクティブに変更した。開発環境ではCSSをHTTPで配信し、本番のHTTPS強制は維持する。サーバー再起動後に開発CSP、CSSのHTTP 200、Safariの実表示を確認する。
 - **教訓**: セキュリティヘッダーは本番とローカル開発の通信条件を分離する。ルートHTMLの200だけでは描画成功を保証しないため、通常ブラウザのCSS適用と主要アセット取得までをローカル表示の完了条件にする。リファレンス: `next.config.ts`
+
+### LL-032: unlayeredなFooter非表示規則がホームのデスクトップFooterを覆い隠した
+
+- **事象**: 認証済み共通シェルの`.uc-auth-content :where(footer) { display: none; }`がTailwindの`hidden md:block`より優先され、ホームで意図したデスクトップFooterも常に非表示になった。
+- **根本原因**: グローバルCSSのunlayered規則がTailwind utility layerより高いカスケード優先度を持つことを、例外として追加したFooterまで含めて確認していなかった。
+- **対策**: 全認証ページ向けの非表示契約は維持し、ホームの`home-desktop-footer`配下だけを同じunlayered CSSで`@media (min-width: 768px)`時に明示表示するopt-in規則を追加した。実CSSを375px/1280pxで検証し、前者は非表示、後者は表示を確認した。
+- **教訓**: unlayeredグローバルCSSがTailwind utilityを覆う領域へ例外を追加する場合は、全体ルールを削除せず、名前付きの局所opt-inを同じカスケード領域に置く。例外要素のcomputed `display`をモバイルとデスクトップの両方で実測する。

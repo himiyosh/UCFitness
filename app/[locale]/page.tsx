@@ -135,7 +135,7 @@ export default async function Home(): Promise<ReactNode> {
 
       {/* lg 以上のヘッダー（サイドバーと共存するコンパクト版） */}
       <header className="sticky top-0 z-40 hidden border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
-        <div className="mx-auto flex h-11 w-full max-w-7xl items-center justify-end px-3 lg:px-4 xl:px-5">
+        <div className="mx-auto flex h-11 w-full max-w-7xl items-center justify-end px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-1">
             <RefreshButton />
             <NotificationBell />
@@ -151,7 +151,7 @@ export default async function Home(): Promise<ReactNode> {
 
       {/* ===== 今日の進捗 → 競争 → UC報酬 → 次の行動 ===== */}
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
-        <div className="flex w-full flex-col gap-3 px-3 py-3 lg:px-4 xl:px-5">
+        <div className="flex w-full flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.8fr)_minmax(280px,1fr)]">
             <div className="min-w-0 md:col-span-2 lg:col-span-1">
               <HomeHero
@@ -179,7 +179,7 @@ export default async function Home(): Promise<ReactNode> {
           <NextActionCard id="next-action" remainingSteps={remainingSteps} />
           <QuickActions />
         </div>
-        <div className="hidden md:block">
+        <div className="home-desktop-footer hidden md:block">
           <Footer />
         </div>
       </div>
