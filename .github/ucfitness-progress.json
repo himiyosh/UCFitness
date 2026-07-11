@@ -1,26 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-12T05:25:25+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + React + UX + Self-Critique)",
-  "lastCommit": "71e0b58fd5a46dc932319990596a9decb32a9acb",
-  "lastBranch": "himiyosh-improve-authenticated-ui",
+  "lastUpdated": "2026-07-12T08:01:57+09:00",
+  "lastAgent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+  "lastCommit": "fe220c95a75090cac93e9a7a91163f09482539aa",
+  "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "認証後ホームと共通App Shellを、今日の進捗、週間順位の追いつける差、UC報酬、次の行動の順へ再構成した。Classic/Midnightの意味トークン、44px操作領域、自然スクロール、キーボード操作を整え、ホームのデスクトップFooterは既存の全認証ページ向け非表示契約を壊さないopt-in規則で表示し、ヘッダー・本文・Footerの左右基準を統一した。",
+  "summary": "復旧コピーの4コミットを正本へ移管後、認証後モバイル導線のP0/P1を再監査した。BottomNavの12px・AAコントラスト、safe-area込み本文余白、ホームからのShop導線、チャレンジ参加状態・翻訳・未参加時の誤認を修正し、4幅×Classic/Midnight、全159テスト、5ペルソナ、自己批判ゲートで確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warningはF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-12T05:22:36+09:00"
+    "lastVerified": "2026-07-12T08:01:57+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
     "Creators API 資格未達（10件/30日）",
     "カードリストのモバイル横スクロールは md ブレイクポイントで切替",
     "Google Healthの実Supabaseマイグレーション適用と実OAuth E2Eは資格情報・本番データ変更承認待ち",
-    "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要"
+    "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
+    "/api/steps/sync は未適用のfitness connection DB契約により FITNESS_CONNECTION_DATABASE_ERROR となる環境がある",
+    "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -254,6 +256,24 @@
         "app/[locale]/page.tsx",
         "README.md",
         ".github/copilot-instructions.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "復旧コミット列を正本へ移管し、認証後モバイル導線の残存P0/P1を修正。BottomNavの可読性とsafe-area予約、Shop導線、チャレンジ参加状態・エラー翻訳・未参加時の進捗誤認を改善し、375/768/1280/1920pxのClassic/Midnight、全159テスト、5ペルソナ、自己批判ゲートで確認した。",
+      "commit": "fe220c95a75090cac93e9a7a91163f09482539aa",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        "README.md",
+        "app/[locale]/layout.tsx",
+        "app/globals.css",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "messages/en.json",
+        "messages/ja.json",
         ".github/ucfitness-progress.json"
       ]
     }
