@@ -266,7 +266,7 @@ export default function NotificationBell() {
 
                 {/* 未読バッジ */}
                 {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-[10px] font-bold leading-none text-[var(--color-inverse-text)]">
+                    <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-xs font-bold leading-none text-[var(--color-inverse-text)]">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
@@ -459,7 +459,7 @@ function FeedItemRow({
 
                 {/* バッジ詳細 */}
                 {item.type === 'BADGE_EARNED' && Boolean(item.data.badgeName) && (
-                    <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-medium text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded-full">
+                    <span className="inline-flex items-center gap-1 mt-0.5 text-xs font-medium text-[var(--color-primary-strong)] bg-[var(--color-primary-soft)] px-1.5 py-0.5 rounded-full">
                         {item.data.badgeImage ? String(item.data.badgeImage) : null}
                         {String(item.data.badgeName)}
                     </span>
@@ -467,12 +467,12 @@ function FeedItemRow({
 
                 {/* 歩数マイルストーン */}
                 {item.type === 'STEP_MILESTONE' && (
-                    <span className="inline-block mt-0.5 text-[10px] font-bold text-[var(--theme-primary)]">
+                    <span className="inline-block mt-0.5 text-xs font-bold text-[var(--color-primary-strong)]">
                         {formatSteps(item.data.steps as number)} {t('stepsUnit')}
                     </span>
                 )}
 
-                <p className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">{relativeTime}</p>
+                <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{relativeTime}</p>
             </div>
         </div>
     );

@@ -150,7 +150,7 @@ export default function DailyMissions(): ReactNode {
                         {t('dailyMissions')}
                     </h2>
                     <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-reward-strong)] tabular-nums uppercase tracking-wider">
+                        <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 text-xs font-bold text-[var(--color-reward-strong)] tabular-nums uppercase tracking-wider">
                             {completedCount}/{missions.length}
                         </span>
                         {/* 再チェックボタン */}
@@ -229,7 +229,7 @@ export default function DailyMissions(): ReactNode {
                                     {t('streak', { days: streak })}
                                 </p>
                                 {streak >= 3 && (
-                                    <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-reward-strong)]">
+                                    <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-[var(--color-reward-strong)]">
                                         {streak >= 7 ? t('streakAmazing') : t('streakGreat')}
                                     </span>
                                 )}

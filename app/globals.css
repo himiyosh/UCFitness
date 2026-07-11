@@ -185,6 +185,12 @@ body {
   font-size: 0.75rem;
 }
 
+.safe-area-bottom > div > a:focus-visible {
+  border-radius: 0.5rem;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* ==== THIN SCROLLBAR (フィードエリア用) ==== */
 .scrollbar-thin {
   scrollbar-width: thin;

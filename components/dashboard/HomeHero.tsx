@@ -82,7 +82,7 @@ export default function HomeHero({
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                 <p className="text-xs font-medium text-[var(--color-text-muted)]">{t('todayLabel')}</p>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                   hasTodaySteps
                     ? 'bg-[var(--color-success-soft)] text-[var(--color-success-strong)]'
                     : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
@@ -154,7 +154,7 @@ export default function HomeHero({
             #
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-competition-strong)]">
+            <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-competition-strong)]">
               {t('globalRankLabel')}
             </span>
             <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">

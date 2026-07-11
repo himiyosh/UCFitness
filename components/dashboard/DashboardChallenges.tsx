@@ -132,13 +132,13 @@ export default function DashboardChallenges(): ReactNode {
             <div className="rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-competition)] bg-[var(--color-surface)] p-3 text-center shadow-sm">
                 <h2 className="text-base font-bold text-[var(--color-text)]">{t('activeChallenges')}</h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]" role="status">
-                    {t('noActive')}
+                    {t('dashboardEmpty')}
                 </p>
                 <Link
                     href="/challenges"
                     className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--color-primary-solid)] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-inverse-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                 >
-                    {t('viewAll')}
+                    {t('dashboardBrowse')}
                 </Link>
             </div>
         );

@@ -168,9 +168,11 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
             {!loading && !error && challenges.length === 0 && (
                 <div className="text-center py-16">
                     <div className="text-5xl mb-4">🎯</div>
-                    <p className="text-gray-500 text-sm mb-2">{t('noActive')}</p>
+                    <p className="mb-2 text-sm text-[var(--color-text-muted)]">
+                        {tab === 'active' ? t('listEmptyActive') : t('listEmptyCompleted')}
+                    </p>
                     {tab === 'active' && (
-                        <p className="text-xs text-gray-400">{t('createNewHint')}</p>
+                        <p className="text-xs text-[var(--color-text-muted)]">{t('listEmptyActiveHint')}</p>
                     )}
                 </div>
             )}
