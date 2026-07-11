@@ -10,8 +10,8 @@ interface QuickActionsProps {
   className?: string;
 }
 
-type QuickActionIcon = 'leaderboard' | 'challenges' | 'groups' | 'profile';
-type QuickActionTone = 'primary' | 'success' | 'competition' | 'neutral';
+type QuickActionIcon = 'leaderboard' | 'challenges' | 'groups' | 'profile' | 'shop';
+type QuickActionTone = 'primary' | 'success' | 'competition' | 'reward' | 'neutral';
 
 export default function QuickActions({ className = '' }: QuickActionsProps): ReactNode {
   const t = useTranslations('Dashboard');
@@ -21,9 +21,9 @@ export default function QuickActions({ className = '' }: QuickActionsProps): Rea
   // クイックアクション定義
   const quickActions = useMemo(() => [
     { href: '/leaderboard' as const, icon: 'leaderboard' as const, label: navT('ranking'), tone: 'competition' as const },
-    { href: '/challenges' as const, icon: 'challenges' as const, label: t('challenges'), tone: 'primary' as const },
-    { href: '/groups' as const, icon: 'groups' as const, label: t('groups'), tone: 'success' as const },
-    { href: '/profile' as const, icon: 'profile' as const, label: t('profile'), tone: 'neutral' as const },
+    { href: '/challenges' as const, icon: 'challenges' as const, label: t('challenges'), tone: 'competition' as const },
+    { href: '/groups' as const, icon: 'groups' as const, label: t('groups'), tone: 'neutral' as const },
+    { href: '/shop' as const, icon: 'shop' as const, label: t('shop'), tone: 'reward' as const },
   ], [navT, t]);
 
   return (
@@ -62,6 +62,13 @@ function getActionToneClasses(tone: QuickActionTone): { card: string; icon: stri
       label: 'text-[var(--color-success-strong)]',
     };
   }
+  if (tone === 'reward') {
+    return {
+      card: 'border-[var(--color-reward)]/30 bg-[var(--color-reward-soft)] hover:border-[var(--color-reward)]',
+      icon: 'bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]',
+      label: 'text-[var(--color-reward-strong)]',
+    };
+  }
   if (tone === 'neutral') {
     return {
       card: 'border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]',
@@ -95,6 +102,13 @@ function ActionIcon({ name }: { name: QuickActionIcon }) {
     return (
       <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m0 14h16M8 15l3-3 3 2 5-7" />
+      </svg>
+    );
+  }
+  if (name === 'shop') {
+    return (
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 8h12l1 12H5L6 8Zm3 0V6a3 3 0 0 1 6 0v2" />
       </svg>
     );
   }

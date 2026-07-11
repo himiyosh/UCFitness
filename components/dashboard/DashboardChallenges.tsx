@@ -31,6 +31,17 @@ interface DashboardChallenge {
     participant_avatars?: ParticipantAvatar[];
 }
 
+interface DashboardChallengeResponse {
+    challenges: DashboardChallenge[];
+}
+
+function isDashboardChallengeResponse(value: unknown): value is DashboardChallengeResponse {
+    return typeof value === 'object'
+        && value !== null
+        && 'challenges' in value
+        && Array.isArray(value.challenges);
+}
+
 export default function DashboardChallenges(): ReactNode {
     const t = useTranslations('Challenge');
     const [challenges, setChallenges] = useState<DashboardChallenge[]>([]);
@@ -48,8 +59,11 @@ export default function DashboardChallenges(): ReactNode {
                 setError(true);
                 return;
             }
-            const data = await res.json();
-            const sliced = (data.challenges || []).slice(0, 2);
+            const data: unknown = await res.json();
+            const challengeList = isDashboardChallengeResponse(data) ? data.challenges : [];
+            const sliced = [...challengeList]
+                .sort((first, second) => Number(second.is_joined) - Number(first.is_joined))
+                .slice(0, 2);
             setChallenges(sliced);
 
             // 参加済みチャレンジの歩数進捗を取得
@@ -164,32 +178,44 @@ export default function DashboardChallenges(): ReactNode {
                                     {formatChallengeTitle(challenge.title, challenge.target_steps, t)}
                                 </p>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                    <span className={`rounded-full px-2 py-0.5 font-semibold ${
+                                        challenge.is_joined
+                                            ? 'bg-[var(--color-success-soft)] text-[var(--color-success-strong)]'
+                                            : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
+                                    }`}>
+                                        {challenge.is_joined ? t('joined') : t('notJoined')}
+                                    </span>
                                     <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 font-semibold text-[var(--color-reward-strong)]">{t('reward')}: {challenge.reward_uc} UC</span>
                                     <span>{t('daysLeft', { count: daysLeft })}</span>
                                 </div>
                             </div>
 
-                            {/* 歩数プログレスバー */}
-                            <div className="mt-2">
-                                <div className="flex items-center justify-between mb-0.5">
-                                    <span className="text-[10px] text-[var(--color-text-muted)]">
-                                        {currentSteps.toLocaleString()} / {challenge.target_steps.toLocaleString()} {t('stepsUnit')}
-                                    </span>
-                                    <span className={`text-[10px] font-bold ${isCompleted ? 'text-[var(--color-success-strong)]' : 'text-[var(--color-competition-strong)]'}`}>
-                                        {stepsPercent}%
-                                    </span>
+                            {challenge.is_joined ? (
+                                <div className="mt-2">
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <span className="text-xs text-[var(--color-text-muted)]">
+                                            {currentSteps.toLocaleString()} / {challenge.target_steps.toLocaleString()} {t('stepsUnit')}
+                                        </span>
+                                        <span className={`text-xs font-bold ${isCompleted ? 'text-[var(--color-success-strong)]' : 'text-[var(--color-competition-strong)]'}`}>
+                                            {stepsPercent}%
+                                        </span>
+                                    </div>
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
+                                        <div
+                                            className={`h-full rounded-full transition-[width] duration-700 ${
+                                                isCompleted
+                                                    ? 'bg-[var(--color-success)]'
+                                                    : 'bg-[var(--color-competition-solid)]'
+                                            }`}
+                                            style={{ width: `${stepsPercent}%` }}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
-                                    <div
-                                        className={`h-full rounded-full transition-[width] duration-700 ${
-                                            isCompleted
-                                                ? 'bg-[var(--color-success)]'
-                                                : 'bg-[var(--color-competition-solid)]'
-                                        }`}
-                                        style={{ width: `${stepsPercent}%` }}
-                                    />
-                                </div>
-                            </div>
+                            ) : (
+                                <p className="mt-2 text-xs font-medium text-[var(--color-text-muted)]">
+                                    {t('joinToTrack')}
+                                </p>
+                            )}
 
                             {/* 参加者アイコン */}
                             <div className="flex items-center mt-2">
@@ -198,27 +224,27 @@ export default function DashboardChallenges(): ReactNode {
                                         {avatars.slice(0, 4).map((avatar, idx) => (
                                             <div
                                                 key={avatar.username || idx}
-                                                className="h-5 w-5 shrink-0 overflow-hidden rounded-full border-[1.5px] border-[var(--color-surface)] bg-[var(--color-surface-muted)]"
+                                                className="h-6 w-6 shrink-0 overflow-hidden rounded-full border-[1.5px] border-[var(--color-surface)] bg-[var(--color-surface-muted)]"
                                                 style={{ zIndex: avatars.length - idx }}
                                             >
                                                 {avatar.image ? (
                                                     // eslint-disable-next-line @next/next/no-img-element
                                                     <img src={avatar.image} alt={avatar.name || ''} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <div className="flex h-full w-full items-center justify-center bg-[var(--color-surface-muted)] text-[8px] font-bold text-[var(--color-text-muted)]">
+                                                    <div className="flex h-full w-full items-center justify-center bg-[var(--color-surface-muted)] text-xs font-bold text-[var(--color-text-muted)]">
                                                         {(avatar.name || avatar.username || '?')[0]?.toUpperCase()}
                                                     </div>
                                                 )}
                                             </div>
                                         ))}
                                         {challenge.participant_count > 4 && (
-                                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--color-surface)] bg-[var(--color-surface-muted)] text-[8px] font-bold text-[var(--color-text-muted)]">
+                                            <div className="flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[var(--color-surface)] bg-[var(--color-surface-muted)] px-1 text-xs font-bold text-[var(--color-text-muted)]">
                                                 +{challenge.participant_count - 4}
                                             </div>
                                         )}
                                     </div>
                                 )}
-                                <span className="ml-1.5 text-[10px] text-[var(--color-text-muted)]">
+                                <span className="ml-1.5 text-xs text-[var(--color-text-muted)]">
                                     {challenge.participant_count}{t('participantUnit')}
                                 </span>
                             </div>

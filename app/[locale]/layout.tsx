@@ -153,7 +153,7 @@ export default async function LocaleLayout({
                 <LanguageSyncer user={languageUser} />
                 <div
                   id="main-content"
-                  className={`relative flex min-h-screen flex-col ${shellUser ? "uc-auth-shell pb-16 sm:pb-0 lg:flex-row" : ""}`}
+                  className={`relative flex min-h-screen flex-col ${shellUser ? "uc-auth-shell pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0 lg:flex-row" : ""}`}
                   style={{ zIndex: 20 }}
                 >
                   {shellUser && (

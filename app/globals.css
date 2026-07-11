@@ -173,6 +173,18 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.safe-area-bottom > div > a:not([aria-current="page"]) {
+  color: var(--color-text-muted);
+}
+
+.safe-area-bottom > div > a:not([aria-current="page"]):hover {
+  color: var(--color-text);
+}
+
+.safe-area-bottom > div > a > span:last-child {
+  font-size: 0.75rem;
+}
+
 /* ==== THIN SCROLLBAR (フィードエリア用) ==== */
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -2007,8 +2019,8 @@ a, button, [role="button"] {
   backdrop-filter: blur(24px) saturate(160%) !important;
   border-top-color: rgba(100, 116, 139, 0.2) !important;
 }
-[data-theme="midnight"] nav[role="navigation"] a {
-  color: rgba(148, 163, 184, 0.7);
+[data-theme="midnight"] nav[role="navigation"] a:not([aria-current="page"]) {
+  color: var(--color-text-muted);
 }
 [data-theme="midnight"] nav[role="navigation"] a[aria-current="page"] {
   color: #818cf8 !important;
