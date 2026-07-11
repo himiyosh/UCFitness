@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-12T04:01:07+09:00",
+  "lastUpdated": "2026-07-12T04:01:58+09:00",
   "lastAgent": "UCFitnessAgent (Next.js + Debug + Self-Critique)",
-  "lastCommit": "07e15b6eba8291f681acd997d0a27ece6490742b",
+  "lastCommit": "59acce37345891d708c3924471978cf3becc24c0",
   "lastBranch": "restore-competitive-fitness-roadmap",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "欠損したworktreeからGoogle Health移行、公開LP再設計、Safari localhost CSS修復を含む全ソース差分を新しいGit作業コピーへ復元した。型・Lint・ルール・i18n・全159テストが通る状態で、認証後UIの密度・意味色・UX改善を継続できる。",
@@ -177,7 +177,7 @@
       "date": "2026-07-12",
       "agent": "UCFitnessAgent (Next.js + Debug + Self-Critique)",
       "action": "SafariでlocalhostのCSSが外れる障害を修復。開発CSPからupgrade-insecure-requestsを除外し、本番CSPでは維持した。CSSのHTTP 200・text/css配信とSafari実表示を確認し、開発CSPと通常ブラウザ表示の検査手順をルール化。",
-      "commit": "",
+      "commit": "59acce37345891d708c3924471978cf3becc24c0",
       "filesChanged": [
         "next.config.ts",
         ".github/copilot-instructions.md",
@@ -190,7 +190,7 @@
       "date": "2026-07-12",
       "agent": "UCFitnessAgent",
       "action": "Git worktreeメタデータ欠損に対し、GitHub mainから新しい作業コピーを作成して現在の全ソース差分を再適用。元フォルダは変更せず保持し、復旧先で型・Lint・ルール・i18n・全159テストを確認。",
-      "commit": "",
+      "commit": "59acce37345891d708c3924471978cf3becc24c0",
       "filesChanged": [
         ".github/ucfitness-progress.json"
       ]
