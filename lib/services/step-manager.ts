@@ -1,10 +1,28 @@
+import { getFitbitActivityTimeSeriesByDateRange, getFitbitSteps, refreshFitbitToken } from '@/lib/api/fitbit';
+import { addDaysToIsoDate } from '@/lib/api/google-health';
+import { getJSTDateString } from '@/lib/date-utils';
+import { AppError, reportError } from '@/lib/errors';
+import {
+    claimGoogleHealthSync,
+    getAllGoogleHealthSyncSelections,
+    getGoogleHealthSyncSelection,
+    markGoogleHealthHistorySynced,
+    markGoogleHealthSynced,
+    releaseGoogleHealthSync,
+} from '@/lib/services/fitness-connection-service';
+import { createGoogleHealthStepReader } from '@/lib/services/google-health-step-source';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getFitbitSteps, refreshFitbitToken, getFitbitActivityTimeSeriesByDateRange } from '@/lib/api/fitbit';
+
+import type {
+    GoogleHealthConnection,
+    GoogleHealthSyncClaim,
+    GoogleHealthSyncSelection,
+} from '@/lib/services/fitness-connection-service';
+import type { GoogleHealthDailySteps } from '@/lib/api/google-health';
+
 import { checkAndAwardBadges } from './badge-allocator';
 import { processCoins } from './coin-service';
 import { checkAndAwardTitleAchievements } from './title-achievement-service';
-import { reportError } from '@/lib/errors';
-import { getJSTDateString } from '@/lib/date-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +39,154 @@ interface User {
 interface FitbitTimeSeriesEntry {
     dateTime: string;
     value: string;
+}
+
+interface FitbitDailySteps {
+    date: string;
+    steps: number;
+}
+
+const USER_SYNC_BATCH_SIZE = 5;
+
+export type StepSyncCode =
+    | 'updated'
+    | 'no_data'
+    | 'reauthorization_required'
+    | 'sync_in_progress'
+    | 'unavailable';
+
+export interface StepSyncResult {
+    code: StepSyncCode;
+    source: 'fitbit' | 'google_health' | null;
+    steps: number | null;
+}
+
+type GoogleHealthLeaseResult<T> =
+    | { status: 'acquired'; value: T }
+    | { status: 'sync_in_progress' }
+    | { status: 'unavailable' };
+
+async function replaceGoogleHealthStepRange(
+    userId: string,
+    startDate: string,
+    endDate: string,
+    dailySteps: GoogleHealthDailySteps[],
+    claimId: string,
+): Promise<void> {
+    const { error } = await supabaseAdmin.rpc('replace_daily_steps_range', {
+        p_user_id: userId,
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_rows: dailySteps,
+        p_claim_id: claimId,
+    });
+    if (error) {
+        throw error;
+    }
+}
+
+async function upsertGoogleHealthCurrentSteps(
+    userId: string,
+    date: string,
+    steps: number,
+    claimId: string,
+): Promise<number> {
+    const { data, error } = await supabaseAdmin.rpc('upsert_daily_steps_max', {
+        p_user_id: userId,
+        p_date: date,
+        p_steps: steps,
+        p_claim_id: claimId,
+    });
+    if (error) {
+        throw error;
+    }
+    if (typeof data !== 'number' || !Number.isSafeInteger(data) || data < 0) {
+        throw new Error('Google Health daily step upsert returned an invalid value');
+    }
+    return data;
+}
+
+async function upsertFitbitCurrentSteps(
+    userId: string,
+    date: string,
+    steps: number,
+): Promise<number> {
+    const { data, error } = await supabaseAdmin.rpc('upsert_fitbit_daily_steps_max', {
+        p_user_id: userId,
+        p_date: date,
+        p_steps: steps,
+    });
+    if (error) {
+        throw error;
+    }
+    if (typeof data !== 'number' || !Number.isSafeInteger(data) || data < 0) {
+        throw new Error('Fitbit daily step upsert returned an invalid value');
+    }
+    return data;
+}
+
+async function upsertFitbitHistoryBatch(
+    userId: string,
+    rows: FitbitDailySteps[],
+): Promise<void> {
+    const { data, error } = await supabaseAdmin.rpc(
+        'upsert_fitbit_daily_steps_batch',
+        {
+            p_user_id: userId,
+            p_rows: rows,
+        },
+    );
+    if (error) {
+        throw error;
+    }
+    if (
+        typeof data !== 'number'
+        || !Number.isSafeInteger(data)
+        || data < 0
+        || data > rows.length
+    ) {
+        throw new Error('Fitbit history batch upsert returned an invalid value');
+    }
+}
+
+async function markGoogleHealthSyncedSafely(
+    userId: string,
+    claimId: string,
+): Promise<void> {
+    try {
+        await markGoogleHealthSynced(userId, claimId);
+    } catch (error: unknown) {
+        reportError('stepManager:markGoogleHealthSynced', error, { userId });
+    }
+}
+
+async function runWithGoogleHealthSyncLease<T>(
+    userId: string,
+    operation: (claim: GoogleHealthSyncClaim) => Promise<T>,
+): Promise<GoogleHealthLeaseResult<T>> {
+    let claim: GoogleHealthSyncClaim | null;
+    try {
+        claim = await claimGoogleHealthSync(userId);
+    } catch (error: unknown) {
+        reportError('stepManager:claimGoogleHealthSync', error, { userId });
+        return { status: 'unavailable' };
+    }
+    if (!claim) {
+        return { status: 'sync_in_progress' };
+    }
+
+    try {
+        return {
+            status: 'acquired',
+            value: await operation(claim),
+        };
+    } finally {
+        try {
+            await releaseGoogleHealthSync(userId, claim.claimId);
+        } catch (error: unknown) {
+            reportError('stepManager:releaseGoogleHealthSync', error, { userId });
+        }
+    }
 }
 
 /**
@@ -84,17 +250,102 @@ async function performTokenRefresh(user: User) {
  * Core logic to update steps for a user object.
  * This avoids re-fetching the user if we already have the data.
  */
-async function processUserSteps(user: User) {
+async function processUserSteps(
+    user: User,
+    googleHealthSelection: GoogleHealthSyncSelection | null = null,
+    googleHealthClaimId: string | null = null,
+): Promise<StepSyncResult> {
+    const googleHealthConnection = googleHealthSelection?.connection ?? null;
+    if (googleHealthSelection && googleHealthConnection && !googleHealthClaimId) {
+        const leaseResult = await runWithGoogleHealthSyncLease(user.id, (claim) => processUserSteps(
+            user,
+            {
+                userId: googleHealthSelection.userId,
+                status: googleHealthSelection.status,
+                historySyncedAt: claim.historySyncedAt,
+                connection: {
+                    ...googleHealthConnection,
+                    historySyncedAt: claim.historySyncedAt,
+                },
+            },
+            claim.claimId,
+        ));
+        if (leaseResult.status === 'acquired') {
+            return leaseResult.value;
+        }
+        return {
+            code: leaseResult.status,
+            source: 'google_health',
+            steps: null,
+        };
+    }
+
     // Use JST (UTC+9) for date calculation
     const today = getJSTDateString();
 
     let steps: number | null = null;
-    let accessToken = await ensureFitbitAccessToken(user);
-
-    if (user.provider === 'fitbit') {
+    let usedGoogleHealth = false;
+    if (googleHealthConnection && googleHealthClaimId) {
+        try {
+            if (!googleHealthConnection.historySyncedAt) {
+                await backfillGoogleHealthSteps(
+                    user.id,
+                    googleHealthConnection,
+                    today,
+                    googleHealthClaimId,
+                );
+            }
+            const reader = createGoogleHealthStepReader(
+                googleHealthConnection,
+                googleHealthClaimId,
+            );
+            const dailySteps = await reader.read(today, today);
+            const currentDay = dailySteps.find((entry) => entry.date === today);
+            steps = currentDay
+                ? await upsertGoogleHealthCurrentSteps(
+                    user.id,
+                    today,
+                    currentDay.steps,
+                    googleHealthClaimId,
+                )
+                : null;
+            usedGoogleHealth = true;
+        } catch (error: unknown) {
+            if (
+                error instanceof AppError
+                && error.code === 'GOOGLE_HEALTH_REAUTHORIZATION_REQUIRED'
+            ) {
+                return {
+                    code: 'reauthorization_required',
+                    source: 'google_health',
+                    steps: null,
+                };
+            }
+            reportError('processUserSteps:googleHealth', error, { userId: user.id });
+            return {
+                code: 'unavailable',
+                source: 'google_health',
+                steps: null,
+            };
+        }
+    } else if (
+        googleHealthSelection
+        && googleHealthSelection.status !== 'disconnected'
+    ) {
+        return {
+            code: 'reauthorization_required',
+            source: 'google_health',
+            steps: null,
+        };
+    } else if (user.provider === 'fitbit') {
+        let accessToken = await ensureFitbitAccessToken(user);
         if (!accessToken) {
             reportError('processUserSteps', new Error('Could not obtain access token'), { userId: user.id });
-            return null;
+            return {
+                code: 'unavailable',
+                source: 'fitbit',
+                steps: null,
+            };
         }
 
         try {
@@ -109,31 +360,72 @@ async function processUserSteps(user: User) {
                         steps = await getFitbitSteps(accessToken, today);
                     } catch (retryError) {
                         reportError('processUserSteps:retrySteps', retryError, { userId: user.id });
+                        return {
+                            code: 'unavailable',
+                            source: 'fitbit',
+                            steps: null,
+                        };
                     }
+                } else {
+                    return {
+                        code: 'unavailable',
+                        source: 'fitbit',
+                        steps: null,
+                    };
                 }
             } else {
                 reportError('processUserSteps:fetchSteps', error, { userId: user.id });
+                return {
+                    code: 'unavailable',
+                    source: 'fitbit',
+                    steps: null,
+                };
             }
         }
+    } else {
+        return {
+            code: 'unavailable',
+            source: null,
+            steps: null,
+        };
+    }
+
+    if (usedGoogleHealth && googleHealthClaimId && steps === null) {
+        await markGoogleHealthSyncedSafely(user.id, googleHealthClaimId);
+        return {
+            code: 'no_data',
+            source: 'google_health',
+            steps: null,
+        };
     }
 
     // Only update if steps were fetched successfully (steps >= 0)
     if (steps !== null && steps >= 0) {
-        const { error: upsertError } = await supabaseAdmin
-            .from('daily_steps')
-            .upsert(
-                {
-                    user_id: user.id,
+        let persisted = usedGoogleHealth;
+        if (!usedGoogleHealth) {
+            try {
+                steps = await upsertFitbitCurrentSteps(user.id, today, steps);
+                persisted = true;
+            } catch (upsertError: unknown) {
+                reportError('processUserSteps:upsert', upsertError, {
+                    userId: user.id,
+                    steps,
                     date: today,
-                    steps: steps,
-                    updated_at: new Date().toISOString(),
-                },
-                { onConflict: 'user_id,date' }
-            );
+                });
+                return {
+                    code: 'unavailable',
+                    source: 'fitbit',
+                    steps: null,
+                };
+            }
+        }
 
-        if (upsertError) {
-            reportError('processUserSteps:upsert', upsertError, { userId: user.id, steps, date: today });
-        } else {
+        if (persisted) {
+            if (usedGoogleHealth && googleHealthClaimId) {
+                await markGoogleHealthSyncedSafely(user.id, googleHealthClaimId);
+            }
+            // 履歴移行は歩数だけを置換し、獲得済みUCは資産として再計算・減額しない。
+            // UCの再計算は、単調増加で保存した当日値にだけ適用する。
             // バッジ・称号・コインは独立処理なので並列実行
             const results = await Promise.allSettled([
                 checkAndAwardBadges(user.id),
@@ -149,38 +441,132 @@ async function processUserSteps(user: User) {
                     });
                 }
             }
+            return {
+                code: 'updated',
+                source: usedGoogleHealth ? 'google_health' : 'fitbit',
+                steps,
+            };
         }
     }
 
-    return steps;
+    return {
+        code: 'unavailable',
+        source: usedGoogleHealth ? 'google_health' : user.provider === 'fitbit' ? 'fitbit' : null,
+        steps: null,
+    };
 }
 
-export async function updateUserSteps(userId: string) {
+export async function syncUserSteps(userId: string): Promise<StepSyncResult> {
     // Fetch user details (⚡ 必要カラムのみ取得)
-    const { data: user, error } = await supabaseAdmin
-        .from('users')
-        .select('id, email, provider, access_token, refresh_token, token_expires_at')
-        .eq('id', userId)
-        .single();
+    const [userResult, googleHealthSelection] = await Promise.all([
+        supabaseAdmin
+            .from('users')
+            .select('id, email, provider, access_token, refresh_token, token_expires_at')
+            .eq('id', userId)
+            .single(),
+        getGoogleHealthSyncSelection(userId),
+    ]);
+    const { data: user, error } = userResult;
 
     if (error || !user) {
         reportError('updateUserSteps:fetchUser', error, { userId });
-        return null;
+        return {
+            code: 'unavailable',
+            source: null,
+            steps: null,
+        };
     }
 
-    return processUserSteps(user);
+    return processUserSteps(user, googleHealthSelection);
 }
 
-export async function backfillUserSteps(userId: string) {
+export async function updateUserSteps(userId: string): Promise<number | null> {
+    const result = await syncUserSteps(userId);
+    return result.steps;
+}
+
+async function backfillGoogleHealthSteps(
+    userId: string,
+    connection: GoogleHealthConnection,
+    today: string,
+    claimId: string,
+): Promise<void> {
+    const oldestDate = addDaysToIsoDate(today, -365);
+    const historyEndDate = addDaysToIsoDate(today, -1);
+    const reader = createGoogleHealthStepReader(connection, claimId);
+    const historicalSteps: GoogleHealthDailySteps[] = [];
+    let currentStart = oldestDate;
+
+    while (currentStart <= historyEndDate) {
+        const candidateEnd = addDaysToIsoDate(currentStart, 89);
+        const currentEnd = candidateEnd < historyEndDate
+            ? candidateEnd
+            : historyEndDate;
+        const dailySteps = await reader.read(currentStart, currentEnd);
+        historicalSteps.push(...dailySteps);
+        currentStart = addDaysToIsoDate(currentEnd, 1);
+    }
+
+    await replaceGoogleHealthStepRange(
+        userId,
+        oldestDate,
+        historyEndDate,
+        historicalSteps,
+        claimId,
+    );
+    await markGoogleHealthHistorySynced(userId, claimId);
+}
+
+export async function backfillUserSteps(userId: string): Promise<void> {
     // ⚡ 必要カラムのみ取得
-    const { data: user, error } = await supabaseAdmin
-        .from('users')
-        .select('id, email, provider, access_token, refresh_token, token_expires_at')
-        .eq('id', userId)
-        .single();
+    const [userResult, googleHealthSelection] = await Promise.all([
+        supabaseAdmin
+            .from('users')
+            .select('id, email, provider, access_token, refresh_token, token_expires_at')
+            .eq('id', userId)
+            .single(),
+        getGoogleHealthSyncSelection(userId),
+    ]);
+    const { data: user, error } = userResult;
 
     if (error || !user) {
         reportError('backfillUserSteps:fetchUser', error, { userId });
+        return;
+    }
+
+    if (googleHealthSelection?.connection) {
+        if (googleHealthSelection.connection.historySyncedAt) {
+            return;
+        }
+        const googleHealthConnection = googleHealthSelection.connection;
+        try {
+            await runWithGoogleHealthSyncLease(userId, (claim) => {
+                if (claim.historySyncedAt) {
+                    return Promise.resolve();
+                }
+                return backfillGoogleHealthSteps(
+                    userId,
+                    googleHealthConnection,
+                    getJSTDateString(),
+                    claim.claimId,
+                );
+            });
+        } catch (googleHealthError: unknown) {
+            reportError('backfillUserSteps:googleHealth', googleHealthError, { userId });
+        }
+        return;
+    }
+
+    if (
+        googleHealthSelection
+        && googleHealthSelection.status !== 'disconnected'
+    ) {
+        return;
+    }
+    if (
+        googleHealthSelection?.status === 'disconnected'
+        && googleHealthSelection.historySyncedAt
+    ) {
         return;
     }
 
@@ -205,7 +591,7 @@ export async function backfillUserSteps(userId: string) {
         const oldestDate = new Date(today);
         oldestDate.setFullYear(oldestDate.getFullYear() - MAX_HISTORY_YEARS);
 
-        let allStepsData: { user_id: string; date: string; steps: number; updated_at: string }[] = [];
+        let allStepsData: FitbitDailySteps[] = [];
         let currentEnd = new Date(today);
 
         while (currentEnd > oldestDate) {
@@ -239,10 +625,8 @@ export async function backfillUserSteps(userId: string) {
             if (timeSeries && Array.isArray(timeSeries) && timeSeries.length > 0) {
                 const chunkData = (timeSeries as FitbitTimeSeriesEntry[])
                     .map((entry) => ({
-                        user_id: user.id,
                         date: entry.dateTime,
                         steps: parseInt(entry.value, 10),
-                        updated_at: new Date().toISOString(),
                     }))
                     .filter((d) => !isNaN(d.steps));
 
@@ -263,18 +647,7 @@ export async function backfillUserSteps(userId: string) {
             const BATCH_SIZE = 1000;
             for (let i = 0; i < allStepsData.length; i += BATCH_SIZE) {
                 const batch = allStepsData.slice(i, i + BATCH_SIZE);
-                const { error: upsertError } = await supabaseAdmin
-                    .from('daily_steps')
-                    .upsert(batch, { onConflict: 'user_id,date' });
-
-                if (upsertError) {
-                    reportError('backfillUserSteps:upsert', upsertError, {
-                        userId: user.id,
-                        batchIndex: i,
-                        batchSize: batch.length,
-                        totalRecords: allStepsData.length,
-                    });
-                }
+                await upsertFitbitHistoryBatch(user.id, batch);
             }
         }
 
@@ -283,7 +656,7 @@ export async function backfillUserSteps(userId: string) {
     }
 }
 
-export async function updateAllUserSteps() {
+export async function updateAllUserSteps(): Promise<void> {
     // 1. Fetch all users with necessary fields
     // Optimization: Select only needed fields, not just ID, to avoid N+1 queries
     const { data: users, error } = await supabaseAdmin
@@ -295,8 +668,27 @@ export async function updateAllUserSteps() {
         return;
     }
 
-    // Optimization: Run updates in parallel
-    // We can map over users and call processUserSteps
-    // Promise.all ensures we wait for all to complete
-    await Promise.all(users.map(user => processUserSteps(user as User)));
+    const googleHealthSelections = await getAllGoogleHealthSyncSelections();
+    const googleHealthByUserId = new Map(
+        googleHealthSelections.map((selection) => [selection.userId, selection]),
+    );
+
+    // 初回履歴移行はユーザーごとに複数API要求を行うため、外部APIへの集中を避ける。
+    for (let index = 0; index < users.length; index += USER_SYNC_BATCH_SIZE) {
+        const batch = users.slice(index, index + USER_SYNC_BATCH_SIZE);
+        const results = await Promise.allSettled(
+            batch.map((user) => processUserSteps(
+                user as User,
+                googleHealthByUserId.get(user.id) ?? null,
+            )),
+        );
+        for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
+            const result = results[resultIndex];
+            if (result.status === 'rejected') {
+                reportError('updateAllUserSteps:processUser', result.reason, {
+                    userId: batch[resultIndex].id,
+                });
+            }
+        }
+    }
 }

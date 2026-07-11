@@ -1,42 +1,65 @@
-import { auth } from "@/lib/auth";
-import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
-import { supabaseAdmin } from "@/lib/supabase";
-import { redirect } from "next/navigation"; // Standard redirect works fine for root
-import UserMenu from "@/components/layout/UserMenu";
-import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
-import { Link } from "@/navigation"; // Localized Link
-import Breadcrumbs from "@/components/layout/Breadcrumbs";
-import SettingsForm from "@/components/SettingsForm";
-import ExportButton from "@/components/ExportButton";
-import SmartGoalAdvisor from "@/components/SmartGoalAdvisor";
-import { getLocale, getTranslations } from 'next-intl/server';
-import { getCoinBalance } from "@/lib/services/coin-service";
-import Footer from '@/components/layout/Footer';
-
-export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
 
+import { redirect } from 'next/navigation';
 
-export default async function SettingsPage() {
+import { getLocale, getTranslations } from 'next-intl/server';
+
+import { isGoogleHealthEnabled } from '@/lib/api/google-health';
+import { auth } from '@/lib/auth';
+import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
+import { reportError } from '@/lib/errors';
+import { parseGoogleHealthNotice } from '@/lib/google-health-oauth';
+import { getCoinBalance } from '@/lib/services/coin-service';
+import { getGoogleHealthConnectionSummary } from '@/lib/services/fitness-connection-service';
+import { supabaseAdmin } from '@/lib/supabase';
+import { Link } from '@/navigation';
+
+import ExportButton from '@/components/ExportButton';
+import GoogleHealthConnectionCard from '@/components/GoogleHealthConnectionCard';
+import SettingsForm from '@/components/SettingsForm';
+import SmartGoalAdvisor from '@/components/SmartGoalAdvisor';
+import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import Footer from '@/components/layout/Footer';
+import NotificationBell from '@/components/layout/NotificationBell';
+import RefreshButton from '@/components/layout/RefreshButton';
+import UserMenu from '@/components/layout/UserMenu';
+
+export const dynamic = 'force-dynamic';
+
+interface SettingsPageProps {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function SettingsPage({
+    searchParams,
+}: SettingsPageProps): Promise<React.ReactNode> {
     // ⚡ パフォーマンス: 翻訳取得を並列化
-    const [session, t, commonT, dashboardT, locale] = await Promise.all([
+    const [session, t, commonT, dashboardT, locale, resolvedSearchParams] = await Promise.all([
         auth(),
         getTranslations('Settings'),
         getTranslations('Common'),
         getTranslations('Dashboard'),
         getLocale(),
+        searchParams,
     ]);
 
-    if (!session || !session.user) {
-        redirect(createLoginRequiredRedirect(locale, "/settings"));
+    const healthNoticeValue = resolvedSearchParams.health;
+    const healthNotice = parseGoogleHealthNotice(
+        Array.isArray(healthNoticeValue) ? healthNoticeValue[0] : healthNoticeValue,
+    );
+    if (!session?.user?.id) {
+        const nextPath = healthNotice
+            ? `/settings?health=${healthNotice}`
+            : '/settings';
+        redirect(createLoginRequiredRedirect(locale, nextPath));
     }
+    const userId = session.user.id;
 
     // ⚡ パフォーマンス: supabaseAdmin を使用し必要なカラムのみ取得
     const { data: user } = await supabaseAdmin
         .from("users")
-        .select("name, image, username, is_custom_image, step_goal, banner_url")
-        .eq("id", (session.user as any).id)
+        .select("name, image, username, is_custom_image, step_goal, banner_url, provider")
+        .eq("id", userId)
         .single();
 
     if (!user) {
@@ -51,18 +74,30 @@ export default async function SettingsPage() {
     const { data: notifySettings } = await supabaseAdmin
         .from("users")
         .select("notification_reactions, notification_gear_reactions")
-        .eq("id", (session.user as any).id)
+        .eq("id", userId)
         .single();
 
     // ⚡ パフォーマンス: Midnight テーマチェックと所持アイテムを並列取得
-    const userId = (session.user as any).id;
-
     // スマートゴールアドバイザー用: 直近30日の歩数データを取得
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-    const [midnightResult, ownedItemsResult, recentStepsResult, coinBalance] = await Promise.all([
+    const googleHealthAvailable = isGoogleHealthEnabled();
+    const googleHealthStatePromise = getGoogleHealthConnectionSummary(userId)
+        .then((connection) => ({ connection, loadError: false }))
+        .catch((error: unknown) => {
+            reportError('settings:googleHealthConnection', error, { userId });
+            return { connection: null, loadError: true };
+        });
+
+    const [
+        midnightResult,
+        ownedItemsResult,
+        recentStepsResult,
+        coinBalance,
+        googleHealthState,
+    ] = await Promise.all([
         supabaseAdmin
             .from('user_items')
             .select('id, shop_items!inner(item_code)')
@@ -82,6 +117,7 @@ export default async function SettingsPage() {
             .gte('date', thirtyDaysAgoStr)
             .order('date', { ascending: true }),
         getCoinBalance(userId),
+        googleHealthStatePromise,
     ]);
     const ownsMidnight = midnightResult.data !== null;
     const ownedTitleItems = ownedItemsResult.data;
@@ -139,7 +175,7 @@ export default async function SettingsPage() {
                         <RefreshButton />
                         <NotificationBell />
                         <UserMenu user={{
-                            id: (session.user as any).id,
+                            id: userId,
                             name: user?.name || session.user.name,
                             email: session.user.email,
                             image: user?.image || session.user.image
@@ -154,6 +190,14 @@ export default async function SettingsPage() {
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">{t('title')}</h1>
                     <p className="text-gray-500">{t('description')}</p>
                 </div>
+
+                <GoogleHealthConnectionCard
+                    available={googleHealthAvailable}
+                    connection={googleHealthState.connection}
+                    fitbitFallbackAvailable={user.provider === 'fitbit'}
+                    loadError={googleHealthState.loadError}
+                    notice={healthNotice}
+                />
 
                 <SettingsForm user={{ ...user, notification_reactions: notifySettings?.notification_reactions ?? null, notification_gear_reactions: notifySettings?.notification_gear_reactions ?? null }} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} ownedThemes={ownedThemes} />
 

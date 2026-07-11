@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { KeyboardEvent, MouseEvent, UIEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { useLocale, useTranslations } from 'next-intl';
@@ -34,6 +35,17 @@ interface ProofItem {
     tone: 'blue' | 'emerald' | 'amber' | 'violet';
 }
 
+interface BenefitListProps {
+    benefits: BenefitItem[];
+    compact?: boolean;
+}
+
+interface TrustItemProps {
+    label: string;
+    className?: string;
+    inverse?: boolean;
+}
+
 interface AuthContext {
     title: string;
     description: string;
@@ -49,6 +61,7 @@ export default function LandingPage() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [switching, setSwitching] = useState(false);
+    const [showProofScrollCue, setShowProofScrollCue] = useState(true);
 
     useEffect(() => {
         setSwitching(false);
@@ -69,6 +82,27 @@ export default function LandingPage() {
         router.replace(href, { locale: next });
     };
 
+    const handleNavClick = (event: MouseEvent<HTMLAnchorElement>): void => {
+        event.currentTarget.closest('details')?.removeAttribute('open');
+        const targetId = event.currentTarget.hash.slice(1);
+        window.requestAnimationFrame(() => {
+            document.getElementById(targetId)?.focus({ preventScroll: true });
+        });
+    };
+
+    const handleMobileNavKeyDown = (event: KeyboardEvent<HTMLDetailsElement>): void => {
+        if (event.key !== 'Escape' || !event.currentTarget.open) return;
+        event.preventDefault();
+        event.currentTarget.open = false;
+        event.currentTarget.querySelector('summary')?.focus();
+    };
+
+    const handleProofScroll = (event: UIEvent<HTMLDListElement>): void => {
+        const { clientWidth, scrollLeft, scrollWidth } = event.currentTarget;
+        const shouldShowCue = scrollLeft + clientWidth < scrollWidth - 1;
+        setShowProofScrollCue((current) => current === shouldShowCue ? current : shouldShowCue);
+    };
+
     const benefits: BenefitItem[] = [
         {
             metric: t('benefits.habit.metric'),
@@ -87,13 +121,8 @@ export default function LandingPage() {
         },
     ];
 
-    const heroHighlights = [
-        t('heroHighlights.goal'),
-        t('heroHighlights.rank'),
-        t('heroHighlights.reward'),
-    ];
-
     const navItems = [
+        { href: '#how-it-works', label: t('nav.how') },
         { href: '#rewards', label: t('nav.rewards') },
         { href: '#proof', label: t('nav.proof') },
     ];
@@ -121,24 +150,14 @@ export default function LandingPage() {
 
     const proofItems: ProofItem[] = [
         {
-            label: t('stats.steps.label'),
-            value: t('stats.steps.value'),
-            tone: 'blue',
-        },
-        {
-            label: t('floating.rank.label'),
+            label: t('heroHighlights.rank'),
             value: t('floating.rank.value'),
-            tone: 'emerald',
+            tone: 'violet',
         },
         {
-            label: t('floating.reward.label'),
+            label: t('preview.bonusLabel'),
             value: t('floating.reward.value'),
             tone: 'amber',
-        },
-        {
-            label: t('preview.challengeLabel'),
-            value: t('preview.challengeValue'),
-            tone: 'violet',
         },
     ];
 
@@ -169,241 +188,303 @@ export default function LandingPage() {
         : null;
 
     return (
-        <main className="relative min-h-screen overflow-x-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
-            <div className="relative flex min-h-screen flex-col overflow-hidden bg-[var(--color-inverse-surface)] text-[var(--color-inverse-text)]">
-                <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <div className="animate-float absolute -top-48 left-1/2 h-[760px] w-[1120px] -translate-x-1/2 rounded-full bg-gradient-to-br from-[var(--theme-primary)]/45 via-[var(--theme-gradient-to)]/28 to-transparent blur-3xl" />
-                    <div className="animate-float-delayed absolute -right-32 top-20 h-[520px] w-[520px] rounded-full bg-[var(--theme-gradient-to)]/30 blur-3xl" />
-                    <div className="animate-pulse-gentle absolute -bottom-40 left-0 h-[420px] w-[520px] rounded-full bg-[var(--theme-primary)]/25 blur-3xl" />
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:48px_48px] opacity-50" />
-                </div>
-
-            <header className="relative mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[var(--color-inverse-surface)] shadow-md">
-                        <BrandMark />
+        <div className="min-h-screen overflow-x-clip bg-[var(--color-bg)] pt-14 text-[var(--color-text)] sm:pt-16">
+            <div className="landing-scroll-progress" aria-hidden="true" />
+            <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-[var(--color-border)] bg-[var(--color-surface)] sm:h-16">
+                <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-solid)] text-white shadow-sm">
+                            <BrandMark />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="truncate text-base font-black tracking-tight text-[var(--color-text)] sm:text-lg">
+                                {t('title')}
+                            </p>
+                            <p className="hidden truncate text-xs font-medium text-[var(--color-text-muted)] sm:block">
+                                {t('headerTagline')}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-base font-bold tracking-tight text-white">{t('title')}</p>
-                        <p className="text-xs font-medium text-white/65">{t('headerTagline')}</p>
+
+                    <div className="flex shrink-0 items-center gap-3">
+                        <nav aria-label={t('nav.label')} className="hidden lg:block">
+                            <ul className="flex items-center gap-5">
+                                {navItems.map((item) => (
+                                    <li key={item.href}>
+                                        <a
+                                            href={item.href}
+                                            onClick={handleNavClick}
+                                            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-1 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-primary-strong)] focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                                        >
+                                            {item.label}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </nav>
+                        <details className="group relative lg:hidden" onKeyDown={handleMobileNavKeyDown}>
+                            <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                                <span className="sr-only">{t('nav.label')}</span>
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" d="M5 7h14M5 12h14M5 17h14" />
+                                </svg>
+                            </summary>
+                            <nav
+                                aria-label={t('nav.label')}
+                                className="absolute right-0 top-[calc(100%+0.5rem)] z-30 hidden w-52 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg group-open:block"
+                            >
+                                <ul className="grid gap-1">
+                                    {navItems.map((item) => (
+                                        <li key={item.href}>
+                                            <a
+                                                href={item.href}
+                                                onClick={handleNavClick}
+                                                className="flex min-h-[44px] items-center rounded-xl px-3 text-sm font-semibold text-[var(--color-text)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                                            >
+                                                {item.label}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </nav>
+                        </details>
+                        <button
+                            onClick={toggleLocale}
+                            disabled={switching}
+                            aria-label={locale === 'ja' ? 'Switch to English' : '日本語に切り替え'}
+                            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                        >
+                            {switching && (
+                                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                            )}
+                            {locale === 'ja' ? 'English' : '日本語'}
+                        </button>
                     </div>
                 </div>
-
-                <button
-                    onClick={toggleLocale}
-                    disabled={switching}
-                    aria-label={locale === 'ja' ? 'Switch to English' : '日本語に切り替え'}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/15 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-inverse-surface)]"
-                >
-                    {switching && (
-                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                    )}
-                    {locale === 'ja' ? 'English' : '日本語'}
-                </button>
             </header>
 
-            <nav aria-label={t('nav.label')} className="hidden">
-                <ul className="flex gap-1.5 overflow-x-auto pb-1">
-                    {navItems.map((item) => (
-                        <li key={item.href} className="shrink-0">
-                            <a
-                                href={item.href}
-                                className="inline-flex min-h-[44px] items-center rounded-full border border-white/15 bg-white/10 px-3.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-inverse-surface)]"
-                            >
-                                {item.label}
-                            </a>
-                        </li>
-                    ))}
-                </ul>
-            </nav>
+            <main
+                id="public-main-content"
+                tabIndex={-1}
+                className="scroll-mt-14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
+            >
+                {authContext && <AuthGateNotice context={authContext} />}
 
-            {authContext && <AuthGateNotice context={authContext} />}
-
-            <section className="relative mx-auto grid w-full max-w-7xl flex-1 content-start gap-6 px-4 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.82fr)] lg:px-8 lg:pt-20">
-                <div className="max-w-3xl">
-                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 backdrop-blur-md">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden="true" />
-                        <p className="text-xs font-semibold text-white">{t('eyebrow')}</p>
-                    </div>
-                    <h1 className="text-balance text-3xl font-bold leading-[1.08] tracking-[-0.03em] sm:text-4xl lg:text-5xl">
-                        <span className="text-white">{t('headlinePart1')}</span>
-                        <span className="bg-gradient-to-r from-white via-blue-100 to-emerald-100 bg-clip-text text-transparent"> {t('headlinePart2')}</span>
-                    </h1>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-white/72 sm:text-base sm:leading-7">
-                        {t('heroDesc')}
-                    </p>
-
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <AuthButtons callbackUrl={authContext?.callbackUrl} />
-                        <p className="text-sm font-medium text-white/65">{t('connectFitbit')}</p>
+                <section className="relative overflow-hidden border-b border-[var(--color-border)]" aria-labelledby="landing-headline">
+                    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                        <div className="landing-orbit landing-orbit-play absolute -left-28 top-10 h-56 w-56 rounded-full bg-[var(--color-play-soft)]" />
+                        <div className="landing-orbit landing-orbit-competition absolute -right-28 top-16 h-64 w-64 rounded-full bg-[var(--color-competition-soft)] sm:h-80 sm:w-80" />
+                        <div className="landing-orbit landing-orbit-success absolute bottom-8 left-[48%] hidden h-20 w-20 rounded-full bg-[var(--color-success-soft)] sm:block" />
                     </div>
 
-                    <div className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:gap-2">
-                        {heroHighlights.map((highlight) => (
-                            <HighlightChip key={highlight} label={highlight} />
-                        ))}
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2 sm:hidden" aria-label={t('mobileInsightsLabel')}>
-                        <InlineInsightCard
-                            label={t('floating.rank.label')}
-                            value={t('floating.rank.value')}
-                            tone="primary"
-                        />
-                        <InlineInsightCard
-                            label={t('floating.reward.label')}
-                            value={t('floating.reward.value')}
-                            tone="reward"
-                        />
-                    </div>
-
-                    <div className="mt-3 hidden flex-wrap gap-2 sm:flex" aria-label={t('trustLabel')}>
-                        <TrustItem label={t('trust.fitbit')} />
-                        <TrustItem label={t('trust.pwa')} />
-                        <TrustItem label={t('trust.privacy')} />
-                        <TrustItem label={t('trust.i18n')} />
-                    </div>
-
-                    <div className="mt-3 hidden max-w-2xl grid-cols-2 gap-2 sm:grid lg:grid-cols-4" aria-label={t('statsLabel')}>
-                        {proofItems.map((item) => (
-                            <ProofTile key={item.label} item={item} />
-                        ))}
-                    </div>
-                </div>
-
-                <div className="relative mx-auto hidden w-full max-w-[430px] self-start sm:block lg:mt-4">
-                    <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-[var(--theme-primary)]/25 via-[var(--theme-gradient-to)]/20 to-[var(--color-surface)] blur-2xl" aria-hidden="true" />
-                    <div className="relative rounded-[1.75rem] border border-white/70 bg-white/90 p-2.5 shadow-2xl backdrop-blur-xl">
-                        <ProductPreview t={t} />
-                    </div>
-                    <FloatingInsightCard
-                        className="-left-2 top-10 hidden sm:block"
-                        label={t('floating.rank.label')}
-                        value={t('floating.rank.value')}
-                        tone="primary"
-                    />
-                    <FloatingInsightCard
-                        className="-right-2 bottom-16 hidden sm:block"
-                        label={t('floating.reward.label')}
-                        value={t('floating.reward.value')}
-                        tone="reward"
-                    />
-                </div>
-            </section>
-            </div>
-
-            <section id="proof" className="hidden" aria-label={t('statsLabel')}>
-                <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-[var(--color-primary-solid)] to-[var(--color-inverse-surface)] px-4 py-4 text-white shadow-xl sm:px-6">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <StatItem value={t('stats.users.value')} label={t('stats.users.label')} />
-                        <StatItem value={t('stats.steps.value')} label={t('stats.steps.label')} />
-                        <StatItem value={t('stats.challenges.value')} label={t('stats.challenges.label')} />
-                        <StatItem value={t('stats.groups.value')} label={t('stats.groups.label')} />
-                    </div>
-                </div>
-            </section>
-
-            <section id="rewards" className="hidden">
-                <div className="grid gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm md:grid-cols-[0.82fr_1.18fr] md:p-4">
-                    <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-[var(--theme-primary)] p-4 text-white">
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/75">{t('rewardPreview.label')}</p>
-                        <h2 className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">{t('rewardPreview.title')}</h2>
-                        <p className="mt-2 text-sm leading-6 text-white/80">{t('rewardPreview.desc')}</p>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
-                        {rewardPreviewItems.map((item) => (
-                            <RewardPreviewCard key={item.label} item={item} />
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section id="how-it-works" className="hidden">
-                <div className="mb-4 max-w-2xl">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-primary)]">{t('journeyLabel')}</p>
-                    <h2 className="mt-2 text-xl font-bold tracking-tight text-[var(--color-text)] sm:text-2xl">
-                        {t('journeyTitle')}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                        {t('journeyDesc')}
-                    </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-                    {journeyItems.map((item, index) => (
-                        <JourneyCard key={item.label} item={item} index={index} />
-                    ))}
-                </div>
-            </section>
-
-            <section className="hidden">
-                <div className="grid gap-3 lg:grid-cols-[0.82fr_1.18fr]">
-                    <div className="rounded-2xl bg-gradient-to-br from-[var(--theme-primary)] to-[var(--theme-gradient-to)] p-5 text-white shadow-xl sm:p-6">
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">{t('showcaseLabel')}</p>
-                        <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-                            {t('showcaseTitle')}
-                        </h2>
-                        <p className="mt-2 text-sm leading-6 text-white/80">
-                            {t('showcaseDesc')}
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                        <ShowcaseCard title={t('showcase.today.title')} description={t('showcase.today.desc')} index={0} />
-                        <ShowcaseCard title={t('showcase.league.title')} description={t('showcase.league.desc')} index={1} />
-                    </div>
-                </div>
-            </section>
-
-            <section className="hidden">
-                <div className="grid gap-3 md:grid-cols-3">
-                    {benefits.map((benefit, i) => (
-                        <article
-                            key={benefit.metric}
-                            className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-sm transition-shadow hover:shadow-md sm:p-4"
-                        >
-                            <div className="mb-3 flex items-center gap-3">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--theme-primary)]/10 to-[var(--theme-gradient-to)]/10">
-                                    <BenefitIcon index={i} />
+                    <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-24">
+                        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(30rem,1.1fr)] lg:gap-14">
+                            <div className="landing-hero-copy min-w-0 max-w-2xl">
+                                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-success-soft)] px-3 py-1.5 text-[var(--color-success-strong)]">
+                                    <span className="landing-sync-dot h-2 w-2 rounded-full bg-[var(--color-success)]" aria-hidden="true" />
+                                    <p className="text-xs font-semibold sm:text-sm">{t('eyebrow')}</p>
                                 </div>
-                                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--color-primary)]">
-                                    {benefit.metric}
+                                <h1
+                                    id="landing-headline"
+                                    className="text-balance text-3xl font-black leading-[1.08] tracking-[-0.035em] text-[var(--color-text)] sm:text-4xl lg:text-5xl"
+                                >
+                                    <span className="block">{t('headlinePart1')}</span>
+                                    <span className="block text-[var(--color-primary-strong)]">{t('headlinePart2')}</span>
+                                </h1>
+                                <p className="mt-4 max-w-xl text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base sm:leading-7">
+                                    {t('heroDesc')}
                                 </p>
+
+                                <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                                    <AuthButtons callbackUrl={authContext?.callbackUrl} />
+                                    <p className="sr-only sm:not-sr-only sm:max-w-56 sm:text-sm sm:font-medium sm:leading-5 sm:text-[var(--color-text-muted)]">
+                                        {t('connectFitbit')}
+                                    </p>
+                                </div>
+
+                                <ul aria-label={t('trustLabel')} className="mt-5 hidden min-w-0 flex-wrap gap-x-4 gap-y-2 sm:flex">
+                                    <TrustItem label={t('trust.fitbit')} className="inline-flex" />
+                                    <TrustItem label={t('trust.privacy')} className="inline-flex" />
+                                    <TrustItem label={t('trust.pwa')} className="hidden sm:inline-flex" />
+                                    <TrustItem label={t('trust.i18n')} className="hidden lg:inline-flex" />
+                                </ul>
                             </div>
-                            <h2 className="text-base font-semibold tracking-tight text-[var(--color-text)]">
-                                {benefit.title}
+
+                            <div className="landing-hero-preview relative mx-auto w-full max-w-[560px] min-w-0">
+                                <div>
+                                    <ProductPreview t={t} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="proof" tabIndex={-1} aria-label={t('statsLabel')} className="scroll-mt-16 bg-[var(--color-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]">
+                    <div className="relative mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 sm:py-10 lg:px-8">
+                        <p id="landing-proof-scroll-hint" className="sr-only sm:hidden">{t('statsScrollHint')}</p>
+                        <dl
+                            tabIndex={0}
+                            aria-label={t('statsLabel')}
+                            aria-describedby="landing-proof-scroll-hint"
+                            onScroll={handleProofScroll}
+                            className="flex w-full min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto pb-1 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] sm:hidden"
+                        >
+                            {proofItems.map((item) => (
+                                <ProofTile key={item.label} item={item} />
+                            ))}
+                        </dl>
+                        <span
+                            aria-hidden="true"
+                            className={`pointer-events-none absolute right-1 top-1/2 flex h-8 w-4 -translate-y-1/2 items-center justify-center text-xl font-black text-[var(--color-reward-strong)] transition-opacity sm:hidden ${showProofScrollCue ? 'opacity-100' : 'opacity-0'}`}
+                        >
+                            →
+                        </span>
+                        <dl aria-label={t('statsLabel')} className="hidden w-full min-w-0 sm:grid sm:grid-cols-2 sm:gap-4">
+                            {proofItems.map((item) => (
+                                <ProofTile key={item.label} item={item} />
+                            ))}
+                        </dl>
+                    </div>
+                </section>
+
+                <section
+                    id="how-it-works"
+                    tabIndex={-1}
+                    aria-labelledby="landing-journey-title"
+                    className="scroll-mt-16 border-y border-[var(--color-border)] bg-[var(--color-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
+                >
+                    <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-start lg:gap-14 lg:px-8 lg:py-16">
+                        <div className="max-w-xl lg:sticky lg:top-28">
+                            <p className="text-sm font-bold text-[var(--color-competition-strong)]">{t('journeyLabel')}</p>
+                            <h2 id="landing-journey-title" className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                                {t('journeyTitle')}
                             </h2>
-                            <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                                {benefit.description}
+                            <p className="mt-3 max-w-lg text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
+                                {t('journeyDesc')}
                             </p>
-                        </article>
-                    ))}
-                </div>
-            </section>
-
-            <section id="start" className="hidden">
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-5">
-                    <div className="max-w-2xl">
-                        <h2 className="text-xl font-bold tracking-tight text-[var(--color-text)] sm:text-2xl">
-                            {t('finalCta.title')}
-                        </h2>
-                        <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
-                            {t('finalCta.desc')}
-                        </p>
+                        </div>
+                        <ol className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+                            {journeyItems.map((item, index) => (
+                                <JourneyCard key={item.label} item={item} index={index} />
+                            ))}
+                        </ol>
                     </div>
-                    <div className="mt-5 shrink-0 sm:mt-0">
-                        <AuthButtons callbackUrl={authContext?.callbackUrl} />
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <footer className="hidden">
-                <div className="border-t border-[var(--color-border)] pt-6">
-                    &copy; {new Date().getFullYear()} {t('copyright')}
+                <section className="bg-[var(--color-surface)]">
+                    <div className="mx-auto grid w-full max-w-7xl items-center gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:gap-14 lg:px-8 lg:py-16">
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[var(--color-competition-strong)]">{t('showcaseLabel')}</p>
+                            <h2 className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                                {t('showcaseTitle')}
+                            </h2>
+                            <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
+                                {t('showcaseDesc')}
+                            </p>
+                            <div className="mt-6 space-y-4">
+                                <ShowcaseCard title={t('showcase.today.title')} description={t('showcase.today.desc')} index={0} />
+                                <ShowcaseCard title={t('showcase.league.title')} description={t('showcase.league.desc')} index={1} />
+                            </div>
+                        </div>
+                        <div className="landing-showcase-stage relative grid grid-cols-[1.15fr_0.85fr] gap-3 overflow-hidden rounded-[2rem] bg-[var(--color-primary-soft)] p-4 lg:block lg:min-h-80 lg:p-6">
+                            <div className="h-40 lg:h-52 lg:w-[72%]">
+                                <MiniDashboardGraphic t={t} />
+                            </div>
+                            <div className="h-40 lg:absolute lg:bottom-6 lg:right-6 lg:h-36 lg:w-[48%]">
+                                <MiniLeagueGraphic />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section
+                    id="rewards"
+                    tabIndex={-1}
+                    aria-labelledby="landing-rewards-title"
+                    className="scroll-mt-16 bg-[var(--color-reward-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
+                >
+                    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-16">
+                        <div className="max-w-2xl">
+                            <p className="text-sm font-bold text-[var(--color-reward-strong)]">{t('rewardPreview.label')}</p>
+                            <h2 id="landing-rewards-title" className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                                {t('rewardPreview.title')}
+                            </h2>
+                            <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-[var(--color-reward-strong)] sm:text-base">
+                                {t('rewardPreview.desc')}
+                            </p>
+                        </div>
+                        <ol className="mt-6 grid gap-4 sm:grid-cols-3 lg:mt-8 lg:gap-8">
+                            {rewardPreviewItems.map((item, index) => (
+                                <RewardPreviewCard key={item.label} item={item} index={index} />
+                            ))}
+                        </ol>
+                    </div>
+                </section>
+
+                <section className="relative overflow-hidden bg-[var(--color-primary-solid)] text-[var(--color-inverse-text)]">
+                    <div className="pointer-events-none absolute -right-16 -top-20 hidden h-56 w-56 rounded-full bg-white/10 lg:block" aria-hidden="true" />
+                    <div className="relative mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8 lg:py-12">
+                        <details className="group lg:hidden">
+                            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-primary-solid)] [&::-webkit-details-marker]:hidden">
+                                <h2 className="text-balance text-lg font-black tracking-tight text-white">
+                                    {t('benefitsTitle')}
+                                </h2>
+                                <svg className="h-5 w-5 shrink-0 text-white transition-transform duration-200 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                                </svg>
+                            </summary>
+                            <BenefitList benefits={benefits} compact />
+                            <div className="mt-5 border-t border-white/30 pt-4">
+                                <p className="text-sm font-bold text-white">{t('trustLabel')}</p>
+                                <ul className="mt-3 grid gap-2">
+                                    <TrustItem label={t('trust.fitbit')} className="flex" inverse />
+                                    <TrustItem label={t('trust.privacy')} className="flex" inverse />
+                                    <TrustItem label={t('trust.pwa')} className="flex" inverse />
+                                    <TrustItem label={t('trust.i18n')} className="flex" inverse />
+                                </ul>
+                            </div>
+                        </details>
+                        <div className="hidden lg:block">
+                            <h2 className="max-w-2xl text-balance text-2xl font-black tracking-tight sm:text-3xl">
+                                {t('benefitsTitle')}
+                            </h2>
+                            <BenefitList benefits={benefits} />
+                        </div>
+                    </div>
+                </section>
+
+                <section id="start" className="scroll-mt-16 bg-[var(--color-play-soft)] sm:scroll-mt-[4.25rem]">
+                    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12 md:flex-row md:items-center md:justify-between lg:px-8">
+                        <div className="max-w-3xl">
+                            <h2 className="text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                                {t('finalCta.title')}
+                            </h2>
+                            <p className="mt-3 text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
+                                {t('finalCta.desc')}
+                            </p>
+                        </div>
+                        <div className="shrink-0">
+                            <AuthButtons callbackUrl={authContext?.callbackUrl} />
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+                <div className="mx-auto flex min-h-20 w-full max-w-7xl flex-col justify-center gap-2 px-4 py-4 text-sm text-[var(--color-text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+                    <div className="flex items-center gap-2 font-bold text-[var(--color-text)]">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]">
+                            <BrandMark />
+                        </span>
+                        {t('title')}
+                    </div>
+                    <p>&copy; {new Date().getFullYear()} {t('copyright')}</p>
                 </div>
             </footer>
-        </main>
+        </div>
     );
 }
 
@@ -427,6 +508,7 @@ function getSafeNextPath(nextPath: string | null, locale: string): string {
 }
 
 function getAuthContextKey(nextPath: string): string {
+    if (nextPath.includes('/settings')) return 'settings';
     if (nextPath.includes('/shop')) return 'shop';
     if (nextPath.includes('/wallet')) return 'wallet';
     if (nextPath.includes('/profile') || nextPath.includes('/user/')) return 'profile';
@@ -438,8 +520,12 @@ function getAuthContextKey(nextPath: string): string {
 
 function AuthGateNotice({ context }: { context: AuthContext }) {
     return (
-        <div className="relative mx-auto w-full max-w-7xl px-4 pb-3 sm:px-6 lg:px-8">
-            <div role="status" aria-live="polite" className="rounded-2xl border border-amber-200/70 bg-amber-100 px-4 py-3 text-amber-950 shadow-lg">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-3 sm:px-6 lg:px-8">
+            <div
+                role="status"
+                aria-live="polite"
+                className="rounded-2xl border border-[var(--color-reward)] bg-[var(--color-reward-soft)] px-4 py-3 text-[var(--color-reward-strong)]"
+            >
                 <p className="text-sm font-bold">{context.title}</p>
                 <p className="mt-1 text-sm leading-6">{context.description}</p>
             </div>
@@ -447,38 +533,58 @@ function AuthGateNotice({ context }: { context: AuthContext }) {
     );
 }
 
-function TrustItem({ label }: { label: string }) {
+function TrustItem({ label, className = '', inverse = false }: TrustItemProps) {
+    const textClass = inverse ? 'text-white' : 'text-[var(--color-text-muted)]';
+    const iconClass = inverse ? 'text-white' : 'text-[var(--color-success-strong)]';
+
     return (
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 shadow-sm backdrop-blur-md">
-            <svg className="h-3.5 w-3.5 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+        <li className={`shrink-0 items-center gap-1.5 ${textClass} ${className}`}>
+            <svg className={`h-3.5 w-3.5 shrink-0 ${iconClass}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
-            <span className="text-xs font-medium text-white">{label}</span>
+            <span className="text-xs font-medium">{label}</span>
+        </li>
+    );
+}
+
+function BenefitList({ benefits, compact = false }: BenefitListProps) {
+    return (
+        <div className={compact ? 'mt-4 grid gap-4' : 'mt-8 grid gap-7 lg:grid-cols-3 lg:gap-8'}>
+            {benefits.map((benefit, index) => (
+                <article
+                    key={benefit.metric}
+                    className="min-w-0 border-t border-white/30 pt-4"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className={getBenefitIconClass(index)}>
+                            <BenefitIcon index={index} />
+                        </div>
+                        <p className="text-sm font-bold text-white">{benefit.metric}</p>
+                    </div>
+                    <h3 className="mt-3 text-lg font-bold tracking-tight text-white">
+                        {benefit.title}
+                    </h3>
+                    <p className={`${compact ? 'mt-2 text-sm leading-6 text-white/90' : 'sr-only sm:not-sr-only sm:mt-2 sm:text-sm sm:leading-6 sm:text-white/90'}`}>
+                        {benefit.description}
+                    </p>
+                </article>
+            ))}
         </div>
     );
 }
 
-function InlineInsightCard({ label, value, tone }: { label: string; value: string; tone: 'primary' | 'reward' }) {
-    const toneClass = tone === 'primary'
-        ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)]'
-        : 'text-amber-700 bg-amber-100';
-
+function RewardPreviewCard({ item, index }: { item: RewardPreviewItem; index: number }) {
     return (
-        <div className="rounded-2xl border border-white/15 bg-white/10 p-3 shadow-sm backdrop-blur-md">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/65">{label}</p>
-            <p className={`mt-2 rounded-full px-2.5 py-1 text-sm font-bold tabular-nums ${toneClass}`}>{value}</p>
-        </div>
-    );
-}
-
-function RewardPreviewCard({ item }: { item: RewardPreviewItem }) {
-    return (
-        <article className="w-56 shrink-0 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3.5 sm:w-auto sm:p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">{item.label}</p>
-            <p className="mt-2 text-lg font-black tabular-nums text-[var(--color-text)]">{item.value}</p>
-            <h3 className="mt-2 text-sm font-bold text-[var(--color-text)]">{item.title}</h3>
-            <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">{item.description}</p>
-        </article>
+        <li className="min-w-0 border-t border-[var(--color-reward)]/40 pt-5">
+            <div className={`landing-reward-node inline-flex min-h-8 items-center rounded-full px-3 py-1 text-xs font-bold ${getRewardPreviewCardClass(index)}`}>
+                {item.label}
+            </div>
+            <p className="mt-3 text-xl font-black tabular-nums text-[var(--color-text)]">{item.value}</p>
+            <h3 className="mt-2 text-base font-bold text-[var(--color-text)]">{item.title}</h3>
+            <p className="sr-only lg:not-sr-only lg:mt-2 lg:max-w-sm lg:text-sm lg:leading-6 lg:text-[var(--color-text-muted)]">
+                {item.description}
+            </p>
+        </li>
     );
 }
 
@@ -486,108 +592,102 @@ function ProofTile({ item }: { item: ProofItem }) {
     const toneClass = getProofToneClass(item.tone);
 
     return (
-        <div className="rounded-xl border border-white/10 bg-white/10 px-2.5 py-2 shadow-sm backdrop-blur-md">
-            <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${toneClass} animate-pulse-gentle`} aria-hidden="true" />
-                <p className="truncate text-xs font-bold tracking-[0.04em] text-white/58">{item.label}</p>
-            </div>
-            <p className="mt-1 truncate text-sm font-black text-white">{item.value}</p>
+        <div className="landing-proof-tile flex w-[min(19.5rem,calc(100%_-_3rem))] shrink-0 snap-start items-center justify-between gap-2.5 rounded-2xl bg-[var(--color-bg)] p-3 sm:w-auto sm:min-w-0 sm:gap-3 sm:p-4">
+            <StatItem value={item.value} label={item.label} tone={item.tone} toneClass={toneClass} />
         </div>
     );
 }
 
 function getProofToneClass(tone: ProofItem['tone']): string {
-    if (tone === 'emerald') return 'bg-emerald-300';
-    if (tone === 'amber') return 'bg-amber-300';
-    if (tone === 'violet') return 'bg-violet-300';
-    return 'bg-blue-300';
+    if (tone === 'emerald') return 'bg-[var(--color-success)]';
+    if (tone === 'amber') return 'bg-[var(--color-reward)]';
+    if (tone === 'violet') return 'bg-[var(--color-competition)]';
+    return 'bg-[var(--color-primary)]';
 }
 
-function HighlightChip({ label }: { label: string }) {
+function getProofValueClass(tone: ProofItem['tone']): string {
+    if (tone === 'emerald') return 'text-[var(--color-success-strong)]';
+    if (tone === 'amber') return 'text-[var(--color-reward-strong)]';
+    if (tone === 'violet') return 'text-[var(--color-competition-strong)]';
+    return 'text-[var(--color-primary-strong)]';
+}
+
+function HighlightChip({ label, tone, toneClass }: { label: string; tone: ProofItem['tone']; toneClass: string }) {
     return (
-        <div className="rounded-xl border border-white/15 bg-white/10 px-2 py-2 shadow-sm backdrop-blur-md sm:rounded-2xl sm:px-3 sm:py-3">
-            <p className="text-xs font-semibold leading-4 text-white sm:text-sm sm:leading-5">{label}</p>
-        </div>
+        <dt className={`inline-flex min-w-0 max-w-full items-start gap-2 whitespace-normal rounded-xl px-3 py-1.5 text-left text-xs font-semibold leading-5 ${getHighlightClass(tone)}`}>
+            <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${toneClass}`} aria-hidden="true" />
+            <span className="min-w-0 break-words">{label}</span>
+        </dt>
     );
 }
 
-function StatItem({ value, label }: { value: string; label: string }) {
+function StatItem({
+    value,
+    label,
+    tone,
+    toneClass,
+}: {
+    value: string;
+    label: string;
+    tone: ProofItem['tone'];
+    toneClass: string;
+}) {
     return (
-        <div className="text-center">
-            <p className="text-xl font-bold tracking-[-0.02em] text-white sm:text-2xl">
-                {value}
-            </p>
-            <p className="mt-0.5 text-xs font-medium text-white/70">{label}</p>
-        </div>
+        <>
+            <HighlightChip label={label} tone={tone} toneClass={toneClass} />
+            <dd className={`shrink-0 break-words text-left text-base font-black leading-6 sm:text-right sm:text-lg ${getProofValueClass(tone)}`}>{value}</dd>
+        </>
     );
 }
 
 function JourneyCard({ item, index }: { item: JourneyItem; index: number }) {
     return (
-        <article className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm sm:p-4">
-            <div className="absolute -right-8 -top-8 h-16 w-16 rounded-full bg-[var(--theme-primary)]/10 sm:h-20 sm:w-20" aria-hidden="true" />
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--theme-primary)]/10 to-[var(--theme-gradient-to)]/10 sm:h-9 sm:w-9">
-                <JourneyIcon index={index} />
+        <li className="min-w-0 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
+            <div className="flex items-start gap-4">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${getJourneyCardClass(index)}`}>
+                    <JourneyIcon index={index} />
+                </div>
+                <div className="min-w-0">
+                    <p className={`text-xs font-bold ${getJourneyTextClass(index)}`}>{item.label}</p>
+                    <h3 className="mt-1.5 text-base font-bold tracking-tight text-[var(--color-text)]">{item.title}</h3>
+                </div>
             </div>
-            <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)] sm:mt-4">{item.label}</p>
-            <h3 className="mt-1.5 text-sm font-semibold tracking-tight text-[var(--color-text)] sm:text-base">{item.title}</h3>
-            <p className="mt-1.5 text-xs leading-5 text-[var(--color-text-muted)] sm:mt-2 sm:text-sm sm:leading-6">{item.description}</p>
-        </article>
+            <p className="sr-only lg:not-sr-only lg:mt-3 lg:text-sm lg:leading-6 lg:text-[var(--color-text-muted)]">{item.description}</p>
+        </li>
     );
 }
 
 function ShowcaseCard({ title, description, index }: { title: string; description: string; index: number }) {
     return (
-        <article className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm sm:p-4">
-            <div className="mb-3 h-16 rounded-xl bg-[var(--color-surface-muted)] p-2.5 sm:mb-4 sm:h-24 sm:p-3">
-                {index === 0 ? <MiniDashboardGraphic /> : <MiniLeagueGraphic />}
+        <article className="flex min-w-0 gap-3 border-t border-[var(--color-border)] pt-4">
+            <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${getJourneyCardClass(index === 0 ? 0 : 2)}`}>
+                {index === 0 ? <BrandMark /> : <JourneyIcon index={2} />}
             </div>
-            <h3 className="text-sm font-semibold tracking-tight text-[var(--color-text)] sm:text-base">{title}</h3>
-            <p className="mt-1.5 text-xs leading-5 text-[var(--color-text-muted)] sm:mt-2 sm:text-sm sm:leading-6">{description}</p>
+            <div className="min-w-0">
+                <h3 className="text-base font-bold tracking-tight text-[var(--color-text)]">{title}</h3>
+                <p className="sr-only lg:not-sr-only lg:mt-1.5 lg:text-sm lg:leading-6 lg:text-[var(--color-text-muted)]">{description}</p>
+            </div>
         </article>
-    );
-}
-
-function FloatingInsightCard({
-    label,
-    value,
-    tone,
-    className,
-}: {
-    label: string;
-    value: string;
-    tone: 'primary' | 'reward';
-    className: string;
-}) {
-    const toneClass = tone === 'primary'
-        ? 'text-[var(--color-primary)] bg-[var(--color-primary-soft)]'
-        : 'text-amber-700 bg-amber-100';
-
-    return (
-        <div className={`absolute rounded-2xl border border-white/70 bg-white/90 px-3 py-2.5 shadow-xl backdrop-blur-md ${className}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">{label}</p>
-            <p className={`mt-1 rounded-full px-2.5 py-1 text-sm font-bold tabular-nums ${toneClass}`}>{value}</p>
-        </div>
     );
 }
 
 function BenefitIcon({ index }: { index: number }) {
     if (index === 0) {
         return (
-            <svg className="h-5 w-5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+            <svg className="h-5 w-5 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
             </svg>
         );
     }
     if (index === 1) {
         return (
-            <svg className="h-5 w-5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+            <svg className="h-5 w-5 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
             </svg>
         );
     }
     return (
-        <svg className="h-5 w-5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+        <svg className="h-5 w-5 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
         </svg>
     );
@@ -595,60 +695,94 @@ function BenefitIcon({ index }: { index: number }) {
 
 function ProductPreview({ t }: { t: ReturnType<typeof useTranslations<'Landing'>> }) {
     return (
-        <div className="overflow-hidden rounded-[1.4rem] bg-[var(--color-inverse-surface)] p-3 text-[var(--color-inverse-text)]">
-            <div className="rounded-[1.1rem] bg-white/10 p-3">
+        <figure
+            aria-label={t('showcase.today.title')}
+            className="landing-preview-card overflow-hidden rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg sm:p-4"
+        >
+            <div className="rounded-3xl bg-[var(--color-primary-soft)] p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <p className="text-xs font-medium text-white/60">{t('preview.today')}</p>
-                        <p className="mt-1 text-3xl font-bold tracking-[-0.04em] tabular-nums">{t('preview.steps')}</p>
+                        <p className="text-xs font-semibold text-[var(--color-text-muted)]">{t('preview.today')}</p>
+                        <p className="mt-1 text-4xl font-black tracking-[-0.04em] tabular-nums text-[var(--color-text)] sm:text-5xl">
+                            {t('preview.steps')}
+                        </p>
                     </div>
-                    <span className="rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-semibold text-emerald-100">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-success-soft)] px-3 py-1 text-xs font-bold text-[var(--color-success-strong)]">
+                        <span className="landing-sync-dot h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" aria-hidden="true" />
                         {t('preview.sync')}
                     </span>
                 </div>
 
-                <div className="mt-4 grid grid-cols-[80px_minmax(0,1fr)] items-center gap-3">
-                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full" style={{ background: 'conic-gradient(var(--theme-primary) 78%, rgba(255,255,255,0.12) 0)' }}>
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-inverse-surface)]">
-                            <span className="text-lg font-bold tabular-nums">{t('preview.percent')}</span>
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_72px] items-center gap-4 sm:grid-cols-[minmax(0,1fr)_88px]">
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[var(--color-text-muted)]">{t('preview.goal')}</p>
+                        <p className="mt-1 text-base font-black leading-6 text-[var(--color-primary-strong)]">
+                            {t('preview.remaining')}
+                        </p>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--color-surface)]">
+                            <div className="landing-dashboard-progress h-full w-[78%] rounded-full bg-[var(--color-primary)]" />
                         </div>
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-xs font-medium text-white/60">{t('preview.goal')}</p>
-                        <p className="mt-1 text-sm font-semibold leading-6 text-blue-100">{t('preview.remaining')}</p>
+                    <div className="relative flex h-[72px] w-[72px] items-center justify-center sm:h-[88px] sm:w-[88px]">
+                        <svg className="h-full w-full -rotate-90" viewBox="0 0 44 44" aria-hidden="true">
+                            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--color-surface)" strokeWidth="5" />
+                            <circle
+                                className="landing-step-ring"
+                                cx="22"
+                                cy="22"
+                                r="17"
+                                fill="none"
+                                pathLength="100"
+                                stroke="var(--color-primary)"
+                                strokeDasharray="100"
+                                strokeDashoffset="22"
+                                strokeLinecap="round"
+                                strokeWidth="5"
+                            />
+                        </svg>
+                        <span className="absolute text-base font-black tabular-nums text-[var(--color-primary-strong)] sm:text-lg">
+                            {t('preview.percent')}
+                        </span>
                     </div>
                 </div>
-            </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
-                <PreviewMetric label={t('preview.rankLabel')} value={t('preview.rankValue')} />
-                <PreviewMetric label={t('preview.rewardLabel')} value={t('preview.rewardValue')} />
             </div>
-
-            <div className="mt-3 rounded-xl bg-white p-3 text-[var(--color-text)]">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <p className="text-xs font-semibold text-[var(--color-text-muted)]">{t('preview.challengeLabel')}</p>
-                        <p className="mt-1 text-sm font-bold">{t('preview.challengeValue')}</p>
-                    </div>
-                    <div className="flex -space-x-2" aria-hidden="true">
-                        <span className="h-8 w-8 rounded-full border-2 border-white bg-[var(--theme-primary)]/80" />
-                        <span className="h-8 w-8 rounded-full border-2 border-white bg-[var(--theme-gradient-to)]/80" />
-                        <span className="h-8 w-8 rounded-full border-2 border-white bg-amber-400" />
-                    </div>
-                </div>
-            </div>
-        </div>
+        </figure>
     );
 }
 
-function PreviewMetric({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-xl bg-white/10 p-2.5">
-            <p className="text-xs text-slate-300">{label}</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
-        </div>
-    );
+function getHighlightClass(tone: ProofItem['tone']): string {
+    if (tone === 'emerald') return 'border-[var(--color-success)] bg-[var(--color-success-soft)] text-[var(--color-success-strong)]';
+    if (tone === 'amber') return 'border-[var(--color-reward)] bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]';
+    if (tone === 'violet') return 'border-[var(--color-competition)] bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]';
+    return 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]';
+}
+
+function getJourneyCardClass(index: number): string {
+    if (index === 0) return 'bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]';
+    if (index === 1) return 'bg-[var(--color-success-soft)] text-[var(--color-success-strong)]';
+    if (index === 2) return 'bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]';
+    return 'bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]';
+}
+
+function getJourneyTextClass(index: number): string {
+    if (index === 0) return 'text-[var(--color-primary-strong)]';
+    if (index === 1) return 'text-[var(--color-success-strong)]';
+    if (index === 2) return 'text-[var(--color-competition-strong)]';
+    return 'text-[var(--color-reward-strong)]';
+}
+
+function getRewardPreviewCardClass(index: number): string {
+    if (index === 0) return 'bg-[var(--color-success-soft)] text-[var(--color-success-strong)]';
+    if (index === 1) return 'bg-[var(--color-surface)] text-[var(--color-reward-strong)]';
+    return 'bg-[var(--color-surface)] text-[var(--color-competition-strong)]';
+}
+
+function getBenefitIconClass(index: number): string {
+    const baseClass = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white';
+    if (index === 0) return `${baseClass} text-[var(--color-primary-solid)]`;
+    if (index === 1) return `${baseClass} text-[var(--color-competition-solid)]`;
+    return `${baseClass} text-[var(--color-reward-strong)]`;
 }
 
 function BrandMark() {
@@ -669,27 +803,31 @@ function JourneyIcon({ index }: { index: number }) {
     ];
 
     return (
-        <svg className="h-5 w-5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+        <svg className="h-5 w-5 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d={paths[index] ?? paths[0]} />
         </svg>
     );
 }
 
-function MiniDashboardGraphic() {
+function MiniDashboardGraphic({ t }: { t: LandingTranslations }) {
     return (
-        <div className="h-full rounded-xl bg-white p-3">
+        <div className="h-full rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm">
             <div className="flex items-center justify-between">
-                <div className="h-3 w-20 rounded-full bg-[var(--color-surface-muted)]" />
-                <div className="h-6 w-12 rounded-full bg-[var(--color-primary-soft)]" />
+                <p className="text-xs font-semibold text-[var(--color-competition-strong)]">
+                    {t('preview.challengeLabel')}
+                </p>
+                <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" aria-hidden="true" />
             </div>
-            <div className="mt-4 h-4 w-28 rounded-full bg-[var(--color-inverse-surface)]" />
-            <div className="mt-3 h-2 rounded-full bg-[var(--color-surface-muted)]">
-                <div className="h-full w-4/5 rounded-full bg-[var(--theme-primary)]" />
+            <p className="mt-2 min-h-10 text-sm font-bold leading-5 text-[var(--color-text)]">
+                {t('preview.challengeValue')}
+            </p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
+                <div className="landing-dashboard-progress h-full w-4/5 rounded-full bg-[var(--color-competition)]" />
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="h-8 rounded-xl bg-[var(--color-primary-soft)]" />
-                <div className="h-8 rounded-xl bg-[var(--color-surface-muted)]" />
-                <div className="h-8 rounded-xl bg-[var(--color-surface-muted)]" />
+            <div className="mt-3 grid grid-cols-3 gap-2" aria-hidden="true">
+                <div className="h-7 rounded-lg bg-[var(--color-primary-soft)]" />
+                <div className="h-7 rounded-lg bg-[var(--color-success-soft)]" />
+                <div className="h-7 rounded-lg bg-[var(--color-reward-soft)]" />
             </div>
         </div>
     );
@@ -697,12 +835,12 @@ function MiniDashboardGraphic() {
 
 function MiniLeagueGraphic() {
     return (
-        <div className="h-full rounded-xl bg-white p-3">
+        <div className="h-full rounded-2xl bg-[var(--color-surface)] p-4 shadow-lg">
             <div className="flex h-full items-end gap-2">
-                <div className="h-12 flex-1 rounded-t-xl bg-[var(--color-primary-soft)]" />
-                <div className="h-20 flex-1 rounded-t-xl bg-[var(--theme-primary)]" />
-                <div className="h-16 flex-1 rounded-t-xl bg-[var(--theme-gradient-to)]/70" />
-                <div className="h-9 flex-1 rounded-t-xl bg-amber-300" />
+                <div className="landing-league-bar h-12 flex-1 rounded-t-xl bg-[var(--color-primary-soft)]" />
+                <div className="landing-league-bar h-24 flex-1 rounded-t-xl bg-[var(--color-primary)]" />
+                <div className="landing-league-bar h-18 flex-1 rounded-t-xl bg-[var(--color-competition)]" />
+                <div className="landing-league-bar h-10 flex-1 rounded-t-xl bg-[var(--color-reward)]" />
             </div>
         </div>
     );

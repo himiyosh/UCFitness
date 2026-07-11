@@ -87,7 +87,53 @@
     "currentTheme": "現在のテーマ",
     "shopCta": "UCショップ",
     "shopCtaDescription": "称号・フレーム・テーマでプロフィールをカスタマイズしよう！",
-    "shopCtaButton": "ショップを見る"
+    "shopCtaButton": "ショップを見る",
+    "googleHealth": {
+      "title": "歩数データ連携",
+      "providerLabel": "Google Health（段階移行）",
+      "description": "Google Health から日ごとの歩数合計を読み取り、目標・ランキング・チャレンジ・UC報酬へ反映します。接続は任意です。",
+      "scopeSteps": "日ごとの歩数合計のみを読み取ります",
+      "readOnly": "書き込み権限や医療データは要求しません",
+      "storagePurpose": "連携情報は暗号化し、歩数合計は機能提供のため保存します",
+      "disconnectAnytime": "いつでも接続解除でき、連携トークンを削除できます",
+      "status_active": "接続済み",
+      "status_disconnected": "未接続",
+      "status_reauthorization_required": "再接続が必要",
+      "status_error": "接続エラー",
+      "status_unknown": "状態を確認できません",
+      "migrationTitle": "Fitbit API 移行のお知らせ:",
+      "migrationDescription": "Google は Fitbit Web API を2026年9月に終了予定です。Google Health を接続するまでは、現在の Fitbit 連携を引き続き使用します。",
+      "migrationDescriptionFitbit": "Google は Fitbit Web API を2026年9月に終了予定です。Google Health を接続するまでは、現在の Fitbit 連携を引き続き使用します。",
+      "migrationDescriptionNoFitbit": "Google は Fitbit Web API を2026年9月に終了予定です。今後も歩数を同期するには Google Health を接続してください。",
+      "lastSynced": "最終同期: {date}",
+      "connect": "Google Health と接続",
+      "reconnect": "Google Health を再接続",
+      "connecting": "Google へ移動中...",
+      "oauthRedirectHint": "Google の同意画面へ移動します。Google のパスワードがUCFitnessへ共有されることはありません。",
+      "syncPausedDescription": "再接続するまで歩数同期は一時停止します。この接続が選択されている間、Fitbitへ自動では切り替わりません。",
+      "disconnect": "Google Health の接続を解除",
+      "disconnectTitle": "Google Health の接続を解除しますか？",
+      "disconnectDescription": "暗号化して保存している Google Health のアクセストークンと更新トークンを削除します。すでにUCFitnessへ保存された歩数履歴は削除されません。",
+      "disconnectDescriptionFitbit": "暗号化して保存している Google Health のアクセストークンと更新トークンを削除します。すでにUCFitnessへ保存された歩数履歴は削除されません。Fitbit連携が有効であれば、以後はFitbitから同期します。",
+      "disconnectDescriptionNoFallback": "暗号化して保存している Google Health のアクセストークンと更新トークンを削除します。すでにUCFitnessへ保存された歩数履歴は削除されません。別のデータソースを接続するまで、新しい歩数は同期されません。",
+      "cancel": "キャンセル",
+      "confirmDisconnect": "接続を解除する",
+      "disconnecting": "解除中...",
+      "disconnectSuccess": "Google Health の接続を解除しました。",
+      "disconnectError": "接続を解除できませんでした。時間をおいて再度お試しください。",
+      "loadError": "接続状態を取得できませんでした。時間をおいて再度お試しください。",
+      "retry": "状態を再取得",
+      "retrying": "再取得中...",
+      "temporarilyUnavailable": "新規接続と再接続は一時停止中です。接続済みの場合は解除できます。",
+      "noticeConnected": "Google Health を接続しました。今後の歩数同期では Google Health を優先します。",
+      "notice_disconnected": "Google Health の接続を解除しました。",
+      "notice_reauthorization_required": "Google Health の認証が無効になりました。歩数同期を再開するには、同じ Google アカウントで再接続してください。",
+      "notice_oauth_denied": "Google Health の接続はキャンセルされました。許可するデータを確認してから、必要なときに再度接続できます。",
+      "notice_invalid_state": "接続確認の有効期限が切れました。設定画面からもう一度お試しください。",
+      "notice_account_mismatch": "選択したアカウントを既存のフィットネスデータの所有者として確認できません。データ混在を防ぐため、以前と同じ Google アカウントを選択してください。",
+      "notice_connection_failed": "Google Health を接続できませんでした。時間をおいて再度お試しください。",
+      "notice_session_expired": "ログインの有効期限が切れました。再ログイン後に接続してください。"
+    }
   },
   "Dashboard": {
     "title": "UCFitness",
@@ -112,6 +158,9 @@
     "refreshSteps": "今すぐ同期",
     "refreshing": "同期中...",
     "refreshFailed": "歩数の同期に失敗しました",
+    "refreshNoData": "新しい歩数データはありませんでした",
+    "refreshReauthorizationRequired": "設定からGoogle Healthを再接続してください",
+    "refreshInProgress": "別の歩数同期が進行中です。しばらくして再度お試しください",
     "todayProgressLabel": "今日の歩数は {steps} / {goal} 歩、達成率 {percent}%",
     "todayCommandCenter": "今日の歩数と次のアクション",
     "todayLabel": "今日のコンディション",
@@ -193,7 +242,7 @@
     "headerTagline": "Fitbit 連携の習慣化フィットネス",
     "eyebrow": "Fitbit の歩数を、続く成果へ",
     "headline": "歩く、競う、続く。歩数を習慣に変える。",
-    "heroDesc": "UCFitness は Fitbit の歩数データを、今日の目標、ランキング、チャレンジ、UC 報酬へつなげるフィットネス習慣化アプリです。",
+    "heroDesc": "Fitbit の歩数を今日の目標、ランキング、UC 報酬につなげ、続けたくなる習慣へ変えます。",
     "subtitle": "歩くことは、最高の健康投資。",
     "conceptDesc": "UCFitnessは毎日の歩数をUndouCoin（UC）に変換。歩いて貯めて、競い合って、健康に投資しよう！",
     "compete": "仲間と競い合い",
@@ -202,10 +251,11 @@
     "connectFitbit": "30秒で連携。歩数は自動で反映されます。",
     "heroHighlights": {
       "goal": "今日の残り歩数がすぐ分かる",
-      "rank": "次の順位までの差が見える",
+      "rank": "次の順位まで",
       "reward": "UC報酬までの距離を追える"
     },
     "trustLabel": "信頼性と対応環境",
+    "statsScrollHint": "順位差とUC報酬は続く指標として確認できます。モバイルでは横にスクロールできます。",
     "trust": {
       "fitbit": "Fitbit 連携",
       "pwa": "PWA 対応",
@@ -218,10 +268,11 @@
       "sync": "同期済み",
       "goal": "目標 10,000 歩",
       "percent": "78%",
-      "remaining": "あと 2,180 歩で今日の目標",
+      "remaining": "あと 2,180 歩",
       "rankLabel": "今週の順位",
       "rankValue": "#12",
       "rewardLabel": "次の報酬",
+      "bonusLabel": "10,000歩達成で",
       "rewardValue": "+22 UC",
       "challengeLabel": "参加中チャレンジ",
       "challengeValue": "週末 50,000 歩リーグ"
@@ -241,10 +292,14 @@
       "label": "ランディングページ内ナビゲーション",
       "how": "使い方",
       "rewards": "UC報酬",
-      "proof": "実績",
+      "proof": "見どころ",
       "start": "始める"
     },
     "authGate": {
+      "settings": {
+        "title": "Google Health の設定へ戻るにはログインが必要です",
+        "desc": "「Fitbitでログイン」はUCFitness本人確認のために使用します。ログイン後は設定画面へ戻り、Google Health の再接続を続けられます。"
+      },
       "default": {
         "title": "ログインすると続きから確認できます",
         "desc": "Fitbit と連携すると、歩数・ランキング・チャレンジ・UC 報酬をあなたの状態に合わせて表示します。"
@@ -308,7 +363,7 @@
     "copyright": "Studio344",
     "headlinePart1": "歩く、競う、続く。",
     "headlinePart2": "歩数を習慣に変える。",
-    "statsLabel": "利用状況",
+    "statsLabel": "順位差とUC報酬",
     "stats": {
       "users": {
         "value": "1,000+",
@@ -328,8 +383,8 @@
       }
     },
     "journeyLabel": "Habit loop",
-    "journeyTitle": "アプリを開いた瞬間から、次の一歩まで迷わせない。",
-    "journeyDesc": "Fitbit の歩数をただ表示するだけではなく、今日の判断、競争、報酬までをひとつの流れにします。",
+    "journeyTitle": "歩数を見た瞬間、次の一歩が決まる。",
+    "journeyDesc": "同期、目標、競争、報酬を順番につなぎ、迷いを減らします。",
     "journey": {
       "sync": {
         "label": "Sync",
@@ -352,9 +407,9 @@
         "desc": "UC、バッジ、チャレンジ達成を、続けたくなる達成感として見せます。"
       }
     },
-    "showcaseLabel": "Product feel",
-    "showcaseTitle": "白いカードだけで終わらせない、フィットネスアプリらしい熱量。",
-    "showcaseDesc": "プロ品質はシンプルさだけではなく、目的に沿った色面・数値・進捗・コミュニティ感の組み合わせで生まれます。",
+    "showcaseLabel": "Live product",
+    "showcaseTitle": "歩くたび、画面の手応えが変わる。",
+    "showcaseDesc": "進捗は伸び、順位差は縮まり、UC は積み上がる。数字の変化を次の行動に変えます。",
     "showcase": {
       "today": {
         "title": "今日の状態が主役",
@@ -367,8 +422,8 @@
     },
     "rewardPreview": {
       "label": "Reward loop",
-      "title": "少ない日も、歩いた分がちゃんと残る。",
-      "desc": "復帰した日も、短い散歩も、UC とプロフィール装飾につながる小さな成果として見える化します。",
+      "title": "少ない日も、歩いた分が残る。",
+      "desc": "短い散歩も、UC とプロフィールの成長につながります。",
       "restart": {
         "label": "Restart",
         "title": "まずは小さく再開",
@@ -388,9 +443,10 @@
         "value": "称号/フレーム"
       }
     },
+    "benefitsTitle": "続ける理由を、毎日の画面に。",
     "finalCta": {
       "title": "今日の歩数を、続けたくなる成果に変えよう。",
-      "desc": "Fitbit と連携して、目標・ランキング・チャレンジ・UC 報酬をひとつのダッシュボードで確認できます。"
+      "desc": "Fitbit と連携すれば、今日の目標から次の報酬まで一画面で分かります。"
     }
   },
   "Leaderboard": {

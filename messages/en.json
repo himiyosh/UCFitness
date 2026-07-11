@@ -87,7 +87,53 @@
     "currentTheme": "Current Theme",
     "shopCta": "UC Shop",
     "shopCtaDescription": "Customize your profile with titles, frames & themes!",
-    "shopCtaButton": "Visit Shop"
+    "shopCtaButton": "Visit Shop",
+    "googleHealth": {
+      "title": "Step Data Connection",
+      "providerLabel": "Google Health (phased migration)",
+      "description": "Read daily step totals from Google Health and use them for goals, rankings, challenges, and UC rewards. Connecting is optional.",
+      "scopeSteps": "Reads daily step totals only",
+      "readOnly": "Does not request write access or medical data",
+      "storagePurpose": "Encrypts connection credentials and stores step totals to provide app features",
+      "disconnectAnytime": "Disconnect anytime to delete the connection tokens",
+      "status_active": "Connected",
+      "status_disconnected": "Not connected",
+      "status_reauthorization_required": "Reconnect required",
+      "status_error": "Connection error",
+      "status_unknown": "Status unavailable",
+      "migrationTitle": "Fitbit API transition:",
+      "migrationDescription": "Google plans to discontinue the Fitbit Web API in September 2026. Your current Fitbit connection remains in use until you choose to connect Google Health.",
+      "migrationDescriptionFitbit": "Google plans to discontinue the Fitbit Web API in September 2026. Your current Fitbit connection remains in use until you choose to connect Google Health.",
+      "migrationDescriptionNoFitbit": "Google plans to discontinue the Fitbit Web API in September 2026. Connect Google Health to continue syncing steps.",
+      "lastSynced": "Last synced: {date}",
+      "connect": "Connect Google Health",
+      "reconnect": "Reconnect Google Health",
+      "connecting": "Opening Google...",
+      "oauthRedirectHint": "Google's consent screen will open. Your Google password is never shared with UCFitness.",
+      "syncPausedDescription": "Step sync is paused until you reconnect. UCFitness will not switch to Fitbit automatically while this connection remains selected.",
+      "disconnect": "Disconnect Google Health",
+      "disconnectTitle": "Disconnect Google Health?",
+      "disconnectDescription": "This deletes the stored Google Health access and refresh tokens. Step history already saved in UCFitness will not be deleted.",
+      "disconnectDescriptionFitbit": "This deletes the stored Google Health access and refresh tokens. Step history already saved in UCFitness will not be deleted. If your Fitbit connection is still active, future syncs will use Fitbit.",
+      "disconnectDescriptionNoFallback": "This deletes the stored Google Health access and refresh tokens. Step history already saved in UCFitness will not be deleted. New steps will not sync until you connect another data source.",
+      "cancel": "Cancel",
+      "confirmDisconnect": "Disconnect",
+      "disconnecting": "Disconnecting...",
+      "disconnectSuccess": "Google Health has been disconnected.",
+      "disconnectError": "Google Health could not be disconnected. Please try again later.",
+      "loadError": "The connection status could not be loaded. Please try again later.",
+      "retry": "Reload status",
+      "retrying": "Reloading...",
+      "temporarilyUnavailable": "New connections and reconnections are temporarily paused. Existing connections can still be disconnected.",
+      "noticeConnected": "Google Health is connected. Future step syncs will prioritize Google Health.",
+      "notice_disconnected": "Google Health has been disconnected.",
+      "notice_reauthorization_required": "Your Google Health authorization is no longer valid. Reconnect the same Google account to resume step sync.",
+      "notice_oauth_denied": "Google Health connection was canceled. Review the requested data and reconnect whenever you are ready.",
+      "notice_invalid_state": "The connection check expired. Please start again from Settings.",
+      "notice_account_mismatch": "The selected account could not be verified as the owner of your existing fitness data. To prevent mixed data, choose the same Google account as before.",
+      "notice_connection_failed": "Google Health could not be connected. Please try again later.",
+      "notice_session_expired": "Your session expired. Sign in again before connecting Google Health."
+    }
   },
   "Dashboard": {
     "title": "UCFitness",
@@ -112,6 +158,9 @@
     "refreshSteps": "Sync Now",
     "refreshing": "Refreshing...",
     "refreshFailed": "Failed to refresh steps",
+    "refreshNoData": "No new step data was available",
+    "refreshReauthorizationRequired": "Reconnect Google Health from Settings",
+    "refreshInProgress": "Another step sync is running. Please try again shortly",
     "todayProgressLabel": "Today's steps: {steps} of {goal}, {percent}% complete",
     "todayCommandCenter": "Today's steps and next action",
     "todayLabel": "Today's condition",
@@ -193,7 +242,7 @@
     "headerTagline": "Fitbit-connected fitness habits",
     "eyebrow": "Turn Fitbit steps into lasting progress",
     "headline": "Walk, compete, and keep going. Turn steps into rhythm.",
-    "heroDesc": "UCFitness connects Fitbit step data with daily goals, rankings, challenges, and UC rewards so your activity becomes a habit you can see.",
+    "heroDesc": "Turn Fitbit steps into daily goals, rankings, and UC rewards that make progress worth repeating.",
     "subtitle": "Walking is the best investment in your health.",
     "conceptDesc": "UCFitness turns your daily steps into UndouCoin (UC). Walk, earn, compete, and invest in your health!",
     "compete": "Compete",
@@ -202,10 +251,11 @@
     "connectFitbit": "Connect in about 30 seconds. Steps sync automatically.",
     "heroHighlights": {
       "goal": "See today's remaining steps instantly",
-      "rank": "Know the gap to the next rank",
+      "rank": "To the next rank",
       "reward": "Track the distance to UC rewards"
     },
     "trustLabel": "Trust and platform support",
+    "statsScrollHint": "The rank gap and UC reward follow as additional metrics. Scroll horizontally on mobile.",
     "trust": {
       "fitbit": "Fitbit connected",
       "pwa": "PWA ready",
@@ -218,10 +268,11 @@
       "sync": "Synced",
       "goal": "Goal 10,000 steps",
       "percent": "78%",
-      "remaining": "2,180 steps to today's goal",
+      "remaining": "2,180 steps left",
       "rankLabel": "Weekly rank",
       "rankValue": "#12",
       "rewardLabel": "Next reward",
+      "bonusLabel": "Reach 10,000 steps",
       "rewardValue": "+22 UC",
       "challengeLabel": "Active challenge",
       "challengeValue": "Weekend 50,000 step league"
@@ -241,10 +292,14 @@
       "label": "Landing page navigation",
       "how": "How it works",
       "rewards": "UC rewards",
-      "proof": "Proof",
+      "proof": "Highlights",
       "start": "Start"
     },
     "authGate": {
+      "settings": {
+        "title": "Sign in to return to Google Health settings",
+        "desc": "“Sign in with Fitbit” verifies your UCFitness account. After signing in, you will return to Settings and can continue reconnecting Google Health."
+      },
       "default": {
         "title": "Sign in to continue where you left off",
         "desc": "Connect Fitbit to see steps, rankings, challenges, and UC rewards personalized to your activity."
@@ -308,7 +363,7 @@
     "copyright": "Studio344",
     "headlinePart1": "Walk, Compete, Persist.",
     "headlinePart2": "Turn steps into a habit.",
-    "statsLabel": "Usage stats",
+    "statsLabel": "Rank gap and UC rewards",
     "stats": {
       "users": {
         "value": "1,000+",
@@ -328,8 +383,8 @@
       }
     },
     "journeyLabel": "Habit loop",
-    "journeyTitle": "From opening the app to taking the next step, without confusion.",
-    "journeyDesc": "UCFitness does more than show Fitbit steps. It connects today's decision, competition, and reward into one flow.",
+    "journeyTitle": "See your steps. Know your next move.",
+    "journeyDesc": "Sync, goals, competition, and rewards unfold in a clear sequence.",
     "journey": {
       "sync": {
         "label": "Sync",
@@ -352,9 +407,9 @@
         "desc": "UC, badges, and challenge progress are framed as visible proof of consistency."
       }
     },
-    "showcaseLabel": "Product feel",
-    "showcaseTitle": "Not just white cards: energy that still feels professional.",
-    "showcaseDesc": "A polished fitness product needs purposeful color fields, clear numbers, progress, and community momentum—not minimalism alone.",
+    "showcaseLabel": "Live product",
+    "showcaseTitle": "The screen responds as you move.",
+    "showcaseDesc": "Progress grows, rank gaps close, and UC adds up. Each change points to the next useful action.",
     "showcase": {
       "today": {
         "title": "Today stays primary",
@@ -367,8 +422,8 @@
     },
     "rewardPreview": {
       "label": "Reward loop",
-      "title": "Even a low-step day still leaves progress behind.",
-      "desc": "A return day, a short walk, and a small effort can still become visible progress through UC and profile upgrades.",
+      "title": "Even a low-step day leaves progress behind.",
+      "desc": "A short walk still contributes to UC and your profile.",
       "restart": {
         "label": "Restart",
         "title": "Restart gently",
@@ -388,9 +443,10 @@
         "value": "Titles/frames"
       }
     },
+    "benefitsTitle": "Put a reason to continue in every daily view.",
     "finalCta": {
       "title": "Turn today's steps into progress you want to continue.",
-      "desc": "Connect Fitbit and see goals, rankings, challenges, and UC rewards in one dashboard."
+      "desc": "Connect Fitbit and see the path from today's goal to your next reward in one view."
     }
   },
   "Leaderboard": {

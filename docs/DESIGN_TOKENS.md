@@ -22,12 +22,23 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 | `--color-text-muted` | 補助テキスト | `#5B6472` |
 | `--color-border` | 境界線 | `#DDE3EA` |
 | `--color-primary` | 主 CTA・選択状態 | `#2563EB` |
+| `--color-primary-strong` | 主色の淡い面上に置く文字・アイコン | `#1D4ED8` |
 | `--color-primary-soft` | 主 CTA の淡い背景 | `#DBEAFE` |
 | `--color-primary-solid` | 白文字を載せるプライマリ塗り面 | `#1D4ED8` |
 | `--color-success` | 達成・同期成功 | `#16A34A` |
+| `--color-success-strong` | 達成面上の文字・アイコン | `#166534` |
+| `--color-success-soft` | 達成・同期成功の淡い面 | `#DCFCE7` |
 | `--color-warning` | 注意・期限間近 | `#D97706` |
 | `--color-danger` | エラー・破壊的操作 | `#DC2626` |
 | `--color-reward` | UC・報酬・バッジ | `#B7791F` |
+| `--color-reward-strong` | 報酬面上の文字・アイコン | `#92400E` |
+| `--color-reward-soft` | UC・報酬の淡い面 | `#FEF3C7` |
+| `--color-competition` | 順位・対戦・グループ競争 | `#7C3AED` |
+| `--color-competition-strong` | 競争面上の文字・アイコン | `#5B21B6` |
+| `--color-competition-soft` | 競争・順位の淡い面 | `#EDE9FE` |
+| `--color-competition-solid` | 白文字を載せる競争色の塗り面 | `#6D28D9` |
+| `--color-play` | 公開 LP の楽しさ・最終導線 | `#E11D48` |
+| `--color-play-soft` | 楽しさ・最終導線の淡い面 | `#FFE4E6` |
 | `--color-inverse-surface` | 濃色ヒーロー・黒系CTA・プロダクトモック背景 | `#0F172A` |
 | `--color-inverse-text` | 濃色面の文字 | `#FFFFFF` |
 
@@ -35,8 +46,14 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 
 - 通常画面は `--color-bg` と `--color-surface` を基本にし、装飾目的の全面グラデーションを避ける。
 - `--color-primary` はアクセント文字、選択状態、重要な進捗だけに使う。
+- 淡い主色面の文字には `--color-primary-strong`、白文字を載せる塗り面には `--color-primary-solid` を使い分ける。
 - 白文字を載せる塗り CTA には `--color-primary` ではなく `--color-primary-solid` を使う。
 - 報酬表現は `--color-reward` に限定し、健康データより前面に出しすぎない。
+- 競争表現は `--color-competition`、達成表現は `--color-success` に分け、色だけでなくラベルやアイコンも併用する。
+- 競争色を白文字付きの塗り面に使う場合は `--color-competition-solid` を使用し、文字・境界用の `--color-competition` と兼用しない。
+- 公開 LP は Full Palette の例外とし、青=目標、緑=達成、紫=競争、アンバー=報酬を同一画面で使える。ただし各色の意味を混在させない。
+- 保存済みテーマは公開 LP にも適用されるため、暗色テーマでは `strong` / `soft` の組を同時に上書きし、各 `strong` 色を対応する `soft` 面と基本 `surface` 面の両方で検証する。
+- 公開 LP でもグラデーション文字、暗色全面ヒーロー、青紫ぼかし中心の SaaS 表現は使わない。
 - 濃色面や黒系 CTA には `--color-text` を背景として使わず、必ず `--color-inverse-surface` と `--color-inverse-text` を使う。
 - 半透明テキストや低コントラストの淡色文字は避ける。
 - 旧 `--accent-*` は Pop テーマや限定演出用とし、通常 UI では新規使用しない。
@@ -117,6 +134,15 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 | `--motion-standard` | `--motion-standard-duration: 300ms` | `cubic-bezier(0.2, 0, 0, 1)` | カード、ボタン等 |
 | `--motion-deemphasized` | `--motion-deemphasized-duration: 200ms` | `cubic-bezier(0.3, 0, 0.8, 0.15)` | 微細なフィードバック |
 | `--spring` | — | `cubic-bezier(0.22, 1, 0.36, 1)` | Apple 風スプリング |
+
+### 公開LPのモーション契約
+
+- 初回表示はヒーロー本文とプロダクトプレビューの短い導入に限定し、コンテンツを `opacity: 0` のまま待機させない。
+- 歩数リングと進捗バーは前進、順位グラフは成長、報酬は一度だけの到達として動きを割り当てる。
+- 読めるテキストを含む要素はアニメーション中も `opacity: 1` を維持し、変形・SVG描画・独立した装飾レイヤーで動きを表現する。
+- Scroll-driven Animations は `@supports (animation-timeline: ...)` 内だけで使用し、未対応ブラウザでは完成状態をそのまま表示する。
+- `prefers-reduced-motion: reduce` ではスクロール進捗を非表示にし、変形・反復・描画アニメーションを停止する。
+- 複数の `animation` shorthand を同一要素へ重ねず、導入と常時の微細な動きは親子要素へ分離する。
 
 ---
 

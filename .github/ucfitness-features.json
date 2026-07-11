@@ -670,9 +670,9 @@
         "cta_clarity": "ファーストビューで CTA が即認識",
         "error_handling": "OAuth 失敗時にユーザーに明示"
       },
-      "status": "not-started",
-      "lastAttempt": null,
-      "lastError": null
+      "status": "in-progress",
+      "lastAttempt": "2026-07-11T21:39:40+09:00",
+      "lastError": "公開LPのCTA明確化とja/en表示は検証済み。実Fitbit OAuthコールバック後の/setup遷移と失敗メッセージは資格情報を伴うE2E未実施。"
     },
     {
       "id": "F028",
@@ -820,6 +820,47 @@
       "status": "in-progress",
       "lastAttempt": "2026-05-23T20:57:00+09:00",
       "lastError": "P0/P1 修正のため no-explicit-any は一時的に warning 化済み。残警告の型付けは継続対応。"
+    },
+    {
+      "id": "F034",
+      "name": "Google Health 段階移行基盤",
+      "category": "infrastructure",
+      "priority": "P0",
+      "feasibility": "hard",
+      "description": "2026年9月のFitbit Web API終了に備え、既存Fitbit同期を維持しながら、明示的な再同意でGoogle Healthの日次歩数へ移行できる。ログインIDと健康データ接続を分離し、トークンは暗号化して保存する。",
+      "rationale": "Fitbit API終了後も歩数同期を継続し、単一データソース依存によるサービス停止リスクを解消する。",
+      "dependsOn": [],
+      "filesAffected": [
+        "migrations/20260617_add_multi_provider_connections.sql",
+        "lib/api/google-health.ts",
+        "lib/services/fitness-connection-service.ts",
+        "lib/services/google-health-step-source.ts",
+        "lib/services/step-manager.ts",
+        "app/api/health-connections/google/",
+        "components/GoogleHealthConnectionCard.tsx",
+        "app/[locale]/settings/page.tsx",
+        "messages/ja.json",
+        "messages/en.json"
+      ],
+      "verificationSteps": [
+        "マイグレーション適用後、user_auth_identities と fitness_connections が public.users(id) を参照し、RLS有効・クライアント権限なしになっている",
+        "AES-256-GCM暗号化の正常系・改ざん・鍵長エラーのユニットテストが通る",
+        "OAuth state、戻り先allowlist、最小読み取りスコープ、API応答検証のユニットテストが通る",
+        "Google Health接続済みユーザーはGoogle Healthを優先し、未接続ユーザーはFitbit同期を継続する",
+        "設定画面で同意内容、接続状態、再接続、確認ダイアログ付き解除がja/en両方で表示される",
+        "Playwright: モバイル375px / デスクトップ1280pxで設定画面の表示・キーボード操作・横スクロールなしを確認する",
+        "本番相当OAuth資格情報で認可、日次歩数取得、401更新、解除をE2E確認する"
+      ],
+      "judgeRubric": {
+        "migrationSafety": "既存Fitbitユーザーのトークンと同期経路を破壊せず段階移行できる",
+        "privacyAndSecurity": "最小権限、明示的同意、CSRF対策、AES-256-GCM、容易な解除を満たす",
+        "dataIntegrity": "日付境界・90日上限・欠測日と0歩を正しく区別する",
+        "uxAndAccessibility": "接続目的と保存内容が理解でき、44px操作領域・フォーカス管理・ja/enを満たす",
+        "edgeRuntimeCompatibility": "Node.js専用APIに依存せずCloudflare Edgeで動作する"
+      },
+      "status": "blocked",
+      "lastAttempt": "2026-07-11T18:45:27+09:00",
+      "lastError": "ローカルで型・Lint・ルール・i18n・全159テストを通過し、PostgreSQL WASMでマイグレーション、FK/RLS/RPC権限、Google ID継続性、更新トークン保持、Fitbit履歴競合拒否、単調増加を検証済み。未認証リダイレクトは375px/1280pxで再認証通知と戻り先を保持し、スキップリンクの44px操作領域・本文フォーカス移動、横スクロール・JS/APIエラーなし、Lighthouse Accessibility 100を確認。実Supabase適用、実Google OAuth E2E、認証済み設定画面は資格情報設定と本番データ変更の承認待ち。"
     }
   ]
 }

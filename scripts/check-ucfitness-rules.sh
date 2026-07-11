@@ -84,6 +84,12 @@ if [ -n "$HITS" ]; then
   record ".select('*') 使用 (rule: 必要カラムのみ明示指定 / count-only は head:true 必須)" "$HITS"
 fi
 
+# ---------- 9. OAuthログインのメール一致による暗黙リンク ----------
+HITS=$(grep -nE "\.eq\(\s*['\"]email['\"]" lib/auth.ts 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "OAuthログインのメール一致リンク (rule: provider + provider_account_id のみで照合)" "$HITS"
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"

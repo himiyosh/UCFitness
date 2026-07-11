@@ -1,24 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-05-23T20:57:00+09:00",
-  "lastAgent": "UCFitnessAgent",
-  "lastCommit": "73b785f",
-  "lastBranch": "agents/ui-functionality-improvement-research-1402d7c8",
+  "lastUpdated": "2026-07-12T04:01:07+09:00",
+  "lastAgent": "UCFitnessAgent (Next.js + Debug + Self-Critique)",
+  "lastCommit": "07e15b6eba8291f681acd997d0a27ece6490742b",
+  "lastBranch": "restore-competitive-fitness-roadmap",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "監査結果の P0/P1 対応 — Hooks 違反修正、CreateChallengeModal a11y/i18n 改善、Push API 統一、URL/CSP/rate-limit/log redaction、CI と安全な hooks、README/Skill/Agent 整合性を更新。",
+  "summary": "欠損したworktreeからGoogle Health移行、公開LP再設計、Safari localhost CSS修復を含む全ソース差分を新しいGit作業コピーへ復元した。型・Lint・ルール・i18n・全159テストが通る状態で、認証後UIの密度・意味色・UX改善を継続できる。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-any は F033 継続対応として一時 warning 化。npm run lint -- --quiet は 0 error。",
-    "devServerRunning": false,
-    "lastVerified": "2026-05-23T20:57:00+09:00"
+    "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warningはF033継続対応。今回変更によるLint errorは0。",
+    "devServerRunning": true,
+    "lastVerified": "2026-07-12T04:01:07+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
     "Creators API 資格未達（10件/30日）",
-    "カードリストのモバイル横スクロールは md ブレイクポイントで切替"
+    "カードリストのモバイル横スクロールは md ブレイクポイントで切替",
+    "Google Healthの実Supabaseマイグレーション適用と実OAuth E2Eは資格情報・本番データ変更承認待ち",
+    "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -30,7 +32,7 @@
   },
   "featureBacklogRef": {
     "file": ".github/ucfitness-features.json",
-    "totalFeatures": 33,
+    "totalFeatures": 34,
     "$comment": "個別 feature の詳細 (description / verificationSteps / judgeRubric / status) は features.json を参照。Coding Agent は status フィールドのみ更新可能。"
   },
   "sessionLog": [
@@ -72,6 +74,125 @@
         ".github/ucfitness-progress.json",
         ".github/agents/UCFitnessAgent.agent.md",
         ".github/copilot-instructions.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "Fitbit Web API終了に備えたGoogle Health段階移行基盤を実装。認証IDと健康データ接続の分離、AES-256-GCM、OAuth安全策、履歴置換と当日単調同期、所有者UUID付き同期リース、設定UI、ja/en、API結果分類、回帰テスト、README・ルールを追加。",
+      "commit": "",
+      "filesChanged": [
+        "migrations/20260617_add_multi_provider_connections.sql",
+        "lib/api/google-health.ts",
+        "lib/services/fitness-connection-service.ts",
+        "lib/services/google-health-step-source.ts",
+        "lib/services/step-manager.ts",
+        "app/api/health-connections/google/",
+        "components/GoogleHealthConnectionCard.tsx",
+        "app/[locale]/settings/page.tsx",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "最終独立レビューの5指摘を修正。OAuth stateの開始ユーザー拘束、復号障害の非破壊隔離、Google接続保存の原子化、Fitbit履歴書き込み時のデータソース再検証、恒久的認証失敗の再認証結果化を追加し、PostgreSQL WASM・全158テスト・静的検査・375px/1280px未認証回帰で確認。",
+      "commit": "",
+      "filesChanged": [
+        "lib/google-health-oauth.ts",
+        "app/api/health-connections/google/authorize/route.ts",
+        "app/api/health-connections/google/callback/route.ts",
+        "lib/services/fitness-connection-service.ts",
+        "lib/services/step-manager.ts",
+        "migrations/20260617_add_multi_provider_connections.sql",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "最終ペルソナ監査の指摘を修正。セッション切れ後もGoogle Health再認証通知と戻り先を保持し、Fitbitログインの役割を明示。スキップリンクをサイドバー後の本文コンテナへ移し、375px/1280pxのキーボード操作、Lighthouse Accessibility 100、全159テストで確認。",
+      "commit": "",
+      "filesChanged": [
+        "lib/google-health-oauth.ts",
+        "lib/__tests__/google-health-oauth.test.ts",
+        "app/[locale]/layout.tsx",
+        "components/LandingPage.tsx",
+        "messages/ja.json",
+        "messages/en.json",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "自己批判ゲートで検出したスキップリンクの操作領域不足を修正。フォーカス時44px高を375px/1280pxで実測し、本文フォーカス移動、横スクロールなし、全159テスト、型・Lint・ルール・i18nを再確認。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/layout.tsx"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "Google Health段階移行基盤と最終UX修正をコミットし、外部資格情報と本番データ変更承認を要する実環境検証のみblockedとして引き継ぎ。",
+      "commit": "59f4ff4ba7ed9afdef09362b27baf68a68ba834d",
+      "filesChanged": [
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "公開LPを明るく高密度なブランド体験へ再設計。目標・達成・競争・報酬の意味色、歩数・順位・UC・チャレンジの実UI、低活動ユーザー向け復帰導線、ランドマーク・スキップ移動・320pxリフロー、保存済みMidnightテーマのコントラストを整備し、全159テストとLighthouse 100で確認。",
+      "commit": "97a905c93e1eb1af67c9958d8f276cafe08a2456",
+      "filesChanged": [
+        "components/LandingPage.tsx",
+        "app/[locale]/layout.tsx",
+        "app/globals.css",
+        "messages/ja.json",
+        "messages/en.json",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-features.json",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "ローカル閲覧タブを検証用375px表示から1280×800・スクロール先頭へ復元し、再読み込み・前面化。LISTEN、HTTP 200、readyState、主要見出し、横スクロールなし、閲覧タブのスクリーンショットを確認し、サーバー稼働とユーザー可視性を分離する完了条件をルール化。",
+      "commit": "07e15b6eba8291f681acd997d0a27ece6490742b",
+      "filesChanged": [
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Next.js + Debug + Self-Critique)",
+      "action": "SafariでlocalhostのCSSが外れる障害を修復。開発CSPからupgrade-insecure-requestsを除外し、本番CSPでは維持した。CSSのHTTP 200・text/css配信とSafari実表示を確認し、開発CSPと通常ブラウザ表示の検査手順をルール化。",
+      "commit": "",
+      "filesChanged": [
+        "next.config.ts",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-progress.json",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent",
+      "action": "Git worktreeメタデータ欠損に対し、GitHub mainから新しい作業コピーを作成して現在の全ソース差分を再適用。元フォルダは変更せず保持し、復旧先で型・Lint・ルール・i18n・全159テストを確認。",
+      "commit": "",
+      "filesChanged": [
+        ".github/ucfitness-progress.json"
       ]
     }
   ],

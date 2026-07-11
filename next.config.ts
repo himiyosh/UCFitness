@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from 'next-intl/plugin';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const scriptSrc = [
   "script-src 'self'",
-  process.env.NODE_ENV === 'production' ? null : "'unsafe-eval'",
+  isProduction ? null : "'unsafe-eval'",
   "'unsafe-inline'",
   'https://pagead2.googlesyndication.com',
   'https://www.googletagmanager.com',
@@ -24,8 +26,9 @@ const securityHeaders = [
       scriptSrc,
       "connect-src 'self' https://*.supabase.co https://api.fitbit.com https://www.fitbit.com https://www.amazon.co.jp https://*.amazoncognito.com https://creatorsapi.amazon https://*.amazon.com https://*.amazon.co.jp",
       "frame-src 'self' https://www.fitbit.com https://accounts.fitbit.com https://pagead2.googlesyndication.com",
-      'upgrade-insecure-requests',
-    ].join('; '),
+      // Safari upgrades localhost CSS to HTTPS when this directive is present.
+      isProduction ? 'upgrade-insecure-requests' : null,
+    ].filter(Boolean).join('; '),
   },
   {
     key: 'Strict-Transport-Security',
@@ -67,4 +70,3 @@ const nextConfig: NextConfig = {
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 export default withNextIntl(nextConfig);
-

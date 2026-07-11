@@ -52,31 +52,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async signIn({ user, account }: { user: any; account?: any; profile?: any }) {
             if (!account) return false;
 
-            // 1. Try to find user by Provider Account ID (Fitbit ID) first - This is stable
+            // Provider identity is the only safe automatic account-linking key.
             const { data: providerUser, error: selectError } = await supabaseAdmin
                 .from("users")
                 .select("id, is_custom_image, email, provider, provider_account_id")
                 .eq("provider", account.provider)
                 .eq("provider_account_id", account.providerAccountId)
                 .single();
-            let existingUser = providerUser;
+            const existingUser = providerUser;
 
             if (selectError && selectError.code !== 'PGRST116') {
                 reportError('auth.signIn:lookupByProvider', selectError);
-            }
-
-            // 2. Fallback: Try by Email (legacy or first-time sync issue)
-            // Only if not found by provider ID and user has an email
-            if (!existingUser && user.email) {
-                const { data: userByEmail } = await supabaseAdmin
-                    .from("users")
-                    .select("id, is_custom_image, email, provider, provider_account_id")
-                    .eq("email", user.email)
-                    .single();
-
-                if (userByEmail) {
-                    existingUser = userByEmail;
-                }
+                return false;
             }
 
             let error;
@@ -123,7 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         updated_at: new Date().toISOString(),
                         // language: 'ja' // Default to Japanese - Column missing
                     })
-                    .select()
+                    .select("id")
                     .single();
 
                 error = insertError;
@@ -146,6 +133,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
         async session({ session, token }: { session: any; token: any }) {
             if (session.user) {
+                const tokenProvider = typeof token.provider === 'string'
+                    ? token.provider
+                    : 'fitbit';
                 // Optimization: Populate from Token if available to avoid DB hits in Middleware
                 if (token.id && token.username && token.email) {
                     session.user.id = token.id;
@@ -175,6 +165,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     const res = await supabaseAdmin
                         .from("users")
                         .select("id, name, username, image, email, language")
+                        .eq("provider", tokenProvider)
                         .eq("provider_account_id", token.provider_account_id)
                         .single();
                     if (res.data) data = res.data;
@@ -185,19 +176,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     const res = await supabaseAdmin
                         .from("users")
                         .select("id, name, username, image, email, language")
+                        .eq("provider", tokenProvider)
                         .eq("provider_account_id", token.sub)
                         .single();
                     if (res.data) data = res.data;
-                }
-
-                // 4. Fallback by email (Last resort)
-                if (!data && token.email) {
-                    const { data: byEmail } = await supabaseAdmin
-                        .from("users")
-                        .select("id, name, username, image, email, language")
-                        .eq("email", token.email)
-                        .single();
-                    data = byEmail;
                 }
 
                 if (data) {
@@ -207,8 +189,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     session.user.email = data.email;
                     session.user.username = data.username;
                     session.user.language = data.language || 'ja';
-                } else {
-                    session.user.id = token.sub;
                 }
             }
             return session;
@@ -217,6 +197,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // Initial sign in
             if (account && user) {
                 token.accessToken = account.access_token;
+                token.provider = account.provider;
                 token.provider_account_id = account.providerAccountId; // Persist for recovery
 
                 // Sync with DB to get real ID/Username
@@ -260,6 +241,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         const res = await supabaseAdmin
                             .from("users")
                             .select("id, username, email, image, provider_account_id, language")
+                            .eq("provider", token.provider || 'fitbit')
                             .eq("provider_account_id", token.provider_account_id)
                             .single();
                         data = res.data;
@@ -270,6 +252,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         const res = await supabaseAdmin
                             .from("users")
                             .select("id, username, email, image, provider_account_id, language")
+                            .eq("provider", token.provider || 'fitbit')
                             .eq("provider_account_id", token.sub)
                             .single();
                         data = res.data;

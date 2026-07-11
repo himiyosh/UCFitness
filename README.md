@@ -8,7 +8,7 @@
 
 ## 概要
 
-UCFitness は **Fitbit 連携の歩数トラッキング・フィットネス競争アプリ (PWA)**。
+UCFitness は **複数の健康データソースに段階対応する歩数トラッキング・フィットネス競争アプリ (PWA)**。
 
 グループ対抗のランキング・チャレンジ・リアクション・バッジ・コイン経済を通じて、日常の歩数活動を楽しくゲーミフィケーションする。
 
@@ -16,7 +16,7 @@ UCFitness は **Fitbit 連携の歩数トラッキング・フィットネス競
 
 | 機能 | 説明 |
 |---|---|
-| **歩数トラッキング** | Fitbit API を使用した自動歩数同期 |
+| **歩数トラッキング** | Fitbit API と Google Health の段階移行型自動歩数同期 |
 | **グループ対抗** | グループ作成・参加、メンバーランキング、週間レポート |
 | **リーダーボード** | 個人・グループ・パーセンタイルランキング |
 | **チャレンジ** | 期間限定のウォーキングチャレンジ |
@@ -35,6 +35,7 @@ UCFitness は **Fitbit 連携の歩数トラッキング・フィットネス競
 | **UI** | React 18.3.1, Tailwind CSS v4, CSS カスタムプロパティ (テーマ) |
 | **言語** | TypeScript 5 |
 | **認証** | NextAuth v5 (beta) / Fitbit OAuth 2.0 |
+| **健康データ** | Fitbit Web API / Google Health API (opt-in) |
 | **DB** | Supabase (PostgreSQL) |
 | **i18n** | next-intl (ja/en) |
 | **チャート** | Recharts |
@@ -49,16 +50,23 @@ UCFitness は **Fitbit 連携の歩数トラッキング・フィットネス競
                           |
                    [Next.js 15 App Router]
                     /        |        \
-            [NextAuth]  [Supabase]  [Fitbit API]
-           (OAuth 2.0)  (PostgreSQL)  (歩数同期)
-                          |
-                   [Web Push API]
+            [NextAuth]  [Supabase]  [Health Data Layer]
+           (OAuth 2.0)  (PostgreSQL)  /             \
+                          |       [Fitbit API] [Google Health API]
+                   [Web Push API]       (歩数同期)
                    (プッシュ通知)
 ```
 
 - **Server Component 優先**: ページはサーバーサイドでレンダリングし、インタラクティブ部分のみ `'use client'`
 - **Edge Runtime 必須**: すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` を宣言
 - **supabaseAdmin**: サーバーサイドの DB アクセスはサービスロールキーを使用
+- **Dual-Library Strategy**: Google Health を明示的に接続したユーザーは同APIを優先し、未接続または明示解除したユーザーはFitbitを継続利用。再認証待ち・エラー時はデータ混在を避けるため暗黙切替しない
+- **責務分離**: 認証IDの継続照合記録 (`user_auth_identities`) と健康データ接続 (`fitness_connections`) を分離する。ログインは `provider + provider_account_id` だけで照合し、メール一致による暗黙リンクは行わない
+- **OAuthコールバック保護**: Google HealthのOAuth stateは有効期限・nonce・開始ユーザーIDをHMAC署名へ含め、コールバック時のセッションユーザー不一致をトークン交換前に拒否する。Google Health IDの継続性確認、更新トークン保持、資格情報保存はユーザー行ロック下の単一DB関数で原子的に行う
+- **接続UX**: 設定画面でGoogle同意画面への外部遷移、読み取り範囲、再認証中の同期停止、Fitbitへの暗黙切替を行わないこと、解除後の同期元または同期停止を接続状況に応じて明示する。セッション切れ時は再認証通知を保持し、FitbitログインがUCFitness本人確認であることを説明して設定画面へ戻す
+- **トークン保護**: Google HealthトークンはユーザーID・プロバイダ・用途をAADへ含めたAES-256-GCM v2で暗号化する。解除時はDB内で接続停止・同期リース無効化・資格情報消去を原子的に完了してからGoogle側の失効を試行し、失効失敗でも接続を復活させない
+- **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
+- **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
 
 ## プロジェクト構造
 
@@ -117,6 +125,7 @@ UCFitness/
 +-- scripts/                 # ユーティリティスクリプト
 +-- docs/                    # ドキュメント
 |   +-- CLOUDFLARE_SETUP.md  # Cloudflare Pages セットアップ手順
+|   +-- PRODUCT.md           # プロダクト・ブランド文脈
 |   +-- improvement-report.md
 |   +-- common-agentic-project-rules.md
 |   +-- security-hardening-notes.md
@@ -152,6 +161,7 @@ cd UCFitness
 - **Node.js** 22 以上（`.nvmrc` で固定。`nvm use` 推奨。Cloudflare Pages の `NODE_VERSION` も 22）
 - **npm** 9 以上
 - **Fitbit 開発者アカウント** (OAuth 2.0 アプリ登録)
+- **Google Cloud / Google Health 開発者設定** (Google Healthを有効化する場合)
 - **Supabase プロジェクト** (PostgreSQL)
 
 ### 3. 依存関係のインストール
@@ -171,12 +181,31 @@ cp .env.local.example .env.local
 必要な環境変数:
 - `NEXTAUTH_SECRET` --- NextAuth セッション暗号化キー
 - `FITBIT_CLIENT_ID` / `FITBIT_CLIENT_SECRET` --- Fitbit OAuth 2.0 認証情報
+- `GOOGLE_HEALTH_ENABLED` --- Google Healthの新規接続・再接続を制御する機能フラグ。既存接続の状態確認・同期・解除は暗黙のFitbit切替を防ぐため継続する
+- `GOOGLE_HEALTH_CLIENT_ID` / `GOOGLE_HEALTH_CLIENT_SECRET` --- Google Health OAuth認証情報
+- `GOOGLE_HEALTH_REDIRECT_URI` --- Google Health OAuthコールバックURL
+- `FITNESS_TOKEN_ENCRYPTION_KEY` --- 健康データ接続トークン用の32バイトBase64 AES鍵
 - `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` --- Supabase 接続情報
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` --- Web Push VAPID キー
 
 ### 5. DB マイグレーション
 
 [migrations/](migrations/) 配下の SQL を Supabase Dashboard または `scripts/run_migration_pg.ts` で適用する。
+
+Google Healthを有効化する前に
+`migrations/20260617_add_multi_provider_connections.sql` を適用し、
+`fitness_connections.user_id` の参照先が `public.users(id)` であることを確認する。
+同マイグレーションはFitbitログインIDを継続同期するDBトリガー、
+Google Health履歴を原子的に置換する `replace_daily_steps_range`、
+当日の一時的な減少を保存済み最大値で防ぐ `upsert_daily_steps_max`、
+Fitbit復帰後も同じ単調性とデータソース選択を検証する `upsert_fitbit_daily_steps_max`、
+Cronと手動同期の競合を防ぐ所有者UUID付き同期リース関数も作成する。
+トークン更新、再認証状態、同期完了時刻を含む同期由来の書き込みは
+すべてDB関数内で同じリースIDの所有権を検証する。
+解除は `disconnect_google_health` が接続停止、リース無効化、資格情報消去を
+同一トランザクションで完了してから、Google側のトークン失効を試行する。
+初回履歴は当日を含めず、全APIチャンク取得成功後に一度のDBトランザクションで置換する。
+過去の歩数履歴を差し替えても、獲得済みUCはユーザー資産として再計算・減額しない。
 
 ### 6. 開発サーバーの起動
 
@@ -186,6 +215,7 @@ npm run dev
 
 - **ポート 3000 必須** --- NextAuth OAuth コールバック URL が `localhost:3000` に固定されているため、別ポートでは認証が動作しない
 - ポート 3000 が使用中の場合は先にプロセスをキルすること
+- `upgrade-insecure-requests` は本番CSPだけで有効化する。開発CSPへ追加するとSafariが `/_next` のCSSをHTTPSへ変換し、未装飾の画面になる
 
 ブラウザで http://localhost:3000 を開く。
 
@@ -247,7 +277,7 @@ npm run pages:build
 👤 User (VS Code Chat Panel / Slash Commands)
 │
 ├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
-│   │  クエリを分析し、適切な専門ロールを自動選択・組み合わせて委任
+│   │  専門ロールを委任し、認証安全性・公開LPの次アクション優先/狭幅情報保持/固定ヘッダー下のフォーカス/安全なモーション・通常ブラウザのCSS適用も完了前に検査
 │   │
 │   ├── 📁 フロントエンド開発 (Next.js + React)
 │   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
@@ -326,7 +356,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。リクエストのキーワード・文脈から専門ロールを自動判定し、委任する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。専門ロールを自動判定し、OAuth・同期の安全性、公開LPのモバイル次アクション優先・狭幅情報保持・固定ヘッダー下のフォーカス・全フレームでコントラストを保つモーション品質、通常ブラウザでのCSS適用を含むローカル表示確認を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
@@ -410,6 +440,9 @@ npm run test:coverage
 - **`supabaseAdmin` 必須** --- サーバーサイドの DB アクセスは `supabase` ではなく `supabaseAdmin` を使用
 - **共通 App Shell** --- 認証済みデスクトップ画面の左サイドバーは `app/[locale]/layout.tsx` で一元表示し、ページ単位で表示有無をばらつかせない
 - **自然スクロール優先** --- root の transform スケーリングや `html/body` のスクロールロックは禁止。閲覧不能な情報を作らない
+- **Google Health段階移行** --- Fitbit Web APIの2026年9月終了予定に備えたopt-in移行。既存FitbitトークンはGoogle Healthへ移せないため、ユーザーの明示的な再同意が必要
+- **Google Health最小権限** --- `googlehealth.activity_and_fitness.readonly` のみを要求し、日次歩数合計以外の健康・医療データを保存しない
+- **Google Healthリリース前提** --- OAuth同意画面の本番公開、必要資格情報、暗号鍵、DBマイグレーションの準備が完了するまで `GOOGLE_HEALTH_ENABLED=false` を維持
 - **デプロイ制限あり** --- Cloudflare Pages のデプロイ制限があるため、`git push` は明示的な許可後に実行すること
 
 ## 関連ドキュメント
@@ -417,6 +450,7 @@ npm run test:coverage
 | ドキュメント | 説明 |
 |---|---|
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Copilot 共通指示 (コーディング規約、ページパターン等) |
+| [docs/PRODUCT.md](docs/PRODUCT.md) | 対象ユーザー、価値提案、ブランド人格、LPの段階的提示・狭幅補助情報の開示・モーション制約 |
 | [docs/professional-ui-redesign-spec.md](docs/professional-ui-redesign-spec.md) | プロ品質 UI への大幅リデザイン設計書（殺風景化フィードバック対応を含む） |
 | [docs/DESIGN_TOKENS.md](docs/DESIGN_TOKENS.md) | デザイントークンシステム |
 | [docs/improvement-report.md](docs/improvement-report.md) | 改善レポート |
