@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import UserAvatar from '@/components/UserAvatar';
@@ -76,6 +76,7 @@ function getEventDescription(
 
 export default function NotificationBell() {
     const t = useTranslations('Feed');
+    const commonT = useTranslations('Common');
 
     // --- すべての Hooks を早期 return より前に配置 ---
     const [isOpen, setIsOpen] = useState(false);
@@ -88,7 +89,10 @@ export default function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0);
 
     const bellRef = useRef<HTMLButtonElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
+    const popoverId = useId();
+    const popoverTitleId = `${popoverId}-title`;
     const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
 
     const fetchFeed = useCallback(async (cursor?: string) => {
@@ -187,6 +191,15 @@ export default function NotificationBell() {
         }
     }, [isOpen, updatePosition]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const frameId = window.requestAnimationFrame(() => {
+            closeButtonRef.current?.focus();
+        });
+        return () => window.cancelAnimationFrame(frameId);
+    }, [isOpen]);
+
     // 外側クリック・Escape で閉じる
     useEffect(() => {
         if (!isOpen) return;
@@ -219,6 +232,11 @@ export default function NotificationBell() {
         setIsOpen((prev) => !prev);
     }, []);
 
+    const handleClose = useCallback(() => {
+        setIsOpen(false);
+        bellRef.current?.focus();
+    }, []);
+
     // --- レンダリング ---
     return (
         <>
@@ -229,8 +247,9 @@ export default function NotificationBell() {
                 aria-label={t('title')}
                 aria-expanded={isOpen}
                 aria-haspopup="dialog"
+                aria-controls={isOpen ? popoverId : undefined}
                 title={t('title')}
-                className="relative cursor-pointer inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all active:scale-90"
+                className="relative inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full text-[var(--theme-primary)] transition-all hover:bg-[var(--theme-primary-light)] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
             >
                 {/* ベルSVGアイコン */}
                 <svg
@@ -247,7 +266,7 @@ export default function NotificationBell() {
 
                 {/* 未読バッジ */}
                 {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                    <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-[10px] font-bold leading-none text-[var(--color-inverse-text)]">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
@@ -257,9 +276,11 @@ export default function NotificationBell() {
             {isOpen && typeof document !== 'undefined' && createPortal(
                 <div
                     ref={popoverRef}
+                    id={popoverId}
                     role="dialog"
-                    aria-label={t('title')}
-                    className="fixed z-[60] w-[calc(100vw-16px)] sm:w-96 max-h-[70vh] flex flex-col rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2"
+                    aria-labelledby={popoverTitleId}
+                    aria-modal="false"
+                    className="fixed z-[60] flex max-h-[70vh] w-[calc(100vw-16px)] flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl animate-in fade-in slide-in-from-top-2 sm:w-96"
                     style={{
                         top: `${popoverPos.top}px`,
                         ...(popoverPos.right >= 0
@@ -268,8 +289,8 @@ export default function NotificationBell() {
                     }}
                 >
                     {/* ポップオーバーヘッダー */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-[var(--theme-primary-light)] to-white">
-                        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
+                        <h3 id={popoverTitleId} className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text)]">
                             <span>📰</span>
                             <span>{t('title')}</span>
                         </h3>
@@ -280,7 +301,7 @@ export default function NotificationBell() {
                                 onClick={markAsRead}
                                 aria-label={t('markAllRead')}
                                 title={t('markAllRead')}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-colors"
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-[var(--theme-primary-light)] hover:text-[var(--theme-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -289,9 +310,10 @@ export default function NotificationBell() {
                             {/* 閉じるボタン */}
                             <button
                                 type="button"
-                                onClick={() => setIsOpen(false)}
-                                aria-label="Close"
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                ref={closeButtonRef}
+                                onClick={handleClose}
+                                aria-label={commonT('close')}
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -306,10 +328,10 @@ export default function NotificationBell() {
                             <div className="p-4 space-y-3">
                                 {[1, 2, 3].map((i) => (
                                     <div key={i} className="flex items-start gap-3 animate-pulse">
-                                        <div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+                                        <div className="h-8 w-8 shrink-0 rounded-full bg-[var(--color-surface-muted)]" />
                                         <div className="flex-1 space-y-1.5">
-                                            <div className="h-3.5 bg-gray-200 rounded w-3/4" />
-                                            <div className="h-3 bg-gray-100 rounded w-1/2" />
+                                            <div className="h-3.5 w-3/4 rounded bg-[var(--color-surface-muted)]" />
+                                            <div className="h-3 w-1/2 rounded bg-[var(--color-surface-muted)]" />
                                         </div>
                                     </div>
                                 ))}
@@ -318,11 +340,11 @@ export default function NotificationBell() {
 
                         {error && (
                             <div className="text-center py-8 px-4">
-                                <p className="text-sm text-gray-500 mb-3">{t('errorMessage')}</p>
+                                <p className="mb-3 text-sm text-[var(--color-danger)]">{t('errorMessage')}</p>
                                 <button
                                     type="button"
                                     onClick={() => fetchFeed()}
-                                    className="px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white text-sm font-medium hover:scale-105 transition-transform min-h-[44px]"
+                                    className="min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                                 >
                                     {t('retry')}
                                 </button>
@@ -332,13 +354,13 @@ export default function NotificationBell() {
                         {!isLoading && !error && feed.length === 0 && (
                             <div className="text-center py-10 px-4">
                                 <div className="text-3xl mb-2">👥</div>
-                                <p className="text-sm text-gray-500">{t('emptyMessage')}</p>
-                                <p className="text-xs text-gray-400 mt-1">{t('emptyHint')}</p>
+                                <p className="text-sm text-[var(--color-text-muted)]">{t('emptyMessage')}</p>
+                                <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('emptyHint')}</p>
                             </div>
                         )}
 
                         {!isLoading && !error && feed.length > 0 && (
-                            <div className="divide-y divide-gray-50">
+                            <div className="divide-y divide-[var(--color-border)]">
                                 {feed.map((item) => (
                                     <FeedItemRow key={item.id} item={item} t={t} onClose={() => setIsOpen(false)} />
                                 ))}
@@ -347,12 +369,12 @@ export default function NotificationBell() {
 
                         {/* もっと見る */}
                         {hasMore && !isLoading && (
-                            <div className="p-3 text-center border-t border-gray-100">
+                            <div className="border-t border-[var(--color-border)] p-3 text-center">
                                 <button
                                     type="button"
                                     onClick={() => nextCursor && fetchFeed(nextCursor)}
                                     disabled={isLoadingMore}
-                                    className="px-4 py-2 rounded-lg bg-gray-50 text-gray-600 text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 min-h-[44px] w-full"
+                                    className="min-h-[44px] w-full rounded-lg bg-[var(--color-surface-muted)] px-4 py-2 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] disabled:opacity-50"
                                 >
                                     {isLoadingMore ? (
                                         <span className="flex items-center gap-2 justify-center">
@@ -392,31 +414,45 @@ function FeedItemRow({
     const icon = getEventIcon(item.type);
     const relativeTime = getRelativeTime(item.timestamp, t);
     const displayName = item.userName || item.username || '???';
+    const profileHref = item.username ? `/user/${item.username}` : null;
 
     return (
-        <div className="flex items-start gap-2.5 py-2.5 px-3 hover:bg-gray-50 transition-colors">
+        <div className="flex items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-[var(--color-surface-muted)]">
             {/* ユーザーアバター */}
-            <Link href={item.username ? `/user/${item.username}` : '#'} onClick={onClose}>
+            {profileHref ? (
+                <Link href={profileHref} onClick={onClose}>
+                    <UserAvatar
+                        src={item.userImage}
+                        name={item.userName}
+                        size="xs"
+                        alt={displayName}
+                    />
+                </Link>
+            ) : (
                 <UserAvatar
                     src={item.userImage}
                     name={item.userName}
                     size="xs"
                     alt={displayName}
                 />
-            </Link>
+            )}
 
             {/* コンテンツ */}
             <div className="flex-1 min-w-0">
                 <p className="text-xs leading-relaxed">
                     <span className="mr-1">{icon}</span>
-                    <Link
-                        href={item.username ? `/user/${item.username}` : '#'}
-                        className="font-semibold text-gray-900 hover:text-[var(--theme-primary)] transition-colors"
-                        onClick={onClose}
-                    >
-                        {displayName}
-                    </Link>
-                    <span className="text-gray-600 ml-1">
+                    {profileHref ? (
+                        <Link
+                            href={profileHref}
+                            className="font-semibold text-[var(--color-text)] transition-colors hover:text-[var(--theme-primary)]"
+                            onClick={onClose}
+                        >
+                            {displayName}
+                        </Link>
+                    ) : (
+                        <span className="font-semibold text-[var(--color-text)]">{displayName}</span>
+                    )}
+                    <span className="ml-1 text-[var(--color-text-muted)]">
                         {getEventDescription(item, t)}
                     </span>
                 </p>
@@ -436,7 +472,7 @@ function FeedItemRow({
                     </span>
                 )}
 
-                <p className="text-[10px] text-gray-400 mt-0.5">{relativeTime}</p>
+                <p className="mt-0.5 text-[10px] text-[var(--color-text-muted)]">{relativeTime}</p>
             </div>
         </div>
     );

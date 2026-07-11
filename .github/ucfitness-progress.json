@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-12T04:01:58+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + Debug + Self-Critique)",
+  "lastUpdated": "2026-07-12T05:11:51+09:00",
+  "lastAgent": "UCFitnessAgent (Next.js + React + UX + Self-Critique)",
   "lastCommit": "59acce37345891d708c3924471978cf3becc24c0",
-  "lastBranch": "restore-competitive-fitness-roadmap",
+  "lastBranch": "himiyosh-improve-authenticated-ui",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "欠損したworktreeからGoogle Health移行、公開LP再設計、Safari localhost CSS修復を含む全ソース差分を新しいGit作業コピーへ復元した。型・Lint・ルール・i18n・全159テストが通る状態で、認証後UIの密度・意味色・UX改善を継続できる。",
+  "summary": "認証後ホームと共通App Shellを、今日の進捗、週間順位の追いつける差、UC報酬、次の行動の順へ再構成した。Classic/Midnightの意味トークン、44px操作領域、自然スクロール、キーボード操作を整え、ランキング・健康データ同期・Safari localhost CSSの契約を変更せずに密度とフィードバックを改善した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warningはF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-12T04:01:07+09:00"
+    "lastVerified": "2026-07-12T05:11:51+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -192,6 +192,45 @@
       "action": "Git worktreeメタデータ欠損に対し、GitHub mainから新しい作業コピーを作成して現在の全ソース差分を再適用。元フォルダは変更せず保持し、復旧先で型・Lint・ルール・i18n・全159テストを確認。",
       "commit": "59acce37345891d708c3924471978cf3becc24c0",
       "filesChanged": [
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Next.js + React + UX + Self-Critique)",
+      "action": "認証後ホームを今日の進捗→週間順位の追いつける差→UC報酬→次の行動へ再構成。ランキングキャッシュから0歩を除く週間順位と差を読み取り専用で導出し、モバイルは768px未満までコンパクト入口を維持した。ホーム、ミッション、チャレンジ、クイックアクション、サイドバーを既存の青・緑・紫・アンバー意味トークンへ統一し、44px操作領域と見出し階層を整備。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "components/dashboard/HomeHero.tsx",
+        "components/dashboard/HomePortal.tsx",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/DailyMissions.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "components/dashboard/DashboardSidebar.tsx",
+        "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Next.js + React + UX + Self-Critique)",
+      "action": "認証後ホームと共通App Shellの最終改善を完了。達成時の緑フィードバック、事前に見える+100 UC、UserMenuのTab離脱・Escape復帰・識別子付きラベル、通知の死リンク回避、認証本文の自然スクロールを追加した。型・Lint・ルール・i18n・全159テスト、Classic/Midnightの375/768/1280/1920px公開ルート、3ペルソナ監査、自己批判ゲートを確認。認証済み実画面は資格情報を偽装せず静的監査で補完した。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        "components/dashboard/HomeHero.tsx",
+        "components/dashboard/HomePortal.tsx",
+        "components/dashboard/DailyMissions.tsx",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/DashboardSidebar.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "components/layout/UserMenu.tsx",
+        "components/layout/NotificationBell.tsx",
+        "messages/ja.json",
+        "messages/en.json",
+        "README.md",
         ".github/ucfitness-progress.json"
       ]
     }

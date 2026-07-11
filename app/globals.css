@@ -1460,29 +1460,13 @@ body {
   min-width: 44px;
 }
 
-.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl) {
-  max-height: calc(100dvh - 2.9rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-block: 0.75rem !important;
-  scrollbar-gutter: stable;
-}
-
-@media (max-width: 1023px) {
-  .uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl) {
-    max-height: calc(100dvh - 7rem);
-  }
-}
-
-.uc-auth-content :where(main h2) {
+.uc-auth-content :where(
+  main > .mx-auto.max-w-7xl > .mb-8 > h2,
+  main > div > .mx-auto.max-w-7xl > .mb-8 > h2
+) {
   font-size: clamp(1.25rem, 1.65vw, 1.55rem) !important;
   line-height: 1.15 !important;
   letter-spacing: -0.03em;
-}
-
-.uc-auth-content :where(main h3) {
-  font-size: clamp(0.95rem, 1.05vw, 1.08rem) !important;
-  line-height: 1.25 !important;
 }
 
 .uc-auth-content :where(main .mb-8) {
@@ -1526,19 +1510,6 @@ body {
 .uc-auth-content :where(main .text-3xl) {
   font-size: 1.4rem !important;
   line-height: 1.18 !important;
-}
-
-.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl)::-webkit-scrollbar {
-  width: 6px;
-}
-
-.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl)::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.uc-auth-content :where(main > .mx-auto.max-w-7xl, main > div > .mx-auto.max-w-7xl)::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--theme-primary) 28%, transparent);
-  border-radius: 9999px;
 }
 
 /* template.tsx のラッパー div を経由するため > * > main でマッチ */

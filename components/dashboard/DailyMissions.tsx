@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 
+import type { ReactNode } from 'react';
+
 // ============================================
 // DailyMissions — デイリーミッションウィジェット
 // ダッシュボードに表示する3ミッション + 全達成ボーナス
@@ -18,7 +20,7 @@ interface Mission {
     completed_at: string | null;
 }
 
-export default function DailyMissions() {
+export default function DailyMissions(): ReactNode {
     const t = useTranslations('Mission');
     const [missions, setMissions] = useState<Mission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +29,7 @@ export default function DailyMissions() {
     const [refreshing, setRefreshing] = useState(false);
     const [showBonus, setShowBonus] = useState(false);
     const [streak, setStreak] = useState(0);
+    const [refreshError, setRefreshError] = useState(false);
 
     const fetchMissions = useCallback(async () => {
         setError(false);
@@ -51,6 +54,7 @@ export default function DailyMissions() {
     // 歩数同期後にミッション再チェック
     const refreshMissions = useCallback(async () => {
         setRefreshing(true);
+        setRefreshError(false);
         try {
             const res = await fetch('/api/user/missions', {
                 method: 'POST',
@@ -72,7 +76,7 @@ export default function DailyMissions() {
                 }
             }
         } catch {
-            // サイレントフェイル
+            setRefreshError(true);
         } finally {
             setRefreshing(false);
         }
@@ -80,7 +84,9 @@ export default function DailyMissions() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
+            <div aria-busy="true" className="flex flex-col justify-center rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-reward)] bg-[var(--color-surface)] p-3 shadow-sm">
+                <h2 className="sr-only">{t('dailyMissions')}</h2>
+                <p className="sr-only" role="status" aria-atomic="true">{t('loading')}</p>
                 <div className="animate-pulse">
                     <div className="mb-4 h-5 w-40 rounded bg-[var(--color-surface-muted)]" />
                     <div className="space-y-3">
@@ -95,10 +101,11 @@ export default function DailyMissions() {
 
     if (error) {
         return (
-            <div className="flex flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
+            <div className="flex flex-col justify-center rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-reward)] bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="flex flex-col items-center py-4 text-center">
                     <StatusIcon tone="danger" />
-                    <p className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('loadError')}</p>
+                    <h2 className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('dailyMissions')}</h2>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]" role="alert">{t('loadError')}</p>
                     <button
                         onClick={fetchMissions}
                         className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-[var(--color-inverse-surface)]"
@@ -112,11 +119,11 @@ export default function DailyMissions() {
 
     if (missions.length === 0) {
         return (
-            <div className="flex flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
+            <div className="flex flex-col justify-center rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-reward)] bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="flex flex-col items-center py-4 text-center">
                     <StatusIcon tone="neutral" />
-                    <p className="mb-1 mt-3 text-sm font-bold text-[var(--color-text)]">{t('dailyMissions')}</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">{t('noMissions')}</p>
+                    <h2 className="mb-1 mt-3 text-sm font-bold text-[var(--color-text)]">{t('dailyMissions')}</h2>
+                    <p className="text-xs text-[var(--color-text-muted)]" role="status">{t('noMissions')}</p>
                 </div>
             </div>
         );
@@ -125,25 +132,25 @@ export default function DailyMissions() {
     const completedCount = missions.filter(m => m.is_completed).length;
 
     const bottomMessage = !allCompleted ? (
-        <p className="text-center text-xs text-[var(--color-text-muted)]">
+        <p className="text-center text-xs font-semibold text-[var(--color-reward-strong)]">
             {t('bonusHint')}
         </p>
     ) : (
-        <p className="text-center text-xs font-bold text-[var(--color-success)]">
+        <p className="text-center text-xs font-bold text-[var(--color-success-strong)]">
             {t('allCompleted')}
         </p>
     );
 
     return (
-        <div className="flex flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="flex flex-col overflow-hidden rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-reward)] bg-[var(--color-surface)] shadow-sm">
             {/* ヘッダー */}
             <div className="px-3 pt-3 pb-1.5 sm:px-4 sm:pt-3 sm:pb-2 flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                    <h3 className="text-sm font-bold text-[var(--color-text)]">
+                    <h2 className="text-sm font-bold text-[var(--color-text)]">
                         {t('dailyMissions')}
-                    </h3>
+                    </h2>
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-[var(--color-primary)] tabular-nums uppercase tracking-wider">
+                        <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-reward-strong)] tabular-nums uppercase tracking-wider">
                             {completedCount}/{missions.length}
                         </span>
                         {/* 再チェックボタン */}
@@ -162,8 +169,12 @@ export default function DailyMissions() {
                         )}
                     </div>
                 </div>
-
             </div>
+            {refreshError && (
+                <p className="px-3 pb-2 text-center text-xs text-[var(--color-danger)] sm:px-4" role="alert">
+                    {t('refreshError')}
+                </p>
+            )}
 
             {/* ミッションリスト */}
             <div className="px-3 pb-2 sm:px-4 sm:pb-3 flex flex-col min-h-0">
@@ -173,26 +184,26 @@ export default function DailyMissions() {
                             key={mission.id}
                             className={`flex items-center gap-2 p-2 rounded-lg border transition-colors duration-200 ${
                                 mission.is_completed
-                                    ? 'border-emerald-200 bg-emerald-50'
+                                    ? 'border-[var(--color-success)]/40 bg-[var(--color-success-soft)]'
                                     : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--theme-primary)]/25 hover:bg-[var(--color-surface)]'
                             }`}
                         >
                             {/* ステータスアイコン（自動判定 — クリック不可） */}
                             {mission.is_completed ? (
-                                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                                    <svg className="w-3 h-3 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-success)]/40 bg-[var(--color-success-soft)] text-[var(--color-success-strong)] sm:h-8 sm:w-8">
+                                    <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
                             ) : (
-                                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center flex-shrink-0">
-                                    <span className="text-xs text-gray-300">○</span>
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface)] sm:h-8 sm:w-8">
+                                    <span className="text-xs text-[var(--color-text-muted)]">○</span>
                                 </div>
                             )}
 
                             {/* ミッション詳細 */}
                             <div className="flex-1 min-w-0">
-                                <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-emerald-700 line-through' : 'text-[var(--color-text)]'}`}>
+                                <p className={`text-xs sm:text-sm font-semibold ${mission.is_completed ? 'text-[var(--color-success-strong)] line-through' : 'text-[var(--color-text)]'}`}>
                                     {getMissionTitle(mission.mission_type, mission.title, t)}
                                 </p>
                                 <p className="mt-0 text-xs text-[var(--color-text-muted)] sm:mt-0.5">
@@ -201,7 +212,7 @@ export default function DailyMissions() {
                             </div>
 
                             {/* 報酬 */}
-                            <span className={`text-xs font-bold flex-shrink-0 ${mission.is_completed ? 'text-emerald-600' : 'text-[var(--color-primary)]'}`}>
+                            <span className="shrink-0 rounded-full bg-[var(--color-reward-soft)] px-2 py-1 text-xs font-bold text-[var(--color-reward-strong)]">
                                 +{mission.reward_uc} UC
                             </span>
                         </div>
@@ -218,7 +229,7 @@ export default function DailyMissions() {
                                     {t('streak', { days: streak })}
                                 </p>
                                 {streak >= 3 && (
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--theme-tertiary-container,#FEF3C7)] text-amber-700 uppercase tracking-wider">
+                                    <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-reward-strong)]">
                                         {streak >= 7 ? t('streakAmazing') : t('streakGreat')}
                                     </span>
                                 )}
@@ -233,8 +244,8 @@ export default function DailyMissions() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
                     <div className="rounded-2xl bg-[var(--color-surface)] p-8 text-center shadow-2xl">
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-primary)]">{t('allCompleted')}</p>
-                        <p className="mt-3 text-lg font-black text-[var(--color-primary)]">+100 UC</p>
-                        <p className="text-sm text-gray-600 mt-1">{t('bonusReward')}</p>
+                        <p className="mt-3 text-lg font-black text-[var(--color-reward-strong)]">+100 UC</p>
+                        <p className="mt-1 text-sm text-[var(--color-text-muted)]">{t('bonusReward')}</p>
                     </div>
                 </div>
             )}
@@ -298,7 +309,7 @@ function getMissionDescription(
 
 function StatusIcon({ tone }: { tone: 'danger' | 'neutral' }) {
     const className = tone === 'danger'
-        ? 'text-[var(--color-danger)] bg-red-50'
+        ? 'bg-[var(--color-surface-muted)] text-[var(--color-danger)]'
         : 'text-[var(--color-primary)] bg-[var(--color-primary-soft)]';
 
     return (

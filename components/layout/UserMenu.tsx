@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { signOut } from 'next-auth/react';
-import { Link } from '@/navigation';
 import { useTranslations } from 'next-intl';
+
+import { Link } from '@/navigation';
 import UserAvatar from '@/components/UserAvatar';
+
+import type { FocusEvent, ReactNode } from 'react';
 
 interface UserMenuProps {
     user: {
@@ -16,14 +19,19 @@ interface UserMenuProps {
     };
 }
 
-export default function UserMenu({ user }: UserMenuProps) {
+export default function UserMenu({ user }: UserMenuProps): ReactNode {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const menuId = useId();
+    const triggerId = `${menuId}-trigger`;
     const t = useTranslations('UserMenu');
     const commonT = useTranslations('Common');
+    const accountName = user.username || user.name || user.email || t('signedInAs');
 
-    // Close menu when clicking outside
     useEffect(() => {
+        if (!isOpen) return;
+
         function handleClickOutside(event: MouseEvent) {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
@@ -32,6 +40,7 @@ export default function UserMenu({ user }: UserMenuProps) {
         function handleEscapeKey(event: KeyboardEvent) {
             if (event.key === 'Escape') {
                 setIsOpen(false);
+                triggerRef.current?.focus();
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -40,7 +49,7 @@ export default function UserMenu({ user }: UserMenuProps) {
             document.removeEventListener("mousedown", handleClickOutside);
             document.removeEventListener("keydown", handleEscapeKey);
         };
-    }, []);
+    }, [isOpen]);
 
     const toggleMenu = useCallback(() => {
         setIsOpen(prev => !prev);
@@ -51,45 +60,48 @@ export default function UserMenu({ user }: UserMenuProps) {
         signOut();
     }, []);
 
+    const handleMenuBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
+        if (event.relatedTarget instanceof Node && menuRef.current?.contains(event.relatedTarget)) {
+            return;
+        }
+        setIsOpen(false);
+    }, []);
+
     return (
-        <div className="relative ml-1 flex-shrink-0 sm:ml-3" ref={menuRef}>
+        <div className="relative ml-1 flex-shrink-0 sm:ml-3" ref={menuRef} onBlur={handleMenuBlur}>
             <div>
                 <button
+                    ref={triggerRef}
                     onClick={toggleMenu}
-                    className="relative flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2"
-                    id="user-menu-button"
+                    className="relative flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                    id={triggerId}
                     aria-expanded={isOpen}
-                    aria-haspopup="true"
-                    aria-label={t('signedInAs')}
+                    aria-controls={isOpen ? menuId : undefined}
+                    aria-label={t('accountMenu', { name: accountName })}
                 >
-                    <span className="sr-only">{t('signedInAs')}</span>
-                    <UserAvatar src={user.image} name={user.name} size="md-lg" borderClass="border-gray-200" />
+                    <span className="sr-only">{t('accountMenu', { name: accountName })}</span>
+                    <UserAvatar src={user.image} name={user.name} size="md-lg" borderClass="border-[var(--color-border)]" />
                 </button>
             </div>
 
             {/* Dropdown menu */}
             {isOpen && (
                 <div
-                    className="user-dropdown-menu absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none animate-fade-in"
-                    role="menu"
-                    aria-orientation="vertical"
-                    aria-labelledby="user-menu-button"
-                    tabIndex={-1}
+                    id={menuId}
+                    className="user-dropdown-menu absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-[var(--color-surface)] py-1 shadow-lg ring-1 ring-[var(--color-border)] animate-fade-in"
                 >
                     <Link
                         href={user.username ? `/user/${user.username}` : '/profile'}
-                        className="block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors group"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="group flex min-h-[56px] items-center border-b border-[var(--color-border)] px-4 py-3 transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                         onClick={() => setIsOpen(false)}
                     >
                         <div className="flex items-center gap-3">
                             <div className="flex-shrink-0">
-                                <UserAvatar src={user.image} name={user.name} size="md" borderClass="border-gray-200" />
+                                <UserAvatar src={user.image} name={user.name} size="md" borderClass="border-[var(--color-border)]" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <span className="block text-xs text-gray-500 mb-0.5 font-medium">{t('signedInAs')}</span>
-                                <p className="text-sm font-bold text-gray-900 truncate group-hover:text-[var(--theme-primary)] transition-colors">
+                                <span className="mb-0.5 block text-xs font-medium text-[var(--color-text-muted)]">{t('signedInAs')}</span>
+                                <p className="truncate text-sm font-bold text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]">
                                     {user.username || user.name || user.email}
                                 </p>
                             </div>
@@ -98,9 +110,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/groups"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="flex min-h-[44px] items-center px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                         onClick={() => setIsOpen(false)}
                     >
                         👥 {t('myGroups')}
@@ -108,9 +118,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/wallet"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="flex min-h-[44px] items-center px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                         onClick={() => setIsOpen(false)}
                     >
                         👛 {t('undouBank')}
@@ -118,9 +126,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/shop"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="flex min-h-[44px] items-center px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                         onClick={() => setIsOpen(false)}
                     >
                         🛍️ {t('ucShop')}
@@ -128,9 +134,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/challenges"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="flex min-h-[44px] items-center px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                         onClick={() => setIsOpen(false)}
                     >
                         🎯 {t('challenges')}
@@ -138,9 +142,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/analytics"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="flex min-h-[44px] items-center px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                         onClick={() => setIsOpen(false)}
                     >
                         📊 {t('analytics')}
@@ -148,9 +150,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <Link
                         href="/settings"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="flex min-h-[44px] items-center px-4 py-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                         onClick={() => setIsOpen(false)}
                     >
                         ⚙️ {commonT('settings')}
@@ -158,9 +158,7 @@ export default function UserMenu({ user }: UserMenuProps) {
 
                     <button
                         onClick={handleSignOut}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
-                        role="menuitem"
-                        tabIndex={-1}
+                        className="flex min-h-[44px] w-full items-center px-4 py-2 text-left text-sm text-[var(--color-danger)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                     >
                         🚪 {commonT('logout')}
                     </button>
@@ -169,4 +167,3 @@ export default function UserMenu({ user }: UserMenuProps) {
         </div>
     );
 }
-

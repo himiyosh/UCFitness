@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/navigation';
 import UserAvatar from '@/components/UserAvatar';
+
+import type { ReactNode } from 'react';
 
 interface SidebarNavItem {
   href: '/' | '/challenges' | '/leaderboard' | '/groups' | '/shop' | '/wallet' | '/profile';
@@ -35,13 +36,13 @@ export default function DashboardSidebar({
   titleName,
   titleEmoji,
   frameColor,
-}: DashboardSidebarProps) {
+}: DashboardSidebarProps): ReactNode {
   const t = useTranslations('Sidebar');
   const dashT = useTranslations('Dashboard');
   const navT = useTranslations('BottomNav');
   const pathname = usePathname();
 
-  const navItems = useMemo<SidebarNavItem[]>(() => [
+  const navItems: SidebarNavItem[] = [
     { href: '/', labelKey: 'home', labelNamespace: 'bottomNav', icon: <DashboardIcon /> },
     { href: '/leaderboard', labelKey: 'ranking', labelNamespace: 'bottomNav', icon: <LeaderboardIcon /> },
     { href: '/challenges', labelKey: 'challenges', labelNamespace: 'dashboard', icon: <MissionsIcon /> },
@@ -49,27 +50,25 @@ export default function DashboardSidebar({
     { href: '/shop', labelKey: 'gear', icon: <GearIcon /> },
     { href: '/wallet', labelKey: 'wallet', labelNamespace: 'dashboard', icon: <WalletIcon /> },
     { href: '/profile', labelKey: 'profile', labelNamespace: 'dashboard', icon: <ProfileIcon /> },
-  ], [dashT, navT]);
+  ];
 
   return (
     <aside
       className="sticky top-0 z-40 hidden w-48 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] 2xl:w-52 lg:flex"
       style={{ height: 'var(--sidebar-h, 100vh)' }}
-      role="navigation"
-      aria-label={t('label')}
     >
       {/* ロゴ */}
       <div className="px-3 pb-1.5 pt-3">
-        <Link href="/" className="flex items-center gap-2 group">
+        <Link href="/" className="group flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-inverse-surface)] text-[var(--color-inverse-text)]">
             <BrandMark />
           </span>
-          <h2
-             className="text-base font-semibold tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]"
+          <span
+            className="text-base font-semibold tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]"
             style={{ fontFamily: 'var(--font-inter), sans-serif' }}
           >
             {dashT('title', { defaultMessage: 'UCFitness' })}
-          </h2>
+          </span>
           <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
             {dashT('beta')}
           </span>
@@ -105,7 +104,7 @@ export default function DashboardSidebar({
       </div>
 
       {/* ナビゲーションリンク */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5" aria-label={t('label')}>
         {navItems.map((item) => {
           const isActive = item.href === '/'
             ? pathname === '/' || pathname === ''
@@ -115,7 +114,7 @@ export default function DashboardSidebar({
             <Link
               key={item.href}
               href={item.href}
-              className={`flex min-h-[40px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
+              className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
                 isActive
                   ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
                   : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]'
@@ -141,7 +140,7 @@ export default function DashboardSidebar({
       <div className="mt-auto px-3 py-3">
         <Link
           href="/challenges"
-          className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--color-inverse-surface)] px-3 py-2 text-xs font-semibold text-[var(--color-inverse-text)] transition-colors hover:bg-[var(--color-primary-solid)]"
+          className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--color-primary-solid)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
         >
           <StartWorkoutIcon />
           <span>{t('startWorkout')}</span>

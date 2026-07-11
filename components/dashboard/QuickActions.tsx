@@ -4,29 +4,32 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 
+import type { ReactNode } from 'react';
+
 interface QuickActionsProps {
   className?: string;
 }
 
 type QuickActionIcon = 'leaderboard' | 'challenges' | 'groups' | 'profile';
-type QuickActionTone = 'blue' | 'amber' | 'emerald' | 'violet';
+type QuickActionTone = 'primary' | 'success' | 'competition' | 'neutral';
 
-export default function QuickActions({ className = '' }: QuickActionsProps) {
+export default function QuickActions({ className = '' }: QuickActionsProps): ReactNode {
   const t = useTranslations('Dashboard');
   const navT = useTranslations('BottomNav');
   const pt = useTranslations('Portal');
 
   // クイックアクション定義
   const quickActions = useMemo(() => [
-    { href: '/leaderboard' as const, icon: 'leaderboard' as const, label: navT('ranking'), tone: 'blue' as const },
-    { href: '/challenges' as const, icon: 'challenges' as const, label: t('challenges'), tone: 'amber' as const },
-    { href: '/groups' as const, icon: 'groups' as const, label: t('groups'), tone: 'emerald' as const },
-    { href: '/profile' as const, icon: 'profile' as const, label: t('profile'), tone: 'violet' as const },
+    { href: '/leaderboard' as const, icon: 'leaderboard' as const, label: navT('ranking'), tone: 'competition' as const },
+    { href: '/challenges' as const, icon: 'challenges' as const, label: t('challenges'), tone: 'primary' as const },
+    { href: '/groups' as const, icon: 'groups' as const, label: t('groups'), tone: 'success' as const },
+    { href: '/profile' as const, icon: 'profile' as const, label: t('profile'), tone: 'neutral' as const },
   ], [navT, t]);
 
   return (
     <section className={`px-2.5 sm:px-4 py-2 ${className}`} aria-label={pt('quickActions')}>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 max-w-sm 2xl:max-w-md mx-auto w-full">
+      <h2 className="sr-only">{pt('quickActions')}</h2>
+      <div className="mx-auto grid w-full max-w-sm grid-cols-4 gap-1.5 md:max-w-3xl md:gap-2">
         {quickActions.map((action) => (
           <Link
             key={action.href}
@@ -45,31 +48,31 @@ export default function QuickActions({ className = '' }: QuickActionsProps) {
 }
 
 function getActionToneClasses(tone: QuickActionTone): { card: string; icon: string; label: string } {
-  if (tone === 'amber') {
+  if (tone === 'competition') {
     return {
-      card: 'border-amber-200/70 bg-gradient-to-br from-amber-50 to-white hover:border-amber-300',
-      icon: 'bg-amber-100 text-amber-700 group-hover:bg-amber-200',
-      label: 'text-amber-800',
+      card: 'border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)] hover:border-[var(--color-competition)]',
+      icon: 'bg-[var(--color-competition-solid)] text-white',
+      label: 'text-[var(--color-competition-strong)]',
     };
   }
-  if (tone === 'emerald') {
+  if (tone === 'success') {
     return {
-      card: 'border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-white hover:border-emerald-300',
-      icon: 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200',
-      label: 'text-emerald-800',
+      card: 'border-[var(--color-success)]/30 bg-[var(--color-success-soft)] hover:border-[var(--color-success)]',
+      icon: 'bg-[var(--color-success-soft)] text-[var(--color-success-strong)]',
+      label: 'text-[var(--color-success-strong)]',
     };
   }
-  if (tone === 'violet') {
+  if (tone === 'neutral') {
     return {
-      card: 'border-violet-200/70 bg-gradient-to-br from-violet-50 to-white hover:border-violet-300',
-      icon: 'bg-violet-100 text-violet-700 group-hover:bg-violet-200',
-      label: 'text-violet-800',
+      card: 'border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)]',
+      icon: 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]',
+      label: 'text-[var(--color-text)]',
     };
   }
   return {
-    card: 'border-blue-200/70 bg-gradient-to-br from-blue-50 to-white hover:border-blue-300',
-    icon: 'bg-blue-100 text-blue-700 group-hover:bg-blue-200',
-    label: 'text-blue-800',
+    card: 'border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)]',
+    icon: 'bg-[var(--color-primary-solid)] text-white',
+    label: 'text-[var(--color-primary-strong)]',
   };
 }
 
