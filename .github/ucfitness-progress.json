@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-12T12:08:00+09:00",
+  "lastUpdated": "2026-07-12T13:57:15+09:00",
   "lastAgent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "da8d6d755079cae3fe26e0fff524e1227dbc6451",
+  "lastCommit": "8733248d000c60e01861e3e0d6a2fe4aa89bb198",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "ホームの見た目だけを再配置しても情報量が増えずスカスカだったため、月曜起算の今週歩数bar・今週合計/ベスト/記録日と、UC残高・活動ストリーク・ウォレット/ショップ導線を実データで追加した。欠測・0歩・未来日・UC取得失敗を分離し、Heroの次行動shortcutも強化。375/1280 fixture、全160テスト、5ペルソナ、自己批判ゲートで確認した。",
+  "summary": "認証ホームに固定5行の週間ランキング、自分の順位、最近フォローした仲間5人の今日歩数を追加した。次行動を詳細比較より先に置き、仲間活動を非ランキング化。API失敗・未記録・実0歩、匿名名、リンク可否を分離し、320/375/768/1280/1920pxのClassic/Midnight、Lighthouse全カテゴリ100、全160テスト、5ペルソナ、独立レビュー、自己批判ゲートで確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warningはF033継続対応。今回変更によるLint errorは0。",
+    "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 220件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-12T12:08:00+09:00"
+    "lastVerified": "2026-07-12T13:57:15+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -343,6 +343,25 @@
         "messages/ja.json",
         "scripts/check-ucfitness-rules.sh",
         ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "認証ホームへ固定5行ランキングと仲間アクティビティを追加。情報順・意味色・ランキング固定契約を維持し、following APIのlimit/sort、取得失敗・未記録・実0歩、匿名プロフィールを分離した。320/375/768/1280/1920pxのClassic/Midnight、Lighthouse全カテゴリ100、160テスト、5ペルソナ、独立コードレビュー、自己批判全6軸PASSを確認した。",
+      "commit": "8733248d000c60e01861e3e0d6a2fe4aa89bb198",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        ".github/ucfitness-progress.json",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/api/user/following/route.ts",
+        "components/dashboard/DashboardFollowing.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh"
       ]
     }
   ],
