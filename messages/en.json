@@ -683,6 +683,10 @@
     "moveDown": "Move Down"
   },
   "Graph": {
+    "shareStatistics": "Share statistics",
+    "sharing": "Preparing share image",
+    "shareSucceeded": "Statistics copied",
+    "shareFailed": "Could not share statistics",
     "activityHistory": "Activity History",
     "weekly": "Weekly",
     "monthly": "Monthly",

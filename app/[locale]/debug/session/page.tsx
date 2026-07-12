@@ -2,21 +2,15 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SessionDebugPage() {
-    const session = await auth();
-
-    // セキュリティ: 本番環境ではデバッグページを無効化
     if (process.env.NODE_ENV === 'production') {
-        return (
-            <div className="p-8">
-                <h1 className="text-2xl font-bold mb-4">Debug Page Disabled</h1>
-                <p className="text-red-500">This debug page is not available in production.</p>
-            </div>
-        );
+        notFound();
     }
+    const session = await auth();
 
     let dbUser = null;
     let stepsRecord = null;

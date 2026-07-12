@@ -683,6 +683,10 @@
     "moveDown": "下に移動"
   },
   "Graph": {
+    "shareStatistics": "統計を共有",
+    "sharing": "共有用画像を作成中",
+    "shareSucceeded": "統計をコピーしました",
+    "shareFailed": "統計を共有できませんでした",
     "activityHistory": "アクティビティ履歴",
     "weekly": "週次",
     "monthly": "月次",

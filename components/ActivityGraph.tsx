@@ -36,6 +36,13 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
     const [isSharing, setIsSharing] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     const [shareError, setShareError] = useState(false);
+    const shareStatus = isSharing
+        ? t('sharing')
+        : shareError
+            ? t('shareFailed')
+            : copySuccess
+                ? t('shareSucceeded')
+                : t('shareStatistics');
 
 
     const processedData = useMemo(() => {
@@ -232,14 +239,22 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 setTimeout(() => setCopySuccess(false), 3000);
             } catch { /* clipboard write not supported */ }
             const file = new File([blob], 'activity.png', { type: 'image/png' });
-            if (navigator.share) {
-                try { await navigator.share({ title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] }); }
-                catch { /* share cancelled by user or unsupported */ }
-            } else {
+            const downloadImage = (): void => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url; a.download = 'activity.png';
                 document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            };
+            const shareData = { title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] };
+            if (navigator.share && navigator.canShare?.(shareData)) {
+                try {
+                    await navigator.share(shareData);
+                } catch (shareFailure: unknown) {
+                    if (shareFailure instanceof DOMException && shareFailure.name === 'AbortError') return;
+                    downloadImage();
+                }
+            } else {
+                downloadImage();
             }
         } catch {
             setShareError(true);
@@ -294,15 +309,16 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
             <div className="flex flex-col gap-4 mb-6">
                 {/* Main Header Row */}
-                <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm sm:text-lg font-bold text-gray-900 whitespace-nowrap">{t('activityHistory')}</h3>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <h3 className="text-sm font-bold text-gray-900 sm:text-lg">{t('activityHistory')}</h3>
+                    <div className="flex w-full items-center gap-1 sm:w-auto sm:flex-shrink-0">
+                    <div className="flex min-w-0 flex-1 rounded-lg bg-gray-100 p-1 sm:flex-none" role="group" aria-label={t('activityHistory')}>
                         {(['WEEKLY', 'MONTHLY', 'ALL'] as ViewMode[]).map((m) => (
                             <button
                                 key={m}
                                 onClick={() => setViewMode(m)}
-                                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-md transition-colors ${viewMode === m
+                                aria-pressed={viewMode === m}
+                                className={`min-h-[44px] flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors sm:flex-none sm:px-3 sm:text-sm ${viewMode === m
                                     ? 'bg-white text-gray-900 shadow-sm'
                                     : 'text-gray-500 hover:text-gray-900'
                                     }`}
@@ -314,7 +330,8 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                     <button
                         onClick={handleShare}
                         disabled={isSharing}
-                        className={`p-1.5 rounded-full transition-all flex-shrink-0 ${shareError ? 'bg-red-50 text-red-500' : isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)]' : 'text-gray-400 hover:text-[var(--theme-primary)] hover:bg-gray-50'}`}
+                        aria-label={shareStatus}
+                        className={`inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full transition-colors ${shareError ? 'bg-red-50 text-red-700' : isSharing || copySuccess ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]' : 'text-gray-600 hover:bg-gray-50 hover:text-[var(--color-primary-strong)]'}`}
                         title="Share Statistics"
                     >
                         {isSharing ? (
@@ -333,6 +350,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                             </svg>
                         )}
                     </button>
+                    <span className="sr-only" role="status" aria-live="polite">{shareStatus}</span>
                     </div>
 
 
@@ -634,13 +652,13 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
                         {/* Stats & Title */}
                         <div className="flex flex-col items-center gap-4 w-full">
-                            <h3 className="text-4xl font-bold text-[var(--theme-primary)]/40">
+                            <h3 className="text-4xl font-bold text-white/70">
                                 {viewMode === 'WEEKLY' ? 'This Week' : viewMode === 'MONTHLY' ? 'This Month' : 'Total Activity'}
                             </h3>
-                            <div className="text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                            <div className="text-8xl font-black tracking-tighter text-white">
                                 {totalDisplayedSteps.toLocaleString()}
                             </div>
-                            <p className="text-2xl font-medium opacity-80 uppercase tracking-widest">Steps</p>
+                            <p className="text-2xl font-medium uppercase tracking-widest text-white/80">Steps</p>
                         </div>
 
                         {/* Graph Visual */}

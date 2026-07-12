@@ -128,23 +128,13 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
         setMessage(null);
 
         try {
-            // 名前とユーザー名を並列で更新
-            const [nameRes, usernameRes] = await Promise.all([
-                fetch('/api/user/profile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: trimmedName }),
-                }),
-                fetch('/api/user/username', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: trimmedUsername }),
-                }),
-            ]);
-            if (!nameRes.ok) throw new Error('Failed to update name');
-
-            const usernameData = await usernameRes.json();
-            if (!usernameRes.ok) throw new Error(usernameData.error || 'Failed to update ID');
+            const response = await fetch('/api/user/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: trimmedName, username: trimmedUsername }),
+            });
+            const responseData = await response.json();
+            if (!response.ok) throw new Error(responseData.error || t('saveError'));
 
             setMessage({ text: t('saveSuccess'), type: 'success' });
             router.refresh();

@@ -2,13 +2,17 @@ export const runtime = 'edge';
 
 import { supabaseAdmin } from '@/lib/supabase';
 import { auth } from "@/lib/auth";
+import { notFound } from 'next/navigation';
 import AuthButtons from '@/components/auth/AuthButtons';
 
 export const dynamic = 'force-dynamic';
 
 export default async function FitbitDebugPage() {
-    const session = await auth();
+    if (process.env.NODE_ENV === 'production') {
+        notFound();
+    }
 
+    const session = await auth();
     if (!session?.user) {
         return (
             <div className="p-8">
@@ -22,16 +26,6 @@ export default async function FitbitDebugPage() {
                     <p>Session Debug:</p>
                     <pre>{JSON.stringify(session, null, 2)}</pre>
                 </div>
-            </div>
-        );
-    }
-
-    // セキュリティ: 本番環境ではデバッグページを無効化
-    if (process.env.NODE_ENV === 'production') {
-        return (
-            <div className="p-8">
-                <h1 className="text-2xl font-bold mb-4">Debug Page Disabled</h1>
-                <p className="text-red-500">This debug page is not available in production.</p>
             </div>
         );
     }

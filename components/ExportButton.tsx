@@ -104,6 +104,7 @@ export default function ExportButton() {
                     <button
                         type="button"
                         onClick={() => setExportType('steps')}
+                        aria-pressed={exportType === 'steps'}
                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
                             exportType === 'steps'
                                 ? 'bg-[var(--theme-primary)] text-white shadow-sm'
@@ -115,6 +116,7 @@ export default function ExportButton() {
                     <button
                         type="button"
                         onClick={() => setExportType('transactions')}
+                        aria-pressed={exportType === 'transactions'}
                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
                             exportType === 'transactions'
                                 ? 'bg-[var(--theme-primary)] text-white shadow-sm'
@@ -135,6 +137,7 @@ export default function ExportButton() {
                             key={opt.value}
                             type="button"
                             onClick={() => setPeriod(opt.value)}
+                            aria-pressed={period === opt.value}
                             className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
                                 period === opt.value
                                     ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/30'
@@ -154,6 +157,7 @@ export default function ExportButton() {
                     <button
                         type="button"
                         onClick={() => setFormat('csv')}
+                        aria-pressed={format === 'csv'}
                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
                             format === 'csv'
                                 ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/30'
@@ -165,6 +169,7 @@ export default function ExportButton() {
                     <button
                         type="button"
                         onClick={() => setFormat('json')}
+                        aria-pressed={format === 'json'}
                         className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
                             format === 'json'
                                 ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/30'
