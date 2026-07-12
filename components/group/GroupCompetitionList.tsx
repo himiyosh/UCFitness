@@ -50,7 +50,7 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                         key={group.groupId}
                                         className={`
                                                 leaderboard-row transition-colors
-                                                ${isCurrent ? 'bg-[var(--theme-primary-light)] border-l-4 border-[var(--theme-primary)]' : 'border-l-4 border-transparent hover:bg-gray-50'}
+                                                ${isCurrent ? 'border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)]' : 'border border-transparent hover:bg-gray-50'}
                                             `}
                                     >
                                         <td className="px-3 py-3 text-center">

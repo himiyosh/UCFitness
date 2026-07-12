@@ -80,7 +80,7 @@ export default function EarningBreakdown({ transactions }: EarningBreakdownProps
       {/* ヘッダー */}
       <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
         <span>📊</span>
-        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+        <span className="text-[var(--color-reward-strong)]">
           {t('title')}
         </span>
       </h3>

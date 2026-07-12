@@ -64,7 +64,7 @@ export default function StreakMilestoneToast({ currentStreak, multiplier }: Stre
           <div className="text-4xl mb-2 animate-bounce">
             {milestone >= 30 ? '🏆' : milestone >= 7 ? '🔥' : '⚡'}
           </div>
-          <h4 className="text-lg font-black bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+          <h4 className="text-lg font-black text-[var(--color-success-strong)]">
             {t('title')}
           </h4>
           <p className="text-2xl font-black text-gray-900 mt-1">
