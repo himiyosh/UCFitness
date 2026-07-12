@@ -175,7 +175,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
 
     // 招待リンクコピー
     const handleShareInvite = useCallback(async (keyword: string, groupId: string) => {
-        const url = `${window.location.origin}/groups/join?keyword=${encodeURIComponent(keyword)}`;
+        const url = `${window.location.origin}/groups/${encodeURIComponent(groupId)}`;
         try {
             await navigator.clipboard.writeText(url);
             setCopiedId(groupId);

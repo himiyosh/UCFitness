@@ -30,6 +30,7 @@ export async function POST(request: Request) {
 
     const target = keyword ? keyword.trim() : '';
     if (action !== 'reorder' && !target) return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
+    let affectedGroupId: string | null = null;
 
     // 1. Handle New Schema (groups, group_members)
     if (action === 'add') {
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
         reportError('user/group:add', addError, { groupId, userId });
         return NextResponse.json({ error: 'Failed to join group' }, { status: 500 });
       }
+      affectedGroupId = groupId;
 
     } else if (action === 'remove') {
       // Find group
@@ -154,11 +156,16 @@ export async function POST(request: Request) {
       }
 
       // Remove Member
-      await supabaseAdmin
+      const { error: removeError } = await supabaseAdmin
         .from('group_members')
         .delete()
         .eq('group_id', group.id)
         .eq('user_id', targetUserId);
+
+      if (removeError) {
+        reportError('user/group:kick', removeError, { groupId: group.id, targetUserId });
+        return NextResponse.json({ error: "Failed to remove member" }, { status: 500 });
+      }
 
       // Sync Legacy Array for Target User
       const { data: memberships } = await supabaseAdmin
@@ -589,7 +596,7 @@ export async function POST(request: Request) {
       .update({ group_keyword: newKeywords })
       .eq('id', userId);
 
-    return NextResponse.json({ success: true, keywords: newKeywords });
+    return NextResponse.json({ success: true, keywords: newKeywords, groupId: affectedGroupId });
 
   } catch (error: unknown) {
     reportError('user/group', error, { userId: session.user.id });

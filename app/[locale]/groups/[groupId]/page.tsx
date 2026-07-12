@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
@@ -72,6 +73,19 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const groupError = groupResult.error;
     const membership = membershipResult.data;
 
+    if (userResult.error) {
+        reportError('groups/detail:user', userResult.error, { userId, groupId });
+        throw new Error('Failed to load user');
+    }
+    if (groupError && groupError.code !== 'PGRST116') {
+        reportError('groups/detail:group', groupError, { userId, groupId });
+        throw new Error('Failed to load group');
+    }
+    if (membershipResult.error && membershipResult.error.code !== 'PGRST116') {
+        reportError('groups/detail:membership', membershipResult.error, { userId, groupId });
+        throw new Error('Failed to load membership');
+    }
+
     if (!dbUser?.username) {
         redirect('/setup');
     }
@@ -84,7 +98,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
         username: dbUser.username
     } : session.user;
 
-    if (groupError || !group) {
+    if (!group) {
         return notFound();
     }
 

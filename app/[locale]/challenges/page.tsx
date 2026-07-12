@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { auth } from '@/lib/auth';
 import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -36,11 +37,16 @@ export default async function ChallengesPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
 
-    const { data: dbUser } = await supabaseAdmin
+    const { data: dbUser, error: dbUserError } = await supabaseAdmin
         .from('users')
         .select('name, image, username')
         .eq('id', userId)
         .single();
+
+    if (dbUserError) {
+        reportError('challenges:user', dbUserError, { userId });
+        throw new Error('Failed to load challenge user');
+    }
 
     if (!dbUser?.username) {
         redirect('/setup');

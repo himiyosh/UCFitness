@@ -1,9 +1,11 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
-import { useState, useEffect, useCallback } from 'react';
-import ChallengeCard from '@/components/challenge/ChallengeCard';
 import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useState } from 'react';
+
+import { useTranslations } from 'next-intl';
+
+import ChallengeCard from '@/components/challenge/ChallengeCard';
 
 const ChallengeGearBanner = dynamic(() => import('@/components/challenge/ChallengeGearBanner'));
 const EditChallengeModal = dynamic(() => import('@/components/challenge/EditChallengeModal'));
@@ -46,13 +48,14 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
     const [challenges, setChallenges] = useState<Challenge[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+    const [progressMap, setProgressMap] = useState<Record<string, number | null>>({});
     const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
 
     // チャレンジ一覧を取得
     const fetchChallenges = useCallback(async (status: TabKey) => {
         setLoading(true);
         setError(null);
+        setProgressMap({});
         try {
             const res = await fetch(`/api/challenge?status=${status}`);
             if (!res.ok) throw new Error('Failed to fetch');
@@ -66,22 +69,22 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                     joined.map(async (c: Challenge) => {
                         try {
                             const res = await fetch(`/api/challenge/${c.id}/progress`);
-                            if (!res.ok) return [c.id, 0];
+                            if (!res.ok) return [c.id, null];
                             const pData = await res.json();
-                            return [c.id, pData.progress?.total_steps || 0];
+                            return [c.id, pData.progress?.total_steps ?? 0];
                         } catch {
-                            return [c.id, 0];
+                            return [c.id, null];
                         }
                     })
                 );
                 setProgressMap(Object.fromEntries(progressEntries));
             }
         } catch {
-            setError('Failed to load challenges');
+            setError(t('loadError'));
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         fetchChallenges(tab);
@@ -189,7 +192,7 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
                         <ChallengeCard
                             key={challenge.id}
                             challenge={challenge}
-                            progress={progressMap[challenge.id] || 0}
+                            progress={progressMap[challenge.id]}
                             currentUserId={currentUserId}
                             onJoin={handleJoin}
                             onLeave={handleLeave}

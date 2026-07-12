@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 
 import { Period } from '@/components/dashboard/LeaderboardTabs';
@@ -63,6 +63,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
     const [activeGroupIndex, setActiveGroupIndex] = useState(0);
     // データ取得完了後にアニメーションを発火させるキー
     const [animationKey, setAnimationKey] = useState(0);
+    const requestIdRef = useRef(0);
 
     const isMidnight = theme === 'midnight';
 
@@ -81,16 +82,18 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
 
     useEffect(() => {
         const abortController = new AbortController();
+        const requestId = ++requestIdRef.current;
         const keywords: string[] = JSON.parse(serializedKeywords);
         const fetchData = async (): Promise<void> => {
             setIsLoading(true);
             setFetchError(false);
+            setGlobalRankings([]);
+            setGroupRankingsList([]);
             try {
                 const globalRes = await fetch(`/api/rankings?scope=GLOBAL&period=${period}`, { signal: abortController.signal });
                 if (!globalRes.ok) throw new Error(`Rankings fetch failed: ${globalRes.status}`);
                 const globalData = await globalRes.json();
                 const { displayRankings: filteredGlobal } = getDisplayRankings(globalData, userId);
-                setGlobalRankings(filteredGlobal);
 
                 const groupResults = await Promise.all(
                     keywords.map(async (keyword) => {
@@ -101,18 +104,30 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                         return { keyword, neighbors: filtered };
                     })
                 );
+                if (requestIdRef.current !== requestId) return;
+                setGlobalRankings(filteredGlobal);
                 setGroupRankingsList(groupResults);
             } catch (err) {
                 if (err instanceof DOMException && err.name === 'AbortError') return;
+                if (requestIdRef.current !== requestId) return;
+                setGlobalRankings([]);
+                setGroupRankingsList([]);
                 setFetchError(true);
             } finally {
-                setIsLoading(false);
-                setAnimationKey(k => k + 1);
+                if (requestIdRef.current === requestId) {
+                    setIsLoading(false);
+                    setAnimationKey(k => k + 1);
+                }
             }
         };
 
         fetchData();
-        return () => abortController.abort();
+        return () => {
+            abortController.abort();
+            if (requestIdRef.current === requestId) {
+                requestIdRef.current += 1;
+            }
+        };
     }, [period, userId, serializedKeywords, retryKey]);
 
     return (
@@ -453,4 +468,3 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
         </div>
     );
 }
-

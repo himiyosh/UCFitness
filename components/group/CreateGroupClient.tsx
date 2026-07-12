@@ -32,6 +32,7 @@ export default function CreateGroupClient() {
   const [isSearching, setIsSearching] = useState(false);
   const [invitedMembers, setInvitedMembers] = useState<SearchUser[]>([]);
   const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [removingInvitedId, setRemovingInvitedId] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<Set<string>>(new Set());
   const [inviteError, setInviteError] = useState<string | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -45,6 +46,7 @@ export default function CreateGroupClient() {
 
   // ── 完了 ──
   const [createdKeyword, setCreatedKeyword] = useState('');
+  const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
 
   const router = useRouter();
   const t = useTranslations('Groups');
@@ -101,7 +103,9 @@ export default function CreateGroupClient() {
         const data = await response.json();
         throw new Error(data.error || t('createError'));
       }
+      const data = await response.json();
       setCreatedKeyword(id);
+      setCreatedGroupId(typeof data.groupId === 'string' ? data.groupId : null);
       setStep(2);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('createError'));
@@ -139,12 +143,38 @@ export default function CreateGroupClient() {
     }
   };
 
-  const handleRemoveInvited = (userId: string) => {
-    setInvitedMembers(prev => prev.filter(m => m.id !== userId));
+  const handleRemoveInvited = async (userId: string) => {
+    setRemovingInvitedId(userId);
+    setInviteError(null);
+    try {
+      const response = await fetch('/api/user/group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'kick',
+          keyword: createdKeyword,
+          targetUserId: userId,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || t('removeInviteFailed'));
+      }
+      setInvitedMembers(prev => prev.filter(member => member.id !== userId));
+      setInviteSuccess(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    } catch (removeError: unknown) {
+      setInviteError(removeError instanceof Error ? removeError.message : t('removeInviteFailed'));
+    } finally {
+      setRemovingInvitedId(null);
+    }
   };
 
   const handleFinish = () => {
-    router.push(`/groups/${createdKeyword}`);
+    router.push(createdGroupId ? `/groups/${createdGroupId}` : '/groups');
     router.refresh();
   };
 
@@ -428,7 +458,7 @@ export default function CreateGroupClient() {
                       <button
                         onClick={() => handleInvite(user)}
                         disabled={invitingId === user.id}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                        className="flex min-h-[44px] items-center gap-1 rounded-lg bg-[var(--color-primary-solid)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {invitingId === user.id ? <Spinner size="sm" /> : <span>+</span>}
                         {t('invite')}
@@ -475,10 +505,12 @@ export default function CreateGroupClient() {
                         <span className="text-xs font-medium text-green-800">{user.name || user.username}</span>
                         <button
                           onClick={() => handleRemoveInvited(user.id)}
-                          className="text-green-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
+                          disabled={removingInvitedId === user.id}
+                          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xs text-green-700 transition-colors hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                           title={t('removeInvite')}
+                          aria-label={t('removeInvite')}
                         >
-                          ✕
+                          {removingInvitedId === user.id ? <Spinner size="sm" /> : '✕'}
                         </button>
                       </div>
                     ))}

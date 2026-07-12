@@ -5,6 +5,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 
 import { auth } from '@/lib/auth';
 import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import RefreshButton from '@/components/layout/RefreshButton';
@@ -45,6 +46,14 @@ export default async function LeaderboardPage() {
   ]);
 
   const dbUser = userResult.data;
+  if (userResult.error) {
+    reportError('leaderboard:user', userResult.error, { userId });
+    throw new Error('Failed to load leaderboard user');
+  }
+  if (membershipResult.error) {
+    reportError('leaderboard:memberships', membershipResult.error, { userId });
+    throw new Error('Failed to load leaderboard memberships');
+  }
   if (!dbUser?.username) {
     redirect('/setup');
   }
