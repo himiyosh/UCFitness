@@ -17,7 +17,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | 機能 | 説明 |
 |---|---|
 | **歩数トラッキング** | Fitbit API と Google Health の段階移行型自動歩数同期 |
-| **ホームダッシュボード** | 今日の進捗、週間順位差、月曜起算の今週歩数、UC残高・活動ストリーク、チャレンジ、ミッション、次の行動を意味色で可視化。safe-area対応App Shellと高密度bentoを提供 |
+| **ホームダッシュボード** | 今日の進捗、固定5行の週間ランキングと自分の順位、仲間の今日歩数、今週トレンド、UC残高・活動ストリーク、チャレンジ、ミッション、次の行動を意味色と動的barで可視化 |
 | **グループ対抗** | グループ作成・参加、メンバーランキング、週間レポート |
 | **リーダーボード** | 個人・グループ・パーセンタイルランキング |
 | **チャレンジ** | 期間限定のウォーキングチャレンジ |
@@ -68,6 +68,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **トークン保護**: Google HealthトークンはユーザーID・プロバイダ・用途をAADへ含めたAES-256-GCM v2で暗号化する。解除時はDB内で接続停止・同期リース無効化・資格情報消去を原子的に完了してからGoogle側の失効を試行し、失効失敗でも接続を復活させない
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
+- **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
 
 ## プロジェクト構造
 
@@ -278,7 +279,7 @@ npm run pages:build
 👤 User (VS Code Chat Panel / Slash Commands)
 │
 ├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
-│   │  専門ロールを委任し、認証安全性・App ShellのFooter/header geometry/brand/affordance/safe-area・公開LP・通常ブラウザのCSS適用を完了前に実測
+│   │  専門ロールを委任し、認証安全性・App Shell geometry・ホームの固定ランキング/社会性/状態分離・公開LP・通常ブラウザのCSS適用を完了前に実測
 │   │
 │   ├── 📁 フロントエンド開発 (Next.js + React)
 │   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
@@ -357,7 +358,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。専門ロールを自動判定し、OAuth・同期の安全性、認証App ShellのFooter下端・header child geometry・ブランド/押下アフォーダンス・mobile safe-area、公開LP、通常ブラウザのCSS適用を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。専門ロールを自動判定し、OAuth・同期の安全性、認証App Shell geometry、固定ランキング契約、ホームの社会比較順序とデータ状態分離、公開LP、通常ブラウザのCSS適用を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
@@ -402,7 +403,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | スキル | 用途 |
 |---|---|
 | [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | Chrome Modern Web Guidance。HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善時に guide を検索・取得して適用する |
-| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。要件充足・Footer/header geometry・mobile safe-area・データ失敗状態・回帰防止・検証証拠・Lessons Learnedを確認する |
+| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。要件充足・App Shell geometry・固定ランキング仕様・社会比較順序・データ失敗/未記録/0の分離・回帰防止・検証証拠・Lessons Learnedを確認する |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
 | [ucfitness-rule-enforcement](.github/skills/ucfitness-rule-enforcement/SKILL.md) | UCFitness 固有ルール違反の静的検出・強制メカニズム |
 | [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |

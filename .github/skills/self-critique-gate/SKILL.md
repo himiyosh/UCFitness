@@ -86,10 +86,10 @@ UI に触れた場合、`self-critique.agent.md` の 6 軸で必ず批判する�
 | 軸 | 見ること |
 |---|---|
 | デザイン一貫性 | 他ページと同じアプリに見えるか、app logoが多色brand mark + solid wordmarkか、意味色・CTAが揃っているか |
-| 余白・密度 | 間延び、巨大な空白、Footer中央浮き、first viewportの進捗/競争/報酬/次行動に加え、時系列と蓄積状態の実データがあり装飾だけで埋めていないか |
+| 余白・密度 | 間延び、巨大な空白、Footer中央浮き、進捗/競争/報酬/次行動に加え、時系列・蓄積・固定5行のranking preview・friend activityの実データがあり装飾だけで埋めていないか。詳細な社会比較は次行動より後で、friend activityが他者最大値基準の重複ランキングになっていないか |
 | レスポンシブ | 375pxで見切れ・横スクロール・潰れがなく、header visual/badgeがheader rect内に収まるか |
-| テキスト・翻訳 | ja/en キー、長文、aria-label、数値・日付が破綻しないか |
-| インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか |
+| テキスト・翻訳 | ja/en キー、長文、数値・日付が破綻しないか。行リンクの`aria-label`が可視の名前・順位・歩数を上書きしていないか |
+| インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか。API失敗・未記録・実際の0が別状態か |
 | コード品質 | Hooks 順序、Server/Client 境界、型安全、未使用 import、デバッグコード |
 
 ### 4.5. ペルソナ回遊監査

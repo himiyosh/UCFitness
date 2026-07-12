@@ -13,18 +13,22 @@ import { Link } from '@/navigation';
 import AutoSync from '@/components/AutoSync';
 import DailyMissions from '@/components/dashboard/DailyMissions';
 import DashboardChallenges from '@/components/dashboard/DashboardChallenges';
+import DashboardFollowing from '@/components/dashboard/DashboardFollowing';
 import Footer from '@/components/layout/Footer';
 import LandingPage from '@/components/LandingPage';
 import QuickActions from '@/components/dashboard/QuickActions';
 import HomeHero, { NextActionCard } from '@/components/dashboard/HomeHero';
 import RefreshButton from '@/components/layout/RefreshButton';
 import UserMenu from '@/components/layout/UserMenu';
+import UserAvatar from '@/components/UserAvatar';
 
 import type { ReactNode } from 'react';
 
 // ⚡ パフォーマンス: 補助的なクライアント機能だけを遅延読み込み
 const LoginBonusToast = nextDynamic(() => import('@/components/auth/LoginBonusToast'));
 const NotificationBell = nextDynamic(() => import('@/components/layout/NotificationBell'));
+
+const LEADERBOARD_PREVIEW_MIN_ROWS = 5;
 
 export const dynamic = 'force-dynamic';
 
@@ -153,6 +157,21 @@ export default async function Home(): Promise<ReactNode> {
   const nextRankGap = userRankStats && precedingRankStats
     ? Math.max(1, precedingRankStats.WEEKLY - userRankStats.WEEKLY + 1)
     : null;
+  const leaderboardPreview: LeaderboardPreviewEntry[] = weeklyRankings
+    .slice(0, LEADERBOARD_PREVIEW_MIN_ROWS)
+    .map(([rankingUserId, stats], index) => {
+      const rankingName = stats.users?.name?.trim();
+      const rankingUsername = stats.users?.username?.trim();
+      return {
+        id: rankingUserId,
+        rank: index + 1,
+        name: rankingName || rankingUsername || t('leaderboardPreviewUnknownUser'),
+        username: rankingUsername || null,
+        image: stats.users?.image ?? null,
+        steps: stats.WEEKLY,
+        isCurrentUser: rankingUserId === userId,
+      };
+    });
   const userImage = dbUserImage || session.user.image || null;
   const remainingSteps = Math.max(0, stepGoal - mySteps);
 
@@ -318,6 +337,28 @@ export default async function Home(): Promise<ReactNode> {
           <div className="mt-3 grid items-stretch gap-3 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
             <NextActionCard id="next-action" remainingSteps={remainingSteps} />
             <QuickActions className="h-full" />
+          </div>
+
+          <div className={`mt-3 grid items-start gap-3 ${rankingDataError ? '' : 'lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]'}`}>
+            {!rankingDataError && (
+              <LeaderboardPreviewPanel
+                entries={leaderboardPreview}
+                currentRank={globalRank}
+                currentSteps={userRankStats?.WEEKLY ?? null}
+                labels={{
+                  title: t('leaderboardPreviewTitle'),
+                  subtitle: t('leaderboardPreviewSubtitle'),
+                  viewAll: t('leaderboardPreviewViewAll'),
+                  yourRank: t('leaderboardPreviewYourRank'),
+                  steps: t('leaderboardPreviewSteps'),
+                  noData: t('leaderboardPreviewNoData'),
+                  unranked: t('rankUnavailable'),
+                  you: t('leaderboardPreviewYou'),
+                  profileLabel: name => t('leaderboardPreviewProfileLabel', { name }),
+                }}
+              />
+            )}
+            <DashboardFollowing />
           </div>
             </>
           )}
@@ -533,5 +574,146 @@ function MetricValue({ label, value, tone }: MetricValueProps): ReactNode {
       <p className="truncate text-xs text-[var(--color-text-muted)]">{label}</p>
       <p className={`mt-0.5 truncate text-sm font-black tabular-nums sm:text-base ${valueTone}`}>{value}</p>
     </div>
+  );
+}
+
+interface LeaderboardPreviewEntry {
+  id: string;
+  rank: number;
+  name: string;
+  username: string | null;
+  image: string | null;
+  steps: number;
+  isCurrentUser: boolean;
+}
+
+interface LeaderboardPreviewPanelProps {
+  entries: LeaderboardPreviewEntry[];
+  currentRank: number | null;
+  currentSteps: number | null;
+  labels: {
+    title: string;
+    subtitle: string;
+    viewAll: string;
+    yourRank: string;
+    steps: string;
+    noData: string;
+    unranked: string;
+    you: string;
+    profileLabel: (name: string) => string;
+  };
+}
+
+function LeaderboardPreviewPanel({
+  entries,
+  currentRank,
+  currentSteps,
+  labels,
+}: LeaderboardPreviewPanelProps): ReactNode {
+  const maximumSteps = Math.max(1, ...entries.map(entry => entry.steps));
+  const emptyRowCount = Math.max(0, LEADERBOARD_PREVIEW_MIN_ROWS - entries.length);
+
+  return (
+    <section className="relative overflow-hidden rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="leaderboard-preview-title">
+      <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-[var(--color-competition-soft)]" aria-hidden="true" />
+      <div className="relative">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-competition-solid)] text-white" aria-hidden="true">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 20v-6h4v6m2 0V8h4v12m2 0V3h4v17M3 20h19" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <h2 id="leaderboard-preview-title" className="text-sm font-bold text-[var(--color-text)] sm:text-base">{labels.title}</h2>
+              <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{labels.subtitle}</p>
+            </div>
+          </div>
+          <Link href="/leaderboard" className="inline-flex min-h-[44px] w-fit shrink-0 items-center gap-1 self-start rounded-lg px-2 text-xs font-semibold text-[var(--color-competition-strong)] active:bg-[var(--color-competition-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]">
+            {labels.viewAll}<span aria-hidden="true">→</span>
+          </Link>
+        </div>
+
+        {entries.length === 0 && (
+          <p className="mt-4 rounded-xl bg-[var(--color-surface-muted)] px-3 py-3 text-sm text-[var(--color-text-muted)]">{labels.noData}</p>
+        )}
+        <ol className="mt-3 space-y-2">
+          {entries.map(entry => {
+            const rowClassName = `leaderboard-row group relative flex min-h-[4.5rem] flex-col justify-center overflow-visible rounded-xl border px-3 py-2 transition-colors sm:px-6 sm:py-2.5 ${
+              entry.rank === 1 ? 'rank-row-1' : entry.rank === 2 ? 'rank-row-2' : entry.rank === 3 ? 'rank-row-3' : ''
+            } ${
+                    entry.isCurrentUser
+                      ? 'border-[var(--color-primary)]/35 bg-[var(--color-primary-soft)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+                  }`;
+            const rowContent = (
+              <span className="flex w-full items-center gap-3">
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black ${
+                    entry.rank === 1
+                      ? 'bg-[var(--color-reward-solid)] text-white'
+                      : entry.rank === 2
+                        ? 'bg-[var(--color-surface-muted)] text-[var(--color-text)]'
+                        : entry.rank === 3
+                          ? 'bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
+                  }`}>
+                    {entry.rank}
+                  </span>
+                  <UserAvatar src={entry.image} name={entry.name} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-sm font-semibold text-[var(--color-text)]">{entry.name}</span>
+                      {entry.isCurrentUser && (
+                        <span className="shrink-0 rounded-full bg-[var(--color-primary-solid)] px-1.5 py-0.5 text-xs font-bold text-white">{labels.you}</span>
+                      )}
+                    </span>
+                    <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]" aria-hidden="true">
+                      <span className="block h-full rounded-full bg-[var(--color-competition-solid)] transition-[width] duration-700" style={{ width: `${Math.max(8, Math.round((entry.steps / maximumSteps) * 100))}%` }} />
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-sm font-black tabular-nums text-[var(--color-competition-strong)]">{entry.steps.toLocaleString()}</span>
+                    <span className="block text-xs text-[var(--color-text-muted)]">{labels.steps}</span>
+                  </span>
+              </span>
+            );
+            return (
+              <li key={entry.id}>
+                {entry.username ? (
+                  <Link
+                    href={`/user/${entry.username}`}
+                    className={`${rowClassName} active:outline active:outline-2 active:outline-offset-[-2px] active:outline-[var(--color-competition)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]`}
+                  >
+                    {rowContent}
+                    <span className="sr-only">{labels.profileLabel(entry.name)}</span>
+                    <span className="absolute right-2 text-[var(--color-competition-strong)] sm:right-3" aria-hidden="true">›</span>
+                  </Link>
+                ) : (
+                  <div className={`pointer-events-none ${rowClassName}`}>{rowContent}</div>
+                )}
+              </li>
+            );
+          })}
+          {Array.from({ length: emptyRowCount }, (_, index) => (
+            <li
+              key={`leaderboard-preview-empty-${index}`}
+              className="leaderboard-row pointer-events-none flex min-h-[4.5rem] flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 sm:px-6 sm:py-2.5"
+              aria-hidden="true"
+            >
+              <span className="h-2 w-2/3 rounded-full bg-[var(--color-border)]" />
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--color-primary-soft)] px-3 py-2 text-sm">
+          <span className="font-semibold text-[var(--color-primary-strong)]">{labels.yourRank}</span>
+          <span className="font-black tabular-nums text-[var(--color-primary-strong)]">
+            {currentRank !== null
+              ? `#${currentRank}${currentSteps !== null ? ` · ${currentSteps.toLocaleString()} ${labels.steps}` : ''}`
+              : labels.unranked}
+          </span>
+        </div>
+      </div>
+    </section>
   );
 }

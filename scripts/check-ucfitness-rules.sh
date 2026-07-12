@@ -141,11 +141,48 @@ if [ -n "$HITS" ]; then
 fi
 
 # ---------- 16. 認証ホームの実データrichness ----------
-for REQUIRED_PANEL in WeeklyPulsePanel RewardWalletPanel; do
-  if ! grep -q "$REQUIRED_PANEL" 'app/[locale]/page.tsx'; then
+for REQUIRED_PANEL in WeeklyPulsePanel RewardWalletPanel NextActionCard LeaderboardPreviewPanel DashboardFollowing; do
+  if ! grep -q "<${REQUIRED_PANEL}" 'app/[locale]/page.tsx'; then
     record "認証ホームの${REQUIRED_PANEL}欠落 (rule: 時系列+蓄積状態でrichnessを担保)" "app/[locale]/page.tsx"
   fi
 done
+
+NEXT_ACTION_LINE=$(grep -n '<NextActionCard id=' 'app/[locale]/page.tsx' | head -1 | cut -d: -f1)
+for SOCIAL_COMPONENT in LeaderboardPreviewPanel DashboardFollowing; do
+  SOCIAL_DETAIL_LINE=$(grep -n "<${SOCIAL_COMPONENT}" 'app/[locale]/page.tsx' | head -1 | cut -d: -f1)
+  if [ -n "$NEXT_ACTION_LINE" ] && [ -n "$SOCIAL_DETAIL_LINE" ] && [ "$NEXT_ACTION_LINE" -gt "$SOCIAL_DETAIL_LINE" ]; then
+    record "認証ホームの${SOCIAL_COMPONENT}が次行動より先 (rule: 復帰ユーザーの比較圧を抑える)" "app/[locale]/page.tsx"
+  fi
+done
+if ! grep -q 'LEADERBOARD_PREVIEW_MIN_ROWS = 5' 'app/[locale]/page.tsx'; then
+  record "認証ホームランキングの最低5行契約欠落" "app/[locale]/page.tsx"
+fi
+if ! grep -q 'leaderboard-row group relative flex min-h-\[4.5rem\] flex-col justify-center' 'app/[locale]/page.tsx'; then
+  record "認証ホームランキング行の固定レイアウト契約欠落" "app/[locale]/page.tsx"
+fi
+if grep -Eq 'following\.map\(\(user, index\)|\{index \+ 1\}' components/dashboard/DashboardFollowing.tsx; then
+  record "friend activityの順位表化 (rule: social activityとrankingを重複させない)" "components/dashboard/DashboardFollowing.tsx"
+fi
+if grep -q 'maxSteps' components/dashboard/DashboardFollowing.tsx; then
+  record "friend activityの他者最大値基準bar (rule: social activityを相対順位化しない)" "components/dashboard/DashboardFollowing.tsx"
+fi
+if ! grep -q '/api/user/following?limit=5&sort=recent' components/dashboard/DashboardFollowing.tsx; then
+  record "ホームfollowing APIのサーバー側limit欠落" "components/dashboard/DashboardFollowing.tsx"
+fi
+if grep -Eq 'id="friend-pulse-title"[^>]*truncate' components/dashboard/DashboardFollowing.tsx; then
+  record "friend activity見出しの切り詰め (rule: モバイルで主要見出しを省略しない)" "components/dashboard/DashboardFollowing.tsx"
+fi
+if grep -Eq 'aria-label=\{[^}]*profile(Label|LinkLabel)' 'app/[locale]/page.tsx' components/dashboard/DashboardFollowing.tsx; then
+  record "プロフィール行のaria-label上書き (rule: 可視の名前・歩数をaccessible nameへ残す)" "認証ホーム"
+fi
+for REQUIRED_STATE in 'error: usersErr' 'error: todayStepsErr' 'hasTodaySteps:'; do
+  if ! grep -q "$REQUIRED_STATE" app/api/user/following/route.ts; then
+    record "following APIの状態分離契約欠落: ${REQUIRED_STATE}" "app/api/user/following/route.ts"
+  fi
+done
+if ! grep -q 'requestedLimit !== null && sort === "recent"' app/api/user/following/route.ts; then
+  record "following APIのlimit/sort順序契約欠落" "app/api/user/following/route.ts"
+fi
 
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then

@@ -1,17 +1,18 @@
 export const runtime = 'edge';
 
+import { NextResponse } from "next/server";
+
 import { auth } from "@/lib/auth";
+import { getJSTDateString } from "@/lib/date-utils";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getJSTDateString } from "@/lib/date-utils";
-import { NextResponse } from "next/server";
 
 // ============================================
 // フォロー中ユーザー一覧 API
 // GET: 自分がフォローしているユーザーの一覧を取得
 // ============================================
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const session = await auth();
         if (!session?.user || !(session.user as any).id) {
@@ -19,13 +20,30 @@ export async function GET() {
         }
         const userId = (session.user as any).id as string;
         const today = getJSTDateString();
+        const url = new URL(request.url);
+        const rawLimit = url.searchParams.get("limit");
+        const requestedLimit = rawLimit === null ? null : Number(rawLimit);
+        const sort = url.searchParams.get("sort") ?? "steps";
+
+        if (
+            (requestedLimit !== null && (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 20))
+            || !["recent", "steps"].includes(sort)
+        ) {
+            return NextResponse.json({ error: "Invalid query parameters" }, { status: 400 });
+        }
 
         // フォロー中ユーザーを取得
-        const { data: follows, error: followsErr } = await supabaseAdmin
+        let followsQuery = supabaseAdmin
             .from("user_follows")
-            .select("following_id, created_at")
+            .select("following_id, created_at", { count: "exact" })
             .eq("follower_id", userId)
             .order("created_at", { ascending: false });
+
+        if (requestedLimit !== null && sort === "recent") {
+            followsQuery = followsQuery.limit(requestedLimit);
+        }
+
+        const { data: follows, error: followsErr, count: followingCount } = await followsQuery;
 
         if (followsErr) {
             reportError("GET /api/user/following", followsErr);
@@ -33,30 +51,39 @@ export async function GET() {
         }
 
         if (!follows || follows.length === 0) {
-            return NextResponse.json({ following: [], count: 0 });
+            return NextResponse.json({ following: [], count: followingCount ?? 0 });
         }
 
         const followingIds = follows.map((f) => f.following_id);
 
         // ユーザー情報を取得（PII除外）
-        const { data: users } = await supabaseAdmin
+        const { data: users, error: usersErr } = await supabaseAdmin
             .from("users")
             .select("id, name, image, username")
             .in("id", followingIds);
 
+        if (usersErr) {
+            reportError("GET /api/user/following users", usersErr);
+            return NextResponse.json({ error: "Failed to fetch following users" }, { status: 500 });
+        }
+
         // 今日の歩数を取得
-        const { data: todaySteps } = await supabaseAdmin
+        const { data: todaySteps, error: todayStepsErr } = await supabaseAdmin
             .from("daily_steps")
             .select("user_id, steps")
             .in("user_id", followingIds)
             .eq("date", today);
 
+        if (todayStepsErr) {
+            reportError("GET /api/user/following steps", todayStepsErr);
+            return NextResponse.json({ error: "Failed to fetch following steps" }, { status: 500 });
+        }
+
         // データを結合
         const stepsMap = new Map<string, number>();
         todaySteps?.forEach((s) => stepsMap.set(s.user_id, s.steps));
 
-        const usersMap = new Map<string, any>();
-        users?.forEach((u) => usersMap.set(u.id, u));
+        const usersMap = new Map(users?.map((user) => [user.id, user]) ?? []);
 
         const following = follows
             .map((f) => {
@@ -67,15 +94,21 @@ export async function GET() {
                     name: user.name,
                     image: user.image,
                     username: user.username,
-                    todaySteps: stepsMap.get(user.id) || 0,
+                    todaySteps: stepsMap.get(user.id) ?? 0,
+                    hasTodaySteps: stepsMap.has(user.id),
                     followedAt: f.created_at,
                 };
             })
-            .filter(Boolean)
-            // 今日の歩数で降順ソート
-            .sort((a: any, b: any) => b.todaySteps - a.todaySteps);
+            .filter((user): user is NonNullable<typeof user> => user !== null);
 
-        return NextResponse.json({ following, count: following.length });
+        if (sort === "steps") {
+            following.sort((first, second) => second.todaySteps - first.todaySteps);
+        }
+        const responseFollowing = requestedLimit !== null && sort === "steps"
+            ? following.slice(0, requestedLimit)
+            : following;
+
+        return NextResponse.json({ following: responseFollowing, count: followingCount ?? following.length });
     } catch (err) {
         reportError("GET /api/user/following", err);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });

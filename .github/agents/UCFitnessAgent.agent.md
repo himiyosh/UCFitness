@@ -1003,6 +1003,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **Footer位置はclassではなく座標で判定する** — 短いページでは`footer.bottom === innerHeight`を1280px/1920pxで実測する。Footer下に1px超のデッドスペース、または画面中央配置があればFAIL
 - **PC first-view密度** — 1280px/1920pxで今日の進捗・競争・報酬・次の行動の4役が同一viewport内で認識可能か確認する。大きな空白をカードstretchやroot scaleで埋めず、canvas幅と配置再構成で解決する
 - **dashboard richnessは実データで判定する** — カード数や色ではなく、時系列（月曜起算の今週等）と蓄積状態（UC残高・活動ストリーク等）が最低1つずつあるか確認する。欠測・0歩・未来日・API失敗を同じ値へ変換しない
+- **dashboard social loopを欠落させない** — 認証ホームに固定5行仕様のranking previewとfriend activity/発見CTAを常設する。今日の進捗→到達可能な競争差→UC報酬→次行動を先に提示し、詳細なranking previewとfriend activityは次行動の後に置く。friend activityを他者最大値基準の重複ランキングにせず、プロフィール/歩数取得失敗・未記録・実0歩を分離する。ホーム用APIはサーバー側limitを使い、5件未満では発見CTAで自然高さを意味ある内容にする。プロフィール行は可視内容を`aria-label`で上書きせず、操作説明を`sr-only`で補足する。既取得cache/APIを再利用してN+1を追加しない
 
 **リーダーボード / ランキング統一ルール（ユーザー繰り返し指摘 — 変更厳禁）:**
 
@@ -1339,6 +1340,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | DB障害が0歩・未集計・未設定に見えた | ホームとranking serviceがエラーをnull/空mapへ正規化し、正常な空状態と区別しなかった | **健康データの0と取得不能を分離する。** DBエラー時は数値カードを描画せず、明示エラーと再試行を表示する。リファレンス: `app/[locale]/page.tsx`, `lib/services/ranking-service.ts` |
 | rootの`overflow-y:auto`でsticky headerが追従しなかった | stickyの祖先bodyと実scroll要素documentElementが分離した | **rootは`overflow-x:clip; overflow-y:visible`でviewport自然スクロールを維持する。** 375pxでスクロール後のheader top=0を実測する。リファレンス: `app/globals.css` |
 | bento再配置後もホームがスカスカに見えた | 配置密度だけを改善し、表示する実データの種類を増やしていなかった | **時系列+蓄積状態のライブパネルを追加する。** 装飾カードではなく今週歩数・UC残高等の意思決定データでリッチさを作る。リファレンス: `app/[locale]/page.tsx` |
+| 個人データだけで社会性が弱かった | ランキングとフレンド活動を別ページへ追い出し、ホームで競争/仲間のループが見えなかった | **固定5行+自分の順位とfriend activityを常設する。** データ0件でもパネルを消さず発見CTAを表示する。ただし詳細比較は次行動の後に置き、friend activityを順位番号や他者最大値基準の重複ランキングにしない。API失敗・未記録・実0歩も分離する。リファレンス: `app/[locale]/page.tsx`, `DashboardFollowing.tsx` |
 
 ---
 
