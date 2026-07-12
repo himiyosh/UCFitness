@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
@@ -31,12 +32,16 @@ export default async function RecommendationsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (session.user as any).id;
 
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseAdmin
         .from("users")
         .select("name, email, image, username")
         .eq("id", userId)
         .single();
 
+    if (userError) {
+        reportError('recommendations:user', userError, { userId });
+        throw new Error('Failed to load recommendation user');
+    }
     if (!user?.username) {
         redirect('/setup');
     }

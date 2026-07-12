@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
@@ -45,12 +46,16 @@ export default async function BankPage() {
 
     // ユーザー情報取得
     // ⚡ パフォーマンス: 必要なカラムのみ取得
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseAdmin
         .from("users")
         .select("name, image, username")
         .eq("id", userId)
         .single();
 
+    if (userError) {
+        reportError('wallet:user', userError, { userId });
+        throw new Error('Failed to load wallet user');
+    }
     if (!user?.username) {
         redirect('/setup');
     }

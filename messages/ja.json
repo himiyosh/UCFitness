@@ -796,7 +796,9 @@
     "itemCount": "{count}個",
     "canAfford": "購入可能！",
     "tryTheme": "このテーマを試着する",
-    "revertPreview": "元のテーマに戻す"
+    "revertPreview": "元のテーマに戻す",
+    "preview": "プレビュー",
+    "close": "プレビューを閉じる"
   },
   "Splash": {
     "loading": "歩数を読み込み中...",
@@ -822,6 +824,13 @@
     "generateButton": "生成",
     "linkReady": "商品が見つかりました！",
     "linkGenerated": "商品が見つかりました。",
+    "generatedLink": "生成されたアフィリエイトリンク",
+    "copyLink": "リンクをコピー",
+    "copied": "コピーしました",
+    "copyError": "リンクをコピーできませんでした",
+    "previousProduct": "前の商品",
+    "nextProduct": "次の商品",
+    "productNumber": "商品 {number}",
     "generateError": "リンク生成に失敗しました。",
     "personalizedTitle": "あなたへのおすすめ",
     "personalizedDesc": "1日平均 {steps} 歩のあなたにぴったりのアイテム",

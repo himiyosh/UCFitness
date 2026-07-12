@@ -796,7 +796,9 @@
     "itemCount": "{count} items",
     "canAfford": "Affordable!",
     "tryTheme": "Try this theme",
-    "revertPreview": "Revert to original"
+    "revertPreview": "Revert to original",
+    "preview": "Preview",
+    "close": "Close preview"
   },
   "Splash": {
     "loading": "Loading Steps...",
@@ -822,6 +824,13 @@
     "generateButton": "Generate",
     "linkReady": "Product found!",
     "linkGenerated": "Product found.",
+    "generatedLink": "Generated affiliate link",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "copyError": "Could not copy the link",
+    "previousProduct": "Previous product",
+    "nextProduct": "Next product",
+    "productNumber": "Product {number}",
     "generateError": "Failed to generate link.",
     "personalizedTitle": "Recommended for You",
     "personalizedDesc": "Perfect items for your {steps} daily average steps",

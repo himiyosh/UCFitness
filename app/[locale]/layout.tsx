@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import "../globals.css";
 
 import { auth } from "@/lib/auth";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getFrameColor } from "@/lib/frame-utils";
 import { getEquippedItems } from "@/lib/services/shop-service";
@@ -57,7 +58,10 @@ async function getShellUser(userId: string | undefined, locale: string): Promise
       .select("username, name, image")
       .eq("id", userId)
       .single(),
-    getEquippedItems(userId),
+    getEquippedItems(userId).catch((error: unknown) => {
+      reportError('app-shell:equipped-items', error, { userId });
+      return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null, CONSUMABLE: null };
+    }),
   ]);
 
   const dbUser = userResult.data;

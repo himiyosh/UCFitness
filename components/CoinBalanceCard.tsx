@@ -75,30 +75,30 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
     return (
         <div className="space-y-3">
             {/* 💰 総残高カード */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500 p-4 text-white shadow-xl">
+            <div className="relative overflow-hidden rounded-2xl border border-[var(--color-reward)]/30 bg-[var(--color-reward-soft)] p-4 text-[var(--color-reward-strong)] shadow-sm">
                 {/* 背景装飾 */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8" />
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
+                <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-[var(--color-reward)]/10" />
+                <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-8 translate-y-8 rounded-full bg-[var(--color-reward)]/10" />
 
                 <div className="relative">
                     <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-semibold text-amber-100">{t('totalBalance')}</p>
+                        <p className="text-sm font-semibold text-[var(--color-reward-strong)]">{t('totalBalance')}</p>
                         <span className="text-xl">{rankIcon}</span>
                     </div>
                     <div className="flex items-baseline gap-2" aria-live="polite">
                         <span className="text-3xl font-black tracking-tight tabular-nums">
                             {animatedBalance.toLocaleString()}
                         </span>
-                        <span className="text-sm font-bold text-amber-200">{t('uc')}</span>
+                        <span className="text-sm font-bold text-[var(--color-reward-strong)]">{t('uc')}</span>
                     </div>
 
                     {/* 投資家ランク */}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm">
+                        <span className="rounded-full border border-[var(--color-reward)]/30 bg-[var(--color-surface)] px-2.5 py-1 text-xs font-bold">
                             {rankIcon} {t(`ranks.${balance.investor_rank}`)}
                         </span>
                         {multiplier > 1.0 && (
-                            <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm">
+                            <span className="rounded-full border border-[var(--color-reward)]/30 bg-[var(--color-surface)] px-2.5 py-1 text-xs font-bold">
                                 🔥 ×{multiplier} {t('streakMultiplier')}
                             </span>
                         )}
@@ -107,13 +107,13 @@ export default function CoinBalanceCard({ balance, todayEarned }: CoinBalanceCar
                     {/* 次のランクへのプログレス */}
                     {nextRank && (
                         <div className="mt-3">
-                            <div className="flex items-center justify-between text-xs text-amber-100 mb-1">
+                            <div className="mb-1 flex items-center justify-between text-xs text-[var(--color-reward-strong)]">
                                 <span>{t('nextRank')}: {nextRank.icon} {t(`ranks.${nextRank.rank}`)}</span>
                                 <span>{t('remaining', { amount: nextRank.remaining.toLocaleString() })}</span>
                             </div>
-                            <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--color-surface)]">
                                 <div
-                                    className="h-full bg-white/70 rounded-full transition-all duration-1000 ease-out"
+                                    className="h-full rounded-full bg-[var(--color-reward-solid)] transition-[width] duration-700 ease-out"
                                     role="progressbar"
                                     aria-valuenow={Math.round(nextRank.progress * 100)}
                                     aria-valuemin={0}

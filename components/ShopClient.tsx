@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
@@ -59,6 +60,7 @@ const RANK_ORDER: Record<string, number> = {
 
 // --- メインコンポーネント ---
 export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName, initialViewMode = 'shop' }: ShopClientProps) {
+    const router = useRouter();
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
     const { success: toastSuccess, error: toastError } = useToast();
@@ -104,17 +106,12 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 return;
             }
             // 成功
-            setOwnedItemIds(prev => new Set([...prev, item.id]));
             setCurrentBalance(prev => data.newBalance ?? prev - item.price);
-            // ユーザーアイテムリスト更新（サーバーから返された実IDを使用）
-            if (data.userItem) {
-                setUserItemsState(prev => [data.userItem, ...prev]);
-            } else {
-                // フォールバック: サーバーがuserItemを返さなかった場合
-                setUserItemsState(prev => [
-                    { id: crypto.randomUUID(), user_id: '', item_id: item.id, purchased_at: new Date().toISOString(), is_equipped: false, shop_items: item },
-                    ...prev,
-                ]);
+            if (item.category !== 'CONSUMABLE') {
+                setOwnedItemIds(prev => new Set([...prev, item.id]));
+                if (data.userItem) {
+                    setUserItemsState(prev => [data.userItem, ...prev]);
+                }
             }
             const itemName = locale === 'ja' ? item.name_ja : item.name_en;
             showToast(t('purchaseSuccessDesc', { item: itemName }), 'success');
@@ -165,12 +162,13 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 }
                 showToast(t('unequipSuccess'), 'success');
             }
+            router.refresh();
         } catch {
             showToast(t('errorGeneric'), 'error');
         } finally {
             setIsLoading(null);
         }
-    }, [showToast, setTheme, t]);
+    }, [router, showToast, setTheme, t]);
 
     // ランクチェック
     const meetsRank = (requiredRank: string) => (RANK_ORDER[userRank] ?? 0) >= (RANK_ORDER[requiredRank] ?? 0);
@@ -425,4 +423,3 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
         </div>
     );
 }
-
