@@ -201,11 +201,11 @@ export default function CreateGroupClient() {
         <div className="text-center sm:text-left">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center justify-center sm:justify-start gap-2.5">
             <span className="text-3xl">🏃‍♂️</span>
-            <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+            <span className="text-[var(--color-primary-strong)]">
               {t('createPageTitle')}
             </span>
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
             {t('createPageDesc')}
           </p>
           <div className="mt-4 h-1 w-24 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60 mx-auto sm:mx-0" />

@@ -6,6 +6,7 @@
     "allRightsReserved": "All rights reserved."
   },
   "Common": {
+    "breadcrumbLabel": "Breadcrumb",
     "settings": "Settings",
     "profile": "Profile",
     "home": "Home",

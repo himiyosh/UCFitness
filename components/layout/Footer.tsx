@@ -5,17 +5,17 @@ export default async function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="hidden sm:block mt-auto">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div className="glass-card rounded-2xl px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+    <footer className="mt-auto block">
+      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-sm sm:px-6 sm:py-4">
+          <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
           {/* リンク */}
-          <nav className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
+          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)] sm:gap-x-6 sm:text-sm">
             <a
               href="https://studio344.net"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-[var(--theme-primary)] transition-colors"
+              className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               Studio344
             </a>
@@ -23,7 +23,7 @@ export default async function Footer() {
               href="https://studio344.net/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-[var(--theme-primary)] transition-colors"
+              className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               {t('terms')}
             </a>
@@ -31,7 +31,7 @@ export default async function Footer() {
               href="https://studio344.net/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-[var(--theme-primary)] transition-colors"
+              className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               {t('privacy')}
             </a>
@@ -39,20 +39,20 @@ export default async function Footer() {
               href="https://studio344.net/contact"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-[var(--theme-primary)] transition-colors"
+              className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               {t('contact')}
             </a>
           </nav>
 
           {/* コピーライト */}
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-[var(--color-text-muted)]">
             &copy; {year}{' '}
             <a
               href="https://studio344.net"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-[var(--theme-primary)] transition-colors"
+              className="rounded transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               Studio344
             </a>

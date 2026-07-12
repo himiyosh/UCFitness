@@ -6,6 +6,7 @@
     "allRightsReserved": "All rights reserved."
   },
   "Common": {
+    "breadcrumbLabel": "パンくずリスト",
     "settings": "設定",
     "profile": "プロフィール",
     "home": "ホーム",

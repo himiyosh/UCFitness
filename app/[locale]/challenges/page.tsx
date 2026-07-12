@@ -84,11 +84,11 @@ export default async function ChallengesPage() {
                 <div className="mb-8">
                     <h2 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
                         <span>🎯</span>
-                        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+                        <span className="text-[var(--color-competition-strong)]">
                             {t('title')}
                         </span>
                     </h2>
-                    <p className="mt-2.5 text-base text-gray-500">{t('headerDesc')}</p>
+                    <p className="mt-2.5 text-base text-[var(--color-text-muted)]">{t('headerDesc')}</p>
                     <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
                 </div>
 

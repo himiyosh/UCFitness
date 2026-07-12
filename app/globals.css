@@ -304,6 +304,8 @@ html {
   --color-surface-raised: #ffffff;
   --color-text: #111827;
   --color-text-muted: #5b6472;
+  --foreground: var(--color-text);
+  --foreground-muted: var(--color-text-muted);
   --color-border: #dde3ea;
   --color-primary: #2563eb;
   --color-primary-strong: #1d4ed8;

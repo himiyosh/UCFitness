@@ -113,10 +113,10 @@ export default function SetupPage() {
                     </svg>
                 </div>
 
-                <h2 className="text-center text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]">
+                <h1 className="text-center text-2xl font-bold tracking-tight text-[var(--color-primary-strong)] sm:text-3xl">
                     {t('welcome')}
-                </h2>
-                <p className="mt-2 text-center text-sm text-gray-500">
+                </h1>
+                <p className="mt-2 text-center text-sm text-[var(--color-text-muted)]">
                     {t('subtitle')}
                 </p>
             </div>
@@ -255,4 +255,3 @@ export default function SetupPage() {
         </div>
     );
 }
-

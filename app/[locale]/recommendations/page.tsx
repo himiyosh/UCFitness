@@ -78,16 +78,15 @@ export default async function RecommendationsPage() {
                 </div>
 
                 {/* ヒーローバナー */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-400 mb-8 shadow-lg">
-                    <div className="absolute top-0 right-0 w-56 h-56 bg-white/10 rounded-full -translate-y-24 translate-x-24" />
-                    <div className="absolute bottom-0 left-0 w-44 h-44 bg-white/10 rounded-full translate-y-20 -translate-x-20" />
-                    <div className="absolute top-1/3 left-1/2 w-32 h-32 bg-white/5 rounded-full" />
+                <div className="relative mb-8 overflow-hidden rounded-2xl border border-[var(--color-reward)]/30 bg-[var(--color-reward-soft)] shadow-sm">
+                    <div className="absolute right-0 top-0 h-56 w-56 -translate-y-24 translate-x-24 rounded-full bg-[var(--color-reward)]/10" />
+                    <div className="absolute bottom-0 left-0 h-44 w-44 -translate-x-20 translate-y-20 rounded-full bg-[var(--color-reward)]/10" />
 
                     <div className="relative z-10 p-6 sm:p-8">
-                        <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] leading-none">
+                        <h2 className="text-3xl font-black leading-tight tracking-tight text-[var(--color-reward-strong)] sm:text-4xl">
                             {t('heroTitle')}
                         </h2>
-                        <p className="mt-2 text-white/80 text-sm sm:text-base max-w-lg">
+                        <p className="mt-2 max-w-lg text-sm text-[var(--color-text)] sm:text-base">
                             {t('heroDescription')}
                         </p>
                     </div>
@@ -97,11 +96,11 @@ export default async function RecommendationsPage() {
                 <div className="mb-8">
                     <h3 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
                         <span>🔍</span>
-                        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+                        <span className="text-[var(--color-reward-strong)]">
                             {t('searchTitle')}
                         </span>
                     </h3>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-[var(--color-text-muted)]">
                         {t('searchDescription')}
                     </p>
                     <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />

@@ -121,7 +121,6 @@ export default async function LocaleLayout({
   const session = await auth();
   const skipToContent = locale === 'ja' ? 'メインコンテンツへ' : 'Skip to content';
   const sessionUser = session?.user as LayoutSessionUser | undefined;
-  const skipTargetId = sessionUser ? 'main-page-content' : 'public-main-content';
   const languageUser = sessionUser
     ? { language: sessionUser.language ?? null }
     : undefined;
@@ -144,7 +143,7 @@ export default async function LocaleLayout({
             <ToastProvider>
               <ThemeProvider>
                 {/* スキップナビゲーションリンク (WCAG 2.4.1) */}
-                <a href={`#${skipTargetId}`} className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:inline-flex focus:min-h-[44px] focus:items-center focus:rounded-lg focus:bg-[var(--theme-primary)] focus:px-4 focus:py-2 focus:text-white focus:shadow-lg">
+                <a href="#main-page-content" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:inline-flex focus:min-h-[44px] focus:items-center focus:rounded-lg focus:bg-[var(--color-primary-solid)] focus:px-4 focus:py-2 focus:text-white focus:shadow-lg">
                   {skipToContent}
                 </a>
                 <Suspense fallback={null}>
@@ -154,7 +153,7 @@ export default async function LocaleLayout({
                 <LanguageSyncer user={languageUser} />
                 <div
                   id="main-content"
-                  className={`relative flex min-h-screen flex-col ${shellUser ? "uc-auth-shell pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0 lg:flex-row" : ""}`}
+                  className={`relative flex min-h-screen flex-col ${shellUser ? "uc-auth-shell pb-[calc(4rem+env(safe-area-inset-bottom,0px))] lg:flex-row lg:pb-0" : ""}`}
                   style={{ zIndex: 20 }}
                 >
                   {shellUser && (

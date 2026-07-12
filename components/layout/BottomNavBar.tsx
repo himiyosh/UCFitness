@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 
 /**
  * ネイティブアプリ風の固定ボトムナビゲーションバー
- * モバイルで常時表示、sm 以上では非表示（ヘッダーナビで代替）
+ * サイドバーが表示されるlg未満で常時表示
  */
 export default function BottomNavBar() {
   const pathname = usePathname();
@@ -22,7 +22,7 @@ export default function BottomNavBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 safe-area-bottom sm:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 safe-area-bottom lg:hidden"
       role="navigation"
       aria-label={t('label')}
     >
@@ -38,9 +38,9 @@ export default function BottomNavBar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex min-h-[44px] min-w-[56px] flex-col items-center justify-center transition-colors ${
+              className={`relative flex min-h-[44px] min-w-[56px] flex-col items-center justify-center rounded-lg transition-colors active:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
                 isActive
-                  ? 'text-[var(--theme-primary)]'
+                  ? 'text-[var(--color-primary-strong)]'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
               }`}
               aria-current={isActive ? 'page' : undefined}

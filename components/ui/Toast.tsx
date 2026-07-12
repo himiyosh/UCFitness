@@ -66,10 +66,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <ToastContext.Provider value={{ toast: addToast, success, error }}>
             {children}
             <div
-                className="fixed bottom-16 sm:bottom-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none max-w-sm w-full sm:w-auto"
+                className="pointer-events-none fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px)+0.75rem)] left-4 right-4 z-[200] flex w-auto max-w-sm flex-col gap-2 lg:bottom-4 lg:left-auto"
                 aria-live="polite"
                 aria-relevant="additions"
-                role="status"
             >
                 {toasts.map((toast) => (
                     <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
@@ -89,13 +88,13 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
             className={`
         pointer-events-auto
         flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg 
-        transform transition-all duration-300 ease-in-out
+        transform transition-[transform,opacity,box-shadow] duration-200 ease-out
         animate-in slide-in-from-right-full fade-in
         ${isSuccess ? 'bg-green-50 text-green-900 border border-green-200' : ''}
         ${isError ? 'bg-red-50 text-red-900 border border-red-200' : ''}
         ${!isSuccess && !isError ? 'bg-white text-gray-900 border border-gray-200' : ''}
       `}
-            role="alert"
+            role={isError ? 'alert' : 'status'}
         >
             <div className="flex-shrink-0">
                 {isSuccess && (
@@ -112,7 +111,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
             <p className="font-medium text-sm">{toast.message}</p>
             <button
                 onClick={onClose}
-                className={`ml-auto -mx-1.5 -my-1.5 rounded-lg p-1.5 inline-flex h-8 w-8 
+                className={`ml-auto -mx-1.5 -my-1.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg p-1.5
           ${isSuccess ? 'text-green-500 hover:bg-green-100' : ''}
           ${isError ? 'text-red-500 hover:bg-red-100' : ''}
           ${!isSuccess && !isError ? 'text-gray-400 hover:text-gray-900 hover:bg-gray-100' : ''}
