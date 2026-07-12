@@ -33,6 +33,7 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 | `--color-reward` | UC・報酬・バッジ | `#B7791F` |
 | `--color-reward-strong` | 報酬面上の文字・アイコン | `#92400E` |
 | `--color-reward-soft` | UC・報酬の淡い面 | `#FEF3C7` |
+| `--color-reward-solid` | 白文字を載せる報酬塗り面 | `#92400E` |
 | `--color-competition` | 順位・対戦・グループ競争 | `#7C3AED` |
 | `--color-competition-strong` | 競争面上の文字・アイコン | `#5B21B6` |
 | `--color-competition-soft` | 競争・順位の淡い面 | `#EDE9FE` |
@@ -49,6 +50,7 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 - 淡い主色面の文字には `--color-primary-strong`、白文字を載せる塗り面には `--color-primary-solid` を使い分ける。
 - 白文字を載せる塗り CTA には `--color-primary` ではなく `--color-primary-solid` を使う。
 - 報酬表現は `--color-reward` に限定し、健康データより前面に出しすぎない。
+- 白文字付きの報酬ボタン・アイコンには `--color-reward-solid` を使用し、境界用の `--color-reward` を背景へ流用しない。
 - 競争表現は `--color-competition`、達成表現は `--color-success` に分け、色だけでなくラベルやアイコンも併用する。
 - 競争色を白文字付きの塗り面に使う場合は `--color-competition-solid` を使用し、文字・境界用の `--color-competition` と兼用しない。
 - 公開 LP は Full Palette の例外とし、青=目標、緑=達成、紫=競争、アンバー=報酬を同一画面で使える。ただし各色の意味を混在させない。

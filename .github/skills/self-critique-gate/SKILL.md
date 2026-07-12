@@ -86,7 +86,7 @@ UI に触れた場合、`self-critique.agent.md` の 6 軸で必ず批判する�
 | 軸 | 見ること |
 |---|---|
 | デザイン一貫性 | 他ページと同じアプリに見えるか、app logoが多色brand mark + solid wordmarkか、意味色・CTAが揃っているか |
-| 余白・密度 | 間延び、巨大な空白、Footer中央浮き、100%表示でfirst viewportに進捗/競争/報酬/次行動が入るか |
+| 余白・密度 | 間延び、巨大な空白、Footer中央浮き、first viewportの進捗/競争/報酬/次行動に加え、時系列と蓄積状態の実データがあり装飾だけで埋めていないか |
 | レスポンシブ | 375pxで見切れ・横スクロール・潰れがなく、header visual/badgeがheader rect内に収まるか |
 | テキスト・翻訳 | ja/en キー、長文、aria-label、数値・日付が破綻しないか |
 | インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか |

@@ -317,6 +317,7 @@ html {
   --color-reward: #b7791f;
   --color-reward-strong: #92400e;
   --color-reward-soft: #fef3c7;
+  --color-reward-solid: #92400e;
   --color-competition: #7c3aed;
   --color-competition-strong: #5b21b6;
   --color-competition-soft: #ede9fe;
@@ -501,6 +502,7 @@ html {
   --color-reward: #facc15;
   --color-reward-strong: #facc15;
   --color-reward-soft: rgba(250, 204, 21, 0.16);
+  --color-reward-solid: #a16207;
   --color-competition: #a78bfa;
   --color-competition-strong: #c4b5fd;
   --color-competition-soft: rgba(196, 181, 253, 0.16);

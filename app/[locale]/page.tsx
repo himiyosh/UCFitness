@@ -3,7 +3,7 @@ export const runtime = 'edge';
 import nextDynamic from 'next/dynamic';
 import { redirect } from 'next/navigation';
 
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 import { auth } from "@/lib/auth";
 import { reportError } from '@/lib/errors';
@@ -29,9 +29,12 @@ const NotificationBell = nextDynamic(() => import('@/components/layout/Notificat
 export const dynamic = 'force-dynamic';
 
 export default async function Home(): Promise<ReactNode> {
-  const session = await auth();
-  const t = await getTranslations('Dashboard');
-  const commonT = await getTranslations('Common');
+  const [session, t, commonT, locale] = await Promise.all([
+    auth(),
+    getTranslations('Dashboard'),
+    getTranslations('Common'),
+    getLocale(),
+  ]);
 
   if (!session?.user) {
     return <LandingPage />;
@@ -50,9 +53,18 @@ export default async function Home(): Promise<ReactNode> {
   const now = new Date();
   const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const today = jstDate.toISOString().split('T')[0];
+  const daysSinceMonday = (jstDate.getUTCDay() + 6) % 7;
+  const weekStartDate = new Date(jstDate);
+  weekStartDate.setUTCDate(jstDate.getUTCDate() - daysSinceMonday);
+  const weeklyDates = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(weekStartDate);
+    date.setUTCDate(weekStartDate.getUTCDate() + index);
+    return date.toISOString().split('T')[0];
+  });
+  const weeklyStart = weeklyDates[0];
 
-  // ⚡ パフォーマンス: 初期表示に必要なユーザー情報・歩数だけを並列取得
-  const [userResult, stepsResult] = await Promise.all([
+  // ⚡ パフォーマンス: 初期表示に必要なユーザー情報・7日歩数・UC残高を並列取得
+  const [userResult, stepsResult, coinResult] = await Promise.all([
     supabaseAdmin
       .from('users')
       .select('username, step_goal, image, name')
@@ -62,17 +74,28 @@ export default async function Home(): Promise<ReactNode> {
       .from('daily_steps')
       .select('steps, date')
       .eq('user_id', userId)
-      .eq('date', today),
+      .gte('date', weeklyStart)
+      .lte('date', today)
+      .order('date', { ascending: true }),
+    supabaseAdmin
+      .from('coin_balances')
+      .select('total_balance, current_streak')
+      .eq('user_id', userId)
+      .maybeSingle(),
   ]);
 
   const userData = userResult.data;
   const dashboardDataError = Boolean(userResult.error || stepsResult.error);
+  const rewardDataError = Boolean(coinResult.error);
   let rankingDataError = false;
   if (userResult.error) {
     reportError('home:user', userResult.error, { userId });
   }
   if (stepsResult.error) {
-    reportError('home:steps', stepsResult.error, { userId, date: today });
+    reportError('home:steps', stepsResult.error, { userId, startDate: weeklyStart, endDate: today });
+  }
+  if (coinResult.error) {
+    reportError('home:coins', coinResult.error, { userId });
   }
   stepGoal = userData?.step_goal || 10000;
   username = userData?.username || '';
@@ -96,6 +119,19 @@ export default async function Home(): Promise<ReactNode> {
   });
   const hasTodayStepRecord = stepsMap.has(today);
   mySteps = stepsMap.get(today) || 0;
+  const weekdayFormatter = new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
+    weekday: 'short',
+    timeZone: 'UTC',
+  });
+  const weeklySeries: WeeklyStepPoint[] = weeklyDates.map(date => ({
+    date,
+    label: weekdayFormatter.format(new Date(`${date}T00:00:00Z`)),
+    steps: stepsMap.has(date) ? stepsMap.get(date) ?? 0 : null,
+    isToday: date === today,
+    isFuture: date > today,
+  }));
+  const ucBalance = coinResult.data?.total_balance ?? 0;
+  const currentStreak = coinResult.data?.current_streak ?? 0;
 
   let rankingMap: Awaited<ReturnType<typeof getCachedGlobalRankingMap>> = {};
   if (!dashboardDataError) {
@@ -249,6 +285,36 @@ export default async function Home(): Promise<ReactNode> {
             </div>
           </div>
 
+          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
+            <WeeklyPulsePanel
+              points={weeklySeries}
+              stepGoal={stepGoal}
+              labels={{
+                title: t('weeklyPulseTitle'),
+                recordedTotal: t('weeklyRecordedTotal'),
+                bestDay: t('weeklyBestDay'),
+                recordedDays: t('weeklyRecordedDays'),
+                analytics: t('weeklyAnalytics'),
+                noData: t('weeklyNoData'),
+                upcoming: t('weeklyUpcoming'),
+              }}
+            />
+            <RewardWalletPanel
+              balance={ucBalance}
+              streak={currentStreak}
+              error={rewardDataError}
+              labels={{
+                title: t('ucWalletTitle'),
+                balance: t('ucBalanceLabel'),
+                streak: t('ucStreak', { days: currentStreak }),
+                wallet: t('wallet'),
+                shop: t('shop'),
+                error: t('rewardDataUnavailable'),
+                retry: commonT('retry'),
+              }}
+            />
+          </div>
+
           <div className="mt-3 grid items-stretch gap-3 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
             <NextActionCard id="next-action" remainingSteps={remainingSteps} />
             <QuickActions className="h-full" />
@@ -279,5 +345,193 @@ function AppBrandMark(): ReactNode {
         <circle cx="18.5" cy="5.5" r="2.25" fill="var(--color-success)" />
       </svg>
     </span>
+  );
+}
+
+interface WeeklyStepPoint {
+  date: string;
+  label: string;
+  steps: number | null;
+  isToday: boolean;
+  isFuture: boolean;
+}
+
+interface WeeklyPulsePanelProps {
+  points: WeeklyStepPoint[];
+  stepGoal: number;
+  labels: {
+    title: string;
+    recordedTotal: string;
+    bestDay: string;
+    recordedDays: string;
+    analytics: string;
+    noData: string;
+    upcoming: string;
+  };
+}
+
+function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): ReactNode {
+  const recordedPoints = points.filter((point): point is WeeklyStepPoint & { steps: number } => point.steps !== null);
+  const total = recordedPoints.reduce((sum, point) => sum + point.steps, 0);
+  const best = recordedPoints.reduce((maximum, point) => Math.max(maximum, point.steps), 0);
+  const chartMaximum = Math.max(stepGoal, best, 1);
+  const elapsedDays = points.filter(point => !point.isFuture).length;
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="weekly-pulse-title">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]" aria-hidden="true">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 18V8m5 10V4m6 14v-7m5 7V6" />
+            </svg>
+          </span>
+          <h2 id="weekly-pulse-title" className="truncate text-sm font-bold text-[var(--color-text)] sm:text-base">{labels.title}</h2>
+        </div>
+        <Link href="/analytics" className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
+          {labels.analytics}
+          <span aria-hidden="true">→</span>
+        </Link>
+      </div>
+
+      {recordedPoints.length === 0 ? (
+        <p className="mt-3 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--color-text-muted)]">
+          {labels.noData}
+        </p>
+      ) : (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <MetricValue label={labels.recordedTotal} value={total.toLocaleString()} tone="primary" />
+          <MetricValue label={labels.bestDay} value={best.toLocaleString()} tone="success" />
+          <MetricValue label={labels.recordedDays} value={`${recordedPoints.length}/${elapsedDays}`} tone="neutral" />
+        </div>
+      )}
+
+      <div className="mt-3 grid h-24 grid-cols-7 items-end gap-1.5 sm:h-28 sm:gap-2" aria-hidden="true">
+        {points.map(point => {
+          const heightPercent = point.steps === null || point.steps === 0
+            ? 0
+            : Math.max(10, Math.round((point.steps / chartMaximum) * 100));
+          const barTone = point.steps === null || point.steps === 0
+            ? 'bg-[var(--color-surface-muted)]'
+            : point.steps >= stepGoal
+              ? 'bg-[var(--color-success)]'
+              : 'bg-[var(--color-primary-solid)]';
+
+          return (
+            <div key={point.date} className="flex h-full min-w-0 flex-col justify-end gap-1">
+              <div className={`relative flex flex-1 items-end overflow-hidden rounded-lg bg-[var(--color-surface-muted)] ${point.isToday ? 'ring-2 ring-[var(--color-primary)] ring-offset-1 ring-offset-[var(--color-surface)]' : ''}`}>
+                <span
+                  className={`block w-full rounded-md transition-[height] duration-700 ${barTone}`}
+                  style={{ height: `${heightPercent}%` }}
+                  title={point.isFuture ? labels.upcoming : point.steps === null ? labels.noData : point.steps.toLocaleString()}
+                />
+                {point.steps === null && (
+                  <span className="absolute inset-x-0 bottom-1 text-center text-xs font-bold text-[var(--color-text-muted)]">—</span>
+                )}
+                {point.steps === 0 && (
+                  <span className="absolute inset-x-0 bottom-1 text-center text-xs font-bold text-[var(--color-text-muted)]">0</span>
+                )}
+              </div>
+              <span className={`text-center text-xs ${point.isToday ? 'font-bold text-[var(--color-primary-strong)]' : 'text-[var(--color-text-muted)]'}`}>
+                {point.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <ul className="sr-only">
+        {points.map(point => (
+          <li key={point.date}>
+            {point.label}: {point.isFuture ? labels.upcoming : point.steps === null ? labels.noData : point.steps.toLocaleString()}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+interface RewardWalletPanelProps {
+  balance: number;
+  streak: number;
+  error: boolean;
+  labels: {
+    title: string;
+    balance: string;
+    streak: string;
+    wallet: string;
+    shop: string;
+    error: string;
+    retry: string;
+  };
+}
+
+function RewardWalletPanel({ balance, streak, error, labels }: RewardWalletPanelProps): ReactNode {
+  return (
+    <section className="relative overflow-hidden rounded-2xl border border-[var(--color-reward)]/35 bg-[var(--color-reward-soft)] p-3 shadow-sm sm:p-4" aria-labelledby="reward-wallet-title">
+      <div className="pointer-events-none absolute -right-5 -top-5 h-24 w-24 rounded-full border-[12px] border-[var(--color-reward)]/10" aria-hidden="true" />
+      <div className="relative">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-reward-solid)] text-white shadow-sm" aria-hidden="true">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6c4.42 0 8-1.12 8-2.5S16.42 1 12 1 4 2.12 4 3.5 7.58 6 12 6Zm8-2.5V8c0 1.38-3.58 2.5-8 2.5S4 9.38 4 8V3.5M20 8v4.5c0 1.38-3.58 2.5-8 2.5s-8-1.12-8-2.5V8m16 4.5V17c0 1.38-3.58 2.5-8 2.5S4 18.38 4 17v-4.5" />
+            </svg>
+          </span>
+          <h2 id="reward-wallet-title" className="text-sm font-bold text-[var(--color-reward-strong)] sm:text-base">{labels.title}</h2>
+        </div>
+
+        {error ? (
+          <div className="mt-4" role="status">
+            <p className="text-sm font-semibold text-[var(--color-text)]">{labels.error}</p>
+            <form action="/" method="get" className="mt-2">
+              <button type="submit" className="inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-[var(--color-reward-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]">
+                {labels.retry}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <>
+            <p className="mt-4 text-xs font-semibold text-[var(--color-reward-strong)]">{labels.balance}</p>
+            <p className="mt-0.5 text-3xl font-black tracking-tight text-[var(--color-reward-strong)] tabular-nums">
+              {balance.toLocaleString()} <span className="text-base">UC</span>
+            </p>
+            {streak > 0 && (
+              <span className="mt-2 inline-flex rounded-full bg-[var(--color-success-soft)] px-2.5 py-1 text-xs font-bold text-[var(--color-success-strong)]">
+                {labels.streak}
+              </span>
+            )}
+          </>
+        )}
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Link href="/wallet" className="uc-interactive-panel inline-flex min-h-[44px] items-center justify-center gap-1 rounded-xl border border-[var(--color-reward)]/30 bg-[var(--color-surface)] px-3 py-2 text-xs font-bold text-[var(--color-reward-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]">
+            {labels.wallet}<span aria-hidden="true">→</span>
+          </Link>
+          <Link href="/shop" className="uc-interactive-panel inline-flex min-h-[44px] items-center justify-center gap-1 rounded-xl bg-[var(--color-reward-solid)] px-3 py-2 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)] focus-visible:ring-offset-2">
+            {labels.shop}<span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+interface MetricValueProps {
+  label: string;
+  value: string;
+  tone: 'primary' | 'success' | 'neutral';
+}
+
+function MetricValue({ label, value, tone }: MetricValueProps): ReactNode {
+  const valueTone = tone === 'primary'
+    ? 'text-[var(--color-primary-strong)]'
+    : tone === 'success'
+      ? 'text-[var(--color-success-strong)]'
+      : 'text-[var(--color-text)]';
+
+  return (
+    <div className="min-w-0 rounded-xl bg-[var(--color-surface-muted)] px-2.5 py-2">
+      <p className="truncate text-xs text-[var(--color-text-muted)]">{label}</p>
+      <p className={`mt-0.5 truncate text-sm font-black tabular-nums sm:text-base ${valueTone}`}>{value}</p>
+    </div>
   );
 }

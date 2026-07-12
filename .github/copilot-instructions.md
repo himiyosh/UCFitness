@@ -233,6 +233,7 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 13. **ブラウザ倍率 100% での密度検証を必須化** — root 全体を `zoom` / `transform: scale()` で縮小して密度を作るのは禁止。UI が大きすぎる場合は、コンポーネント単位で `font-size`、`line-height`、`gap`、`padding`、カード高さ、補助ビジュアルの表示条件を調整する。LP/ホームなど主要画面では 375px / 1280px / 1920px の 100% 表示で `body.scrollHeight`、ヒーロー高さ、ファーストビュー内の情報量を測定し、余白で画面を消費していないか確認する
 14. **Footerは短いページでもviewport下端へ置く** — 認証後ホームは`min-h-dvh flex flex-col`を基準にし、Footer wrapperへ`mt-auto`を付ける。1280px/1920pxで`body.scrollHeight <= innerHeight`の場合、`footer.getBoundingClientRect().bottom`が`innerHeight`と一致することを実測する。Footerが画面中央に出た状態を「コンテンツ後だから正しい」と扱わない
 15. **PC密度は横幅と配置再構成で改善する** — 1280px/1920pxのファーストビューに、今日の進捗・競争・報酬・次の行動の4要素が認識可能であること。単純なカード引き伸ばしやroot縮小ではなく、ホーム専用の上限幅、2段bento、compact action rowでデッドスペースを減らす
+16. **リッチ化は実データを増やして行う** — 空白をカードの拡大・装飾・並べ替えだけで埋めない。認証後ホームでは、今日の値に加えて少なくとも1つの時系列可視化（例: 月曜起算の今週）と1つの蓄積状態（例: UC残高・ストリーク）を表示し、欠測・取得失敗を0へ偽装しない
 
 ### UI 美学ルール（Design Aesthetics — 必須遵守）
 
@@ -1255,3 +1256,10 @@ export const runtime = "edge";
 - **根本原因**: `body { overflow-y:auto }`がstickyのスクロール祖先になった一方、実際のscrollTopは`documentElement`へ付いており、参照するスクロール座標が分離した。
 - **対策**: `html/body`の横切り抜きを`overflow-x:clip`、縦を`overflow-y:visible`へ変更し、viewport自然スクロールへ戻した。修正後は同条件でheader top=0を確認した。
 - **教訓**: rootの横overflow対策でscroll containerを作らない。sticky確認はclassの存在ではなく、実スクロール後の`getBoundingClientRect().top`で判定する。リファレンス: `app/globals.css`
+
+### LL-037: 余白を再配置しただけで、ダッシュボードの情報量を増やしていなかった
+
+- **事象**: Footer・header・bento配置は改善したが、表示している実データの種類は変わらず、ユーザーから「スカスカで全然リッチではない」と再指摘された。
+- **根本原因**: リッチさをカード配置・幅・色・アフォーダンスの問題として扱い、時系列や蓄積値などダッシュボード固有の情報価値を追加していなかった。
+- **対策**: `daily_steps`をランキングと同じ月曜起算の今週で取得し、欠測・0歩・未来日を区別したbar visualizationを追加した。`coin_balances`からUC残高・活動ストリークも独立状態として追加し、失敗時は数値を隠して明示エラーとする。
+- **教訓**: Product dashboardのリッチさは装飾量ではなく、意思決定に使える実データの密度で作る。リファレンス: `app/[locale]/page.tsx`

@@ -140,6 +140,13 @@ if [ -n "$HITS" ]; then
   record "root overflow-y:auto (rule: viewport自然スクロールを維持)" "$HITS"
 fi
 
+# ---------- 16. 認証ホームの実データrichness ----------
+for REQUIRED_PANEL in WeeklyPulsePanel RewardWalletPanel; do
+  if ! grep -q "$REQUIRED_PANEL" 'app/[locale]/page.tsx'; then
+    record "認証ホームの${REQUIRED_PANEL}欠落 (rule: 時系列+蓄積状態でrichnessを担保)" "app/[locale]/page.tsx"
+  fi
+done
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"
