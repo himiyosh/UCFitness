@@ -2,9 +2,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
-import type { ReactNode } from 'react';
+import { isTheme } from '@/lib/theme';
 
-export type Theme = 'classic' | 'pop' | 'midnight' | 'sakura' | 'ocean' | 'forest' | 'sunset' | 'cyberpunk' | 'galaxy';
+import type { ReactNode } from 'react';
+import type { Theme } from '@/lib/theme';
+
+export type { Theme } from '@/lib/theme';
 
 interface ThemeContextType {
     theme: Theme;
@@ -17,21 +20,27 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_KEY = 'ucfitness-theme';
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>('classic');
+interface ThemeProviderProps {
+    children: ReactNode;
+    initialTheme?: Theme;
+}
+
+export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
+    const [theme, setThemeState] = useState<Theme>(initialTheme ?? 'classic');
     const [themePreview, setThemePreview] = useState<Theme | null>(null);
     const [mounted, setMounted] = useState(false);
     const activeTheme = themePreview ?? theme;
 
     useEffect(() => {
         // Load theme from localStorage
-        const saved = localStorage.getItem(THEME_KEY) as Theme | null;
-        const validThemes: Theme[] = ['classic', 'pop', 'midnight', 'sakura', 'ocean', 'forest', 'sunset', 'cyberpunk', 'galaxy'];
-        if (saved && validThemes.includes(saved)) {
+        const saved = localStorage.getItem(THEME_KEY);
+        if (isTheme(saved)) {
             setThemeState(saved);
+        } else if (initialTheme) {
+            setThemeState(initialTheme);
         }
         setMounted(true);
-    }, []);
+    }, [initialTheme]);
 
     useEffect(() => {
         if (!mounted) return;

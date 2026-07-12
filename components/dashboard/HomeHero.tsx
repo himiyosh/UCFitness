@@ -183,7 +183,11 @@ export default function HomeHero({
 
         {showNextAction && (
           <div className="mt-2.5">
-            <NextActionCard remainingSteps={remainingSteps} />
+            <NextActionCard
+              remainingSteps={remainingSteps}
+              stepGoal={normalizedStepGoal}
+              todaySteps={todaySteps}
+            />
           </div>
         )}
 
@@ -200,13 +204,24 @@ export default function HomeHero({
 
 interface NextActionCardProps {
   remainingSteps: number;
+  stepGoal?: number;
+  todaySteps?: number;
   id?: string;
 }
 
-export function NextActionCard({ remainingSteps, id }: NextActionCardProps): ReactNode {
+export function NextActionCard({
+  remainingSteps,
+  stepGoal,
+  todaySteps,
+  id,
+}: NextActionCardProps): ReactNode {
   const t = useTranslations('Dashboard');
-  const walkingMinutes = Math.max(5, Math.ceil(remainingSteps / 120));
   const isGoalComplete = remainingSteps === 0;
+  const isGentleRestart = stepGoal !== undefined && todaySteps !== undefined
+    ? !isGoalComplete && todaySteps / Math.max(1, stepGoal) < 0.5
+    : remainingSteps >= 9000;
+  const suggestedSteps = isGentleRestart ? Math.min(500, remainingSteps) : remainingSteps;
+  const walkingMinutes = Math.max(5, Math.ceil(suggestedSteps / 120));
   const headingId = id ? `${id}-heading` : undefined;
   const cardTone = isGoalComplete
     ? 'border-[var(--color-success)]/30 bg-[var(--color-success-soft)]'
@@ -224,12 +239,14 @@ export function NextActionCard({ remainingSteps, id }: NextActionCardProps): Rea
     >
       <div className="min-w-0">
         <h2 id={headingId} className={`text-xs font-bold uppercase tracking-[0.16em] ${headingTone}`}>
-          {isGoalComplete ? t('nextActionCelebrate') : t('nextActionWalk')}
+          {isGoalComplete ? t('nextActionCelebrate') : isGentleRestart ? t('nextActionRestart') : t('nextActionWalk')}
         </h2>
         <p className="mt-0.5 text-sm font-bold md:text-base">
           {isGoalComplete
             ? t('goalComplete')
-            : t('stepsRemaining', { amount: remainingSteps.toLocaleString() })}
+            : isGentleRestart
+              ? t('starterSteps', { amount: suggestedSteps.toLocaleString() })
+              : t('stepsRemaining', { amount: remainingSteps.toLocaleString() })}
         </p>
         <p className="mt-0.5 text-xs leading-5 text-[var(--color-text-muted)] md:text-sm">
           {isGoalComplete

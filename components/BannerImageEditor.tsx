@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { compressImage } from '@/lib/image-utils';
 
 interface BannerImageEditorProps {
@@ -38,6 +39,20 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const [isDragging, setIsDragging] = useState(false);
     const dragStartRef = useRef<{ x: number; y: number; startOffsetX: number; startOffsetY: number }>({ x: 0, y: 0, startOffsetX: 0, startOffsetY: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const handleClose = useCallback(() => {
+        setIsOpen(false);
+        setFile(null);
+        setError(null);
+    }, []);
+
+    useDialogFocus({
+        isOpen,
+        onClose: handleClose,
+        dialogRef,
+        initialFocusRef: closeButtonRef,
+    });
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -45,14 +60,14 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
             // Validate file type
             if (!ALLOWED_IMAGE_TYPES.includes(selectedFile.type)) {
-                setError('Please select a valid image file (JPEG, PNG, WebP, GIF).');
+                setError(t('invalidType'));
                 e.target.value = '';
                 return;
             }
 
             // Validate file size
             if (selectedFile.size > MAX_FILE_SIZE) {
-                setError(`File size must be under ${MAX_FILE_SIZE_MB}MB.`);
+                setError(t('fileTooLarge', { size: MAX_FILE_SIZE_MB }));
                 e.target.value = '';
                 return;
             }
@@ -77,7 +92,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             };
             img.src = url;
         }
-    }, [previewUrl]);
+    }, [previewUrl, t]);
 
     // Cleanup object URLs on unmount
     useEffect(() => {
@@ -87,18 +102,6 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             }
         };
     }, [previewUrl]);
-
-    // ダイアログ表示中はページスクロールをロック
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [isOpen]);
 
     // プレビュー領域のサイズ計算
     const getContainerWidth = () => containerRef.current?.clientWidth || 360;
@@ -153,6 +156,27 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const handlePointerUp = () => {
         setIsDragging(false);
     };
+
+    const handleCropKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (!file || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+            return;
+        }
+        event.preventDefault();
+        const step = event.shiftKey ? 25 : 10;
+        const nextX = event.key === 'ArrowLeft'
+            ? offsetX - step
+            : event.key === 'ArrowRight'
+                ? offsetX + step
+                : offsetX;
+        const nextY = event.key === 'ArrowUp'
+            ? offsetY - step
+            : event.key === 'ArrowDown'
+                ? offsetY + step
+                : offsetY;
+        const clamped = clampOffsets(nextX, nextY);
+        setOffsetX(clamped.x);
+        setOffsetY(clamped.y);
+    }, [clampOffsets, file, offsetX, offsetY]);
 
     // ホイールでズーム
     const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -225,18 +249,20 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             ) : (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="text-[var(--theme-primary)] font-medium text-sm hover:underline"
+                    className="inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--theme-primary)] hover:underline"
                 >
                     {t('changeBanner')}
                 </button>
             )}
 
             {isOpen && typeof document !== 'undefined' && createPortal(
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 relative" role="dialog" aria-modal="true" aria-label={t('editTitle')}>
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden="true" />
+                    <div ref={dialogRef} className="relative max-h-[90dvh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="banner-editor-title" tabIndex={-1}>
                         <button
-                            onClick={() => { setIsOpen(false); setFile(null); setError(null); }}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                            ref={closeButtonRef}
+                            onClick={handleClose}
+                            className="absolute right-2 top-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 sm:right-4 sm:top-4"
                             aria-label={t('close')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -244,7 +270,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                             </svg>
                         </button>
 
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">{t('editTitle')}</h3>
+                        <h3 id="banner-editor-title" className="mb-4 pr-12 text-xl font-bold text-gray-900">{t('editTitle')}</h3>
 
                         <div className="space-y-4">
                             <div>
@@ -261,7 +287,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         file:bg-[var(--theme-primary-light)] file:text-[var(--theme-primary)]
                                         hover:file:bg-[var(--theme-primary-light)]"
                                 />
-                                <p className="text-xs text-gray-400 mt-1">{t('recommendedSize', { size: MAX_FILE_SIZE_MB })}</p>
+                                <p className="text-xs text-gray-600 mt-1">{t('recommendedSize', { size: MAX_FILE_SIZE_MB })}</p>
                                 {error && (
                                     <p className="text-xs text-red-500 mt-1 font-medium" role="alert">{error}</p>
                                 )}
@@ -279,6 +305,11 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         onPointerUp={handlePointerUp}
                                         onPointerCancel={handlePointerUp}
                                         onWheel={handleWheel}
+                                        onKeyDown={handleCropKeyDown}
+                                        role={file ? 'application' : undefined}
+                                        tabIndex={file ? 0 : -1}
+                                        aria-label={file ? t('cropArea') : undefined}
+                                        aria-describedby={file ? 'banner-crop-keyboard-hint' : undefined}
                                     >
                                         {/* 画像 — background-image でオーバーレイと同じ座標系に配置 */}
                                         {file && imageSize ? (
@@ -294,7 +325,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         ) : (
                                             <img
                                                 src={previewUrl}
-                                                alt="Preview"
+                                                alt={t('previewAlt')}
                                                 className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                                                 draggable={false}
                                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -338,7 +369,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                             >
                                                 <span className="text-white text-xs font-medium drop-shadow flex items-center justify-center gap-1">
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-                                                    {t('dragHint')}
+                                                    {t('cropKeyboardHint')}
                                                 </span>
                                             </div>
                                         )}
@@ -353,6 +384,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                             {/* ズームスライダー */}
                             {file && (
                                 <div className="flex items-center gap-3 px-1">
+                                    <span id="banner-crop-keyboard-hint" className="sr-only">{t('cropKeyboardHint')}</span>
                                     <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
                                     </svg>
@@ -375,8 +407,8 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
                             <div className="flex gap-3 pt-2 justify-end">
                                 <button
-                                    onClick={() => { setIsOpen(false); setFile(null); setError(null); }}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                    onClick={handleClose}
+                                    className="min-h-[44px] rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                                 >
                                     {t('cancel')}
                                 </button>

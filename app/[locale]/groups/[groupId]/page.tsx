@@ -49,7 +49,7 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     ]);
 
     // ⚡ パフォーマンス: 3つの独立クエリを並列実行
-    const [userResult, groupResult, membershipResult] = await Promise.all([
+    const [userResult, groupResult, membershipResult, memberCountResult] = await Promise.all([
         supabaseAdmin
             .from('users')
             .select('id, name, image, username')
@@ -66,6 +66,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
             .eq('group_id', groupId)
             .eq('user_id', userId)
             .single(),
+        supabaseAdmin
+            .from('group_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', groupId),
     ]);
 
     const dbUser = userResult.data;
@@ -84,6 +88,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     if (membershipResult.error && membershipResult.error.code !== 'PGRST116') {
         reportError('groups/detail:membership', membershipResult.error, { userId, groupId });
         throw new Error('Failed to load membership');
+    }
+    if (memberCountResult.error) {
+        reportError('groups/detail:member-count', memberCountResult.error, { userId, groupId });
+        throw new Error('Failed to load member count');
     }
 
     if (!dbUser?.username) {
@@ -105,6 +113,10 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     const isMember = !!membership;
     const isOwner = membership?.role === 'OWNER';
     const isOwnerOrAdmin = membership?.role === 'OWNER' || membership?.role === 'ADMIN';
+
+    if (!isMember && !group.is_public) {
+        return notFound();
+    }
 
     // 3. Handle Non-Members -> Show Join Screen
     if (!isMember) {
@@ -140,7 +152,16 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                             ]}
                         />
                     </div>
-                    <JoinGroupPreview group={group} userId={userId} />
+                    <JoinGroupPreview
+                        group={{
+                            name: group.name,
+                            keyword: group.keyword,
+                            description: group.description,
+                            image_url: group.image_url,
+                            header_image_url: group.header_image_url,
+                        }}
+                        memberCount={memberCountResult.count ?? 0}
+                    />
                 </div>
                 <Footer />
             </main>

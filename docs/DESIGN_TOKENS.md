@@ -81,7 +81,7 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 
 | テーマ名 | `data-theme` | Primary | 種別 |
 |----------|-------------|---------|------|
-| Classic | (なし) | `#4F46E5` | ライト・無料 |
+| Classic | (なし) | `#2563EB` | ライト・無料 |
 | Pop & Fun | `pop` | `#FF6B6B` | ライト・無料 |
 | Midnight | `midnight` | `#6366f1` | ダーク・有料 |
 | Sakura | `sakura` | `#EC4899` | ライト・有料 |
@@ -254,8 +254,8 @@ Forced Colors モードでは `backdrop-filter`, `box-shadow`, グラデーシ�
   アクション
 </button>
 
-// グラデーションテキスト
-<h1 className="bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+// 意味色を使った見出し
+<h1 className="text-[var(--color-primary-strong)]">
   タイトル
 </h1>
 
@@ -268,7 +268,10 @@ Forced Colors モードでは `backdrop-filter`, `box-shadow`, グラデーシ�
 ### テーマの変更
 
 テーマは `ThemeProvider` (`components/ThemeProvider.tsx`) で管理。
-`localStorage` に保存され、`document.documentElement` の `data-theme` 属性で切替。
+明示的な端末内選択は `localStorage` に保存され、`document.documentElement` の `data-theme` 属性で切替。
+保存値がない端末では、DBの装備テーマを初期フォールバックとして使う。フォールバック自体は
+`localStorage` へ固定せず、別端末で装備を変更した際に古い値が優先され続けないようにする。
+item codeとアプリテーマの変換は `lib/theme.ts` を単一の正本とする。
 
 ```tsx
 import { useTheme } from '@/components/ThemeProvider';

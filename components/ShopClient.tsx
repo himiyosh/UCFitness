@@ -7,25 +7,13 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useToast } from '@/components/ui/Toast';
 import UserAvatar from '@/components/UserAvatar';
 import { getFrameColor } from '@/lib/frame-utils';
+import { getThemeFromItemCode } from '@/lib/theme';
 import ShopRecommendations from '@/components/ShopRecommendations';
 import ShopItemCard from '@/components/shop/ShopItemCard';
 import InventoryView from '@/components/shop/ShopInventoryView';
 import { ItemPreviewDialog, ConfirmDialog } from '@/components/shop/ShopPreviewDialog';
 
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/services/shop-service';
-import type { Theme } from '@/components/ThemeProvider';
-
-/** item_code → アプリテーマのマッピング */
-const THEME_MAP: Record<string, Theme> = {
-    theme_pop: 'pop',
-    theme_midnight: 'midnight',
-    theme_sakura: 'sakura',
-    theme_ocean: 'ocean',
-    theme_forest: 'forest',
-    theme_sunset: 'sunset',
-    theme_cyberpunk: 'cyberpunk',
-    theme_galaxy: 'galaxy',
-};
 
 // --- 型定義 ---
 interface ShopClientProps {
@@ -147,7 +135,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 }));
                 // テーマカラー装備時はアプリテーマも切り替え
                 if (category === 'THEME_COLOR') {
-                    const mappedTheme = THEME_MAP[userItem.shop_items?.item_code ?? ''];
+                    const mappedTheme = getThemeFromItemCode(userItem.shop_items?.item_code);
                     if (mappedTheme) setTheme(mappedTheme);
                 }
                 showToast(t('equipSuccess'), 'success');
@@ -400,7 +388,11 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     meetsRank={meetsRank(previewItem.rank_required)}
                     canAfford={currentBalance >= previewItem.price}
                     isLoading={isLoading === previewItem.id}
-                    onBuy={() => handlePurchase(previewItem)}
+                    onBuy={() => {
+                        const item = previewItem;
+                        setPreviewItem(null);
+                        setConfirmDialog({ item });
+                    }}
                     onClose={() => setPreviewItem(null)}
                     t={t}
                     userImage={userImage}

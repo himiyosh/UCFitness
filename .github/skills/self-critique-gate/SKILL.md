@@ -75,6 +75,10 @@ description: "Use when: finishing any UCFitness task, applying fixes, changing U
 | mobile app / PWA変更 | `viewport-fit=cover`、top/bottom safe-area、44px、hover非依存、standalone相当の最初/最後の操作到達性 |
 | 健康データ / ranking表示 | 0件・0歩・未集計とDB/API取得失敗が別状態で、失敗を成功形の既定値へ変換していないこと |
 | 主要導線 / ナビ / ホーム / ランキング / ショップ変更 | UCFitnessAgent の Persona Journey Review を使い、最低 2 ペルソナで Playwright 回遊監査 |
+| 全ページ監査 | `app/[locale]/**/page.tsx`のルート台帳を作り、共通Shell / 競争 / アカウント / 商取引の各群で正常・空・障害・権限・320px・キーボード状態を確認。ホームだけのPASSで代替しない |
+| Dialog / Portal変更 | `useDialogFocus`によるTab循環、Escape、背景inert、scroll lock、焦点復帰、多重Dialog、保存中の退出可否と二重送信防止を確認 |
+| チャート変更 | 視覚要約だけでなく、表示期間・系列・値へ到達できる`caption` / `th`付き表または同等リストがあり、画像生成専用DOMが`aria-hidden`であること |
+| Server/Client共通入力 | URL allowlist等が共有モジュールにあり、サーバー側でも再検証され、UI判定と最終処理が一致すること |
 | カスタマイズファイル変更 | YAML frontmatter、description の発見性、README 同期 |
 
 既存 warning がある場合は、今回の変更で新規発生していないかを区別する。
@@ -88,8 +92,8 @@ UI に触れた場合、`self-critique.agent.md` の 6 軸で必ず批判する�
 | デザイン一貫性 | 他ページと同じアプリに見えるか、app logoが多色brand mark + solid wordmarkか、意味色・CTAが揃っているか |
 | 余白・密度 | 間延び、巨大な空白、Footer中央浮き、進捗/競争/報酬/次行動に加え、時系列・蓄積・固定5行のranking preview・friend activityの実データがあり装飾だけで埋めていないか。詳細な社会比較は次行動より後で、friend activityが他者最大値基準の重複ランキングになっていないか |
 | レスポンシブ | 375pxで見切れ・横スクロール・潰れがなく、header visual/badgeがheader rect内に収まるか |
-| テキスト・翻訳 | ja/en キー、長文、数値・日付が破綻しないか。行リンクの`aria-label`が可視の名前・順位・歩数を上書きしていないか |
-| インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか。API失敗・未記録・実際の0が別状態か |
+| テキスト・翻訳 | ja/en キー、長文、数値・日付が破綻しないか。行リンクの`aria-label`が可視の名前・順位・歩数を上書きしていないか。曜日・歩数単位・Dialog名・操作名に英語固定が残っていないか |
+| インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか。API失敗・未記録・実際の0が別状態か。Dialogが保存中に永久トラップを作らず、同じ書き込みを再送しないか |
 | コード品質 | Hooks 順序、Server/Client 境界、型安全、未使用 import、デバッグコード |
 
 ### 4.5. ペルソナ回遊監査

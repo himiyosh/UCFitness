@@ -944,6 +944,11 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 17. **Server/Client 境界チェック** — Server Component (`page.tsx`, `layout.tsx`, `'use client'` 宣言なしのファイル) が `'use client'` モジュールから**関数を import して呼び出していないか**確認。`tsc --noEmit` はこの違反を原理的に検出できない。`'use client'` モジュールからは React コンポーネントの import のみ許可。ユーティリティ関数（型変換マップ等）は `lib/` の共有モジュールに配置すること
 18. **CSP環境分離チェック** — 本番CSPでは `upgrade-insecure-requests` を維持し、開発CSPには含めない。Safariのlocalhost確認ではHTMLだけでなく `layout.css` のHTTP 200と実際のスタイル適用を確認する
 19. **ホームデータ失敗の状態分離** — `users` / `daily_steps` / rankingの取得失敗を0歩・同期待ち・未集計・`/setup`へ変換しない。`.error`を確認し、明示エラーUIへ分岐する。ranking serviceは失敗時に空mapを返さず伝播する
+20. **全ページcoverage確認** — 「全ページ監査」では`app/[locale]/**/page.tsx`を台帳化し、共通Shell / 競争 / アカウント / 商取引の全群について正常・空・障害・権限・320px・キーボード状態を記録する。ホームや共通CSSだけで完了判定しない
+21. **GROUPランキング認可** — GROUP scopeのランキングAPIはkeyword形式だけでなく、解決したgroup IDに対する`group_members`所属を検証する。私有グループの非メンバーには存在確認を許さない404を返す
+22. **共有入力バリデータ** — URL allowlist等をクライアント表示判定だけに置かず、`lib/`のServer/Client共有モジュールへ集約し、最終的なサーバー処理で必ず再検証する
+23. **Dialog / chart a11y契約** — Portal Dialogは`useDialogFocus`へ統一し、視覚チャートは表示期間の全値を`caption` / `th`付き表または同等リストで提供する。画像生成専用DOMはAX treeから隠す
+24. **0歩と期間比較** — 記録済み0歩を記録日平均には含め、活動日・ベストから除外する。月途中は前月同日までのMTD比較とし、前月0では比率を出さない
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -963,6 +968,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **公開 LP を保存済みテーマでも監査する** — `ThemeProvider` は未認証時も保存テーマを復元する。公開LPのFull Paletteへトークンを追加した場合は、ClassicだけでなくMidnightの375px / 1280pxでも文字コントラストを確認する。暗色テーマでは `strong` / `soft` を対で上書きし、淡色面の前景用 `strong` と白文字付き塗り面用 `solid` を兼用しない。リファレンス: `app/globals.css`
 - **公開LPの情報密度とモーションを同時に監査する** — 375pxのヒーローは主CTA＋現在歩数＋残り歩数をfold内で完結させ、順位・UCは消さずに直後のプルーフ領域へ送る。カード数だけでなく、fold内の情報順序と同時モーション数を測る。重複するチップ・実績・カードを同じビューポートへ積まず、今日の進捗→順位差→習慣ループ→報酬の順に段階表示する。全セクション同一のfade-upは禁止し、歩数リング・順位バー・報酬・スクロール進捗へ意味に沿った動きを割り当てる。モバイルでは装飾オービット・カード浮遊と進捗モーションを同時再生しない。読めるテキストを含む要素は全フレームで `opacity: 1` とし、transform・SVG描画・独立装飾へ動きを分離する。`@supports`外と低減モーションでは完成状態が常に見えること。リファレンス: `components/LandingPage.tsx`, `app/globals.css`, `docs/PRODUCT.md`
 - **Modern Web Guidance の参照必須** — HTML / CSS / クライアントサイド JS / フォーム / ダイアログ / ポップオーバー / スクロール / モーションの変更では、実装前に関連 guide を検索・取得し、UCFitness の既存 UI ルールへ適用する
+- **全ページ監査はルート台帳で完了判定する** — 共通Shell・ホームの改善を他ページへ外挿しない。17ルートを監査群へ分け、各群の代表画面だけでなく個別のDialog、チャート、障害状態、認可、翻訳を確認する。実ブラウザ未確認の認証画面はソース監査と明記する
+- **Portal Dialogは共通stackを必須化する** — `useDialogFocus`でTab循環、Escape、背景inert、scroll lock、焦点復帰を統一する。保存中の無期限トラップと二重送信の両方を作らない
+- **チャートの代替値を省略しない** — Recharts・カスタムbarとも、スクリーンリーダーが期間/系列/値へ到達できる表またはリストを持つ。共有画像専用DOMは`aria-hidden`
 - **ブラウザ標準セレクタ優先** — 親要素の状態表現は、不要な JS state やクラス付けより `:has()` / `:where()` / `:not()` を優先する。ただしセレクタは狭く保ち、広域 `:has()` は避ける
 - **intrinsic layout 優先** — 固定幅・固定高さより `aspect-ratio`、`minmax()`、`fit-content()`、container query units、`min-width: 0` を優先し、横スクロールと CLS を防ぐ
 - **ブレイクポイント境界の密度を実測する** — `sm` / `md` で内容・カード形状・カラム数を切り替える場合、639px / 640px、767px / 768pxのように1px手前と境界値で `body.scrollHeight` と対象section高を比較する。説明文だけを `sm` で表示し、複数カラム化を `md` まで遅らせて1カラムを縦長化する構成は禁止。開示UIから常時表示への切替は、内容を横へ分散できるレイアウト境界と揃える。リファレンス: `components/LandingPage.tsx`
@@ -1341,6 +1349,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | rootの`overflow-y:auto`でsticky headerが追従しなかった | stickyの祖先bodyと実scroll要素documentElementが分離した | **rootは`overflow-x:clip; overflow-y:visible`でviewport自然スクロールを維持する。** 375pxでスクロール後のheader top=0を実測する。リファレンス: `app/globals.css` |
 | bento再配置後もホームがスカスカに見えた | 配置密度だけを改善し、表示する実データの種類を増やしていなかった | **時系列+蓄積状態のライブパネルを追加する。** 装飾カードではなく今週歩数・UC残高等の意思決定データでリッチさを作る。リファレンス: `app/[locale]/page.tsx` |
 | 個人データだけで社会性が弱かった | ランキングとフレンド活動を別ページへ追い出し、ホームで競争/仲間のループが見えなかった | **固定5行+自分の順位とfriend activityを常設する。** データ0件でもパネルを消さず発見CTAを表示する。ただし詳細比較は次行動の後に置き、friend activityを順位番号や他者最大値基準の重複ランキングにしない。API失敗・未記録・実0歩も分離する。リファレンス: `app/[locale]/page.tsx`, `DashboardFollowing.tsx` |
+| ホーム中心の改善を全ページ完了と誤認した | 共通Shellの反映を個別ページ品質の代理にし、ルート台帳・状態別coverage・機能群別の完了判定を持っていなかった | **17ルートを共通Shell/競争/アカウント/商取引へ分けて監査する。** 正常・空・障害・権限・320px・keyboardを埋め、Dialog stack、chart代替表、GROUP認可、0歩/MTD、共有URL allowlistを確認する。ホームがPASSでも未監査ページを完了扱いしない |
 
 ---
 

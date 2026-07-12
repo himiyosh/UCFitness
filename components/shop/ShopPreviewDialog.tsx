@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useTheme } from '@/components/ThemeProvider';
 import UserAvatar from '@/components/UserAvatar';
 import { getFrameColor } from '@/lib/frame-utils';
+import { getThemeFromItemCode, THEME_BY_ITEM_CODE } from '@/lib/theme';
 import Spinner from '@/components/ui/Spinner';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 
@@ -13,16 +14,7 @@ import type { Theme } from '@/components/ThemeProvider';
 import type { ShopItem } from '@/lib/services/shop-service';
 
 /** item_code → アプリテーマのマッピング */
-export const THEME_MAP: Record<string, Theme> = {
-    theme_pop: 'pop',
-    theme_midnight: 'midnight',
-    theme_sakura: 'sakura',
-    theme_ocean: 'ocean',
-    theme_forest: 'forest',
-    theme_sunset: 'sunset',
-    theme_cyberpunk: 'cyberpunk',
-    theme_galaxy: 'galaxy',
-};
+export const THEME_MAP: Record<string, Theme> = { ...THEME_BY_ITEM_CODE };
 
 // ============================================
 // ユーティリティ
@@ -46,7 +38,7 @@ export function getRankShortLabel(rank: string): string {
 export function ThemeTryOnButton({ itemCode, t }: { itemCode: string; t: (key: string) => string }) {
     const { previewTheme, clearThemePreview } = useTheme();
     const [isTrying, setIsTrying] = useState(false);
-    const targetTheme = THEME_MAP[itemCode];
+    const targetTheme = getThemeFromItemCode(itemCode);
 
     const handleTryOn = useCallback(() => {
         if (!targetTheme) return;
@@ -176,7 +168,7 @@ export function ItemPreviewDialog({
                     </div>
 
                     {/* ステータス / アクション */}
-                    {item.category === 'THEME_COLOR' && item.item_code && THEME_MAP[item.item_code] && !isEquipped && (
+                    {item.category === 'THEME_COLOR' && item.item_code && getThemeFromItemCode(item.item_code) && !isEquipped && (
                         <ThemeTryOnButton
                             itemCode={item.item_code}
                             t={t}

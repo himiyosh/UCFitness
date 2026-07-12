@@ -2,6 +2,8 @@
 
 import { useMemo, useCallback, useState } from 'react';
 
+import { useTranslations } from 'next-intl';
+
 import type { Reaction } from '@/components/group/GroupReactions';
 
 // ============================================
@@ -28,6 +30,7 @@ export default function GearLikeButton({
     reactions,
     onReactionToggle,
 }: GearLikeButtonProps) {
+    const t = useTranslations('Common');
     const [isAnimating, setIsAnimating] = useState(false);
 
     // この ASIN に対する ❤️ リアクションを集計
@@ -52,18 +55,19 @@ export default function GearLikeButton({
         <button
             type="button"
             onClick={handleClick}
-            aria-label={isLiked ? 'Unlike' : 'Like'}
+            aria-label={isLiked ? t('unlike') : t('like')}
             aria-pressed={isLiked}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full transition-colors min-h-[28px] cursor-pointer select-none active:scale-90"
+            className="inline-flex min-h-[44px] min-w-[44px] cursor-pointer select-none items-center justify-center gap-1 rounded-full px-2 py-1 transition-colors active:scale-90"
         >
             {/* ハートアイコン — SVG で塗りと線を制御 */}
             <svg
                 viewBox="0 0 24 24"
                 className={`w-4 h-4 transition-all duration-200 ${
                     isLiked
-                        ? 'text-red-500 fill-red-500'
-                        : 'text-gray-400 fill-none hover:text-red-300'
+                        ? 'text-red-500'
+                        : 'text-gray-400 hover:text-red-300'
                 } ${isAnimating ? 'scale-125' : ''}`}
+                fill={isLiked ? 'currentColor' : 'none'}
                 stroke="currentColor"
                 strokeWidth={2}
                 aria-hidden="true"

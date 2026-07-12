@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { isOfficialAmazonUrl } from '@/lib/amazon-url';
 
 // ============================================
 // Amazon Creators API クライアント
@@ -391,7 +392,7 @@ export function detectInputType(input: string): AffiliateLinkType {
     if (/(?:dp|product|ASIN)\/([A-Z0-9]{10})/i.test(input)) return 'product';
     try {
         const url = new URL(input);
-        if (url.hostname.includes('amazon')) return 'tagged-url';
+        if (isOfficialAmazonUrl(url)) return 'tagged-url';
     } catch { /* not a URL */ }
     return 'search';
 }
@@ -430,7 +431,7 @@ export function generateAffiliateLink(input: string, category?: string): Generat
     // URL にタグを付加
     try {
         const url = new URL(input);
-        if (url.hostname.includes('amazon')) {
+        if (isOfficialAmazonUrl(url)) {
             url.searchParams.set('tag', partnerTag);
             return {
                 affiliateLink: url.toString(),

@@ -1,8 +1,11 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 const ChallengeDetailModal = dynamic(() => import('@/components/challenge/ChallengeDetailModal'));
 
@@ -57,6 +60,16 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
     const [joinCelebrating, setJoinCelebrating] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const leaveDialogRef = useRef<HTMLDivElement>(null);
+    const leaveCancelRef = useRef<HTMLButtonElement>(null);
+    const closeLeaveDialog = useCallback(() => setShowLeaveConfirm(false), []);
+
+    useDialogFocus({
+        isOpen: showLeaveConfirm,
+        onClose: closeLeaveDialog,
+        dialogRef: leaveDialogRef,
+        initialFocusRef: leaveCancelRef,
+    });
     const progressUnavailable = progress === null;
     const progressValue = progress ?? 0;
 
@@ -123,7 +136,13 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                 onClick={() => setShowDetail(true)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowDetail(true); }}
+                onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setShowDetail(true);
+                    }
+                }}
                 className={`midnight-solid-panel group relative cursor-pointer overflow-hidden rounded-2xl border bg-white p-3 shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] md:p-5 ${
                     isCompleted
                         ? 'border-green-200 bg-gradient-to-br from-white to-green-50/30'
@@ -345,13 +364,20 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
             )}
 
             {/* 離脱確認ダイアログ */}
-            {showLeaveConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setShowLeaveConfirm(false)} />
-                    <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-[modalSlideUp_0.2s_ease-out]">
+            {showLeaveConfirm && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40" onClick={closeLeaveDialog} aria-hidden="true" />
+                    <div
+                        ref={leaveDialogRef}
+                        className="relative w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl animate-[modalSlideUp_0.2s_ease-out] sm:p-6"
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby={`leave-challenge-${challenge.id}`}
+                        tabIndex={-1}
+                    >
                         <div className="text-center mb-4">
                             <div className="text-3xl mb-2">🚪</div>
-                            <h3 className="text-base font-bold text-gray-900 mb-1">{t('leaveTitle')}</h3>
+                            <h3 id={`leave-challenge-${challenge.id}`} className="text-base font-bold text-gray-900 mb-1">{t('leaveTitle')}</h3>
                             <p className="text-sm text-gray-500">{t('leaveConfirm')}</p>
                             {actionError && (
                                 <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">
@@ -361,7 +387,8 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                         </div>
                         <div className="flex gap-3">
                             <button
-                                onClick={() => setShowLeaveConfirm(false)}
+                                ref={leaveCancelRef}
+                                onClick={closeLeaveDialog}
                                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
                             >
                                 {t('cancelEdit')}
@@ -381,7 +408,8 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
         </>
     );

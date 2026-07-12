@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+
 import BadgeIcon from '@/components/BadgeIcon';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { useTranslations } from 'next-intl';
 
 interface Badge {
@@ -53,21 +55,20 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const t = useTranslations('Profile');
+    const modalRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const closeModal = useCallback(() => setIsModalOpen(false), []);
+
+    useDialogFocus({
+        isOpen: isModalOpen,
+        onClose: closeModal,
+        dialogRef: modalRef,
+        initialFocusRef: closeButtonRef,
+    });
 
     useEffect(() => {
         setMounted(true);
     }, []);
-
-    useEffect(() => {
-        if (isModalOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [isModalOpen]);
 
     const bestBadges = useMemo(() => SLOTS.map(slot => {
         const relevantBadges = badges.filter(b => {
@@ -97,7 +98,7 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
                     </h3>
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="text-xs font-semibold text-[var(--theme-primary)] hover:text-[var(--theme-primary)] transition-colors"
+                        className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-xs font-semibold text-[var(--theme-primary)] transition-colors hover:bg-[var(--theme-primary-light)]"
                     >
                         {t('viewAll')} ({bestBadges.length})
                     </button>
@@ -119,21 +120,26 @@ export default function ProfileBadges({ badges }: ProfileBadgesProps) {
 
             {/* Modal */}
             {mounted && isModalOpen && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 pt-14 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-                    onClick={() => setIsModalOpen(false)}>
+                <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 pt-14 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} aria-hidden="true" />
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto flex flex-col animate-in zoom-in-95 duration-200 slide-in-from-top-4"
-                        onClick={(e) => e.stopPropagation()}
+                        ref={modalRef}
+                        className="relative flex max-h-[85dvh] w-full max-w-4xl flex-col overflow-y-auto rounded-xl bg-white shadow-2xl animate-in zoom-in-95 duration-200 slide-in-from-top-4"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="profile-badges-dialog-title"
+                        tabIndex={-1}
                     >
                         <div className="pl-4 pr-6 py-4 sm:p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">{t('allAchievements')}</h2>
+                                <h2 id="profile-badges-dialog-title" className="text-xl font-bold text-gray-900">{t('allAchievements')}</h2>
                                 <p className="text-sm text-gray-500 hidden sm:block">{t('unlockDesc')}</p>
                             </div>
                             <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                                aria-label="Close"
+                                ref={closeButtonRef}
+                                onClick={closeModal}
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors hover:bg-gray-100"
+                                aria-label={t('closeAchievements')}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -209,10 +215,15 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
     const hasBadge = !!slot.badge;
 
     return (
-        <div
+        <button
+            type="button"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             onClick={() => setHovered(!hovered)}
+            onFocus={() => setHovered(true)}
+            onBlur={() => setHovered(false)}
+            aria-pressed={hovered}
+            aria-label={t('badgeDetails', { label: t(`badges.${slot.label}`) })}
             className={`
                 relative flex flex-col items-center justify-between p-2 rounded-lg border 
                 transition-all duration-300 cursor-pointer touch-manipulation h-32
@@ -285,6 +296,6 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
                     </p>
                 )}
             </div>
-        </div>
+        </button>
     );
 }

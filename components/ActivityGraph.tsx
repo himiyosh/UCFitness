@@ -27,6 +27,10 @@ type ViewMode = 'WEEKLY' | 'MONTHLY' | 'ALL';
 
 export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, comparisonData, comparisonLabel }: ActivityGraphProps) {
     const t = useTranslations('Graph');
+    const weekdayLabels = useMemo(
+        () => [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')],
+        [t],
+    );
     const [viewMode, setViewMode] = useState<ViewMode>('WEEKLY');
     // Current Week Offset (0 = current week, -1 = previous week)
     const [weekOffset, setWeekOffset] = useState(0);
@@ -59,7 +63,13 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
             return `${year}-${month}-${day}`;
         };
 
-        const result: { label: string; value: number; fullDate: string; isToday: boolean }[] = [];
+        const result: {
+            label: string;
+            value: number;
+            fullDate: string;
+            isToday: boolean;
+            hasRecord: boolean;
+        }[] = [];
 
         if (viewMode === 'WEEKLY') {
             const currentDay = today.getDay(); // 0-6 (Sun-Sat)
@@ -78,8 +88,10 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
             // Generate 7 days (Mon-Sun)
             for (let i = 0; i < 7; i++) {
                 const d = new Date(targetMonday.getFullYear(), targetMonday.getMonth(), targetMonday.getDate() + i);
+                if (d > today) continue;
                 const dateStr = toLocalISOString(d);
 
+                const hasRecord = dataMap.has(dateStr);
                 const steps = dataMap.get(dateStr) ?? 0;
 
                 const checkToday = new Date();
@@ -88,10 +100,11 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                     d.getFullYear() === checkToday.getFullYear();
 
                 result.push({
-                    label: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()],
+                    label: weekdayLabels[d.getDay()],
                     value: steps,
                     fullDate: dateStr,
-                    isToday: isToday
+                    isToday: isToday,
+                    hasRecord,
                 });
             }
         } else if (viewMode === 'MONTHLY') {
@@ -104,7 +117,9 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
             // Iterate using a new Date object to prevent reference issues
             for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
+                if (d > today) continue;
                 const dateStr = toLocalISOString(d);
+                const hasRecord = dataMap.has(dateStr);
                 const steps = dataMap.get(dateStr) ?? 0;
 
                 const checkToday = new Date();
@@ -116,7 +131,8 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                     label: `${d.getMonth() + 1}/${d.getDate()}`,
                     value: steps,
                     fullDate: dateStr,
-                    isToday: isToday
+                    isToday: isToday,
+                    hasRecord,
                 });
             }
         } else {
@@ -129,6 +145,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 const current = new Date(minDate);
                 while (current <= today) {
                     const dateStr = toLocalISOString(current);
+                    const hasRecord = dataMap.has(dateStr);
                     const steps = dataMap.get(dateStr) ?? 0;
 
                     const checkToday = new Date();
@@ -140,7 +157,8 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                         label: `${current.getMonth() + 1}/${current.getDate()}`,
                         value: steps,
                         fullDate: dateStr,
-                        isToday: isToday
+                        isToday: isToday,
+                        hasRecord,
                     });
                     current.setDate(current.getDate() + 1);
                 }
@@ -148,7 +166,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
         }
 
         return result;
-    }, [data, viewMode, weekOffset, monthOffset]);
+    }, [data, viewMode, weekOffset, monthOffset, weekdayLabels]);
 
     // 比較データを同じ日付でマッピング
     const comparisonMap = useMemo(() => {
@@ -221,6 +239,11 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
     const containerRef = useRef<HTMLDivElement>(null);
     const shareCardRef = useRef<HTMLDivElement>(null);
+    const shareCaptureRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (shareCaptureRef.current) shareCaptureRef.current.inert = true;
+    }, []);
 
     const handleShare = useCallback(async () => {
         if (isSharing) return;
@@ -245,7 +268,11 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                 a.href = url; a.download = 'activity.png';
                 document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
             };
-            const shareData = { title: 'My Activity', text: 'Check out my activity on UCFitness!', files: [file] };
+            const shareData = {
+                title: t('shareActivityTitle'),
+                text: t('shareActivityText'),
+                files: [file],
+            };
             if (navigator.share && navigator.canShare?.(shareData)) {
                 try {
                     await navigator.share(shareData);
@@ -260,7 +287,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
             setShareError(true);
             setTimeout(() => setShareError(false), 3000);
         } finally { setIsSharing(false); }
-    }, [isSharing]);
+    }, [isSharing, t]);
 
     return (
         <div ref={containerRef} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative hover:shadow-lg transition-shadow">
@@ -332,7 +359,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                         disabled={isSharing}
                         aria-label={shareStatus}
                         className={`inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full transition-colors ${shareError ? 'bg-red-50 text-red-700' : isSharing || copySuccess ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]' : 'text-gray-600 hover:bg-gray-50 hover:text-[var(--color-primary-strong)]'}`}
-                        title="Share Statistics"
+                        title={shareStatus}
                     >
                         {isSharing ? (
                             <div className="w-4 h-4 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin"></div>
@@ -365,7 +392,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                             <>
                                 <button
                                     onClick={() => setWeekOffset(prev => prev - 1)}
-                                    aria-label="Previous week"
+                                    aria-label={t('previousWeek')}
                                     className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -380,7 +407,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                 <button
                                     onClick={() => setWeekOffset(prev => prev + 1)}
                                     disabled={weekOffset >= 0}
-                                    aria-label="Next week"
+                                    aria-label={t('nextWeek')}
                                     className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -392,7 +419,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                             <>
                                 <button
                                     onClick={() => setMonthOffset(prev => prev - 1)}
-                                    aria-label="Previous month"
+                                    aria-label={t('previousMonth')}
                                     className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -407,7 +434,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                 <button
                                     onClick={() => setMonthOffset(prev => prev + 1)}
                                     disabled={monthOffset >= 0}
-                                    aria-label="Next month"
+                                    aria-label={t('nextMonth')}
                                     className="p-2 text-gray-500 hover:text-[var(--theme-primary)] hover:bg-white rounded shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -443,6 +470,30 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                     </div>
                 </div>
             </div>
+
+            <table className="sr-only">
+                <caption>{t('activityHistory')}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">{t('dateLabel')}</th>
+                        <th scope="col">{t('stepsLabel')}</th>
+                        {comparisonData && (
+                            <th scope="col">{comparisonLabel ?? t('comparison')}</th>
+                        )}
+                    </tr>
+                </thead>
+                <tbody>
+                    {processedData.map((day) => (
+                        <tr key={day.fullDate}>
+                            <th scope="row">{day.fullDate}</th>
+                            <td>{day.hasRecord ? day.value.toLocaleString() : t('notRecorded')}</td>
+                            {comparisonData && (
+                                <td>{(comparisonMap.get(day.fullDate) ?? 0).toLocaleString()}</td>
+                            )}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
 
             <div className="flex">
                 {/* Y-axis Labels */}
@@ -529,7 +580,9 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                                     setTooltip({
                                                         x: targetX,
                                                         y: targetY,
-                                                        title: `${day.value.toLocaleString()} steps`,
+                                                        title: day.hasRecord
+                                                            ? t('stepsValue', { amount: day.value.toLocaleString() })
+                                                            : t('notRecorded'),
                                                         subtitle: `${day.label} (${day.fullDate})`
                                                     });
                                                 }}
@@ -548,7 +601,9 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                                     setTooltip({
                                                         x: targetX,
                                                         y: targetY,
-                                                        title: `${day.value.toLocaleString()} steps`,
+                                                        title: day.hasRecord
+                                                            ? t('stepsValue', { amount: day.value.toLocaleString() })
+                                                            : t('notRecorded'),
                                                         subtitle: `${day.label} (${day.fullDate})`
                                                     });
                                                 }}
@@ -569,8 +624,8 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                                         } ${todayIndicator} relative z-10`}
                                                     style={{
                                                         height: `${heightPercentage}%`,
-                                                        minHeight: '2px', // Minimum visibility
-                                                        opacity: day.value === 0 ? 0.3 : 1
+                                                        minHeight: day.value > 0 ? '2px' : '0',
+                                                        opacity: day.value === 0 ? 0 : 1
                                                     }}
                                                 ></div>
 
@@ -578,7 +633,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                                 {viewMode === 'WEEKLY' && (
                                                     <div className="absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 text-center pointer-events-none z-10">
                                                         <span className="text-xs font-semibold text-gray-500 bg-white/80 px-1 rounded shadow-sm whitespace-nowrap">
-                                                            {day.value.toLocaleString()}
+                                                            {day.hasRecord ? day.value.toLocaleString() : '—'}
                                                         </span>
                                                     </div>
                                                 )}
@@ -612,7 +667,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
 
             {/* Hidden Share Card (1080x1920) */}
-            <div style={{ width: 0, height: 0, overflow: 'hidden' }}>
+            <div ref={shareCaptureRef} aria-hidden="true" style={{ width: 0, height: 0, overflow: 'hidden' }}>
                 <div
                     ref={shareCardRef}
                     style={{
@@ -653,12 +708,16 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                         {/* Stats & Title */}
                         <div className="flex flex-col items-center gap-4 w-full">
                             <h3 className="text-4xl font-bold text-white/70">
-                                {viewMode === 'WEEKLY' ? 'This Week' : viewMode === 'MONTHLY' ? 'This Month' : 'Total Activity'}
+                                {viewMode === 'WEEKLY'
+                                    ? t('thisWeek')
+                                    : viewMode === 'MONTHLY'
+                                        ? t('thisMonth')
+                                        : t('totalActivity')}
                             </h3>
                             <div className="text-8xl font-black tracking-tighter text-white">
                                 {totalDisplayedSteps.toLocaleString()}
                             </div>
-                            <p className="text-2xl font-medium uppercase tracking-widest text-white/80">Steps</p>
+                            <p className="text-2xl font-medium uppercase tracking-widest text-white/80">{t('stepsLabel')}</p>
                         </div>
 
                         {/* Graph Visual */}
@@ -666,7 +725,9 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                         <div className="w-full flex items-end justify-between gap-4 px-8 mb-12" style={{ height: '400px' }}>
                             {processedData.map((d, i) => {
                                 const isGoal = d.value >= stepGoal;
-                                const height = Math.max((d.value / maxSteps) * 100, 2); // Min 2%
+                                const height = d.value > 0
+                                    ? Math.max((d.value / maxSteps) * 100, 2)
+                                    : 0;
                                 return (
                                     <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-3 relative">
                                         {/* Value Label */}
@@ -674,7 +735,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                             className="absolute bottom-full mb-2 text-xl font-bold text-white text-shadow-md"
                                             style={{ bottom: `${height}%`, marginBottom: '12px' }}
                                         >
-                                            {d.value.toLocaleString()}
+                                            {d.hasRecord ? d.value.toLocaleString() : '—'}
                                         </div>
 
                                         <div
@@ -700,7 +761,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                         </div>
 
                         <div className="absolute bottom-12 text-center opacity-50 text-xl font-medium tracking-wide">
-                            Keep stepping with UCFitness
+                            {t('keepStepping')}
                         </div>
                     </div>
                 </div>

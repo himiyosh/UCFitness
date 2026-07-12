@@ -335,7 +335,12 @@ export default async function Home(): Promise<ReactNode> {
           </div>
 
           <div className="mt-3 grid items-stretch gap-3 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-            <NextActionCard id="next-action" remainingSteps={remainingSteps} />
+            <NextActionCard
+              id="next-action"
+              remainingSteps={remainingSteps}
+              stepGoal={stepGoal}
+              todaySteps={mySteps}
+            />
             <QuickActions className="h-full" />
           </div>
 

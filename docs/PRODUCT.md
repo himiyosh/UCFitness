@@ -77,3 +77,15 @@ Do not make UCFitness look like:
 - Map motion to meaning: progress draws forward, ranking bars grow, rewards arrive once, and the page progress line responds to scrolling. Avoid simultaneous decorative loops on mobile and do not apply the same entrance animation to every section.
 - Motion is progressive enhancement. Unsupported browsers keep the complete static layout, and `prefers-reduced-motion: reduce` shows the final state immediately.
 - Preserve text contrast throughout motion. Do not lower the opacity of containers that include readable text; animate transforms, SVG drawing, or separate decorative layers instead.
+
+## Authenticated-page requirements
+
+- Audit every registered user route rather than treating the home dashboard or shared shell as a proxy for the whole product.
+- Keep the information order: today's progress, reachable competition gap, UC reward, then the next action. Detailed rankings and friend activity follow that decision layer.
+- Separate recorded zero, missing data, and database/API failure. Recorded zero belongs in recorded-day averages but not active-day or best-day counts.
+- Compare an in-progress month with the previous month through the same day, not with the previous full month.
+- Give returning low-activity users an achievable 100–500 step entry point before harder optional goals.
+- Require group membership for group-scoped ranking data, and do not reveal private-group existence to non-members.
+- Use the shared dialog stack for every portal modal. Keyboard users must be able to cycle focus, press Escape, leave a long-running operation without duplicate submission, and return to the trigger.
+- Pair every visual chart with an accessible value table or equivalent list. Hide image-capture-only duplicates from the accessibility tree.
+- Prefer explicit local theme choice; use equipped themes only as the initial fallback on devices without a saved preference.

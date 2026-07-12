@@ -7,17 +7,18 @@ import { reportError } from '@/lib/errors';
 
 interface JoinGroupPreviewProps {
     group: {
-        id: string;
+        id?: string;
         name: string;
         keyword: string;
         image_url?: string | null;
         header_image_url?: string | null;
         description?: string | null; // Future proofing
     };
-    userId: string;
+    userId?: string;
+    memberCount: number;
 }
 
-export default function JoinGroupPreview({ group, userId }: JoinGroupPreviewProps) {
+export default function JoinGroupPreview({ group, memberCount }: JoinGroupPreviewProps) {
     const [isJoining, setIsJoining] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
@@ -96,8 +97,14 @@ export default function JoinGroupPreview({ group, userId }: JoinGroupPreviewProp
                     </div>
 
                     <h2 className="text-3xl font-black text-[var(--foreground)] mb-2">{group.name}</h2>
-                    <p className="text-[var(--foreground-muted)] font-medium mb-8 flex items-center justify-center gap-2">
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono">ID: {group.keyword}</span>
+                    {group.description && (
+                        <p className="mx-auto mb-3 max-w-md text-sm leading-6 text-[var(--color-text-muted)]">{group.description}</p>
+                    )}
+                    <p className="mb-8 flex flex-wrap items-center justify-center gap-2 font-medium text-[var(--foreground-muted)]">
+                        <span className="max-w-full min-w-0 break-all rounded bg-gray-100 px-2 py-1 text-left font-mono text-xs text-gray-600">ID: {group.keyword}</span>
+                        <span className="rounded bg-[var(--color-competition-soft)] px-2 py-1 text-xs font-semibold text-[var(--color-competition-strong)]">
+                            {t('memberCount', { count: memberCount })}
+                        </span>
                     </p>
 
                     <div className="space-y-4">

@@ -12,7 +12,7 @@ interface PersonalAnalyticsProps {
 
 // 曜日ラベル (Sun=0 … Sat=6 → 表示は Mon-Sun)
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon, Tue, Wed, Thu, Fri, Sat, Sun
-const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 function formatNumber(n: number): string {
     return n.toLocaleString();
@@ -89,12 +89,20 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
 
     // 今月のデータ
     const currentMonthData = useMemo(() => data ? data.monthlyTotals[data.monthlyTotals.length - 1] : undefined, [data]);
+    const actualCurrentMonth = useMemo(() => {
+        const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        return `${jstNow.getUTCFullYear()}-${String(jstNow.getUTCMonth() + 1).padStart(2, '0')}`;
+    }, []);
 
     // 曜日の最高を特定
     const { weekdayValues, bestWeekdayIdx } = useMemo(() => {
-        if (!data) return { weekdayValues: [] as number[], bestWeekdayIdx: 0 };
+        if (!data) return { weekdayValues: [] as number[], bestWeekdayIdx: -1 };
         const vals = WEEKDAY_ORDER.map(i => data.weekdayAverages[i]);
-        return { weekdayValues: vals, bestWeekdayIdx: vals.indexOf(Math.max(...vals)) };
+        const maxValue = Math.max(...vals);
+        return {
+            weekdayValues: vals,
+            bestWeekdayIdx: maxValue > 0 ? vals.indexOf(maxValue) : -1,
+        };
     }, [data]);
 
     if (loading) return <Skeleton />;
@@ -111,7 +119,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                     className="mt-5 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 hover:shadow-lg active:scale-95"
                     style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
                 >
-                    ↻ Retry
+                    ↻ {t('retry')}
                 </button>
             </div>
         );
@@ -205,13 +213,13 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                                     <span className={`text-xs w-10 font-black tracking-wide ${
                                         isBest ? 'text-[var(--theme-primary)]' : 'text-gray-400'
                                     }`}>
-                                        {WEEKDAY_KEYS[i].toUpperCase()}
+                                        {t(WEEKDAY_KEYS[i])}
                                     </span>
                                      <div className="h-6 flex-1 overflow-hidden rounded-full bg-gray-100/80">
                                         <div
                                             className="h-full rounded-full transition-all duration-1000 ease-out"
                                             style={{
-                                                width: animated ? `${Math.max(pct, 4)}%` : '0%',
+                                                width: animated && avg > 0 ? `${Math.max(pct, 4)}%` : '0%',
                                                 background: isBest
                                                     ? `linear-gradient(90deg, var(--theme-primary), var(--theme-gradient-to))`
                                                     : `linear-gradient(90deg, color-mix(in srgb, var(--theme-primary) 50%, transparent), color-mix(in srgb, var(--theme-primary) 35%, transparent))`,
@@ -245,9 +253,14 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                         {data.monthlyTotals.map((m, idx) => {
                             const pct = (m.totalSteps / maxMonthly) * 100;
                             const isLatest = idx === data.monthlyTotals.length - 1;
+                            const isCurrentMonth = m.month === actualCurrentMonth;
                             // 前月との差分を計算
                             const prevMonth = idx > 0 ? data.monthlyTotals[idx - 1] : null;
-                            const delta = prevMonth ? ((m.totalSteps - prevMonth.totalSteps) / prevMonth.totalSteps * 100) : null;
+                            const delta = isLatest && isCurrentMonth
+                                ? data.currentMonthVsPrev?.changePercent ?? null
+                                : prevMonth && prevMonth.totalSteps > 0
+                                    ? ((m.totalSteps - prevMonth.totalSteps) / prevMonth.totalSteps * 100)
+                                    : null;
                             return (
                                 <div
                                     key={m.month}
@@ -275,7 +288,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                                                 {formatNumber(m.totalSteps)}
                                             </span>
                                             <span className="text-xs text-gray-400 ml-1.5 font-medium">
-                                                ({formatNumber(m.avgSteps)}/day)
+                                                ({t('averagePerDay', { amount: formatNumber(m.avgSteps) })})
                                             </span>
                                         </div>
                                     </div>
@@ -283,7 +296,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                                         <div
                                             className="h-full rounded-full transition-all duration-1000 ease-out"
                                             style={{
-                                                width: animated ? `${Math.max(pct, 3)}%` : '0%',
+                                                width: animated && m.totalSteps > 0 ? `${Math.max(pct, 3)}%` : '0%',
                                                 background: isLatest
                                                     ? 'linear-gradient(90deg, var(--theme-primary), var(--theme-gradient-to))'
                                                     : 'linear-gradient(90deg, color-mix(in srgb, var(--theme-primary) 35%, transparent), color-mix(in srgb, var(--theme-primary) 25%, transparent))',
@@ -293,7 +306,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                                     </div>
                                     <div className="mt-1.5">
                                         <span className="text-xs text-gray-400 font-medium">
-                                            🔥 {m.activeDays} {t('days')} active
+                                            🔥 {t('activeDaysSummary', { count: m.activeDays })}
                                         </span>
                                     </div>
                                 </div>
@@ -332,7 +345,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                                         className="h-full bg-white/60 rounded-full transition-all duration-1000 ease-out"
                                         style={{
                                             width: animated
-                                                ? `${Math.min((data.currentMonthVsPrev.current / Math.max(data.currentMonthVsPrev.current, data.currentMonthVsPrev.previous)) * 100, 100)}%`
+                                                ? `${Math.min((data.currentMonthVsPrev.current / Math.max(data.currentMonthVsPrev.current, data.currentMonthVsPrev.previous, 1)) * 100, 100)}%`
                                                 : '0%',
                                         }}
                                     />
@@ -363,7 +376,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                             {/* 先月 */}
                             <div className="relative flex-1 overflow-hidden rounded-2xl bg-gray-100/80 p-3 text-center">
                                 <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-5 bg-gray-400 -translate-y-6 translate-x-6" />
-                                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">PREV</p>
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">{t('previousMonth')}</p>
                                 <p className="mt-1.5 text-2xl font-black leading-none text-gray-400 tabular-nums sm:text-3xl">
                                     {formatNumber(data.currentMonthVsPrev.previous)}
                                 </p>
@@ -372,7 +385,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                                         className="h-full bg-gray-300 rounded-full transition-all duration-1000 ease-out"
                                         style={{
                                             width: animated
-                                                ? `${Math.min((data.currentMonthVsPrev.previous / Math.max(data.currentMonthVsPrev.current, data.currentMonthVsPrev.previous)) * 100, 100)}%`
+                                                ? `${Math.min((data.currentMonthVsPrev.previous / Math.max(data.currentMonthVsPrev.current, data.currentMonthVsPrev.previous, 1)) * 100, 100)}%`
                                                 : '0%',
                                             transitionDelay: '200ms',
                                         }}

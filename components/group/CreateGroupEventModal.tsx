@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useCallback, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useTranslations } from 'next-intl';
@@ -31,13 +31,15 @@ export default function CreateGroupEventModal({
     const [error, setError] = useState('');
     const dialogRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const handleClose = useCallback(() => {
+        if (!submitting) onClose();
+    }, [onClose, submitting]);
 
     useDialogFocus({
         isOpen: true,
-        onClose,
+        onClose: handleClose,
         dialogRef,
         initialFocusRef: titleInputRef,
-        canClose: () => !submitting,
     });
 
     // 今日の日付（YYYY-MM-DD）
@@ -45,6 +47,7 @@ export default function CreateGroupEventModal({
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        if (submitting) return;
         setError('');
 
         // クライアントバリデーション
@@ -70,6 +73,7 @@ export default function CreateGroupEventModal({
             const res = await fetch(`/api/group/${groupId}/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(30_000),
                 body: JSON.stringify({
                     title: title.trim(),
                     description: description.trim() || null,
@@ -101,7 +105,7 @@ export default function CreateGroupEventModal({
             {/* オーバーレイ */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={handleClose}
             />
 
             {/* モーダル */}
@@ -112,7 +116,8 @@ export default function CreateGroupEventModal({
                         🏆 {t('createEvent')}
                     </h2>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
+                        disabled={submitting}
                         type="button"
                         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xl leading-none text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
                         aria-label={commonT('close')}
@@ -225,7 +230,8 @@ export default function CreateGroupEventModal({
                     <div className="flex items-center gap-3 pt-2">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
+                            disabled={submitting}
                             className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                             {commonT('cancel')}

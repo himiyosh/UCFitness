@@ -13,13 +13,17 @@ import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getFrameColor } from "@/lib/frame-utils";
 import { getEquippedItems } from "@/lib/services/shop-service";
+import { getThemeFromItemCode } from "@/lib/theme";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import GlobalLoader from "@/components/auth/GlobalLoader";
 import LanguageSyncer from "@/components/layout/LanguageSyncer";
 import BottomNavBar from "@/components/layout/BottomNavBar";
+import SkipLink from '@/components/layout/SkipLink';
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+
+import type { Theme } from "@/lib/theme";
 
 interface LayoutSessionUser {
   id?: string;
@@ -33,6 +37,7 @@ interface ShellUser {
   titleName: string | null;
   titleEmoji: string | null;
   frameColor: string | null;
+  theme: Theme | null;
 }
 
 const inter = Inter({
@@ -60,21 +65,28 @@ async function getShellUser(userId: string | undefined, locale: string): Promise
       .single(),
     getEquippedItems(userId).catch((error: unknown) => {
       reportError('app-shell:equipped-items', error, { userId });
-      return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null, CONSUMABLE: null };
+      return null;
     }),
   ]);
 
   const dbUser = userResult.data;
+  if (userResult.error && userResult.error.code !== 'PGRST116') {
+    reportError('app-shell:user', userResult.error, { userId });
+    throw new Error('Failed to load app shell user');
+  }
   if (!dbUser?.username) return null;
 
-  const titleItem = equippedItems.TITLE;
-  const frameItem = equippedItems.ICON_FRAME;
+  const titleItem = equippedItems?.TITLE;
+  const frameItem = equippedItems?.ICON_FRAME;
   const titleName = titleItem
     ? (locale === "ja" ? titleItem.shop_items?.name_ja : titleItem.shop_items?.name_en) || null
     : null;
   const titleEmoji = titleItem?.shop_items?.preview_value || null;
   const frameColor = frameItem?.shop_items?.preview_value
     ? getFrameColor(frameItem.shop_items.preview_value)
+    : null;
+  const theme = equippedItems
+    ? getThemeFromItemCode(equippedItems.THEME_COLOR?.shop_items?.item_code) ?? 'classic'
     : null;
 
   return {
@@ -84,6 +96,7 @@ async function getShellUser(userId: string | undefined, locale: string): Promise
     titleName,
     titleEmoji,
     frameColor,
+    theme,
   };
 }
 
@@ -145,11 +158,12 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <ToastProvider>
-              <ThemeProvider>
+              <ThemeProvider initialTheme={shellUser?.theme ?? undefined}>
                 {/* スキップナビゲーションリンク (WCAG 2.4.1) */}
-                <a href="#main-page-content" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:inline-flex focus:min-h-[44px] focus:items-center focus:rounded-lg focus:bg-[var(--color-primary-solid)] focus:px-4 focus:py-2 focus:text-white focus:shadow-lg">
-                  {skipToContent}
-                </a>
+                <SkipLink
+                  label={skipToContent}
+                  targetId="main-page-content"
+                />
                 <Suspense fallback={null}>
                   <GlobalLoader />
                 </Suspense>

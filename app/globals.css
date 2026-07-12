@@ -275,11 +275,12 @@ html {
 /* ==== RECHARTS TAP OUTLINE FIX ==== */
 .recharts-wrapper,
 .recharts-wrapper svg,
-.recharts-surface,
-.recharts-wrapper *:focus,
-.recharts-wrapper *:active {
-  outline: none !important;
+.recharts-surface {
   -webkit-tap-highlight-color: transparent !important;
+}
+.recharts-surface:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 /* チャートカード全体のタップハイライト除去 */
 .chart-container,
@@ -287,9 +288,13 @@ html {
   -webkit-tap-highlight-color: transparent !important;
   -webkit-touch-callout: none;
 }
-.chart-container:focus,
-.chart-container *:focus {
-  outline: none !important;
+
+/* ランキング行の22pxリアクション欄を維持しつつ、WCAG 2.5.8の24px幅と44px高の操作範囲を確保 */
+.reaction-hit-target::after {
+  content: '';
+  position: absolute;
+  inset: -11px -1px;
+  border-radius: inherit;
 }
 
 /* ==== THEME SYSTEM ==== */
@@ -1696,8 +1701,11 @@ button:not(:disabled) {
   }
 
   /* SVG アイコン: テキスト色に追従 */
-  svg {
+  svg:not([fill="none"]):not(.fill-none) {
     fill: currentColor;
+  }
+
+  svg {
     stroke: currentColor;
   }
 

@@ -3,7 +3,9 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
+
 import { useToast } from '@/components/ui/Toast';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 // 検索コンポーネントはモーダル表示時のみ読み込み
 const AmazonProductSearch = dynamic(() => import('@/components/AmazonProductSearch'), {
@@ -49,9 +51,28 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     const [savingCommentId, setSavingCommentId] = useState<string | null>(null);
     const { success: toastSuccess, error: toastError } = useToast();
     const modalRef = useRef<HTMLDivElement>(null);
+    const searchCloseRef = useRef<HTMLButtonElement>(null);
+    const deleteDialogRef = useRef<HTMLDivElement>(null);
+    const deleteCancelRef = useRef<HTMLButtonElement>(null);
+    const commentDialogRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
     const commentInputRef = useRef<HTMLInputElement>(null);
     const [editPopupPos, setEditPopupPos] = useState<{ top: number; left: number } | null>(null);
+    const closeDeleteDialog = useCallback(() => setConfirmDeleteId(null), []);
+    const closeSearchDialog = useCallback(() => setShowModal(false), []);
+
+    useDialogFocus({
+        isOpen: Boolean(confirmDeleteId),
+        onClose: closeDeleteDialog,
+        dialogRef: deleteDialogRef,
+        initialFocusRef: deleteCancelRef,
+    });
+    useDialogFocus({
+        isOpen: showModal,
+        onClose: closeSearchDialog,
+        dialogRef: modalRef,
+        initialFocusRef: searchCloseRef,
+    });
 
     // --- 削除確認ダイアログを表示 ---
     const requestDelete = useCallback((itemId: string, e: React.MouseEvent) => {
@@ -87,9 +108,14 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
         // クリック位置からポップアップ位置を算出
         const target = (e.currentTarget as HTMLElement).closest('.recommended-card') || e.currentTarget;
         const rect = target.getBoundingClientRect();
+        const popupWidth = window.innerWidth < 640 ? 220 : 240;
+        const halfWidth = popupWidth / 2;
         setEditPopupPos({
-            top: rect.top + window.scrollY,
-            left: rect.left + rect.width / 2,
+            top: Math.max(160, rect.top),
+            left: Math.min(
+                window.innerWidth - halfWidth - 8,
+                Math.max(halfWidth + 8, rect.left + rect.width / 2),
+            ),
         });
         setEditingCommentId(item.id);
         setCommentDraft(item.comment || '');
@@ -130,6 +156,13 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
         setCommentDraft('');
         setEditPopupPos(null);
     }, []);
+
+    useDialogFocus({
+        isOpen: Boolean(editingCommentId && editPopupPos),
+        onClose: cancelEditComment,
+        dialogRef: commentDialogRef,
+        initialFocusRef: commentInputRef,
+    });
 
     // --- モーダルから追加時のコールバック ---
     const handleItemAdded = useCallback((item: RecommendedItem) => {
@@ -403,21 +436,22 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
             </div>
 
             {/* ===== コメント編集吹き出し（fixed ポジション） ===== */}
-            {editingCommentId && editPopupPos && (
-                <>
-                    {/* 背景オーバーレイ（クリックでキャンセル） */}
-                    <div
-                        className="fixed inset-0 z-[90]"
-                        onClick={cancelEditComment}
-                    />
+            {editingCommentId && editPopupPos && createPortal(
+                <div className="fixed inset-0 z-[90]">
+                    <div className="absolute inset-0" onClick={cancelEditComment} aria-hidden="true" />
                     {/* 吹き出しポップアップ */}
                     <div
-                        className="fixed z-[91] w-[220px] sm:w-[240px]"
+                        ref={commentDialogRef}
+                        className="absolute z-[91] w-[220px] sm:w-[240px]"
                         style={{
                             top: `${editPopupPos.top - 8}px`,
                             left: `${editPopupPos.left}px`,
                             transform: 'translate(-50%, -100%)',
                         }}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={locale === 'ja' ? 'コメントを編集' : 'Edit comment'}
+                        tabIndex={-1}
                     >
                         <div className="bg-white rounded-xl shadow-2xl border border-[var(--theme-primary)]/20 p-3">
                             <div className="flex items-center gap-1.5 mb-2">
@@ -435,7 +469,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 onChange={(e) => setCommentDraft(e.target.value)}
                                 maxLength={100}
                                 placeholder={locale === 'ja' ? 'おすすめポイントなど…' : 'Why you love it…'}
-                                className="w-full text-xs px-2.5 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 focus:border-[var(--theme-primary)]/40 text-gray-700 placeholder-gray-300"
+                                className="min-h-[44px] w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2 text-xs text-gray-700 placeholder-gray-400 focus:border-[var(--theme-primary)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') saveComment(editingCommentId);
                                     if (e.key === 'Escape') cancelEditComment();
@@ -445,13 +479,13 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 <button
                                     onClick={() => saveComment(editingCommentId)}
                                     disabled={savingCommentId === editingCommentId}
-                                    className="text-xs px-3 py-1 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 font-medium"
+                                    className="min-h-[44px] rounded-lg bg-[var(--theme-primary)] px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                                 >
                                     {savingCommentId === editingCommentId ? '…' : (locale === 'ja' ? '保存' : 'Save')}
                                 </button>
                                 <button
                                     onClick={cancelEditComment}
-                                    className="text-xs px-2 py-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                    className="min-h-[44px] rounded-lg px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800"
                                 >
                                     {locale === 'ja' ? '取消' : 'Cancel'}
                                 </button>
@@ -463,21 +497,23 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                             <div className="w-3 h-3 bg-white border-r border-b border-[var(--theme-primary)]/20 transform rotate-45 -mt-[7px]" />
                         </div>
                     </div>
-                </>
+                </div>,
+                document.body,
             )}
 
             {/* ===== 削除確認ダイアログ（カスタム） ===== */}
             {confirmDeleteId && createPortal(
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-                    onClick={() => !deletingId && setConfirmDeleteId(null)}
-                    role="alertdialog"
-                    aria-modal="true"
-                    aria-label={locale === 'ja' ? '削除の確認' : 'Confirm deletion'}
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
                 >
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeDeleteDialog} aria-hidden="true" />
                     <div
-                        className="bg-white rounded-2xl shadow-2xl p-6 mx-4 w-full max-w-[340px] text-center"
-                        onClick={(e) => e.stopPropagation()}
+                        ref={deleteDialogRef}
+                        className="relative w-full max-w-[340px] rounded-xl bg-white p-4 text-center shadow-2xl sm:p-6"
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-label={locale === 'ja' ? '削除の確認' : 'Confirm deletion'}
+                        tabIndex={-1}
                     >
                         {/* アイコン */}
                         <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
@@ -497,16 +533,17 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         {/* ボタン群 */}
                         <div className="flex gap-3">
                             <button
-                                onClick={() => setConfirmDeleteId(null)}
+                                ref={deleteCancelRef}
+                                onClick={closeDeleteDialog}
                                 disabled={!!deletingId}
-                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50"
+                                className="min-h-[44px] flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
                             >
                                 {locale === 'ja' ? 'キャンセル' : 'Cancel'}
                             </button>
                             <button
                                 onClick={executeDelete}
                                 disabled={!!deletingId}
-                                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
                             >
                                 {deletingId ? (
                                     <>
@@ -531,13 +568,14 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 <div
                     className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
                     onClick={handleBackdropClick}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label={locale === 'ja' ? 'アイテムを検索' : 'Search Items'}
                 >
                     <div
                         ref={modalRef}
                         className="bg-white w-full sm:w-[720px] sm:max-w-[90vw] max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={locale === 'ja' ? 'アイテムを検索' : 'Search Items'}
+                        tabIndex={-1}
                     >
                         {/* モーダルヘッダー */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -546,8 +584,9 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 {locale === 'ja' ? 'アイテムを検索' : 'Search Items'}
                             </h3>
                             <button
-                                onClick={() => setShowModal(false)}
-                                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors text-gray-400 hover:text-gray-600"
+                                ref={searchCloseRef}
+                                onClick={closeSearchDialog}
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800"
                                 aria-label={locale === 'ja' ? '閉じる' : 'Close'}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">

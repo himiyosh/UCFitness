@@ -69,6 +69,8 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
+- **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
+- **テーマ優先順位**: 明示的な端末内テーマを優先し、保存値がない端末だけDB装備テーマを初期値として使用する。item code変換は`lib/theme.ts`へ集約
 
 ## プロジェクト構造
 
@@ -403,7 +405,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | スキル | 用途 |
 |---|---|
 | [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | Chrome Modern Web Guidance。HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善時に guide を検索・取得して適用する |
-| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。要件充足・App Shell geometry・固定ランキング仕様・社会比較順序・データ失敗/未記録/0の分離・回帰防止・検証証拠・Lessons Learnedを確認する |
+| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。要件充足・全ページroute coverage・App Shell geometry・Dialog stack・チャート数値表・固定ランキング仕様・データ失敗/未記録/0の分離・回帰防止・検証証拠・Lessons Learnedを確認する |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
 | [ucfitness-rule-enforcement](.github/skills/ucfitness-rule-enforcement/SKILL.md) | UCFitness 固有ルール違反の静的検出・強制メカニズム |
 | [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |

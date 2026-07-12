@@ -2,8 +2,10 @@
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+
 import { useToast } from '@/components/ui/Toast';
 import Spinner from '@/components/ui/Spinner';
+import { isOfficialAmazonUrl } from '@/lib/amazon-url';
 
 // ============================================
 // Amazon アフィリエイトリンク生成ツール
@@ -56,7 +58,7 @@ function detectInputType(input: string): { type: AffiliateLinkType; label: strin
     }
     try {
         const url = new URL(input);
-        if (url.hostname.includes('amazon')) {
+        if (isOfficialAmazonUrl(url)) {
             return { type: 'tagged-url', label: 'Amazon URL', icon: '🔗' };
         }
     } catch { /* not a URL */ }

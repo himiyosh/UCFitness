@@ -56,6 +56,7 @@ type LandingTranslations = ReturnType<typeof useTranslations<'Landing'>>;
 
 export default function LandingPage() {
     const t = useTranslations('Landing');
+    const footerT = useTranslations('Footer');
     const locale = useLocale();
     const router = useRouter();
     const pathname = usePathname();
@@ -481,6 +482,11 @@ export default function LandingPage() {
                         </span>
                         {t('title')}
                     </div>
+                    <nav className="flex flex-wrap items-center gap-x-4 gap-y-1" aria-label={footerT('legalLinks')}>
+                        <a className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="https://studio344.net/terms" target="_blank" rel="noopener noreferrer">{footerT('terms')}</a>
+                        <a className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="https://studio344.net/privacy" target="_blank" rel="noopener noreferrer">{footerT('privacy')}</a>
+                        <a className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="https://studio344.net/contact" target="_blank" rel="noopener noreferrer">{footerT('contact')}</a>
+                    </nav>
                     <p>&copy; {new Date().getFullYear()} {t('copyright')}</p>
                 </div>
             </footer>

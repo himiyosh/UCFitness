@@ -263,6 +263,10 @@ function getMissionTitle(
     t: ReturnType<typeof useTranslations<'Mission'>>
 ): string {
     switch (missionType) {
+        case 'WALK_100':
+            return t('templates.walk100.title');
+        case 'WALK_500':
+            return t('templates.walk500.title');
         case 'WALK_1K':
             return t('templates.walk1k.title');
         case 'WALK_3K':
@@ -288,6 +292,10 @@ function getMissionDescription(
     t: ReturnType<typeof useTranslations<'Mission'>>
 ): string {
     switch (missionType) {
+        case 'WALK_100':
+            return t('templates.walk100.desc');
+        case 'WALK_500':
+            return t('templates.walk500.desc');
         case 'WALK_1K':
             return t('templates.walk1k.desc');
         case 'WALK_3K':

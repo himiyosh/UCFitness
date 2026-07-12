@@ -359,7 +359,7 @@ export default function GroupReactions({
                                 handleToggle(emoji);
                             }}
                             disabled={loading === emoji}
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-xs min-h-[22px] rounded-full transition-all duration-200 cursor-pointer
+                            className={`reaction-hit-target relative inline-flex items-center gap-1 px-1.5 py-0.5 text-xs min-h-[22px] rounded-full transition-all duration-200 cursor-pointer
                                 ${reacted
                                     ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] ring-1 ring-[var(--theme-primary)]/30'
                                     : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
@@ -388,7 +388,7 @@ export default function GroupReactions({
                         e.stopPropagation();
                         setShowPicker(prev => !prev);
                     }}
-                    className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all duration-200 cursor-pointer"
+                    className="reaction-hit-target relative inline-flex items-center justify-center w-[22px] h-[22px] rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all duration-200 cursor-pointer"
                     aria-label={t('addReaction')}
                     style={{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'auto' : 'none', transition: 'opacity 200ms ease' }}
                 >
@@ -543,7 +543,7 @@ export default function GroupReactions({
                             handleToggle(emoji);
                         }}
                         disabled={loading === emoji}
-                        className={`inline-flex items-center gap-1 rounded-full transition-all duration-200 cursor-pointer
+                        className={`reaction-hit-target relative inline-flex items-center gap-1 rounded-full transition-all duration-200 cursor-pointer
                             ${compact ? 'px-1.5 py-0.5 text-xs min-h-[22px]' : 'px-2 py-0.5 text-sm min-h-[26px]'}
                             ${reacted
                                 ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] ring-1 ring-[var(--theme-primary)]/30 scale-105'
@@ -566,7 +566,7 @@ export default function GroupReactions({
                     e.stopPropagation();
                     setShowPicker(prev => !prev);
                 }}
-                className={`inline-flex items-center justify-center rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all duration-200 cursor-pointer
+                className={`reaction-hit-target relative inline-flex items-center justify-center rounded-full text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-all duration-200 cursor-pointer
                     ${compact ? 'w-[22px] h-[22px]' : 'w-[26px] h-[26px]'}
                 `}
                 aria-label={t('addReaction')}

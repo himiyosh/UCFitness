@@ -131,18 +131,18 @@ export async function GET(
         // 3. Resolve Group ID (Keyword -> UUID)
         let targetGroupId = idOrKeyword;
 
-        // Check if input is likely a UUID (36 chars, hex + dashes) to skip keyword lookup if possible, 
+        // Check if input is likely a UUID (36 chars, hex + dashes) to skip keyword lookup if possible,
         // OR just try to find by keyword first.
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrKeyword);
 
-        let groupData: { id: string } | null = null;
+        let groupData: { id: string; is_public: boolean } | null = null;
 
         if (isUuid) {
             // 🛡️ セキュリティ: .or()テンプレートリテラルの代わりにパラメータ化クエリを使用
             const { data: byKeyword } = await supabaseAdmin
                 .from('groups')
-                .select('id')
+                .select('id, is_public')
                 .eq('keyword', idOrKeyword)
                 .single();
 
@@ -151,7 +151,7 @@ export async function GET(
             } else {
                 const { data: byId } = await supabaseAdmin
                     .from('groups')
-                    .select('id')
+                    .select('id, is_public')
                     .eq('id', idOrKeyword)
                     .single();
                 groupData = byId;
@@ -160,7 +160,7 @@ export async function GET(
             // If it's not a UUID, it MUST be a keyword (searching ID would cause DB error)
             const { data } = await supabaseAdmin
                 .from('groups')
-                .select('id')
+                .select('id, is_public')
                 .eq('keyword', idOrKeyword)
                 .single();
             groupData = data;
@@ -183,6 +183,9 @@ export async function GET(
                 .single();
 
             if (membershipError || !membership) {
+                if (!groupData.is_public) {
+                    return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+                }
                 return NextResponse.json({ error: 'Forbidden: You are not a member of this group' }, { status: 403 });
             }
         }

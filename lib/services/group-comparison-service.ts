@@ -1,5 +1,7 @@
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
-import { Period } from '@/components/dashboard/LeaderboardTabs';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 export interface ComparisonDataPoint {
     date: string; // YYYY-MM-DD or YYYY-MM
@@ -87,11 +89,15 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     const minDateStr = dates[0]; // The earliest date
 
     // 2. Fetch Group Members
-    const { data: members } = await supabase
+    const { data: members, error: membersError } = await supabase
         .from('group_members')
         .select('user_id')
         .eq('group_id', groupId);
 
+    if (membersError) {
+        reportError('group-comparison-service:members', membersError, { groupId });
+        throw new Error('Failed to load comparison members');
+    }
     const memberIds = members?.map(m => m.user_id) || [];
     if (memberIds.length === 0) {
         const empty = { data: [], users: [] };
@@ -99,11 +105,15 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
     }
 
     // ⚡ Bolt Optimization: Fetch users separately to avoid payload bloat from Joins
-    const { data: users } = await supabase
+    const { data: users, error: usersError } = await supabase
         .from('users')
         .select('id, username, name')
         .in('id', memberIds);
 
+    if (usersError) {
+        reportError('group-comparison-service:users', usersError, { groupId });
+        throw new Error('Failed to load comparison users');
+    }
     const userMap = new Map<string, { username: string | null, name: string | null }>();
     users?.forEach(u => userMap.set(u.id, u));
 
@@ -125,8 +135,8 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             .range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
-            console.error('[GroupChart] ステップデータ取得エラー:', error?.code ?? 'UNKNOWN');
-            break;
+            reportError('group-comparison-service:steps', error, { groupId, page });
+            throw new Error('Failed to load comparison steps');
         }
 
         if (!stepsChunk || stepsChunk.length === 0) break;

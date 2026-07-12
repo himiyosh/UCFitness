@@ -101,7 +101,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         supabaseAdmin
             .rpc('get_user_step_stats', { p_user_id: user.id }),
         // ⭐ パフォーマンス: ランキングも並列取得
-        getRankings('GLOBAL', 'WEEKLY'),
+        getRankings('GLOBAL', 'WEEKLY')
+            .then((data) => ({ data, failed: false }))
+            .catch((error: unknown) => {
+                reportError('profile:weekly-ranking', error, { userId: user.id });
+                return { data: null, failed: true };
+            }),
         // コイン残高（パーソナルレコード用）
         getCoinBalance(user.id),
     ]);
@@ -173,7 +178,8 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
     // ランキング順位を取得（Promise.allで並列取得済み）
     let userWeeklyRank: number | null = null;
-    const weeklyRankings = weeklyRankingsResult;
+    const weeklyRankings = weeklyRankingsResult.data;
+    const weeklyRankingUnavailable = weeklyRankingsResult.failed;
     if (Array.isArray(weeklyRankings) && weeklyRankings.length > 0) {
         const rankIndex = weeklyRankings.findIndex((r: any) => r.users?.id === user.id);
         if (rankIndex >= 0) userWeeklyRank = rankIndex + 1;
@@ -347,6 +353,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                 <div className="flex items-center justify-between px-4 py-2.5">
                                     <span className="text-xs font-medium text-gray-500">{t('weeklyRank')}</span>
                                     <span className="text-sm font-bold text-[var(--theme-primary)] tabular-nums">#{userWeeklyRank}</span>
+                                </div>
+                            )}
+                            {weeklyRankingUnavailable && (
+                                <div className="px-4 py-2.5 text-xs font-medium text-amber-700" role="status">
+                                    {t('weeklyRankUnavailable')}
                                 </div>
                             )}
                             {lastSyncedAt && (

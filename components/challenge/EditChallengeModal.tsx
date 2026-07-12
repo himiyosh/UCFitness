@@ -44,13 +44,15 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     const [error, setError] = useState<string | null>(null);
     const dialogRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
+    const handleClose = useCallback(() => {
+        if (!submitting) onClose();
+    }, [onClose, submitting]);
 
     useDialogFocus({
         isOpen,
-        onClose,
+        onClose: handleClose,
         dialogRef,
         initialFocusRef: titleInputRef,
-        canClose: () => !submitting,
     });
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -77,6 +79,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             const res = await fetch(`/api/challenge/${challenge.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(30_000),
                 body: JSON.stringify({
                     title: title.trim(),
                     description: description.trim() || null,
@@ -107,7 +110,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* オーバーレイ */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
 
             {/* モーダル */}
             <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="edit-challenge-dialog-title" tabIndex={-1} className="relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl outline-none midnight-solid-panel">
@@ -117,7 +120,8 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                         ✏️ {t('edit')}
                     </h2>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
+                        disabled={submitting}
                         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
                         aria-label={t('closeCreateDialog')}
                     >
@@ -240,7 +244,8 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                     <div className="flex items-center gap-3 pt-2">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
+                            disabled={submitting}
                             className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
                         >
                             {t('cancelEdit') || 'キャンセル'}

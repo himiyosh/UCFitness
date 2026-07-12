@@ -153,19 +153,28 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
     return (
         <div
             className="chart-container bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow"
-            role="img"
-            aria-label={`${t('assetGrowth')}: ${t('last30days')}. ${t('balance')}: ${chartData.length > 0 ? chartData[chartData.length - 1].balance.toLocaleString() : 0} UC`}
         >
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2" aria-hidden="true">
-                    📈 {t('assetGrowth')}
+                <h3 id="coin-growth-title" className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span aria-hidden="true">📈</span> {t('assetGrowth')}
                 </h3>
-                <span className="text-xs text-gray-400" aria-hidden="true">{t('last30days')}</span>
+                <span className="text-xs text-gray-400">{t('last30days')}</span>
             </div>
 
-            <div ref={chartHostRef} className="h-48 min-w-0 overflow-hidden sm:h-52">
+            <div
+                ref={chartHostRef}
+                className="h-48 min-w-0 overflow-hidden sm:h-52"
+                role="img"
+                aria-label={`${t('assetGrowth')}: ${t('last30days')}. ${t('balance')}: ${chartData[chartData.length - 1].balance.toLocaleString()} UC`}
+            >
                 {chartSize.width > 0 && chartSize.height > 0 && (
-                    <ComposedChart width={chartSize.width} height={chartSize.height} data={chartData} margin={chartMargin}>
+                    <ComposedChart
+                        width={chartSize.width}
+                        height={chartSize.height}
+                        data={chartData}
+                        margin={chartMargin}
+                        accessibilityLayer={false}
+                    >
                         <defs>
                             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
@@ -230,6 +239,25 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                     </ComposedChart>
                 )}
             </div>
+            <table className="sr-only">
+                <caption>{t('assetGrowth')}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">{t('date')}</th>
+                        <th scope="col">{t('dailyCoins')}</th>
+                        <th scope="col">{t('balance')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {chartData.map((entry) => (
+                        <tr key={entry.date}>
+                            <th scope="row">{entry.date}</th>
+                            <td>{entry.dailyCoins.toLocaleString()} UC</td>
+                            <td>{entry.balance.toLocaleString()} UC</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }

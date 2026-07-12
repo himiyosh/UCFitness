@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
+import { evaluateMission, generateDailyMissions } from '@/lib/services/mission-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +40,24 @@ export async function GET() {
     let missions = existingMissions;
 
     if (!missions || missions.length === 0) {
+        const recentStartDate = shiftDate(today, -7);
+        const { data: recentSteps, error: recentStepsError } = await supabaseAdmin
+            .from('daily_steps')
+            .select('steps')
+            .eq('user_id', userId)
+            .gte('date', recentStartDate)
+            .lt('date', today);
+
+        if (recentStepsError) {
+            reportError('user/missions:GET:recent-steps', recentStepsError, { userId });
+            return NextResponse.json({ error: 'ミッション生成用歩数の取得失敗' }, { status: 500 });
+        }
+        const recentAverageSteps = Math.round(
+            (recentSteps ?? []).reduce((sum, row) => sum + (row.steps ?? 0), 0) / 7,
+        );
+
         // 今日のミッションを生成（3つ）
-        const todayMissions = generateDailyMissions(today);
+        const todayMissions = generateDailyMissions(today, recentAverageSteps);
         const { data: created, error } = await supabaseAdmin
             .from('daily_missions')
             .insert(todayMissions.map(m => ({
@@ -75,6 +92,7 @@ export async function GET() {
 
         if (stepError && stepError.code !== 'PGRST116') {
             reportError('user/missions:GET:steps', stepError, { userId });
+            return NextResponse.json({ error: '歩数取得失敗' }, { status: 503 });
         }
         const todaySteps = stepData?.steps ?? 0;
 
@@ -157,6 +175,7 @@ export async function POST(request: Request) {
 
     if (stepError && stepError.code !== 'PGRST116') {
         reportError('user/missions:POST:steps', stepError, { userId });
+        return NextResponse.json({ error: '歩数取得失敗' }, { status: 503 });
     }
     const todaySteps = stepData?.steps ?? 0;
 
@@ -194,33 +213,6 @@ export async function POST(request: Request) {
     reportError('user/missions:POST', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
-}
-
-// ============================================
-// ミッション自動判定ロジック
-// ============================================
-
-/** ミッションタイプごとの達成閾値 */
-const STEP_THRESHOLDS: Record<string, number> = {
-    WALK_3K: 3000,
-    WALK_5K: 5000,
-    WALK_8K: 8000,
-    WALK_10K: 10000,
-    WALK_1K: 1000,
-    WALK_15K: 15000,
-};
-
-/** ミッション達成判定 — 実データに基づいて評価 */
-function evaluateMission(missionType: string, todaySteps: number): boolean {
-    const threshold = STEP_THRESHOLDS[missionType];
-    if (threshold !== undefined) {
-        return todaySteps >= threshold;
-    }
-    // ログインミッション: GET時点で達成（ダッシュボードにアクセス＝ログイン済み）
-    if (missionType === 'LOGIN') {
-        return true;
-    }
-    return false;
 }
 
 /** ミッション完了処理 + 報酬UC付与 */
@@ -340,53 +332,10 @@ async function awardAllCompletedBonus(userId: string, date: string): Promise<voi
     }
 }
 
-// ============================================
-// ミッションテンプレート生成
-// ============================================
-
-interface MissionTemplate {
-    type: string;
-    title: string;
-    description: string;
-    rewardUc: number;
-}
-
-const MISSION_POOL: MissionTemplate[] = [
-    { type: 'WALK_1K', title: '1,000歩を歩こう', description: '今日1,000歩以上歩く', rewardUc: 15 },
-    { type: 'WALK_3K', title: '3,000歩を歩こう', description: '今日3,000歩以上歩く', rewardUc: 30 },
-    { type: 'WALK_5K', title: '5,000歩チャレンジ', description: '今日5,000歩以上歩く', rewardUc: 50 },
-    { type: 'WALK_8K', title: '8,000歩を目指せ', description: '今日8,000歩以上歩く', rewardUc: 80 },
-    { type: 'WALK_10K', title: '10,000歩の壁を越えよう', description: '今日10,000歩以上歩く', rewardUc: 100 },
-    { type: 'WALK_15K', title: '15,000歩マスター', description: '今日15,000歩以上歩く', rewardUc: 150 },
-    { type: 'LOGIN', title: 'ログインしよう', description: 'UCFitnessにログインする', rewardUc: 10 },
-];
-
-function generateDailyMissions(date: string): MissionTemplate[] {
-    // 日付ベースの擬似乱数でミッションを選択（再現性あり）
-    const seed = date.replace(/-/g, '');
-    const numSeed = parseInt(seed, 10);
-
-    // 歩数系ミッション（LOGIN以外）
-    const walkMissions = MISSION_POOL.filter(m => m.type.startsWith('WALK_'));
-    const loginMission = MISSION_POOL.find(m => m.type === 'LOGIN')!;
-
-    // ログインミッションは常に含める（簡単なミッション1つは達成感のため）
-    const selected: MissionTemplate[] = [loginMission];
-
-    // 歩数系から難易度の異なる2つを選ぶ
-    // まず難易度順にソート
-    const sorted = [...walkMissions].sort((a, b) => a.rewardUc - b.rewardUc);
-    // 簡単な方（1K/3K/5K）から1つ、難しい方（8K/10K/15K）から1つ
-    const easy = sorted.filter(m => m.rewardUc <= 50);
-    const hard = sorted.filter(m => m.rewardUc > 50);
-
-    const easyIndex = numSeed % easy.length;
-    const hardIndex = (numSeed * 7) % hard.length;
-
-    selected.push(easy[easyIndex]);
-    selected.push(hard[hardIndex]);
-
-    return selected;
+function shiftDate(date: string, days: number): string {
+    const shifted = new Date(`${date}T00:00:00Z`);
+    shifted.setUTCDate(shifted.getUTCDate() + days);
+    return shifted.toISOString().split('T')[0];
 }
 
 /**

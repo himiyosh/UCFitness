@@ -117,7 +117,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 }
             >
                 <span className={`text-sm ${isMidnight ? 'opacity-90' : ''}`}>👥</span>
-                <span className={`text-xs font-bold tracking-wide ${isMidnight ? 'text-emerald-300' : 'text-emerald-700'}`}>Group Ranking</span>
+                <span className={`text-xs font-bold tracking-wide ${isMidnight ? 'text-emerald-300' : 'text-emerald-700'}`}>{t('groupRankingPanelTitle')}</span>
                 <span
                     className="ml-auto truncate py-0.5 px-2 rounded-full text-xs font-bold"
                     style={isMidnight
@@ -128,14 +128,14 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
             </div>
             {showMoveButtons && <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
                 {moveError && (
-                    <span className="text-xs text-red-500 font-bold animate-pulse mr-1">Error</span>
+                    <span className="mr-1 text-xs font-bold text-red-700" role="alert">{t('reorderError')}</span>
                 )}
                 {!isFirst && (
                     <button
                         onClick={() => handleMove('up')}
-                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded transition-colors ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                        title="Move Up"
-                        aria-label="Move group up"
+                        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-600 transition-colors hover:text-[var(--theme-primary)] ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                        title={t('moveGroupUp')}
+                        aria-label={t('moveGroupUp')}
                         disabled={isMoving}
                     >
                         {isMoving && moveDirection === 'up' ? (
@@ -150,9 +150,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 {!isLast && (
                     <button
                         onClick={() => handleMove('down')}
-                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded transition-colors ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                        title="Move Down"
-                        aria-label="Move group down"
+                        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-600 transition-colors hover:text-[var(--theme-primary)] ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                        title={t('moveGroupDown')}
+                        aria-label={t('moveGroupDown')}
                         disabled={isMoving}
                     >
                         {isMoving && moveDirection === 'down' ? (

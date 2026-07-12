@@ -143,7 +143,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                     }`}
                     style={isMidnight ? { backgroundColor: 'rgba(30, 41, 59, 0.85)', border: '1px solid rgba(100, 116, 139, 0.4)', backdropFilter: 'blur(8px)' } : undefined}
                     role="tablist"
-                    aria-label="Leaderboard period"
+                    aria-label={t('periodTabsLabel')}
                 >
                     {TABS.map((tab) => {
                         const isActive = period === tab.key;

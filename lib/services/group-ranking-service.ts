@@ -1,7 +1,10 @@
+import { unstable_cache } from 'next/cache';
+
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
-import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { unstable_cache } from 'next/cache';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 export interface GroupRankingEntry {
     groupId: string;
@@ -64,6 +67,18 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
     const members = membersRes.data;
     const stepsData = stepsRes.data;
 
+    if (groupsRes.error) {
+        reportError('group-ranking-service:groups', groupsRes.error, { period });
+        throw new Error('Failed to load competition groups');
+    }
+    if (membersRes.error) {
+        reportError('group-ranking-service:members', membersRes.error, { period });
+        throw new Error('Failed to load competition members');
+    }
+    if (stepsRes.error) {
+        reportError('group-ranking-service:steps', stepsRes.error, { period });
+        throw new Error('Failed to load competition steps');
+    }
     if (!groups || !members) return [];
 
     // Map UserId -> GroupIds[]

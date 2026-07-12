@@ -106,7 +106,13 @@ function getMonthLabels(year: number): { label: string; col: number }[] {
 
 // ヒートマップ用のグリッドデータを生成
 function buildGridData(year: number, stepsMap: Map<string, number>) {
-    const cells: { date: string; steps: number; col: number; row: number }[] = [];
+    const cells: {
+        date: string;
+        steps: number;
+        hasRecord: boolean;
+        col: number;
+        row: number;
+    }[] = [];
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
     const startDow = startDate.getDay(); // 0=Sun
@@ -120,7 +126,8 @@ function buildGridData(year: number, stepsMap: Map<string, number>) {
         const row = (dayOfYear + startDow) % 7;
         cells.push({
             date: dateStr,
-            steps: stepsMap.get(dateStr) || 0,
+            steps: stepsMap.get(dateStr) ?? 0,
+            hasRecord: stepsMap.has(dateStr),
             col,
             row,
         });
@@ -136,6 +143,8 @@ function HeatmapCell({
     col,
     row,
     stepsLabel,
+    hasRecord,
+    notRecordedLabel,
     isFuture,
 }: {
     date: string;
@@ -143,6 +152,8 @@ function HeatmapCell({
     col: number;
     row: number;
     stepsLabel: string;
+    hasRecord: boolean;
+    notRecordedLabel: string;
     isFuture: boolean;
 }) {
     const [showTooltip, setShowTooltip] = useState(false);
@@ -203,7 +214,7 @@ function HeatmapCell({
                 >
                     <div className="font-semibold">{formattedDate}</div>
                     <div className="tabular-nums">
-                        {steps.toLocaleString()} {stepsLabel}
+                        {hasRecord ? `${steps.toLocaleString()} ${stepsLabel}` : notRecordedLabel}
                     </div>
                     {/* ツールチップの矢印 */}
                     <div
@@ -273,6 +284,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     const t = useTranslations('Calendar');
     const dashT = useTranslations('Dashboard');
     const pctT = useTranslations('Percentile');
+    const graphT = useTranslations('Graph');
     const wgT = useTranslations('WeeklyGoal');
     const currentJstDate = getJSTDateString();
     const currentYear = Number(currentJstDate.slice(0, 4));
@@ -359,7 +371,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     const stats = useMemo(() => {
         const totalSteps = data.reduce((sum, d) => sum + d.steps, 0);
         const activeDays = data.filter((d) => d.steps > 0).length;
-        const avg = activeDays > 0 ? Math.round(totalSteps / activeDays) : 0;
+        const avg = data.length > 0 ? Math.round(totalSteps / data.length) : 0;
         const longestStreak = calculateLongestStreak(stepsMap, year);
         return { totalSteps, activeDays, avg, longestStreak };
     }, [data, stepsMap, year]);
@@ -387,7 +399,15 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     }, [gridCells, year, currentYear, todayStr, maxCol]);
 
     // 曜日ラベル
-    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayLabels = [
+        graphT('sun'),
+        graphT('mon'),
+        graphT('tue'),
+        graphT('wed'),
+        graphT('thu'),
+        graphT('fri'),
+        graphT('sat'),
+    ];
 
     // ヒートマップのスクロールコンテナ ref（直近の記録を表示するため今日の位置にスクロール）
     const heatmapScrollRef = useRef<HTMLDivElement>(null);
@@ -556,19 +576,19 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                     {/* 日別バーチャート */}
                     {weeklyGoal && (
                         <div className="mt-3 pt-3 border-t border-gray-100">
-                            <div className="text-[10px] font-bold text-gray-600 mb-2">{wgT('weeklyStepsLabel')}</div>
+                            <div className="mb-2 text-xs font-bold text-gray-600">{wgT('weeklyStepsLabel')}</div>
                             <div className="flex items-end gap-1.5" style={{ minHeight: '80px' }}>
                             {weeklyGoal.days.map((day, i) => {
-                                const barHeight = wgMaxDaySteps > 0
+                                const barHeight = day.steps > 0 && wgMaxDaySteps > 0
                                     ? Math.max(6, (day.steps / wgMaxDaySteps) * 80)
-                                    : 6;
+                                    : 0;
                                 const isToday = i === weeklyGoal.elapsedDays - 1;
                                 const isFuture = i >= weeklyGoal.elapsedDays;
                                 const metGoal = day.steps >= weeklyGoal.dailyGoal;
 
                                 return (
                                     <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                                        <span className="text-[9px] text-gray-400 tabular-nums h-3 flex items-center">
+                                        <span className="flex h-3 items-center text-xs tabular-nums text-gray-500">
                                             {day.steps > 0 ? (day.steps >= 10000 ? `${(day.steps / 1000).toFixed(0)}k` : day.steps.toLocaleString()) : ''}
                                         </span>
                                         <div
@@ -615,7 +635,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                     <button
                         onClick={() => setYear((y) => y - 1)}
                         className="p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors"
-                        aria-label="Previous year"
+                        aria-label={t('previousYear')}
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -626,7 +646,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                         onClick={() => setYear((y) => y + 1)}
                         disabled={year >= currentYear}
                         className="p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors disabled:opacity-30"
-                        aria-label="Next year"
+                        aria-label={t('nextYear')}
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -713,15 +733,39 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                                 key={cell.date}
                                 date={cell.date}
                                 steps={cell.steps}
+                                hasRecord={cell.hasRecord}
                                 col={cell.col}
                                 row={cell.row}
                                 stepsLabel={t('steps')}
+                                notRecordedLabel={t('notRecorded')}
                                 isFuture={cell.date > todayStr}
                             />
                         ))}
                     </div>
                     </div>
                   </div>
+
+                    <table className="sr-only">
+                        <caption>{t('title')} {year}</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">{t('date')}</th>
+                                <th scope="col">{t('recordStatus')}</th>
+                                <th scope="col">{t('steps')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {gridCells
+                                .filter((cell) => cell.date <= todayStr)
+                                .map((cell) => (
+                                    <tr key={cell.date}>
+                                        <th scope="row">{cell.date}</th>
+                                        <td>{cell.hasRecord ? t('recorded') : t('notRecorded')}</td>
+                                        <td>{cell.hasRecord ? cell.steps.toLocaleString() : '—'}</td>
+                                    </tr>
+                                ))}
+                        </tbody>
+                    </table>
 
                     {/* 凡例 */}
                     <div className="flex items-center gap-1.5 mt-2 justify-end text-xs text-gray-400">

@@ -1,8 +1,11 @@
+import { unstable_cache } from 'next/cache';
+
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
-import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { unstable_cache } from 'next/cache';
 import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 // Define type for User Stats Map
 export type UserStats = {
@@ -36,21 +39,33 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
     let userIds: string[] | null = null;
     const usersMap = new Map<string, any>();
 
-    if (scope === 'GROUP' && groupKeyword) {
+    if (scope === 'GROUP') {
+        if (!groupKeyword) throw new Error('Group keyword is required for group rankings');
+
         // group_members テーブルからメンバーを取得 (レガシー group_keyword 配列に依存しない)
-        const { data: groupData } = await supabase
+        const { data: groupData, error: groupError } = await supabase
             .from('groups')
             .select('id')
             .eq('keyword', groupKeyword)
             .single();
 
+        if (groupError && groupError.code !== 'PGRST116') {
+            reportError('ranking-service:getRankings:group', groupError, { groupKeyword });
+            throw new Error('Failed to load ranking group');
+        }
         if (!groupData) return [];
 
-        const { data: members } = await supabase
+        const { data: members, error: membersError } = await supabase
             .from('group_members')
             .select('user_id, users(id, name, image, username)')
             .eq('group_id', groupData.id);
 
+        if (membersError) {
+            reportError('ranking-service:getRankings:members', membersError, {
+                groupId: groupData.id,
+            });
+            throw new Error('Failed to load ranking members');
+        }
         if (!members || members.length === 0) return [];
 
         userIds = members.map(m => m.user_id);
@@ -65,8 +80,8 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
     });
 
     if (error) {
-        console.error(`Error fetching ${scope} rankings`);
-        return [];
+        reportError('ranking-service:getRankings:steps', error, { scope, period });
+        throw new Error(`Failed to load ${scope.toLowerCase()} ranking steps`);
     }
 
     // If GLOBAL (userIds was null), we need to fetch users now based on the steps we got
@@ -74,11 +89,17 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
         const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
 
         if (uniqueUserIds.length > 0) {
-            const { data: users } = await supabase
+            const { data: users, error: usersError } = await supabase
                 .from('users')
                 .select('id, name, image, username, group_keyword')
                 .in('id', uniqueUserIds);
 
+            if (usersError) {
+                reportError('ranking-service:getRankings:users', usersError, {
+                    userCount: uniqueUserIds.length,
+                });
+                throw new Error('Failed to load ranking users');
+            }
             users?.forEach((u: any) => usersMap.set(u.id, u));
         }
     }
@@ -632,11 +653,15 @@ export const getAllGroupRankings = async (groupId: string) => {
     const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
     // Fetch Members
-    const { data: groupMembers } = await supabase
+    const { data: groupMembers, error: groupMembersError } = await supabase
         .from('group_members')
         .select('user_id')
         .eq('group_id', groupId);
 
+    if (groupMembersError) {
+        reportError('ranking-service:getAllGroupRankings:members', groupMembersError, { groupId });
+        throw new Error('Failed to load group ranking members');
+    }
     const userIds = groupMembers?.map(m => m.user_id) || [];
     if (userIds.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
@@ -653,11 +678,15 @@ export const getAllGroupRankings = async (groupId: string) => {
     ]);
 
     const { data: rawSteps, error } = stepsResult;
-    const { data: users } = usersResult;
+    const { data: users, error: usersError } = usersResult;
 
     if (error) {
-        console.error('Error fetching all group rankings');
-        return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+        reportError('ranking-service:getAllGroupRankings:steps', error, { groupId });
+        throw new Error('Failed to load group ranking steps');
+    }
+    if (usersError) {
+        reportError('ranking-service:getAllGroupRankings:users', usersError, { groupId });
+        throw new Error('Failed to load group ranking users');
     }
 
     const usersMap = new Map(users?.map(u => [u.id, u]));

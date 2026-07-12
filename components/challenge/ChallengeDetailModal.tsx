@@ -155,7 +155,7 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                                 ref={closeButtonRef}
                                 onClick={onClose}
                                 className="ml-2 inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                                aria-label={t('closeCreateDialog')}
+                                aria-label={t('closeDetailDialog')}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -175,9 +175,9 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                     )}
 
                     {error && (
-                        <div className="text-center py-8">
-                            <span className="text-3xl block mb-2">⚠️</span>
-                            <p className="text-sm text-red-500 mb-3">{t('retry')}</p>
+                        <div className="text-center py-8" role="alert">
+                            <span className="text-3xl block mb-2" aria-hidden="true">⚠️</span>
+                            <p className="text-sm text-red-700 mb-3">{t('loadError')}</p>
                             <button
                                 onClick={fetchDetail}
                                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[var(--theme-primary)] min-h-[44px] hover:scale-105 active:scale-95 transition-transform"

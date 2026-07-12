@@ -258,11 +258,11 @@ export default function GroupDetailLeaderboard({
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <nav aria-label="Pagination" className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <nav aria-label={lt('paginationLabel')} className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
                         <button
                             onClick={handlePrevPage}
                             disabled={currentPage === 1}
-                            aria-label="Previous page"
+                            aria-label={lt('previousPage')}
                             className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 text-sm font-medium text-gray-700 transition-colors hover:text-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-gray-700"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -273,7 +273,7 @@ export default function GroupDetailLeaderboard({
                                 <button
                                     key={p}
                                     onClick={() => onPageChange(p)}
-                                    aria-label={`Go to page ${p}`}
+                                    aria-label={lt('goToPage', { page: p })}
                                     aria-current={currentPage === p ? 'page' : undefined}
                                     className={`${compactPaginationPages.includes(p) ? 'inline-flex' : 'hidden sm:inline-flex'} h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-xs font-bold transition-colors duration-200 ${currentPage === p
                                         ? 'bg-[var(--color-primary-solid)] text-white shadow-sm'
@@ -287,7 +287,7 @@ export default function GroupDetailLeaderboard({
                         <button
                             onClick={handleNextPage}
                             disabled={currentPage === totalPages}
-                            aria-label="Next page"
+                            aria-label={lt('nextPage')}
                             className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 text-sm font-medium text-gray-700 transition-colors hover:text-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-gray-700"
                         >
                             <span className="hidden sm:inline">{lt('next')}</span>
