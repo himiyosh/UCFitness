@@ -19,22 +19,23 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "User ID is required" }, { status: 400 });
         }
 
-        if (username.length < 6) {
-            return NextResponse.json({ error: "User ID must be at least 6 characters" }, { status: 400 });
+        const trimmedUsername = username.trim();
+        if (trimmedUsername.length < 3) {
+            return NextResponse.json({ error: "User ID must be at least 3 characters" }, { status: 400 });
         }
 
-        if (username.length > 20) {
-            return NextResponse.json({ error: "User ID is too long (max 20 chars)" }, { status: 400 });
+        if (trimmedUsername.length > 30) {
+            return NextResponse.json({ error: "User ID is too long (max 30 chars)" }, { status: 400 });
         }
 
         // Allowed: a-z, A-Z, 0-9, _, -, .
-        if (!/^[a-zA-Z0-9_\-\.]+$/.test(username)) {
+        if (!/^[a-zA-Z0-9_.-]+$/.test(trimmedUsername)) {
             return NextResponse.json({ error: "User ID can only contain letters, numbers, underscores, hyphens, and dots." }, { status: 400 });
         }
 
         // 🛡️ Sentinel: Reject reserved usernames
         const RESERVED_USERNAMES = ['admin', 'system', 'support', 'help', 'api', 'root', 'null', 'undefined', 'moderator', 'mod', 'official', 'ucfitness', 'undoucoin'];
-        if (RESERVED_USERNAMES.includes(username.toLowerCase())) {
+        if (RESERVED_USERNAMES.includes(trimmedUsername.toLowerCase())) {
             return NextResponse.json({ error: "This User ID is reserved." }, { status: 400 });
         }
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
         const { data: existingUser } = await supabaseAdmin
             .from("users")
             .select("id")
-            .eq("username", username)
+            .eq("username", trimmedUsername)
             .neq("id", session.user.id) // Exclude self
             .single();
 
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
         // Update username in Supabase
         const { error } = await supabaseAdmin
             .from("users")
-            .update({ username: username.trim() })
+            .update({ username: trimmedUsername })
             .eq("id", session.user.id);
 
         if (error) {

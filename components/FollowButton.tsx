@@ -61,7 +61,7 @@ export default function FollowButton({
         : t('follow');
 
     // ボタンのスタイル
-    const baseClasses = 'px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 border-2 inline-flex items-center justify-center gap-1.5 min-w-[100px] hover:scale-105 active:scale-95';
+    const baseClasses = 'min-h-[44px] px-4 py-2 rounded-full text-sm font-bold transition-colors duration-200 border-2 inline-flex items-center justify-center gap-1.5 min-w-[100px]';
 
     const stateClasses = isFollowing
         ? isHovered

@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import UserAvatar from '@/components/UserAvatar';
+import { getJSTDateString } from '@/lib/date-utils';
 
 // 歩数データ型
 interface StepDay {
@@ -56,6 +57,13 @@ function getIntensityLevel(steps: number): number {
     return 4;
 }
 
+function formatCalendarDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // 連続達成日数を計算
 function calculateLongestStreak(stepsMap: Map<string, number>, year: number): number {
     let longest = 0;
@@ -64,7 +72,7 @@ function calculateLongestStreak(stepsMap: Map<string, number>, year: number): nu
     const endDate = new Date(year, 11, 31);
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = formatCalendarDate(d);
         const steps = stepsMap.get(dateStr) || 0;
         if (steps > 0) {
             current++;
@@ -86,7 +94,9 @@ function getMonthLabels(year: number): { label: string; col: number }[] {
         const firstDayOfMonth = new Date(year, m, 1);
         const startOfYear = new Date(year, 0, 1);
         const startDow = startOfYear.getDay(); // 0=Sun
-        const dayOfYear = Math.floor((firstDayOfMonth.getTime() - startOfYear.getTime()) / 86400000);
+        const dayOfYear = Math.floor((
+            Date.UTC(year, m, 1) - Date.UTC(year, 0, 1)
+        ) / 86400000);
         const col = Math.floor((dayOfYear + startDow) / 7);
         labels.push({ label: months[m], col });
     }
@@ -102,8 +112,10 @@ function buildGridData(year: number, stepsMap: Map<string, number>) {
     const startDow = startDate.getDay(); // 0=Sun
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-        const dayOfYear = Math.floor((d.getTime() - startDate.getTime()) / 86400000);
+        const dateStr = formatCalendarDate(d);
+        const dayOfYear = Math.floor((
+            Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(year, 0, 1)
+        ) / 86400000);
         const col = Math.floor((dayOfYear + startDow) / 7);
         const row = (dayOfYear + startDow) % 7;
         cells.push({
@@ -262,7 +274,8 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     const dashT = useTranslations('Dashboard');
     const pctT = useTranslations('Percentile');
     const wgT = useTranslations('WeeklyGoal');
-    const currentYear = new Date().getFullYear();
+    const currentJstDate = getJSTDateString();
+    const currentYear = Number(currentJstDate.slice(0, 4));
     const [year, setYear] = useState(currentYear);
     const [data, setData] = useState<StepDay[]>([]);
     const [loading, setLoading] = useState(true);
@@ -329,7 +342,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     }, [data]);
 
     // 今日の日付文字列（未来日非表示判定用）
-    const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const todayStr = useMemo(() => currentJstDate, [currentJstDate]);
 
     // グリッドデータ生成
     const gridCells = useMemo(() => buildGridData(year, stepsMap), [year, stepsMap]);
@@ -461,10 +474,10 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                                 )}
                             </div>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)]" style={{ fontFamily: 'var(--font-inter), sans-serif', letterSpacing: '-0.02em' }}>
+                                <span className="text-3xl font-black text-[var(--color-primary-strong)] sm:text-5xl" style={{ fontFamily: 'var(--font-inter), sans-serif', letterSpacing: '-0.02em' }}>
                                     {activity.todaySteps.toLocaleString()}
                                 </span>
-                                <span className="text-xs text-gray-400">{dashT('stepsToday')}</span>
+                                <span className="text-xs text-[var(--color-text-muted)]">{dashT('stepsToday')}</span>
                             </div>
                             <div className="mt-1.5 flex items-center gap-2">
                                 <span className={`text-xs font-semibold ${

@@ -61,9 +61,14 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
     }, []);
 
     useEffect(() => {
-        if (!initialData) {
-            fetchData();
+        if (initialData) {
+            setData(initialData);
+            setLoading(false);
+            setError(false);
+            setAnimated(false);
+            return;
         }
+        fetchData();
     }, [fetchData, initialData]);
 
     // バーアニメーション: データ到着後に遅延トリガー
@@ -248,13 +253,13 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                                     key={m.month}
                                     className={`rounded-xl p-2.5 transition-colors ${
                                         isLatest
-                                            ? 'bg-[var(--theme-primary-light)] border-l-4 border-[var(--theme-primary)]'
-                                            : 'bg-gray-50/50 border-l-4 border-transparent'
+                                            ? 'border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)]'
+                                            : 'border border-transparent bg-gray-50/50'
                                     }`}
                                 >
                                     <div className="flex justify-between items-center mb-2">
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-sm font-black ${isLatest ? 'text-[var(--theme-primary)]' : 'text-gray-500'}`}>
+                                            <span className={`text-sm font-black ${isLatest ? 'text-[var(--color-primary-strong)]' : 'text-gray-500'}`}>
                                                 {formatMonth(m.month)}
                                             </span>
                                             {delta !== null && (
@@ -381,4 +386,3 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
         </div>
     );
 }
-

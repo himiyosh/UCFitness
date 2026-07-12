@@ -16,24 +16,30 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { username, email, name } = body;
+        const trimmedUsername = typeof username === 'string' ? username.trim() : '';
+        const trimmedName = typeof name === 'string' ? name.trim() : '';
+        const trimmedEmail = typeof email === 'string' ? email.trim() : '';
 
         // Validation
-        if (!username || username.length < 3) {
+        if (trimmedUsername.length < 3) {
             return NextResponse.json({ error: "Username must be at least 3 characters" }, { status: 400 });
         }
 
-        const usernameRegex = /^[a-zA-Z0-9_]+$/;
-        if (!usernameRegex.test(username)) {
-            return NextResponse.json({ error: "Username can only contain letters, numbers, and underscores" }, { status: 400 });
+        const usernameRegex = /^[a-zA-Z0-9_.-]+$/;
+        if (!usernameRegex.test(trimmedUsername)) {
+            return NextResponse.json({ error: "Username can only contain letters, numbers, underscores, hyphens, and dots" }, { status: 400 });
         }
 
-        if (username.length > 30) {
+        if (trimmedUsername.length > 30) {
             return NextResponse.json({ error: "Username must be 30 characters or less" }, { status: 400 });
+        }
+        if (!trimmedName || trimmedName.length > 50) {
+            return NextResponse.json({ error: "Display name is required and must be 50 characters or less" }, { status: 400 });
         }
 
         // 🛡️ Sentinel: Reject reserved usernames
         const RESERVED_USERNAMES = ['admin', 'system', 'support', 'help', 'api', 'root', 'null', 'undefined', 'moderator', 'mod', 'official', 'ucfitness', 'undoucoin'];
-        if (RESERVED_USERNAMES.includes(username.toLowerCase())) {
+        if (RESERVED_USERNAMES.includes(trimmedUsername.toLowerCase())) {
             return NextResponse.json({ error: "This username is reserved" }, { status: 400 });
         }
 
@@ -42,25 +48,31 @@ export async function POST(request: Request) {
         // But logic says we ask for email if it's pending.
 
         const updates: { username: string; name: string; updated_at: string; email?: string } = {
-            username: username,
-            name: name,
+            username: trimmedUsername,
+            name: trimmedName,
             updated_at: new Date().toISOString()
         };
 
-        if (email) {
+        const isPendingSetup = session.user.email.endsWith('@pending.setup');
+        if (isPendingSetup && !trimmedEmail) {
+            return NextResponse.json({ error: "Email is required to complete setup" }, { status: 400 });
+        }
+        if (trimmedEmail) {
+            if (trimmedEmail.toLowerCase().endsWith('@pending.setup')) {
+                return NextResponse.json({ error: "Enter a permanent email address" }, { status: 400 });
+            }
             // 🛡️ Sentinel: Security Check
             // Only allow email updates if the current email is a temporary setup email.
             // This prevents account takeover attempts via email change on already set up accounts.
-            const isPendingSetup = session.user.email.endsWith('@pending.setup');
-            if (!isPendingSetup && email !== session.user.email) {
+            if (!isPendingSetup && trimmedEmail !== session.user.email) {
                 return NextResponse.json({ error: "Email change not allowed for fully registered users" }, { status: 403 });
             }
 
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
+            if (!emailRegex.test(trimmedEmail)) {
                 return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
             }
-            updates.email = email;
+            updates.email = trimmedEmail;
         }
 
         // 🚀 パフォーマンス: メール・ユーザー名の一意性チェックを並列実行
@@ -78,7 +90,7 @@ export async function POST(request: Request) {
             supabaseAdmin
                 .from('users')
                 .select('id')
-                .eq('username', username)
+                .eq('username', trimmedUsername)
                 .neq(userId ? 'id' : 'email', userId || session.user.email) // Ignore self
                 .single(),
         ]);

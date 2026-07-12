@@ -2,7 +2,7 @@
 
 export const runtime = 'edge';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
@@ -10,7 +10,7 @@ import ProfileImageEditor from "@/components/profile/ProfileImageEditor";
 import Spinner from '@/components/ui/Spinner';
 
 export default function SetupPage() {
-    const { data: session, update } = useSession();
+    const { data: session, status, update } = useSession();
     const router = useRouter();
     const t = useTranslations('Setup');
     const [name, setName] = useState('');
@@ -22,8 +22,14 @@ export default function SetupPage() {
     const [currentImage, setCurrentImage] = useState<string | null>(null);
     const [isCustomImage, setIsCustomImage] = useState(false);
     const usernameRef = useRef<HTMLInputElement>(null);
+    const nameRef = useRef<HTMLInputElement>(null);
+    const emailRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        if (status === 'unauthenticated') {
+            router.replace('/');
+            return;
+        }
         const checkStatus = async () => {
             if (session?.user) {
                 setCurrentImage(session.user.image || null);
@@ -53,21 +59,44 @@ export default function SetupPage() {
         };
 
         checkStatus();
-    }, [session, update, router]);
+    }, [session, status, update, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError(null);
+        const trimmedUsername = username.trim();
+        const trimmedName = name.trim();
+        const trimmedEmail = email.trim();
+        if (!trimmedName) {
+            setError(t('displayNameRequired'));
+            nameRef.current?.focus();
+            return;
+        }
+        if (trimmedUsername.length < 3 || trimmedUsername.length > 30 || !/^[a-zA-Z0-9_.-]+$/.test(trimmedUsername)) {
+            setError(t('usernameInvalid'));
+            usernameRef.current?.focus();
+            return;
+        }
+        if (needsEmail && !trimmedEmail) {
+            setError(t('emailRequired'));
+            emailRef.current?.focus();
+            return;
+        }
+        if (needsEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+            setError(t('emailInvalid'));
+            emailRef.current?.focus();
+            return;
+        }
+        setLoading(true);
 
         try {
             const res = await fetch('/api/user/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    username,
-                    name,
-                    email: needsEmail ? email : undefined
+                    username: trimmedUsername,
+                    name: trimmedName,
+                    email: needsEmail ? trimmedEmail : undefined
                 }),
             });
 
@@ -94,7 +123,7 @@ export default function SetupPage() {
         }
     };
 
-    if (!session) {
+    if (status !== 'authenticated' || !session) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-[var(--theme-page-bg)]" role="status">
                 <Spinner size="lg" />
@@ -144,7 +173,18 @@ export default function SetupPage() {
                             });
                         }}
                     >
-                        <div className="relative group cursor-pointer" role="button" tabIndex={0} aria-label={t('changePhoto')}>
+                        <div
+                            className="relative group cursor-pointer"
+                            role="button"
+                            tabIndex={0}
+                            aria-label={t('changePhoto')}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    event.currentTarget.click();
+                                }
+                            }}
+                        >
                             <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-[var(--surface-container)]">
                                 {currentImage ? (
                                     <img src={currentImage} alt="" className="h-full w-full object-cover" />
@@ -168,7 +208,7 @@ export default function SetupPage() {
                 </div>
 
                 <div className="glass-card rounded-2xl py-6 px-4 sm:px-8 shadow-lg">
-                    <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+                    <form className="space-y-5" onSubmit={handleSubmit}>
                         {error && (
                             <div className="rounded-xl bg-red-50 border border-red-200 p-3" role="alert">
                                 <p className="text-sm text-red-700 font-medium">{error}</p>
@@ -185,6 +225,9 @@ export default function SetupPage() {
                                 name="username"
                                 type="text"
                                 required
+                                minLength={3}
+                                maxLength={30}
+                                pattern="[A-Za-z0-9_.-]+"
                                 autoComplete="username"
                                 aria-required="true"
                                 aria-invalid={error ? 'true' : undefined}
@@ -205,6 +248,7 @@ export default function SetupPage() {
                             </label>
                             <input
                                 id="name"
+                                ref={nameRef}
                                 name="name"
                                 type="text"
                                 required
@@ -225,6 +269,7 @@ export default function SetupPage() {
                                 </label>
                                 <input
                                     id="email"
+                                    ref={emailRef}
                                     name="email"
                                     type="email"
                                     required
@@ -244,7 +289,7 @@ export default function SetupPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] hover:opacity-90 hover:shadow-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2 disabled:opacity-50 transition-all shadow-md shadow-[var(--theme-primary)]/20"
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-primary-solid)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--color-primary-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 disabled:opacity-50"
                         >
                             {loading && <Spinner size="xs" />}
                             {loading ? t('saving') : t('submit')}

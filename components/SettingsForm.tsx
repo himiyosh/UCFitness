@@ -157,7 +157,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     }, [name, username, router, t]);
 
     return (
-        <div className="grid max-h-[calc(100dvh-10.5rem)] min-h-0 grid-cols-1 gap-3 overflow-y-auto pr-1 styled-scrollbar lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:overflow-hidden">
+        <div className="grid min-h-0 grid-cols-1 gap-3 lg:max-h-[calc(100dvh-10.5rem)] lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:overflow-hidden">
             {/* フルサイズプレビュー用モーダル */}
             <ImageModal
                 isOpen={isImageModalOpen}
@@ -254,8 +254,8 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     className="block min-h-[44px] w-full rounded-lg border-gray-300 py-2 pl-8 text-gray-900 focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm"
-                                    maxLength={20}
-                                    minLength={6}
+                                    maxLength={30}
+                                    minLength={3}
                                     pattern="[a-zA-Z0-9_\-\.]+"
                                     aria-describedby="username-hint"
                                 />
@@ -506,12 +506,16 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     setNotifyReactions(newVal);
                                     setIsSavingNotify(true);
                                     try {
-                                        await fetch('/api/user/notification-settings', {
+                                        const response = await fetch('/api/user/notification-settings', {
                                             method: 'PUT',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ notificationReactions: newVal, notificationGearReactions: notifyGearReactions }),
                                         });
-                                    } catch { setNotifyReactions(!newVal); }
+                                        if (!response.ok) throw new Error('Failed to save notification settings');
+                                    } catch {
+                                        setNotifyReactions(!newVal);
+                                        setMessage({ text: t('saveError'), type: 'error' });
+                                    }
                                     finally { setIsSavingNotify(false); }
                                 }}
                             >
@@ -536,12 +540,16 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     setNotifyGearReactions(newVal);
                                     setIsSavingNotify(true);
                                     try {
-                                        await fetch('/api/user/notification-settings', {
+                                        const response = await fetch('/api/user/notification-settings', {
                                             method: 'PUT',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ notificationReactions: notifyReactions, notificationGearReactions: newVal }),
                                         });
-                                    } catch { setNotifyGearReactions(!newVal); }
+                                        if (!response.ok) throw new Error('Failed to save notification settings');
+                                    } catch {
+                                        setNotifyGearReactions(!newVal);
+                                        setMessage({ text: t('saveError'), type: 'error' });
+                                    }
                                     finally { setIsSavingNotify(false); }
                                 }}
                             >

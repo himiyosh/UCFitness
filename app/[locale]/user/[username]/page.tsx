@@ -1,6 +1,8 @@
 export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
+import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from 'next/link';
 import ActivityGraph from '@/components/ActivityGraph';
@@ -11,7 +13,7 @@ import AchievementProgress from '@/components/profile/AchievementProgress';
 import RefreshButton from '@/components/layout/RefreshButton';
 import NotificationBell from '@/components/layout/NotificationBell';
 import Breadcrumbs from '@/components/layout/Breadcrumbs';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getUserBadges } from "@/lib/services/badge-service";
 import { getEquippedItems } from "@/lib/services/shop-service";
 import { getRankings } from "@/lib/services/ranking-service";
@@ -42,6 +44,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const params = await props.params;
     const session = await auth();
     const { username, locale } = params;
+    if (!session?.user) {
+        redirect(createLoginRequiredRedirect(locale, `/user/${encodeURIComponent(username)}`));
+    }
     // ⚡ パフォーマンス: 翻訳取得を並列化
     const [t, commonT, dashboardT] = await Promise.all([
         getTranslations('Profile'),
@@ -51,12 +56,16 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
     // Fetch target user data
     // 🛡️ Sentinel: email を除外して PII 漏洩を防止
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseAdmin
         .from("users")
         .select("id, name, image, group_keyword, username, step_goal, is_custom_image, banner_url")
         .eq("username", username)
         .single();
 
+    if (userError && userError.code !== 'PGRST116') {
+        reportError('profile:user', userError, { username });
+        throw new Error('Failed to load profile user');
+    }
     if (!user) {
         notFound();
     }
@@ -92,10 +101,19 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         supabaseAdmin
             .rpc('get_user_step_stats', { p_user_id: user.id }),
         // ⭐ パフォーマンス: ランキングも並列取得
-        getRankings('GLOBAL', 'WEEKLY').catch(() => [] as any[]),
+        getRankings('GLOBAL', 'WEEKLY'),
         // コイン残高（パーソナルレコード用）
         getCoinBalance(user.id),
     ]);
+
+    const profileQueryError = publicGroupsResult.error
+        ?? recommendedResult.error
+        ?? recentHistoryResult.error
+        ?? statsResult.error;
+    if (profileQueryError) {
+        reportError('profile:data', profileQueryError, { userId: user.id });
+        throw new Error('Failed to load profile data');
+    }
 
     let primaryGroup: any = undefined;
     const publicGroups = publicGroupsResult.data;
