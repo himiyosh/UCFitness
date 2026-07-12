@@ -1,12 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import { useTranslations } from 'next-intl';
+
 import ImageModal from '@/components/ui/ImageModal';
 import UserAvatar from '@/components/UserAvatar';
 import { useToast } from '@/components/ui/Toast';
-import { useTranslations } from 'next-intl';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+
 import LeaveGroupButton from './LeaveGroupButton';
 
 type Member = {
@@ -58,6 +63,15 @@ export default function GroupMembersPanel({
     const commonT = useTranslations('Common');
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchAbortRef = useRef<AbortController | null>(null);
+    const confirmDialogRef = useRef<HTMLDivElement>(null);
+    const confirmCancelButtonRef = useRef<HTMLButtonElement>(null);
+
+    useDialogFocus({
+        isOpen: Boolean(confirmAction),
+        onClose: () => setConfirmAction(null),
+        dialogRef: confirmDialogRef,
+        initialFocusRef: confirmCancelButtonRef,
+    });
 
     useEffect(() => {
         setMembers(initialMembers);
@@ -357,26 +371,29 @@ export default function GroupMembersPanel({
             )}
 
             {/* 確認ダイアログ（alert/confirm の代替） */}
-            {confirmAction && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmAction(null)}>
-                    <div className="bg-white rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            {confirmAction && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={() => setConfirmAction(null)}>
+                    <div ref={confirmDialogRef} role="dialog" aria-modal="true" aria-labelledby="group-member-confirm-title" tabIndex={-1} className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl outline-none animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <h2 id="group-member-confirm-title" className="sr-only">{detailT('confirm')}</h2>
                         <p className="text-sm mb-4 text-[var(--foreground)]">{confirmAction.message}</p>
                         <div className="flex gap-2 justify-end">
                             <button
+                                ref={confirmCancelButtonRef}
                                 onClick={() => setConfirmAction(null)}
-                                className="text-xs font-bold px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-[var(--foreground-muted)]"
+                                className="min-h-[44px] rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-[var(--foreground-muted)] transition-colors hover:bg-gray-100"
                             >
                                 {detailT('cancel')}
                             </button>
                             <button
                                 onClick={confirmAction.onConfirm}
-                                className="text-xs font-bold px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
+                                className="min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)]"
                             >
                                 {detailT('confirm')}
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
 
             <ul className="divide-y divide-gray-100">

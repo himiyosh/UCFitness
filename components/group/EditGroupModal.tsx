@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+
 import DeleteGroupButton from './DeleteGroupButton';
 
 const MAX_NAME_LENGTH = 50;
@@ -37,6 +40,8 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
     const headerUrlRef = useRef<string | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
+    useDialogFocus({ isOpen, onClose, dialogRef: modalRef, canClose: () => !isSubmitting });
+
     // オブジェクトURLのメモリリーク防止
     useEffect(() => {
         return () => {
@@ -44,21 +49,6 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
             if (headerUrlRef.current) URL.revokeObjectURL(headerUrlRef.current);
         };
     }, []);
-
-    // Escキーでモーダルを閉じる
-    useEffect(() => {
-        if (!isOpen) return;
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && !isSubmitting) onClose();
-        };
-        document.addEventListener('keydown', handleEscape);
-        return () => document.removeEventListener('keydown', handleEscape);
-    }, [isOpen, isSubmitting, onClose]);
-
-    // モーダルオープン時にフォーカス
-    useEffect(() => {
-        if (isOpen && modalRef.current) modalRef.current.focus();
-    }, [isOpen]);
 
     // プロパティ変更時に状態を同期（モーダルが開くたびに最新値を反映）
     useEffect(() => {
@@ -202,13 +192,13 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
     if (!mounted || !isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 isolate" role="dialog" aria-modal="true" aria-label="Edit Group Details">
+        <div className="fixed inset-0 z-[100] isolate flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-group-dialog-title">
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={!isSubmitting ? onClose : undefined} aria-hidden="true" />
 
             <div ref={modalRef} tabIndex={-1} className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in z-50 max-h-[90vh] overflow-y-auto outline-none">
                 <form onSubmit={handleSubmit}>
                     <div className="p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6">Edit Group Details</h2>
+                        <h2 id="edit-group-dialog-title" className="text-xl font-bold text-gray-900 mb-6">Edit Group Details</h2>
 
                         {/* エラー表示 */}
                         {error && (
@@ -287,7 +277,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                     {iconPreview ? (
                                         <img src={iconPreview} alt="Icon Preview" className="h-full w-full object-cover" />
                                     ) : (
-                                        <div className="flex items-center justify-center h-full text-indigo-300 font-bold text-2xl">
+                                        <div className="flex h-full items-center justify-center text-2xl font-bold text-[var(--color-primary-strong)]">
                                             {currentName.substring(0, 1).toUpperCase()}
                                         </div>
                                     )}
@@ -365,4 +355,3 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
         document.body
     );
 }
-

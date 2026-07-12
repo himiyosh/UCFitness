@@ -66,6 +66,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <ToastContext.Provider value={{ toast: addToast, success, error }}>
             {children}
             <div
+                data-dialog-live-region
                 className="pointer-events-none fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px)+0.75rem)] left-4 right-4 z-[200] flex w-auto max-w-sm flex-col gap-2 lg:bottom-4 lg:left-auto"
                 aria-live="polite"
                 aria-relevant="additions"

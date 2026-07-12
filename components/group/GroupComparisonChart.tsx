@@ -206,7 +206,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         }
                     }}
                     disabled={isSharing}
-                    className={`p-1.5 rounded-full transition-all ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] cursor-wait' : `${isMidnight ? 'text-slate-500' : 'text-gray-400'} hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]`}`}
+                    className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--color-primary-strong)] cursor-wait' : `${isMidnight ? 'text-slate-300' : 'text-gray-600'} hover:text-[var(--color-primary-strong)] hover:bg-[var(--theme-primary-light)]`}`}
                     aria-label="Share Group Stats"
                     title="Share Group Stats"
                 >
@@ -227,7 +227,6 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             <div className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] select-none" role="img" aria-label={`${title || 'Comparison'}: ${data.length} data points, ${users.length} members`}>
                 <style jsx global>{`
                     .recharts-wrapper, .recharts-surface { outline: none !important; }
-                    *:focus { outline: none !important; }
                     -webkit-tap-highlight-color: transparent;
                 `}</style>
                 <ResponsiveContainer width="100%" height="100%">

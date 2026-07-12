@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+
 import { useTranslations } from 'next-intl';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 interface CreateGroupEventModalProps {
     groupId: string;
@@ -25,6 +29,16 @@ export default function CreateGroupEventModal({
     const [rewardUc, setRewardUc] = useState(300);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    useDialogFocus({
+        isOpen: true,
+        onClose,
+        dialogRef,
+        initialFocusRef: titleInputRef,
+        canClose: () => !submitting,
+    });
 
     // 今日の日付（YYYY-MM-DD）
     const today = new Date().toISOString().split('T')[0];
@@ -80,8 +94,10 @@ export default function CreateGroupEventModal({
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* オーバーレイ */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -89,15 +105,17 @@ export default function CreateGroupEventModal({
             />
 
             {/* モーダル */}
-            <div className="relative bg-white midnight-solid-panel rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="create-group-event-dialog-title" tabIndex={-1} className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl outline-none midnight-solid-panel">
                 {/* ヘッダー */}
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                    <h2 className="text-lg font-bold text-gray-900">
+                    <h2 id="create-group-event-dialog-title" className="text-lg font-bold text-gray-900">
                         🏆 {t('createEvent')}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
+                        type="button"
+                        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xl leading-none text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                        aria-label={commonT('close')}
                     >
                         ✕
                     </button>
@@ -112,6 +130,7 @@ export default function CreateGroupEventModal({
                         </label>
                         <input
                             type="text"
+                            ref={titleInputRef}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             maxLength={100}
@@ -149,7 +168,7 @@ export default function CreateGroupEventModal({
                     </div>
 
                     {/* 日付範囲 */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1">
                                 {t('startDate')} <span className="text-red-500">*</span>
@@ -229,6 +248,7 @@ export default function CreateGroupEventModal({
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
