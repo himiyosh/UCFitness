@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { auth } from "@/lib/auth";
+import { reportError } from '@/lib/errors';
 import { getCachedGlobalRankingMap } from '@/lib/services/ranking-service';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
@@ -30,6 +31,7 @@ export const dynamic = 'force-dynamic';
 export default async function Home(): Promise<ReactNode> {
   const session = await auth();
   const t = await getTranslations('Dashboard');
+  const commonT = await getTranslations('Common');
 
   if (!session?.user) {
     return <LandingPage />;
@@ -64,6 +66,14 @@ export default async function Home(): Promise<ReactNode> {
   ]);
 
   const userData = userResult.data;
+  const dashboardDataError = Boolean(userResult.error || stepsResult.error);
+  let rankingDataError = false;
+  if (userResult.error) {
+    reportError('home:user', userResult.error, { userId });
+  }
+  if (stepsResult.error) {
+    reportError('home:steps', stepsResult.error, { userId, date: today });
+  }
   stepGoal = userData?.step_goal || 10000;
   username = userData?.username || '';
   dbUserName = userData?.name || null;
@@ -75,7 +85,7 @@ export default async function Home(): Promise<ReactNode> {
     if (userData.name) session.user.name = userData.name;
   }
 
-  if (!userData?.username) {
+  if (!userResult.error && !userData?.username) {
     redirect('/setup');
   }
 
@@ -87,7 +97,15 @@ export default async function Home(): Promise<ReactNode> {
   const hasTodayStepRecord = stepsMap.has(today);
   mySteps = stepsMap.get(today) || 0;
 
-  const rankingMap = await getCachedGlobalRankingMap();
+  let rankingMap: Awaited<ReturnType<typeof getCachedGlobalRankingMap>> = {};
+  if (!dashboardDataError) {
+    try {
+      rankingMap = await getCachedGlobalRankingMap();
+    } catch (error: unknown) {
+      reportError('home:ranking', error, { userId });
+      rankingDataError = true;
+    }
+  }
   // 週次ラベルと同じ期間で、0歩のユーザーを除いた到達可能な差だけを示す。
   const weeklyRankings = Object.entries(rankingMap)
     .filter(([, stats]) => stats.WEEKLY > 0)
@@ -103,22 +121,24 @@ export default async function Home(): Promise<ReactNode> {
   const remainingSteps = Math.max(0, stepGoal - mySteps);
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col bg-[var(--theme-page-bg)]">
+    <main className="flex min-h-dvh flex-1 flex-col bg-[var(--theme-page-bg)]">
       <h1 className="sr-only">{t('todayCommandCenter')}</h1>
       {/* ヘッダー: モバイル〜md では表示、lg 以上ではサイドバーがあるためコンパクト */}
-      <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:hidden">
-        <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <header data-auth-header className="uc-home-header app-safe-top sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:hidden">
+        <div className="mx-auto flex h-12 w-full max-w-[1440px] items-center justify-between px-3 sm:h-14 sm:px-6 lg:px-8">
+          <div className="min-w-0">
             <Link href="/" className="group flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2">
-              <span className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                {t('title', { defaultMessage: 'UCFitness' })}
+              <AppBrandMark />
+              <span className="truncate text-lg font-black tracking-tight sm:text-xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
+                <span className="text-[var(--color-primary-strong)]">UC</span>
+                <span className="text-[var(--color-text)]">Fitness</span>
               </span>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white text-[10px] font-bold tracking-wide uppercase shadow-sm">
+              <span className="hidden rounded-full bg-[var(--color-primary-soft)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--color-primary-strong)] sm:inline-block">
                 {t('beta')}
               </span>
             </Link>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="header-action-cluster flex shrink-0 items-center gap-0.5 overflow-visible rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-0.5">
             <RefreshButton />
             <NotificationBell />
             <UserMenu user={{
@@ -134,9 +154,13 @@ export default async function Home(): Promise<ReactNode> {
       <div className="flex-1 flex flex-col min-w-0">
 
       {/* lg 以上のヘッダー（サイドバーと共存するコンパクト版） */}
-      <header className="sticky top-0 z-40 hidden border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
-        <div className="mx-auto flex h-11 w-full max-w-7xl items-center justify-end px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-1">
+      <header data-auth-header className="uc-home-header sticky top-0 z-40 hidden overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:block">
+        <div className="mx-auto flex h-12 w-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-success)] shadow-[0_0_0_4px_var(--color-success-soft)]" aria-hidden="true" />
+            <span className="truncate">{t('todayCommandCenter')}</span>
+          </div>
+          <div className="header-action-cluster flex shrink-0 items-center gap-0.5 overflow-visible rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-0.5">
             <RefreshButton />
             <NotificationBell />
             <UserMenu user={{
@@ -150,8 +174,57 @@ export default async function Home(): Promise<ReactNode> {
       </header>
 
       {/* ===== 今日の進捗 → 競争 → UC報酬 → 次の行動 ===== */}
-      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
-        <div className="flex w-full flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col">
+        <div className="w-full px-4 py-3 sm:px-6 lg:px-8">
+          {dashboardDataError ? (
+            <section
+              className="rounded-2xl border border-[var(--color-danger)]/30 bg-[var(--color-surface)] p-4 shadow-sm sm:p-5"
+              role="alert"
+              aria-labelledby="dashboard-data-error-title"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-surface-muted)] text-[var(--color-danger)]" aria-hidden="true">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                    </svg>
+                  </span>
+                  <div className="min-w-0">
+                    <h2 id="dashboard-data-error-title" className="text-base font-bold text-[var(--color-text)]">
+                      {t('dataUnavailableTitle')}
+                    </h2>
+                    <p className="mt-1 max-w-prose text-sm leading-6 text-[var(--color-text-muted)]">
+                      {t('dataUnavailableDescription')}
+                    </p>
+                  </div>
+                </div>
+                <form action="/" method="get">
+                  <button
+                    type="submit"
+                    className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                  >
+                    {commonT('retry')}
+                  </button>
+                </form>
+              </div>
+            </section>
+          ) : (
+            <>
+          {rankingDataError && (
+            <section className="mb-3 rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-surface)] p-3 shadow-sm" role="status">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--color-text)]">{t('rankingUnavailableTitle')}</h2>
+                  <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{t('rankingUnavailableDescription')}</p>
+                </div>
+                <form action="/" method="get">
+                  <button type="submit" className="inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
+                    {commonT('retry')}
+                  </button>
+                </form>
+              </div>
+            </section>
+          )}
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.8fr)_minmax(280px,1fr)]">
             <div className="min-w-0 md:col-span-2 lg:col-span-1">
               <HomeHero
@@ -176,10 +249,14 @@ export default async function Home(): Promise<ReactNode> {
             </div>
           </div>
 
-          <NextActionCard id="next-action" remainingSteps={remainingSteps} />
-          <QuickActions />
+          <div className="mt-3 grid items-stretch gap-3 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
+            <NextActionCard id="next-action" remainingSteps={remainingSteps} />
+            <QuickActions className="h-full" />
+          </div>
+            </>
+          )}
         </div>
-        <div className="home-desktop-footer hidden md:block">
+        <div className="home-desktop-footer mt-auto hidden md:block">
           <Footer />
         </div>
       </div>
@@ -190,5 +267,17 @@ export default async function Home(): Promise<ReactNode> {
       <LoginBonusToast userId={userId} />
       <AutoSync />
     </main>
+  );
+}
+
+function AppBrandMark(): ReactNode {
+  return (
+    <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] ring-1 ring-[var(--color-primary)]/20">
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 15.5 8.5 11l3 3L20 5.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5 19h14" stroke="var(--color-reward)" strokeWidth="2.4" strokeLinecap="round" />
+        <circle cx="18.5" cy="5.5" r="2.25" fill="var(--color-success)" />
+      </svg>
+    </span>
   );
 }

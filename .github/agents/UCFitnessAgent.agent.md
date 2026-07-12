@@ -943,6 +943,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 16. **Supabase 埋め込みカウント形式チェック** — `(count)` を使った埋め込みクエリの結果を抽出する際、`Array.isArray()` で配列/オブジェクト両形式をハンドルしているか確認。`data?.[0]?.count` のみの抽出はバグの可能性あり
 17. **Server/Client 境界チェック** — Server Component (`page.tsx`, `layout.tsx`, `'use client'` 宣言なしのファイル) が `'use client'` モジュールから**関数を import して呼び出していないか**確認。`tsc --noEmit` はこの違反を原理的に検出できない。`'use client'` モジュールからは React コンポーネントの import のみ許可。ユーティリティ関数（型変換マップ等）は `lib/` の共有モジュールに配置すること
 18. **CSP環境分離チェック** — 本番CSPでは `upgrade-insecure-requests` を維持し、開発CSPには含めない。Safariのlocalhost確認ではHTMLだけでなく `layout.css` のHTTP 200と実際のスタイル適用を確認する
+19. **ホームデータ失敗の状態分離** — `users` / `daily_steps` / rankingの取得失敗を0歩・同期待ち・未集計・`/setup`へ変換しない。`.error`を確認し、明示エラーUIへ分岐する。ranking serviceは失敗時に空mapを返さず伝播する
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -989,12 +990,18 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **`position: absolute` + レスポンシブオーバーライドの座標検証必須** — `absolute` 配置で `top/left` + `translate` による中央配置を行う要素が `sm:`/`md:` オーバーライドを持つ場合、各ブレイクポイントで参照コンテナのサイズ・向きを考慮した座標計算が正しいか検証する。特に親の `flex-direction` が変わる場合（`flex-col` → `sm:flex-row`）、子のabsolute座標は新しいレイアウト方向に合わせて再計算が必要。**古いレイアウト用の `sm:` 座標が残存していないか必ず確認すること。** リファレンス: `GroupList.tsx`（アイコン中央配置修正）
 - **モバイルで root スクロールを無効化しない** — `html/body` の `overflow: hidden` や全画面スケーリング（`transform: scale`）は、モバイルで下部パネル・CTA の見切れ/操作不能を起こしやすい。全画面スケーリングは `lg:` 以上に限定し、モバイルは通常スクロールを維持すること。
 - **固定ボトムナビのsafe-areaを本文余白にも加算する** — ナビが`h-16` + `env(safe-area-inset-bottom)`なら、App Shellも`calc(4rem + env(safe-area-inset-bottom, 0px))`を下余白として予約する。固定`pb-16`だけで完了しない。リファレンス: `app/[locale]/layout.tsx`, `components/layout/BottomNavBar.tsx`
+- **mobile app出荷契約** — `viewportFit: 'cover'`、固定ヘッダーの`safe-area-inset-top`、固定ボトムナビと本文の`safe-area-inset-bottom`を同時に確認する。hoverだけに依存せず、全主要操作は44px、visible focus、active feedbackを持つ
+- **ヘッダー操作群のgeometryを実測する** — 44〜48pxヘッダーではvisual avatar/iconを32px基準にし、通知badgeを負座標で外へ出さない。375px/1280pxでheader・avatar・badgeの`getBoundingClientRect()`を比較し、上下見切れが1pxでもあればFAIL
+- **brand markをモノクロへ戻さない** — 認証後App Shellは青・緑・アンバーの意味色から最低2色を使うmark + solid wordmarkを維持する。グラデーション文字だけでブランドを表現しない
+- **interactive panel contract** — link cardはcursor、hover、focus、activeに加えchevronまたは動詞ラベルを持つ。静的カードと同じ見た目のまま出荷しない。リファレンス: `QuickActions.tsx`, `DashboardChallenges.tsx`
 - **sticky要素の祖先へ `overflow-x-hidden` + `overflow-y-auto` を付けない** — 横方向だけを切り抜く目的でも新しいスクロールコンテナが生成され、documentスクロール時にstickyヘッダーが追従しなくなる。ページラッパーは `overflow-x-clip` を使う。ただし1ページのsticky修正を理由にグローバルな `html/body` overflowを変更しない。固定ヘッダーへ切り替える場合は同一ページ内でヘッダー高のpaddingを確保し、本文の重なり・アンカー移動・モーダルの背景スクロールを実測する。リファレンス: `components/LandingPage.tsx`
 - **ビューポート高さにコンテンツを閉じ込めない** — `h-[calc(100dvh-Npx)]` + `overflow-hidden` でコンテンツを固定高さに閉じ込めるパターンは、ブラウザクロム・ツールバー・デバイスにより実際の表示領域が変動するため見切れの原因になる。ページ全体は自然スクロールに任せ、`overflow-hidden` + 固定高さはモーダルやドロップダウンなど「意図的に領域を限定する」コンポーネントのみに使用する
 - **サイドパネル `sticky` のモバイル適用禁止** — 2カラムの右パネルで `sticky top-*` を使う場合、モバイルには適用しない（`lg:sticky` を使用）。モバイルで `sticky` を有効にすると、Join/Create などのパネルが部分表示のまま固定化されることがある。
 - **2 カラム高さ合わせのためにカード内部へ空白を押し込まない** — `items-stretch` や `h-full` で短いカードを引き伸ばし、カード下部に意味のない余白を作るのは NG。`QuickActions` のような独立ウィジェットを別行へ逃がし、カードは自然高さのまま配置を再構成すること。例外として、ユーザーが下端揃えを明示的に要求した場合のみ stretch を許可するが、その場合は **`grid auto-rows-fr` でリスト行自体が余剰高さを均等に分担する方式を使う**こと。`mt-auto` でフッターだけを押し下げる方式は禁止（フッターとリストの間に大きな空白帯が発生する）。リファレンス: `app/[locale]/page.tsx`, `components/DailyMissions.tsx`
 - **グリッド子要素に `h-full` を付けて親の `items-start` を無効化しない** — CSS Grid で `items-start` を指定している場合、子要素に `h-full` を付けるとグリッドセルの全高まで引き延ばされ `items-start` が無効化される。`justify-center` を併用すると上下に巨大な空白が発生する。グリッド子要素は自然高さに任せ、整列は親の `items-*` に委任すること。カード内部のサブグリッドでも同じルールが適用される。リファレンス: `GroupRankingPanel.tsx`（左カラムから `h-full justify-center` を削除して修正）
 - **デスクトップのフッター下に背景だけの空白を残さない** — デスクトップのページラッパーは `flex-1 flex-col` を基本とし、短いページではフッターを viewport 下端へ寄せること。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
+- **Footer位置はclassではなく座標で判定する** — 短いページでは`footer.bottom === innerHeight`を1280px/1920pxで実測する。Footer下に1px超のデッドスペース、または画面中央配置があればFAIL
+- **PC first-view密度** — 1280px/1920pxで今日の進捗・競争・報酬・次の行動の4役が同一viewport内で認識可能か確認する。大きな空白をカードstretchやroot scaleで埋めず、canvas幅と配置再構成で解決する
 
 **リーダーボード / ランキング統一ルール（ユーザー繰り返し指摘 — 変更厳禁）:**
 
@@ -1191,6 +1198,10 @@ MCP Playwright を使い、変更されたページの PC・モバイル表示�
 - [ ] **Playwright フルページ検証（UI 変更時は必須）:** モバイル (375×667) とデスクトップ (1280×800) の **両方** でフルページスクロールスルーを実行し、全セクションのスクリーンショットを撮影・内容を言語化して報告すること。top/bottom の 2 枚だけでの通過は禁止
 - [ ] **デスクトップ表示確認（レスポンシブ変更時は必須）:** モバイル向けの変更（`hidden sm:block`、`sm:hidden`、`flex-col sm:flex-row` 等のレスポンシブクラス追加）を行った場合、デスクトップ表示が壊れていないことを Playwright で確認すること
 - [ ] **デスクトップ余白確認（UI 変更時は必須）:** カード内部に意味のない空白が増えていないこと、フッター下に背景だけのデッドスペースが残っていないことを確認すること
+- [ ] **Footer座標確認:** 1280px / 1920pxの短い状態でFooter下端がviewport下端と一致し、Footerが画面中央に浮いていない
+- [ ] **ヘッダーgeometry確認:** 375px / 1280pxでavatar・notification badge・button visualがheader rect内に収まり、44px操作領域を維持
+- [ ] **ブランド/affordance確認:** app logoに最低2意味色、link panelにchevron/動詞 + hover/focus/active、静的panelとの差がある
+- [ ] **mobile app確認:** viewport-fit cover、top/bottom safe-area、standalone相当の最初/最後の操作到達性を確認
 - [ ] **プロンプト自己改善トリガー確認（必須）:** 今回のタスクがトリガー条件（繰り返し修正・否定的フィードバック・新技術制約の発見等）に該当するか確認。該当する場合は Lessons Learned + copilot-instructions.md + サブエージェントルールを更新し、同一コミットに含めること
 - [ ] **Playwright ブラウザクローズ（必須）:** Playwright MCP を使用した場合、全検証完了後に **必ず `mcp_playwright_browser_close` を呼び出してブラウザウィンドウを閉じる**。スクリーンショット撮影・スナップショット取得後にブラウザを開いたまま放置しない
 - [ ] **Improvement Loop の場合:** `improvement-report.md` に「🔍 新機能提案」セクションが記載されている（Step 2.5 必須）
@@ -1323,6 +1334,9 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | 640px境界で公開LPの情報密度が急増した | 詳細表示を`sm`で開始した一方、複数カラム化は`md`からで、640〜767pxだけ1カラムの全詳細表示になった | **内容可視化とレイアウト分散のブレイクポイントを揃える。** 1px手前と境界値でページ高・section高を比較し、開示版から常時表示版への切替は複数カラム化と同時にする。リファレンス: `components/LandingPage.tsx` |
 | Safariでlocalhostが未装飾表示になった | 開発CSPにも`upgrade-insecure-requests`を含め、Safariが`/_next`のCSSをHTTPSへ変換した。ルートHTMLの200だけで表示成功と判断していた | **`upgrade-insecure-requests`は本番CSPだけに設定する。** ローカル確認ではCSS URLのHTTP 200と通常Safariでの実適用を確認する。リファレンス: `next.config.ts` |
 | 固定ボトムナビのsafe-area分だけ最下部コンテンツが隠れる可能性があった | ナビは`safe-area-inset-bottom`を加算したが、App Shellの予約余白は`pb-16`固定で、オーバーレイ実高と本文余白が一致していなかった | **固定下部UIの本体高とsafe-areaを本文側にも同じ`calc()`で予約する。** 375pxだけでなくホームインジケータ領域を含む端末条件で最下部CTAの到達性を確認する。リファレンス: `app/[locale]/layout.tsx`, `components/layout/BottomNavBar.tsx` |
+| 認証後UIの個別ルールが画面全体の品質を保証しなかった | 44px、意味色、Footer `mt-auto`をclass単位で確認し、header child rect、Footer bottom、first-view密度、link cardの操作状態を同時に測定していなかった | **App Shell出荷ゲートをgeometry + density + brand + affordance + safe-areaの5点セットにする。** 375/1280/1920で実測し、1項目でもFAILなら完了報告しない。リファレンス: `app/[locale]/page.tsx`, `app/globals.css`, `UserMenu.tsx`, `NotificationBell.tsx` |
+| DB障害が0歩・未集計・未設定に見えた | ホームとranking serviceがエラーをnull/空mapへ正規化し、正常な空状態と区別しなかった | **健康データの0と取得不能を分離する。** DBエラー時は数値カードを描画せず、明示エラーと再試行を表示する。リファレンス: `app/[locale]/page.tsx`, `lib/services/ranking-service.ts` |
+| rootの`overflow-y:auto`でsticky headerが追従しなかった | stickyの祖先bodyと実scroll要素documentElementが分離した | **rootは`overflow-x:clip; overflow-y:visible`でviewport自然スクロールを維持する。** 375pxでスクロール後のheader top=0を実測する。リファレンス: `app/globals.css` |
 
 ---
 

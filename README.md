@@ -17,7 +17,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | 機能 | 説明 |
 |---|---|
 | **歩数トラッキング** | Fitbit API と Google Health の段階移行型自動歩数同期 |
-| **ホームダッシュボード** | 今日の進捗、週間順位の追いつける差、UC 報酬、次の行動を意味色で表示。主要ラベルは12px以上、モバイルではsafe-area対応ナビとギア導線、デスクトップでは規約・連絡先へのFooterリンクも利用可能 |
+| **ホームダッシュボード** | 今日の進捗、週間順位の追いつける差、UC報酬、次の行動を意味色で表示。多色brand mark、明示的なlink panel、safe-area対応App Shell、PC向け高密度bento、viewport下端Footerを提供 |
 | **グループ対抗** | グループ作成・参加、メンバーランキング、週間レポート |
 | **リーダーボード** | 個人・グループ・パーセンタイルランキング |
 | **チャレンジ** | 期間限定のウォーキングチャレンジ |
@@ -132,7 +132,7 @@ UCFitness/
 |   +-- security-hardening-notes.md
 +-- .github/
 |   +-- copilot-instructions.md  # Copilot 共通指示
-|   +-- instructions/            # 補助 Instructions (18 ファイル)
+|   +-- instructions/            # 補助 Instructions (26 ファイル)
 |   |   +-- awesome-copilot/     # awesome-copilot から導入 (8 ファイル)
 │   +-- agents/                  # Copilot カスタムエージェント (14 ファイル)
 |   +-- skills/                  # Copilot スキル (5 スキル)
@@ -250,7 +250,7 @@ npm run pages:build
 | ファイル | 概要 |
 |---|---|
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | メイン指示 (コーディング規約、ページパターン、UI ルール等) |
-| [.github/instructions/](.github/instructions/) | 補助 Instructions (18 ファイル: a11y, hooks, security, mobile 等) |
+| [.github/instructions/](.github/instructions/) | 補助 Instructions (26 ファイル: a11y, hooks, security, mobile 等) |
 
 <details>
 <summary>awesome-copilot Instructions (クリックで展開)</summary>
@@ -278,7 +278,7 @@ npm run pages:build
 👤 User (VS Code Chat Panel / Slash Commands)
 │
 ├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
-│   │  専門ロールを委任し、認証安全性・公開LPの次アクション優先/狭幅情報保持/固定ヘッダー下のフォーカス/安全なモーション・通常ブラウザのCSS適用も完了前に検査
+│   │  専門ロールを委任し、認証安全性・App ShellのFooter/header geometry/brand/affordance/safe-area・公開LP・通常ブラウザのCSS適用を完了前に実測
 │   │
 │   ├── 📁 フロントエンド開発 (Next.js + React)
 │   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
@@ -342,11 +342,11 @@ npm run pages:build
 │
 ├── 📋 Shared Instructions (全エージェント共通ルール)
 │   ├── copilot-instructions.md            リポジトリ共通ルール・コーディング規約
-│   └── .github/instructions/ (18 files)   a11y / hooks / security / mobile 等
+│   └── .github/instructions/ (26 files)   a11y / hooks / security / mobile 等
 │
 └── 🔧 Skills (再利用可能なドメイン知識)
     ├── modern-web-guidance                Chrome Modern Web Guidance / Baseline 2024 / Web 標準ベストプラクティス
-    ├── self-critique-gate                 完了前の自己批判・回帰防止・Lessons Learned ゲート
+    ├── self-critique-gate                 完了前の自己批判・App Shell geometry・回帰防止・Lessons Learned ゲート
     ├── web-design-reviewer                UI/UX ビジュアルチェック・レスポンシブ検証
     ├── ucfitness-rule-enforcement         UCFitness 固有ルールの静的検出・強制
     ├── postgresql-optimization            PostgreSQL クエリ最適化・パフォーマンス分析
@@ -357,7 +357,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。専門ロールを自動判定し、OAuth・同期の安全性、公開LPのモバイル次アクション優先・狭幅情報保持・固定ヘッダー下のフォーカス・全フレームでコントラストを保つモーション品質、通常ブラウザでのCSS適用を含むローカル表示確認を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。専門ロールを自動判定し、OAuth・同期の安全性、認証App ShellのFooter下端・header child geometry・ブランド/押下アフォーダンス・mobile safe-area、公開LP、通常ブラウザのCSS適用を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
@@ -402,7 +402,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | スキル | 用途 |
 |---|---|
 | [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | Chrome Modern Web Guidance。HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善時に guide を検索・取得して適用する |
-| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。要件充足・回帰防止・検証証拠・Lessons Learned・README 同期を確認し、NG があれば修正→再批判を繰り返す |
+| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。要件充足・Footer/header geometry・mobile safe-area・データ失敗状態・回帰防止・検証証拠・Lessons Learnedを確認する |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
 | [ucfitness-rule-enforcement](.github/skills/ucfitness-rule-enforcement/SKILL.md) | UCFitness 固有ルール違反の静的検出・強制メカニズム |
 | [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |

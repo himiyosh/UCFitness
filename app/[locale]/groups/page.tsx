@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
@@ -27,7 +28,7 @@ export default async function MyGroupsPage() {
     const userId = (session.user as any).id;
 
     // ⚡ パフォーマンス: ユーザーデータ、メンバーシップ、翻訳を並列取得
-    const [userResult, membershipResult, t, dashboardT] = await Promise.all([
+    const [userResult, membershipResult, t, dashboardT, commonT] = await Promise.all([
         supabaseAdmin
             .from('users')
             .select('name, group_keyword, image, username')
@@ -49,12 +50,21 @@ export default async function MyGroupsPage() {
             .eq('user_id', userId),
         getTranslations('Groups'),
         getTranslations('Dashboard'),
+        getTranslations('Common'),
     ]);
 
     const userData = userResult.data;
     const memberships = membershipResult.data;
+    const pageDataError = Boolean(userResult.error || membershipResult.error);
+    let rankingDataError = false;
+    if (userResult.error) {
+        reportError('groups:user', userResult.error, { userId });
+    }
+    if (membershipResult.error) {
+        reportError('groups:memberships', membershipResult.error, { userId });
+    }
 
-    if (!userData?.username) {
+    if (!userResult.error && !userData?.username) {
         redirect('/setup');
     }
 
@@ -71,8 +81,18 @@ export default async function MyGroupsPage() {
 
     // ⚡ N+1 解消: グローバルランキングキャッシュからバッチで全グループのランキングを導出
     const groupIds = normalizedMemberships.map((m: any) => m.groups.id);
-    const globalRankings = await getCachedGlobalRankings();
-    const batchRankings = await deriveBatchGroupRankings(groupIds, globalRankings);
+    let globalRankings: Awaited<ReturnType<typeof getCachedGlobalRankings>> | null = null;
+    if (!pageDataError) {
+        try {
+            globalRankings = await getCachedGlobalRankings();
+        } catch (error: unknown) {
+            reportError('groups:rankings', error, { userId });
+            rankingDataError = true;
+        }
+    }
+    const batchRankings = globalRankings
+        ? await deriveBatchGroupRankings(groupIds, globalRankings)
+        : {};
 
     const membershipsWithRank = normalizedMemberships.map((m: any) => {
         const groupRankings = batchRankings[m.groups.id];
@@ -125,11 +145,11 @@ export default async function MyGroupsPage() {
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
             {/* Header */}
-            <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
+            <header data-auth-header className="sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
                 <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
+                            <h1 className="text-xl font-black tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary-strong)] sm:text-2xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
                                 {dashboardT('title')}
                             </h1>
                             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
@@ -146,6 +166,28 @@ export default async function MyGroupsPage() {
             </header>
 
             <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                {pageDataError ? (
+                    <section className="mb-4 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-surface)] p-4 shadow-sm" role="alert">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm font-semibold text-[var(--color-text)]">{commonT('error')}</p>
+                            <form action="/groups" method="get">
+                                <button
+                                    type="submit"
+                                    className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                                >
+                                    {commonT('retry')}
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+                ) : (
+                    <>
+                {rankingDataError && (
+                    <section className="mb-4 rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-surface)] p-3 shadow-sm" role="status">
+                        <p className="text-sm font-bold text-[var(--color-text)]">{dashboardT('rankingUnavailableTitle')}</p>
+                        <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{dashboardT('rankingUnavailableDescription')}</p>
+                    </section>
+                )}
 
                 {/* パンくずリスト */}
                 <div className="mb-4 sm:mb-6">
@@ -199,14 +241,18 @@ export default async function MyGroupsPage() {
                                         <span className="font-black text-base text-[var(--theme-primary)]">{sortedMemberships.length}</span>
                                         <span className="font-medium text-gray-500">{t('groupsJoined')}</span>
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5 text-xs">
-                                        <span className="font-black text-base text-[var(--theme-primary)]">{totalMembers}</span>
-                                        <span className="font-medium text-gray-500">{t('totalGroupMembers')}</span>
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5 text-xs">
-                                        <span className="font-black text-base text-[var(--theme-primary)]">{bestRank ? `#${bestRank}` : '—'}</span>
-                                        <span className="font-medium text-gray-500">{t('bestRank')}</span>
-                                    </span>
+                                    {!rankingDataError && (
+                                        <>
+                                            <span className="inline-flex items-center gap-1.5 text-xs">
+                                                <span className="font-black text-base text-[var(--theme-primary)]">{totalMembers}</span>
+                                                <span className="font-medium text-gray-500">{t('totalGroupMembers')}</span>
+                                            </span>
+                                            <span className="inline-flex items-center gap-1.5 text-xs">
+                                                <span className="font-black text-base text-[var(--theme-primary)]">{bestRank ? `#${bestRank}` : '—'}</span>
+                                                <span className="font-medium text-gray-500">{t('bestRank')}</span>
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -265,9 +311,10 @@ export default async function MyGroupsPage() {
                         </Link>
                     </aside>
                 </div>
+                    </>
+                )}
             </div>
             <Footer />
         </main>
     );
 }
-

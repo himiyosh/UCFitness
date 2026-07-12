@@ -249,7 +249,7 @@ export default function NotificationBell() {
                 aria-haspopup="dialog"
                 aria-controls={isOpen ? popoverId : undefined}
                 title={t('title')}
-                className="relative inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full text-[var(--theme-primary)] transition-all hover:bg-[var(--theme-primary-light)] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                className="relative inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center overflow-visible rounded-full text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] active:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
             >
                 {/* ベルSVGアイコン */}
                 <svg
@@ -266,7 +266,7 @@ export default function NotificationBell() {
 
                 {/* 未読バッジ */}
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-xs font-bold leading-none text-[var(--color-inverse-text)]">
+                    <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-xs font-bold leading-none text-[var(--color-inverse-text)] ring-2 ring-[var(--color-surface-muted)]">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}

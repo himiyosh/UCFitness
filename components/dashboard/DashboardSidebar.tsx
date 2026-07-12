@@ -60,14 +60,15 @@ export default function DashboardSidebar({
       {/* ロゴ */}
       <div className="px-3 pb-1.5 pt-3">
         <Link href="/" className="group flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-inverse-surface)] text-[var(--color-inverse-text)]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] ring-1 ring-[var(--color-primary)]/20">
             <BrandMark />
           </span>
           <span
             className="text-base font-semibold tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]"
             style={{ fontFamily: 'var(--font-inter), sans-serif' }}
           >
-            {dashT('title', { defaultMessage: 'UCFitness' })}
+            <span className="font-black text-[var(--color-primary-strong)]">UC</span>
+            <span className="font-black text-[var(--color-text)]">Fitness</span>
           </span>
           <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
             {dashT('beta')}
@@ -116,7 +117,7 @@ export default function DashboardSidebar({
               href={item.href}
               className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
                 isActive
-                  ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
+                  ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)] shadow-sm ring-1 ring-[var(--color-primary)]/20'
                   : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]'
               }`}
               aria-current={isActive ? 'page' : undefined}
@@ -162,9 +163,10 @@ function DashboardIcon() {
 
 function BrandMark() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-5 w-5" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 15.5 8.5 11l3 3L20 5.5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 19h14" />
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" stroke="currentColor" strokeWidth={2.3} d="M4 15.5 8.5 11l3 3L20 5.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" stroke="var(--color-reward)" strokeWidth={2.3} d="M5 19h14" />
+      <circle cx="18.5" cy="5.5" r="2.15" fill="var(--color-success)" />
     </svg>
   );
 }

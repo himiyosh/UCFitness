@@ -71,7 +71,9 @@ description: "Use when: finishing any UCFitness task, applying fixes, changing U
 | 翻訳変更 | `npm run check:i18n` |
 | UI 変更 | 375px / 1280px の実ブラウザ確認、必要に応じて 1920px |
 | 100% 表示の密度変更 | 375px / 1280px / 1920px で `body.scrollHeight`、ヒーロー高さ、横スクロール、ファーストビュー内の情報量を測定 |
-| App Shell / ナビ / スクロール変更 | root scroll、横スクロール、ヘッダー幅、主要ページ表示を確認 |
+| App Shell / ナビ / スクロール変更 | root scroll、横スクロール、ヘッダー幅、Footer下端、header/avatar/badgeのbounding rect、主要ページ表示を確認 |
+| mobile app / PWA変更 | `viewport-fit=cover`、top/bottom safe-area、44px、hover非依存、standalone相当の最初/最後の操作到達性 |
+| 健康データ / ranking表示 | 0件・0歩・未集計とDB/API取得失敗が別状態で、失敗を成功形の既定値へ変換していないこと |
 | 主要導線 / ナビ / ホーム / ランキング / ショップ変更 | UCFitnessAgent の Persona Journey Review を使い、最低 2 ペルソナで Playwright 回遊監査 |
 | カスタマイズファイル変更 | YAML frontmatter、description の発見性、README 同期 |
 
@@ -83,11 +85,11 @@ UI に触れた場合、`self-critique.agent.md` の 6 軸で必ず批判する�
 
 | 軸 | 見ること |
 |---|---|
-| デザイン一貫性 | 他ページと同じアプリに見えるか、ナビ幅・カード・色・CTA が揃っているか |
-| 余白・密度 | 間延び、巨大な空白、100% 表示で大きすぎるフォント/カード、無意味な `flex-1` / `min-h-*` がないか |
-| レスポンシブ | 375px で見切れ・横スクロール・潰れがないか |
+| デザイン一貫性 | 他ページと同じアプリに見えるか、app logoが多色brand mark + solid wordmarkか、意味色・CTAが揃っているか |
+| 余白・密度 | 間延び、巨大な空白、Footer中央浮き、100%表示でfirst viewportに進捗/競争/報酬/次行動が入るか |
+| レスポンシブ | 375pxで見切れ・横スクロール・潰れがなく、header visual/badgeがheader rect内に収まるか |
 | テキスト・翻訳 | ja/en キー、長文、aria-label、数値・日付が破綻しないか |
-| インタラクション | ローディング、disabled、エラー、空状態、フォーカスが適切か |
+| インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか |
 | コード品質 | Hooks 順序、Server/Client 境界、型安全、未使用 import、デバッグコード |
 
 ### 4.5. ペルソナ回遊監査

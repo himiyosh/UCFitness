@@ -68,19 +68,25 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
     }, []);
 
     return (
-        <div className="relative ml-1 flex-shrink-0 sm:ml-3" ref={menuRef} onBlur={handleMenuBlur}>
+        <div className="relative flex-shrink-0" ref={menuRef} onBlur={handleMenuBlur}>
             <div>
                 <button
                     ref={triggerRef}
                     onClick={toggleMenu}
-                    className="relative flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                    className="relative flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center overflow-visible rounded-full text-sm transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                     id={triggerId}
                     aria-expanded={isOpen}
                     aria-controls={isOpen ? menuId : undefined}
                     aria-label={t('accountMenu', { name: accountName })}
                 >
                     <span className="sr-only">{t('accountMenu', { name: accountName })}</span>
-                    <UserAvatar src={user.image} name={user.name} size="md-lg" borderClass="border-[var(--color-border)]" />
+                    <UserAvatar
+                        src={user.image}
+                        name={user.name}
+                        size="sm"
+                        borderClass="border-[var(--color-primary)]"
+                        className="rounded-full ring-2 ring-[var(--color-primary-soft)]"
+                    />
                 </button>
             </div>
 
@@ -88,7 +94,7 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
             {isOpen && (
                 <div
                     id={menuId}
-                    className="user-dropdown-menu absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-[var(--color-surface)] py-1 shadow-lg ring-1 ring-[var(--color-border)] animate-fade-in"
+                    className="user-dropdown-menu absolute right-0 z-[70] mt-2 w-64 origin-top-right rounded-xl bg-[var(--color-surface)] py-1 shadow-lg ring-1 ring-[var(--color-border)] animate-fade-in"
                 >
                     <Link
                         href={user.username ? `/user/${user.username}` : '/profile'}

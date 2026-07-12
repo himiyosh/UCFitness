@@ -171,9 +171,12 @@ export default function DashboardChallenges(): ReactNode {
                         <Link
                             key={challenge.id}
                             href="/challenges"
-                            className="block rounded-lg border border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)] p-2.5 transition-colors duration-200 hover:border-[var(--color-competition)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2"
+                            className="uc-interactive-panel group relative block touch-manipulation rounded-xl border border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)] p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2"
                         >
-                            <div className="flex-1 min-w-0">
+                            <svg className="absolute right-2.5 top-2.5 h-4 w-4 text-[var(--color-competition-strong)] transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                            </svg>
+                            <div className="min-w-0 flex-1 pr-7">
                                 <p className="truncate text-sm font-semibold text-[var(--color-text)]">
                                     {formatChallengeTitle(challenge.title, challenge.target_steps, t)}
                                 </p>

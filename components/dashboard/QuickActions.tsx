@@ -20,26 +20,29 @@ export default function QuickActions({ className = '' }: QuickActionsProps): Rea
 
   // クイックアクション定義
   const quickActions = useMemo(() => [
-    { href: '/leaderboard' as const, icon: 'leaderboard' as const, label: navT('ranking'), tone: 'competition' as const },
+    { href: '/groups' as const, icon: 'groups' as const, label: t('groups'), tone: 'primary' as const },
     { href: '/challenges' as const, icon: 'challenges' as const, label: t('challenges'), tone: 'competition' as const },
-    { href: '/groups' as const, icon: 'groups' as const, label: t('groups'), tone: 'neutral' as const },
+    { href: '/leaderboard' as const, icon: 'leaderboard' as const, label: navT('ranking'), tone: 'competition' as const },
     { href: '/shop' as const, icon: 'shop' as const, label: t('shop'), tone: 'reward' as const },
   ], [navT, t]);
 
   return (
-    <section className={`px-2.5 sm:px-4 py-2 ${className}`} aria-label={pt('quickActions')}>
+    <section className={`w-full ${className}`} aria-label={pt('quickActions')}>
       <h2 className="sr-only">{pt('quickActions')}</h2>
-      <div className="mx-auto grid w-full max-w-sm grid-cols-4 gap-1.5 md:max-w-3xl md:gap-2">
+      <div className="grid h-full w-full grid-cols-2 gap-2 md:grid-cols-4">
         {quickActions.map((action) => (
           <Link
             key={action.href}
             href={action.href}
-            className={`group relative flex min-h-[52px] flex-col items-center justify-center gap-1 overflow-hidden rounded-lg border px-1.5 py-1.5 shadow-sm transition-colors duration-200 sm:min-h-[60px] sm:py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 ${getActionToneClasses(action.tone).card}`}
+            className={`uc-interactive-panel group relative flex min-h-[52px] touch-manipulation items-center gap-2 rounded-xl border px-3 py-2 shadow-sm md:min-h-[68px] md:flex-col md:justify-center md:gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 ${getActionToneClasses(action.tone).card}`}
           >
             <span className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${getActionToneClasses(action.tone).icon}`} aria-hidden="true">
               <ActionIcon name={action.icon} />
             </span>
             <span className={`text-xs font-bold transition-colors duration-200 ${getActionToneClasses(action.tone).label}`}>{action.label}</span>
+            <svg className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 md:absolute md:right-2 md:top-2 ${getActionToneClasses(action.tone).label}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+            </svg>
           </Link>
         ))}
       </div>

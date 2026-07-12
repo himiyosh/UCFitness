@@ -161,18 +161,21 @@ const fetchGlobalRankingMap = async (): Promise<GlobalRankingMap> => {
     });
 
     if (error) {
-        console.error(`Error fetching GLOBAL all rankings`);
-        return {};
+        throw new Error('GLOBAL_RANKING_DATABASE_ERROR');
     }
 
     const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
     const usersMap = new Map<string, any>();
 
     if (uniqueUserIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users, error: usersError } = await supabase
             .from('users')
             .select('id, name, image, username, group_keyword')
             .in('id', uniqueUserIds);
+
+        if (usersError) {
+            throw new Error('GLOBAL_RANKING_USERS_DATABASE_ERROR');
+        }
 
         users?.forEach((u: any) => usersMap.set(u.id, u));
     }

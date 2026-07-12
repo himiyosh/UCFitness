@@ -172,6 +172,8 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **サイドパネルの `sticky` はデスクトップ限定**: 右カラムや補助パネルの `sticky top-*` は `lg:sticky` のようにブレイクポイント限定で適用する。モバイルで常時 `sticky` にすると、下部パネルや CTA が見切れ・操作不能になることがある。リファレンス: `app/[locale]/groups/page.tsx`
 - **最小タッチターゲット**: ボタン・リンクは最低 **44×44px** のタップ領域を確保する（`min-h-[44px] min-w-[44px]`）
 - **固定ボトムナビのsafe-area予約を本文側にも反映する**: `padding-bottom: env(safe-area-inset-bottom)` を固定ナビへ付ける場合、本文・App Shellの下余白はナビ本体高に同じsafe-area値を加えた `calc()` で予約する。`pb-16`のような固定値だけではiPhoneのホームインジケータ領域で最下部CTAが隠れる。リファレンス: `app/[locale]/layout.tsx`, `components/layout/BottomNavBar.tsx`
+- **モバイルアプリ出荷時はtop/bottom両方のsafe-areaを契約化する**: `viewportFit: "cover"` を指定し、固定ヘッダーへ `env(safe-area-inset-top)`、固定ボトムナビと本文へ `env(safe-area-inset-bottom)` を対称に適用する。375pxのブラウザ表示だけでなく、standalone PWA相当で最初・最後の操作要素が到達可能か確認する。リファレンス: `app/[locale]/layout.tsx`, `app/[locale]/page.tsx`
+- **ヘッダー操作群のvisualは44pxターゲット内へ収める**: ヘッダー高44〜48pxでは、アバター・ベル等の見た目は最大32pxを基準とし、通知バッジを負の`top/right`でヘッダー外へ出さない。`headerRect`に対してavatar/badgeの`top >= header.top`かつ`bottom <= header.bottom`を375px/1280pxで実測する。タップ領域44pxとvisual 32pxを混同しない。リファレンス: `components/layout/UserMenu.tsx`, `components/layout/NotificationBell.tsx`
 - **横スクロール禁止**: `w-screen` や固定幅（`w-[500px]` 等）を使わず、はみ出しの原因を解消する。sticky要素の祖先では `overflow-x-hidden` + `overflow-y-auto` が新しいスクロールコンテナを作ってstickyを無効化しうるため、ページ内の切り抜きには `overflow-x-clip` を使用する。ただし1ページのsticky修正を理由にグローバルな `html/body` のスクロール契約を変更してはならない。固定ヘッダーへ切り替える場合は同じページ内でヘッダー高のpaddingを確保し、アンカー移動・モーダルのスクロールロック・認証済みApp Shellを回帰確認する。リファレンス: `components/LandingPage.tsx`
 - **ブレイクポイント境界の密度を実測する**: `sm` / `md` 等で内容を展開する場合は、ブレイクポイントの1px手前と境界値（例: 639px / 640px、767px / 768px）で `body.scrollHeight` と対象section高を比較する。説明文の表示開始と複数カラム化を別ブレイクポイントにして、1カラムのまま全内容だけを展開しない。開示UIから常時表示へ切り替える境界は、内容を横へ分散できるレイアウト境界と揃える。リファレンス: `components/LandingPage.tsx`
 - **カードリストのレスポンシブ設計（必須）**: カード一覧（グループ・チャレンジ等）をモバイルとデスクトップで同じ形状にしない。モバイルは**横型コンパクトカード**（アイコン左 + テキスト右、バナーなし `hidden md:block`）、デスクトップ(md+)は**縦型リッチカード**（バナー上 + テキスト下）。`flex items-center gap-2.5 px-2.5 py-2 md:block md:px-4 md:pb-4 md:pt-10` でレイアウト方向を切替。プログレスバー等の補助情報はデスクトップのみ (`hidden md:block`)。**ブレイクポイントは `sm`(640px) ではなく `md`(768px) を使用**—タブレットや大型スマホでバナーが表示されるのを防止。モバイルで縦型バナーカードを並べると1枚 ~180px × N枚で「ぐちゃっとした印象」になる。モバイルカードの高さは ~56px 以下を目標とする。リファレンス: `GroupList.tsx`
@@ -229,6 +231,8 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 11. **デスクトップのフッター下にデッドスペースを残さない** — コンテンツ量が少ないページでは、デスクトップ側の最上位ラッパーを `sm:flex sm:flex-col sm:flex-1` にし、フッターを `mt-auto` で最下部へ押し出すこと。フッターの下に背景だけの空白帯が残る構成は禁止。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
 12. **グリッド子要素に `h-full` を付けて親の `items-start` を無効化しない** — CSS Grid で `items-start`（トップ揃え）を指定している場合、子要素に `h-full` を付けるとグリッドセルの全高まで引き延ばされ `items-start` が無効化される。さらに `justify-center` を併用すると、引き延ばされた高さの中でコンテンツが垂直中央配置され、上下に巨大な空白が発生する。**グリッド子要素は自然な高さに任せ、レイアウトの整列は親の `items-*` プロパティに委任すること。** `h-full` が必要な場合は、親を `items-stretch` に変更し、子の `justify-center` を削除する。リファレンス: `GroupRankingPanel.tsx`（左カラムから `h-full justify-center` を削除して修正）
 13. **ブラウザ倍率 100% での密度検証を必須化** — root 全体を `zoom` / `transform: scale()` で縮小して密度を作るのは禁止。UI が大きすぎる場合は、コンポーネント単位で `font-size`、`line-height`、`gap`、`padding`、カード高さ、補助ビジュアルの表示条件を調整する。LP/ホームなど主要画面では 375px / 1280px / 1920px の 100% 表示で `body.scrollHeight`、ヒーロー高さ、ファーストビュー内の情報量を測定し、余白で画面を消費していないか確認する
+14. **Footerは短いページでもviewport下端へ置く** — 認証後ホームは`min-h-dvh flex flex-col`を基準にし、Footer wrapperへ`mt-auto`を付ける。1280px/1920pxで`body.scrollHeight <= innerHeight`の場合、`footer.getBoundingClientRect().bottom`が`innerHeight`と一致することを実測する。Footerが画面中央に出た状態を「コンテンツ後だから正しい」と扱わない
+15. **PC密度は横幅と配置再構成で改善する** — 1280px/1920pxのファーストビューに、今日の進捗・競争・報酬・次の行動の4要素が認識可能であること。単純なカード引き伸ばしやroot縮小ではなく、ホーム専用の上限幅、2段bento、compact action rowでデッドスペースを減らす
 
 ### UI 美学ルール（Design Aesthetics — 必須遵守）
 
@@ -250,7 +254,9 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 6. **殺風景化禁止** — 素人感を削るために装飾を減らしても、ファーストビューが白背景 + テキスト + 白カードだけになってはいけない。UCFitness の主要画面では、歩数リング・進捗バー・ランキング差分・報酬カード・ブランド色面のうち最低 2 つをファーストビューに入れ、歩く/競う/報われる体験が 3 秒で伝わるようにする
 7. **左サイドバーは認証済みアプリシェルの共通ナビゲーション** — デスクトップ (`lg:` 以上) ではホームだけでなく主要認証済みページ全体で `DashboardSidebar` を表示する。ページ単位で個別にサイドバーを追加・削除せず、`app/[locale]/layout.tsx` の共通 App Shell で管理する。新規ページ作成時に独自の左ナビを作らない
 8. **色の熱量を最低限担保する** — 主要導線・クイックアクション・ランキング差分・チャレンジ・報酬には、青/エメラルド/アンバー/バイオレット等の意味色を少なくとも 2 系統使う。モノクロ（白/黒/グレー）だけで主要 UI を構成しない
-9. **公開ランディングページは Full Palette のブランド面として扱う** — 認証済みアプリ画面の抑制的な配色をそのまま公開 LP へ適用しない。公開 LP では、目標・主 CTA=青、達成・同期=緑、競争・順位=紫、UC・報酬=アンバーの 4 役を意味に沿って使う。`min-h-screen` + `flex-1` で空白を引き伸ばす暗色ヒーロー、青紫のぼかしだけで構成する SaaS 風表現、グラデーション文字は禁止。375px でも実際の歩数進捗・順位差・報酬・チャレンジのプロダクト UI を隠さず表示し、主要 CTA と最低 2 指標を最初のビューポートで認識できること。リファレンス: `components/LandingPage.tsx`, `docs/PRODUCT.md`
+9. **アプリロゴは色付きmark + solid wordmarkを使う** — 認証後App Shellのロゴを黒/白だけの記号へ戻さない。mark内で青=前進、緑=達成、アンバー=報酬のうち最低2役を使い、文字は可読性の高いsolid色とする。グラデーション文字だけでブランド感を代用しない。リファレンス: `app/[locale]/page.tsx`, `components/dashboard/DashboardSidebar.tsx`
+10. **クリック可能パネルは静的カードと明確に区別する** — link/cardには`cursor-pointer`、hover、focus、active、chevronまたは動詞ラベルを揃える。静的status panelへ同じ影移動・矢印を付けない。色だけで押下可否を表現せず、キーボードfocusと44px操作領域を必須とする。リファレンス: `components/dashboard/QuickActions.tsx`, `components/dashboard/DashboardChallenges.tsx`
+11. **公開ランディングページは Full Palette のブランド面として扱う** — 認証済みアプリ画面の抑制的な配色をそのまま公開 LP へ適用しない。公開 LP では、目標・主 CTA=青、達成・同期=緑、競争・順位=紫、UC・報酬=アンバーの 4 役を意味に沿って使う。`min-h-screen` + `flex-1` で空白を引き伸ばす暗色ヒーロー、青紫のぼかしだけで構成する SaaS 風表現、グラデーション文字は禁止。375px でも実際の歩数進捗・順位差・報酬・チャレンジのプロダクト UI を隠さず表示し、主要 CTA と最低 2 指標を最初のビューポートで認識できること。リファレンス: `components/LandingPage.tsx`, `docs/PRODUCT.md`
 10. **公開ランディングページのアクセシビリティ構造を視覚設計と同時に固定する** — `header` / `main` / `footer` は兄弟ランドマークにし、グローバルスキップリンクは外側ラッパーではなく実際の `main` をフォーカス・スクロール対象にする。横スクロールが必要なピル列は、コンテナを `w-full min-w-0 overflow-x-auto`、子要素を `shrink-0` とし、コンテナ自身へ `min-w-max` を付けない。横スクロールを使う場合は320pxでも次カードを約40px見せ、見えている内容が装飾点にしか見えない場合は方向矢印も添えて、視覚利用者にも続きがあることを伝える。複数行の報酬・実績カードは、モバイルでは無名の横スクロール領域よりコンパクトな縦リストを優先し、320pxでも指標名・具体的な獲得閾値・数値を省略しない。狭幅で補助情報を段階表示する場合も `hidden sm:block` で内容ごと削除せず、ネイティブ `<details>` 等の名前付き・キーボード操作可能な開示で1操作以内に到達可能にする。リファレンス: `components/LandingPage.tsx`, `app/[locale]/layout.tsx`
 11. **公開ランディングページを保存済みテーマでも検証する** — `ThemeProvider` は未認証時も `localStorage` のテーマを適用するため、公開 LP が常に Classic テーマとは仮定しない。Full Palette の `strong` / `soft` トークンを追加する場合は Midnight でも対になる値を上書きし、375px / 1280pxで文字コントラストと意味色の識別を確認する。淡色面の前景色と白文字付き塗り面は同じトークンを兼用せず、`strong` と `solid` に分離する。リファレンス: `app/globals.css`, `components/LandingPage.tsx`
 12. **公開LPは一画面一メッセージと意味のあるモーションで構成する** — 色や機能を単純に削るのではなく、モバイルのヒーローは主CTA＋現在歩数＋残り歩数へ集中し、順位・UCは直後のプルーフ領域へ送る。デスクトップでも順位・UCは同じ進捗面の副指標として扱う。重複するハイライト・実績・説明カードを同一ビューポートへ並べず、今日の進捗→追いつける差→習慣ループ→報酬の順に段階表示する。全セクションへ同じfade-upを付けず、歩数リング=前進、順位バー=成長、報酬=到達、スクロール線=ページ進捗のように役割を対応させる。モバイルでは装飾用の無限オービットやカード浮遊を進捗モーションと同時再生しない。読めるテキストを含む要素はモーション中も `opacity: 1` を維持し、変形・SVG描画・独立装飾で表現して全フレームのコントラストを保つ。Scroll-driven Animations は `@supports` 内のProgressive Enhancementとし、低減モーションでは完成状態を即時表示する。リファレンス: `components/LandingPage.tsx`, `app/globals.css`, `docs/PRODUCT.md`
@@ -1228,3 +1234,24 @@ export const runtime = "edge";
 - **根本原因**: 固定ナビ自身のsafe-area対応だけを確認し、スクロール本文が予約する高さとの対称性を検証していなかった。
 - **対策**: 認証済みApp Shellのモバイル下余白を`calc(4rem + env(safe-area-inset-bottom, 0px))`へ変更し、`sm`以上では既存どおり解除した。
 - **教訓**: 固定下部UIの高さ契約は「本体高 + safe-area」をオーバーレイ側と本文側で共有する。実機値が0のデスクトップ検証だけで完了せず、CSS計算値と最下部CTAの到達性を確認する。リファレンス: `app/[locale]/layout.tsx`, `components/layout/BottomNavBar.tsx`
+
+### LL-034: 認証後UIの品質ルールが個別に存在しても、画面全体の出荷判定へ統合されていなかった
+
+- **事象**: Footer下端、PC密度、ヘッダー内アバター/通知バッジ、ロゴの色、パネルの押下可否、mobile app safe-areaについて既存ルールは部分的に存在したが、実画面ではFooter下184pxの空白、44pxヘッダーから48pxアバターと通知バッジがはみ出す状態、モノクロmark、静的カードとlink cardの判別不足が残った。
+- **根本原因**: 「44px」「意味色」「Footerに`mt-auto`」を個別classの有無だけで確認し、親子のbounding rect、viewport内Footer位置、first viewportの情報量、hover/focus/active/chevronの組を同じ完了ゲートで測っていなかった。
+- **対策**: 認証後ホームを`min-h-dvh` + Footer wrapper `mt-auto`へ整理し、header visual 32px、badge内包、多色brand mark、interactive panel契約、PWA top/bottom safe-area、1440px home canvas + 2段action rowを実装した。UCFitnessAgentとself-critique-gateへ同じ実測項目を追加した。
+- **教訓**: UI品質はルール数ではなく、最終画面の幾何・意味・操作状態を同時に測るゲートで担保する。リファレンス: `app/[locale]/page.tsx`, `app/globals.css`, `components/layout/UserMenu.tsx`, `components/layout/NotificationBell.tsx`
+
+### LL-035: 認証後ホームのDB取得失敗を0歩・未集計・未設定へ変換していた
+
+- **事象**: `users` / `daily_steps` / rankingの取得失敗時にエラーを確認せず、0歩・同期待ち・順位未集計・`/setup`リダイレクトとして表示し得た。低活動ユーザーには自分の失敗のように見え、既知DBブロッカーも隠れた。
+- **根本原因**: データなしと取得失敗を同じnull/空配列へ正規化し、ranking serviceも失敗時に空mapを返していた。
+- **対策**: ホームの各結果で`.error`を確認し、ranking serviceは失敗をthrowして呼び出し側へ伝播する。いずれかが失敗した場合は歩数・順位カードを描画せず、明示エラーと再試行だけを表示する。
+- **教訓**: 健康データUIでは「0」と「取得不能」は別状態。エラーを成功形の既定値へ変換せず、ユーザーを責めない明示状態として表示する。リファレンス: `app/[locale]/page.tsx`, `lib/services/ranking-service.ts`
+
+### LL-036: rootの`overflow-y:auto`がsticky headerを追従不能にした
+
+- **事象**: headerに`sticky top-0`があっても、375pxで500pxスクロール後のheader topが-500pxとなり追従しなかった。
+- **根本原因**: `body { overflow-y:auto }`がstickyのスクロール祖先になった一方、実際のscrollTopは`documentElement`へ付いており、参照するスクロール座標が分離した。
+- **対策**: `html/body`の横切り抜きを`overflow-x:clip`、縦を`overflow-y:visible`へ変更し、viewport自然スクロールへ戻した。修正後は同条件でheader top=0を確認した。
+- **教訓**: rootの横overflow対策でscroll containerを作らない。sticky確認はclassの存在ではなく、実スクロール後の`getBoundingClientRect().top`で判定する。リファレンス: `app/globals.css`

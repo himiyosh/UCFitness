@@ -90,6 +90,56 @@ if [ -n "$HITS" ]; then
   record "OAuthログインのメール一致リンク (rule: provider + provider_account_id のみで照合)" "$HITS"
 fi
 
+# ---------- 10. ヘッダー用アバターvisualの過大サイズ ----------
+# 44-48pxヘッダー内ではvisualを32px基準にし、44pxはタップ領域として確保する
+HITS=$(perl -0777 -ne 'print "$ARGV\n" if /<UserAvatar\b[^>]*\bsize=["'\'']md-lg["'\'']/s' \
+  components/layout/UserMenu.tsx 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "UserMenuでmd-lg avatar使用 (rule: header visualはsm=32px)" "$HITS"
+fi
+
+# ---------- 11. 通知バッジの負座標配置 ----------
+HITS=$(grep -nE "className=['\"][^'\"]*absolute[^'\"]*(-top-|-right-)" components/layout/NotificationBell.tsx 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "NotificationBell badgeの負座標 (rule: header rect内へ配置)" "$HITS"
+fi
+
+# ---------- 12. 主要認証UIの12px未満テキスト ----------
+HITS=$(grep -En "text-\[(8|9|10|11)px\]" \
+  components/layout/BottomNavBar.tsx \
+  components/layout/NotificationBell.tsx \
+  components/dashboard/HomeHero.tsx \
+  components/dashboard/DailyMissions.tsx 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "主要認証UIに12px未満テキスト (rule: text-xs以上)" "$HITS"
+fi
+
+# ---------- 13. 認証ページsticky headerの共通契約 ----------
+HITS=$(grep -rEn '<header className="[^"]*sticky top-0' \
+  --include="page.tsx" 'app/[locale]' 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "sticky auth headerにdata-auth-header欠落 (rule: 共通App Shell契約)" "$HITS"
+fi
+
+# ---------- 14. CRLFを許容した差分空白検査 ----------
+HITS=$(git -c core.whitespace=cr-at-eol diff --check 2>&1 || true)
+if [ -n "$HITS" ]; then
+  record "未ステージ差分の空白違反 (CRLF許容)" "$HITS"
+fi
+HITS=$(git -c core.whitespace=cr-at-eol diff --cached --check 2>&1 || true)
+if [ -n "$HITS" ]; then
+  record "ステージ済み差分の空白違反 (CRLF許容)" "$HITS"
+fi
+
+# ---------- 15. root縦スクロールコンテナ化 ----------
+HITS=$(perl -0777 -ne '
+  print "html overflow-y:auto\n" if /(?:^|\n)html\s*\{[^}]*overflow-y:\s*auto/s;
+  print "body overflow-y:auto\n" if /(?:^|\n)body\s*\{[^}]*overflow-y:\s*auto/s;
+' app/globals.css 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "root overflow-y:auto (rule: viewport自然スクロールを維持)" "$HITS"
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"

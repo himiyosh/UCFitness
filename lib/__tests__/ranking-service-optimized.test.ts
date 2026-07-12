@@ -81,6 +81,20 @@ describe('Ranking Optimization', () => {
         expect(result.DAILY[1].steps).toBe(500);
     });
 
+    it('getAllRankings_DB取得失敗時_エラーを伝播する', async () => {
+        vi.mocked(fetchDailyStepsPaginated).mockResolvedValueOnce({
+            data: [],
+            error: {
+                message: 'database unavailable',
+                details: '',
+                hint: '',
+                code: 'PGRST500',
+            },
+        });
+
+        await expect(getAllRankings('GLOBAL')).rejects.toThrow('GLOBAL_RANKING_DATABASE_ERROR');
+    });
+
     it('deriveBatchGroupRankings works with list input (current)', async () => {
         const groupIds = ['g1'];
         // Mock group members

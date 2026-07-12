@@ -66,7 +66,7 @@ export default function RefreshButton(): React.ReactNode {
             disabled={loading}
             aria-label={loading ? t('refreshing') : t('refreshSteps')}
             title={loading ? t('refreshing') : t('refreshSteps')}
-            className="refresh-sync-btn cursor-pointer inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] disabled:opacity-50 transition-all active:scale-90"
+            className="refresh-sync-btn inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] active:bg-[var(--color-primary-soft)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

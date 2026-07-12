@@ -41,7 +41,7 @@ export default function BottomNavBar() {
               className={`relative flex min-h-[44px] min-w-[56px] flex-col items-center justify-center transition-colors ${
                 isActive
                   ? 'text-[var(--theme-primary)]'
-                  : 'text-gray-400 hover:text-gray-600'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
               }`}
               aria-current={isActive ? 'page' : undefined}
             >
@@ -56,7 +56,7 @@ export default function BottomNavBar() {
               <span className="relative z-10 mt-1">
                 <item.icon active={isActive} />
               </span>
-              <span className={`relative z-10 mt-0.5 text-[10px] font-medium leading-none ${isActive ? 'font-semibold' : ''}`}>
+              <span className={`relative z-10 mt-0.5 text-xs font-medium leading-none ${isActive ? 'font-semibold' : ''}`}>
                 {item.label}
               </span>
             </Link>
