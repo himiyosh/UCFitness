@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-12T10:49:12+09:00",
+  "lastUpdated": "2026-07-12T12:08:00+09:00",
   "lastAgent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "91a8a72db0833431f000f1a4ad457e644c4d31ed",
+  "lastCommit": "da8d6d755079cae3fe26e0fff524e1227dbc6451",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "ユーザーフィードバック6項目をルール・実装・実測へ反映した。全認証ページでFooter下端、safe-area付きsticky header、多色brand mark、32px header visual、明示的panel affordanceを統一し、ホームを1440px高密度bentoへ再構成。DB障害と正常な0歩/未集計を分離し、root sticky不具合も修正した。4幅×Classic/Midnight、全160テスト、5ペルソナ、自己批判ゲートで確認した。",
+  "summary": "ホームの見た目だけを再配置しても情報量が増えずスカスカだったため、月曜起算の今週歩数bar・今週合計/ベスト/記録日と、UC残高・活動ストリーク・ウォレット/ショップ導線を実データで追加した。欠測・0歩・未来日・UC取得失敗を分離し、Heroの次行動shortcutも強化。375/1280 fixture、全160テスト、5ペルソナ、自己批判ゲートで確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warningはF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-12T10:49:12+09:00"
+    "lastVerified": "2026-07-12T12:08:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -321,6 +321,26 @@
         "lib/__tests__/ranking-service-optimized.test.ts",
         "messages/ja.json",
         "messages/en.json",
+        "scripts/check-ucfitness-rules.sh",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『ページがスカスカでリッチではない』フィードバックを受け、装飾や再配置ではなく実データrichnessへ修正。今週歩数bar、今週サマリー、UC残高、活動ストリーク、Wallet/Shop導線を追加し、欠測・0歩・未来日・UC取得失敗を分離。375/1280のパネル実測、160テスト、5ペルソナ、self-critique PASSを確認した。",
+      "commit": "da8d6d755079cae3fe26e0fff524e1227dbc6451",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        "components/dashboard/HomeHero.tsx",
+        "docs/DESIGN_TOKENS.md",
+        "messages/en.json",
+        "messages/ja.json",
         "scripts/check-ucfitness-rules.sh",
         ".github/ucfitness-progress.json"
       ]
