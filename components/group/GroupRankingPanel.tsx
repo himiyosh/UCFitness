@@ -7,6 +7,7 @@ import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import { RankingEntry } from '@/lib/services/ranking-utils';
+import { Link } from '@/navigation';
 import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
 
@@ -103,8 +104,8 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
         <div
             className={`rounded-xl shadow-sm relative group/panel h-full flex flex-col ${isMoving ? 'opacity-50' : ''}`}
             style={isMidnight
-                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
-                : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
+                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.35)' }
+                : { background: '#fff', border: '1px solid #6ee7b7' }
             }
         >
             {/* Header — overflow-hidden + rounded-t-xl でヘッダー角丸を維持 */}
@@ -191,8 +192,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible ${(hoveredUserId === entryId || longPressUserId === entryId) ? 'z-50' : ''} ${entry.users?.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
-                                            onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] ${(hoveredUserId === entryId || longPressUserId === entryId) ? 'z-50' : ''} ${entry.users?.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                             onMouseEnter={() => setHoveredUserId(entryId)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}
                                             onTouchStart={() => {
@@ -204,7 +204,15 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
-                                          <div className="flex items-center justify-between">
+                                          {entry.users?.username && (
+                                              <Link
+                                                  href={`/user/${entry.users.username}`}
+                                                  className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]"
+                                              >
+                                                  <span className="sr-only">{entry.users.name || commonT('anonymous')}</span>
+                                              </Link>
+                                          )}
+                                          <div className="pointer-events-none relative z-10 flex items-center justify-between">
                                             {/* Content Wrapper */}
                                             <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                                                 <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold shrink-0"
@@ -225,7 +233,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     )}
                                                     {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="pointer-events-auto mt-0.5 h-[22px]" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entryId}
@@ -265,12 +273,17 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                 );
                             })}{/* 5人分の高さを埋めるプレースホルダー行 */}
                             {Array.from({ length: emptyRowCount }).map((_, i) => (
-                                <div key={`empty-${i}`} role="listitem" className="min-h-[4.5rem]" />
+                                <div key={`empty-${i}`} role="listitem" className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5" aria-hidden="true" />
                             ))}
                             </>);
                         })()
                     ) : (
-                        <p className={`text-center py-4 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
+                        <>
+                            <p className={`text-center py-4 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
+                            {Array.from({ length: 5 }, (_, index) => (
+                                <div key={`empty-group-${index}`} role="listitem" className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5" aria-hidden="true" />
+                            ))}
+                        </>
                     )}
                 </div>
             </div>

@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 
 import { Period } from '@/components/dashboard/LeaderboardTabs';
 import { getDisplayRankings, RankingEntry } from '@/lib/services/ranking-utils';
+import { Link } from '@/navigation';
 import GroupRankingPanel from '@/components/group/GroupRankingPanel';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
@@ -16,6 +17,7 @@ const TABS: { key: Period; labelKey: string; icon: string }[] = [
     { key: 'MONTHLY', labelKey: 'periods.monthly', icon: '📆' },
     { key: 'YEARLY', labelKey: 'periods.yearly', icon: '🏆' },
 ];
+const MIN_ROWS = 5;
 
 // ランクバッジの表示テキスト（1-3位はメダル絵文字）
 function getRankDisplay(rank: number): { text: string; isMedal: boolean } {
@@ -287,7 +289,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                         )}
 
                         {/* ランキング行 */}
-                        {!isLoading && globalRankings.length > 0 && (
+                        {!isLoading && !fetchError && (
                             <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/15' : 'divide-gray-50'}`}>
                                 {globalRankings.map((entry, index) => {
                                     const isGap = index > 0 && entry.originalRank > globalRankings[index - 1].originalRank + 1;
@@ -297,21 +299,22 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                     const isTop3 = rank <= 3;
 
                                     return (
-                                        <div key={entry.originalRank}>
+                                        <Fragment key={entry.originalRank}>
                                             {isGap && (
-                                                <div className={`px-6 py-1.5 flex justify-center ${
+                                                <li aria-hidden="true" className={`px-6 py-1.5 flex justify-center ${
                                                     isMidnight ? 'bg-slate-800/30' : 'bg-gray-50/80'
                                                 }`}>
                                                     <span className={`text-xs tracking-[0.3em] ${isMidnight ? 'text-slate-600' : 'text-gray-300'}`}>
                                                         ···
                                                     </span>
-                                                </div>
+                                                </li>
                                             )}
                                             <li
                                                 className={`
                                                     leaderboard-row relative min-h-[4.5rem] flex flex-col justify-center
-                                                    px-3 py-2.5 sm:px-6
+                                                    px-3 py-2 sm:px-6 sm:py-2.5
                                                     transition-colors overflow-visible
+                                                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]
                                                     rank-row-enter
                                                     ${rank === 1 ? 'rank-row-1 rank-row-1-shimmer' : ''}
                                                     ${rank === 2 ? 'rank-row-2' : ''}
@@ -320,9 +323,16 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                                     ${entry.users.username ? 'cursor-pointer' : ''}
                                                 `}
                                                 style={{ animationDelay: `${index * 0.06}s` }}
-                                                onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
                                             >
-                                                <div className="flex items-center justify-between">
+                                                {entry.users.username && (
+                                                    <Link
+                                                        href={`/user/${entry.users.username}`}
+                                                        className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]"
+                                                    >
+                                                        <span className="sr-only">{entry.users.name || commonT('anonymous')}</span>
+                                                    </Link>
+                                                )}
+                                                <div className="pointer-events-none relative z-10 flex items-center justify-between">
                                                     <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                                                         {/* ランクバッジ */}
                                                         <span
@@ -390,9 +400,16 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                                     </div>
                                                 </div>
                                             </li>
-                                        </div>
+                                        </Fragment>
                                     );
                                 })}
+                                {Array.from({ length: Math.max(0, MIN_ROWS - globalRankings.length) }, (_, index) => (
+                                    <li
+                                        key={`global-empty-${index}`}
+                                        className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5"
+                                        aria-hidden="true"
+                                    />
+                                ))}
                             </ul>
                         )}
                     </div>

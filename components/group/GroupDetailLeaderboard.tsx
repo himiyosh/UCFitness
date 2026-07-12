@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { Link } from '@/navigation';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
 import { RankingEntry } from '@/lib/services/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
@@ -84,6 +85,7 @@ export default function GroupDetailLeaderboard({
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const displayData = useMemo(() => allData.slice(startIndex, startIndex + ITEMS_PER_PAGE), [allData, startIndex]);
+    const emptyRowCount = Math.max(0, ITEMS_PER_PAGE - displayData.length);
 
     // ページネーションウィンドウを正しくクランプ（末尾付近でボタンが消えないように）
     const paginationPages = useMemo(() => {
@@ -94,6 +96,13 @@ export default function GroupDetailLeaderboard({
         start = Math.max(1, end - maxVisible + 1);
         return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     }, [totalPages, currentPage]);
+    const compactPaginationPages = useMemo(() => {
+        const maxVisible = Math.min(3, totalPages);
+        let start = Math.max(1, currentPage - 1);
+        const end = Math.min(totalPages, start + maxVisible - 1);
+        start = Math.max(1, end - maxVisible + 1);
+        return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+    }, [currentPage, totalPages]);
 
     const handlePrevPage = useCallback(() => {
         onPageChange(Math.max(1, currentPage - 1));
@@ -116,8 +125,7 @@ export default function GroupDetailLeaderboard({
                     </div>
                 </div>
 
-                <div className="bg-white px-0 relative flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 48}px` }}>
-                    {/* 5人 × 48px = 240px 固定高 */}
+                <div className="relative flex-1 bg-white px-0">
                     <FadeInWrapper key={`${period}-${currentPage}`}>
                         <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
                             {displayData.length === 0 ? (
@@ -137,8 +145,7 @@ export default function GroupDetailLeaderboard({
 
                                     return (
                                         <li key={entry.users.id}
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible ${(hoveredUserId === entry.users.id || longPressUserId === entry.users.id) ? 'z-50' : ''} ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
-                                            onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] ${(hoveredUserId === entry.users.id || longPressUserId === entry.users.id) ? 'z-50' : ''} ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                             onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                             onTouchStart={() => {
@@ -150,7 +157,15 @@ export default function GroupDetailLeaderboard({
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
-                                          <div className="flex items-center justify-between">
+                                          {entry.users.username && (
+                                              <Link
+                                                  href={`/user/${entry.users.username}`}
+                                                  className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]"
+                                              >
+                                                  <span className="sr-only">{entry.users.name || commonT('anonymous')}</span>
+                                              </Link>
+                                          )}
+                                          <div className="pointer-events-none relative z-10 flex items-center justify-between">
                                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0"
                                                     style={rank === 1 ? {
@@ -192,7 +207,7 @@ export default function GroupDetailLeaderboard({
                                                     )}
                                                     {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="pointer-events-auto mt-0.5 h-[22px]" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entry.users.id}
@@ -230,6 +245,13 @@ export default function GroupDetailLeaderboard({
                                     );
                                 })
                             )}
+                            {Array.from({ length: emptyRowCount }, (_, index) => (
+                                <li
+                                    key={`detail-empty-${index}`}
+                                    className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5"
+                                    aria-hidden="true"
+                                />
+                            ))}
                         </ul>
                     </FadeInWrapper>
                 </div>
@@ -241,10 +263,10 @@ export default function GroupDetailLeaderboard({
                             onClick={handlePrevPage}
                             disabled={currentPage === 1}
                             aria-label="Previous page"
-                            className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 text-sm font-medium text-gray-700 transition-colors hover:text-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-gray-700"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                            {lt('prev')}
+                            <span className="hidden sm:inline">{lt('prev')}</span>
                         </button>
                         <div className="flex gap-1.5">
                             {paginationPages.map((p) => (
@@ -253,8 +275,8 @@ export default function GroupDetailLeaderboard({
                                     onClick={() => onPageChange(p)}
                                     aria-label={`Go to page ${p}`}
                                     aria-current={currentPage === p ? 'page' : undefined}
-                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
-                                        ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-110'
+                                    className={`${compactPaginationPages.includes(p) ? 'inline-flex' : 'hidden sm:inline-flex'} h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-xs font-bold transition-colors duration-200 ${currentPage === p
+                                        ? 'bg-[var(--color-primary-solid)] text-white shadow-sm'
                                         : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
                                         }`}
                                 >
@@ -266,9 +288,9 @@ export default function GroupDetailLeaderboard({
                             onClick={handleNextPage}
                             disabled={currentPage === totalPages}
                             aria-label="Next page"
-                            className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 text-sm font-medium text-gray-700 transition-colors hover:text-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-gray-700"
                         >
-                            {lt('next')}
+                            <span className="hidden sm:inline">{lt('next')}</span>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </nav>
