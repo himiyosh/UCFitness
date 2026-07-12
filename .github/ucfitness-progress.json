@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-12T08:19:29+09:00",
+  "lastUpdated": "2026-07-12T10:49:12+09:00",
   "lastAgent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "e6cb481398f78407f7acd600a9d1ddce8139bdc2",
+  "lastCommit": "91a8a72db0833431f000f1a4ad457e644c4d31ed",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "認証後UIの次イテレーションとして高確度P1がないことを確認し、低視力・低活動ユーザーに価値の高いP2を改善した。ホーム・ミッション・通知の主要ラベルを12px以上へ統一し、BottomNavのフォーカス、通知コントラスト、ダッシュボードと一覧のチャレンジ空状態を改善。4幅×Classic/Midnight、全159テスト、5ペルソナ、自己批判ゲートで確認した。",
+  "summary": "ユーザーフィードバック6項目をルール・実装・実測へ反映した。全認証ページでFooter下端、safe-area付きsticky header、多色brand mark、32px header visual、明示的panel affordanceを統一し、ホームを1440px高密度bentoへ再構成。DB障害と正常な0歩/未集計を分離し、root sticky不具合も修正した。4幅×Classic/Midnight、全160テスト、5ペルソナ、自己批判ゲートで確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warningはF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-12T08:19:29+09:00"
+    "lastVerified": "2026-07-12T10:49:12+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -292,6 +292,36 @@
         "components/layout/NotificationBell.tsx",
         "messages/en.json",
         "messages/ja.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "Footer中央浮き、PC余白、header visual/badge見切れ、モノクロlogo、panel押下可否、mobile app前提の6フィードバックを修正。全auth header/footer共通化、home 1440px bento、viewport safe-area、root sticky、DB失敗状態分離、ranking障害回帰テスト、rules/agent/skill/static harnessを更新し、4幅2テーマ・160テスト・5ペルソナ・自己批判PASSを確認した。",
+      "commit": "91a8a72db0833431f000f1a4ad457e644c4d31ed",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/layout.tsx",
+        "app/[locale]/page.tsx",
+        "app/[locale]/groups/page.tsx",
+        "app/[locale]/leaderboard/page.tsx",
+        "app/globals.css",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/DashboardSidebar.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "components/layout/BottomNavBar.tsx",
+        "components/layout/NotificationBell.tsx",
+        "components/layout/RefreshButton.tsx",
+        "components/layout/UserMenu.tsx",
+        "lib/services/ranking-service.ts",
+        "lib/__tests__/ranking-service-optimized.test.ts",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh",
         ".github/ucfitness-progress.json"
       ]
     }
