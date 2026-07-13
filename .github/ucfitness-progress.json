@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-13T17:43:22+09:00",
+  "lastUpdated": "2026-07-14T02:31:07+09:00",
   "lastAgent": "UCFitnessAgent (Next.js + React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "c6a8e907d53d3ddb6b9cc388c0ab9e6976dd552a",
+  "lastCommit": "021aaa4a78293333a548fdb02b9a9efb1cd193f2",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "320〜1280pxの狭幅・ブレイクポイント設計を再監査し、1024pxのSidebar後過圧縮、Profile末尾約3,000px空白、Shop/Settings二重縦スクロール、モバイルFooter非表示、条件付き状態を含む44px未満操作、カルーセルfocus、固定英語文言を修正した。公開20条件・認証160条件・タッチ96条件・編集/エラー/ja-en状態、全188テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
+  "summary": "『ホーム画面がシンプルすぎて面白みがない』フィードバックへ対応し、今日の進捗→週次競争差→UC価値→次の一歩を連結するHome Questへ再設計した。Mission/Weekly/Reward/Challengeと任意探索章を役割別に差別化し、全幅Utility、固定5行ランキング、仲間活動、意味あるmotion、状態別0歩コピー、Missionの参照/書込分離・focus/live通知・障害分離を実装。4幅×Classic/Midnight計32画面と障害fixture3状態、全192テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 217件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-13T17:43:22+09:00"
+    "lastVerified": "2026-07-14T02:31:07+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -427,6 +427,29 @@
         "app/[locale]/",
         "app/globals.css",
         "components/",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (Next.js + React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『特にホーム画面がシンプルすぎて面白みがない』フィードバックに対応。HomeHeroを進捗→到達可能な競争差→UC価値→次行動のQuestへ再構成し、Mission→Weekly→Reward→Challenge後を任意探索章として整理した。Utility導線、1280/1536列契約、固定5行の状態別コピー、仲間空状態、意味あるmotion、通知badge contrast、Mission GET参照専用・POST障害伝播・focus/live/永続報酬・streak部分状態、Challenge進捗障害分離を追加。375/1024/1280/1920×Classic/Midnightの32画面とfixture3状態、31ファイル192テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "021aaa4a78293333a548fdb02b9a9efb1cd193f2",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/api/user/missions/",
+        "app/globals.css",
+        "components/challenge/ChallengeDetailModal.tsx",
+        "components/dashboard/",
+        "components/layout/",
         "docs/PRODUCT.md",
         "docs/DESIGN_TOKENS.md",
         "messages/ja.json",
