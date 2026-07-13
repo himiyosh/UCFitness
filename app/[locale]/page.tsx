@@ -297,11 +297,11 @@ export default async function Home(): Promise<ReactNode> {
             showMetricTiles={false}
           />
 
-          <div className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-2 2xl:grid-cols-4">
-            <div className="min-w-0">
+          <div className="home-module-grid mt-3 grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 2xl:grid-cols-4">
+            <div className="min-w-0 md:h-full">
               <DailyMissions />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 md:h-full">
               <WeeklyPulsePanel
                 points={weeklySeries}
                 stepGoal={stepGoal}
@@ -317,7 +317,7 @@ export default async function Home(): Promise<ReactNode> {
                 }}
               />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 md:h-full">
               <RewardWalletPanel
                 balance={ucBalance}
                 streak={currentStreak}
@@ -333,7 +333,7 @@ export default async function Home(): Promise<ReactNode> {
                 }}
               />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 md:h-full">
               <DashboardChallenges />
             </div>
           </div>
@@ -451,7 +451,7 @@ function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): 
   const elapsedDays = points.filter(point => !point.isFuture).length;
 
   return (
-    <section className="home-analysis-panel overflow-hidden border-y border-[var(--color-primary)]/20 bg-[var(--color-surface)] px-1 py-3 sm:rounded-2xl sm:border sm:p-4" aria-labelledby="weekly-pulse-title">
+    <section className="home-analysis-panel flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-primary)]/20 bg-[var(--color-surface)] p-3" aria-labelledby="weekly-pulse-title">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]" aria-hidden="true">
@@ -483,7 +483,7 @@ function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): 
         </div>
       )}
 
-      <div className="mt-3 grid h-24 grid-cols-7 items-end gap-1.5 sm:h-28 sm:gap-2" aria-hidden="true">
+      <div className="home-week-chart mt-3 grid grid-cols-7 items-end gap-1.5 sm:gap-2" aria-hidden="true">
         {points.map(point => {
           const heightPercent = point.steps === null || point.steps === 0
             ? 0
@@ -544,7 +544,7 @@ interface RewardWalletPanelProps {
 
 function RewardWalletPanel({ balance, streak, error, labels }: RewardWalletPanelProps): ReactNode {
   return (
-    <section className="home-reward-module relative overflow-hidden rounded-2xl border border-[var(--color-reward)]/35 bg-[var(--color-reward-soft)] p-3 shadow-sm sm:p-4" aria-labelledby="reward-wallet-title">
+    <section className="home-reward-module relative flex h-full flex-col justify-center overflow-hidden rounded-2xl border border-[var(--color-reward)]/35 bg-[var(--color-reward-soft)] p-3 shadow-sm" aria-labelledby="reward-wallet-title">
       <div className="pointer-events-none absolute -right-5 -top-5 h-24 w-24 rounded-full border-[12px] border-[var(--color-reward)]/10" aria-hidden="true" />
       <div className="relative">
         <div className="flex items-center gap-2.5">

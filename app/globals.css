@@ -1688,7 +1688,20 @@ body {
 }
 
 .home-analysis-panel {
+  container: home-analysis / inline-size;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.home-week-chart {
+  min-block-size: 8rem;
+  flex: 1 1 8rem;
+}
+
+@container home-analysis (min-width: 20rem) {
+  .home-week-chart {
+    min-block-size: 9rem;
+    flex-basis: 9rem;
+  }
 }
 
 .home-week-bar {
@@ -1704,6 +1717,37 @@ body {
   background:
     radial-gradient(circle at 100% 0, var(--color-competition-soft), transparent 34%),
     var(--color-surface);
+}
+
+@media (min-width: 768px) {
+  .home-module-grid > div > :where(
+    .home-mission-module,
+    .home-analysis-panel,
+    .home-reward-module,
+    .home-competition-module
+  ) {
+    block-size: 100%;
+  }
+}
+
+.activity-graph-panel {
+  container: activity-graph / inline-size;
+}
+
+.activity-graph-plot {
+  block-size: 18rem;
+}
+
+@container activity-graph (min-width: 32rem) {
+  .activity-graph-plot {
+    block-size: 22rem;
+  }
+}
+
+@container activity-graph (min-width: 39rem) {
+  .activity-graph-plot {
+    block-size: 24rem;
+  }
 }
 
 @keyframes homeQuestRingArrive {
@@ -1880,6 +1924,22 @@ body {
     border: 1px solid CanvasText;
     background: Canvas;
     box-shadow: none;
+  }
+
+  .home-week-bar,
+  .activity-graph-bar {
+    border: 1px solid CanvasText;
+    background: Highlight !important;
+    box-shadow: none !important;
+  }
+
+  .activity-graph-comparison-bar {
+    border: 1px dashed CanvasText;
+    background: GrayText !important;
+  }
+
+  .activity-graph-goal-line {
+    border-color: CanvasText !important;
   }
 
   .uc-auth-shell [aria-current="page"] {

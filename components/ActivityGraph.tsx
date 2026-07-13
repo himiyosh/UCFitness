@@ -254,7 +254,7 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
     }, [isSharing, t]);
 
     return (
-        <div ref={containerRef} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative hover:shadow-lg transition-shadow">
+        <div ref={containerRef} className="activity-graph-panel bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 relative hover:shadow-lg transition-shadow">
             {/* Anchors for scrolling (positioned with offset for sticky header) */}
             <div id="weekly-graph" className="absolute -top-32 invisible pointer-events-none" />
             <div id="monthly-graph" className="absolute -top-32 invisible pointer-events-none" />
@@ -311,7 +311,7 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                 aria-pressed={viewMode === m}
                                 className={`min-h-[44px] flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors sm:flex-none sm:px-3 sm:text-sm ${viewMode === m
                                     ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-900'
+                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                                     }`}
                             >
                                 {m === 'WEEKLY' ? t('weekly') : m === 'MONTHLY' ? t('monthly') : t('total')}
@@ -435,52 +435,55 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                 </div>
             </div>
 
-            <table className="sr-only">
-                <caption>{t('activityHistory')}</caption>
-                <thead>
-                    <tr>
-                        <th scope="col">{t('dateLabel')}</th>
-                        <th scope="col">{t('stepsLabel')}</th>
-                        {comparisonData && (
-                            <th scope="col">{comparisonLabel ?? t('comparison')}</th>
-                        )}
-                    </tr>
-                </thead>
-                <tbody>
-                    {processedData.map((day) => (
-                        <tr key={day.fullDate}>
-                            <th scope="row">{day.fullDate}</th>
-                            <td>{day.hasRecord ? day.value.toLocaleString() : t('notRecorded')}</td>
+            <div className="sr-only">
+                <table>
+                    <caption>{t('activityHistory')}</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">{t('dateLabel')}</th>
+                            <th scope="col">{t('stepsLabel')}</th>
                             {comparisonData && (
-                                <td>{(comparisonMap.get(day.fullDate) ?? 0).toLocaleString()}</td>
+                                <th scope="col">{comparisonLabel ?? t('comparison')}</th>
                             )}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {processedData.map((day) => (
+                            <tr key={day.fullDate}>
+                                <th scope="row">{day.fullDate}</th>
+                                <td>{day.hasRecord ? day.value.toLocaleString() : t('notRecorded')}</td>
+                                {comparisonData && (
+                                    <td>{(comparisonMap.get(day.fullDate) ?? 0).toLocaleString()}</td>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
-            <div className="flex">
+            <div className="flex" aria-hidden="true">
                 {/* Y-axis Labels */}
-                <div className="flex flex-col justify-between text-xs text-gray-400 py-0 pr-2 h-64 text-right min-w-[30px] pb-6 shrink-0">
+                <div className="activity-graph-plot flex flex-col justify-between py-0 pr-2 pb-6 text-right text-xs text-[var(--color-text-muted)] min-w-[30px] shrink-0">
                     <span>{maxSteps >= 1000 ? `${(maxSteps / 1000).toFixed(0)}k` : maxSteps}</span>
                     <span>{maxSteps / 2 >= 1000 ? `${(maxSteps / 2000).toFixed(0)}k` : (maxSteps / 2).toFixed(0)}</span>
                     <span>0</span>
                 </div>
 
                 {/* Graph Area */}
-                <div className="relative h-64 flex-1 min-w-0 border-b border-gray-100 overflow-hidden">
+                <div className="activity-graph-plot relative flex-1 min-w-0 border-b border-gray-100 overflow-hidden">
 
                     {/* Coordinate System Container - Leaves 1.5rem (24px) at bottom for labels */}
-                    <div className="absolute top-0 left-0 right-0 bottom-6">
+                    <div className="absolute top-6 left-0 right-0 bottom-6">
                         {/* Goal Line */}
                         <div
-                            className="absolute w-full border-t-2 border-dashed border-red-400 z-10 pointer-events-none opacity-60"
+                            className="activity-graph-goal-line absolute z-10 w-full border-t-2 border-dashed border-[var(--color-danger-strong)] pointer-events-none"
                             style={{ bottom: `${goalPercentage}%` }}
                         ></div>
 
                         {/* Scroll Container */}
                         <div
                             ref={scrollContainerRef}
+                            tabIndex={-1}
                             className={`flex items-end w-full h-full gap-px px-1 relative z-0 ${viewMode !== 'WEEKLY' ? 'overflow-x-auto' : 'justify-between overflow-hidden'}`}
                             style={{ scrollBehavior: 'smooth' }}
                         >
@@ -509,6 +512,11 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                         }
 
                                         const showLabel = dayIndex === 0 || dayIndex === total - 1 || dayIndex % step === 0;
+                                        const edgeLabelPosition = dayIndex === 0
+                                            ? 'left-0'
+                                            : dayIndex === total - 1
+                                                ? 'right-0'
+                                                : 'left-1/2 -translate-x-1/2';
 
                                         // Bar width styling
                                         const barClass = viewMode === 'ALL'
@@ -518,7 +526,7 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                         // Highlight goal achievement
                                         const isGoalReached = day.value >= stepGoal;
                                         const barColor = isGoalReached
-                                            ? 'bg-emerald-400 group-hover:bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' // Bright emerald with glow
+                                            ? 'bg-[var(--color-success-strong)] group-hover:bg-[var(--color-success)]'
                                             : 'bg-[var(--theme-primary)] group-hover:bg-[var(--theme-primary)]/80';
 
                                         // Highlight Today
@@ -576,7 +584,7 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                                 {/* Comparison bar (behind main bar) */}
                                                 {comparisonData && compValue > 0 && (
                                                     <div
-                                                        className="absolute bottom-0 left-0 right-0 rounded-t-sm bg-gray-300/40 pointer-events-none"
+                                                        className="activity-graph-comparison-bar absolute bottom-0 left-0 right-0 rounded-t-sm bg-gray-300/40 pointer-events-none"
                                                         style={{
                                                             height: `${compHeightPercentage}%`,
                                                             minHeight: '2px',
@@ -584,7 +592,7 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                                     />
                                                 )}
                                                 <div
-                                                    className={`w-full rounded-t-sm transition-all duration-300 ease-out ${day.value > 0 ? barColor : 'bg-gray-100'
+                                                    className={`activity-graph-bar w-full rounded-t-sm transition-all duration-300 ease-out ${day.value > 0 ? barColor : 'bg-gray-100'
                                                         } ${todayIndicator} relative z-10`}
                                                     style={{
                                                         height: `${heightPercentage}%`,
@@ -595,16 +603,19 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
 
                                                 {/* Step Count Label (Weekly View) */}
                                                 {viewMode === 'WEEKLY' && (
-                                                    <div className="absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 text-center pointer-events-none z-10">
-                                                        <span className="text-xs font-semibold text-gray-500 bg-white/80 px-1 rounded shadow-sm whitespace-nowrap">
+                                                    <div
+                                                        className={`absolute z-10 text-center pointer-events-none ${edgeLabelPosition}`}
+                                                        style={{ bottom: `calc(${heightPercentage}% + 0.25rem)` }}
+                                                    >
+                                                        <span className="rounded bg-[var(--color-surface)] px-1 text-xs font-semibold text-[var(--color-text)] shadow-sm whitespace-nowrap">
                                                             {day.hasRecord ? day.value.toLocaleString() : '—'}
                                                         </span>
                                                     </div>
                                                 )}
 
                                                 {showLabel ? (
-                                                    <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 text-center pointer-events-none">
-                                                        <span className={`text-xs whitespace-nowrap block ${day.isToday ? 'font-bold text-[var(--theme-primary)]' : 'text-gray-400'}`}>
+                                                    <div className={`absolute top-full mt-2 text-center pointer-events-none ${edgeLabelPosition}`}>
+                                                        <span className={`text-xs whitespace-nowrap block ${day.isToday ? 'font-bold text-[var(--theme-primary)]' : 'text-[var(--color-text-muted)]'}`}>
                                                             {day.label}
                                                         </span>
                                                     </div>

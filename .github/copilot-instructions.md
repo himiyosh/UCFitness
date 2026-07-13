@@ -1319,3 +1319,10 @@ export const runtime = "edge";
 - **根本原因**: 実データは増えたが、白い角丸カード・薄い枠・小アイコンを同じ強さで反復し、進捗・競争・報酬・次行動の因果が分断されていた。0歩や空き順位も同じ見た目で反復し、低活動時に空虚さを強めた。
 - **対策**: `HomeHero`をQuest面へ再構成し、進捗→ライバル→歩いた価値→次の一歩を連結した。Mission→Weekly→Reward→Challengeの後を任意探索章（Utility→Friend→Ranking）として明示し、Utility Dockの重複排除、未来志向の0歩表現、未記録・記録済み0歩・参加済みで異なる固定5行コピー、状態別650ms以下のCSS反応を追加した。Sidebar後の1280pxでは4列を使わず、1536px以上だけ4列化する。Mission GETを参照専用化し、再試行中はloadingへ戻して準備POSTとの競合を防ぐ。POSTの報酬書き込み失敗は非成功応答、成功時はlive通知・見出しfocus・永続報酬表示とした。補助ストリーク障害は`null`+明示フラグへ分離し、Challenge進捗取得失敗も0%へ変換しない。
 - **教訓**: Product dashboardのDelightは装飾量ではなく、実データの変化が感情的な手応えへつながる順序と反応で作る。カードを増やす前に因果・重複・状態変化を設計し、レスポンシブ列数とコピーを実コンテナ幅・ユーザー状態で検証する。時間制限motionだけに成功情報を委ねず、状態遷移後のfocusとlive通知も同じ契約にする。リファレンス: `components/dashboard/HomeHero.tsx`, `components/dashboard/DailyMissions.tsx`, `components/dashboard/DashboardChallenges.tsx`, `app/[locale]/page.tsx`, `app/api/user/missions/route.ts`
+
+### LL-046: 同一行パネルの下端が揃わず、グラフがパネル内で小さく見えた
+
+- **事象**: Homeの4モジュールが1920pxで最大126pxの高さ差を持ち、Home週間グラフはパネル高の約39%、プロフィール活動グラフは約51〜57%しか占有していなかった。
+- **根本原因**: Home gridへ`items-start`を指定して行内stretchを無効化し、グラフ高をviewport breakpointの固定値だけで決めていた。Weeklyだけモバイルの角丸・paddingも他パネルと異なっていた。
+- **対策**: 複数列時だけ同一grid行を等高化し、Home 4モジュールの`rounded-2xl`/`p-3`を統一した。Home/ProfileグラフへBaseline 2023のcontainer queryを適用し、パネル自身の幅に応じてプロット領域を拡大した。プロフィールグラフは値ラベルの上端余白と端clamp、視覚層の`aria-hidden`、非表示スクロール領域のTab除外、Forced Colors境界も同時に修正した。
+- **教訓**: パネル統一は全画面固定高ではなく「同一行・同一役割」の幾何で判断する。等高化で増えた高さはグラフや実データへ配分し、空白スペーサーで埋めない。グラフ拡大時はplot寸法だけでなく、ラベルclip・代替表との二重読み上げ・非テキストコントラストを再監査する。リファレンス: `app/[locale]/page.tsx`, `components/ActivityGraph.tsx`, `app/globals.css`

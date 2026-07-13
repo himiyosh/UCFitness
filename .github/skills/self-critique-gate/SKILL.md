@@ -76,7 +76,7 @@ description: "Use when: finishing any UCFitness task, applying fixes, changing U
 | 狭幅・ブレイクポイント変更 | 320/375/639/640/767/768/1023/1024/1279/1280でcontainer/card幅、h1行数、`body.scrollHeight`を比較。Sidebar出現後に多列化で狭くなっていないこと |
 | 操作領域変更 | 各幅で全可視`button, a[href], input, select, summary`を列挙し、編集・エラー・空・disabled状態を含め幅・高さ44px未満が0件であること。画面外カルーセルリンクはfocus時に表示範囲へ移動する |
 | a11y代替表変更 | `sr-only` wrapperがabsolute 1×1pxで、不可視tableが文書高やFooter後の残余高へ寄与しないこと |
-| Home delight変更 | Questの進捗→競争→歩いた価値→次行動が3秒で理解でき、Mission→Weekly→Reward→Challengeの後を任意探索（Utility→Friend→Ranking）として判別できること。Utilityが全認証幅で重複なく到達でき、1280pxで4列過圧縮がなく、固定行コピーが未記録・記録済み0歩・参加済みと一致すること。同一導線・カード文法・0値反復がなく、非loading motionは650ms以下、reduced motionはcomputed 0秒。Mission GET再試行中に準備POSTを露出せず、報酬書き込み失敗は非成功応答、成功はfocus/live/永続表示を持ち、補助ストリーク障害を0へ、Challenge進捗失敗を0%へ変換しないこと |
+| Home delight変更 | Questの進捗→競争→歩いた価値→次行動が3秒で理解でき、Mission→Weekly→Reward→Challengeの後を任意探索（Utility→Friend→Ranking）として判別できること。Utilityが全認証幅で重複なく到達でき、1280pxで4列過圧縮がなく、複数列時の同一行パネル下端差が1px以内、Home/Profileグラフがパネル幅に応じて十分な高さを持つこと。拡大後の値/端ラベルclipがなく、完全な代替表がある視覚層は`aria-hidden`、Forced Colorsでも棒・目標線が判別できること。固定行コピーが未記録・記録済み0歩・参加済みと一致し、同一導線・カード文法・0値反復がなく、非loading motionは650ms以下、reduced motionはcomputed 0秒。Mission GET再試行中に準備POSTを露出せず、報酬書き込み失敗は非成功応答、成功はfocus/live/永続表示を持ち、補助ストリーク障害を0へ、Challenge進捗失敗を0%へ変換しないこと |
 | 健康データ / ranking表示 | 0件・0歩・未集計とDB/API取得失敗が別状態で、失敗を成功形の既定値へ変換していないこと |
 | 主要導線 / ナビ / ホーム / ランキング / ショップ変更 | UCFitnessAgent の Persona Journey Review を使い、最低 2 ペルソナで Playwright 回遊監査 |
 | 全ページ監査 | `app/[locale]/**/page.tsx`のルート台帳を作り、共通Shell / 競争 / アカウント / 商取引の各群で正常・空・障害・権限・320px・キーボード状態を確認。ホームだけのPASSで代替しない |

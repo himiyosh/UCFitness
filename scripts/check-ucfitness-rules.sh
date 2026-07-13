@@ -216,6 +216,24 @@ if grep -q 'md:grid-cols-2 xl:grid-cols-4' 'app/[locale]/page.tsx' || \
    ! grep -q '2xl:grid-cols-4' 'app/[locale]/page.tsx'; then
   record "Sidebar後1280pxでHomeカードを4列へ過圧縮" "app/[locale]/page.tsx"
 fi
+if ! grep -q 'home-module-grid.*items-stretch' 'app/[locale]/page.tsx' || \
+   grep -q 'home-module-grid.*items-start' 'app/[locale]/page.tsx' || \
+   ! grep -q 'block-size: 100%' app/globals.css; then
+  record "Home同一grid行のパネル等高契約欠落" "app/[locale]/page.tsx / app/globals.css"
+fi
+if ! grep -q 'home-week-chart' 'app/[locale]/page.tsx' || \
+   ! grep -q '@container home-analysis (min-width: 20rem)' app/globals.css || \
+   ! grep -q 'activity-graph-plot' components/ActivityGraph.tsx || \
+   ! grep -q '@container activity-graph (min-width: 39rem)' app/globals.css; then
+  record "Home/Profileグラフのcontainer幅連動契約欠落" "Home WeeklyPulse / ActivityGraph / globals.css"
+fi
+if ! grep -q 'className="flex" aria-hidden="true"' components/ActivityGraph.tsx || \
+   ! grep -q '<div className="sr-only">' components/ActivityGraph.tsx || \
+   ! grep -q 'tabIndex={-1}' components/ActivityGraph.tsx || \
+   ! grep -q 'activity-graph-goal-line' components/ActivityGraph.tsx || \
+   ! grep -q '.activity-graph-bar' app/globals.css; then
+  record "Profileグラフの代替表/clip/Forced Colors契約欠落" "ActivityGraph.tsx / globals.css"
+fi
 if ! grep -q 'rankedOpenSlots' 'app/[locale]/page.tsx'; then
   record "ランキング済みユーザーへ未参加向け空き行文言を表示" "app/[locale]/page.tsx"
 fi

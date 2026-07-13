@@ -249,6 +249,16 @@ body {
 - 同一カード文法を繰り返さず、Quest・Mission・Weekly・Reward・Challengeで面・区切り・アイコンの役割を変える。
 - 0歩コピーは未記録・記録済み0歩・ランキング参加済みを分離する。ミッションの短い祝福motionは補助とし、状態通知と獲得報酬を時間制限なしでも確認できるようにする。
 
+### パネル寸法とグラフ占有率
+
+- 同一dashboard grid行のパネルは、複数列へ切り替わる`md`以上で下端を揃える。モバイル単列は自然高さを維持する。
+- 等高化は親gridの`items-stretch`と子パネルの`block-size: 100%`で行い、`items-start`と`h-full`を競合させない。
+- Home 4モジュールの角丸は`rounded-2xl`、paddingは`p-3`へ統一する。
+- グラフはviewportではなくパネルのcontent-box幅を基準にする。Baseline 2024内のcontainer queryを使い、Home週間グラフは320px以上のcontent-boxで144px、それ未満で128px、プロフィール活動グラフは288〜384pxを基準とする。
+- 等高化で生じた高さはグラフや実データへ配分し、空白帯を`mt-auto`や固定スペーサーで作らない。
+- プロフィール活動グラフは上端24pxを値ラベル用に予約し、先頭・末尾ラベルをプロット端へclampする。数値代替表がある場合、視覚軸・棒・曜日ラベルは`aria-hidden`にする。
+- Forced ColorsではHome/Profileの棒を`Highlight`、境界を`CanvasText`、比較棒を`GrayText`で描画し、色面が無効化されても形状を残す。
+
 ---
 
 ## アクセシビリティトークン

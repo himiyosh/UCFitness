@@ -97,7 +97,7 @@ export default function DashboardChallenges(): ReactNode {
 
     if (loading) {
         return (
-            <div aria-busy="true" className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
+            <div aria-busy="true" className="home-competition-module flex h-full flex-col justify-center rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
                 <h2 className="sr-only">{t('activeChallenges')}</h2>
                 <p className="sr-only" role="status" aria-atomic="true">{t('loading')}</p>
                 <div className="animate-pulse">
@@ -112,7 +112,7 @@ export default function DashboardChallenges(): ReactNode {
     // エラーチェックを空チェックより先に行う（デフォルト空配列でエラーが隠れるバグ修正）
     if (error) {
         return (
-            <div className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
+            <div className="home-competition-module flex h-full flex-col justify-center rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="flex flex-col items-center py-6 text-center">
                     <StatusIcon />
                     <h2 className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('activeChallenges')}</h2>
@@ -130,7 +130,7 @@ export default function DashboardChallenges(): ReactNode {
 
     if (challenges.length === 0) {
         return (
-            <div className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 text-center shadow-sm">
+            <div className="home-competition-module flex h-full flex-col justify-center rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 text-center shadow-sm">
                 <h2 className="text-base font-bold text-[var(--color-text)]">{t('activeChallenges')}</h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]" role="status">
                     {t('dashboardEmpty')}
@@ -146,7 +146,7 @@ export default function DashboardChallenges(): ReactNode {
     }
 
     return (
-        <div className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
+        <div className="home-competition-module h-full rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex min-w-0 items-center gap-2">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--color-competition-solid)] text-white shadow-sm" aria-hidden="true">
