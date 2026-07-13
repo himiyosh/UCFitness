@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-13T10:29:14+09:00",
+  "lastUpdated": "2026-07-13T17:43:22+09:00",
   "lastAgent": "UCFitnessAgent (Next.js + React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "cae8b7244c6ed77cb5ceb2556bcef5990e444b32",
+  "lastCommit": "c6a8e907d53d3ddb6b9cc388c0ab9e6976dd552a",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "標準認証ページをAuthenticatedPageHeaderとPageIntroへ統一し、ブランド見出し重複を解消した。プロフィールはcanonical URLへ直結し、GlobalLoader残留、UTC/JST水和差、不正DOM、route loadingのレイアウトシフト、バッジTooltip/DialogのEscape競合、比較歩数DB障害の正常化を修正した。4幅・Classic/Midnightの48画面、375/1280の二段Escape、全188テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
+  "summary": "320〜1280pxの狭幅・ブレイクポイント設計を再監査し、1024pxのSidebar後過圧縮、Profile末尾約3,000px空白、Shop/Settings二重縦スクロール、モバイルFooter非表示、条件付き状態を含む44px未満操作、カルーセルfocus、固定英語文言を修正した。公開20条件・認証160条件・タッチ96条件・編集/エラー/ja-en状態、全188テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 217件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-13T10:29:14+09:00"
+    "lastVerified": "2026-07-13T17:43:22+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -405,6 +405,28 @@
         "components/ActivityGraph.tsx",
         "components/layout/",
         "components/profile/",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-13",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『ウィンドウサイズを狭めた場合のレイアウト・デザイン』フィードバックに対応。320〜1280pxの境界を再設計し、Sidebar後の実コンテンツ幅に合わせて複雑な多列化をxlへ移動、Profileの不可視table空白、Shop/Settings内部縦スクロール、全幅Footer、通常/編集/エラー状態の44px、カルーセル前後focus、ja/en固定文言を修正した。公開20条件・認証160条件・タッチ96条件・条件付き状態ブラウザ、31ファイル188テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "c6a8e907d53d3ddb6b9cc388c0ab9e6976dd552a",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/instructions/accessibility.instructions.md",
+        ".github/instructions/mobile-first.instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/",
+        "app/globals.css",
+        "components/",
         "docs/PRODUCT.md",
         "docs/DESIGN_TOKENS.md",
         "messages/ja.json",
