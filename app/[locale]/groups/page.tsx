@@ -183,7 +183,7 @@ export default async function MyGroupsPage() {
                     </section>
                 )}
 
-                <div className="flex flex-col lg:flex-row gap-8 items-start">
+                <div className="flex flex-col xl:flex-row gap-4 xl:gap-8 items-start">
                     {/* Group List (Left on Desktop, Top on Mobile) */}
                     <section className="flex-1 w-full">
                         {/* ハイライト + サマリー統合パネル */}
@@ -240,7 +240,7 @@ export default async function MyGroupsPage() {
                     </section>
 
                     {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
-                    <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-24 space-y-3">
+                    <aside className="w-full xl:w-80 flex-shrink-0 xl:sticky xl:top-24 space-y-3">
                         {/* Join / Create */}
                         <div>
                             <div className="flex items-center mb-2">

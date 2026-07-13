@@ -228,6 +228,15 @@ body {
 - ページタイトルへグラデーション文字や広域CSSによるサイズ上書きを適用しない。
 - 基準幅は`max-w-7xl`、左右余白は`px-4 sm:px-6 lg:px-8`、導入部の縦余白は`py-4 sm:py-6`とする。
 
+### 狭幅・Sidebar境界
+
+- 320〜767px: 1列、BottomNav、全幅Footer、全操作44×44px以上。
+- 768〜1023px: 1〜2列。カード幅を優先し、詳細な3列化を行わない。
+- 1024〜1279px: Sidebarは表示するが、本文の実効幅は約768px。Home/Groups/Settingsは単列または2列、Shopは3列を上限とする。
+- 1280px以上: 3〜4列、main+aside、LP詳細展開を許可する。
+- 通常ページはdocumentの自然スクロールを使用し、`max-height` + `overflow-y-auto`で本文を固定しない。
+- `sr-only` tableはwrapperをabsolute 1×1pxにし、Footer後の残余高を作らない。
+
 ---
 
 ## アクセシビリティトークン

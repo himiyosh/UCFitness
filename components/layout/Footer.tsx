@@ -52,7 +52,7 @@ export default async function Footer() {
               href="https://studio344.net"
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+              className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               Studio344
             </a>

@@ -1498,17 +1498,11 @@ body {
 }
 
 .uc-auth-content :where(footer) {
-  display: none;
+  display: block;
   margin-top: auto;
   flex-shrink: 0;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
-}
-
-@media (min-width: 768px) {
-  .uc-auth-content :where(footer) {
-    display: block;
-  }
 }
 
 .uc-auth-content > main > header.sticky,

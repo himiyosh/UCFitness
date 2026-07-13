@@ -73,6 +73,9 @@ description: "Use when: finishing any UCFitness task, applying fixes, changing U
 | 100% 表示の密度変更 | 375px / 1280px / 1920px で `body.scrollHeight`、ヒーロー高さ、横スクロール、ファーストビュー内の情報量を測定 |
 | App Shell / ナビ / スクロール変更 | root scroll、横スクロール、ヘッダー幅、Footer下端、header/avatar/badgeのbounding rect、主要ページ表示を確認 |
 | mobile app / PWA変更 | `viewport-fit=cover`、top/bottom safe-area、44px、hover非依存、standalone相当の最初/最後の操作到達性 |
+| 狭幅・ブレイクポイント変更 | 320/375/639/640/767/768/1023/1024/1279/1280でcontainer/card幅、h1行数、`body.scrollHeight`を比較。Sidebar出現後に多列化で狭くなっていないこと |
+| 操作領域変更 | 各幅で全可視`button, a[href], input, select, summary`を列挙し、編集・エラー・空・disabled状態を含め幅・高さ44px未満が0件であること。画面外カルーセルリンクはfocus時に表示範囲へ移動する |
+| a11y代替表変更 | `sr-only` wrapperがabsolute 1×1pxで、不可視tableが文書高やFooter後の残余高へ寄与しないこと |
 | 健康データ / ranking表示 | 0件・0歩・未集計とDB/API取得失敗が別状態で、失敗を成功形の既定値へ変換していないこと |
 | 主要導線 / ナビ / ホーム / ランキング / ショップ変更 | UCFitnessAgent の Persona Journey Review を使い、最低 2 ペルソナで Playwright 回遊監査 |
 | 全ページ監査 | `app/[locale]/**/page.tsx`のルート台帳を作り、共通Shell / 競争 / アカウント / 商取引の各群で正常・空・障害・権限・320px・キーボード状態を確認。ホームだけのPASSで代替しない |
@@ -94,7 +97,7 @@ UI に触れた場合、`self-critique.agent.md` の 6 軸で必ず批判する�
 |---|---|
 | デザイン一貫性 | 他ページと同じアプリに見えるか、app logoが多色brand mark + solid wordmarkか、標準認証ページのheader / PageIntro / 唯一のh1 / 意味色・CTAが揃っているか |
 | 余白・密度 | 間延び、巨大な空白、Footer中央浮き、進捗/競争/報酬/次行動に加え、時系列・蓄積・固定5行のranking preview・friend activityの実データがあり装飾だけで埋めていないか。詳細な社会比較は次行動より後で、friend activityが他者最大値基準の重複ランキングになっていないか |
-| レスポンシブ | 375pxで見切れ・横スクロール・潰れがなく、header visual/badgeがheader rect内に収まるか |
+| レスポンシブ | 320/375pxで見切れ・横スクロール・潰れがなく、1024pxのSidebar差引後もカードが過圧縮されず、header visual/badgeがheader rect内に収まるか |
 | テキスト・翻訳 | ja/en キー、長文、数値・日付が破綻しないか。行リンクの`aria-label`が可視の名前・順位・歩数を上書きしていないか。曜日・歩数単位・Dialog名・操作名に英語固定が残っていないか |
 | インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか。API失敗・未記録・実際の0が別状態か。Dialogが保存中に永久トラップを作らず、同じ書き込みを再送しないか |
 | コード品質 | Hooks 順序、Server/Client 境界、型安全、未使用 import、デバッグコード |

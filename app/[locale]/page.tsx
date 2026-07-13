@@ -282,8 +282,8 @@ export default async function Home(): Promise<ReactNode> {
               </div>
             </section>
           )}
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.8fr)_minmax(280px,1fr)]">
-            <div className="min-w-0 md:col-span-2 lg:col-span-1">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.8fr)_minmax(280px,1fr)]">
+            <div className="min-w-0 md:col-span-2 xl:col-span-1">
               <HomeHero
                 todaySteps={mySteps}
                 stepGoal={stepGoal}
@@ -370,7 +370,7 @@ export default async function Home(): Promise<ReactNode> {
             </>
           )}
         </div>
-        <div className="home-desktop-footer mt-auto hidden md:block">
+        <div className="home-desktop-footer mt-auto">
           <Footer />
         </div>
       </div>

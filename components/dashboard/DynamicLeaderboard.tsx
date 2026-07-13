@@ -153,7 +153,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                 onClick={() => handlePeriodChange(tab.key)}
                                 role="tab"
                                 aria-selected={isActive}
-                                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+                                className={`flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 sm:flex-none sm:px-4 sm:text-sm ${
                                     !isMidnight
                                         ? (isActive
                                             ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
@@ -190,7 +190,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                 <button
                                     key={groupData.keyword}
                                     onClick={() => setActiveGroupIndex(index)}
-                                    className={`flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                                    className={`flex min-h-[44px] flex-shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 sm:px-4 sm:py-2 sm:text-sm ${
                                         isActive
                                             ? (!isMidnight
                                                 ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
@@ -268,7 +268,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                 </p>
                                 <button
                                     onClick={() => setRetryKey(k => k + 1)}
-                                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
+                                    className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                                 >
                                     {commonT('retry')}
                                 </button>

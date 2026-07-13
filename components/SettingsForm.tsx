@@ -147,7 +147,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
     }, [name, username, router, t]);
 
     return (
-        <div className="grid min-h-0 grid-cols-1 gap-3 lg:max-h-[calc(100dvh-10.5rem)] lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:overflow-hidden">
+        <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
             {/* フルサイズプレビュー用モーダル */}
             <ImageModal
                 isOpen={isImageModalOpen}
@@ -163,7 +163,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             />
 
             {/* Main Column */}
-            <div className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1 styled-scrollbar">
+            <div className="space-y-3">
 
             <section className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
                 {/* S8: 装飾的な背景グラデーション */}
@@ -272,7 +272,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="px-6 py-2.5 bg-[var(--theme-primary)] text-white text-sm font-bold rounded-lg hover:bg-[var(--theme-primary)]/90 disabled:opacity-50 transition-all shadow-sm hover:shadow-md flex items-center gap-2 justify-center"
+                                className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[var(--theme-primary)] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[var(--theme-primary)]/90 hover:shadow-md disabled:opacity-50"
                             >
                                 {isSaving && (
                                     <Spinner size="sm" />
@@ -368,7 +368,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             </div>
 
             {/* Sidebar Column: Preferences */}
-            <div className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1 styled-scrollbar">
+            <div className="space-y-3">
 
                 {/* Language Switcher */}
                 <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
@@ -382,7 +382,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         <button
                             onClick={() => handleLanguageChange('ja')}
                             disabled={!!switchingLocale}
-                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'ja'
+                            className={`flex min-h-[44px] w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${locale === 'ja'
                                 ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}
@@ -400,7 +400,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                         <button
                             onClick={() => handleLanguageChange('en')}
                             disabled={!!switchingLocale}
-                            className={`w-full px-4 py-2 text-sm font-medium rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${locale === 'en'
+                            className={`flex min-h-[44px] w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${locale === 'en'
                                 ? 'bg-[var(--theme-primary-light)] border-[var(--theme-primary)]/30 text-[var(--theme-primary)] midnight-option-selected'
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 midnight-option-default'
                                 }`}

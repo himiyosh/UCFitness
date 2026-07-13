@@ -85,6 +85,9 @@ UI コンポーネント作成・修正時に以下を遵守すること。
 - `max-width: 100%` で画像・動画・iframe のオーバーフローを防止
 - Flex/Grid の子要素には `min-width: 0` を設定してシュリンクを許可
 - 長い文字列（URL 等）は `overflow-wrap: anywhere` で折り返す
+- `button`, `a[href]`, `input`, `select`, `summary`等の可視操作要素は320pxでも44×44px以上にする
+- 編集・エラー・空状態など条件付きUIも開いて44pxとvisible focusを確認し、clipされたカルーセルの画面外リンクはfocus時に表示範囲へ移動する
+- スクリーンリーダー用tableは`table`本体ではなくabsolute 1×1pxの`sr-only` wrapperで包み、不可視表がページ高へ寄与しないことを確認する
 
 ## 画像・メディア
 

@@ -267,6 +267,95 @@ if [ -n "$HITS" ]; then
   record "ActivityGraphに端末タイムゾーン依存の初期表示" "$HITS"
 fi
 
+# ---------- 20. 狭幅ブレイクポイント / 自然スクロール / a11y geometry ----------
+if grep -q '<table className="sr-only"' components/StepCalendar.tsx; then
+  record "StepCalendarのtable本体にsr-only (rule: absolute 1px wrapperで包む)" "components/StepCalendar.tsx"
+fi
+if ! grep -q 'xl:grid-cols-\[minmax(0,0.9fr)_minmax(30rem,1.1fr)\]' components/LandingPage.tsx || \
+   grep -q 'lg:text-5xl' components/LandingPage.tsx || \
+   grep -q 'details className="group lg:hidden"' components/LandingPage.tsx; then
+  record "公開LPの1024px詳細展開 (rule: 複雑なHero/詳細はxlから)" "components/LandingPage.tsx"
+fi
+if grep -q 'lg:grid-cols-\[minmax(0,1.1fr)_minmax(260px,0.8fr)_minmax(280px,1fr)\]' 'app/[locale]/page.tsx'; then
+  record "認証Homeの1024px 3列化 (rule: Sidebar後はxlから)" "app/[locale]/page.tsx"
+fi
+if grep -q 'flex flex-col lg:flex-row' 'app/[locale]/groups/page.tsx'; then
+  record "Groupsの1024px main+aside化 (rule: xlから)" "app/[locale]/groups/page.tsx"
+fi
+if grep -Eq 'max-h-\[calc\(100dvh|overflow-y-auto|lg:grid-cols-4' components/ShopClient.tsx; then
+  record "Shopの固定高内部スクロール/1024px 4列化" "components/ShopClient.tsx"
+fi
+if grep -Eq 'max-h-\[calc\(100dvh|overflow-y-auto' components/SettingsForm.tsx; then
+  record "Settingsの固定高内部スクロール" "components/SettingsForm.tsx"
+fi
+FOOTER_STYLE_BLOCK=$(sed -n '/\.uc-auth-content :where(footer) {/,/^}/p' app/globals.css)
+if printf '%s' "$FOOTER_STYLE_BLOCK" | grep -q 'display: none'; then
+  record "認証Footerのモバイル非表示 (rule: 320pxから法務導線を表示)" "app/globals.css"
+fi
+if grep -q 'home-desktop-footer mt-auto hidden' 'app/[locale]/page.tsx'; then
+  record "Home Footerのモバイル非表示" "app/[locale]/page.tsx"
+fi
+
+require_touch_target_count() {
+  local file="$1"
+  local minimum="$2"
+  local count
+  count=$(grep -o 'min-h-\[44px\]' "$file" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$count" -lt "$minimum" ]; then
+    record "44px操作領域不足: ${file} (${count}/${minimum})" "$file"
+  fi
+}
+
+require_touch_target_count components/StepCalendar.tsx 3
+require_touch_target_count components/dashboard/DynamicLeaderboard.tsx 3
+require_touch_target_count components/challenge/ChallengeList.tsx 2
+require_touch_target_count components/group/GroupList.tsx 5
+require_touch_target_count components/group/GroupSettings.tsx 2
+require_touch_target_count components/StreakShieldIndicator.tsx 1
+require_touch_target_count components/SettingsForm.tsx 9
+require_touch_target_count components/profile/AchievementProgress.tsx 2
+require_touch_target_count components/profile/BadgeMuseum.tsx 1
+require_touch_target_count components/RecommendedItems.tsx 13
+require_touch_target_count components/TitleSelector.tsx 2
+require_touch_target_count components/FrameSelector.tsx 3
+require_touch_target_count components/StepGoalForm.tsx 4
+require_touch_target_count components/shop/ShopItemCard.tsx 1
+require_touch_target_count components/layout/Footer.tsx 5
+
+if ! grep -q 'min-h-\[44px\] min-w-\[44px\]' components/shop/ShopItemCard.tsx; then
+  record "Shop購入ボタンの44px幅不足" "components/shop/ShopItemCard.tsx"
+fi
+if grep -q 'w-6 h-6 rounded-full' components/RecommendedItems.tsx || \
+   ! grep -q 'onFocusCapture={() => setSlideIndex(Math.min(index, maxSlide))}' components/RecommendedItems.tsx || \
+   ! grep -q 'onFocus={() => setSlideIndex(maxSlide)}' components/RecommendedItems.tsx || \
+   ! grep -q 'const maxTranslate = Math.max(0, trackWidth - viewportWidth)' components/RecommendedItems.tsx || \
+   ! grep -q 'function ItemCommentBubble' components/RecommendedItems.tsx || \
+   grep -q 'disabled={!isOwner || !isEditing}' components/RecommendedItems.tsx; then
+  record "RecommendedItemsの編集操作/画面外focus契約欠落" "components/RecommendedItems.tsx"
+fi
+if ! grep -q 'min-h-\[44px\] min-w-\[48px\] items-center justify-center rounded-lg px-2' components/RecommendedItems.tsx; then
+  record "RecommendedItemsコメント取消の44px幅不足" "components/RecommendedItems.tsx"
+fi
+if ! grep -q 'focus-visible:ring-offset-2 xl:hidden' components/dashboard/HomeHero.tsx; then
+  record "1024px Homeの次行動ジャンプ欠落" "components/dashboard/HomeHero.tsx"
+fi
+if ! grep -q 'grid grid-cols-3' components/challenge/ChallengeList.tsx || \
+   ! grep -q 'flex min-h-\[44px\] min-w-0 items-center justify-center' components/challenge/ChallengeList.tsx; then
+  record "Challenge tabsの3等分44px中央揃え欠落" "components/challenge/ChallengeList.tsx"
+fi
+if grep -Eq '>[^<{]*(Retry|Save|Cancel|Edit)[^<{]*<' components/StepGoalForm.tsx components/StepCalendar.tsx components/profile/AchievementProgress.tsx; then
+  record "変更対象の条件付きUIに英語固定文言" "StepGoalForm / StepCalendar / AchievementProgress"
+fi
+if ! grep -q '<form onSubmit={handleSubmit} noValidate' components/StepGoalForm.tsx || \
+   [ "$(grep -o 'min-w-\[48px\]' components/StepGoalForm.tsx | wc -l | tr -d ' ')" -lt 2 ]; then
+  record "StepGoal custom validation/48px短ラベル契約欠落" "components/StepGoalForm.tsx"
+fi
+if grep -Eq "'Just now'|m ago|h ago|d ago" 'app/[locale]/user/[username]/page.tsx' || \
+   grep -q '>Group Name<' components/group/GroupSettings.tsx || \
+   grep -Eq '>Daily<|>Weekly<' components/StepCalendar.tsx; then
+  record "狭幅変更対象にja/en未対応の固定文言" "Profile / GroupSettings / StepCalendar"
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"

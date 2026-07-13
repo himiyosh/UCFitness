@@ -55,9 +55,11 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     const deleteDialogRef = useRef<HTMLDivElement>(null);
     const deleteCancelRef = useRef<HTMLButtonElement>(null);
     const commentDialogRef = useRef<HTMLDivElement>(null);
+    const viewportRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
     const commentInputRef = useRef<HTMLInputElement>(null);
     const [editPopupPos, setEditPopupPos] = useState<{ top: number; left: number } | null>(null);
+    const [viewportWidth, setViewportWidth] = useState(0);
     const closeDeleteDialog = useCallback(() => setConfirmDeleteId(null), []);
     const closeSearchDialog = useCallback(() => setShowModal(false), []);
 
@@ -73,6 +75,17 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
         dialogRef: modalRef,
         initialFocusRef: searchCloseRef,
     });
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+
+        const updateWidth = (): void => setViewportWidth(viewport.clientWidth);
+        updateWidth();
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(viewport);
+        return () => observer.disconnect();
+    }, []);
 
     // --- 削除確認ダイアログを表示 ---
     const requestDelete = useCallback((itemId: string, e: React.MouseEvent) => {
@@ -202,8 +215,10 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
     // +ボタンを含めた全カード数
     const showAddButton = isOwner && items.length < 6 && (isEditing || items.length === 0);
     const totalCards = items.length + (showAddButton ? 1 : 0);
-    // 画面に見えるカード数（概算2.5枚）
-    const maxSlide = Math.max(0, totalCards - 2);
+    const trackWidth = Math.max(0, totalCards * CARD_W - 12);
+    const maxTranslate = Math.max(0, trackWidth - viewportWidth);
+    const maxSlide = Math.ceil(maxTranslate / CARD_W);
+    const translateX = Math.min(slideIndex * CARD_W, maxTranslate);
 
     const slidePrev = useCallback(() => {
         setSlideIndex(prev => Math.max(0, prev - 1));
@@ -248,7 +263,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {isOwner && items.length > 0 && (
                     <button
                         onClick={() => setIsEditing(prev => !prev)}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                        className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-all ${
                             isEditing
                                 ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-105'
                                 : 'text-gray-300 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'
@@ -273,6 +288,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
             <div className="relative">
                 {/* ビューポート */}
                 <div
+                    ref={viewportRef}
                     className="overflow-x-clip overflow-y-visible"
                     role="region"
                     aria-roledescription="carousel"
@@ -284,12 +300,16 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         ref={trackRef}
                         className={`flex gap-3 pb-1 ${items.some(i => i.comment) ? 'pt-20' : 'pt-1'}`}
                         style={{
-                            transform: `translateX(-${slideIndex * CARD_W}px)`,
+                            transform: `translateX(-${translateX}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
                         }}
                     >
-                {items.map(item => (
-                    <div key={item.id} className="flex-shrink-0 w-[155px] relative group">
+                {items.map((item, index) => (
+                    <div
+                        key={item.id}
+                        className="relative w-[155px] flex-shrink-0 group"
+                        onFocusCapture={() => setSlideIndex(Math.min(index, maxSlide))}
+                    >
                     <a
                         href={item.affiliate_link}
                         target="_blank"
@@ -326,7 +346,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         <button
                             onClick={(e) => requestDelete(item.id, e)}
                             disabled={deletingId === item.id}
-                            className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500/70 text-white text-xs flex items-center justify-center hover:bg-red-600 hover:scale-110 focus:bg-red-600 transition-all disabled:opacity-50 shadow-sm"
+                            className="absolute right-1 top-1 z-10 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-red-500/70 text-xs text-white shadow-sm transition-all hover:scale-110 hover:bg-red-600 focus:bg-red-600 disabled:opacity-50"
                             aria-label={locale === 'ja' ? '削除' : 'Remove'}
                             title={locale === 'ja' ? '削除' : 'Remove'}
                         >
@@ -342,7 +362,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 e.stopPropagation();
                                 startEditComment(item, e);
                             }}
-                            className="absolute top-1 left-1 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-sm backdrop-blur-sm bg-white/80 text-gray-400 border border-dashed border-gray-300 hover:border-[var(--theme-primary)] hover:text-[var(--theme-primary)] cursor-pointer hover:scale-110"
+                            className="absolute left-1 top-1 z-10 flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full border border-dashed border-gray-300 bg-white/80 text-gray-400 shadow-sm backdrop-blur-sm transition-all hover:scale-110 hover:border-[var(--theme-primary)] hover:text-[var(--theme-primary)]"
                             aria-label={locale === 'ja' ? 'コメントを追加' : 'Add comment'}
                             title={locale === 'ja' ? 'コメントを追加' : 'Add comment'}
                         >
@@ -354,19 +374,12 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
 
                     {/* 吹き出しコメント表示 — カード上部に浮かぶ吹き出しで常時表示 */}
                     {editingCommentId !== item.id && item.comment && (
-                        <div
-                            className={`absolute -top-6 left-1/2 z-20 w-[145px] ${isOwner && isEditing ? 'cursor-pointer' : 'pointer-events-none'}`}
-                            onClick={isOwner && isEditing ? (e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); } : undefined}
-                            style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%) translateY(-100%)' }}
-                        >
-                            <div className="bg-[var(--theme-primary)] rounded-lg px-2.5 py-1.5">
-                                <p className="text-[11px] text-white leading-snug line-clamp-2 break-words text-center">
-                                    {item.comment}
-                                </p>
-                            </div>
-                            {/* 吹き出し三角（下向き） */}
-                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[var(--theme-primary)] transform rotate-45" />
-                        </div>
+                        <ItemCommentBubble
+                            comment={item.comment}
+                            editable={isOwner && isEditing}
+                            locale={locale}
+                            onEdit={(e) => { e.preventDefault(); e.stopPropagation(); startEditComment(item, e); }}
+                        />
                     )}
                     </div>
                 ))}
@@ -375,6 +388,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {isOwner && items.length < 6 && (isEditing || items.length === 0) && (
                     <button
                         onClick={() => setShowModal(true)}
+                        onFocus={() => setSlideIndex(maxSlide)}
                         className="flex-shrink-0 w-[155px] h-[195px] rounded-xl border-2 border-dashed border-gray-200 hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] flex flex-col items-center justify-center gap-2 transition-all group"
                     >
                         <div className="w-10 h-10 rounded-full bg-gray-100 group-hover:bg-[var(--theme-primary)]/10 flex items-center justify-center transition-colors">
@@ -394,8 +408,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {slideIndex > 0 && (
                     <button
                         onClick={slidePrev}
-                        className="absolute left-[-6px] top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 border border-black/10 shadow-lg flex items-center justify-center text-gray-500 hover:text-[var(--theme-primary)] hover:shadow-xl active:scale-95 transition-all"
-                        aria-label="Previous"
+                        className="absolute left-[-6px] top-1/2 z-10 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/95 text-gray-500 shadow-lg transition-all hover:text-[var(--theme-primary)] hover:shadow-xl active:scale-95"
+                        aria-label={locale === 'ja' ? '前へ' : 'Previous'}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
                             <path fillRule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
@@ -407,8 +421,8 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 {slideIndex < maxSlide && (
                     <button
                         onClick={slideNext}
-                        className="absolute right-[-6px] top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 border border-black/10 shadow-lg flex items-center justify-center text-gray-500 hover:text-[var(--theme-primary)] hover:shadow-xl active:scale-95 transition-all"
-                        aria-label="Next"
+                        className="absolute right-[-6px] top-1/2 z-10 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/95 text-gray-500 shadow-lg transition-all hover:text-[var(--theme-primary)] hover:shadow-xl active:scale-95"
+                        aria-label={locale === 'ja' ? '次へ' : 'Next'}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
                             <path fillRule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
@@ -418,18 +432,23 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
 
                 {/* ドットナビ */}
                 {maxSlide > 0 && (
-                    <div className="flex justify-center gap-1.5 mt-2.5">
+                    <div className="mt-1 flex justify-center gap-0.5">
                         {Array.from({ length: maxSlide + 1 }, (_, i) => (
                             <button
                                 key={i}
                                 onClick={() => setSlideIndex(i)}
-                                className={`h-1.5 rounded-full transition-all duration-300 ${
-                                    i === slideIndex
-                                        ? 'w-5 bg-[var(--theme-primary)]'
-                                        : 'w-1.5 bg-gray-200 hover:bg-gray-300'
-                                }`}
-                                aria-label={`Slide ${i + 1}`}
-                            />
+                                className="group flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
+                                aria-label={locale === 'ja' ? `スライド ${i + 1}` : `Slide ${i + 1}`}
+                            >
+                                <span
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                                        i === slideIndex
+                                            ? 'w-5 bg-[var(--theme-primary)]'
+                                            : 'w-1.5 bg-gray-200 group-hover:bg-gray-300'
+                                    }`}
+                                    aria-hidden="true"
+                                />
+                            </button>
                         ))}
                     </div>
                 )}
@@ -485,7 +504,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 </button>
                                 <button
                                     onClick={cancelEditComment}
-                                    className="min-h-[44px] rounded-lg px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                                    className="inline-flex min-h-[44px] min-w-[48px] items-center justify-center rounded-lg px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800"
                                 >
                                     {locale === 'ja' ? '取消' : 'Cancel'}
                                 </button>
@@ -606,6 +625,51 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 </div>,
                 document.body
             )}
+        </div>
+    );
+}
+
+interface ItemCommentBubbleProps {
+    comment: string;
+    editable: boolean;
+    locale: string;
+    onEdit: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+function ItemCommentBubble({ comment, editable, locale, onEdit }: ItemCommentBubbleProps) {
+    const content = (
+        <>
+            <div className="rounded-lg bg-[var(--theme-primary)] px-2.5 py-1.5">
+                <p className="line-clamp-2 break-words text-center text-[11px] leading-snug text-white">
+                    {comment}
+                </p>
+            </div>
+            <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-[var(--theme-primary)]" />
+        </>
+    );
+    const className = "absolute -top-6 left-1/2 z-20 w-[145px] border-0 bg-transparent p-0 text-left";
+    const style = {
+        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))',
+        transform: 'translateX(-50%) translateY(-100%)',
+    };
+
+    if (editable) {
+        return (
+            <button
+                type="button"
+                aria-label={`${locale === 'ja' ? 'コメントを編集' : 'Edit comment'}: ${comment}`}
+                className={`${className} min-h-[44px] cursor-pointer`}
+                onClick={onEdit}
+                style={style}
+            >
+                {content}
+            </button>
+        );
+    }
+
+    return (
+        <div className={`${className} pointer-events-none`} style={style}>
+            {content}
         </div>
     );
 }

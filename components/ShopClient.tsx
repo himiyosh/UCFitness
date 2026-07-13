@@ -295,7 +295,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     <button
                         key={tab.key}
                         onClick={() => setViewMode(tab.key)}
-                        className={`flex-1 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
+                        className={`flex min-h-[44px] flex-1 items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
                             viewMode === tab.key
                                 ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
@@ -339,7 +339,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <p>{t('noItems')}</p>
                         </div>
                     ) : (
-                         <div className="grid max-h-[calc(100dvh-20rem)] grid-cols-2 gap-2 overflow-y-auto pr-1 styled-scrollbar sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                             {filteredItems.map(item => (
                                 <ShopItemCard
                                     key={item.id}

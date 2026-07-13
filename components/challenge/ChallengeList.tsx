@@ -120,14 +120,14 @@ export default function ChallengeList({ currentUserId }: ChallengeListProps) {
     return (
         <div>
             {/* タブ */}
-            <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6" role="tablist" aria-label={t('title')}>
+            <div className="mb-6 grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label={t('title')}>
                 {tabs.map(({ key, label }) => (
                     <button
                         key={key}
                         onClick={() => setTab(key)}
                         role="tab"
                         aria-selected={tab === key}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${
+                        className={`flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-2 text-center text-xs font-semibold leading-tight transition-all sm:px-3 sm:text-sm ${
                             tab === key
                                 ? 'bg-white text-[var(--theme-primary)] shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'

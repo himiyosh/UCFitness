@@ -286,6 +286,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
     const pctT = useTranslations('Percentile');
     const graphT = useTranslations('Graph');
     const wgT = useTranslations('WeeklyGoal');
+    const commonT = useTranslations('Common');
     const currentJstDate = getJSTDateString();
     const currentYear = Number(currentJstDate.slice(0, 4));
     const [year, setYear] = useState(currentYear);
@@ -445,10 +446,10 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                     <p className="text-sm text-gray-500 font-medium mb-3">{t('noData')}</p>
                     <button
                         onClick={fetchData}
-                        className="px-4 py-2 rounded-lg text-sm font-bold text-white hover:scale-105 active:scale-95 transition-all"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-lg px-4 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"
                         style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
                     >
-                        ↻ Retry
+                        ↻ {commonT('retry')}
                     </button>
                 </div>
             </div>
@@ -525,7 +526,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                         {/* デイリーゴール — 1行にラベル・バー・数値をまとめる */}
                         <div>
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-gray-600 w-11 shrink-0">Daily</span>
+                                <span className="w-11 shrink-0 text-xs font-bold text-gray-600">{graphT('daily')}</span>
                                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all duration-700 ${activity.todaySteps >= activity.stepGoal ? 'bg-green-500' : 'bg-[var(--theme-primary)]'}`}
@@ -542,7 +543,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                         {weeklyGoal && wgProgressStyle && (
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-gray-600 w-11 shrink-0">Weekly</span>
+                                    <span className="w-11 shrink-0 text-xs font-bold text-gray-600">{graphT('weekly')}</span>
                                     <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                         <div
                                             className={`h-full rounded-full transition-all duration-700 ${wgProgressStyle.barColor}`}
@@ -634,7 +635,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                 <div className="flex items-center gap-1">
                     <button
                         onClick={() => setYear((y) => y - 1)}
-                        className="p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors"
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100"
                         aria-label={t('previousYear')}
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -645,7 +646,7 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                     <button
                         onClick={() => setYear((y) => y + 1)}
                         disabled={year >= currentYear}
-                        className="p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors disabled:opacity-30"
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-30"
                         aria-label={t('nextYear')}
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -745,27 +746,29 @@ export default function StepCalendar({ userId, activity, showCalendar = true, us
                     </div>
                   </div>
 
-                    <table className="sr-only">
-                        <caption>{t('title')} {year}</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">{t('date')}</th>
-                                <th scope="col">{t('recordStatus')}</th>
-                                <th scope="col">{t('steps')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {gridCells
-                                .filter((cell) => cell.date <= todayStr)
-                                .map((cell) => (
-                                    <tr key={cell.date}>
-                                        <th scope="row">{cell.date}</th>
-                                        <td>{cell.hasRecord ? t('recorded') : t('notRecorded')}</td>
-                                        <td>{cell.hasRecord ? cell.steps.toLocaleString() : '—'}</td>
-                                    </tr>
-                                ))}
-                        </tbody>
-                    </table>
+                    <div className="sr-only">
+                        <table>
+                            <caption>{t('title')} {year}</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">{t('date')}</th>
+                                    <th scope="col">{t('recordStatus')}</th>
+                                    <th scope="col">{t('steps')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {gridCells
+                                    .filter((cell) => cell.date <= todayStr)
+                                    .map((cell) => (
+                                        <tr key={cell.date}>
+                                            <th scope="row">{cell.date}</th>
+                                            <td>{cell.hasRecord ? t('recorded') : t('notRecorded')}</td>
+                                            <td>{cell.hasRecord ? cell.steps.toLocaleString() : '—'}</td>
+                                        </tr>
+                                    ))}
+                            </tbody>
+                        </table>
+                    </div>
 
                     {/* 凡例 */}
                     <div className="flex items-center gap-1.5 mt-2 justify-end text-xs text-gray-400">

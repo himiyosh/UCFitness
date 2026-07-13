@@ -51,14 +51,14 @@ export default function GroupSettings() {
         </p>
         <div className="mt-4 flex gap-2">
           <label htmlFor="keyword" className="sr-only">
-            Group Name
+            {t('keywordLabel')}
           </label>
           <input
             type="text"
             name="keyword"
             id="keyword"
             maxLength={100}
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
+            className="block min-h-[44px] w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[var(--theme-primary)] sm:text-sm sm:leading-6"
             placeholder={t('placeholder')}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
@@ -73,7 +73,7 @@ export default function GroupSettings() {
             type="button"
             onClick={handleJoin}
             disabled={isSaving || !keyword.trim()}
-            className="inline-flex items-center rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-primary)] disabled:opacity-50 whitespace-nowrap gap-2 transition-all"
+            className="inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:scale-105 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-primary)] active:scale-95 disabled:opacity-50"
           >
             {isSaving && (
               <Spinner size="sm" />

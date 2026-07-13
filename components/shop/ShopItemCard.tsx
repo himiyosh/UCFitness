@@ -95,7 +95,7 @@ export default function ShopItemCard({
                         <button
                             onClick={(e) => { e.stopPropagation(); onBuy(); }}
                             disabled={!canAfford || !meetsRank || isLoading}
-                            className={`min-h-[44px] rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                            className={`min-h-[44px] min-w-[44px] rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
                                 canAfford && meetsRank
                                     ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-95'
                                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'

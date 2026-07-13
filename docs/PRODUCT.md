@@ -91,4 +91,7 @@ Do not make UCFitness look like:
 - Require group membership for group-scoped ranking data, and do not reveal private-group existence to non-members.
 - Use the shared dialog stack for every portal modal. Keyboard users must be able to cycle focus, press Escape, leave a long-running operation without duplicate submission, and return to the trigger.
 - Pair every visual chart with an accessible value table or equivalent list. Hide image-capture-only duplicates from the accessibility tree.
+- Treat 1024px authenticated layouts as sidebar-constrained tablet space. Defer dense three- or four-column layouts until the remaining content container can preserve readable card widths.
+- Keep normal pages on document scrolling, keep legal footer links reachable from 320px upward, and make every visible interactive target at least 44 by 44 CSS pixels.
+- Place screen-reader-only tables inside an absolutely positioned 1px wrapper so semantic alternatives never create visual dead space.
 - Prefer explicit local theme choice; use equipped themes only as the initial fallback on devices without a saved preference.

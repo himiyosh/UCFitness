@@ -137,7 +137,7 @@ export default function BadgeMuseum({ badges }: BadgeMuseumProps) {
           <button
             key={f.key}
             onClick={() => { setFilter(f.key); setExpandedBadge(null); }}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`flex min-h-[44px] items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
               filter === f.key
                 ? 'bg-[var(--theme-primary)] text-white shadow-sm'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'

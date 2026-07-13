@@ -281,8 +281,8 @@ export default function LandingPage() {
                         <div className="landing-orbit landing-orbit-success absolute bottom-8 left-[48%] hidden h-20 w-20 rounded-full bg-[var(--color-success-soft)] sm:block" />
                     </div>
 
-                    <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-24">
-                        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(30rem,1.1fr)] lg:gap-14">
+                    <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 xl:py-24">
+                        <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(30rem,1.1fr)] xl:gap-14">
                             <div className="landing-hero-copy min-w-0 max-w-2xl">
                                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-success-soft)] px-3 py-1.5 text-[var(--color-success-strong)]">
                                     <span className="landing-sync-dot h-2 w-2 rounded-full bg-[var(--color-success)]" aria-hidden="true" />
@@ -290,7 +290,7 @@ export default function LandingPage() {
                                 </div>
                                 <h1
                                     id="landing-headline"
-                                    className="text-balance text-3xl font-black leading-[1.08] tracking-[-0.035em] text-[var(--color-text)] sm:text-4xl lg:text-5xl"
+                                    className="text-balance text-3xl font-black leading-[1.08] tracking-[-0.035em] text-[var(--color-text)] sm:text-4xl xl:text-5xl"
                                 >
                                     <span className="block">{t('headlinePart1')}</span>
                                     <span className="block text-[var(--color-primary-strong)]">{t('headlinePart2')}</span>
@@ -310,7 +310,7 @@ export default function LandingPage() {
                                     <TrustItem label={t('trust.fitbit')} className="inline-flex" />
                                     <TrustItem label={t('trust.privacy')} className="inline-flex" />
                                     <TrustItem label={t('trust.pwa')} className="hidden sm:inline-flex" />
-                                    <TrustItem label={t('trust.i18n')} className="hidden lg:inline-flex" />
+                                    <TrustItem label={t('trust.i18n')} className="hidden xl:inline-flex" />
                                 </ul>
                             </div>
 
@@ -427,8 +427,8 @@ export default function LandingPage() {
 
                 <section className="relative overflow-hidden bg-[var(--color-primary-solid)] text-[var(--color-inverse-text)]">
                     <div className="pointer-events-none absolute -right-16 -top-20 hidden h-56 w-56 rounded-full bg-white/10 lg:block" aria-hidden="true" />
-                    <div className="relative mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8 lg:py-12">
-                        <details className="group lg:hidden">
+                    <div className="relative mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8 xl:py-12">
+                        <details className="group xl:hidden">
                             <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-primary-solid)] [&::-webkit-details-marker]:hidden">
                                 <h2 className="text-balance text-lg font-black tracking-tight text-white">
                                     {t('benefitsTitle')}
@@ -448,7 +448,7 @@ export default function LandingPage() {
                                 </ul>
                             </div>
                         </details>
-                        <div className="hidden lg:block">
+                        <div className="hidden xl:block">
                             <h2 className="max-w-2xl text-balance text-2xl font-black tracking-tight sm:text-3xl">
                                 {t('benefitsTitle')}
                             </h2>
@@ -555,7 +555,7 @@ function TrustItem({ label, className = '', inverse = false }: TrustItemProps) {
 
 function BenefitList({ benefits, compact = false }: BenefitListProps) {
     return (
-        <div className={compact ? 'mt-4 grid gap-4' : 'mt-8 grid gap-7 lg:grid-cols-3 lg:gap-8'}>
+        <div className={compact ? 'mt-4 grid gap-4' : 'mt-8 grid gap-7 xl:grid-cols-3 xl:gap-8'}>
             {benefits.map((benefit, index) => (
                 <article
                     key={benefit.metric}
@@ -587,7 +587,7 @@ function RewardPreviewCard({ item, index }: { item: RewardPreviewItem; index: nu
             </div>
             <p className="mt-3 text-xl font-black tabular-nums text-[var(--color-text)]">{item.value}</p>
             <h3 className="mt-2 text-base font-bold text-[var(--color-text)]">{item.title}</h3>
-            <p className="sr-only lg:not-sr-only lg:mt-2 lg:max-w-sm lg:text-sm lg:leading-6 lg:text-[var(--color-text-muted)]">
+            <p className="sr-only xl:not-sr-only xl:mt-2 xl:max-w-sm xl:text-sm xl:leading-6 xl:text-[var(--color-text-muted)]">
                 {item.description}
             </p>
         </li>
@@ -658,7 +658,7 @@ function JourneyCard({ item, index }: { item: JourneyItem; index: number }) {
                     <h3 className="mt-1.5 text-base font-bold tracking-tight text-[var(--color-text)]">{item.title}</h3>
                 </div>
             </div>
-            <p className="sr-only lg:not-sr-only lg:mt-3 lg:text-sm lg:leading-6 lg:text-[var(--color-text-muted)]">{item.description}</p>
+            <p className="sr-only xl:not-sr-only xl:mt-3 xl:text-sm xl:leading-6 xl:text-[var(--color-text-muted)]">{item.description}</p>
         </li>
     );
 }
@@ -671,7 +671,7 @@ function ShowcaseCard({ title, description, index }: { title: string; descriptio
             </div>
             <div className="min-w-0">
                 <h3 className="text-base font-bold tracking-tight text-[var(--color-text)]">{title}</h3>
-                <p className="sr-only lg:not-sr-only lg:mt-1.5 lg:text-sm lg:leading-6 lg:text-[var(--color-text-muted)]">{description}</p>
+                <p className="sr-only xl:not-sr-only xl:mt-1.5 xl:text-sm xl:leading-6 xl:text-[var(--color-text-muted)]">{description}</p>
             </div>
         </article>
     );

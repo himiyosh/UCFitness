@@ -953,6 +953,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 26. **プロフィールcanonical導線** — BottomNav/Sidebar/UserMenu等の通常導線は`/profile`を経由せず`/user/{username}`へ直接遷移する。全画面グローバルローダーではなくroute `loading.tsx`を使用し、redirect/error/URL不変時にoverlayが残らないことを確認する
 27. **日付水和契約** — Server/Clientで可視日付配列を生成するコンポーネントは、Serverが確定した`YYYY-MM-DD`をpropで受け、UTC固定演算で同じ初期DOMを作る。不正HTMLネストとhydration警告も同時に検査する
 28. **プロフィール比較障害の分離** — 他ユーザー画面で閲覧者プロフィールと比較歩数を並列取得する場合は両結果の`.error`を検査し、歩数DB障害を比較なしの正常表示へ変換しない。Home/Groupsの専用障害パネルではJWT usernameへfallbackせず、canonical値を確認できない間はプロフィールリンクを静的要約にする
+29. **Sidebar後の実コンテンツ幅** — `lg`でSidebarを出す認証画面は、1024px時点の本文約768pxを基準にする。3列以上、main+aside、詳細開示は`xl`へ遅らせ、1023/1024と1279/1280でカード幅・見出し行数・ページ高を比較する
+30. **自然スクロールと全幅Footer** — 通常ページの`max-h-[calc(100dvh-...)]` + `overflow-y-auto`を禁止し、documentスクロールへ統一する。Footerは320pxから表示し、BottomNav予約領域の上で法務リンクへ到達可能にする
+31. **不可視table geometry** — screen reader用tableは`sr-only` wrapper内へ配置し、wrapperがabsolute 1×1pxで、tableがFooter後のデッドスペースを作らないことを実測する
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -981,6 +984,10 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **ブラウザ標準セレクタ優先** — 親要素の状態表現は、不要な JS state やクラス付けより `:has()` / `:where()` / `:not()` を優先する。ただしセレクタは狭く保ち、広域 `:has()` は避ける
 - **intrinsic layout 優先** — 固定幅・固定高さより `aspect-ratio`、`minmax()`、`fit-content()`、container query units、`min-width: 0` を優先し、横スクロールと CLS を防ぐ
 - **ブレイクポイント境界の密度を実測する** — `sm` / `md` で内容・カード形状・カラム数を切り替える場合、639px / 640px、767px / 768pxのように1px手前と境界値で `body.scrollHeight` と対象section高を比較する。説明文だけを `sm` で表示し、複数カラム化を `md` まで遅らせて1カラムを縦長化する構成は禁止。開示UIから常時表示への切替は、内容を横へ分散できるレイアウト境界と揃える。リファレンス: `components/LandingPage.tsx`
+- **1024pxはSidebar付きタブレット幅として扱う** — Sidebar出現とHome 3列・Groups aside・Settings 2列・Shop 4列・LP詳細展開を同じ`lg`境界へ置かない。複雑な構成は`xl`またはcontainer queryへ送り、1024pxでカード幅240px未満や見出し行数増加があればFAIL
+- **ページ内二重縦スクロールを作らない** — 通常ページのShop item gridやSettings columnをviewport固定高へ閉じ込めない。Dialog/dropdown以外は自然スクロールを使い、`overflow-y-auto`要素の`scrollHeight > clientHeight`を全主要ページで0件にする
+- **全可視操作要素をgeometryで検査する** — `button, a[href], input, select, summary`を320/375/1024pxで列挙し、幅または高さ44px未満を1件でも残さない。通常表示だけでなく編集・エラー・空状態を開く。カルーセルドットは44px button内へ小さなvisualを置き、画面外リンクはfocus時に表示範囲へ移動する
+- **不可視a11y代替のlayoutも検査する** — `sr-only` table/listはAX treeだけでなく`position`, `width`, `height`, Footer後の残余高を測り、不可視要素が文書高を押し広げていればFAIL
 - **`flex` / `flex-row` 横並びにはレスポンシブプレフィックス必須** — 複数カード・パネルを横並びにする場合、`flex` のみ / `flex-row` のみは **禁止**。必ず `flex flex-col sm:flex-row` とし、モバイルでは縦積みにする。`flex-1` で均等分割する 3 カード以上のレイアウトは特に注意（モバイル幅 375px ÷ 3 = 125px/カードで内容が潰れる）。リファレンス: `GroupWeeklyReport.tsx`
 - Flexbox 中央揃え: `flex items-center gap-2` のみ使用（`items-stretch` + `justify-center` 禁止）
 - 最小テキスト: `text-[9px]`〜`text-[11px]` 禁止 → `text-xs` (12px) 以上
@@ -1359,6 +1366,8 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | ホーム中心の改善を全ページ完了と誤認した | 共通Shellの反映を個別ページ品質の代理にし、ルート台帳・状態別coverage・機能群別の完了判定を持っていなかった | **17ルートを共通Shell/競争/アカウント/商取引へ分けて監査する。** 正常・空・障害・権限・320px・keyboardを埋め、Dialog stack、chart代替表、GROUP認可、0歩/MTD、共有URL allowlistを確認する。ホームがPASSでも未監査ページを完了扱いしない |
 | 各ページのサイトタイトルが共通Shell適用後も不統一だった | ヘッダー操作群だけを共通化し、ブランド・context label・パンくず・ページ見出しを各ページへコピーした。広域CSSで似せたため見出し階層も差分も残った | **`AuthenticatedPageHeader` + `PageIntro`を標準契約にする。** ブランドはheadingにせず、ページ名だけを唯一の`h1`にする。グラデーション文字と広域見出し上書きを再導入しない |
 | プロフィールのDB応答は正常でも画面が空に見えた | `/profile`の二段redirect、pathname依存の全画面`GlobalLoader`、UTC/JSTの日付水和差、不正buttonネストがクライアント表示を阻害し得た | **canonicalプロフィールへ直接遷移し、route loadingへ局所化する。** Server確定日をpropで渡してUTC固定描画し、hydration consoleとDOM validityまで確認する。リファレンス: `BottomNavBar.tsx`, `ActivityGraph.tsx`, `ProfileBadges.tsx` |
+| 1024pxへ広げるとSidebarと多列化が同時発動して本文が潰れた | viewportの`lg`だけを見てSidebar差引後のcontainer幅を測らず、HomeHero 204px・Groups card 202px・LP h1 4行を生んだ | **複雑な多列化・詳細展開を`xl`へ遅らせる。** 1023/1024・1279/1280でcontainer/card幅、h1行数、ページ高を測り、広げた瞬間に悪化する境界を禁止する |
+| `sr-only` tableがProfile末尾へ約3,000pxの空白を作った | table本体へ`sr-only`を付け、table intrinsic layoutが1×1px制約を超えて文書高へ残った | **tableをabsolute 1×1pxの`sr-only` wrapperで包む。** AX構造だけでなくwrapper geometry、Footer後の残余高、全可視操作要素44pxを実ブラウザで検査する |
 
 ---
 
