@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 
 import { Period } from '@/components/dashboard/LeaderboardTabs';
@@ -18,6 +19,10 @@ const TABS: { key: Period; labelKey: string; icon: string }[] = [
     { key: 'YEARLY', labelKey: 'periods.yearly', icon: '🏆' },
 ];
 const MIN_ROWS = 5;
+
+function isPeriod(value: string | null): value is Period {
+    return value === 'DAILY' || value === 'WEEKLY' || value === 'MONTHLY' || value === 'YEARLY';
+}
 
 // ランクバッジの表示テキスト（1-3位はメダル絵文字）
 function getRankDisplay(rank: number): { text: string; isMedal: boolean } {
@@ -52,7 +57,9 @@ function SkeletonRow({ index }: { index: number }): JSX.Element {
 }
 
 export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }: DynamicLeaderboardProps) {
-    const [period, setPeriod] = useState<Period>('DAILY');
+    const searchParams = useSearchParams();
+    const requestedPeriod = searchParams.get('period');
+    const [period, setPeriod] = useState<Period>(() => isPeriod(requestedPeriod) ? requestedPeriod : 'DAILY');
     const { theme } = useTheme();
     const t = useTranslations('Leaderboard');
     const commonT = useTranslations('Common');

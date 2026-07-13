@@ -71,7 +71,7 @@ export default function DashboardSidebar({
             <span className="font-black text-[var(--color-primary-strong)]">UC</span>
             <span className="font-black text-[var(--color-text)]">Fitness</span>
           </span>
-          <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
+          <span className="rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--color-primary-strong)]">
             {dashT('beta')}
           </span>
         </Link>

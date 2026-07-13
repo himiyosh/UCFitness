@@ -45,7 +45,7 @@ function isDashboardChallengeResponse(value: unknown): value is DashboardChallen
 export default function DashboardChallenges(): ReactNode {
     const t = useTranslations('Challenge');
     const [challenges, setChallenges] = useState<DashboardChallenge[]>([]);
-    const [progressMap, setProgressMap] = useState<Record<string, number>>({});
+    const [progressMap, setProgressMap] = useState<Record<string, number | null>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
@@ -53,6 +53,7 @@ export default function DashboardChallenges(): ReactNode {
     const fetchChallenges = useCallback(async () => {
         setLoading(true);
         setError(false);
+        setProgressMap({});
         try {
             const res = await fetch('/api/challenge?status=active');
             if (!res.ok) {
@@ -70,14 +71,14 @@ export default function DashboardChallenges(): ReactNode {
             const joined = sliced.filter((c: DashboardChallenge) => c.is_joined);
             if (joined.length > 0) {
                 const entries = await Promise.all(
-                    joined.map(async (c: DashboardChallenge) => {
+                    joined.map(async (c: DashboardChallenge): Promise<[string, number | null]> => {
                         try {
                             const pRes = await fetch(`/api/challenge/${c.id}/progress`);
-                            if (!pRes.ok) return [c.id, 0];
+                            if (!pRes.ok) return [c.id, null];
                             const pData = await pRes.json();
                             return [c.id, pData.progress?.total_steps || 0];
                         } catch {
-                            return [c.id, 0];
+                            return [c.id, null];
                         }
                     })
                 );
@@ -96,7 +97,7 @@ export default function DashboardChallenges(): ReactNode {
 
     if (loading) {
         return (
-            <div aria-busy="true" className="rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-competition)] bg-[var(--color-surface)] p-3 shadow-sm">
+            <div aria-busy="true" className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
                 <h2 className="sr-only">{t('activeChallenges')}</h2>
                 <p className="sr-only" role="status" aria-atomic="true">{t('loading')}</p>
                 <div className="animate-pulse">
@@ -111,7 +112,7 @@ export default function DashboardChallenges(): ReactNode {
     // エラーチェックを空チェックより先に行う（デフォルト空配列でエラーが隠れるバグ修正）
     if (error) {
         return (
-            <div className="rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-competition)] bg-[var(--color-surface)] p-3 shadow-sm">
+            <div className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
                 <div className="flex flex-col items-center py-6 text-center">
                     <StatusIcon />
                     <h2 className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('activeChallenges')}</h2>
@@ -129,7 +130,7 @@ export default function DashboardChallenges(): ReactNode {
 
     if (challenges.length === 0) {
         return (
-            <div className="rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-competition)] bg-[var(--color-surface)] p-3 text-center shadow-sm">
+            <div className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 text-center shadow-sm">
                 <h2 className="text-base font-bold text-[var(--color-text)]">{t('activeChallenges')}</h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]" role="status">
                     {t('dashboardEmpty')}
@@ -145,11 +146,18 @@ export default function DashboardChallenges(): ReactNode {
     }
 
     return (
-        <div className="rounded-xl border border-l-4 border-[var(--color-border)] border-l-[var(--color-competition)] bg-[var(--color-surface)] p-3 shadow-sm">
+        <div className="home-competition-module rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-[var(--color-text)]">
-                    {t('activeChallenges')}
-                </h2>
+                <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--color-competition-solid)] text-white shadow-sm" aria-hidden="true">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 20V4m0 1h10l-2 3 2 3H5" />
+                        </svg>
+                    </span>
+                    <h2 className="text-balance text-sm font-bold leading-5 text-[var(--color-text)]">
+                        {t('activeChallenges')}
+                    </h2>
+                </div>
                 <Link
                     href="/challenges"
                     className="inline-flex min-h-[44px] items-center text-xs font-semibold text-[var(--color-competition-strong)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2"
@@ -163,7 +171,9 @@ export default function DashboardChallenges(): ReactNode {
                     const endDate = new Date(challenge.end_date + 'T23:59:59');
                     const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
                     const avatars = challenge.participant_avatars || [];
-                    const currentSteps = progressMap[challenge.id] || 0;
+                    const progressValue = progressMap[challenge.id];
+                    const progressUnavailable = challenge.is_joined && progressValue === null;
+                    const currentSteps = typeof progressValue === 'number' ? progressValue : 0;
                     const stepsPercent = Math.min(100, Math.round((currentSteps / challenge.target_steps) * 100));
                     const isCompleted = stepsPercent >= 100;
 
@@ -171,7 +181,7 @@ export default function DashboardChallenges(): ReactNode {
                         <Link
                             key={challenge.id}
                             href="/challenges"
-                            className="uc-interactive-panel group relative block touch-manipulation rounded-xl border border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)] p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2"
+                            className="home-challenge-card uc-interactive-panel group relative block touch-manipulation rounded-xl border border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)] p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2"
                         >
                             <svg className="absolute right-2.5 top-2.5 h-4 w-4 text-[var(--color-competition-strong)] transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
@@ -189,11 +199,17 @@ export default function DashboardChallenges(): ReactNode {
                                         {challenge.is_joined ? t('joined') : t('notJoined')}
                                     </span>
                                     <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 font-semibold text-[var(--color-reward-strong)]">{t('reward')}: {challenge.reward_uc} UC</span>
-                                    <span>{t('daysLeft', { count: daysLeft })}</span>
+                                    <span className={daysLeft <= 2 ? 'font-bold text-[var(--color-danger-strong)]' : undefined}>
+                                        {t('daysLeft', { count: daysLeft })}
+                                    </span>
                                 </div>
                             </div>
 
-                            {challenge.is_joined ? (
+                            {progressUnavailable ? (
+                                <p className="mt-2 text-xs font-semibold text-[var(--color-danger-strong)]" role="status">
+                                    {t('progressUnavailable')}
+                                </p>
+                            ) : challenge.is_joined ? (
                                 <div className="mt-2">
                                     <div className="flex items-center justify-between mb-0.5">
                                         <span className="text-xs text-[var(--color-text-muted)]">
@@ -205,7 +221,7 @@ export default function DashboardChallenges(): ReactNode {
                                     </div>
                                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                                         <div
-                                            className={`h-full rounded-full transition-[width] duration-700 ${
+                                            className={`home-challenge-progress h-full rounded-full transition-[width] duration-500 ${
                                                 isCompleted
                                                     ? 'bg-[var(--color-success)]'
                                                     : 'bg-[var(--color-competition-solid)]'

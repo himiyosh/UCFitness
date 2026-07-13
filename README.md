@@ -72,6 +72,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する
+- **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結し、Mission→Weekly→Reward→Challengeの後を任意探索章（Utility→Friend→Ranking）として明示する。UtilityはAnalytics / Link Builder / Group Create / Settingsへ限定し、1280pxではカードを2列、1536px以上で4列にする。低活動時は未来志向、固定5行は未記録・記録済み0歩・参加済みでコピーを分け、状態motionは650ms以内・reduced motion 0秒とする。Mission GETは参照専用、報酬DB失敗は非成功応答、成功時はライブ通知・見出しへの焦点移動・永続報酬表示を行う。補助ストリークDB障害は0へ変換せず`streakUnavailable`として分離する
 - **テーマ優先順位**: 明示的な端末内テーマを優先し、保存値がない端末だけDB装備テーマを初期値として使用する。item code変換は`lib/theme.ts`へ集約
 
 ## プロジェクト構造
@@ -363,7 +364,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。認証App Shell / PageIntro、320〜1280px境界、44px操作、canonicalプロフィール、日付水和、固定ランキング、OAuth・同期の安全性を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Home Quest/Delight、認証App Shell、320〜1280px境界、44px操作、canonicalプロフィール、日付水和、固定ランキング、OAuth・同期の安全性を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |

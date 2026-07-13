@@ -233,9 +233,21 @@ body {
 - 320〜767px: 1列、BottomNav、全幅Footer、全操作44×44px以上。
 - 768〜1023px: 1〜2列。カード幅を優先し、詳細な3列化を行わない。
 - 1024〜1279px: Sidebarは表示するが、本文の実効幅は約768px。Home/Groups/Settingsは単列または2列、Shopは3列を上限とする。
-- 1280px以上: 3〜4列、main+aside、LP詳細展開を許可する。
+- 1280px以上: main+asideと2〜3列を許可する。Sidebar後のHome 4モジュールは2列を維持し、4列化は1536px以上に限定する。
 - 通常ページはdocumentの自然スクロールを使用し、`max-height` + `overflow-y-auto`で本文を固定しない。
 - `sr-only` tableはwrapperをabsolute 1×1pxにし、Footer後の残余高を作らない。
+
+### Home Quest / Delight
+
+- Quest面: `--color-primary-*`で今日の進捗を主役化し、同じ面内で競争=`--color-competition-*`、歩いた価値=`--color-reward-*`、達成=`--color-success-*`へ接続する。
+- 緊急期限は`--color-danger-strong`を使用し、competition soft面でも通常文字4.5:1以上を維持する。
+- 通知バッジ等の白文字付き危険色面は`--color-danger-solid`を使用する。Midnightの前景用`--color-danger`を塗り面へ流用しない。
+- 情報順: 進捗 → ライバル → 歩いた価値 → 次の一歩。後続はMission → Weekly → Reward → Challenge → Utility → Ranking。
+- Utility Dockは全認証幅で表示し、BottomNav・Sidebar・Reward panelと重ならないAnalytics / Link Builder / Group Create / Settingsだけを表示する。Challenge後は「任意探索」の見出しを置き、日次必須導線の終点を明示する。
+- 低活動時は`0`を反復せず、「ここから」「次の100歩」「まず500歩」等の未来志向を使用する。
+- Motionはscale/translate/進捗描画のみ、120〜650ms、状態変化1回。`prefers-reduced-motion`ではanimation/transitionともcomputed `0s`にする。
+- 同一カード文法を繰り返さず、Quest・Mission・Weekly・Reward・Challengeで面・区切り・アイコンの役割を変える。
+- 0歩コピーは未記録・記録済み0歩・ランキング参加済みを分離する。ミッションの短い祝福motionは補助とし、状態通知と獲得報酬を時間制限なしでも確認できるようにする。
 
 ---
 

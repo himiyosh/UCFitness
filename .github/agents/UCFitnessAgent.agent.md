@@ -956,6 +956,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 29. **Sidebar後の実コンテンツ幅** — `lg`でSidebarを出す認証画面は、1024px時点の本文約768pxを基準にする。3列以上、main+aside、詳細開示は`xl`へ遅らせ、1023/1024と1279/1280でカード幅・見出し行数・ページ高を比較する
 30. **自然スクロールと全幅Footer** — 通常ページの`max-h-[calc(100dvh-...)]` + `overflow-y-auto`を禁止し、documentスクロールへ統一する。Footerは320pxから表示し、BottomNav予約領域の上で法務リンクへ到達可能にする
 31. **不可視table geometry** — screen reader用tableは`sr-only` wrapper内へ配置し、wrapperがabsolute 1×1pxで、tableがFooter後のデッドスペースを作らないことを実測する
+32. **Home Quest / Delight契約** — 認証ホームの先頭は進捗→競争→歩いた価値→次行動を同一Quest面で順序固定する。Mission→Weekly→Reward→Challengeの後は任意探索章（Utility→Friend→Ranking）として明示し、Quick DockはBottomNav/Sidebar/Reward panelと重複しない補助導線だけにする。0歩は未記録・記録済み・ランキング参加済みでコピーを分離し、1280pxは2列・4列化は1536px以上、motionは状態変化のみ650ms以内・reduced motion 0秒とする。Mission GET再試行中はloadingへ戻し、準備POSTを同時に露出しない。報酬書き込み失敗は成功応答へ変換せず、成功状態はlive通知・焦点移動・永続表示を持つ。補助ストリーク障害は0へ落とさず、Challenge進捗失敗も0%へ変換しない
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -1013,7 +1014,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **モバイルで root スクロールを無効化しない** — `html/body` の `overflow: hidden` や全画面スケーリング（`transform: scale`）は、モバイルで下部パネル・CTA の見切れ/操作不能を起こしやすい。全画面スケーリングは `lg:` 以上に限定し、モバイルは通常スクロールを維持すること。
 - **固定ボトムナビのsafe-areaを本文余白にも加算する** — ナビが`h-16` + `env(safe-area-inset-bottom)`なら、App Shellも`calc(4rem + env(safe-area-inset-bottom, 0px))`を下余白として予約する。固定`pb-16`だけで完了しない。リファレンス: `app/[locale]/layout.tsx`, `components/layout/BottomNavBar.tsx`
 - **mobile app出荷契約** — `viewportFit: 'cover'`、固定ヘッダーの`safe-area-inset-top`、固定ボトムナビと本文の`safe-area-inset-bottom`を同時に確認する。hoverだけに依存せず、全主要操作は44px、visible focus、active feedbackを持つ
-- **ヘッダー操作群のgeometryを実測する** — 44〜48pxヘッダーではvisual avatar/iconを32px基準にし、通知badgeを負座標で外へ出さない。375px/1280pxでheader・avatar・badgeの`getBoundingClientRect()`を比較し、上下見切れが1pxでもあればFAIL
+- **ヘッダー操作群のgeometryを実測する** — 44〜48pxヘッダーではvisual avatar/iconを32px基準にし、通知badgeを負座標で外へ出さない。375px/1280pxでheader・avatar・badgeの`getBoundingClientRect()`を比較し、上下見切れが1pxでもあればFAIL。白文字付きbadgeは塗り面専用`--color-danger-solid`を使い、Classic/Midnightとも4.5:1以上を実測する
 - **brand markをモノクロへ戻さない** — 認証後App Shellは青・緑・アンバーの意味色から最低2色を使うmark + solid wordmarkを維持する。グラデーション文字だけでブランドを表現しない
 - **interactive panel contract** — link cardはcursor、hover、focus、activeに加えchevronまたは動詞ラベルを持つ。静的カードと同じ見た目のまま出荷しない。リファレンス: `QuickActions.tsx`, `DashboardChallenges.tsx`
 - **sticky要素の祖先へ `overflow-x-hidden` + `overflow-y-auto` を付けない** — 横方向だけを切り抜く目的でも新しいスクロールコンテナが生成され、documentスクロール時にstickyヘッダーが追従しなくなる。ページラッパーは `overflow-x-clip` を使う。ただし1ページのsticky修正を理由にグローバルな `html/body` overflowを変更しない。固定ヘッダーへ切り替える場合は同一ページ内でヘッダー高のpaddingを確保し、本文の重なり・アンカー移動・モーダルの背景スクロールを実測する。リファレンス: `components/LandingPage.tsx`
@@ -1026,6 +1027,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **PC first-view密度** — 1280px/1920pxで今日の進捗・競争・報酬・次の行動の4役が同一viewport内で認識可能か確認する。大きな空白をカードstretchやroot scaleで埋めず、canvas幅と配置再構成で解決する
 - **dashboard richnessは実データで判定する** — カード数や色ではなく、時系列（月曜起算の今週等）と蓄積状態（UC残高・活動ストリーク等）が最低1つずつあるか確認する。欠測・0歩・未来日・API失敗を同じ値へ変換しない
 - **dashboard social loopを欠落させない** — 認証ホームに固定5行仕様のranking previewとfriend activity/発見CTAを常設する。今日の進捗→到達可能な競争差→UC報酬→次行動を先に提示し、詳細なranking previewとfriend activityは次行動の後に置く。friend activityを他者最大値基準の重複ランキングにせず、プロフィール/歩数取得失敗・未記録・実0歩を分離する。ホーム用APIはサーバー側limitを使い、5件未満では発見CTAで自然高さを意味ある内容にする。プロフィール行は可視内容を`aria-label`で上書きせず、操作説明を`sr-only`で補足する。既取得cache/APIを再利用してN+1を追加しない
+- **Home delightはカード追加で代用しない** — Quest storyで進捗・競争・報酬・次行動をつなぎ、後続はMission→Weekly→Reward→Challenge→任意探索（Utility→Friend→Ranking）の役割差を持たせる。同一カード文法、同じ導線の重複、状態を混同した0値、全カード共通motionをFAILとする。Sidebar後の1280pxで4列を使わず、固定ランキングの励ましは未記録・記録済み0歩・参加済みに一致させる。Mission GETは参照専用で、生成・再評価は明示POSTへ分離し、台帳・残高・完了・ボーナスのいずれかが失敗したPOSTを成功扱いしない。成功時はfocus/live/persistent status、Challenge進捗取得失敗時は明示エラーを必須とする
 
 **リーダーボード / ランキング統一ルール（ユーザー繰り返し指摘 — 変更厳禁）:**
 
@@ -1368,6 +1370,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | プロフィールのDB応答は正常でも画面が空に見えた | `/profile`の二段redirect、pathname依存の全画面`GlobalLoader`、UTC/JSTの日付水和差、不正buttonネストがクライアント表示を阻害し得た | **canonicalプロフィールへ直接遷移し、route loadingへ局所化する。** Server確定日をpropで渡してUTC固定描画し、hydration consoleとDOM validityまで確認する。リファレンス: `BottomNavBar.tsx`, `ActivityGraph.tsx`, `ProfileBadges.tsx` |
 | 1024pxへ広げるとSidebarと多列化が同時発動して本文が潰れた | viewportの`lg`だけを見てSidebar差引後のcontainer幅を測らず、HomeHero 204px・Groups card 202px・LP h1 4行を生んだ | **複雑な多列化・詳細展開を`xl`へ遅らせる。** 1023/1024・1279/1280でcontainer/card幅、h1行数、ページ高を測り、広げた瞬間に悪化する境界を禁止する |
 | `sr-only` tableがProfile末尾へ約3,000pxの空白を作った | table本体へ`sr-only`を付け、table intrinsic layoutが1×1px制約を超えて文書高へ残った | **tableをabsolute 1×1pxの`sr-only` wrapperで包む。** AX構造だけでなくwrapper geometry、Footer後の残余高、全可視操作要素44pxを実ブラウザで検査する |
+| 実データ追加後もホームが単調だった | 週間・UC・ランキング・仲間を同じ角丸カード文法で並べ、データ間の因果と状態反応を設計していなかった | **HomeHeroをQuest storyへ再構成する。** 進捗→競争→歩いた価値→次の一歩を連結し、Mission/Weekly/Reward/Challengeを役割別に表現。低活動時は未来志向、motionは650ms以内の状態変化だけ、Mission GETはread-onlyにする |
 
 ---
 

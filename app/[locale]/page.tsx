@@ -17,7 +17,7 @@ import DashboardFollowing from '@/components/dashboard/DashboardFollowing';
 import Footer from '@/components/layout/Footer';
 import LandingPage from '@/components/LandingPage';
 import QuickActions from '@/components/dashboard/QuickActions';
-import HomeHero, { NextActionCard } from '@/components/dashboard/HomeHero';
+import HomeHero from '@/components/dashboard/HomeHero';
 import RefreshButton from '@/components/layout/RefreshButton';
 import UserMenu from '@/components/layout/UserMenu';
 import UserAvatar from '@/components/UserAvatar';
@@ -122,6 +122,7 @@ export default async function Home(): Promise<ReactNode> {
     stepsMap.set(row.date, row.steps);
   });
   const hasTodayStepRecord = stepsMap.has(today);
+  const hasWeeklyStepRecord = weeklyDates.some(date => stepsMap.has(date));
   mySteps = stepsMap.get(today) || 0;
   const weekdayFormatter = new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
     weekday: 'short',
@@ -173,8 +174,6 @@ export default async function Home(): Promise<ReactNode> {
       };
     });
   const userImage = dbUserImage || session.user.image || null;
-  const remainingSteps = Math.max(0, stepGoal - mySteps);
-
   return (
     <main className="flex min-h-dvh flex-1 flex-col bg-[var(--theme-page-bg)]">
       <h1 className="sr-only">{t('todayCommandCenter')}</h1>
@@ -282,91 +281,116 @@ export default async function Home(): Promise<ReactNode> {
               </div>
             </section>
           )}
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.8fr)_minmax(280px,1fr)]">
-            <div className="min-w-0 md:col-span-2 xl:col-span-1">
-              <HomeHero
-                todaySteps={mySteps}
+          <HomeHero
+            todaySteps={mySteps}
+            stepGoal={stepGoal}
+            userName={dbUserName || session.user.name || null}
+            userImage={userImage}
+            username={username}
+            globalRank={globalRank}
+            hasTodaySteps={hasTodayStepRecord}
+            nextRankGap={nextRankGap}
+            ucBalance={rewardDataError ? null : ucBalance}
+            currentStreak={currentStreak}
+            rewardDataError={rewardDataError}
+            showNextAction={false}
+            showMetricTiles={false}
+          />
+
+          <div className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-2 2xl:grid-cols-4">
+            <div className="min-w-0">
+              <DailyMissions />
+            </div>
+            <div className="min-w-0">
+              <WeeklyPulsePanel
+                points={weeklySeries}
                 stepGoal={stepGoal}
-                userName={dbUserName || session.user.name || null}
-                userImage={userImage}
-                username={username}
-                globalRank={globalRank}
-                hasTodaySteps={hasTodayStepRecord}
-                nextRankGap={nextRankGap}
-                nextActionTargetId="next-action"
-                showNextAction={false}
-                showMetricTiles={false}
+                labels={{
+                  title: t('weeklyPulseTitle'),
+                  recordedTotal: t('weeklyRecordedTotal'),
+                  bestDay: t('weeklyBestDay'),
+                  recordedDays: t('weeklyRecordedDays'),
+                  analytics: t('weeklyAnalytics'),
+                  noData: t('weeklyNoData'),
+                  upcoming: t('weeklyUpcoming'),
+                  startHint: t('weeklyStartHint'),
+                }}
+              />
+            </div>
+            <div className="min-w-0">
+              <RewardWalletPanel
+                balance={ucBalance}
+                streak={currentStreak}
+                error={rewardDataError}
+                labels={{
+                  title: t('ucWalletTitle'),
+                  balance: t('ucBalanceLabel'),
+                  streak: t('ucStreak', { days: currentStreak }),
+                  wallet: t('wallet'),
+                  shop: t('shop'),
+                  error: t('rewardDataUnavailable'),
+                  retry: commonT('retry'),
+                }}
               />
             </div>
             <div className="min-w-0">
               <DashboardChallenges />
             </div>
-            <div className="min-w-0">
-              <DailyMissions />
+          </div>
+
+          <section className="mt-4" aria-labelledby="home-explore-title">
+            <div className="mb-2">
+              <h2 id="home-explore-title" className="text-sm font-black text-[var(--color-text)] sm:text-base">
+                {t('homeExploreTitle')}
+              </h2>
+              <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{t('homeExploreDescription')}</p>
             </div>
-          </div>
-
-          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
-            <WeeklyPulsePanel
-              points={weeklySeries}
-              stepGoal={stepGoal}
-              labels={{
-                title: t('weeklyPulseTitle'),
-                recordedTotal: t('weeklyRecordedTotal'),
-                bestDay: t('weeklyBestDay'),
-                recordedDays: t('weeklyRecordedDays'),
-                analytics: t('weeklyAnalytics'),
-                noData: t('weeklyNoData'),
-                upcoming: t('weeklyUpcoming'),
-              }}
-            />
-            <RewardWalletPanel
-              balance={ucBalance}
-              streak={currentStreak}
-              error={rewardDataError}
-              labels={{
-                title: t('ucWalletTitle'),
-                balance: t('ucBalanceLabel'),
-                streak: t('ucStreak', { days: currentStreak }),
-                wallet: t('wallet'),
-                shop: t('shop'),
-                error: t('rewardDataUnavailable'),
-                retry: commonT('retry'),
-              }}
-            />
-          </div>
-
-          <div className="mt-3 grid items-stretch gap-3 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-            <NextActionCard
-              id="next-action"
-              remainingSteps={remainingSteps}
-              stepGoal={stepGoal}
-              todaySteps={mySteps}
-            />
-            <QuickActions className="h-full" />
-          </div>
-
-          <div className={`mt-3 grid items-start gap-3 ${rankingDataError ? '' : 'lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]'}`}>
-            {!rankingDataError && (
-              <LeaderboardPreviewPanel
-                entries={leaderboardPreview}
-                currentRank={globalRank}
-                currentSteps={userRankStats?.WEEKLY ?? null}
-                labels={{
-                  title: t('leaderboardPreviewTitle'),
-                  subtitle: t('leaderboardPreviewSubtitle'),
-                  viewAll: t('leaderboardPreviewViewAll'),
-                  yourRank: t('leaderboardPreviewYourRank'),
-                  steps: t('leaderboardPreviewSteps'),
-                  noData: t('leaderboardPreviewNoData'),
-                  unranked: t('rankUnavailable'),
-                  you: t('leaderboardPreviewYou'),
-                  profileLabel: name => t('leaderboardPreviewProfileLabel', { name }),
-                }}
-              />
-            )}
-            <DashboardFollowing />
-          </div>
+            <div className={`grid items-start gap-3 ${rankingDataError ? '' : 'xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]'}`}>
+              <div className="min-w-0 space-y-3">
+                <QuickActions />
+                <DashboardFollowing />
+              </div>
+              {!rankingDataError && (
+                <LeaderboardPreviewPanel
+                  entries={leaderboardPreview}
+                  currentSteps={userRankStats?.WEEKLY ?? null}
+                  hasWeeklyRecord={hasWeeklyStepRecord}
+                  labels={{
+                    title: t('leaderboardPreviewTitle'),
+                    subtitle: t('leaderboardPreviewSubtitle'),
+                    viewAll: t('leaderboardPreviewViewAll'),
+                    yourSteps: t('leaderboardPreviewYourSteps'),
+                    steps: t('leaderboardPreviewSteps'),
+                    noData: t('leaderboardPreviewNoData'),
+                    unranked: t('rankUnavailable'),
+                    you: t('leaderboardPreviewYou'),
+                    profileLabel: name => t('leaderboardPreviewProfileLabel', { name }),
+                    openSlots: [
+                      t('leaderboardPreviewOpenSlot'),
+                      t('leaderboardPreviewOpenSlotSync'),
+                      t('leaderboardPreviewOpenSlotWalk'),
+                      t('leaderboardPreviewOpenSlotFriends'),
+                      t('leaderboardPreviewOpenSlotReachable'),
+                    ],
+                    recordedOpenSlots: [
+                      t('leaderboardPreviewOpenSlot'),
+                      t('leaderboardPreviewOpenSlotWalk'),
+                      t('leaderboardPreviewOpenSlotFriends'),
+                      t('leaderboardPreviewOpenSlotReachable'),
+                      t('leaderboardPreviewRankedSlotMomentum'),
+                    ],
+                    rankedOpenSlots: [
+                      t('leaderboardPreviewRankedSlotNext'),
+                      t('leaderboardPreviewRankedSlotMomentum'),
+                      t('leaderboardPreviewRankedSlotCommunity'),
+                      t('leaderboardPreviewOpenSlotFriends'),
+                      t('leaderboardPreviewOpenSlotReachable'),
+                    ],
+                  }}
+                />
+              )}
+            </div>
+          </section>
             </>
           )}
         </div>
@@ -415,6 +439,7 @@ interface WeeklyPulsePanelProps {
     analytics: string;
     noData: string;
     upcoming: string;
+    startHint: string;
   };
 }
 
@@ -426,7 +451,7 @@ function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): 
   const elapsedDays = points.filter(point => !point.isFuture).length;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="weekly-pulse-title">
+    <section className="home-analysis-panel overflow-hidden border-y border-[var(--color-primary)]/20 bg-[var(--color-surface)] px-1 py-3 sm:rounded-2xl sm:border sm:p-4" aria-labelledby="weekly-pulse-title">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]" aria-hidden="true">
@@ -434,7 +459,7 @@ function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): 
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 18V8m5 10V4m6 14v-7m5 7V6" />
             </svg>
           </span>
-          <h2 id="weekly-pulse-title" className="truncate text-sm font-bold text-[var(--color-text)] sm:text-base">{labels.title}</h2>
+          <h2 id="weekly-pulse-title" className="text-balance text-sm font-bold leading-5 text-[var(--color-text)] sm:text-base">{labels.title}</h2>
         </div>
         <Link href="/analytics" className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
           {labels.analytics}
@@ -445,6 +470,10 @@ function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): 
       {recordedPoints.length === 0 ? (
         <p className="mt-3 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--color-text-muted)]">
           {labels.noData}
+        </p>
+      ) : total === 0 ? (
+        <p className="mt-3 rounded-xl bg-[var(--color-primary-soft)] px-3 py-2 text-sm font-semibold text-[var(--color-primary-strong)]">
+          {labels.startHint}
         </p>
       ) : (
         <div className="mt-3 grid grid-cols-3 gap-2">
@@ -467,9 +496,9 @@ function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): 
 
           return (
             <div key={point.date} className="flex h-full min-w-0 flex-col justify-end gap-1">
-              <div className={`relative flex flex-1 items-end overflow-hidden rounded-lg bg-[var(--color-surface-muted)] ${point.isToday ? 'ring-2 ring-[var(--color-primary)] ring-offset-1 ring-offset-[var(--color-surface)]' : ''}`}>
+              <div className={`relative flex flex-1 items-end overflow-hidden rounded-lg ${point.isFuture ? 'border border-dashed border-[var(--color-border)] bg-transparent' : 'bg-[var(--color-surface-muted)]'} ${point.isToday ? 'ring-2 ring-[var(--color-primary)] ring-offset-1 ring-offset-[var(--color-surface)]' : ''}`}>
                 <span
-                  className={`block w-full rounded-md transition-[height] duration-700 ${barTone}`}
+                  className={`home-week-bar block w-full rounded-md transition-[height] duration-500 ${barTone}`}
                   style={{ height: `${heightPercent}%` }}
                   title={point.isFuture ? labels.upcoming : point.steps === null ? labels.noData : point.steps.toLocaleString()}
                 />
@@ -477,7 +506,7 @@ function WeeklyPulsePanel({ points, stepGoal, labels }: WeeklyPulsePanelProps): 
                   <span className="absolute inset-x-0 bottom-1 text-center text-xs font-bold text-[var(--color-text-muted)]">—</span>
                 )}
                 {point.steps === 0 && (
-                  <span className="absolute inset-x-0 bottom-1 text-center text-xs font-bold text-[var(--color-text-muted)]">0</span>
+                  <span className="absolute inset-x-0 bottom-2 mx-auto h-1.5 w-1.5 rounded-full bg-[var(--color-primary)]" />
                 )}
               </div>
               <span className={`text-center text-xs ${point.isToday ? 'font-bold text-[var(--color-primary-strong)]' : 'text-[var(--color-text-muted)]'}`}>
@@ -515,11 +544,11 @@ interface RewardWalletPanelProps {
 
 function RewardWalletPanel({ balance, streak, error, labels }: RewardWalletPanelProps): ReactNode {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[var(--color-reward)]/35 bg-[var(--color-reward-soft)] p-3 shadow-sm sm:p-4" aria-labelledby="reward-wallet-title">
+    <section className="home-reward-module relative overflow-hidden rounded-2xl border border-[var(--color-reward)]/35 bg-[var(--color-reward-soft)] p-3 shadow-sm sm:p-4" aria-labelledby="reward-wallet-title">
       <div className="pointer-events-none absolute -right-5 -top-5 h-24 w-24 rounded-full border-[12px] border-[var(--color-reward)]/10" aria-hidden="true" />
       <div className="relative">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-reward-solid)] text-white shadow-sm" aria-hidden="true">
+          <span className="home-reward-coin flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-reward-solid)] text-white shadow-sm" aria-hidden="true">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6c4.42 0 8-1.12 8-2.5S16.42 1 12 1 4 2.12 4 3.5 7.58 6 12 6Zm8-2.5V8c0 1.38-3.58 2.5-8 2.5S4 9.38 4 8V3.5M20 8v4.5c0 1.38-3.58 2.5-8 2.5s-8-1.12-8-2.5V8m16 4.5V17c0 1.38-3.58 2.5-8 2.5S4 18.38 4 17v-4.5" />
             </svg>
@@ -578,7 +607,7 @@ function MetricValue({ label, value, tone }: MetricValueProps): ReactNode {
 
   return (
     <div className="min-w-0 rounded-xl bg-[var(--color-surface-muted)] px-2.5 py-2">
-      <p className="truncate text-xs text-[var(--color-text-muted)]">{label}</p>
+      <p className="flex min-h-8 items-center justify-center text-center text-xs leading-4 text-[var(--color-text-muted)]">{label}</p>
       <p className={`mt-0.5 truncate text-sm font-black tabular-nums sm:text-base ${valueTone}`}>{value}</p>
     </div>
   );
@@ -596,32 +625,40 @@ interface LeaderboardPreviewEntry {
 
 interface LeaderboardPreviewPanelProps {
   entries: LeaderboardPreviewEntry[];
-  currentRank: number | null;
   currentSteps: number | null;
+  hasWeeklyRecord: boolean;
   labels: {
     title: string;
     subtitle: string;
     viewAll: string;
-    yourRank: string;
+    yourSteps: string;
     steps: string;
     noData: string;
     unranked: string;
     you: string;
     profileLabel: (name: string) => string;
+    openSlots: string[];
+    recordedOpenSlots: string[];
+    rankedOpenSlots: string[];
   };
 }
 
 function LeaderboardPreviewPanel({
   entries,
-  currentRank,
   currentSteps,
+  hasWeeklyRecord,
   labels,
 }: LeaderboardPreviewPanelProps): ReactNode {
   const maximumSteps = Math.max(1, ...entries.map(entry => entry.steps));
   const emptyRowCount = Math.max(0, LEADERBOARD_PREVIEW_MIN_ROWS - entries.length);
+  const contextualOpenSlots = currentSteps !== null
+    ? labels.rankedOpenSlots
+    : hasWeeklyRecord
+      ? labels.recordedOpenSlots
+      : labels.openSlots;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="leaderboard-preview-title">
+    <section className="home-rivalry-panel relative overflow-hidden rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="leaderboard-preview-title">
       <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-[var(--color-competition-soft)]" aria-hidden="true" />
       <div className="relative">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -675,7 +712,7 @@ function LeaderboardPreviewPanel({
                       )}
                     </span>
                     <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]" aria-hidden="true">
-                      <span className="block h-full rounded-full bg-[var(--color-competition-solid)] transition-[width] duration-700" style={{ width: `${Math.max(8, Math.round((entry.steps / maximumSteps) * 100))}%` }} />
+                      <span className="block h-full rounded-full bg-[var(--color-competition-solid)] transition-[width] duration-500" style={{ width: `${Math.max(8, Math.round((entry.steps / maximumSteps) * 100))}%` }} />
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
@@ -704,19 +741,25 @@ function LeaderboardPreviewPanel({
           {Array.from({ length: emptyRowCount }, (_, index) => (
             <li
               key={`leaderboard-preview-empty-${index}`}
-              className="leaderboard-row pointer-events-none flex min-h-[4.5rem] flex-col justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 sm:px-6 sm:py-2.5"
-              aria-hidden="true"
+              className="leaderboard-row pointer-events-none flex min-h-[4.5rem] flex-col justify-center rounded-xl border border-dashed border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)]/30 px-3 py-2 sm:px-6 sm:py-2.5"
             >
-              <span className="h-2 w-2/3 rounded-full bg-[var(--color-border)]" />
+              <span className="flex items-center gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--color-competition)]/30 text-xs font-black text-[var(--color-competition-strong)]">
+                  {entries.length + index + 1}
+                </span>
+                <span className="text-xs font-semibold leading-5 text-[var(--color-competition-strong)]">
+                  {contextualOpenSlots[index % contextualOpenSlots.length]}
+                </span>
+              </span>
             </li>
           ))}
         </ol>
 
         <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--color-primary-soft)] px-3 py-2 text-sm">
-          <span className="font-semibold text-[var(--color-primary-strong)]">{labels.yourRank}</span>
+          <span className="font-semibold text-[var(--color-primary-strong)]">{labels.yourSteps}</span>
           <span className="font-black tabular-nums text-[var(--color-primary-strong)]">
-            {currentRank !== null
-              ? `#${currentRank}${currentSteps !== null ? ` · ${currentSteps.toLocaleString()} ${labels.steps}` : ''}`
+            {currentSteps !== null
+              ? `${currentSteps.toLocaleString()} ${labels.steps}`
               : labels.unranked}
           </span>
         </div>

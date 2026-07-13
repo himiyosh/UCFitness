@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import { Link, usePathname } from '@/navigation';
 import { useTranslations } from 'next-intl';
 
@@ -12,6 +14,7 @@ interface BottomNavBarProps {
 }
 
 export default function BottomNavBar({ username }: BottomNavBarProps) {
+  const navRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
   const t = useTranslations('BottomNav');
   const dashT = useTranslations('Dashboard');
@@ -25,8 +28,28 @@ export default function BottomNavBar({ username }: BottomNavBarProps) {
   ];
   const profileHref = `/user/${encodeURIComponent(username)}`;
 
+  useEffect(() => {
+    const keepFocusedControlVisible = (event: FocusEvent): void => {
+      const nav = navRef.current;
+      const target = event.target;
+      if (!nav || !(target instanceof HTMLElement) || nav.contains(target)) return;
+      if (window.getComputedStyle(nav).display === 'none') return;
+
+      const navRect = nav.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const overlap = targetRect.bottom - (navRect.top - 12);
+      if (overlap > 0) {
+        window.scrollBy({ top: overlap, behavior: 'auto' });
+      }
+    };
+
+    document.addEventListener('focusin', keepFocusedControlVisible);
+    return () => document.removeEventListener('focusin', keepFocusedControlVisible);
+  }, []);
+
   return (
     <nav
+      ref={navRef}
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 safe-area-bottom lg:hidden"
       role="navigation"
       aria-label={t('label')}

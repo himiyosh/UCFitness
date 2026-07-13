@@ -99,6 +99,16 @@ export default function DashboardFollowing() {
                         </span>
                         <h2 id="friend-pulse-empty-title" className="mt-3 text-base font-bold text-[var(--color-text)]">{t('followingActivity')}</h2>
                         <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">{t('noFollowing')}</p>
+                        <ol className="mt-3 hidden gap-2 xl:grid">
+                            {[t('discoverStepRanking'), t('discoverStepProfile'), t('discoverStepPulse')].map(step => (
+                                <li key={step} className="flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]">
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] font-black text-[var(--color-primary-strong)]" aria-hidden="true">
+                                        →
+                                    </span>
+                                    {step}
+                                </li>
+                            ))}
+                        </ol>
                     </div>
                     <Link href="/leaderboard" className="uc-interactive-panel mt-4 inline-flex min-h-[44px] w-fit items-center gap-1 rounded-xl bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2">
                         {t('discoverPeople')}<span aria-hidden="true">→</span>
@@ -175,7 +185,7 @@ export default function DashboardFollowing() {
                                 </span>
                                 <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]" aria-hidden="true">
                                     <span
-                                        className="block h-full rounded-full bg-[var(--color-primary-solid)] transition-[width] duration-700"
+                                        className="block h-full rounded-full bg-[var(--color-primary-solid)] transition-[width] duration-500"
                                         style={{ width: `${progressWidth}%` }}
                                     />
                                 </span>

@@ -266,7 +266,7 @@ export default function NotificationBell() {
 
                 {/* 未読バッジ */}
                 {unreadCount > 0 && (
-                    <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-xs font-bold leading-none text-[var(--color-inverse-text)] ring-2 ring-[var(--color-surface-muted)]">
+                    <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger-solid)] px-1 text-xs font-bold leading-none text-[var(--color-inverse-text)] ring-2 ring-[var(--color-surface-muted)]">
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
@@ -415,65 +415,49 @@ function FeedItemRow({
     const relativeTime = getRelativeTime(item.timestamp, t);
     const displayName = item.userName || item.username || '???';
     const profileHref = item.username ? `/user/${item.username}` : null;
-
-    return (
-        <div className="flex items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-[var(--color-surface-muted)]">
-            {/* ユーザーアバター */}
-            {profileHref ? (
-                <Link href={profileHref} onClick={onClose}>
-                    <UserAvatar
-                        src={item.userImage}
-                        name={item.userName}
-                        size="xs"
-                        alt={displayName}
-                    />
-                </Link>
-            ) : (
-                <UserAvatar
-                    src={item.userImage}
-                    name={item.userName}
-                    size="xs"
-                    alt={displayName}
-                />
-            )}
-
-            {/* コンテンツ */}
-            <div className="flex-1 min-w-0">
-                <p className="text-xs leading-relaxed">
+    const content = (
+        <>
+            <UserAvatar
+                src={item.userImage}
+                name={item.userName}
+                size="xs"
+                alt=""
+            />
+            <span className="min-w-0 flex-1">
+                <span className="block text-xs leading-relaxed">
                     <span className="mr-1">{icon}</span>
-                    {profileHref ? (
-                        <Link
-                            href={profileHref}
-                            className="font-semibold text-[var(--color-text)] transition-colors hover:text-[var(--theme-primary)]"
-                            onClick={onClose}
-                        >
-                            {displayName}
-                        </Link>
-                    ) : (
-                        <span className="font-semibold text-[var(--color-text)]">{displayName}</span>
-                    )}
+                    <span className="font-semibold text-[var(--color-text)]">{displayName}</span>
                     <span className="ml-1 text-[var(--color-text-muted)]">
                         {getEventDescription(item, t)}
                     </span>
-                </p>
-
-                {/* バッジ詳細 */}
+                </span>
                 {item.type === 'BADGE_EARNED' && Boolean(item.data.badgeName) && (
-                    <span className="inline-flex items-center gap-1 mt-0.5 text-xs font-medium text-[var(--color-primary-strong)] bg-[var(--color-primary-soft)] px-1.5 py-0.5 rounded-full">
+                    <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-primary-strong)]">
                         {item.data.badgeImage ? String(item.data.badgeImage) : null}
                         {String(item.data.badgeName)}
                     </span>
                 )}
-
-                {/* 歩数マイルストーン */}
                 {item.type === 'STEP_MILESTONE' && (
-                    <span className="inline-block mt-0.5 text-xs font-bold text-[var(--color-primary-strong)]">
+                    <span className="mt-0.5 block text-xs font-bold text-[var(--color-primary-strong)]">
                         {formatSteps(item.data.steps as number)} {t('stepsUnit')}
                     </span>
                 )}
-
-                <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{relativeTime}</p>
-            </div>
-        </div>
+                <span className="mt-0.5 block text-xs text-[var(--color-text-muted)]">{relativeTime}</span>
+            </span>
+        </>
     );
+
+    if (profileHref) {
+        return (
+            <Link
+                href={profileHref}
+                onClick={onClose}
+                className="flex min-h-[56px] items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
+            >
+                {content}
+            </Link>
+        );
+    }
+
+    return <div className="flex min-h-[56px] items-start gap-2.5 px-3 py-2.5">{content}</div>;
 }

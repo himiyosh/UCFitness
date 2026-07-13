@@ -103,6 +103,10 @@ HITS=$(grep -nE "className=['\"][^'\"]*absolute[^'\"]*(-top-|-right-)" component
 if [ -n "$HITS" ]; then
   record "NotificationBell badgeの負座標 (rule: header rect内へ配置)" "$HITS"
 fi
+if ! grep -q -- '--color-danger-solid:' app/globals.css || \
+   ! grep -q 'bg-\[var(--color-danger-solid)\]' components/layout/NotificationBell.tsx; then
+  record "NotificationBell badgeの塗り面専用danger token欠落" "globals.css / NotificationBell.tsx"
+fi
 
 # ---------- 12. 主要認証UIの12px未満テキスト ----------
 HITS=$(grep -En "text-\[(8|9|10|11)px\]" \
@@ -140,20 +144,121 @@ if [ -n "$HITS" ]; then
   record "root overflow-y:auto (rule: viewport自然スクロールを維持)" "$HITS"
 fi
 
-# ---------- 16. 認証ホームの実データrichness ----------
-for REQUIRED_PANEL in WeeklyPulsePanel RewardWalletPanel NextActionCard LeaderboardPreviewPanel DashboardFollowing; do
+# ---------- 16. 認証ホームの実データrichness / quest story ----------
+for REQUIRED_PANEL in HomeHero QuickActions WeeklyPulsePanel RewardWalletPanel LeaderboardPreviewPanel DashboardFollowing; do
   if ! grep -q "<${REQUIRED_PANEL}" 'app/[locale]/page.tsx'; then
     record "認証ホームの${REQUIRED_PANEL}欠落 (rule: 時系列+蓄積状態でrichnessを担保)" "app/[locale]/page.tsx"
   fi
 done
 
-NEXT_ACTION_LINE=$(grep -n '<NextActionCard id=' 'app/[locale]/page.tsx' | head -1 | cut -d: -f1)
+STORY_LINE=$(grep -n '<HomeHero' 'app/[locale]/page.tsx' | head -1 | cut -d: -f1)
 for SOCIAL_COMPONENT in LeaderboardPreviewPanel DashboardFollowing; do
   SOCIAL_DETAIL_LINE=$(grep -n "<${SOCIAL_COMPONENT}" 'app/[locale]/page.tsx' | head -1 | cut -d: -f1)
-  if [ -n "$NEXT_ACTION_LINE" ] && [ -n "$SOCIAL_DETAIL_LINE" ] && [ "$NEXT_ACTION_LINE" -gt "$SOCIAL_DETAIL_LINE" ]; then
-    record "認証ホームの${SOCIAL_COMPONENT}が次行動より先 (rule: 復帰ユーザーの比較圧を抑える)" "app/[locale]/page.tsx"
+  if [ -n "$STORY_LINE" ] && [ -n "$SOCIAL_DETAIL_LINE" ] && [ "$STORY_LINE" -gt "$SOCIAL_DETAIL_LINE" ]; then
+    record "認証ホームの${SOCIAL_COMPONENT}がquest storyより先" "app/[locale]/page.tsx"
   fi
 done
+QUEST_PROGRESS_LINE=$(grep -n 'data-story-step="progress"' components/dashboard/HomeHero.tsx | head -1 | cut -d: -f1)
+QUEST_COMPETITION_LINE=$(grep -n 'data-story-step="competition"' components/dashboard/HomeHero.tsx | head -1 | cut -d: -f1)
+QUEST_REWARD_LINE=$(grep -n 'data-story-step="reward"' components/dashboard/HomeHero.tsx | head -1 | cut -d: -f1)
+QUEST_NEXT_LINE=$(grep -n 'data-story-step="next"' components/dashboard/HomeHero.tsx | head -1 | cut -d: -f1)
+if [ -z "$QUEST_PROGRESS_LINE" ] || [ -z "$QUEST_COMPETITION_LINE" ] || [ -z "$QUEST_REWARD_LINE" ] || [ -z "$QUEST_NEXT_LINE" ] || \
+   [ "$QUEST_PROGRESS_LINE" -ge "$QUEST_COMPETITION_LINE" ] || [ "$QUEST_COMPETITION_LINE" -ge "$QUEST_REWARD_LINE" ] || [ "$QUEST_REWARD_LINE" -ge "$QUEST_NEXT_LINE" ]; then
+  record "Home quest storyの情報順序違反 (進捗→競争→報酬→次行動)" "components/dashboard/HomeHero.tsx"
+fi
+if grep -q '<NextActionCard' 'app/[locale]/page.tsx'; then
+  record "Home quest story外の重複NextActionCard" "app/[locale]/page.tsx"
+fi
+if ! grep -q 'home-action-dock' components/dashboard/QuickActions.tsx || \
+   ! grep -q 'prefers-reduced-motion: reduce' app/globals.css || \
+   ! grep -q 'home-quest-ring' app/globals.css; then
+  record "Home delight dock/motion/reduced-motion契約欠落" "QuickActions.tsx / globals.css"
+fi
+if ! grep -q '<QuickActions />' 'app/[locale]/page.tsx'; then
+  record "Homeの常設Utility Dock欠落" "app/[locale]/page.tsx"
+fi
+MISSIONS_GET_BLOCK=$(sed -n '/export async function GET()/,/^export async function POST/p' app/api/user/missions/route.ts)
+if printf '%s' "$MISSIONS_GET_BLOCK" | grep -Eq '\.insert\(|\.update\(|completeMissionAndReward|awardAllCompletedBonus|generateDailyMissions'; then
+  record "Mission GETに状態変更処理 (rule: GETは参照専用)" "app/api/user/missions/route.ts"
+fi
+if ! grep -q "const res = await fetch('/api/user/missions');" components/dashboard/DailyMissions.tsx || \
+   ! grep -q "t('prepare')" components/dashboard/DailyMissions.tsx; then
+  record "Mission初期GET/明示準備CTA契約欠落" "components/dashboard/DailyMissions.tsx"
+fi
+if grep -Rqs 'duration-700' 'app/[locale]/page.tsx' components/dashboard/DashboardChallenges.tsx components/dashboard/DashboardFollowing.tsx; then
+  record "Home進捗motionが650ms超過" "Home dashboard progress components"
+fi
+if ! grep -q 'leaderboardPreviewOpenSlot' 'app/[locale]/page.tsx' || \
+   ! grep -q 'questRewardStart' components/dashboard/HomeHero.tsx; then
+  record "Home低活動時の未来志向表現欠落" "HomeHero / LeaderboardPreview"
+fi
+if grep -A8 'leaderboard-preview-empty-' 'app/[locale]/page.tsx' | grep -q 'aria-hidden="true"'; then
+  record "Homeランキング励まし行がAX treeから除外" "app/[locale]/page.tsx"
+fi
+if ! grep -q 'aria-valuetext={todayProgressLabel}' components/dashboard/HomeHero.tsx || \
+   ! grep -q 'aria-label={t('\''questProgress'\'')}' components/dashboard/HomeHero.tsx; then
+  record "Home Quest progressbarの単一読み上げ契約欠落" "components/dashboard/HomeHero.tsx"
+fi
+if ! grep -q 'const isGoalComplete = todaySteps >= normalizedStepGoal' components/dashboard/HomeHero.tsx || \
+   ! grep -q 'href="/leaderboard?period=WEEKLY"' components/dashboard/HomeHero.tsx || \
+   ! grep -q "useState<Period>(() => isPeriod(requestedPeriod) ? requestedPeriod : 'DAILY')" components/dashboard/DynamicLeaderboard.tsx; then
+  record "Home Quest完了判定/週次競争文脈の契約欠落" "HomeHero / DynamicLeaderboard"
+fi
+if grep -Eq "href: '/(groups|challenges|leaderboard|shop|wallet)'" components/dashboard/QuickActions.tsx || \
+   ! grep -q "href: '/analytics'" components/dashboard/QuickActions.tsx || \
+   ! grep -q "href: '/recommendations'" components/dashboard/QuickActions.tsx || \
+   ! grep -q "href: '/groups/create'" components/dashboard/QuickActions.tsx || \
+   ! grep -q "href: '/settings'" components/dashboard/QuickActions.tsx || \
+   ! grep -q "t('linkBuilder')" components/dashboard/QuickActions.tsx; then
+  record "Home Utility DockがBottomNav/Sidebarと重複" "components/dashboard/QuickActions.tsx"
+fi
+if grep -q 'md:grid-cols-2 xl:grid-cols-4' 'app/[locale]/page.tsx' || \
+   ! grep -q '2xl:grid-cols-4' 'app/[locale]/page.tsx'; then
+  record "Sidebar後1280pxでHomeカードを4列へ過圧縮" "app/[locale]/page.tsx"
+fi
+if ! grep -q 'rankedOpenSlots' 'app/[locale]/page.tsx'; then
+  record "ランキング済みユーザーへ未参加向け空き行文言を表示" "app/[locale]/page.tsx"
+fi
+if ! grep -q 'hasWeeklyStepRecord' 'app/[locale]/page.tsx' || \
+   ! grep -q 'recordedOpenSlots' 'app/[locale]/page.tsx'; then
+  record "記録済み0歩へ同期要求コピーを表示" "app/[locale]/page.tsx"
+fi
+if ! grep -q 'class MissionRewardWriteError' app/api/user/missions/route.ts || \
+   ! grep -q "code: 'MISSION_REWARD_DATABASE_ERROR'" app/api/user/missions/route.ts; then
+  record "Mission報酬書き込み失敗を成功応答へ変換" "app/api/user/missions/route.ts"
+fi
+if ! grep -q 'MissionAnnouncement message={announcement}' components/dashboard/DailyMissions.tsx || \
+   ! grep -q 'missionHeadingRef.current?.focus()' components/dashboard/DailyMissions.tsx || \
+   ! grep -q "t('bonusEarned'" components/dashboard/DailyMissions.tsx || \
+   ! grep -q "t('streakUnavailable')" components/dashboard/DailyMissions.tsx; then
+  record "Mission状態遷移のlive通知/焦点移動/永続報酬表示欠落" "components/dashboard/DailyMissions.tsx"
+fi
+MISSIONS_FETCH_BLOCK=$(sed -n '/const fetchMissions = useCallback/,/}, \[\]);/p' components/dashboard/DailyMissions.tsx)
+if ! printf '%s' "$MISSIONS_FETCH_BLOCK" | grep -q 'setIsLoading(true)'; then
+  record "Mission GET再試行中に準備POSTを露出" "components/dashboard/DailyMissions.tsx"
+fi
+if ! grep -q 'streakUnavailable: streak === null' app/api/user/missions/route.ts || \
+   ! grep -q "reportError('user/missions:streak'" app/api/user/missions/route.ts; then
+  record "MissionストリークDB障害を0へ偽装" "app/api/user/missions/route.ts"
+fi
+if grep -q 'if (!pRes.ok) return \[c.id, 0\]' components/dashboard/DashboardChallenges.tsx || \
+   ! grep -q 'progressUnavailable = challenge.is_joined && progressValue === null' components/dashboard/DashboardChallenges.tsx; then
+  record "Challenge進捗取得失敗を0歩へ変換" "components/dashboard/DashboardChallenges.tsx"
+fi
+if grep -q '0.01ms' app/globals.css; then
+  record "reduced motionがcomputed 0秒でない" "app/globals.css"
+fi
+if ! grep -q "document.addEventListener('focusin', keepFocusedControlVisible)" components/layout/BottomNavBar.tsx; then
+  record "BottomNavによるfocus遮蔽補正欠落" "components/layout/BottomNavBar.tsx"
+fi
+if ! grep -q 'challenge-participant-enter' components/challenge/ChallengeDetailModal.tsx || \
+   ! grep -q '.challenge-participant-enter' app/globals.css; then
+  record "reduced motion時のChallenge参加者表示契約欠落" "ChallengeDetailModal / globals.css"
+fi
+FEED_ROW_BLOCK=$(sed -n '/function FeedItemRow(/,$p' components/layout/NotificationBell.tsx)
+if [ "$(printf '%s' "$FEED_ROW_BLOCK" | grep -c '<Link')" -gt 1 ]; then
+  record "Notification行に重複リンク" "components/layout/NotificationBell.tsx"
+fi
 if ! grep -q 'LEADERBOARD_PREVIEW_MIN_ROWS = 5' 'app/[locale]/page.tsx'; then
   record "認証ホームランキングの最低5行契約欠落" "app/[locale]/page.tsx"
 fi
@@ -336,8 +441,9 @@ fi
 if ! grep -q 'min-h-\[44px\] min-w-\[48px\] items-center justify-center rounded-lg px-2' components/RecommendedItems.tsx; then
   record "RecommendedItemsコメント取消の44px幅不足" "components/RecommendedItems.tsx"
 fi
-if ! grep -q 'focus-visible:ring-offset-2 xl:hidden' components/dashboard/HomeHero.tsx; then
-  record "1024px Homeの次行動ジャンプ欠落" "components/dashboard/HomeHero.tsx"
+if ! grep -q 'data-story-step="next"' components/dashboard/HomeHero.tsx || \
+   ! grep -q 'href={`#${nextActionTargetId}`}' components/dashboard/HomeHero.tsx; then
+  record "Home quest内の次行動ジャンプ欠落" "components/dashboard/HomeHero.tsx"
 fi
 if ! grep -q 'grid grid-cols-3' components/challenge/ChallengeList.tsx || \
    ! grep -q 'flex min-h-\[44px\] min-w-0 items-center justify-center' components/challenge/ChallengeList.tsx; then

@@ -245,6 +245,7 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 22. **`sr-only`はsemantic table本体ではなくwrapperへ適用する** — `<table className="sr-only">`はtableのintrinsic layoutがページ高へ残る実装差を起こし得る。`<div className="sr-only"><table>...</table></div>`とし、wrapperがabsolute 1×1pxで、Footer後にデッドスペースを作らないことを実測する
 23. **テーマは明示ローカル選択を優先し、装備テーマは初期フォールバックにする** — 既存端末の`localStorage`選択を優先し、未保存端末だけDB装備テーマを初期値にする。装備フォールバックをローカルへ永続化して後日の装備変更を遮断しない。item code変換は`lib/theme.ts`へ集約する
 24. **歩数分析は0・欠測・比較期間を混同しない** — 記録済み0歩は記録日平均の分母へ含め、活動日・ベストデーからは除外する。月途中は前月同日までのMTDと比較し、前月0歩では率を表示しない。低活動時のミッションと次行動は直近活動量に応じた100〜500歩の達成可能な入口を含める
+25. **ホームの楽しさはカード追加ではなく実データの物語で作る** — ファーストビューは`進捗→競争→歩いた価値→次の一歩`を1つのQuest面で連続表示する。同じ導線をQuest・QuickActions・詳細パネルへ重複させず、Quick DockはBottomNav/Sidebarにない補助導線へ限定する。モーションは目標・順位・UC・完了の状態変化だけに650ms以内で適用し、無限装飾や全カード一斉浮遊を使わない。低活動時は0の反復ではなく「次の100歩」「まず500歩」等の未来志向を優先する
 
 ### UI 美学ルール（Design Aesthetics — 必須遵守）
 
@@ -1238,8 +1239,8 @@ export const runtime = "edge";
 
 - **事象**: Footer下端、PC密度、ヘッダー内アバター/通知バッジ、ロゴの色、パネルの押下可否、mobile app safe-areaについて既存ルールは部分的に存在したが、実画面ではFooter下184pxの空白、44pxヘッダーから48pxアバターと通知バッジがはみ出す状態、モノクロmark、静的カードとlink cardの判別不足が残った。
 - **根本原因**: 「44px」「意味色」「Footerに`mt-auto`」を個別classの有無だけで確認し、親子のbounding rect、viewport内Footer位置、first viewportの情報量、hover/focus/active/chevronの組を同じ完了ゲートで測っていなかった。
-- **対策**: 認証後ホームを`min-h-dvh` + Footer wrapper `mt-auto`へ整理し、header visual 32px、badge内包、多色brand mark、interactive panel契約、PWA top/bottom safe-area、1440px home canvas + 2段action rowを実装した。UCFitnessAgentとself-critique-gateへ同じ実測項目を追加した。
-- **教訓**: UI品質はルール数ではなく、最終画面の幾何・意味・操作状態を同時に測るゲートで担保する。リファレンス: `app/[locale]/page.tsx`, `app/globals.css`, `components/layout/UserMenu.tsx`, `components/layout/NotificationBell.tsx`
+- **対策**: 認証後ホームを`min-h-dvh` + Footer wrapper `mt-auto`へ整理し、header visual 32px、badge内包、多色brand mark、interactive panel契約、PWA top/bottom safe-area、1440px home canvas + 2段action rowを実装した。通知バッジは白文字付き塗り面専用の`--color-danger-solid`へ分離し、Classic/Midnightの両方で4.5:1以上を実測する。UCFitnessAgentとself-critique-gateへ同じ実測項目を追加した。
+- **教訓**: UI品質はルール数ではなく、最終画面の幾何・意味・操作状態を同時に測るゲートで担保する。暗色テーマの明るいdanger前景色を白文字付き背景へ流用しない。リファレンス: `app/[locale]/page.tsx`, `app/globals.css`, `components/layout/UserMenu.tsx`, `components/layout/NotificationBell.tsx`
 
 ### LL-035: 認証後ホームのDB取得失敗を0歩・未集計・未設定へ変換していた
 
@@ -1311,3 +1312,10 @@ export const runtime = "edge";
 - **対策**: tableをabsolute 1×1pxの`sr-only` wrapperで包み、表構造・caption・thを維持したまま文書フローから確実に除外した。
 - **教訓**: アクセシブル代替はAX treeだけでなくlayout geometryも監査する。不可視要素の`getBoundingClientRect()`とFooter後の残余高を320/1024pxで確認する。
 - **追加教訓**: 通常状態の44px検査だけでは編集ボタン・Retry・画面外カルーセルfocusを見逃す。編集・エラー状態を開き、画面外リンクはfocus時に表示領域へ移動させる。
+
+### LL-045: 実データを増やしても同じカード文法ではホームが面白くならなかった
+
+- **事象**: 週間歩数、UC残高、固定5行ランキング、仲間アクティビティを追加しても、ユーザーから「ホーム画面がシンプルすぎて面白みがない」と再指摘された。
+- **根本原因**: 実データは増えたが、白い角丸カード・薄い枠・小アイコンを同じ強さで反復し、進捗・競争・報酬・次行動の因果が分断されていた。0歩や空き順位も同じ見た目で反復し、低活動時に空虚さを強めた。
+- **対策**: `HomeHero`をQuest面へ再構成し、進捗→ライバル→歩いた価値→次の一歩を連結した。Mission→Weekly→Reward→Challengeの後を任意探索章（Utility→Friend→Ranking）として明示し、Utility Dockの重複排除、未来志向の0歩表現、未記録・記録済み0歩・参加済みで異なる固定5行コピー、状態別650ms以下のCSS反応を追加した。Sidebar後の1280pxでは4列を使わず、1536px以上だけ4列化する。Mission GETを参照専用化し、再試行中はloadingへ戻して準備POSTとの競合を防ぐ。POSTの報酬書き込み失敗は非成功応答、成功時はlive通知・見出しfocus・永続報酬表示とした。補助ストリーク障害は`null`+明示フラグへ分離し、Challenge進捗取得失敗も0%へ変換しない。
+- **教訓**: Product dashboardのDelightは装飾量ではなく、実データの変化が感情的な手応えへつながる順序と反応で作る。カードを増やす前に因果・重複・状態変化を設計し、レスポンシブ列数とコピーを実コンテナ幅・ユーザー状態で検証する。時間制限motionだけに成功情報を委ねず、状態遷移後のfocusとlive通知も同じ契約にする。リファレンス: `components/dashboard/HomeHero.tsx`, `components/dashboard/DailyMissions.tsx`, `components/dashboard/DashboardChallenges.tsx`, `app/[locale]/page.tsx`, `app/api/user/missions/route.ts`

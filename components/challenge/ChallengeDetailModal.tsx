@@ -305,7 +305,7 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                                                             router.push(`/user/${username}`);
                                                         }
                                                     }}
-                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                                                    className={`challenge-participant-enter flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                         isCompleted
                                                             ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:border-green-300'
                                                             : index < 3
