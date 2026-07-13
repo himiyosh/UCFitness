@@ -544,6 +544,8 @@
   "Profile": {
     "title": "Profile",
     "profile": "Profile",
+    "headerDesc": "Review steps, badges, titles, and connections.",
+    "loading": "Loading profile",
     "activityTitle": "Your Activity",
     "activityTitleOther": "This User's Activity",
     "weeklyRank": "Weekly Rank",

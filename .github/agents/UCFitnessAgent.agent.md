@@ -602,7 +602,7 @@ tool_search_tool_regex(pattern="mcp_playwright", limit=30)
 
 - **テーマカラー** — すべての要素が `var(--theme-*)` に準拠し、ハードコードされた色がないか
 - **角丸の統一** — カード `rounded-xl`、ボタン `rounded-lg` の統一が守られているか
-- **グラデーション** — ページタイトルのグラデーション表示が他ページと一貫しているか
+- **ページ導入部** — 標準認証ページが`AuthenticatedPageHeader` + `PageIntro`を使い、ブランド名ではなくページ名だけが`h1`になっているか
 - **アイコンサイズ** — 同一セクション内のアイコンサイズが揃っているか
 
 #### テスト対象ページ一覧（優先順）
@@ -949,6 +949,10 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 22. **共有入力バリデータ** — URL allowlist等をクライアント表示判定だけに置かず、`lib/`のServer/Client共有モジュールへ集約し、最終的なサーバー処理で必ず再検証する
 23. **Dialog / chart a11y契約** — Portal Dialogは`useDialogFocus`へ統一し、視覚チャートは表示期間の全値を`caption` / `th`付き表または同等リストで提供する。画像生成専用DOMはAX treeから隠す
 24. **0歩と期間比較** — 記録済み0歩を記録日平均には含め、活動日・ベストから除外する。月途中は前月同日までのMTD比較とし、前月0では比率を出さない
+25. **認証ページタイトル契約** — 標準認証ページは`AuthenticatedPageHeader`と`PageIntro`を再利用し、ブランド名をheadingにしない。ページ唯一の`h1`、パンくず、説明、意味色アクセントが共通構造かを確認する
+26. **プロフィールcanonical導線** — BottomNav/Sidebar/UserMenu等の通常導線は`/profile`を経由せず`/user/{username}`へ直接遷移する。全画面グローバルローダーではなくroute `loading.tsx`を使用し、redirect/error/URL不変時にoverlayが残らないことを確認する
+27. **日付水和契約** — Server/Clientで可視日付配列を生成するコンポーネントは、Serverが確定した`YYYY-MM-DD`をpropで受け、UTC固定演算で同じ初期DOMを作る。不正HTMLネストとhydration警告も同時に検査する
+28. **プロフィール比較障害の分離** — 他ユーザー画面で閲覧者プロフィールと比較歩数を並列取得する場合は両結果の`.error`を検査し、歩数DB障害を比較なしの正常表示へ変換しない。Home/Groupsの専用障害パネルではJWT usernameへfallbackせず、canonical値を確認できない間はプロフィールリンクを静的要約にする
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -969,6 +973,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **公開LPの情報密度とモーションを同時に監査する** — 375pxのヒーローは主CTA＋現在歩数＋残り歩数をfold内で完結させ、順位・UCは消さずに直後のプルーフ領域へ送る。カード数だけでなく、fold内の情報順序と同時モーション数を測る。重複するチップ・実績・カードを同じビューポートへ積まず、今日の進捗→順位差→習慣ループ→報酬の順に段階表示する。全セクション同一のfade-upは禁止し、歩数リング・順位バー・報酬・スクロール進捗へ意味に沿った動きを割り当てる。モバイルでは装飾オービット・カード浮遊と進捗モーションを同時再生しない。読めるテキストを含む要素は全フレームで `opacity: 1` とし、transform・SVG描画・独立装飾へ動きを分離する。`@supports`外と低減モーションでは完成状態が常に見えること。リファレンス: `components/LandingPage.tsx`, `app/globals.css`, `docs/PRODUCT.md`
 - **Modern Web Guidance の参照必須** — HTML / CSS / クライアントサイド JS / フォーム / ダイアログ / ポップオーバー / スクロール / モーションの変更では、実装前に関連 guide を検索・取得し、UCFitness の既存 UI ルールへ適用する
 - **全ページ監査はルート台帳で完了判定する** — 共通Shell・ホームの改善を他ページへ外挿しない。17ルートを監査群へ分け、各群の代表画面だけでなく個別のDialog、チャート、障害状態、認可、翻訳を確認する。実ブラウザ未確認の認証画面はソース監査と明記する
+- **標準認証ページのタイトルを個別実装しない** — `AuthenticatedPageHeader`で多色brand mark・context label・操作群を統一し、`PageIntro`でパンくず・唯一の`h1`・説明・意味色アイコン・単色アクセントを統一する。グローバルCSSの広域上書きやページ固有のグラデーション見出しで揃えたことにしない
+- **プロフィール白画面はDB成功だけで否定しない** — canonical URLへの直接リンク、route loadingの終了、consoleのhydration警告、有効なDOMネスト、Server/Clientの日付入力一致を一連で確認する。`GlobalLoader`のような全画面overlayをlayoutへ戻さない
+- **プロフィール比較データ失敗を空状態へ変換しない** — 閲覧者プロフィールと歩数の並列クエリは両方のエラーを検査し、片方だけ成功した状態を正常比較として表示しない。DB障害中はJWT usernameへfallbackせず、UserMenuを静的要約へ変えて障害パネルを維持する
 - **Portal Dialogは共通stackを必須化する** — `useDialogFocus`でTab循環、Escape、背景inert、scroll lock、焦点復帰を統一する。保存中の無期限トラップと二重送信の両方を作らない
 - **チャートの代替値を省略しない** — Recharts・カスタムbarとも、スクリーンリーダーが期間/系列/値へ到達できる表またはリストを持つ。共有画像専用DOMは`aria-hidden`
 - **ブラウザ標準セレクタ優先** — 親要素の状態表現は、不要な JS state やクラス付けより `:has()` / `:where()` / `:not()` を優先する。ただしセレクタは狭く保ち、広域 `:has()` は避ける
@@ -1350,6 +1357,8 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | bento再配置後もホームがスカスカに見えた | 配置密度だけを改善し、表示する実データの種類を増やしていなかった | **時系列+蓄積状態のライブパネルを追加する。** 装飾カードではなく今週歩数・UC残高等の意思決定データでリッチさを作る。リファレンス: `app/[locale]/page.tsx` |
 | 個人データだけで社会性が弱かった | ランキングとフレンド活動を別ページへ追い出し、ホームで競争/仲間のループが見えなかった | **固定5行+自分の順位とfriend activityを常設する。** データ0件でもパネルを消さず発見CTAを表示する。ただし詳細比較は次行動の後に置き、friend activityを順位番号や他者最大値基準の重複ランキングにしない。API失敗・未記録・実0歩も分離する。リファレンス: `app/[locale]/page.tsx`, `DashboardFollowing.tsx` |
 | ホーム中心の改善を全ページ完了と誤認した | 共通Shellの反映を個別ページ品質の代理にし、ルート台帳・状態別coverage・機能群別の完了判定を持っていなかった | **17ルートを共通Shell/競争/アカウント/商取引へ分けて監査する。** 正常・空・障害・権限・320px・keyboardを埋め、Dialog stack、chart代替表、GROUP認可、0歩/MTD、共有URL allowlistを確認する。ホームがPASSでも未監査ページを完了扱いしない |
+| 各ページのサイトタイトルが共通Shell適用後も不統一だった | ヘッダー操作群だけを共通化し、ブランド・context label・パンくず・ページ見出しを各ページへコピーした。広域CSSで似せたため見出し階層も差分も残った | **`AuthenticatedPageHeader` + `PageIntro`を標準契約にする。** ブランドはheadingにせず、ページ名だけを唯一の`h1`にする。グラデーション文字と広域見出し上書きを再導入しない |
+| プロフィールのDB応答は正常でも画面が空に見えた | `/profile`の二段redirect、pathname依存の全画面`GlobalLoader`、UTC/JSTの日付水和差、不正buttonネストがクライアント表示を阻害し得た | **canonicalプロフィールへ直接遷移し、route loadingへ局所化する。** Server確定日をpropで渡してUTC固定描画し、hydration consoleとDOM validityまで確認する。リファレンス: `BottomNavBar.tsx`, `ActivityGraph.tsx`, `ProfileBadges.tsx` |
 
 ---
 

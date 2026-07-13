@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+
 import Spinner from '@/components/ui/Spinner';
 
 const KEYWORD_REGEX = /^[a-zA-Z0-9_-]{3,50}$/;
@@ -215,31 +216,7 @@ export default function CreateGroupClient() {
   ), [step, t]);
 
   return (
-    <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-4 space-y-4">
-
-        {/* パンくずリスト */}
-        <nav className="flex items-center gap-1.5 text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-700 transition-colors">🏠</Link>
-          <span className="text-gray-300">/</span>
-          <Link href="/groups" className="hover:text-[var(--theme-primary)] transition-colors">{t('title')}</Link>
-          <span className="text-gray-300">/</span>
-          <span className="text-gray-900 font-medium">{t('createPageTitle')}</span>
-        </nav>
-
-        {/* ヘッダー */}
-        <div className="text-center sm:text-left">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center justify-center sm:justify-start gap-2.5">
-            <span className="text-3xl">🏃‍♂️</span>
-            <span className="text-[var(--color-primary-strong)]">
-              {t('createPageTitle')}
-            </span>
-          </h1>
-          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            {t('createPageDesc')}
-          </p>
-          <div className="mt-4 h-1 w-24 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60 mx-auto sm:mx-0" />
-        </div>
+    <div className="space-y-4">
 
         {/* ステップインジケーター */}
         {stepIndicator}
@@ -549,7 +526,6 @@ export default function CreateGroupClient() {
           </div>
         )}
 
-      </div>
-    </main>
+    </div>
   );
 }

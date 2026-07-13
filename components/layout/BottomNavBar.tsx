@@ -7,7 +7,11 @@ import { useTranslations } from 'next-intl';
  * ネイティブアプリ風の固定ボトムナビゲーションバー
  * サイドバーが表示されるlg未満で常時表示
  */
-export default function BottomNavBar() {
+interface BottomNavBarProps {
+  username: string;
+}
+
+export default function BottomNavBar({ username }: BottomNavBarProps) {
   const pathname = usePathname();
   const t = useTranslations('BottomNav');
   const dashT = useTranslations('Dashboard');
@@ -17,8 +21,9 @@ export default function BottomNavBar() {
     { href: '/leaderboard' as const, icon: RankingIcon, label: t('ranking') },
     { href: '/challenges' as const, icon: ChallengeIcon, label: dashT('challenges') },
     { href: '/groups' as const, icon: GroupIcon, label: t('groups') },
-    { href: '/profile' as const, icon: ProfileIcon, label: t('profile') },
+    { href: `/user/${encodeURIComponent(username)}`, icon: ProfileIcon, label: t('profile') },
   ];
+  const profileHref = `/user/${encodeURIComponent(username)}`;
 
   return (
     <nav
@@ -30,8 +35,8 @@ export default function BottomNavBar() {
         {navItems.map((item) => {
           const isActive = item.href === '/'
             ? pathname === '/'
-            : item.href === '/profile'
-              ? pathname === '/profile' || pathname.startsWith('/user/')
+            : item.href.startsWith('/user/')
+              ? pathname === profileHref
               : pathname.startsWith(item.href);
 
           return (

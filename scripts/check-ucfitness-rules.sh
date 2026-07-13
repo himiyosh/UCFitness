@@ -184,6 +184,89 @@ if ! grep -q 'requestedLimit !== null && sort === "recent"' app/api/user/followi
   record "following APIのlimit/sort順序契約欠落" "app/api/user/following/route.ts"
 fi
 
+# ---------- 17. 認証ページの共通ヘッダー / PageIntro ----------
+AUTH_HEADER_FILES=(
+  'app/[locale]/analytics/page.tsx'
+  'app/[locale]/challenges/page.tsx'
+  'app/[locale]/groups/page.tsx'
+  'app/[locale]/groups/[groupId]/page.tsx'
+  'app/[locale]/groups/create/page.tsx'
+  'app/[locale]/leaderboard/page.tsx'
+  'app/[locale]/recommendations/page.tsx'
+  'app/[locale]/settings/page.tsx'
+  'app/[locale]/shop/page.tsx'
+  'app/[locale]/user/[username]/page.tsx'
+  'app/[locale]/wallet/page.tsx'
+)
+for file in "${AUTH_HEADER_FILES[@]}"; do
+  if ! grep -q '<AuthenticatedPageHeader' "$file"; then
+    record "標準認証ページの共通ヘッダー欠落" "$file"
+  fi
+done
+
+PAGE_INTRO_FILES=(
+  'app/[locale]/analytics/page.tsx'
+  'app/[locale]/challenges/page.tsx'
+  'app/[locale]/groups/page.tsx'
+  'app/[locale]/leaderboard/page.tsx'
+  'app/[locale]/recommendations/page.tsx'
+  'app/[locale]/settings/page.tsx'
+  'app/[locale]/shop/page.tsx'
+  'app/[locale]/user/[username]/page.tsx'
+  'app/[locale]/wallet/page.tsx'
+  'app/[locale]/groups/create/page.tsx'
+)
+for file in "${PAGE_INTRO_FILES[@]}"; do
+  if ! grep -q '<PageIntro' "$file"; then
+    record "標準認証ページの共通PageIntro欠落" "$file"
+  fi
+  if ! grep -q 'headingId=' "$file"; then
+    record "標準認証ページのPageIntro headingId欠落" "$file"
+  fi
+done
+if ! grep -q '<h1' components/group/JoinGroupPreview.tsx; then
+  record "グループ非メンバー画面のh1欠落" "components/group/JoinGroupPreview.tsx"
+fi
+if grep -q '<h1' components/ShopClient.tsx; then
+  record "ShopClientの重複h1 (rule: PageIntroを唯一のh1にする)" "components/ShopClient.tsx"
+fi
+if ! grep -q "username = userResult.error ? '' : (userData?.username || '')" 'app/[locale]/page.tsx'; then
+  record "Home障害時のプロフィールリンク静的化欠落" "app/[locale]/page.tsx"
+fi
+if ! grep -q 'username: userResult.error ? null : userData?.username' 'app/[locale]/groups/page.tsx'; then
+  record "Groups障害時のプロフィールリンク静的化欠落" "app/[locale]/groups/page.tsx"
+fi
+VIEWER_STEPS_ERROR_BLOCK=$(sed -n '/if (vDataResult.error)/,/^[[:space:]]*}/p' 'app/[locale]/user/[username]/page.tsx')
+if ! printf '%s' "$VIEWER_STEPS_ERROR_BLOCK" | grep -q "reportError('profile:viewer-steps'"; then
+  record "プロフィール閲覧者歩数DBエラーのreportError欠落" "app/[locale]/user/[username]/page.tsx"
+fi
+if ! printf '%s' "$VIEWER_STEPS_ERROR_BLOCK" | grep -q "throw new Error('Failed to load profile viewer steps')"; then
+  record "プロフィール閲覧者歩数DBエラーの伝播欠落" "app/[locale]/user/[username]/page.tsx"
+fi
+if ! grep -q 'const profileHref = user.username' components/layout/UserMenu.tsx || \
+   ! grep -q '{profileHref ? (' components/layout/UserMenu.tsx; then
+  record "UserMenuのusername欠落時プロフィールリンク静的化欠落" "components/layout/UserMenu.tsx"
+fi
+
+# ---------- 18. プロフィールcanonical導線 / グローバルoverlay ----------
+if grep -q '<GlobalLoader' 'app/[locale]/layout.tsx'; then
+  record "layoutに全画面GlobalLoader (rule: route loadingへ局所化)" "app/[locale]/layout.tsx"
+fi
+HITS=$(grep -En "href:[[:space:]]*['\"]/profile['\"]|href=['\"]/profile['\"]" \
+  components/layout/BottomNavBar.tsx components/dashboard/DashboardSidebar.tsx components/layout/UserMenu.tsx 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "App Shellプロフィール導線が/profile経由 (rule: /user/{username}へ直接遷移)" "$HITS"
+fi
+
+# ---------- 19. ActivityGraphの日付水和契約 ----------
+if ! grep -q 'todayDate: string' components/ActivityGraph.tsx; then
+  record "ActivityGraphのServer確定日付prop欠落" "components/ActivityGraph.tsx"
+fi
+HITS=$(grep -nE 'new Date\(d\.fullDate\)|toLocaleString\(['\''\"]default['\''\"]' components/ActivityGraph.tsx 2>/dev/null || true)
+if [ -n "$HITS" ]; then
+  record "ActivityGraphに端末タイムゾーン依存の初期表示" "$HITS"
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"

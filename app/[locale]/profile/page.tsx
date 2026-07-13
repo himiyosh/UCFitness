@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
@@ -18,17 +19,22 @@ export default async function ProfileRedirect() {
         redirect(createLoginRequiredRedirect(locale, "/profile"));
     }
 
-    const userId = (session.user as any).id;
+    const userId = String(session.user.id);
 
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseAdmin
         .from("users")
         .select("username")
         .eq("id", userId)
         .single();
 
+    if (userError && userError.code !== 'PGRST116') {
+        reportError('profile-redirect:user', userError, { userId });
+        throw new Error('Failed to load profile redirect user');
+    }
+
     if (!user?.username) {
         redirect("/setup");
     }
 
-    redirect(`/user/${user.username}`);
+    redirect(`/user/${encodeURIComponent(user.username)}`);
 }

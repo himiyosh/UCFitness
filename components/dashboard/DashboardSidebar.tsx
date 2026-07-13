@@ -7,7 +7,7 @@ import UserAvatar from '@/components/UserAvatar';
 import type { ReactNode } from 'react';
 
 interface SidebarNavItem {
-  href: '/' | '/challenges' | '/leaderboard' | '/groups' | '/shop' | '/wallet' | '/profile';
+  href: string;
   labelKey: string;
   labelNamespace?: 'sidebar' | 'dashboard' | 'bottomNav';
   icon: React.ReactNode;
@@ -49,8 +49,9 @@ export default function DashboardSidebar({
     { href: '/groups', labelKey: 'groups', icon: <GroupsIcon /> },
     { href: '/shop', labelKey: 'gear', icon: <GearIcon /> },
     { href: '/wallet', labelKey: 'wallet', labelNamespace: 'dashboard', icon: <WalletIcon /> },
-    { href: '/profile', labelKey: 'profile', labelNamespace: 'dashboard', icon: <ProfileIcon /> },
+    { href: `/user/${encodeURIComponent(username)}`, labelKey: 'profile', labelNamespace: 'dashboard', icon: <ProfileIcon /> },
   ];
+  const profileHref = `/user/${encodeURIComponent(username)}`;
 
   return (
     <aside
@@ -109,7 +110,9 @@ export default function DashboardSidebar({
         {navItems.map((item) => {
           const isActive = item.href === '/'
             ? pathname === '/' || pathname === ''
-            : pathname.startsWith(item.href);
+            : item.href.startsWith('/user/')
+              ? pathname === profileHref
+              : pathname.startsWith(item.href);
 
           return (
             <Link

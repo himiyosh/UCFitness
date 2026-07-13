@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 
 import BadgeIcon from '@/components/BadgeIcon';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
-import { useTranslations } from 'next-intl';
 
 interface Badge {
     badge_code: string;
@@ -212,18 +212,27 @@ function getEarnedDescription(slot: BadgeSlotData, t: ReturnType<typeof useTrans
 // Extracted Component for consistency
 function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useTranslations<'Profile'>> }) {
     const [hovered, setHovered] = useState(false);
+    const detailsId = useId();
     const hasBadge = !!slot.badge;
 
+    useEffect(() => {
+        if (!hovered) return;
+
+        const closeTooltipOnEscape = (event: KeyboardEvent): void => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            setHovered(false);
+        };
+
+        document.addEventListener('keydown', closeTooltipOnEscape, true);
+        return () => document.removeEventListener('keydown', closeTooltipOnEscape, true);
+    }, [hovered]);
+
     return (
-        <button
-            type="button"
+        <div
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
-            onClick={() => setHovered(!hovered)}
-            onFocus={() => setHovered(true)}
-            onBlur={() => setHovered(false)}
-            aria-pressed={hovered}
-            aria-label={t('badgeDetails', { label: t(`badges.${slot.label}`) })}
             className={`
                 relative flex flex-col items-center justify-between p-2 rounded-lg border 
                 transition-all duration-300 cursor-pointer touch-manipulation h-32
@@ -233,6 +242,19 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
                 ${hovered ? 'z-[60] border-[var(--theme-primary)]/50 shadow-md opacity-100 grayscale-0' : ''}
             `}
         >
+            <button
+                type="button"
+                onClick={() => setHovered(true)}
+                onFocus={() => setHovered(true)}
+                onBlur={() => setHovered(false)}
+                aria-expanded={hovered}
+                aria-controls={hovered ? detailsId : undefined}
+                aria-describedby={hovered ? detailsId : undefined}
+                aria-label={t('badgeDetails', { label: t(`badges.${slot.label}`) })}
+                className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+            >
+                <span className="sr-only">{t('badgeDetails', { label: t(`badges.${slot.label}`) })}</span>
+            </button>
             {/* Header Label */}
             <div className={`text-xs font-bold uppercase tracking-wide mb-1 text-center ${slot.color} h-6 flex items-center justify-center leading-none`}>
                 {t(`badges.${slot.label}`)}
@@ -259,7 +281,7 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
 
             {/* Tooltip */}
             {hovered && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 px-3 py-2 bg-gray-900/95 text-white text-xs rounded-md transition-opacity pointer-events-none z-[100] text-center shadow-xl border border-white/10 animate-in fade-in zoom-in-95 duration-200">
+                <div id={detailsId} role="tooltip" className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 px-3 py-2 bg-gray-900/95 text-white text-xs rounded-md transition-opacity pointer-events-none z-[100] text-center shadow-xl border border-white/10 animate-in fade-in zoom-in-95 duration-200">
                     {hasBadge ? (
                         <p className="font-semibold leading-tight">{getEarnedDescription(slot, t)}</p>
                     ) : (
@@ -296,6 +318,6 @@ function BadgeSlot({ slot, t }: { slot: BadgeSlotData, t: ReturnType<typeof useT
                     </p>
                 )}
             </div>
-        </button>
+        </div>
     );
 }

@@ -12,17 +12,14 @@ import { parseGoogleHealthNotice } from '@/lib/google-health-oauth';
 import { getCoinBalance } from '@/lib/services/coin-service';
 import { getGoogleHealthConnectionSummary } from '@/lib/services/fitness-connection-service';
 import { supabaseAdmin } from '@/lib/supabase';
-import { Link } from '@/navigation';
 
 import ExportButton from '@/components/ExportButton';
 import GoogleHealthConnectionCard from '@/components/GoogleHealthConnectionCard';
 import SettingsForm from '@/components/SettingsForm';
 import SmartGoalAdvisor from '@/components/SmartGoalAdvisor';
-import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import Footer from '@/components/layout/Footer';
-import NotificationBell from '@/components/layout/NotificationBell';
-import RefreshButton from '@/components/layout/RefreshButton';
-import UserMenu from '@/components/layout/UserMenu';
+import PageIntro from '@/components/layout/PageIntro';
 
 export const dynamic = 'force-dynamic';
 
@@ -158,38 +155,28 @@ export default async function SettingsPage({
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-            {/* Header (Consistent with Profile) */}
-            <header data-auth-header className="sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-xl font-black tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary-strong)] sm:text-2xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                {dashboardT('title')}
-                            </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                {dashboardT('beta')}
-                            </span>
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <RefreshButton />
-                        <NotificationBell />
-                        <UserMenu user={{
-                            id: userId,
-                            name: user?.name || session.user.name,
-                            email: session.user.email,
-                            image: user?.image || session.user.image
-                        }} />
-                    </div>
-                </div>
-            </header>
+            <AuthenticatedPageHeader
+                appTitle={dashboardT('title')}
+                betaLabel={dashboardT('beta')}
+                contextLabel={t('title')}
+                user={{
+                    id: userId,
+                    username: user.username,
+                    name: user.name || session.user.name,
+                    email: session.user.email,
+                    image: user.image || session.user.image,
+                }}
+            />
 
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-6">
-                    <Breadcrumbs items={[{ label: t('title') }]} />
-                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">{t('title')}</h1>
-                    <p className="text-gray-500">{t('description')}</p>
-                </div>
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                <PageIntro
+                    headingId="settings-page-title"
+                    title={t('title')}
+                    description={t('description')}
+                    icon="settings"
+                    tone="primary"
+                    breadcrumbs={[{ label: t('title') }]}
+                />
 
                 <GoogleHealthConnectionCard
                     available={googleHealthAvailable}

@@ -212,9 +212,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="relative flex flex-col gap-3 p-3 sm:flex-row sm:justify-between sm:p-4">
                     {/* UCShop ロゴ + 残高（モバイル中央寄せ） */}
                     <div className="flex flex-col items-center sm:items-start justify-center shrink-0">
-                        <h1 className="text-3xl font-black leading-none tracking-tighter text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] sm:text-4xl">
+                        <h2 className="text-3xl font-black leading-none tracking-tighter text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] sm:text-4xl">
                             UC<span className="text-yellow-200 drop-shadow-[0_0_20px_rgba(253,224,71,0.4)]">Shop</span>
-                        </h1>
+                        </h2>
                         <div className="mt-2 flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 backdrop-blur-sm">
                             <span className="text-base">💰</span>
                             <p className="text-base font-black text-white tabular-nums">

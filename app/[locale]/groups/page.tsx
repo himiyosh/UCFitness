@@ -7,14 +7,12 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import GroupList from "@/components/group/GroupList";
-import UserMenu from "@/components/layout/UserMenu";
-import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
 import GroupSettings from "@/components/group/GroupSettings";
-import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/services/ranking-service";
 import { getLocale, getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
+import PageIntro from '@/components/layout/PageIntro';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,34 +136,30 @@ export default async function MyGroupsPage() {
     // Use custom image if available, otherwise fallback to session image
     const finalUser = {
         ...session.user,
+        username: userResult.error ? null : userData?.username,
         name: userData?.name || session.user.name,
         image: userData?.image || session.user.image,
     };
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-            {/* Header */}
-            <header data-auth-header className="sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-xl font-black tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary-strong)] sm:text-2xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                {dashboardT('title')}
-                            </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                {dashboardT('beta')}
-                            </span>
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <RefreshButton />
-                        <NotificationBell />
-                        <UserMenu user={finalUser} />
-                    </div>
-                </div>
-            </header>
+            <AuthenticatedPageHeader
+                appTitle={dashboardT('title')}
+                betaLabel={dashboardT('beta')}
+                contextLabel={t('title')}
+                user={finalUser}
+            />
 
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                <PageIntro
+                    headingId="groups-page-title"
+                    title={t('title')}
+                    description={t('headerDesc')}
+                    icon="groups"
+                    tone="competition"
+                    breadcrumbs={[{ label: t('title') }]}
+                />
+
                 {pageDataError ? (
                     <section className="mb-4 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-surface)] p-4 shadow-sm" role="alert">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -189,31 +183,6 @@ export default async function MyGroupsPage() {
                     </section>
                 )}
 
-                {/* パンくずリスト */}
-                <div className="mb-4 sm:mb-6">
-                    <Breadcrumbs items={[{ label: t('title') }]} />
-                </div>
-
-                {/* ヒーローセクション — ランキングページと統一デザイン */}
-                <div className="mb-6 sm:mb-8 relative overflow-hidden rounded-2xl leaderboard-hero-bg p-5 sm:p-6 text-white leaderboard-card-enter">
-                    {/* 背景デコレーション */}
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-                        <div className="absolute -top-4 -right-4 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full blur-2xl" />
-                        <div className="absolute bottom-0 left-1/4 w-16 h-16 sm:w-20 sm:h-20 bg-white/5 rounded-full blur-xl" />
-                    </div>
-
-                    <div className="relative z-10">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight flex items-center gap-2.5">
-                            <span>👥</span>
-                            <span>{t('title')}</span>
-                        </h1>
-                        <p className="mt-1.5 text-sm sm:text-base text-white/80">
-                            {t('headerDesc')}
-                        </p>
-                        <div className="mt-4 h-0.5 w-20 rounded-full bg-white/30" />
-                    </div>
-                </div>
-
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
                     {/* Group List (Left on Desktop, Top on Mobile) */}
                     <section className="flex-1 w-full">
@@ -223,10 +192,10 @@ export default async function MyGroupsPage() {
                                 {/* ハイライトバナー */}
                                 {topRankedGroups.length > 0 && (
                                     <div className="mb-2.5">
-                                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">{t('todayHighlight')}</div>
+                                        <div className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-500">{t('todayHighlight')}</div>
                                         <div className="flex items-center gap-1 flex-wrap">
                                             {topRankedGroups.map((m: any) => (
-                                                <span key={m.groups.id} className="inline-flex items-center gap-0.5 text-[11px] font-bold text-gray-700">
+                                                <span key={m.groups.id} className="inline-flex items-center gap-0.5 text-xs font-bold text-gray-700">
                                                     <span>{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
                                                     <span className="truncate max-w-[120px]">{m.groups.name}</span>
                                                 </span>

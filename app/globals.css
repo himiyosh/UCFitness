@@ -1489,17 +1489,6 @@ body {
     align-items: stretch;
   }
 
-  .uc-auth-content > main > header > div.justify-between,
-  .uc-auth-content > * > main > header > div.justify-between {
-    height: 2.75rem;
-    padding-inline: 1rem;
-    justify-content: flex-end;
-  }
-
-  .uc-auth-content > main > header > div.justify-between > div:first-child,
-  .uc-auth-content > * > main > header > div.justify-between > div:first-child {
-    display: none;
-  }
 }
 
 .uc-auth-content :where(main) {
@@ -1525,27 +1514,6 @@ body {
 .uc-auth-content > main > header.sticky,
 .uc-auth-content > * > main > header.sticky {
   padding-top: env(safe-area-inset-top, 0px);
-}
-
-.uc-auth-content > main > header:not(.uc-home-header) > div > div:first-child > a:has(> h1)::before,
-.uc-auth-content > * > main > header:not(.uc-home-header) > div > div:first-child > a:has(> h1)::before {
-  content: "";
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  border-radius: 0.75rem;
-  background:
-    radial-gradient(circle at 72% 28%, var(--color-success) 0 12%, transparent 13%),
-    linear-gradient(135deg, var(--color-primary-solid) 0 62%, var(--color-reward) 62% 100%);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 25%, transparent);
-}
-
-.uc-auth-content > main > header:not(.uc-home-header) > div > div:first-child > a:has(> h1) > h1,
-.uc-auth-content > * > main > header:not(.uc-home-header) > div > div:first-child > a:has(> h1) > h1 {
-  background: none !important;
-  color: var(--color-text) !important;
-  -webkit-text-fill-color: currentColor;
 }
 
 .uc-auth-content > main > header > div > div:has(> .refresh-sync-btn),
@@ -1585,15 +1553,6 @@ body {
   min-width: 44px;
 }
 
-.uc-auth-content :where(
-  main > .mx-auto.max-w-7xl > .mb-8 > h2,
-  main > div > .mx-auto.max-w-7xl > .mb-8 > h2
-) {
-  font-size: clamp(1.25rem, 1.65vw, 1.55rem) !important;
-  line-height: 1.15 !important;
-  letter-spacing: -0.03em;
-}
-
 .uc-auth-content :where(main .mb-8) {
   margin-bottom: 1rem !important;
 }
@@ -1627,14 +1586,8 @@ body {
   padding-bottom: 0.875rem !important;
 }
 
-.uc-auth-content :where(main .text-4xl) {
-  font-size: 1.65rem !important;
-  line-height: 1.15 !important;
-}
-
-.uc-auth-content :where(main .text-3xl) {
-  font-size: 1.4rem !important;
-  line-height: 1.18 !important;
+.uc-page-intro {
+  margin-bottom: 1.5rem;
 }
 
 /* template.tsx のラッパー div を経由するため > * > main でマッチ */

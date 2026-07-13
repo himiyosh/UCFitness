@@ -544,6 +544,8 @@
   "Profile": {
     "title": "プロフィール",
     "profile": "プロフィール",
+    "headerDesc": "歩数、バッジ、称号、仲間とのつながりを確認できます。",
+    "loading": "プロフィールを読み込んでいます",
     "activityTitle": "あなたのアクティビティ",
     "activityTitleOther": "このユーザーのアクティビティ",
     "weeklyRank": "週間ランキング",

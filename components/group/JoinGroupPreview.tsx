@@ -96,7 +96,7 @@ export default function JoinGroupPreview({ group, memberCount }: JoinGroupPrevie
                         </div>
                     </div>
 
-                    <h2 className="text-3xl font-black text-[var(--foreground)] mb-2">{group.name}</h2>
+                    <h1 className="text-3xl font-black text-[var(--foreground)] mb-2">{group.name}</h1>
                     {group.description && (
                         <p className="mx-auto mb-3 max-w-md text-sm leading-6 text-[var(--color-text-muted)]">{group.description}</p>
                     )}

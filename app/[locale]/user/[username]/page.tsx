@@ -6,13 +6,11 @@ import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from 'next/link';
 import ActivityGraph from '@/components/ActivityGraph';
-import UserMenu from '@/components/layout/UserMenu';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileBadges from '@/components/profile/ProfileBadges';
 import AchievementProgress from '@/components/profile/AchievementProgress';
-import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
-import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
+import PageIntro from '@/components/layout/PageIntro';
 import { notFound, redirect } from 'next/navigation';
 import { getUserBadges } from "@/lib/services/badge-service";
 import { getEquippedItems } from "@/lib/services/shop-service";
@@ -29,11 +27,17 @@ import nextDynamic from 'next/dynamic';
 import { getCoinBalance } from "@/lib/services/coin-service";
 
 // 遅延読み込み: プロフィール追加コンポーネント
-const BadgeMuseum = nextDynamic(() => import('@/components/profile/BadgeMuseum'));
-const PersonalRecords = nextDynamic(() => import('@/components/profile/PersonalRecords'));
+const BadgeMuseum = nextDynamic(() => import('@/components/profile/BadgeMuseum'), {
+    loading: () => <ProfileSectionSkeleton />,
+});
+const PersonalRecords = nextDynamic(() => import('@/components/profile/PersonalRecords'), {
+    loading: () => <ProfileSectionSkeleton />,
+});
 
 // ⚡ パフォーマンス: ウォーキングコース記録を遅延読み込み（プロフィール所有者のみ表示）
-const WalkingRoutes = nextDynamic(() => import('@/components/WalkingRoutes'));
+const WalkingRoutes = nextDynamic(() => import('@/components/WalkingRoutes'), {
+    loading: () => <ProfileSectionSkeleton />,
+});
 
 
 
@@ -243,14 +247,23 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
         const vUser = vUserResult.data;
 
-        if (vUser) {
-            viewerUser = {
-                ...session.user,
-                name: vUser.name || session.user.name,
-                image: vUser.image || session.user.image,
-                username: vUser.username || (session.user as any).username,
-            };
+        if (vUserResult.error) {
+            reportError('profile:viewer', vUserResult.error, { viewerId, username });
+            throw new Error('Failed to load profile viewer');
         }
+        if (vDataResult.error) {
+            reportError('profile:viewer-steps', vDataResult.error, { viewerId, username });
+            throw new Error('Failed to load profile viewer steps');
+        }
+        if (!vUser?.username) {
+            redirect('/setup');
+        }
+        viewerUser = {
+            ...session.user,
+            name: vUser.name || session.user.name,
+            image: vUser.image || session.user.image,
+            username: vUser.username,
+        };
 
         const vData = vDataResult.data;
 
@@ -270,45 +283,37 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             username: user.username
         };
     }
+    const viewerUsername = viewerUser?.username;
+    if (!viewerUsername) {
+        redirect('/setup');
+    }
+    const headerUser = {
+        ...viewerUser,
+        username: viewerUsername,
+    };
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-            {/* ... Header and Nav ... */}
-            <header data-auth-header className="sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-xl font-black tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary-strong)] sm:text-2xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                {dashboardT('title')}
-                            </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                {dashboardT('beta')}
-                            </span>
-                        </Link>
-                    </div>
-                    {/* Use updated viewerUser for correct image */}
-                    <div className="flex items-center gap-1">
-                        {session?.user && <RefreshButton />}
-                        {session?.user && <NotificationBell />}
-                        {session?.user && viewerUser && <UserMenu user={viewerUser} />}
-                    </div>
-                </div>
-            </header>
+            <AuthenticatedPageHeader
+                appTitle={dashboardT('title')}
+                betaLabel={dashboardT('beta')}
+                contextLabel={t('profile')}
+                user={headerUser}
+            />
 
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                <PageIntro
+                    headingId="profile-page-title"
+                    title={user.name || username}
+                    description={<><span className="font-medium text-[var(--color-text)]">@{username}</span> · {t('headerDesc')}</>}
+                    icon="profile"
+                    tone="primary"
+                    breadcrumbs={[{ label: user.name || username }]}
+                />
 
-                <div className="mb-6">
-                    <Breadcrumbs items={[{ label: user.name || username }]} />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     {/* Left Column: Profile Card */}
                     <div className="md:col-span-1 space-y-6">
-                        {/* Heading for alignment — hidden on mobile since profile card is self-explanatory */}
-                        <div className="hidden md:flex items-center justify-between h-8">
-                            <h2 className="text-2xl font-bold text-gray-900 truncate">{t('profile')}</h2>
-                        </div>
-
                         <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji}>
                             <ShareMilestone totalSteps={totalSteps} username={username} isOwner={isOwner} />
                         </ProfileHeader>
@@ -510,6 +515,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         {/* Activity Graph */}
                         <ActivityGraph
                             data={allHistoryData}
+                            todayDate={todayStr}
                             stepGoal={user.step_goal || 10000}
                             comparisonData={!isOwner && hasViewerStats ? viewerHistoryData : undefined}
                             comparisonLabel={!isOwner && hasViewerStats ? (t('yourSteps') as string) : undefined}
@@ -557,5 +563,14 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             </div>
             <Footer />
         </main>
+    );
+}
+
+function ProfileSectionSkeleton() {
+    return (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm" aria-busy="true">
+            <div className="h-4 w-32 animate-pulse rounded-full bg-[var(--color-surface-muted)]" />
+            <div className="mt-3 h-20 animate-pulse rounded-xl bg-[var(--color-surface-muted)]" />
+        </div>
     );
 }

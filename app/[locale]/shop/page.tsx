@@ -5,12 +5,9 @@ import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
-import { Link } from '@/navigation';
-import UserMenu from "@/components/layout/UserMenu";
-import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
 import UCHintBalloon from "@/components/ui/UCHintBalloon";
-import Breadcrumbs from "@/components/layout/Breadcrumbs";
+import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
+import PageIntro from '@/components/layout/PageIntro';
 import ShopClient from "@/components/ShopClient";
 import { getShopItems, getUserItems, getEquippedItems } from "@/lib/services/shop-service";
 import { getCoinBalance, getInvestorRank } from "@/lib/services/coin-service";
@@ -68,53 +65,29 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-            {/* ヘッダー */}
-            <header data-auth-header className="sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-xl font-black tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary-strong)] sm:text-2xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                {dashboardT('title')}
-                            </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                {dashboardT('beta')}
-                            </span>
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <RefreshButton />
-                        <NotificationBell />
-                        <UserMenu user={{
-                            ...session.user,
-                            name: user?.name || session.user.name,
-                            image: user?.image || session.user.image,
-                        }} />
-                    </div>
-                </div>
-            </header>
+            <AuthenticatedPageHeader
+                appTitle={dashboardT('title')}
+                betaLabel={dashboardT('beta')}
+                contextLabel={t('title')}
+                user={{
+                    ...session.user,
+                    id: userId,
+                    username: user.username,
+                    name: user.name || session.user.name,
+                    image: user.image || session.user.image,
+                }}
+            />
 
             {/* コンテンツ */}
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
-                {/* パンくずリスト */}
-                <div className="mb-6">
-                    <Breadcrumbs items={[
-                        { label: t('title') },
-                    ]} />
-                </div>
-
-                {/* ページヘッダー */}
-                <div className="mb-8">
-                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
-                        <span>🛍️</span>
-                        <span className="text-[var(--color-reward-strong)]">
-                            {t('title')}
-                        </span>
-                    </h2>
-                    <p className="mt-2.5 text-base text-[var(--color-text-muted)]">
-                        {t('headerDesc')} <UCHintBalloon />
-                    </p>
-                    <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
-                </div>
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                <PageIntro
+                    headingId="shop-page-title"
+                    title={t('title')}
+                    description={<>{t('headerDesc')} <UCHintBalloon /></>}
+                    icon="shop"
+                    tone="reward"
+                    breadcrumbs={[{ label: t('title') }]}
+                />
 
                 {/* ショップクライアント */}
                 <ShopClient

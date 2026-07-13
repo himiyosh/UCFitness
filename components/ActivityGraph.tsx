@@ -10,6 +10,7 @@ type StepRecord = {
 
 type ActivityGraphProps = {
     data: StepRecord[];
+    todayDate: string;
     stepGoal?: number;
     comparisonData?: StepRecord[];
     comparisonLabel?: string;
@@ -21,12 +22,13 @@ type ActivityGraphProps = {
     };
 };
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ViewMode = 'WEEKLY' | 'MONTHLY' | 'ALL';
 
-export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, comparisonData, comparisonLabel }: ActivityGraphProps) {
+export default function ActivityGraph({ data, todayDate, stepGoal = 10000, groupInfo, comparisonData, comparisonLabel }: ActivityGraphProps) {
     const t = useTranslations('Graph');
+    const locale = useLocale();
     const weekdayLabels = useMemo(
         () => [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')],
         [t],
@@ -50,19 +52,16 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
 
 
     const processedData = useMemo(() => {
-        const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        const dataMap = new Map(sortedData.map(r => [r.date, r.steps]));
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Helper to get YYYY-MM-DD in local time
-        const toLocalISOString = (d: Date) => {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
+        const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date));
+        const dataMap = new Map(sortedData.map(record => [record.date, record.steps]));
+        const [todayYear, todayMonth, todayDay] = todayDate.split('-').map(Number);
+        const today = new Date(Date.UTC(todayYear, todayMonth - 1, todayDay));
+        const toDateString = (date: Date): string => {
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         };
-
         const result: {
             label: string;
             value: number;
@@ -72,101 +71,62 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
         }[] = [];
 
         if (viewMode === 'WEEKLY') {
-            const currentDay = today.getDay(); // 0-6 (Sun-Sat)
+            const currentDay = today.getUTCDay();
+            const diff = today.getUTCDate() - currentDay + (currentDay === 0 ? -6 : 1);
+            const thisWeekMonday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), diff));
+            const targetMonday = new Date(thisWeekMonday);
+            targetMonday.setUTCDate(thisWeekMonday.getUTCDate() + (weekOffset * 7));
 
-            // Calculate the start of the current viewing week (Monday based)
-            // If today is Sunday (0), we need to go back 6 days to get Monday.
-            // If today is Monday (1), we go back 0 days.
-            const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
-
-            // Safe date construction using year/month/date to avoid overflows
-            const thisWeekMonday = new Date(today.getFullYear(), today.getMonth(), diff);
-
-            // Apply offset
-            const targetMonday = new Date(thisWeekMonday.getFullYear(), thisWeekMonday.getMonth(), thisWeekMonday.getDate() + (weekOffset * 7));
-
-            // Generate 7 days (Mon-Sun)
-            for (let i = 0; i < 7; i++) {
-                const d = new Date(targetMonday.getFullYear(), targetMonday.getMonth(), targetMonday.getDate() + i);
-                if (d > today) continue;
-                const dateStr = toLocalISOString(d);
-
-                const hasRecord = dataMap.has(dateStr);
-                const steps = dataMap.get(dateStr) ?? 0;
-
-                const checkToday = new Date();
-                const isToday = d.getDate() === checkToday.getDate() &&
-                    d.getMonth() === checkToday.getMonth() &&
-                    d.getFullYear() === checkToday.getFullYear();
-
+            for (let index = 0; index < 7; index++) {
+                const date = new Date(targetMonday);
+                date.setUTCDate(targetMonday.getUTCDate() + index);
+                const dateString = toDateString(date);
+                if (dateString > todayDate) continue;
                 result.push({
-                    label: weekdayLabels[d.getDay()],
-                    value: steps,
-                    fullDate: dateStr,
-                    isToday: isToday,
-                    hasRecord,
+                    label: weekdayLabels[date.getUTCDay()],
+                    value: dataMap.get(dateString) ?? 0,
+                    fullDate: dateString,
+                    isToday: dateString === todayDate,
+                    hasRecord: dataMap.has(dateString),
                 });
             }
         } else if (viewMode === 'MONTHLY') {
-            // Calendar Month View
-            // Safe construction of target month's 1st day
-            const targetMonthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+            const targetMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + monthOffset, 1));
+            const endOfMonth = new Date(Date.UTC(targetMonth.getUTCFullYear(), targetMonth.getUTCMonth() + 1, 0));
 
-            const startOfMonth = new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth(), 1);
-            const endOfMonth = new Date(targetMonthDate.getFullYear(), targetMonthDate.getMonth() + 1, 0);
-
-            // Iterate using a new Date object to prevent reference issues
-            for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
-                if (d > today) continue;
-                const dateStr = toLocalISOString(d);
-                const hasRecord = dataMap.has(dateStr);
-                const steps = dataMap.get(dateStr) ?? 0;
-
-                const checkToday = new Date();
-                const isToday = d.getDate() === checkToday.getDate() &&
-                    d.getMonth() === checkToday.getMonth() &&
-                    d.getFullYear() === checkToday.getFullYear();
-
+            for (
+                let date = new Date(targetMonth);
+                date <= endOfMonth;
+                date.setUTCDate(date.getUTCDate() + 1)
+            ) {
+                const dateString = toDateString(date);
+                if (dateString > todayDate) continue;
                 result.push({
-                    label: `${d.getMonth() + 1}/${d.getDate()}`,
-                    value: steps,
-                    fullDate: dateStr,
-                    isToday: isToday,
-                    hasRecord,
+                    label: `${date.getUTCMonth() + 1}/${date.getUTCDate()}`,
+                    value: dataMap.get(dateString) ?? 0,
+                    fullDate: dateString,
+                    isToday: dateString === todayDate,
+                    hasRecord: dataMap.has(dateString),
                 });
             }
-        } else {
-            // ALL - Daily
-            if (sortedData.length > 0) {
-                // Parse first date safely (assuming YYYY-MM-DD string)
-                const [y, m, d] = sortedData[0].date.split('-').map(Number);
-                const minDate = new Date(y, m - 1, d);
-
-                const current = new Date(minDate);
-                while (current <= today) {
-                    const dateStr = toLocalISOString(current);
-                    const hasRecord = dataMap.has(dateStr);
-                    const steps = dataMap.get(dateStr) ?? 0;
-
-                    const checkToday = new Date();
-                    const isToday = current.getDate() === checkToday.getDate() &&
-                        current.getMonth() === checkToday.getMonth() &&
-                        current.getFullYear() === checkToday.getFullYear();
-
-                    result.push({
-                        label: `${current.getMonth() + 1}/${current.getDate()}`,
-                        value: steps,
-                        fullDate: dateStr,
-                        isToday: isToday,
-                        hasRecord,
-                    });
-                    current.setDate(current.getDate() + 1);
-                }
+        } else if (sortedData.length > 0) {
+            const [year, month, day] = sortedData[0].date.split('-').map(Number);
+            const current = new Date(Date.UTC(year, month - 1, day));
+            while (toDateString(current) <= todayDate) {
+                const dateString = toDateString(current);
+                result.push({
+                    label: `${current.getUTCMonth() + 1}/${current.getUTCDate()}`,
+                    value: dataMap.get(dateString) ?? 0,
+                    fullDate: dateString,
+                    isToday: dateString === todayDate,
+                    hasRecord: dataMap.has(dateString),
+                });
+                current.setUTCDate(current.getUTCDate() + 1);
             }
         }
 
         return result;
-    }, [data, viewMode, weekOffset, monthOffset, weekdayLabels]);
+    }, [data, monthOffset, todayDate, viewMode, weekOffset, weekdayLabels]);
 
     // 比較データを同じ日付でマッピング
     const comparisonMap = useMemo(() => {
@@ -208,17 +168,21 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
     // Labels for navigation
     const weekRangeLabel = useMemo(() => {
         if (viewMode !== 'WEEKLY' || processedData.length < 7) return '';
-        const start = new Date(processedData[0].fullDate);
-        const end = new Date(processedData[processedData.length - 1].fullDate);
-        return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
+        const start = new Date(`${processedData[0].fullDate}T00:00:00Z`);
+        const end = new Date(`${processedData[processedData.length - 1].fullDate}T00:00:00Z`);
+        return `${start.getUTCMonth() + 1}/${start.getUTCDate()} - ${end.getUTCMonth() + 1}/${end.getUTCDate()}`;
     }, [processedData, viewMode]);
 
     const monthLabel = useMemo(() => {
         if (viewMode !== 'MONTHLY') return '';
-        const today = new Date();
-        const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
-        return targetDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-    }, [monthOffset, viewMode]);
+        const [year, month] = todayDate.split('-').map(Number);
+        const targetDate = new Date(Date.UTC(year, month - 1 + monthOffset, 1));
+        return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'UTC',
+        }).format(targetDate);
+    }, [locale, monthOffset, todayDate, viewMode]);
 
     // Handle Hash Navigation (Deep Linking)
     useEffect(() => {
@@ -751,7 +715,7 @@ export default function ActivityGraph({ data, stepGoal = 10000, groupInfo, compa
                                             {/* Numeric Date for Weekly View in Share */}
                                             {viewMode === 'WEEKLY' && (
                                                 <span className="text-lg font-medium text-gray-500 opacity-70">
-                                                    {new Date(d.fullDate).getDate()}
+                                                    {Number(d.fullDate.slice(8, 10))}
                                                 </span>
                                             )}
                                         </div>

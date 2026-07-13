@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_JP } from "next/font/google";
 
-import { Suspense } from "react";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -17,7 +16,6 @@ import { getThemeFromItemCode } from "@/lib/theme";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import GlobalLoader from "@/components/auth/GlobalLoader";
 import LanguageSyncer from "@/components/layout/LanguageSyncer";
 import BottomNavBar from "@/components/layout/BottomNavBar";
 import SkipLink from '@/components/layout/SkipLink';
@@ -164,10 +162,6 @@ export default async function LocaleLayout({
                   label={skipToContent}
                   targetId="main-page-content"
                 />
-                <Suspense fallback={null}>
-                  <GlobalLoader />
-                </Suspense>
-
                 <LanguageSyncer user={languageUser} />
                 <div
                   id="main-content"
@@ -193,7 +187,7 @@ export default async function LocaleLayout({
                   </div>
                 </div>
                 {/* モバイル用固定ボトムナビゲーション (認証済みユーザーのみ) */}
-                {shellUser && <BottomNavBar />}
+                {shellUser && <BottomNavBar username={shellUser.username} />}
               </ThemeProvider>
             </ToastProvider>
           </AuthProvider>

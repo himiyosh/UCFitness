@@ -81,6 +81,9 @@ Do not make UCFitness look like:
 ## Authenticated-page requirements
 
 - Audit every registered user route rather than treating the home dashboard or shared shell as a proxy for the whole product.
+- Use the shared `AuthenticatedPageHeader` and `PageIntro` for standard authenticated pages. Keep the product wordmark out of the heading hierarchy and give each page one descriptive `h1`.
+- Keep profile navigation on the canonical `/user/{username}` route. Use route-scoped loading skeletons rather than a global full-screen overlay that can outlive redirects or errors.
+- Build date-driven initial UI from a server-provided `YYYY-MM-DD` and deterministic UTC arithmetic so Edge and browser hydration produce the same structure.
 - Keep the information order: today's progress, reachable competition gap, UC reward, then the next action. Detailed rankings and friend activity follow that decision layer.
 - Separate recorded zero, missing data, and database/API failure. Recorded zero belongs in recorded-day averages but not active-day or best-day counts.
 - Compare an in-progress month with the previous month through the same day, not with the previous full month.

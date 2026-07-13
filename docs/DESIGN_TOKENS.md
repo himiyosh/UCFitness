@@ -220,6 +220,14 @@ body {
 | `text-xl` (20px) | `sm:text-2xl` (24px) | セクション見出し |
 | `text-2xl` (24px) | `sm:text-3xl` (30px) | ページタイトル |
 
+### 認証ページ導入部
+
+- 標準認証ページは`AuthenticatedPageHeader` + `PageIntro`を使用する。
+- ヘッダーのブランドは多色`AppBrandMark` + solid wordmarkとし、見出し階層へ含めない。
+- `PageIntro`がパンくず、ページ唯一の`h1`、説明、意味色アイコン、単色アクセントを持つ。
+- ページタイトルへグラデーション文字や広域CSSによるサイズ上書きを適用しない。
+- 基準幅は`max-w-7xl`、左右余白は`px-4 sm:px-6 lg:px-8`、導入部の縦余白は`py-4 sm:py-6`とする。
+
 ---
 
 ## アクセシビリティトークン

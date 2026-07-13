@@ -5,11 +5,8 @@ import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import GroupDetailLeaderboard from "@/components/group/GroupDetailLeaderboard";
-import UserMenu from "@/components/layout/UserMenu";
-import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
+import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import GroupHeaderActions from "@/components/group/GroupHeaderActions";
 import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/services/ranking-service";
@@ -99,12 +96,12 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     }
 
     // Construct user object for menu, preferring DB data
-    const currentUser = dbUser ? {
+    const currentUser = {
         ...session.user,
         name: dbUser.name || session.user.name,
         image: dbUser.image || session.user.image,
-        username: dbUser.username
-    } : session.user;
+        username: dbUser.username,
+    };
 
     if (!group) {
         return notFound();
@@ -122,26 +119,12 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
     if (!isMember) {
         return (
             <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-                {/* Header */}
-                <header data-auth-header className="sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                    <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Link href="/" className="flex items-center gap-2 group">
-                                <h1 className="text-xl font-black tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary-strong)] sm:text-2xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                    {dashboardT('title')}
-                                </h1>
-                                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                    {dashboardT('beta')}
-                                </span>
-                            </Link>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <RefreshButton />
-                            <NotificationBell />
-                            <UserMenu user={currentUser} />
-                        </div>
-                    </div>
-                </header>
+                <AuthenticatedPageHeader
+                    appTitle={dashboardT('title')}
+                    betaLabel={dashboardT('beta')}
+                    contextLabel={group.name}
+                    user={currentUser}
+                />
 
                 <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
                     <div className="mb-6">
@@ -215,26 +198,12 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-            {/* Header */}
-            <header data-auth-header className="sticky top-0 z-50 overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-xl font-black tracking-tight text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary-strong)] sm:text-2xl" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                {dashboardT('title')}
-                            </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                {dashboardT('beta')}
-                            </span>
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <RefreshButton />
-                        <NotificationBell />
-                        <UserMenu user={currentUser} />
-                    </div>
-                </div>
-            </header>
+            <AuthenticatedPageHeader
+                appTitle={dashboardT('title')}
+                betaLabel={dashboardT('beta')}
+                contextLabel={group.name}
+                user={currentUser}
+            />
 
             <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 

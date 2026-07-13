@@ -102,7 +102,7 @@ export default async function Home(): Promise<ReactNode> {
     reportError('home:coins', coinResult.error, { userId });
   }
   stepGoal = userData?.step_goal || 10000;
-  username = userData?.username || '';
+  username = userResult.error ? '' : (userData?.username || '');
   dbUserName = userData?.name || null;
   dbUserImage = userData?.image || null;
 
@@ -198,6 +198,7 @@ export default async function Home(): Promise<ReactNode> {
             <NotificationBell />
             <UserMenu user={{
               id: userId,
+              username,
               name: dbUserName || session.user.name,
               email: session.user.email,
               image: userImage,
@@ -220,6 +221,7 @@ export default async function Home(): Promise<ReactNode> {
             <NotificationBell />
             <UserMenu user={{
               id: userId,
+              username,
               name: dbUserName || session.user.name,
               email: session.user.email,
               image: userImage,

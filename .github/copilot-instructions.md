@@ -548,11 +548,8 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase"; // ※ supabase ではなく supabaseAdmin
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { Link } from "@/navigation";
-import UserMenu from "@/components/UserMenu";
-import RefreshButton from "@/components/RefreshButton";
-import NotificationBell from "@/components/NotificationBell";
-import Breadcrumbs from "@/components/Breadcrumbs";
+import AuthenticatedPageHeader from "@/components/layout/AuthenticatedPageHeader";
+import PageIntro from "@/components/layout/PageIntro";
 ```
 
 #### ③ 認証チェック → userId 取得 → DB ユーザー情報取得
@@ -566,15 +563,18 @@ if (!session?.user) {
   redirect("/");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const userId = (session.user as any).id;
+const userId = String(session.user.id);
 
 // 必ず supabaseAdmin で DB からユーザー情報を取得する
-const { data: dbUser } = await supabaseAdmin
+const { data: dbUser, error: userError } = await supabaseAdmin
   .from("users")
   .select("name, image, username") // ← 最低限この3つ。ページ固有のカラムは追加OK
   .eq("id", userId)
   .single();
+
+if (userError) {
+  throw new Error(`Failed to load page user: ${userError.message}`);
+}
 
 if (!dbUser?.username) {
   redirect("/setup");
@@ -586,6 +586,7 @@ if (!dbUser?.username) {
 - `session.user.image` / `session.user.name` を表示用に直接使用してはいけない（Fitbit OAuth の値のため）
 - `supabase`（非 admin）をサーバーコンポーネントで使用してはいけない（`supabaseAdmin` を使う）
 - username チェック・`/setup` リダイレクトを省略してはいけない
+- Home / GroupsのようにDB障害を専用エラーパネルで明示するページでは、JWT内のusernameへfallbackしない。DBからcanonical usernameを確認できない間はUserMenuのプロフィールリンクを静的要約へ変え、障害表示を維持したまま`/profile`・`/user/`・`/user/undefined`を生成しない
 
 #### ④ ルート要素
 
@@ -596,70 +597,56 @@ if (!dbUser?.username) {
 #### ⑤ ヘッダー（アプリブランディング）
 
 ```tsx
-<header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-  <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-    <div className="flex items-center gap-2">
-      <Link href="/" className="flex items-center gap-2 group">
-        <h1
-          className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity"
-          style={{ fontFamily: "var(--font-inter), sans-serif" }}
-        >
-          {dashboardT("title")}
-        </h1>
-        <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20">
-          {dashboardT("beta")}
-        </span>
-      </Link>
-    </div>
-    <div className="flex items-center gap-1">
-      <RefreshButton />
-      <NotificationBell />
-      <UserMenu
-        user={{
-          id: userId,
-          name: dbUser?.name || session.user.name,
-          email: session.user.email,
-          image: dbUser?.image || session.user.image,
-        }}
-      />
-    </div>
-  </div>
-</header>
+<AuthenticatedPageHeader
+  appTitle={dashboardT("title")}
+  betaLabel={dashboardT("beta")}
+  contextLabel={t("title")}
+  user={{
+    id: userId,
+    name: dbUser.name ?? session.user.name,
+    email: session.user.email,
+    image: dbUser.image ?? session.user.image,
+    username: dbUser.username,
+  }}
+/>
 ```
 
 - `BackButton` はヘッダーに置かない（パンくずリストで代替）
-- ヘッダー左側は常にアプリロゴ（`UCFitness` グラデーション + beta バッジ）
-- **ヘッダー右側は必ず `RefreshButton` → `NotificationBell` → `UserMenu` の 3 要素を配置**（1 つでも欠けると統一性が崩れる）
+- モバイルは多色 `AppBrandMark` + solid wordmark、デスクトップはSidebarと重複しないcontext labelを表示する
+- アプリ名は見出しにしない。ページ唯一の`h1`は後述の`PageIntro`が持つ
+- **ヘッダー右側は `AuthenticatedPageHeader` 内の `RefreshButton` → `NotificationBell` → `UserMenu` の 3 要素を維持する**
 - `dashboardT = await getTranslations('Dashboard')` で取得
 
 #### ⑥ コンテンツ領域
 
 ```tsx
-<div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
-  {/* パンくずリスト */}
-  <div className="mb-6">
-    <Breadcrumbs items={[{ label: t("title") }]} />
-  </div>
-
-  {/* ページタイトル */}
-  <div className="mb-8">
-    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
-      <span>{emoji}</span>
-      <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
-        {t("title")}
-      </span>
-    </h2>
-    <p className="mt-2.5 text-base text-gray-500">{t("headerDesc")}</p>
-    <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
-  </div>
+<div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+  <PageIntro
+    headingId="page-title"
+    title={t("title")}
+    description={t("headerDesc")}
+    icon="analytics"
+    tone="primary"
+    breadcrumbs={[{ label: t("title") }]}
+  />
 
   {/* メインコンテンツ */}
 </div>
 ```
 
-- `Breadcrumbs` は Home アイコンを自動付与するため、`🏠` を手動追加しない
-- ページタイトルはグラデーション + 絵文字 + 説明文 + 装飾線
+- `PageIntro` がパンくず、ページ唯一の`h1`、説明、意味色アイコン、単色アクセントをまとめる
+- タイトルへグラデーション文字やページ固有の巨大サイズを再導入しない
+- ホーム、初回セットアップ、固有カバーを持つグループ詳細は例外構造でもよいが、認証ヘッダーは`AuthenticatedPageHeader`へ統一する
+- `globals.css`で`[data-auth-header] h1`やページ見出しを広域上書きしない。共通コンポーネント自身でサイズ・余白を管理する
 - 翻訳キーに `headerDesc` を必ず含める（ja/en 両方）
+
+#### プロフィール遷移・ローディング・日付水和の契約
+
+- App Shellのプロフィール導線は`/profile`を経由せず、`/user/${encodeURIComponent(username)}`へ直接遷移する
+- 全画面の独自グローバルローダーでナビゲーションを覆わない。Next.jsのroute `loading.tsx`と対象画面形状のスケルトンを使い、URL不変・redirect・error時にも本文を永久に隠さない
+- Server/Client双方の初期描画で日付配列を作る場合、Server Componentで確定した`YYYY-MM-DD`をpropで渡し、UTC演算で同じDOMを生成する。可視初期値に裸の`new Date()`や端末タイムゾーン依存の`toLocaleString()`を使わない
+- インタラクティブ要素へ`div`等の非phrasing contentを不正にネストしない。水和警告は白画面候補としてconsoleとDOM構造の両方を確認する
+- 他ユーザープロフィールで閲覧者プロフィールと比較歩数を並列取得する場合、両方の`.error`を`reportError`後にthrowまたは明示エラーUIへ分岐する。比較歩数のDB失敗を「比較データなし」の正常状態へ変換しない
 
 #### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
 
@@ -1284,3 +1271,24 @@ export const runtime = "edge";
 - **根本原因**: 共通Shellが反映されたことを個別ページ品質の代理指標にし、ページ台帳と機能群別の完了判定を持っていなかった。スクリーンショット中心で、DB/API障害、0歩/欠測、非メンバー、保存中、Forced Colors等の状態を横断していなかった。
 - **対策**: 17ルートを共通Shell・競争・アカウント・商取引へ分け、静的監査、実ブラウザ、5ペルソナ、独立コードレビューを反復した。共通Dialog stack、SSR有効なskip target、共有URL allowlist、GROUP membership認可、0歩/MTD分析、装備テーマ初期値、チャート数値表を実装した。
 - **教訓**: 「全ページ」はページ数ではなく、各ルートの正常・空・エラー・権限・狭幅・キーボード状態を埋めたcoverage matrixで判定する。ホームが良くても他ページの未監査を完了扱いしない。
+
+### LL-040: 共通Shellの存在だけではページタイトルが統一されなかった
+
+- **事象**: 全ページ監査後も、認証ページごとにブランド見出し、ページ見出し、パンくず、装飾線、文字サイズが別実装のまま残り、ユーザーから不統一を再指摘された。
+- **根本原因**: ヘッダー右側の操作群だけを共通契約にし、ブランドとページ導入部を再利用コンポーネントへ集約していなかった。広域CSSで見た目を近づけたため、見出し階層も実装差も残った。
+- **対策**: `AppBrandMark`、`AuthenticatedPageHeader`、`PageIntro`へ集約し、標準認証ページを移行した。ブランドは見出しから外し、`PageIntro`をページ唯一の`h1`とした。
+- **教訓**: ページ統一はCSSの類似ではなく、同じ構造コンポーネントと見出し契約で判定する。リファレンス: `components/layout/AuthenticatedPageHeader.tsx`, `components/layout/PageIntro.tsx`
+
+### LL-041: 二段リダイレクトと全画面ローダーがプロフィールを覆い続けた
+
+- **事象**: App Shellのプロフィール導線が`/profile`から`/user/{username}`へ再リダイレクトし、独自`GlobalLoader`が遷移完了を検出できない場合に全画面オーバーレイが残り、プロフィールが何も表示されないように見えた。
+- **根本原因**: canonical URLへ直接リンクせず、pathname変化を成功条件とするグローバルローダーを全ルートへ重ねていた。
+- **対策**: BottomNav/Sidebarをcanonicalプロフィールへ直接接続し、layoutの`GlobalLoader`を撤去した。プロフィールroute固有の`loading.tsx`で形状を保つスケルトンを表示する。
+- **教訓**: リダイレクト経路をナビゲーションの通常導線にしない。ローディングUIはroute境界へ局所化し、エラーやURL不変で本文を永久に覆わない。
+
+### LL-042: Serverとブラウザの現在日差でプロフィールが水和不一致になり得た
+
+- **事象**: `ActivityGraph`が初期描画で`new Date()`を使い、Edge側UTCとブラウザ側JSTで曜日・今日判定・月ラベルが異なる時刻帯にプロフィールDOMが不一致になり得た。バッジbutton内の不正DOMも水和警告候補だった。
+- **根本原因**: 同じ健康データでも「今日」を各実行環境で再計算し、日付を描画入力として固定していなかった。
+- **対策**: Server Componentで確定したJSTの`YYYY-MM-DD`を`ActivityGraph`へ渡し、UTC固定演算で表示配列を生成した。不正なbutton入れ子も有効なoverlay button構造へ修正した。
+- **教訓**: Server/Client共通の可視日付は文字列入力へ固定し、裸の現在時刻から初期DOMを作らない。水和問題はデータ取得成功だけでは否定できない。

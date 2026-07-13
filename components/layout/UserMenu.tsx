@@ -28,6 +28,22 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
     const t = useTranslations('UserMenu');
     const commonT = useTranslations('Common');
     const accountName = user.username || user.name || user.email || t('signedInAs');
+    const profileHref = user.username
+        ? `/user/${encodeURIComponent(user.username)}`
+        : null;
+    const accountSummary = (
+        <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+                <UserAvatar src={user.image} name={user.name} size="md" borderClass="border-[var(--color-border)]" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <span className="mb-0.5 block text-xs font-medium text-[var(--color-text-muted)]">{t('signedInAs')}</span>
+                <p className="truncate text-sm font-bold text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]">
+                    {user.username || user.name || user.email}
+                </p>
+            </div>
+        </div>
+    );
 
     useEffect(() => {
         if (!isOpen) return;
@@ -73,7 +89,7 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
                 <button
                     ref={triggerRef}
                     onClick={toggleMenu}
-                    className="relative flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center overflow-visible rounded-full text-sm transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                    className="user-menu-trigger relative flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center overflow-visible rounded-full text-sm transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                     id={triggerId}
                     aria-expanded={isOpen}
                     aria-controls={isOpen ? menuId : undefined}
@@ -96,23 +112,19 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
                     id={menuId}
                     className="user-dropdown-menu absolute right-0 z-[70] mt-2 w-64 origin-top-right rounded-xl bg-[var(--color-surface)] py-1 shadow-lg ring-1 ring-[var(--color-border)] animate-fade-in"
                 >
-                    <Link
-                        href={user.username ? `/user/${user.username}` : '/profile'}
-                        className="group flex min-h-[56px] items-center border-b border-[var(--color-border)] px-4 py-3 transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
-                        onClick={() => setIsOpen(false)}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0">
-                                <UserAvatar src={user.image} name={user.name} size="md" borderClass="border-[var(--color-border)]" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <span className="mb-0.5 block text-xs font-medium text-[var(--color-text-muted)]">{t('signedInAs')}</span>
-                                <p className="truncate text-sm font-bold text-[var(--color-text)] transition-colors group-hover:text-[var(--color-primary)]">
-                                    {user.username || user.name || user.email}
-                                </p>
-                            </div>
+                    {profileHref ? (
+                        <Link
+                            href={profileHref}
+                            className="group flex min-h-[56px] items-center border-b border-[var(--color-border)] px-4 py-3 transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
+                            onClick={() => setIsOpen(false)}
+                        >
+                            {accountSummary}
+                        </Link>
+                    ) : (
+                        <div className="flex min-h-[56px] items-center border-b border-[var(--color-border)] px-4 py-3" aria-disabled="true">
+                            {accountSummary}
                         </div>
-                    </Link>
+                    )}
 
                     <Link
                         href="/groups"
