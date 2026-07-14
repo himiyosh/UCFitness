@@ -243,7 +243,7 @@ body {
 - 緊急期限は`--color-danger-strong`を使用し、competition soft面でも通常文字4.5:1以上を維持する。
 - 通知バッジ等の白文字付き危険色面は`--color-danger-solid`を使用する。Midnightの前景用`--color-danger`を塗り面へ流用しない。
 - 情報順: 進捗 → ライバル → 歩いた価値 → 次の一歩。後続はMission → Weekly → Reward → Challenge → Utility → Ranking。
-- Utility Dockは全認証幅で表示し、BottomNav・Sidebar・Reward panelと重ならないAnalytics / Link Builder / Group Create / Settingsだけを表示する。Challenge後は「任意探索」の見出しを置き、日次必須導線の終点を明示する。
+- Utility Dockは全認証幅で独立した補助行として表示し、BottomNav・Sidebar・Reward panelと重ならないAnalytics / Link Builder / Group Create / Settingsだけを表示する。Challenge後は「仲間と競争を動かす」探索章へ切り替え、Friend Pulseと週間RankingをUtilityより動的な実データ面として直接並べる。
 - 低活動時は`0`を反復せず、「ここから」「次の100歩」「まず500歩」等の未来志向を使用する。
 - Motionはscale/translate/進捗描画のみ、120〜650ms、状態変化1回。`prefers-reduced-motion`ではanimation/transitionともcomputed `0s`にする。
 - 同一カード文法を繰り返さず、Quest・Mission・Weekly・Reward・Challengeで面・区切り・アイコンの役割を変える。
@@ -256,7 +256,8 @@ body {
 - Home 4モジュールの角丸は`rounded-2xl`、paddingは`p-3`へ統一する。
 - グラフはviewportではなくパネルのcontent-box幅を基準にする。Baseline 2024内のcontainer queryを使い、Home週間グラフは320px以上のcontent-boxで144px、それ未満で128px、プロフィール活動グラフは288〜384pxを基準とする。
 - 等高化で生じた高さはグラフや実データへ配分し、空白帯を`mt-auto`や固定スペーサーで作らない。
-- QuickActions+Followingの複合カラムと週間ランキングは`xl`以上で下端差1px以内にする。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分する。`xl`では行間12px・各行上限72pxとし、1〜2人時に実ユーザー行だけを拡大せず、パネル末尾へ連続した空白帯も残さない。
+- QuickActionsは独立Dockとし、Followingと週間ランキングを`xl`以上で直接同一行・下端差1px以内にする。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分する。`xl`では行間12px・各行上限72pxとし、1〜2人時に実ユーザー行だけを拡大せず、パネル末尾へ連続した空白帯も残さない。Friend Pulseの要約は個別目標を使い、正歩数の活動人数・合計歩数・目標達成人数を表示し、0歩を活動扱いしない。
+- 詳細Rankingは固定5行・`min-h-[4.5rem]`・padding・22pxリアクション領域を維持し、行外のCompetition Missionへ現在順位、正歩数参加者数、次ライバル名、必要歩数、トップ差、期間を集約する。外側のGlobal/Group多列化は`2xl`まで遅らせ、1024/1280pxは単列とする。非トップの実進捗は99%以下で、6%の最低視覚幅と`aria-valuenow`を分離する。loading/error/unrankedでは確定progressbarを表示しない。
 - プロフィール活動グラフは上端24pxを値ラベル用に予約し、先頭・末尾ラベルをプロット端へclampする。数値代替表がある場合、視覚軸・棒・曜日ラベルは`aria-hidden`にする。
 - Forced ColorsではHome/Profileの棒を`Highlight`、境界を`CanvasText`、比較棒を`GrayText`で描画し、色面が無効化されても形状を残す。
 

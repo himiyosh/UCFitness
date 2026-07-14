@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-15T02:59:13+09:00",
-  "lastAgent": "UCFitnessAgent (Notification + i18n + Accessibility + Self-Critique)",
-  "lastCommit": "1ccbc9d388bd9a7ee5411baee23b70a6b0e2ba3c",
+  "lastUpdated": "2026-07-15T07:42:46+09:00",
+  "lastAgent": "UCFitnessAgent (React + UX + Competitive Persona + Accessibility + Self-Critique)",
+  "lastCommit": "00fbf9232402aa55b6b44bbb36674194dba339ef",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "通知品質を総合改善した。Web PushをpayloadなしtickleからEdge Web CryptoのRFC 8291 aes128gcmへ置換し、users.language由来のja/en文言・Topic/tagを端末へ届ける契約を復号テストで固定。個人/全体/グループのバッジをユーザー単位1通へ統合し、同一UA/legacy購読の最新化、404/410削除、再購読race、20ユーザーバッチを実装した。通知ベルは同日バッジ・10分内リアクションを集約し、7日snapshot+opaque offset cursor、未読実数、focusout、未読live status、56px行リンクへ統一。全223テスト、独立レビュー最終PASS、Mobile Beginner/Accessibility Keyboard再監査PASS。",
+  "summary": "全17ルートを再監査し、最優先Cycle 1としてHome下部と詳細Rankingを改善した。QuickActionsを独立Dockへ移し、Friend Pulseと週間Rankingを直接同一行化。Friend Pulseは個別目標、正歩数活動人数、合計歩数、達成人数、状態別行を表示し、Previewへ次ライバル名/必要歩数を接続した。詳細Rankingは外側多列化を2xlへ遅らせ、固定5行外のCompetition Missionへ現在順位・正歩数参加者数・次ライバル名・必要歩数・トップ差・期間を集約。global/group取得をallSettledで障害分離し、進捗a11y・長名・Midnight contrastを修正。全226テスト、3ペルソナ、最終レビュー、Impeccable監査PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 216件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-15T02:59:13+09:00"
+    "lastVerified": "2026-07-15T07:42:46+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -22,6 +22,7 @@
     "Google Healthの実OAuth E2Eは資格情報と接続状態の変更を伴うため未実施",
     "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
     "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
+    "全ページ再精査のP1 backlogとしてChallenges、Onboarding/Setup、Settings、Profile、Wallet、Groups/Group detailの改善が継続中",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
     "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち"
   ],
@@ -577,6 +578,29 @@
         "messages/en.json",
         "messages/ja.json",
         "public/sw.js"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Competitive Persona + Accessibility + Self-Critique)",
+      "action": "全17ルートを再監査し、Cycle 1でHome任意探索と詳細Rankingを改善。QuickActions独立Dock、個別目標Friend Pulse、次ライバル差Preview、Competition Mission、2xl外側多列化、scope別allSettled障害分離、匿名ライバル/長名/進捗a11y/Midnight contrastを実装した。固定5行・72px・padding・reaction Portalは維持。全226テスト、Mobile Beginner/Competitive Athlete/Accessibility Keyboard、独立レビュー、Impeccable静的監査がPASS。",
+      "commit": "00fbf9232402aa55b6b44bbb36674194dba339ef",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "app/api/user/following/route.ts",
+        "components/dashboard/DashboardFollowing.tsx",
+        "components/dashboard/DynamicLeaderboard.tsx",
+        "components/group/GroupRankingPanel.tsx",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md"
       ]
     }
   ],
