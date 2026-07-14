@@ -1,27 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-14T22:54:13+09:00",
-  "lastAgent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "066c9c51c11915b789270c11b4034be582777f7c",
+  "lastUpdated": "2026-07-14T23:41:16+09:00",
+  "lastAgent": "UCFitnessAgent (Sync Recovery + Self-Critique)",
+  "lastCommit": "a6f967483c62f41e3fdf5713737074cf5d5cbcb0",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "自立改善としてランキングperiodをURL・再読込・共有・API・reactionの唯一状態へ統一し、主要入口とbare URLを週次化した。Group分析をHero直後へ移し、短いfilter名とchart説明、9テーマ固定色、ギア導線/空/障害、未認証period復元を実装。連打loading、GET逆順、POST/DELETE ABA rollbackを世代管理で隔離した。20画面条件・9テーマ・redirect/race/ABA/Gear fixture、全202テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
+  "summary": "歩数同期失敗の根本原因だった未適用のfitness connection DB契約を復旧した。承認済みのmulti-provider migrationを本番Supabaseへ単一トランザクションで適用し、Fitbit接続11件・認証ID11件・対象ユーザー11件、public.users FK、同期RPC、mirror trigger、PostgREST可視性を確認。適用6分後の本番Cronで当日歩数10ユーザーが更新され、ローカル同期APIもmissing-table例外ではなく設計済みunavailableへ到達し、FITNESS_CONNECTION_DATABASE_ERRORが消えた。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 216件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-14T22:54:13+09:00"
+    "lastVerified": "2026-07-14T23:41:16+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
     "Creators API 資格未達（10件/30日）",
     "カードリストのモバイル横スクロールは md ブレイクポイントで切替",
-    "Google Healthの実Supabaseマイグレーション適用と実OAuth E2Eは資格情報・本番データ変更承認待ち",
+    "Google Healthの実OAuth E2Eは資格情報と接続状態の変更を伴うため未実施",
     "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
-    "/api/steps/sync は未適用のfitness connection DB契約により FITNESS_CONNECTION_DATABASE_ERROR となる環境がある",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
     "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち"
   ],
@@ -539,6 +538,15 @@
         "messages/en.json",
         "messages/ja.json",
         "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (Sync Recovery + Self-Critique)",
+      "action": "歩数同期失敗を再現し、未適用のfitness_connections・user_auth_identities・同期RPC契約を根本原因と特定。承認済みの20260617 multi-provider migrationを本番Supabaseへ単一トランザクションで適用し、Fitbit接続・認証ID・対象ユーザー各11件、public.users FK、RPC、trigger、PostgREST可視性を確認した。適用6分後の本番Cronで当日歩数10ユーザーが更新され、同期APIでもFITNESS_CONNECTION_DATABASE_ERRORが再発しないこと、check:allと全202テストのPASSを確認した。",
+      "commit": "",
+      "filesChanged": [
+        ".github/ucfitness-progress.json"
       ]
     }
   ],
