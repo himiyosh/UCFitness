@@ -119,7 +119,11 @@ export default function GroupDetailLeaderboard({
     }, [currentPage, totalPages, onPageChange]);
 
     return (
-        <div className="space-y-6">
+        <div
+            className="space-y-6"
+            data-reaction-count={reactions.length}
+            data-reaction-period={period}
+        >
             <div
                 className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm"
                 data-group-detail-ranking

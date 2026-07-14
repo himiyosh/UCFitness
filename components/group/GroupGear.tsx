@@ -29,6 +29,8 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
     const t = useTranslations('GroupGear');
     const [items, setItems] = useState<GearItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const [retryKey, setRetryKey] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
@@ -38,19 +40,26 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
 
     useEffect(() => {
         let cancelled = false;
+        setLoading(true);
+        setError(false);
         fetch(`/api/amazon/group-gear?groupId=${groupId}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('fetch failed');
+                return res.json();
+            })
             .then(data => {
                 if (!cancelled && data.items?.length > 0) {
                     setItems(data.items);
                 }
             })
-            .catch(() => { /* 静かに失敗 */ })
+            .catch(() => {
+                if (!cancelled) setError(true);
+            })
             .finally(() => {
                 if (!cancelled) setLoading(false);
             });
         return () => { cancelled = true; };
-    }, [groupId]);
+    }, [groupId, retryKey]);
 
     /** スクロール状態を監視 */
     const updateScrollState = useCallback(() => {
@@ -78,8 +87,42 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
     const cleanTitle = useCallback((title: string) =>
         title.replace(/【.*?】/g, '').trim() || 'Item', []);
 
+    if (!loading && error) {
+        return (
+            <div
+                className="flex min-h-[120px] flex-col items-center justify-center rounded-2xl border border-[var(--color-danger)]/30 bg-[var(--color-surface)] p-3 text-center shadow-sm"
+                data-group-gear-error
+                role="alert"
+            >
+                <p className="text-sm font-semibold text-[var(--color-text)]">{t('error')}</p>
+                <button
+                    type="button"
+                    onClick={() => setRetryKey(current => current + 1)}
+                    className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                >
+                    {t('retry')}
+                </button>
+            </div>
+        );
+    }
+
     // アイテムなし
-    if (!loading && items.length === 0) return null;
+    if (!loading && items.length === 0) {
+        return (
+            <div
+                className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm"
+                data-group-gear-empty
+            >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]" aria-hidden="true">
+                    ♡
+                </span>
+                <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-[var(--color-text)]">{t('title')}</h3>
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--color-text-muted)]">{t('empty')}</p>
+                </div>
+            </div>
+        );
+    }
 
     // ローディングスケルトン
     if (loading) {
@@ -129,8 +172,8 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
                     <button
                         onClick={() => scroll('left')}
                         disabled={!canScrollLeft}
-                        className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
-                        aria-label="Scroll left"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-[var(--theme-primary)] disabled:cursor-default disabled:opacity-30"
+                        aria-label={t('scrollLeft')}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -139,8 +182,8 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
                     <button
                         onClick={() => scroll('right')}
                         disabled={!canScrollRight}
-                        className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
-                        aria-label="Scroll right"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-[var(--theme-primary)] disabled:cursor-default disabled:opacity-30"
+                        aria-label={t('scrollRight')}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

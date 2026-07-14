@@ -1,11 +1,15 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 
-import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { getDisplayRankings, getRankGapInsight } from '@/lib/services/ranking-utils';
+import {
+    buildRankingPeriodQuery,
+    getDisplayRankings,
+    getRankGapInsight,
+    isRankingPeriod,
+} from '@/lib/services/ranking-utils';
 import { Link } from '@/navigation';
 import GroupRankingPanel from '@/components/group/GroupRankingPanel';
 import UserAvatar from '@/components/UserAvatar';
@@ -13,6 +17,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
 
 import type { RankingEntry } from '@/lib/services/ranking-utils';
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 const TABS: { key: Period; labelKey: string; icon: string }[] = [
     { key: 'DAILY', labelKey: 'periods.daily', icon: '☀️' },
@@ -21,10 +26,6 @@ const TABS: { key: Period; labelKey: string; icon: string }[] = [
     { key: 'YEARLY', labelKey: 'periods.yearly', icon: '🏆' },
 ];
 const MIN_ROWS = 5;
-
-function isPeriod(value: string | null): value is Period {
-    return value === 'DAILY' || value === 'WEEKLY' || value === 'MONTHLY' || value === 'YEARLY';
-}
 
 // ランクバッジの表示テキスト（1-3位はメダル絵文字）
 function getRankDisplay(rank: number): { text: string; isMedal: boolean } {
@@ -60,8 +61,10 @@ function SkeletonRow({ index }: { index: number }): JSX.Element {
 
 export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }: DynamicLeaderboardProps) {
     const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
     const requestedPeriod = searchParams.get('period');
-    const [period, setPeriod] = useState<Period>(() => isPeriod(requestedPeriod) ? requestedPeriod : 'DAILY');
+    const period: Period = isRankingPeriod(requestedPeriod) ? requestedPeriod : 'WEEKLY';
     const { theme } = useTheme();
     const t = useTranslations('Leaderboard');
     const commonT = useTranslations('Common');
@@ -75,6 +78,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
     // データ取得完了後にアニメーションを発火させるキー
     const [animationKey, setAnimationKey] = useState(0);
     const requestIdRef = useRef(0);
+    const requestedPeriodRef = useRef<Period>(period);
 
     const isMidnight = theme === 'midnight';
 
@@ -100,16 +104,20 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
     const serializedKeywords = JSON.stringify(groupKeywords);
 
     const handlePeriodChange = useCallback((newPeriod: Period) => {
-        if (newPeriod === period) return;
-        setIsLoading(true);
-        setFetchError(false);
-        setPeriod(newPeriod);
-    }, [period]);
+        if (newPeriod === requestedPeriodRef.current) return;
+        requestedPeriodRef.current = newPeriod;
+        const query = buildRankingPeriodQuery(searchParams.toString(), newPeriod);
+        router.replace(`${pathname}?${query}`, { scroll: false });
+    }, [pathname, router, searchParams]);
     const handleRetry = useCallback(() => {
         setIsLoading(true);
         setFetchError(false);
         setRetryKey(current => current + 1);
     }, []);
+
+    useEffect(() => {
+        requestedPeriodRef.current = period;
+    }, [period]);
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -182,21 +190,23 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                 key={tab.key}
                                 onClick={() => handlePeriodChange(tab.key)}
                                 aria-pressed={isActive}
-                                className={`ranking-filter-button flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors duration-200 sm:flex-none sm:px-4 sm:text-sm ${
+                                className={`ranking-filter-button flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-shadow duration-200 sm:flex-none sm:px-4 sm:text-sm ${
                                     !isMidnight
                                         ? (isActive
-                                            ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
-                                            : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100/80')
+                                            ? 'bg-[var(--color-primary-solid)] text-white shadow-md shadow-[var(--color-primary)]/25'
+                                            : 'text-[var(--color-text-muted)] hover:bg-gray-100/80 hover:text-[var(--color-text)]')
                                         : ''
                                 }`}
                                 style={isMidnight ? {
                                     backgroundColor: isActive ? 'var(--color-primary-solid)' : 'transparent',
-                                    color: isActive ? '#ffffff' : 'rgba(148, 163, 184, 0.8)',
+                                    color: isActive ? '#ffffff' : 'var(--color-text-muted)',
+                                    border: isActive ? '2px solid var(--color-text)' : '2px solid transparent',
                                     boxShadow: isActive ? '0 4px 12px rgba(99, 102, 241, 0.3)' : 'none',
                                 } : undefined}
                             >
                                 <span className="hidden text-sm sm:inline" aria-hidden="true">{tab.icon}</span>
                                 <span>{t(tab.labelKey)}</span>
+                                {isActive && <span aria-hidden="true">✓</span>}
                             </button>
                         );
                     })}
@@ -222,11 +232,11 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                     key={groupData.keyword}
                                     onClick={() => setActiveGroupIndex(index)}
                                     aria-pressed={isActive}
-                                    className={`ranking-filter-button flex min-h-[44px] flex-shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-200 sm:px-4 sm:py-2 sm:text-sm ${
+                                    className={`ranking-filter-button flex min-h-[44px] flex-shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-shadow duration-200 sm:px-4 sm:py-2 sm:text-sm ${
                                         isActive
                                             ? (!isMidnight
-                                                ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
-                                                : 'bg-[var(--color-primary-solid)] text-white')
+                                                ? 'bg-[var(--color-primary-solid)] text-white shadow-md shadow-[var(--color-primary)]/25'
+                                                : 'bg-[var(--color-primary-solid)] text-white ring-2 ring-inset ring-[var(--color-text)]')
                                             : (!isMidnight
                                                 ? 'text-gray-500 hover:bg-gray-50/80 hover:text-gray-700'
                                                 : 'text-gray-400 hover:text-white')
@@ -243,6 +253,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                         )}
                                     </div>
                                     <span className="inline-block truncate max-w-[100px] sm:max-w-[140px]">{groupData.keyword.replace(/^group:/, '')}</span>
+                                    {isActive && <span aria-hidden="true">✓</span>}
                                 </button>
                             );
                         })}
@@ -539,6 +550,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                     userId={userId}
                                     index={activeGroupIndex}
                                     totalCount={groupRankingsList.length}
+                                    period={period}
                                     showMoveButtons={false}
                                 />
                                 {isLoading && (

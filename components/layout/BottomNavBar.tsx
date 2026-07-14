@@ -21,7 +21,7 @@ export default function BottomNavBar({ username }: BottomNavBarProps) {
 
   const navItems = [
     { href: '/' as const, icon: HomeIcon, label: t('home') },
-    { href: '/leaderboard' as const, icon: RankingIcon, label: t('ranking') },
+    { href: '/leaderboard?period=WEEKLY' as const, icon: RankingIcon, label: t('ranking') },
     { href: '/challenges' as const, icon: ChallengeIcon, label: dashT('challenges') },
     { href: '/groups' as const, icon: GroupIcon, label: t('groups') },
     { href: `/user/${encodeURIComponent(username)}`, icon: ProfileIcon, label: t('profile') },
@@ -56,11 +56,12 @@ export default function BottomNavBar({ username }: BottomNavBarProps) {
     >
       <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
         {navItems.map((item) => {
-          const isActive = item.href === '/'
+          const itemPath = item.href.split('?')[0];
+          const isActive = itemPath === '/'
             ? pathname === '/'
-            : item.href.startsWith('/user/')
+            : itemPath.startsWith('/user/')
               ? pathname === profileHref
-              : pathname.startsWith(item.href);
+              : pathname.startsWith(itemPath);
 
           return (
             <Link

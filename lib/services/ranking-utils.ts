@@ -1,5 +1,7 @@
 import { getEquippedItemsForUsers } from './shop-service';
 
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+
 export type RankingEntry = {
     steps: number;
     /** 前期間の歩数（DAILY=昨日, WEEKLY=先週, MONTHLY=先月） */
@@ -26,6 +28,16 @@ export interface RankGapInsight {
     targetRank: number | null;
     stepsToNextRank: number | null;
     isTopRank: boolean;
+}
+
+export function isRankingPeriod(value: string | null): value is Period {
+    return value === 'DAILY' || value === 'WEEKLY' || value === 'MONTHLY' || value === 'YEARLY';
+}
+
+export function buildRankingPeriodQuery(search: string, period: Period): string {
+    const params = new URLSearchParams(search);
+    params.set('period', period);
+    return params.toString();
 }
 
 /**

@@ -790,7 +790,7 @@
     "notRecorded": "未記録",
     "groupLeaders": "グループリーダー",
     "noData": "この期間のデータはありません",
-    "noGroupActivityYet": "今日のグループ活動はまだありません。"
+    "noGroupActivityYet": "この期間のグループ活動はまだありません。"
   },
   "UserMenu": {
     "signedInAs": "ログイン中",
@@ -941,13 +941,21 @@
   },
   "GroupGear": {
     "title": "メンバーの愛用ギア",
-    "subtitle": "グループ内で人気のアイテム"
+    "subtitle": "グループ内で人気のアイテム",
+    "empty": "ギアが登録されると、ここでメンバーの愛用品を確認できます",
+    "error": "愛用ギアを読み込めませんでした",
+    "retry": "再試行",
+    "scrollLeft": "前のギアを表示",
+    "scrollRight": "次のギアを表示"
   },
   "ChallengeGear": {
     "title": "次のチャレンジに備えよう！",
     "subtitle": "ユーザーに人気のフィットネスギア"
   },
   "GroupAnalytics": {
+    "title": "ランキングと歩数推移",
+    "description": "期間を選んで、メンバー順位と歩数の変化を確認できます",
+    "viewGear": "メンバーの愛用ギアを見る",
     "noData": "アクティビティデータがまだありません",
     "noDataDesc": "歩き始めるとグループ分析がここに表示されます！",
     "yourRank": "あなたの順位",
@@ -960,8 +968,14 @@
     "settingsMembers": "メンバー編集",
     "memberRankings": "メンバー順位",
     "pageInfo": "{total} ページ中 {current} ページ目",
+    "periods": {
+      "daily": "今日",
+      "weekly": "今週",
+      "monthly": "今月",
+      "yearly": "今年"
+    },
     "comparisonTitle": {
-      "daily": "過去7日間の比較",
+      "daily": "今日の参考：過去7日間の推移",
       "weekly": "今週の比較",
       "monthly": "今月の比較",
       "yearly": "今年の比較"

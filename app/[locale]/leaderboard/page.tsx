@@ -6,6 +6,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
 import { reportError } from '@/lib/errors';
+import { isRankingPeriod } from '@/lib/services/ranking-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import Footer from '@/components/layout/Footer';
@@ -14,16 +15,27 @@ import DynamicLeaderboard from '@/components/dashboard/DynamicLeaderboard';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LeaderboardPage() {
-  const [session, t, dashboardT, locale] = await Promise.all([
+interface LeaderboardPageProps {
+  searchParams: Promise<{ period?: string | string[] }>;
+}
+
+export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
+  const [session, t, dashboardT, locale, resolvedSearchParams] = await Promise.all([
     auth(),
     getTranslations('Leaderboard'),
     getTranslations('Dashboard'),
     getLocale(),
+    searchParams,
   ]);
 
   if (!session?.user) {
-    redirect(createLoginRequiredRedirect(locale, '/leaderboard'));
+    const requestedPeriod = typeof resolvedSearchParams.period === 'string'
+      ? resolvedSearchParams.period
+      : null;
+    const nextPath = isRankingPeriod(requestedPeriod)
+      ? `/leaderboard?period=${requestedPeriod}`
+      : '/leaderboard';
+    redirect(createLoginRequiredRedirect(locale, nextPath));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

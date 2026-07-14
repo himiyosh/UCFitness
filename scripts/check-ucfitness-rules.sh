@@ -201,7 +201,7 @@ if ! grep -q 'aria-valuetext={todayProgressLabel}' components/dashboard/HomeHero
 fi
 if ! grep -q 'const isGoalComplete = todaySteps >= normalizedStepGoal' components/dashboard/HomeHero.tsx || \
    ! grep -q 'href="/leaderboard?period=WEEKLY"' components/dashboard/HomeHero.tsx || \
-   ! grep -q "useState<Period>(() => isPeriod(requestedPeriod) ? requestedPeriod : 'DAILY')" components/dashboard/DynamicLeaderboard.tsx; then
+   ! grep -q "const period: Period = isRankingPeriod(requestedPeriod) ? requestedPeriod : 'WEEKLY'" components/dashboard/DynamicLeaderboard.tsx; then
   record "Home Quest完了判定/週次競争文脈の契約欠落" "HomeHero / DynamicLeaderboard"
 fi
 if grep -Eq "href: '/(groups|challenges|leaderboard|shop|wallet)'" components/dashboard/QuickActions.tsx || \
@@ -334,6 +334,81 @@ if ! grep -q 'data-ranking-state="global-error"' components/dashboard/DynamicLea
    ! grep -q '!isLoading && fetchError ?' components/dashboard/DynamicLeaderboard.tsx || \
    [ "$(grep -o 'onClick={handleRetry}' components/dashboard/DynamicLeaderboard.tsx | wc -l | tr -d ' ')" -lt 2 ]; then
   record "ランキング取得失敗と未所属空状態の分離契約欠落" "components/dashboard/DynamicLeaderboard.tsx"
+fi
+if ! grep -q 'export function isRankingPeriod' lib/services/ranking-utils.ts || \
+   ! grep -q 'export function buildRankingPeriodQuery' lib/services/ranking-utils.ts || \
+   ! grep -Fq 'router.replace(`${pathname}?${query}`, { scroll: false })' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -Fq 'router.replace(`${pathname}?${query}`, { scroll: false })' components/group/GroupAnalytics.tsx || \
+   ! grep -q "isRankingPeriod(requestedPeriod) ? requestedPeriod : 'WEEKLY'" components/group/GroupAnalytics.tsx || \
+   ! grep -q "isRankingPeriod(requestedPeriod) ? requestedPeriod : 'WEEKLY'" components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q "labelKey: 'periods.daily'" components/group/GroupAnalytics.tsx || \
+   ! grep -q 'period={period}' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'period: Period' components/group/GroupRankingPanel.tsx; then
+  record "ランキング期間のURL/表示/リアクション共有契約欠落" "ranking-utils / DynamicLeaderboard / GroupAnalytics / GroupRankingPanel"
+fi
+analytics_line="$(grep -n '<GroupAnalytics' 'app/[locale]/groups/[groupId]/page.tsx' | head -n 1 | cut -d: -f1)"
+events_line="$(grep -n '<GroupEventList' 'app/[locale]/groups/[groupId]/page.tsx' | head -n 1 | cut -d: -f1)"
+if [ -z "$analytics_line" ] || [ -z "$events_line" ] || [ "$analytics_line" -ge "$events_line" ] || \
+   ! grep -q 'id="group-analytics-title"' components/group/GroupAnalytics.tsx || \
+   ! grep -q "daily.*今日の参考：過去7日間の推移" messages/ja.json || \
+   ! grep -q "daily.*For today: 7-day trend" messages/en.json; then
+  record "グループ期間filterの発見性/時間軸説明契約欠落" "Group detail page / GroupAnalytics / messages"
+fi
+if ! grep -q "href: '/leaderboard?period=WEEKLY' as const" components/layout/BottomNavBar.tsx || \
+   ! grep -q "const itemPath = item.href.split('?')\\[0\\]" components/layout/BottomNavBar.tsx; then
+  record "主要ランキング導線の週次文脈/active判定契約欠落" "BottomNav"
+fi
+if ! grep -q "color: isActive ? '#ffffff' : 'var(--color-text-muted)'" components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q "border: isActive ? '2px solid var(--color-text)'" components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q "border: isActive ? '2px solid var(--color-text)'" components/group/GroupAnalytics.tsx || \
+   [ "$(grep -o 'aria-hidden=\"true\">✓' components/dashboard/DynamicLeaderboard.tsx | wc -l | tr -d ' ')" -lt 2 ] || \
+   ! grep -q 'aria-hidden="true">✓' components/group/GroupAnalytics.tsx; then
+  record "ランキング期間filterのMidnight contrast/非色選択表示欠落" "DynamicLeaderboard / GroupAnalytics"
+fi
+if ! grep -q 'const requestedPeriodRef = useRef<Period>(period)' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'const requestedPeriodRef = useRef<Period>(period)' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'requestedPeriodRef.current = newPeriod' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'requestedPeriodRef.current = newPeriod' components/group/GroupAnalytics.tsx || \
+   grep -A6 'const handlePeriodChange' components/dashboard/DynamicLeaderboard.tsx | grep -q 'setIsLoading'; then
+  record "ランキング期間の連続操作で最新要求を保持する契約欠落" "DynamicLeaderboard / GroupAnalytics"
+fi
+if ! grep -Fq 'searchParams: Promise<{ period?: string | string[] }>' 'app/[locale]/leaderboard/page.tsx' || \
+   ! grep -Fq 'searchParams: Promise<{ period?: string | string[] }>' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'isRankingPeriod(requestedPeriod)' 'app/[locale]/leaderboard/page.tsx' || \
+   ! grep -q 'isRankingPeriod(requestedPeriod)' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -Fq '`/leaderboard?period=${requestedPeriod}`' 'app/[locale]/leaderboard/page.tsx' || \
+   ! grep -Fq '`${groupPath}?period=${requestedPeriod}`' 'app/[locale]/groups/[groupId]/page.tsx'; then
+  record "未認証ランキングURLの検証済みperiod復元契約欠落" "Leaderboard / Group detail pages"
+fi
+if ! grep -q 'const abortController = new AbortController()' hooks/useGroupReactions.ts || \
+   ! grep -Fq 'setReactions([])' hooks/useGroupReactions.ts || \
+   ! grep -q 'signal: abortController.signal' hooks/useGroupReactions.ts || \
+   ! grep -q 'return () => abortController.abort()' hooks/useGroupReactions.ts || \
+   ! grep -q 'period: Period' hooks/useGroupReactions.ts || \
+   ! grep -q 'const periodRef = useRef<Period>(period)' hooks/useGroupReactions.ts || \
+   ! grep -q 'const periodGenerationRef = useRef(0)' hooks/useGroupReactions.ts || \
+   ! grep -q 'periodGenerationRef.current === requestGeneration' hooks/useGroupReactions.ts || \
+   grep -q 'renderedPeriodRef' hooks/useGroupReactions.ts || \
+   ! grep -q 'periodGenerationRef.current += 1' hooks/useGroupReactions.ts || \
+   [ "$(grep -o 'prev.some(reaction => reaction.id === removed.id)' hooks/useGroupReactions.ts | wc -l | tr -d ' ')" -lt 2 ] || \
+   ! grep -q 'data-reaction-count={reactions.length}' components/group/GroupDetailLeaderboard.tsx; then
+  record "期間切替時の旧リアクション隔離契約欠落" "hooks/useGroupReactions.ts"
+fi
+if [ "$(grep -Fo 'bg-[var(--color-primary-solid)]' components/dashboard/DynamicLeaderboard.tsx | wc -l | tr -d ' ')" -lt 2 ] || \
+   ! grep -Fq 'bg-[var(--color-primary-solid)] text-white' components/group/GroupAnalytics.tsx || \
+   grep -q 'ranking-filter-button[^`]*transition-colors' components/dashboard/DynamicLeaderboard.tsx || \
+   grep -q 'ranking-filter-button[^`]*transition-colors' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'href="#group-gear"' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'id="group-gear"' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'data-group-gear-empty' components/group/GroupGear.tsx || \
+   ! grep -q "if (!res.ok) throw new Error('fetch failed')" components/group/GroupGear.tsx || \
+   ! grep -q 'data-group-gear-error' components/group/GroupGear.tsx || \
+   [ "$(grep -o 'className=\"inline-flex h-11 w-11' components/group/GroupGear.tsx | wc -l | tr -d ' ')" -lt 2 ] || \
+   ! grep -q "aria-label={t('scrollLeft')}" components/group/GroupGear.tsx || \
+   ! grep -q "aria-label={t('scrollRight')}" components/group/GroupGear.tsx || \
+   ! grep -q 'この期間のグループ活動はまだありません' messages/ja.json || \
+   ! grep -q 'No group activity for this period yet' messages/en.json; then
+  record "ランキングfilter全テーマcontrast/ギア導線/期間中立空状態契約欠落" "Ranking UI / Group detail / messages"
 fi
 if ! grep -q 'className="flex" aria-hidden="true"' components/ActivityGraph.tsx || \
    ! grep -q '<div className="sr-only">' components/ActivityGraph.tsx || \

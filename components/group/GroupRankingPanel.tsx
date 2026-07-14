@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
@@ -11,6 +12,7 @@ import { Link } from '@/navigation';
 import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
 
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 type Props = {
@@ -20,13 +22,11 @@ type Props = {
     index: number;
     totalCount: number;
     groupId?: string;
-    period?: string;
+    period: Period;
     showMoveButtons?: boolean;
 };
 
-import { useTranslations } from 'next-intl';
-
-export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId, period = 'DAILY', showMoveButtons = true }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId, period, showMoveButtons = true }: Props) {
     const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
     const [moveDirection, setMoveDirection] = useState<'up' | 'down' | null>(null);

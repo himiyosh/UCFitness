@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { enrichCombinedRankings, getDisplayRankings, getRankGapInsight } from '../services/ranking-utils';
+import {
+    buildRankingPeriodQuery,
+    enrichCombinedRankings,
+    getDisplayRankings,
+    getRankGapInsight,
+    isRankingPeriod,
+} from '../services/ranking-utils';
 import * as shopService from '../services/shop-service';
 
 import type { RankingEntry } from '../services/ranking-utils';
@@ -25,6 +31,22 @@ describe('enrichCombinedRankings', () => {
                 image: null,
                 username: id,
             },
+        });
+
+        describe('ranking period query', () => {
+            it('対応期間だけを有効値として判定する', () => {
+                expect(isRankingPeriod('WEEKLY')).toBe(true);
+                expect(isRankingPeriod('INVALID')).toBe(false);
+                expect(isRankingPeriod(null)).toBe(false);
+            });
+
+            it('既存クエリを保持して期間だけを更新する', () => {
+                const query = buildRankingPeriodQuery('view=compact&period=DAILY', 'MONTHLY');
+                const params = new URLSearchParams(query);
+
+                expect(params.get('view')).toBe('compact');
+                expect(params.get('period')).toBe('MONTHLY');
+            });
         });
 
         it('直上順位を追い越すために必要な歩数を返す', () => {

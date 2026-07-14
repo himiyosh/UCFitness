@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { type Reaction } from '@/components/group/GroupReactions';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 /**
  * グループリアクション管理Hook
@@ -14,13 +16,21 @@ import { type Reaction } from '@/components/group/GroupReactions';
 export function useGroupReactions(
     groupId: string | undefined | null,
     userId: string | undefined | null,
-    period: string
+    period: Period
 ) {
     const [reactions, setReactions] = useState<Reaction[]>([]);
+    const periodRef = useRef<Period>(period);
+    const periodGenerationRef = useRef(0);
 
     // リアクション取得
     useEffect(() => {
+        if (periodRef.current !== period) {
+            periodRef.current = period;
+            periodGenerationRef.current += 1;
+        }
+        setReactions([]);
         if (!groupId || !userId) return;
+        const abortController = new AbortController();
 
         const fetchReactions = async () => {
             try {
@@ -28,21 +38,31 @@ export function useGroupReactions(
                 const url = groupId === '__global__'
                     ? `/api/reactions?period=${period}`
                     : `/api/group/${groupId}/reactions?period=${period}`;
-                const res = await fetch(url);
+                const res = await fetch(url, { signal: abortController.signal });
                 if (res.ok) {
                     const data = await res.json();
-                    setReactions(data.reactions || []);
+                    if (!abortController.signal.aborted) {
+                        setReactions(data.reactions || []);
+                    }
                 }
-            } catch {
+            } catch (error: unknown) {
+                if (error instanceof DOMException && error.name === 'AbortError') return;
                 // サイレント失敗 — リアクションは必須機能ではない
             }
         };
         fetchReactions();
+        return () => abortController.abort();
     }, [groupId, userId, period]);
 
     // リアクショントグル（楽観的更新）
     const handleReactionToggle = useCallback(async (toUserId: string, emoji: string, isAdding: boolean) => {
         if (!groupId || !userId) return;
+        const requestPeriod = period;
+        const requestGeneration = periodGenerationRef.current;
+        const isCurrentRequest = (): boolean => (
+            periodRef.current === requestPeriod
+            && periodGenerationRef.current === requestGeneration
+        );
 
         // APIベースURL
         const baseUrl = groupId === '__global__'
@@ -66,18 +86,20 @@ export function useGroupReactions(
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ toUserId, emoji, period }),
                 });
-                if (res.ok) {
+                if (res.ok && isCurrentRequest()) {
                     const data = await res.json();
                     // temp を実データに置換
                     setReactions(prev =>
                         prev.map(r => r.id === tempReaction.id ? data.reaction : r)
                     );
-                } else {
+                } else if (isCurrentRequest()) {
                     // ロールバック
                     setReactions(prev => prev.filter(r => r.id !== tempReaction.id));
                 }
             } catch {
-                setReactions(prev => prev.filter(r => r.id !== tempReaction.id));
+                if (isCurrentRequest()) {
+                    setReactions(prev => prev.filter(r => r.id !== tempReaction.id));
+                }
             }
         } else {
             // 楽観的削除
@@ -91,13 +113,21 @@ export function useGroupReactions(
                     `${baseUrl}?toUserId=${toUserId}&emoji=${encodeURIComponent(emoji)}&period=${period}`,
                     { method: 'DELETE' }
                 );
-                if (!res.ok && removed) {
+                if (!res.ok && removed && isCurrentRequest()) {
                     // ロールバック
-                    setReactions(prev => [...prev, removed]);
+                    setReactions(prev => (
+                        prev.some(reaction => reaction.id === removed.id)
+                            ? prev
+                            : [...prev, removed]
+                    ));
                 }
             } catch {
-                if (removed) {
-                    setReactions(prev => [...prev, removed]);
+                if (removed && isCurrentRequest()) {
+                    setReactions(prev => (
+                        prev.some(reaction => reaction.id === removed.id)
+                            ? prev
+                            : [...prev, removed]
+                    ));
                 }
             }
         }

@@ -790,7 +790,7 @@
     "notRecorded": "Not recorded",
     "groupLeaders": "Group Leaders",
     "noData": "No data available for this period",
-    "noGroupActivityYet": "No group activity yet today."
+    "noGroupActivityYet": "No group activity for this period yet."
   },
   "UserMenu": {
     "signedInAs": "Signed in as",
@@ -941,13 +941,21 @@
   },
   "GroupGear": {
     "title": "Members' Gear",
-    "subtitle": "Popular items in this group"
+    "subtitle": "Popular items in this group",
+    "empty": "Members' favorite gear will appear here once it is registered",
+    "error": "We couldn't load members' gear",
+    "retry": "Retry",
+    "scrollLeft": "Show previous gear",
+    "scrollRight": "Show next gear"
   },
   "ChallengeGear": {
     "title": "Gear Up for the Next Challenge!",
     "subtitle": "Popular fitness gear from the community"
   },
   "GroupAnalytics": {
+    "title": "Rankings and step trends",
+    "description": "Choose a period to review member ranks and step trends",
+    "viewGear": "View members' favorite gear",
     "noData": "No activity data yet",
     "noDataDesc": "Start walking to see your group analytics here!",
     "yourRank": "Your Rank",
@@ -960,8 +968,14 @@
     "settingsMembers": "Edit Members",
     "memberRankings": "Member Rankings",
     "pageInfo": "Page {current} of {total}",
+    "periods": {
+      "daily": "Today",
+      "weekly": "This Week",
+      "monthly": "This Month",
+      "yearly": "This Year"
+    },
     "comparisonTitle": {
-      "daily": "Last 7 Days Comparison",
+      "daily": "For today: 7-day trend",
       "weekly": "This Week Comparison",
       "monthly": "This Month Comparison",
       "yearly": "This Year Comparison"

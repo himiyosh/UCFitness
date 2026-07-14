@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { ChartData } from '@/lib/services/group-comparison-service';
-import { RankingEntry } from '@/lib/services/ranking-utils';
-import { GroupRankingEntry } from '@/lib/services/group-ranking-service';
-import { useTheme } from '@/components/ThemeProvider';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+
+import { useTheme } from '@/components/ThemeProvider';
+import { buildRankingPeriodQuery, isRankingPeriod } from '@/lib/services/ranking-utils';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import type { ChartData } from '@/lib/services/group-comparison-service';
+import type { GroupRankingEntry } from '@/lib/services/group-ranking-service';
+import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 const GroupComparisonChart = dynamic(() => import('@/components/group/GroupComparisonChart'), {
     ssr: false,
@@ -34,10 +38,10 @@ interface GroupAnalyticsProps {
 }
 
 const TABS: { key: Period; labelKey: string }[] = [
-    { key: 'DAILY', labelKey: 'comparisonTitle.daily' },
-    { key: 'WEEKLY', labelKey: 'comparisonTitle.weekly' },
-    { key: 'MONTHLY', labelKey: 'comparisonTitle.monthly' },
-    { key: 'YEARLY', labelKey: 'comparisonTitle.yearly' },
+    { key: 'DAILY', labelKey: 'periods.daily' },
+    { key: 'WEEKLY', labelKey: 'periods.weekly' },
+    { key: 'MONTHLY', labelKey: 'periods.monthly' },
+    { key: 'YEARLY', labelKey: 'periods.yearly' },
 ];
 
 export default function GroupAnalytics({
@@ -52,17 +56,30 @@ export default function GroupAnalytics({
     groupName,
     groupImage
 }: GroupAnalyticsProps) {
-    const [period, setPeriod] = useState<Period>('DAILY');
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
+    const requestedPeriod = searchParams.get('period');
+    const period: Period = isRankingPeriod(requestedPeriod) ? requestedPeriod : 'WEEKLY';
+    const requestedPeriodRef = useRef<Period>(period);
     const [currentPage, setCurrentPage] = useState(1);
     const { theme } = useTheme();
     const ga = useTranslations('GroupAnalytics');
     const lt = useTranslations('Leaderboard');
     const activePeriodLabel = ga(
-        TABS.find(tab => tab.key === period)?.labelKey ?? 'comparisonTitle.daily',
+        TABS.find(tab => tab.key === period)?.labelKey ?? 'periods.weekly',
     );
+
+    const handlePeriodChange = useCallback((newPeriod: Period) => {
+        if (newPeriod === requestedPeriodRef.current) return;
+        requestedPeriodRef.current = newPeriod;
+        const query = buildRankingPeriodQuery(searchParams.toString(), newPeriod);
+        router.replace(`${pathname}?${query}`, { scroll: false });
+    }, [pathname, router, searchParams]);
 
     // Reset page when period changes
     useEffect(() => {
+        requestedPeriodRef.current = period;
         setCurrentPage(1);
     }, [period]);
 
@@ -91,16 +108,33 @@ export default function GroupAnalytics({
 
 
     return (
-        <div className="space-y-4">
+        <section
+            className="space-y-4"
+            aria-labelledby="group-analytics-title"
+            data-group-analytics
+        >
             <p className="sr-only" role="status">
                 {lt('rankingsUpdated', { period: activePeriodLabel })}
             </p>
-            {/* Header: Tabs & Jump Button */}
-            <div className="flex justify-between items-center flex-wrap gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                    <h2 id="group-analytics-title" className="text-lg font-black text-[var(--color-text)]">
+                        {ga('title')}
+                    </h2>
+                    <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
+                        {ga('description')}
+                    </p>
+                    <a
+                        href="#group-gear"
+                        className="mt-2 inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-[var(--color-reward-soft)] px-3 py-2 text-xs font-bold text-[var(--color-reward-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]"
+                    >
+                        {ga('viewGear')}<span aria-hidden="true">↓</span>
+                    </a>
+                </div>
                 <div
                     role="group"
                     aria-label={lt('periodTabsLabel')}
-                    className={`flex p-1 space-x-1 rounded-lg w-fit overflow-hidden relative ${theme !== 'midnight' ? 'bg-white border border-gray-200' : ''}`}
+                    className={`relative flex w-full overflow-hidden rounded-lg p-1 sm:w-fit ${theme !== 'midnight' ? 'border border-gray-200 bg-white' : ''}`}
                     style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}
                 >
                     {TABS.map((tab) => {
@@ -108,16 +142,18 @@ export default function GroupAnalytics({
                         return (
                             <button
                                 key={tab.key}
-                                onClick={() => setPeriod(tab.key)}
+                                onClick={() => handlePeriodChange(tab.key)}
                                 aria-pressed={isActive}
-                                className={`ranking-filter-button relative z-10 min-h-[44px] cursor-pointer rounded-md px-3 py-2 text-sm font-semibold transition-colors duration-200 sm:px-4 ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
+                                className={`ranking-filter-button relative z-10 inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1 rounded-md px-2 py-2 text-xs font-semibold transition-shadow duration-200 sm:flex-none sm:px-4 sm:text-sm ${theme !== 'midnight' ? (isActive ? 'bg-[var(--color-primary-solid)] text-white shadow-md' : 'text-[var(--color-text-muted)] hover:bg-gray-100 hover:text-[var(--color-text)]') : ''}`}
                                 style={theme === 'midnight' ? {
                                     backgroundColor: isActive ? 'var(--color-primary-solid)' : 'transparent',
-                                    color: '#ffffff',
+                                    color: isActive ? '#ffffff' : 'var(--color-text-muted)',
+                                    border: isActive ? '2px solid var(--color-text)' : '2px solid transparent',
                                     textShadow: '0 1px 2px rgba(0,0,0,0.5)'
                                 } : undefined}
                             >
                                 {ga(tab.labelKey)}
+                                {isActive && <span aria-hidden="true">✓</span>}
                             </button>
                         );
                     })}
@@ -225,6 +261,6 @@ export default function GroupAnalytics({
                     )}
                 </div>
             </div>
-        </div>
+        </section>
     );
 }

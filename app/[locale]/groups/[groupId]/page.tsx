@@ -10,7 +10,7 @@ import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader
 import GroupHeaderActions from "@/components/group/GroupHeaderActions";
 import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/services/ranking-service";
-import { enrichRankingsWithEquip } from "@/lib/services/ranking-utils";
+import { enrichRankingsWithEquip, isRankingPeriod } from "@/lib/services/ranking-utils";
 import { getGroupCompetitionRankings } from "@/lib/services/group-ranking-service";
 import JoinGroupPreview from "@/components/group/JoinGroupPreview";
 import nextDynamic from 'next/dynamic';
@@ -27,12 +27,27 @@ const GroupChat = nextDynamic(() => import('@/components/group/GroupChat'));
 
 export const dynamic = 'force-dynamic';
 
-export default async function GroupDetailPage(props: { params: Promise<{ groupId: string }> }) {
-    const params = await props.params;
+interface GroupDetailPageProps {
+    params: Promise<{ groupId: string }>;
+    searchParams: Promise<{ period?: string | string[] }>;
+}
+
+export default async function GroupDetailPage(props: GroupDetailPageProps) {
+    const [params, resolvedSearchParams] = await Promise.all([
+        props.params,
+        props.searchParams,
+    ]);
     const [session, locale] = await Promise.all([auth(), getLocale()]);
 
     if (!session || !session.user) {
-        redirect(createLoginRequiredRedirect(locale, `/groups/${encodeURIComponent(params.groupId)}`));
+        const requestedPeriod = typeof resolvedSearchParams.period === 'string'
+            ? resolvedSearchParams.period
+            : null;
+        const groupPath = `/groups/${encodeURIComponent(params.groupId)}`;
+        const nextPath = isRankingPeriod(requestedPeriod)
+            ? `${groupPath}?period=${requestedPeriod}`
+            : groupPath;
+        redirect(createLoginRequiredRedirect(locale, nextPath));
     }
 
     const userId = (session.user as any).id;
@@ -267,6 +282,18 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                     </div>
                 </section>
 
+                <GroupAnalytics
+                    rankings={rankings}
+                    comparisonData={comparisonData}
+                    groupCompetitionRankings={groupCompetitionRankings}
+                    userId={userId}
+                    currentGroupId={groupId}
+                    currentUsername={dbUser?.name || session.user.name || undefined}
+                    isPublic={group.is_public}
+                    groupName={group.name}
+                    groupImage={group.image_url}
+                />
+
                 {/* グループイベント + グループチャット（横並び） */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                     <section className="flex">
@@ -280,29 +307,12 @@ export default async function GroupDetailPage(props: { params: Promise<{ groupId
                 </div>
 
                 {/* メンバーの愛用ギア */}
-                <section>
+                <section id="group-gear" className="scroll-mt-24">
                     <GroupGear groupId={groupId} userId={userId} />
                 </section>
 
                 {/* ウィークリーレポート */}
                 <GroupWeeklyReport groupId={groupId} />
-
-                <div className="space-y-12">
-                    {/* Main Content Area - Layout controlled by GroupAnalytics */}
-                    <div>
-                        <GroupAnalytics
-                            rankings={rankings}
-                            comparisonData={comparisonData}
-                            groupCompetitionRankings={groupCompetitionRankings}
-                            userId={userId}
-                            currentGroupId={groupId}
-                            currentUsername={dbUser?.name || session.user.name || undefined}
-                            isPublic={group.is_public}
-                            groupName={group.name}
-                            groupImage={group.image_url}
-                        />
-                    </div>
-                </div>
 
             </div>
             <Footer />
