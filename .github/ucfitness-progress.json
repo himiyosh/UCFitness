@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-14T12:03:03+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "b4a10de1ccfd1a8153f74f0816dbb9b61c88a9f3",
+  "lastUpdated": "2026-07-14T16:30:33+09:00",
+  "lastAgent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+  "lastCommit": "1ca3ccb97e85ed41158a7906d372d9185afafb89",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "『フォロー中のアクティビティと今週のランキング等、同じ視覚行の下辺が揃っていない』フィードバックへ対応。8主要routeをgeometry走査し、Home任意探索rowのQuickActions+Following stackと週間ランキングをxl以上で等高化した。friend activityは実ユーザー＋発見行を常に5行へ揃え、1〜5人で61.2px、375pxで72px、末尾空白0。長名・大歩数のリフロー、名前一重読み上げ、全状態下端差0を126 fixtureで確認し、全192テスト・5ペルソナ・自己批判全6軸PASSを確認した。",
+  "summary": "自主改善としてHomeの週次競争差をGlobal・選択Group・Group detailへ継続した。正歩数ユーザーだけを順位化し、0歩・不在・503を順位・成功・未所属へ偽装しない。6位でも直上を含む固定5行、全員0歩の詳細5行、全メンバー平均、named filter/status、即時focus、Forced Colorsを実装。A〜Fの24組合せ、Group detail 4組合せ、Forced Colors 2テーマ、全200テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 217件はF033継続対応。今回変更によるLint errorは0。",
+    "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 216件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-14T12:03:03+09:00"
+    "lastVerified": "2026-07-14T16:30:33+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -492,6 +492,29 @@
         "docs/DESIGN_TOKENS.md",
         "messages/ja.json",
         "messages/en.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "自主改善としてHome週間ランキングの期間文脈と到達可能な競争差をGlobal・選択Group・Group detailへ継続した。正歩数だけを順位化し、0歩・不在・503を順位、メダル、成功、未所属へ変換しない。中下位でも直上と本人を含む固定5行、全員0歩の詳細5行、全メンバー平均、期間/Group filterの状態通知・即時focus・Forced Colorsを追加。A〜F×375/1280×Classic/Midnightの24組合せ、Group detail 4組合せ、Forced Colors 2テーマ、31ファイル200テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "1ca3ccb97e85ed41158a7906d372d9185afafb89",
+      "filesChanged": [
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        "components/dashboard/DynamicLeaderboard.tsx",
+        "components/group/GroupAnalytics.tsx",
+        "components/group/GroupDetailLeaderboard.tsx",
+        "components/group/GroupRankingPanel.tsx",
+        "docs/PRODUCT.md",
+        "lib/__tests__/ranking-utils.test.ts",
+        "lib/services/ranking-service.test.ts",
+        "lib/services/ranking-service.ts",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
         "scripts/check-ucfitness-rules.sh"
       ]
     }
