@@ -345,10 +345,10 @@ export default async function Home(): Promise<ReactNode> {
               </h2>
               <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{t('homeExploreDescription')}</p>
             </div>
-            <div className={`grid items-start gap-3 ${rankingDataError ? '' : 'xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]'}`}>
-              <div className="min-w-0 space-y-3">
-                <QuickActions />
-                <DashboardFollowing />
+            <div className={`home-social-grid grid items-stretch gap-3 ${rankingDataError ? '' : 'xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]'}`}>
+              <div className="home-social-stack min-w-0 flex flex-col gap-3 xl:h-full">
+                <QuickActions className="shrink-0" />
+                <DashboardFollowing className="home-friend-panel xl:min-h-0 xl:flex-1" />
               </div>
               {!rankingDataError && (
                 <LeaderboardPreviewPanel

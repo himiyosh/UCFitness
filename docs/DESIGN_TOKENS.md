@@ -256,6 +256,7 @@ body {
 - Home 4モジュールの角丸は`rounded-2xl`、paddingは`p-3`へ統一する。
 - グラフはviewportではなくパネルのcontent-box幅を基準にする。Baseline 2024内のcontainer queryを使い、Home週間グラフは320px以上のcontent-boxで144px、それ未満で128px、プロフィール活動グラフは288〜384pxを基準とする。
 - 等高化で生じた高さはグラフや実データへ配分し、空白帯を`mt-auto`や固定スペーサーで作らない。
+- QuickActions+Followingの複合カラムと週間ランキングは`xl`以上で下端差1px以内にする。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分する。`xl`では行間12px・各行上限72pxとし、1〜2人時に実ユーザー行だけを拡大せず、パネル末尾へ連続した空白帯も残さない。
 - プロフィール活動グラフは上端24pxを値ラベル用に予約し、先頭・末尾ラベルをプロット端へclampする。数値代替表がある場合、視覚軸・棒・曜日ラベルは`aria-hidden`にする。
 - Forced ColorsではHome/Profileの棒を`Highlight`、境界を`CanvasText`、比較棒を`GrayText`で描画し、色面が無効化されても形状を残す。
 

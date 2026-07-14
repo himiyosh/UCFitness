@@ -174,7 +174,7 @@ if ! grep -q 'home-action-dock' components/dashboard/QuickActions.tsx || \
    ! grep -q 'home-quest-ring' app/globals.css; then
   record "Home delight dock/motion/reduced-motion契約欠落" "QuickActions.tsx / globals.css"
 fi
-if ! grep -q '<QuickActions />' 'app/[locale]/page.tsx'; then
+if ! grep -q '<QuickActions' 'app/[locale]/page.tsx'; then
   record "Homeの常設Utility Dock欠落" "app/[locale]/page.tsx"
 fi
 MISSIONS_GET_BLOCK=$(sed -n '/export async function GET()/,/^export async function POST/p' app/api/user/missions/route.ts)
@@ -226,6 +226,58 @@ if ! grep -q 'home-week-chart' 'app/[locale]/page.tsx' || \
    ! grep -q 'activity-graph-plot' components/ActivityGraph.tsx || \
    ! grep -q '@container activity-graph (min-width: 39rem)' app/globals.css; then
   record "Home/Profileグラフのcontainer幅連動契約欠落" "Home WeeklyPulse / ActivityGraph / globals.css"
+fi
+if ! grep -q 'home-social-grid.*items-stretch' 'app/[locale]/page.tsx' || \
+   ! grep -q 'home-social-stack.*flex.*xl:h-full' 'app/[locale]/page.tsx' || \
+   ! grep -q 'DashboardFollowing className="home-friend-panel.*xl:flex-1"' 'app/[locale]/page.tsx' || \
+   ! grep -q 'auto-rows-fr gap-2' components/dashboard/DashboardFollowing.tsx || \
+   ! grep -q 'className="flex flex-1 flex-col"' components/dashboard/DashboardFollowing.tsx; then
+  record "Home社会パネルの下端整列/余剰行配分契約欠落" "Home social grid / DashboardFollowing"
+fi
+if ! grep -q 'missingActivityCount = Math.max(0, 5 - following.length)' components/dashboard/DashboardFollowing.tsx || \
+   ! grep -q 'friend-discovery-' components/dashboard/DashboardFollowing.tsx || \
+   ! grep -q 'w-full min-w-0 max-w-full' components/dashboard/DashboardFollowing.tsx || \
+   ! grep -q 'home-friend-list.*auto-rows-fr.*xl:gap-3' components/dashboard/DashboardFollowing.tsx || \
+   ! grep -q 'xl:max-h-\[4.5rem\]' components/dashboard/DashboardFollowing.tsx || \
+   ! node -e '
+const fs = require("fs");
+const ts = require("typescript");
+const file = process.argv[1];
+const source = fs.readFileSync(file, "utf8");
+const root = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const attr = (element, name) => {
+  const match = element.attributes.properties.find(
+    (property) => ts.isJsxAttribute(property) && property.name.getText(root) === name,
+  );
+  if (!match) return undefined;
+  if (!match.initializer) return true;
+  return ts.isStringLiteral(match.initializer) ? match.initializer.text : undefined;
+};
+const markers = [];
+const collectMarkers = (node) => {
+  if (
+    ts.isJsxElement(node)
+    && node.openingElement.tagName.getText(root) === "span"
+    && attr(node.openingElement, "data-friend-avatar") === true
+  ) {
+    markers.push(node);
+  }
+  ts.forEachChild(node, collectMarkers);
+};
+collectMarkers(root);
+if (markers.length !== 1 || attr(markers[0].openingElement, "aria-hidden") !== "true") process.exit(1);
+const avatars = [];
+const collectAvatars = (node) => {
+  if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(root) === "UserAvatar") avatars.push(node);
+  ts.forEachChild(node, collectAvatars);
+};
+collectAvatars(markers[0]);
+if (avatars.length !== 1 || attr(avatars[0], "alt") !== "") process.exit(1);
+' components/dashboard/DashboardFollowing.tsx; then
+  record "Home少数フォロー時の5行密度/長名リフロー契約欠落" "components/dashboard/DashboardFollowing.tsx"
+fi
+if ! grep -q 'lg:items-stretch' components/dashboard/DynamicLeaderboard.tsx; then
+  record "Leaderboard同一行パネルの下端整列契約欠落" "components/dashboard/DynamicLeaderboard.tsx"
 fi
 if ! grep -q 'className="flex" aria-hidden="true"' components/ActivityGraph.tsx || \
    ! grep -q '<div className="sr-only">' components/ActivityGraph.tsx || \

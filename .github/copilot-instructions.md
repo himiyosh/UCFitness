@@ -1326,3 +1326,10 @@ export const runtime = "edge";
 - **根本原因**: Home gridへ`items-start`を指定して行内stretchを無効化し、グラフ高をviewport breakpointの固定値だけで決めていた。Weeklyだけモバイルの角丸・paddingも他パネルと異なっていた。
 - **対策**: 複数列時だけ同一grid行を等高化し、Home 4モジュールの`rounded-2xl`/`p-3`を統一した。Home/ProfileグラフへBaseline 2023のcontainer queryを適用し、パネル自身の幅に応じてプロット領域を拡大した。プロフィールグラフは値ラベルの上端余白と端clamp、視覚層の`aria-hidden`、非表示スクロール領域のTab除外、Forced Colors境界も同時に修正した。
 - **教訓**: パネル統一は全画面固定高ではなく「同一行・同一役割」の幾何で判断する。等高化で増えた高さはグラフや実データへ配分し、空白スペーサーで埋めない。グラフ拡大時はplot寸法だけでなく、ラベルclip・代替表との二重読み上げ・非テキストコントラストを再監査する。リファレンス: `app/[locale]/page.tsx`, `components/ActivityGraph.tsx`, `app/globals.css`
+
+### LL-047: 複合カラムと隣接ランキングの下端差を意図的差として見逃した
+
+- **事象**: Home任意探索の左カラム（QuickActions+Following）と右の週間ランキングに26〜32pxの下端差があり、ユーザーからデザイン性不足を再指摘された。
+- **根本原因**: 左右が異なる内部構造であることを理由に`items-start`を意図的と判断し、同じ視覚行としての下端整列を完了条件に含めなかった。
+- **対策**: `xl`以上で社会gridをstretchし、左stackを右パネル高へ合わせた。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分した。長名行へ`min-w-0`/`w-full`を明示し、リンク内アバターは装飾扱いにした。8主要routeの同一行候補をgeometry走査し、実利用中Leaderboardは既存stretchを維持した。
+- **教訓**: 内部構造が異なっても、同じ視覚行に置かれた主要パネルはユーザーが同格として比較する。ユーザーが下端整列を求めた場合は、独立カラムという実装都合より外形の下端差1px以内を優先する。ただし少数データ時に1行へ余剰を集中させず、意味ある発見行で一定行数を保つ。リファレンス: `app/[locale]/page.tsx`, `components/dashboard/DashboardFollowing.tsx`

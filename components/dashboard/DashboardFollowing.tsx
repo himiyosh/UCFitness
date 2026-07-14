@@ -8,6 +8,8 @@ import { Link } from '@/navigation';
 
 import UserAvatar from '@/components/UserAvatar';
 
+import type { ReactNode } from 'react';
+
 // ============================================
 // DashboardFollowing — ダッシュボード用フォロー中ユーザーカード
 // 最近フォローした5人のアクティビティをコンパクトに表示
@@ -30,7 +32,11 @@ interface FollowingResponse {
     count?: number;
 }
 
-export default function DashboardFollowing() {
+interface DashboardFollowingProps {
+    className?: string;
+}
+
+export default function DashboardFollowing({ className = '' }: DashboardFollowingProps): ReactNode {
     const t = useTranslations('Follow');
     const [following, setFollowing] = useState<FollowingUser[]>([]);
     const [followingCount, setFollowingCount] = useState(0);
@@ -67,14 +73,14 @@ export default function DashboardFollowing() {
     // ローディング中はスケルトン表示
     if (isLoading) {
         return (
-            <section className="rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-busy="true" aria-labelledby="friend-pulse-loading-title">
+            <section className={`flex h-full flex-col rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4 ${className}`} aria-busy="true" aria-labelledby="friend-pulse-loading-title">
                 <div className="mb-3">
                     <h2 id="friend-pulse-loading-title" className="text-sm font-bold text-[var(--color-text)] sm:text-base">{t('followingActivity')}</h2>
                     <p className="mt-0.5 text-xs text-[var(--color-text-muted)]" role="status">{t('loadingActivity')}</p>
                 </div>
-                <div className="space-y-2" aria-hidden="true">
+                <div className="grid flex-1 auto-rows-fr gap-2" aria-hidden="true">
                     {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex min-h-[58px] animate-pulse items-center gap-3 rounded-xl bg-[var(--color-surface-muted)] px-2.5 py-2">
+                        <div key={i} className="flex h-full min-h-[58px] animate-pulse items-center gap-3 rounded-xl bg-[var(--color-surface-muted)] px-2.5 py-2">
                             <div className="h-8 w-8 rounded-full bg-[var(--color-border)]" />
                             <div className="h-3 flex-1 rounded bg-[var(--color-border)]" />
                             <div className="h-3 w-14 rounded bg-[var(--color-border)]" />
@@ -88,10 +94,10 @@ export default function DashboardFollowing() {
     // フォロー0件の場合は次の行動を示す
     if (!hasData && !error) {
         return (
-            <section className="relative overflow-hidden rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="friend-pulse-empty-title">
+            <section className={`relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4 ${className}`} aria-labelledby="friend-pulse-empty-title">
                 <div className="pointer-events-none absolute -bottom-12 -right-8 h-32 w-32 rounded-full bg-[var(--color-primary-soft)]" aria-hidden="true" />
-                <div className="relative flex min-h-[190px] flex-col justify-between">
-                    <div>
+                <div className="relative flex h-full min-h-[190px] flex-col">
+                    <div className="flex flex-1 flex-col">
                         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]" aria-hidden="true">
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 0 2 2 4-4" />
@@ -99,9 +105,9 @@ export default function DashboardFollowing() {
                         </span>
                         <h2 id="friend-pulse-empty-title" className="mt-3 text-base font-bold text-[var(--color-text)]">{t('followingActivity')}</h2>
                         <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">{t('noFollowing')}</p>
-                        <ol className="mt-3 hidden gap-2 xl:grid">
+                        <ol className="mt-3 hidden gap-2 xl:grid xl:flex-1 xl:auto-rows-fr">
                             {[t('discoverStepRanking'), t('discoverStepProfile'), t('discoverStepPulse')].map(step => (
-                                <li key={step} className="flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]">
+                                <li key={step} className="flex h-full min-h-[44px] items-center gap-2 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]">
                                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] font-black text-[var(--color-primary-strong)]" aria-hidden="true">
                                         →
                                     </span>
@@ -120,8 +126,8 @@ export default function DashboardFollowing() {
 
     if (error) {
         return (
-            <section className="rounded-2xl border border-[var(--color-danger)]/30 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="friend-pulse-error-title" role="alert">
-                <div className="flex min-h-[190px] flex-col items-center justify-center text-center">
+            <section className={`flex h-full flex-col rounded-2xl border border-[var(--color-danger)]/30 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4 ${className}`} aria-labelledby="friend-pulse-error-title" role="alert">
+                <div className="flex h-full min-h-[190px] flex-col items-center justify-center text-center">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-muted)] text-[var(--color-danger)]" aria-hidden="true">!</span>
                     <h2 id="friend-pulse-error-title" className="mt-3 text-sm font-bold text-[var(--color-text)]">{t('followingActivity')}</h2>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('loadError')}</p>
@@ -136,10 +142,17 @@ export default function DashboardFollowing() {
         );
     }
 
+    const missingActivityCount = Math.max(0, 5 - following.length);
+    const discoveryMessages = [
+        t('discoverStepRanking'),
+        t('discoverStepProfile'),
+        t('discoverStepPulse'),
+    ];
+
     return (
-        <section className="relative overflow-hidden rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="friend-pulse-title">
+        <section className={`relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-primary)]/25 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4 ${className}`} aria-labelledby="friend-pulse-title">
             <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[var(--color-primary-soft)]" aria-hidden="true" />
-            <div className="relative">
+            <div className="relative flex h-full flex-col">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                     <div className="flex min-w-0 items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-solid)] text-white" aria-hidden="true">
@@ -157,14 +170,14 @@ export default function DashboardFollowing() {
                     </span>
                 </div>
 
-                <ul className="mt-3 space-y-2">
+                <ul className="home-friend-list mt-3 grid w-full min-w-0 flex-1 auto-rows-fr gap-2 xl:gap-3">
                     {following.map(user => {
                     const displayName = user.name?.trim() || user.username?.trim() || t('unknownUser');
                     const hasTodaySteps = user.hasTodaySteps !== false;
                     const progressWidth = hasTodaySteps
                         ? Math.min(100, Math.round((user.todaySteps / DAILY_STEP_REFERENCE) * 100))
                         : 0;
-                    const rowClassName = "relative flex min-h-[58px] items-center gap-3 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2";
+                    const rowClassName = "relative flex h-full min-h-[58px] w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2";
                     const rowContent = (
                         <>
                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary-strong)]" aria-hidden="true">
@@ -173,11 +186,14 @@ export default function DashboardFollowing() {
                                 </svg>
                             </span>
 
-                            <UserAvatar
-                                src={user.image}
-                                name={displayName}
-                                size="sm"
-                            />
+                            <span data-friend-avatar className="shrink-0" aria-hidden="true">
+                                <UserAvatar
+                                    src={user.image}
+                                    name={displayName}
+                                    size="sm"
+                                    alt=""
+                                />
+                            </span>
 
                             <span className="min-w-0 flex-1">
                                 <span className="block truncate text-sm font-semibold text-[var(--color-text)]">
@@ -201,14 +217,14 @@ export default function DashboardFollowing() {
                     );
 
                     return (
-                    <li key={user.id}>
+                    <li key={user.id} className="h-full w-full min-w-0 xl:max-h-[4.5rem]">
                         {user.username ? (
                             <Link
                                 href={`/user/${user.username}`}
                                 className={`uc-interactive-panel group ${rowClassName} active:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]`}
                             >
                                 {rowContent}
-                                <span className="sr-only">{t('profileLinkLabel', { name: displayName })}</span>
+                                <span className="sr-only">{t('profileLinkLabel')}</span>
                                 <span className="text-[var(--color-primary-strong)] transition-transform group-hover:translate-x-0.5" aria-hidden="true">›</span>
                             </Link>
                         ) : (
@@ -219,18 +235,31 @@ export default function DashboardFollowing() {
                     </li>
                     );
                     })}
+                    {Array.from({ length: missingActivityCount }, (_, index) => (
+                        <li key={`friend-discovery-${index}`} className="h-full w-full min-w-0 xl:max-h-[4.5rem]">
+                            {index === 0 ? (
+                                <Link
+                                    href="/leaderboard"
+                                    className="uc-interactive-panel group flex h-full min-h-[58px] w-full min-w-0 items-center gap-3 rounded-xl bg-[var(--color-primary-soft)] px-3 py-2 text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                                >
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-solid)] text-white" aria-hidden="true">+</span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-xs leading-5">{t('sparseActivityHint')}</span>
+                                        <span className="block text-xs font-black">{t('discoverMore')}</span>
+                                    </span>
+                                    <span className="shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true">›</span>
+                                </Link>
+                            ) : (
+                                <div className="flex h-full min-h-[58px] w-full min-w-0 items-center gap-3 rounded-xl bg-[var(--color-surface-muted)] px-3 py-2">
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] font-black text-[var(--color-primary-strong)]" aria-hidden="true">→</span>
+                                    <span className="min-w-0 text-xs font-semibold leading-5 text-[var(--color-text)]">
+                                        {discoveryMessages[(index - 1) % discoveryMessages.length]}
+                                    </span>
+                                </div>
+                            )}
+                        </li>
+                    ))}
                 </ul>
-                {following.length < 5 && (
-                    <div className="mt-3 flex flex-col gap-2 rounded-xl bg-[var(--color-primary-soft)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-xs text-[var(--color-primary-strong)]">{t('sparseActivityHint')}</p>
-                        <Link
-                            href="/leaderboard"
-                            className="inline-flex min-h-[44px] w-fit shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-[var(--color-primary-strong)] active:bg-[var(--color-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-                        >
-                            {t('discoverMore')}<span aria-hidden="true">→</span>
-                        </Link>
-                    </div>
-                )}
             </div>
         </section>
     );

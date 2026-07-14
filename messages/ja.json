@@ -1215,7 +1215,7 @@
     "loadingActivity": "仲間のアクティビティを読み込み中",
     "unknownUser": "名前未設定のユーザー",
     "stepsNotRecorded": "未記録",
-    "profileLinkLabel": "{name}のプロフィールを見る",
+    "profileLinkLabel": "プロフィールを開く",
     "sparseActivityHint": "仲間を増やすと、今日の動きをもっと見つけられます。",
     "discoverMore": "仲間をもっと探す",
     "more": "人",

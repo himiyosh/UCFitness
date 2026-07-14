@@ -956,7 +956,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 29. **Sidebar後の実コンテンツ幅** — `lg`でSidebarを出す認証画面は、1024px時点の本文約768pxを基準にする。3列以上、main+aside、詳細開示は`xl`へ遅らせ、1023/1024と1279/1280でカード幅・見出し行数・ページ高を比較する
 30. **自然スクロールと全幅Footer** — 通常ページの`max-h-[calc(100dvh-...)]` + `overflow-y-auto`を禁止し、documentスクロールへ統一する。Footerは320pxから表示し、BottomNav予約領域の上で法務リンクへ到達可能にする
 31. **不可視table geometry** — screen reader用tableは`sr-only` wrapper内へ配置し、wrapperがabsolute 1×1pxで、tableがFooter後のデッドスペースを作らないことを実測する
-32. **Home Quest / Delight契約** — 認証ホームの先頭は進捗→競争→歩いた価値→次行動を同一Quest面で順序固定する。Mission→Weekly→Reward→Challengeの後は任意探索章（Utility→Friend→Ranking）として明示し、Quick DockはBottomNav/Sidebar/Reward panelと重複しない補助導線だけにする。0歩は未記録・記録済み・ランキング参加済みでコピーを分離し、1280pxは2列・4列化は1536px以上、同一grid行はmd以上で等高化する。グラフはcontainer queryでパネル幅に応じて拡大し、等高化の余剰を空白帯にしない。motionは状態変化のみ650ms以内・reduced motion 0秒とする。Mission GET再試行中はloadingへ戻し、準備POSTを同時に露出しない。報酬書き込み失敗は成功応答へ変換せず、成功状態はlive通知・焦点移動・永続表示を持つ。補助ストリーク障害は0へ落とさず、Challenge進捗失敗も0%へ変換しない
+32. **Home Quest / Delight契約** — 認証ホームの先頭は進捗→競争→歩いた価値→次行動を同一Quest面で順序固定する。Mission→Weekly→Reward→Challengeの後は任意探索章（Utility→Friend→Ranking）として明示し、Quick DockはBottomNav/Sidebar/Reward panelと重複しない補助導線だけにする。0歩は未記録・記録済み・ランキング参加済みでコピーを分離し、1280pxは2列・4列化は1536px以上、同一grid行はmd以上で等高化する。QuickActions+Following stackと週間ランキングもxl以上で下端差1px以内とし、friend activityは実ユーザー＋発見行を5行維持して余剰を均等配分する。長名は`min-w-0`で収縮させ、リンク内アバターは装飾扱いにする。グラフはcontainer queryでパネル幅に応じて拡大し、等高化の余剰を空白帯にしない。motionは状態変化のみ650ms以内・reduced motion 0秒とする。Mission GET再試行中はloadingへ戻し、準備POSTを同時に露出しない。報酬書き込み失敗は成功応答へ変換せず、成功状態はlive通知・焦点移動・永続表示を持つ。補助ストリーク障害は0へ落とさず、Challenge進捗失敗も0%へ変換しない
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -1027,7 +1027,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 - **PC first-view密度** — 1280px/1920pxで今日の進捗・競争・報酬・次の行動の4役が同一viewport内で認識可能か確認する。大きな空白をカードstretchやroot scaleで埋めず、canvas幅と配置再構成で解決する
 - **dashboard richnessは実データで判定する** — カード数や色ではなく、時系列（月曜起算の今週等）と蓄積状態（UC残高・活動ストリーク等）が最低1つずつあるか確認する。欠測・0歩・未来日・API失敗を同じ値へ変換しない
 - **dashboard social loopを欠落させない** — 認証ホームに固定5行仕様のranking previewとfriend activity/発見CTAを常設する。今日の進捗→到達可能な競争差→UC報酬→次行動を先に提示し、詳細なranking previewとfriend activityは次行動の後に置く。friend activityを他者最大値基準の重複ランキングにせず、プロフィール/歩数取得失敗・未記録・実0歩を分離する。ホーム用APIはサーバー側limitを使い、5件未満では発見CTAで自然高さを意味ある内容にする。プロフィール行は可視内容を`aria-label`で上書きせず、操作説明を`sr-only`で補足する。既取得cache/APIを再利用してN+1を追加しない
-- **Home delightはカード追加で代用しない** — Quest storyで進捗・競争・報酬・次行動をつなぎ、後続はMission→Weekly→Reward→Challenge→任意探索（Utility→Friend→Ranking）の役割差を持たせる。同一カード文法、同じ導線の重複、状態を混同した0値、全カード共通motionをFAILとする。Sidebar後の1280pxで4列を使わず、複数列時の同一行パネルは下端差1px以内、Home/Profileグラフはパネル幅連動で十分な占有率を持たせる。拡大後の値/端ラベルclip、代替表との二重読み上げ、`aria-hidden`内スクロール領域のTab停止、Forced Colorsの棒・目標線を必ず再確認する。固定ランキングの励ましは未記録・記録済み0歩・参加済みに一致させる。Mission GETは参照専用で、生成・再評価は明示POSTへ分離し、台帳・残高・完了・ボーナスのいずれかが失敗したPOSTを成功扱いしない。成功時はfocus/live/persistent status、Challenge進捗取得失敗時は明示エラーを必須とする
+- **Home delightはカード追加で代用しない** — Quest storyで進捗・競争・報酬・次行動をつなぎ、後続はMission→Weekly→Reward→Challenge→任意探索（Utility→Friend→Ranking）の役割差を持たせる。同一カード文法、同じ導線の重複、状態を混同した0値、全カード共通motionをFAILとする。Sidebar後の1280pxで4列を使わず、同じ視覚行の主要パネルは内部構造が異なっても下端差1px以内とする。複合カラムは実ユーザー＋発見行の一定行数を持たせ、少数データ時に1行だけを巨大化せず、末尾空白帯も作らない。長名・長数値でも行とfocus ringをパネル内へ収める。Home/Profileグラフはパネル幅連動で十分な占有率を持たせる。拡大後の値/端ラベルclip、代替表との二重読み上げ、`aria-hidden`内スクロール領域のTab停止、Forced Colorsの棒・目標線を必ず再確認する。固定ランキングの励ましは未記録・記録済み0歩・参加済みに一致させる。Mission GETは参照専用で、生成・再評価は明示POSTへ分離し、台帳・残高・完了・ボーナスのいずれかが失敗したPOSTを成功扱いしない。成功時はfocus/live/persistent status、Challenge進捗取得失敗時は明示エラーを必須とする
 
 **リーダーボード / ランキング統一ルール（ユーザー繰り返し指摘 — 変更厳禁）:**
 
