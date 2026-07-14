@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-14T07:56:22+09:00",
+  "lastUpdated": "2026-07-14T12:03:03+09:00",
   "lastAgent": "UCFitnessAgent (Next.js + React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "b0a3b9ee20b1d677e416d2236e207529a6ebf21b",
+  "lastCommit": "b4a10de1ccfd1a8153f74f0816dbb9b61c88a9f3",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "『Homeを含むパネルサイズが不統一』『グラフがパネル内で小さい』フィードバックへ対応。Home同一grid行をmd以上で等高化し、4モジュールの角丸・paddingを統一した。Home週間グラフとProfile活動グラフをcontainer幅連動で128〜144px／288〜384pxへ拡大し、値/端ラベルclip、代替表との二重読み上げ、Forced Colors、隠しスクロールのTab停止も修正。Home 1920pxの高さ差126px→0px、全192テスト、2ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
+  "summary": "『フォロー中のアクティビティと今週のランキング等、同じ視覚行の下辺が揃っていない』フィードバックへ対応。8主要routeをgeometry走査し、Home任意探索rowのQuickActions+Following stackと週間ランキングをxl以上で等高化した。friend activityは実ユーザー＋発見行を常に5行へ揃え、1〜5人で61.2px、375pxで72px、末尾空白0。長名・大歩数のリフロー、名前一重読み上げ、全状態下端差0を126 fixtureで確認し、全192テスト・5ペルソナ・自己批判全6軸PASSを確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 217件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-14T07:56:22+09:00"
+    "lastVerified": "2026-07-14T12:03:03+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -473,6 +473,25 @@
         "components/dashboard/DashboardChallenges.tsx",
         "docs/PRODUCT.md",
         "docs/DESIGN_TOKENS.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『フォロー中のアクティビティと今週のランキングの下辺が揃わない』『同種箇所を精査』フィードバックに対応。Home/Analytics/Wallet/Settings/Groups/Challenges/Leaderboard/Profileを1280/1920・Classic/Midnightでgeometry走査し、Home社会rowの26〜32px差を修正した。QuickActions+Following stackをランキング高へstretchし、実ユーザー＋発見行を常に5行として余剰を均等配分。ready1/2/4/5人、loading/empty/error、375長名・大歩数を126 fixtureで検証し、下端差0px、行61.2〜72px、末尾空白0、overflow0、名前・歩数・操作の一重読み上げを確認。全192テスト、5ペルソナ、独立レビュー、自己批判全6軸PASS。",
+      "commit": "b4a10de1ccfd1a8153f74f0816dbb9b61c88a9f3",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "components/dashboard/DashboardFollowing.tsx",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "messages/ja.json",
+        "messages/en.json",
         "scripts/check-ucfitness-rules.sh"
       ]
     }
