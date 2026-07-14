@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-14T16:30:33+09:00",
+  "lastUpdated": "2026-07-14T22:54:13+09:00",
   "lastAgent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
-  "lastCommit": "1ca3ccb97e85ed41158a7906d372d9185afafb89",
+  "lastCommit": "066c9c51c11915b789270c11b4034be582777f7c",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "自主改善としてHomeの週次競争差をGlobal・選択Group・Group detailへ継続した。正歩数ユーザーだけを順位化し、0歩・不在・503を順位・成功・未所属へ偽装しない。6位でも直上を含む固定5行、全員0歩の詳細5行、全メンバー平均、named filter/status、即時focus、Forced Colorsを実装。A〜Fの24組合せ、Group detail 4組合せ、Forced Colors 2テーマ、全200テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
+  "summary": "自立改善としてランキングperiodをURL・再読込・共有・API・reactionの唯一状態へ統一し、主要入口とbare URLを週次化した。Group分析をHero直後へ移し、短いfilter名とchart説明、9テーマ固定色、ギア導線/空/障害、未認証period復元を実装。連打loading、GET逆順、POST/DELETE ABA rollbackを世代管理で隔離した。20画面条件・9テーマ・redirect/race/ABA/Gear fixture、全202テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認した。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 216件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-14T16:30:33+09:00"
+    "lastVerified": "2026-07-14T22:54:13+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -512,6 +512,29 @@
         "lib/__tests__/ranking-utils.test.ts",
         "lib/services/ranking-service.test.ts",
         "lib/services/ranking-service.ts",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "自立改善としてランキングperiodをURL・再読込・共有・ranking API・reaction APIで統一し、bare URLと主要入口を週次化した。Group分析をHero直後へ移し、短いfilter名とchart説明、選択チェック、9テーマ固定色、44pxギア導線を追加。未認証MONTHLY/YEARLY復元とINVALID除外、連打取消、GET abort、POST/DELETEのABA generation隔離、rollback重複防止、Gear 0件/4件/API500を検証した。5幅×2テーマ×2画面、9テーマ、全202テスト、5ペルソナ、独立レビュー、自己批判全6軸PASS。",
+      "commit": "066c9c51c11915b789270c11b4034be582777f7c",
+      "filesChanged": [
+        "README.md",
+        "app/[locale]/groups/[groupId]/page.tsx",
+        "app/[locale]/leaderboard/page.tsx",
+        "components/dashboard/DynamicLeaderboard.tsx",
+        "components/group/GroupAnalytics.tsx",
+        "components/group/GroupDetailLeaderboard.tsx",
+        "components/group/GroupGear.tsx",
+        "components/group/GroupRankingPanel.tsx",
+        "components/layout/BottomNavBar.tsx",
+        "hooks/useGroupReactions.ts",
+        "lib/__tests__/ranking-utils.test.ts",
         "lib/services/ranking-utils.ts",
         "messages/en.json",
         "messages/ja.json",
