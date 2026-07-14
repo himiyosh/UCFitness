@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
-import { RankingEntry } from '@/lib/services/ranking-utils';
+import { getRankGapInsight } from '@/lib/services/ranking-utils';
 import { Link } from '@/navigation';
 import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
+
+import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 type Props = {
     keyword: string;
@@ -31,9 +33,14 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
     const [moveError, setMoveError] = useState<string | null>(null);
     const router = useRouter();
     const t = useTranslations('Graph');
+    const lt = useTranslations('Leaderboard');
     const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
+    const rankGapInsight = useMemo(
+        () => getRankGapInsight(neighbors, userId),
+        [neighbors, userId],
+    );
 
     // パフォーマンス: ランクバッジのスタイルを事前計算し、レンダーごとの再生成を防止
     const rankBadgeStyles = useMemo(() => ({
@@ -287,6 +294,32 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                     )}
                 </div>
             </div>
+            {rankGapInsight && (
+                <div className={`mt-auto flex items-center justify-between gap-3 border-t px-4 py-2.5 sm:px-6 ${
+                    rankGapInsight.isTopRank
+                        ? 'border-[var(--color-success)]/25 bg-[var(--color-success-soft)]'
+                        : 'border-[var(--color-competition)]/20 bg-[var(--color-competition-soft)]/40'
+                }`}>
+                    <span className={`text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-gray-600'}`}>
+                        {rankGapInsight.isTopRank ? lt('currentStatus') : lt('nextRankGoal')}
+                    </span>
+                    <span
+                        data-rank-gap="group"
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                            rankGapInsight.isTopRank
+                                ? 'bg-[var(--color-success-soft)] text-[var(--color-text)]'
+                                : 'bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]'
+                        }`}
+                    >
+                        {rankGapInsight.isTopRank
+                            ? lt('topRankStatus')
+                            : lt('nextRankGap', {
+                                steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                rank: rankGapInsight.targetRank ?? 1,
+                            })}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }

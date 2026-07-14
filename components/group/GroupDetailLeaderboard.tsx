@@ -4,11 +4,13 @@ import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 're
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/navigation';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { RankingEntry } from '@/lib/services/ranking-utils';
+import { getRankGapInsight } from '@/lib/services/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
+
+import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 function FadeInWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {
     const [show, setShow] = useState(false);
@@ -59,6 +61,10 @@ export default function GroupDetailLeaderboard({
     const isMidnight = theme === 'midnight';
     const ITEMS_PER_PAGE = 5;
     const totalPages = useMemo(() => Math.ceil(allData.length / ITEMS_PER_PAGE), [allData.length]);
+    const rankGapInsight = useMemo(
+        () => getRankGapInsight(allData, userId),
+        [allData, userId],
+    );
 
     // --- リアクション管理（グローバル共通 — グループ/ダッシュボード間でリアクション数を連動） ---
     const { reactions, handleReactionToggle } = useGroupReactions('__global__', userId, period);
@@ -114,7 +120,10 @@ export default function GroupDetailLeaderboard({
 
     return (
         <div className="space-y-6">
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col h-full">
+            <div
+                className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm"
+                data-group-detail-ranking
+            >
                 <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
@@ -128,16 +137,7 @@ export default function GroupDetailLeaderboard({
                 <div className="relative flex-1 bg-white px-0">
                     <FadeInWrapper key={`${period}-${currentPage}`}>
                         <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
-                            {displayData.length === 0 ? (
-                                <li className="text-gray-500 text-center py-12 flex flex-col items-center gap-2 list-none">
-                                    <span className="bg-gray-50 p-3 rounded-full">
-                                        <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                        </svg>
-                                    </span>
-                                    <span>{lt('noData')}</span>
-                                </li>
-                            ) : (
+                            {displayData.length === 0 ? null : (
                                 displayData.map((entry, index) => {
                                     // Calculate rank dynamically based on list position since it's a full list for the group
                                     const rank = startIndex + index + 1;
@@ -245,13 +245,25 @@ export default function GroupDetailLeaderboard({
                                     );
                                 })
                             )}
-                            {Array.from({ length: emptyRowCount }, (_, index) => (
-                                <li
-                                    key={`detail-empty-${index}`}
-                                    className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5"
-                                    aria-hidden="true"
-                                />
-                            ))}
+                            {Array.from({ length: emptyRowCount }, (_, index) => {
+                                const showNoData = displayData.length === 0 && index === 0;
+                                return (
+                                    <li
+                                        key={`detail-empty-${index}`}
+                                        className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5"
+                                        aria-hidden={showNoData ? undefined : true}
+                                    >
+                                        {showNoData && (
+                                            <span className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                                                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                                </svg>
+                                                {lt('noData')}
+                                            </span>
+                                        )}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </FadeInWrapper>
                 </div>
@@ -294,6 +306,33 @@ export default function GroupDetailLeaderboard({
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </nav>
+                )}
+
+                {rankGapInsight && (
+                    <div className={`flex items-center justify-between gap-3 border-t px-5 py-2.5 ${
+                        rankGapInsight.isTopRank
+                            ? 'border-[var(--color-success)]/25 bg-[var(--color-success-soft)]'
+                            : 'border-[var(--color-competition)]/20 bg-[var(--color-competition-soft)]/40'
+                    }`}>
+                        <span className={`text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-gray-600'}`}>
+                            {rankGapInsight.isTopRank ? lt('currentStatus') : lt('nextRankGoal')}
+                        </span>
+                        <span
+                            data-rank-gap="group-detail"
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                rankGapInsight.isTopRank
+                                    ? 'bg-[var(--color-success-soft)] text-[var(--color-text)]'
+                                    : 'bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]'
+                            }`}
+                        >
+                            {rankGapInsight.isTopRank
+                                ? lt('topRankStatus')
+                                : lt('nextRankGap', {
+                                    steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                    rank: rankGapInsight.targetRank ?? 1,
+                                })}
+                        </span>
+                    </div>
                 )}
             </div>
 

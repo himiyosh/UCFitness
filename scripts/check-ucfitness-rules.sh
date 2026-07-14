@@ -279,6 +279,62 @@ fi
 if ! grep -q 'lg:items-stretch' components/dashboard/DynamicLeaderboard.tsx; then
   record "Leaderboard同一行パネルの下端整列契約欠落" "components/dashboard/DynamicLeaderboard.tsx"
 fi
+if ! grep -q 'export function getRankGapInsight' lib/services/ranking-utils.ts || \
+   ! grep -q 'targetEntry.steps - currentEntry.steps + 1' lib/services/ranking-utils.ts || \
+   ! grep -q 'currentEntry.steps <= 0' lib/services/ranking-utils.ts || \
+   ! grep -q 'originalRank: index + 1' lib/services/ranking-service.ts || \
+   ! grep -Fq '.filter(entry => entry.steps > 0)' lib/services/ranking-utils.ts || \
+   ! grep -Fq '.filter(entry => entry.steps > 0)' lib/services/ranking-service.ts || \
+   [ "$(grep -Fc 'getDisplayRankings(' components/dashboard/DynamicLeaderboard.tsx)" -ne 2 ] || \
+   [ "$(grep -Fc ', userId, 5)' components/dashboard/DynamicLeaderboard.tsx)" -ne 2 ] || \
+   ! grep -q 'href="/leaderboard?period=WEEKLY"' 'app/[locale]/page.tsx' || \
+   ! grep -q 'data-rank-gap="global"' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'data-rank-gap="group"' components/group/GroupRankingPanel.tsx || \
+   ! grep -q 'data-rank-gap="group-detail"' components/group/GroupDetailLeaderboard.tsx; then
+  record "Homeから詳細ランキングへの到達可能差継続契約欠落" "ranking-utils / ranking components"
+fi
+if ! grep -q 'role="group"' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'aria-pressed={isActive}' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'role="status"' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'aria-busy={isLoading}' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'ranking-filter-button' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q '.ranking-filter-button:focus-visible' app/globals.css || \
+   ! grep -q 'var(--color-primary-solid)' components/dashboard/DynamicLeaderboard.tsx || \
+   grep -q 'ranking-filter-button[^`]*transition-all' components/dashboard/DynamicLeaderboard.tsx || \
+   grep -q 'order-2 lg:order-1' components/dashboard/DynamicLeaderboard.tsx || \
+   grep -q 'role="tab"' components/dashboard/DynamicLeaderboard.tsx; then
+  record "Leaderboard期間フィルターのボタン群セマンティクス欠落" "components/dashboard/DynamicLeaderboard.tsx"
+fi
+if ! grep -q 'aria-label={lt('\''periodTabsLabel'\'')}' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'aria-pressed={isActive}' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'min-h-\[44px\]' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'role="status"' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'ranking-filter-button' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'var(--color-primary-solid)' components/group/GroupAnalytics.tsx || \
+   grep -q 'ranking-filter-button[^`]*transition-all' components/group/GroupAnalytics.tsx; then
+  record "グループ詳細期間フィルターの44px/状態通知契約欠落" "components/group/GroupAnalytics.tsx"
+fi
+if grep -q 'const total = allData.reduce' components/group/GroupAnalytics.tsx || \
+   ! grep -Fq 'periodGroupRankings?.[idx]?.averageSteps' components/group/GroupAnalytics.tsx || \
+   grep -Fq 'allData.length === 0 ?' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'data-group-detail-ranking' components/group/GroupDetailLeaderboard.tsx || \
+   ! grep -q 'const showNoData = displayData.length === 0 && index === 0' components/group/GroupDetailLeaderboard.tsx; then
+  record "グループ詳細の全員0歩固定5行/全メンバー平均契約欠落" "GroupAnalytics / GroupDetailLeaderboard"
+fi
+if ! grep -Fq '.ranking-filter-button[aria-pressed="true"]' app/globals.css || \
+   ! grep -q 'background: Highlight !important' app/globals.css || \
+   ! grep -q 'color: HighlightText !important' app/globals.css || \
+   ! grep -q 'background: Canvas !important' app/globals.css || \
+   ! grep -q 'color: CanvasText !important' app/globals.css; then
+  record "ランキングfilterのForced Colors選択状態欠落" "app/globals.css"
+fi
+if ! grep -q 'data-ranking-state="global-error"' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'data-ranking-state="group-error"' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'data-ranking-state="group-empty"' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q '!isLoading && fetchError ?' components/dashboard/DynamicLeaderboard.tsx || \
+   [ "$(grep -o 'onClick={handleRetry}' components/dashboard/DynamicLeaderboard.tsx | wc -l | tr -d ' ')" -lt 2 ]; then
+  record "ランキング取得失敗と未所属空状態の分離契約欠落" "components/dashboard/DynamicLeaderboard.tsx"
+fi
 if ! grep -q 'className="flex" aria-hidden="true"' components/ActivityGraph.tsx || \
    ! grep -q '<div className="sr-only">' components/ActivityGraph.tsx || \
    ! grep -q 'tabIndex={-1}' components/ActivityGraph.tsx || \

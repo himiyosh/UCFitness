@@ -673,7 +673,7 @@ function LeaderboardPreviewPanel({
               <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{labels.subtitle}</p>
             </div>
           </div>
-          <Link href="/leaderboard" className="inline-flex min-h-[44px] w-fit shrink-0 items-center gap-1 self-start rounded-lg px-2 text-xs font-semibold text-[var(--color-competition-strong)] active:bg-[var(--color-competition-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]">
+          <Link href="/leaderboard?period=WEEKLY" className="inline-flex min-h-[44px] w-fit shrink-0 items-center gap-1 self-start rounded-lg px-2 text-xs font-semibold text-[var(--color-competition-strong)] active:bg-[var(--color-competition-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]">
             {labels.viewAll}<span aria-hidden="true">→</span>
           </Link>
         </div>

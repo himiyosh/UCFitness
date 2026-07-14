@@ -5,12 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 
 import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { getDisplayRankings, RankingEntry } from '@/lib/services/ranking-utils';
+import { getDisplayRankings, getRankGapInsight } from '@/lib/services/ranking-utils';
 import { Link } from '@/navigation';
 import GroupRankingPanel from '@/components/group/GroupRankingPanel';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
+
+import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 const TABS: { key: Period; labelKey: string; icon: string }[] = [
     { key: 'DAILY', labelKey: 'periods.daily', icon: '☀️' },
@@ -81,12 +83,32 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
         () => globalRankings.find(e => e.users?.id === userId) ?? null,
         [globalRankings, userId]
     );
+    const myRankGapInsight = useMemo(
+        () => getRankGapInsight(globalRankings, userId),
+        [globalRankings, userId],
+    );
+    const activePeriodLabel = t(
+        TABS.find(tab => tab.key === period)?.labelKey ?? 'periods.daily',
+    );
+    const rankingStatus = isLoading
+        ? t('loadingRankings')
+        : fetchError
+            ? commonT('error')
+            : t('rankingsUpdated', { period: activePeriodLabel });
 
     // 配列参照の安定化
     const serializedKeywords = JSON.stringify(groupKeywords);
 
     const handlePeriodChange = useCallback((newPeriod: Period) => {
+        if (newPeriod === period) return;
+        setIsLoading(true);
+        setFetchError(false);
         setPeriod(newPeriod);
+    }, [period]);
+    const handleRetry = useCallback(() => {
+        setIsLoading(true);
+        setFetchError(false);
+        setRetryKey(current => current + 1);
     }, []);
 
     useEffect(() => {
@@ -102,14 +124,14 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                 const globalRes = await fetch(`/api/rankings?scope=GLOBAL&period=${period}`, { signal: abortController.signal });
                 if (!globalRes.ok) throw new Error(`Rankings fetch failed: ${globalRes.status}`);
                 const globalData = await globalRes.json();
-                const { displayRankings: filteredGlobal } = getDisplayRankings(globalData, userId);
+                const { displayRankings: filteredGlobal } = getDisplayRankings(globalData, userId, 5);
 
                 const groupResults = await Promise.all(
                     keywords.map(async (keyword) => {
                         const res = await fetch(`/api/rankings?scope=GROUP&period=${period}&keyword=${keyword}`, { signal: abortController.signal });
                         if (!res.ok) throw new Error(`Group ranking fetch failed: ${res.status}`);
                         const data = await res.json();
-                        const { displayRankings: filtered } = getDisplayRankings(data, userId);
+                        const { displayRankings: filtered } = getDisplayRankings(data, userId, 5);
                         return { keyword, neighbors: filtered };
                     })
                 );
@@ -141,6 +163,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
 
     return (
         <div className="flex flex-col gap-3">
+            <p className="sr-only" role="status">{rankingStatus}</p>
             {/* ===== 共通コントロールバー: ピリオドタブ + グループタブ ===== */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 {/* ピリオドタブ */}
@@ -149,7 +172,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                         !isMidnight ? 'bg-white/80 border border-gray-200/60 shadow-sm' : ''
                     }`}
                     style={isMidnight ? { backgroundColor: 'rgba(30, 41, 59, 0.85)', border: '1px solid rgba(100, 116, 139, 0.4)', backdropFilter: 'blur(8px)' } : undefined}
-                    role="tablist"
+                    role="group"
                     aria-label={t('periodTabsLabel')}
                 >
                     {TABS.map((tab) => {
@@ -158,9 +181,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                             <button
                                 key={tab.key}
                                 onClick={() => handlePeriodChange(tab.key)}
-                                role="tab"
-                                aria-selected={isActive}
-                                className={`flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 sm:flex-none sm:px-4 sm:text-sm ${
+                                aria-pressed={isActive}
+                                className={`ranking-filter-button flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors duration-200 sm:flex-none sm:px-4 sm:text-sm ${
                                     !isMidnight
                                         ? (isActive
                                             ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
@@ -168,12 +190,12 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                         : ''
                                 }`}
                                 style={isMidnight ? {
-                                    backgroundColor: isActive ? 'var(--theme-primary)' : 'transparent',
+                                    backgroundColor: isActive ? 'var(--color-primary-solid)' : 'transparent',
                                     color: isActive ? '#ffffff' : 'rgba(148, 163, 184, 0.8)',
                                     boxShadow: isActive ? '0 4px 12px rgba(99, 102, 241, 0.3)' : 'none',
                                 } : undefined}
                             >
-                                <span className="hidden sm:inline text-sm">{tab.icon}</span>
+                                <span className="hidden text-sm sm:inline" aria-hidden="true">{tab.icon}</span>
                                 <span>{t(tab.labelKey)}</span>
                             </button>
                         );
@@ -183,6 +205,8 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                 {/* グループ切替タブ（デスクトップ: 右寄せ） */}
                 {groupRankingsList.length > 1 && (
                     <div
+                        role="group"
+                        aria-label={t('groupSelectorLabel')}
                         className={`flex flex-nowrap gap-1.5 p-1.5 overflow-x-auto scrollbar-hide rounded-xl backdrop-blur-sm ${
                             !isMidnight ? 'bg-white/80 border border-gray-100/60 shadow-sm' : ''
                         }`}
@@ -197,11 +221,12 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                 <button
                                     key={groupData.keyword}
                                     onClick={() => setActiveGroupIndex(index)}
-                                    className={`flex min-h-[44px] flex-shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 sm:px-4 sm:py-2 sm:text-sm ${
+                                    aria-pressed={isActive}
+                                    className={`ranking-filter-button flex min-h-[44px] flex-shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-200 sm:px-4 sm:py-2 sm:text-sm ${
                                         isActive
                                             ? (!isMidnight
                                                 ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
-                                                : 'bg-[var(--theme-primary)] text-white')
+                                                : 'bg-[var(--color-primary-solid)] text-white')
                                             : (!isMidnight
                                                 ? 'text-gray-500 hover:bg-gray-50/80 hover:text-gray-700'
                                                 : 'text-gray-400 hover:text-white')
@@ -226,9 +251,12 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
             </div>
 
             {/* ===== 2カラムグリッド: カードのみ（タブは上に分離済み） ===== */}
-            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-stretch">
-                {/* グローバルランキング (Mobile: Order 2, Desktop: Left 5 cols) */}
-                <div className="lg:col-span-5 order-2 lg:order-1">
+            <div
+                className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-stretch lg:gap-4"
+                aria-busy={isLoading}
+            >
+                {/* グローバルランキング */}
+                <div className="lg:col-span-5" data-ranking-panel="global">
                 <div
                     key={animationKey}
                     className={`overflow-hidden rounded-xl shadow-sm min-h-[360px] tab-content-enter flex flex-col h-full ${
@@ -268,13 +296,16 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
 
                         {/* エラー */}
                         {!isLoading && fetchError && (
-                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                            <div
+                                className="flex flex-col items-center justify-center px-4 py-12 text-center"
+                                data-ranking-state="global-error"
+                            >
                                 <span className="text-4xl mb-3">⚠️</span>
                                 <p className={`text-sm font-medium mb-3 ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>
                                     {commonT('error')}
                                 </p>
                                 <button
-                                    onClick={() => setRetryKey(k => k + 1)}
+                                    onClick={handleRetry}
                                     className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                                 >
                                     {commonT('retry')}
@@ -423,34 +454,81 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
 
                     {/* 自分のランク — カード下部のミニサマリー（mt-auto で常に下端に固定） */}
                     {!isLoading && myEntry && (
-                        <div className={`mt-auto px-4 py-3 sm:px-6 flex items-center justify-between ${
+                        <div className={`mt-auto flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${
                             isMidnight
                                 ? 'bg-slate-800/40 border-t border-slate-600/20'
                                 : 'bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-primary)]/2 border-t border-[var(--theme-primary)]/10'
                         }`}>
                             <div className="flex items-center gap-2">
-                                <span className="text-sm">📍</span>
+                                <span className="text-sm" aria-hidden="true">📍</span>
                                 <span className={`text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-gray-600'}`}>
                                     {t('yourRank')}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                                 <span className={`text-sm font-bold ${isMidnight ? 'text-indigo-300' : 'text-[var(--theme-primary)]'}`}>
                                     #{myEntry.originalRank}
                                 </span>
                                 <span className={`text-sm font-bold tabular-nums ${isMidnight ? 'text-slate-200' : 'text-gray-800'}`}>
                                     {myEntry.steps.toLocaleString()} {t('steps')}
                                 </span>
+                                {myRankGapInsight && (
+                                    <span
+                                        data-rank-gap="global"
+                                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                                            myRankGapInsight.isTopRank
+                                                ? 'bg-[var(--color-success-soft)] text-[var(--color-success-strong)]'
+                                                : 'bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]'
+                                        }`}
+                                    >
+                                        {myRankGapInsight.isTopRank
+                                            ? t('topRankStatus')
+                                            : t('nextRankGap', {
+                                                steps: myRankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                                rank: myRankGapInsight.targetRank ?? 1,
+                                            })}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* ===== グループランキング (Mobile: Order 1, Desktop: Right 7 cols) ===== */}
-            <div className="lg:col-span-7 order-1 lg:order-2">
+            {/* ===== グループランキング ===== */}
+            <div className="lg:col-span-7" data-ranking-panel="group">
 
-                {groupRankingsList.length > 0 ? (
+                {!isLoading && fetchError ? (
+                    <div
+                        className={`flex min-h-[360px] flex-col overflow-hidden rounded-xl border text-center ${
+                            isMidnight
+                                ? 'border-slate-600/30 bg-slate-800/40'
+                                : 'border-gray-100 bg-white/90'
+                        }`}
+                        data-ranking-state="group-error"
+                    >
+                        <div className={`flex items-center gap-2 px-4 py-3 text-left sm:px-6 ${
+                            isMidnight ? 'border-b border-slate-600/20' : 'border-b border-gray-100/60'
+                        }`}>
+                            <span className="text-lg" aria-hidden="true">👥</span>
+                            <h3 className={`text-sm font-bold ${isMidnight ? 'text-slate-100' : 'text-gray-900'}`}>
+                                {t('titleGroup')}
+                            </h3>
+                        </div>
+                        <div className="flex flex-1 flex-col items-center justify-center px-4 py-12">
+                            <span className="mb-3 text-4xl" aria-hidden="true">⚠️</span>
+                            <p className={`mb-3 text-sm font-medium ${isMidnight ? 'text-slate-400' : 'text-gray-500'}`}>
+                                {commonT('error')}
+                            </p>
+                            <button
+                                onClick={handleRetry}
+                                className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                            >
+                                {commonT('retry')}
+                            </button>
+                        </div>
+                    </div>
+                ) : groupRankingsList.length > 0 ? (
                     <div className="h-full">
                         {/* 選択中のグループ */}
                         {groupRankingsList[activeGroupIndex] && (
@@ -475,9 +553,12 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                     </div>
                 ) : (
                     !isLoading && (
-                        <div className={`rounded-xl border-2 border-dashed p-8 text-center ${
+                        <div
+                            className={`rounded-xl border-2 border-dashed p-8 text-center ${
                             isMidnight ? 'border-slate-600 text-slate-400' : 'border-gray-200 text-gray-500'
-                        }`}>
+                            }`}
+                            data-ranking-state="group-empty"
+                        >
                             <span className="text-3xl block mb-3">👥</span>
                             <p className="font-medium">{t('joinPrompt')}</p>
                             <p className={`text-xs mt-1 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>

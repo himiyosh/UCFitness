@@ -21,6 +21,47 @@ export type RankingEntry = {
     originalRank: number;
 };
 
+export interface RankGapInsight {
+    currentRank: number;
+    targetRank: number | null;
+    stepsToNextRank: number | null;
+    isTopRank: boolean;
+}
+
+/**
+ * 表示用ランキングから、現在ユーザーが直上順位を追い越すための歩数を求める。
+ * getDisplayRankings は現在ユーザーと直上ユーザーを保持するため、抜粋配列でも計算できる。
+ */
+export function getRankGapInsight(
+    rankings: RankingEntry[],
+    userId?: string | null,
+): RankGapInsight | null {
+    if (!userId) return null;
+
+    const currentEntry = rankings.find(entry => entry.users.id === userId);
+    if (!currentEntry || currentEntry.steps <= 0) return null;
+
+    if (currentEntry.originalRank === 1) {
+        return {
+            currentRank: 1,
+            targetRank: null,
+            stepsToNextRank: null,
+            isTopRank: true,
+        };
+    }
+
+    const targetRank = currentEntry.originalRank - 1;
+    const targetEntry = rankings.find(entry => entry.originalRank === targetRank);
+    if (!targetEntry) return null;
+
+    return {
+        currentRank: currentEntry.originalRank,
+        targetRank,
+        stepsToNextRank: Math.max(1, targetEntry.steps - currentEntry.steps + 1),
+        isTopRank: false,
+    };
+}
+
 /**
  * ランキングデータに装備アイテム情報を注入する
  * Record<Period, RankingEntry[]> 形式に対応
@@ -62,11 +103,13 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
     displayRankings: RankingEntry[];
     isTruncated: boolean
 } {
-    // Assign original ranks manually since we're filtering
-    const rankedItems: RankingEntry[] = allRankings.map((r, i) => ({
-        ...r,
-        originalRank: i + 1
-    }));
+    // 0歩は未参加として除外し、正の歩数だけに連続した順位を付ける。
+    const rankedItems: RankingEntry[] = allRankings
+        .filter(entry => entry.steps > 0)
+        .map((entry, index) => ({
+            ...entry,
+            originalRank: index + 1,
+        }));
 
     if (!userId) {
         // Not logged in: Just show top 5 or maxItems

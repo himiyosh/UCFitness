@@ -195,6 +195,29 @@ body {
   outline-offset: 2px;
 }
 
+.ranking-filter-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .ranking-filter-button:focus-visible {
+    outline-color: Highlight;
+  }
+
+  .ranking-filter-button[aria-pressed="true"] {
+    border: 1px solid Highlight !important;
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+
+  .ranking-filter-button[aria-pressed="false"] {
+    border: 1px solid ButtonBorder !important;
+    background: Canvas !important;
+    color: CanvasText !important;
+  }
+}
+
 .header-action-cluster {
   isolation: isolate;
 }

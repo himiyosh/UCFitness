@@ -557,7 +557,14 @@
     "previousPage": "前のページ",
     "nextPage": "次のページ",
     "goToPage": "{page}ページへ移動",
-    "periodTabsLabel": "ランキング期間"
+    "periodTabsLabel": "ランキング期間",
+    "nextRankGoal": "次の順位まで",
+    "nextRankGap": "あと {steps} 歩で #{rank}",
+    "topRankStatus": "トップをキープ",
+    "currentStatus": "現在の状況",
+    "groupSelectorLabel": "表示するグループ",
+    "loadingRankings": "ランキングを読み込んでいます",
+    "rankingsUpdated": "{period}のランキングを更新しました"
   },
   "Notifications": {
     "title": "通知設定",

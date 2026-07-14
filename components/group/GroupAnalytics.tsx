@@ -57,6 +57,9 @@ export default function GroupAnalytics({
     const { theme } = useTheme();
     const ga = useTranslations('GroupAnalytics');
     const lt = useTranslations('Leaderboard');
+    const activePeriodLabel = ga(
+        TABS.find(tab => tab.key === period)?.labelKey ?? 'comparisonTitle.daily',
+    );
 
     // Reset page when period changes
     useEffect(() => {
@@ -67,15 +70,13 @@ export default function GroupAnalytics({
     const allData = rankings[period];
 
     // Memoize expensive computations
-    const { userRank, userEntry, averageSteps } = useMemo(() => {
+    const { userRank, userEntry } = useMemo(() => {
         const rank = userId ? allData.findIndex(r => r.users.id === userId) + 1 : 0;
         const entry = rank > 0 ? allData[rank - 1] : null;
-        const total = allData.reduce((sum, r) => sum + r.steps, 0);
-        const avg = allData.length > 0 ? Math.round(total / allData.length) : 0;
-        return { userRank: rank, userEntry: entry, averageSteps: avg };
+        return { userRank: rank, userEntry: entry };
     }, [allData, userId]);
 
-    const { groupRank, totalGroups } = useMemo(() => {
+    const { groupRank, totalGroups, averageSteps } = useMemo(() => {
         const periodGroupRankings = groupCompetitionRankings?.[period];
         const idx = periodGroupRankings && currentGroupId
             ? periodGroupRankings.findIndex(g => g.groupId === currentGroupId)
@@ -83,6 +84,7 @@ export default function GroupAnalytics({
         return {
             groupRank: idx !== -1 ? idx + 1 : undefined,
             totalGroups: periodGroupRankings?.length || 0,
+            averageSteps: idx !== -1 ? periodGroupRankings?.[idx]?.averageSteps : undefined,
         };
     }, [groupCompetitionRankings, period, currentGroupId]);
 
@@ -90,9 +92,14 @@ export default function GroupAnalytics({
 
     return (
         <div className="space-y-4">
+            <p className="sr-only" role="status">
+                {lt('rankingsUpdated', { period: activePeriodLabel })}
+            </p>
             {/* Header: Tabs & Jump Button */}
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div
+                    role="group"
+                    aria-label={lt('periodTabsLabel')}
                     className={`flex p-1 space-x-1 rounded-lg w-fit overflow-hidden relative ${theme !== 'midnight' ? 'bg-white border border-gray-200' : ''}`}
                     style={theme === 'midnight' ? { backgroundColor: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(100, 116, 139, 0.5)' } : undefined}
                 >
@@ -102,9 +109,10 @@ export default function GroupAnalytics({
                             <button
                                 key={tab.key}
                                 onClick={() => setPeriod(tab.key)}
-                                className={`relative z-10 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 cursor-pointer ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
+                                aria-pressed={isActive}
+                                className={`ranking-filter-button relative z-10 min-h-[44px] cursor-pointer rounded-md px-3 py-2 text-sm font-semibold transition-colors duration-200 sm:px-4 ${theme !== 'midnight' ? (isActive ? 'bg-[var(--theme-primary)] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100') : ''}`}
                                 style={theme === 'midnight' ? {
-                                    backgroundColor: isActive ? 'var(--theme-primary)' : 'transparent',
+                                    backgroundColor: isActive ? 'var(--color-primary-solid)' : 'transparent',
                                     color: '#ffffff',
                                     textShadow: '0 1px 2px rgba(0,0,0,0.5)'
                                 } : undefined}
@@ -118,15 +126,6 @@ export default function GroupAnalytics({
 
             </div>
 
-            {/* データなし表示 */}
-            {allData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 px-4 rounded-xl border border-dashed" style={{ borderColor: 'var(--foreground-muted)', color: 'var(--foreground-muted)' }}>
-                    <span className="text-4xl mb-3">📊</span>
-                    <p className="text-base font-semibold mb-1">{ga('noData')}</p>
-                    <p className="text-sm opacity-70">{ga('noDataDesc')}</p>
-                </div>
-            ) : (
-            <>
             {/* ━━━ パネル1: グループ内ランキング + グラフ + あなたの順位 ━━━ */}
             <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all duration-300">
                 {/* パネルヘッダー + あなたの順位 */}
@@ -211,7 +210,7 @@ export default function GroupAnalytics({
                                                 <span className="text-sm font-bold text-gray-400">N/A</span>
                                             )}
                                             <span className="text-xs text-gray-400 border-l border-gray-200 pl-2 ml-1">
-                                                {ga('average')} {averageSteps.toLocaleString()} {ga('steps')}
+                                                {ga('average')} {averageSteps?.toLocaleString() ?? '—'} {ga('steps')}
                                             </span>
                                         </div>
                                         <span className="hidden sm:inline text-xs text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-md">{ga('byAverageSteps')}</span>
@@ -226,8 +225,6 @@ export default function GroupAnalytics({
                     )}
                 </div>
             </div>
-            </>
-            )}
         </div>
     );
 }

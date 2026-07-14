@@ -557,7 +557,14 @@
     "previousPage": "Previous page",
     "nextPage": "Next page",
     "goToPage": "Go to page {page}",
-    "periodTabsLabel": "Leaderboard period"
+    "periodTabsLabel": "Leaderboard period",
+    "nextRankGoal": "Next rank goal",
+    "nextRankGap": "{steps} steps to #{rank}",
+    "topRankStatus": "Holding the top spot",
+    "currentStatus": "Current status",
+    "groupSelectorLabel": "Group to display",
+    "loadingRankings": "Loading rankings",
+    "rankingsUpdated": "{period} rankings updated"
   },
   "Notifications": {
     "title": "Notifications",

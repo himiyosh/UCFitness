@@ -745,8 +745,12 @@ export const getAllGroupRankings = async (groupId: string) => {
             users: e.users,
             ...(prevKey ? { prevSteps: e[prevKey] } : {})
         }))
-            // .filter(e => e.steps > 0 || key === 'DAILY')
-            .sort((a, b) => b.steps - a.steps);
+            .sort((a, b) => b.steps - a.steps)
+            .filter(entry => entry.steps > 0)
+            .map((entry, index) => ({
+                ...entry,
+                originalRank: index + 1,
+            }));
     });
 
     return result as Record<Period, any[]>;

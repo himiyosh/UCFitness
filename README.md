@@ -73,6 +73,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する
 - **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結し、Mission→Weekly→Reward→Challengeの後を任意探索章（Utility→Friend→Ranking）として明示する。UtilityはAnalytics / Link Builder / Group Create / Settingsへ限定し、1280pxではカードを2列、1536px以上で4列にする。同一grid行の4モジュールはmd以上で等高化し、角丸・paddingを統一する。任意探索のQuickActions+Following stackと週間ランキングもxl以上で下端を揃え、friend activityは実ユーザー＋発見行の5行を維持して余剰高を均等配分する。長名は行内へ収縮し、アバターはリンク内で装飾扱いにする。Home週間グラフとプロフィール活動グラフはcontainer queryでパネル幅に応じて拡大する。低活動時は未来志向、固定5行は未記録・記録済み0歩・参加済みでコピーを分け、状態motionは650ms以内・reduced motion 0秒とする。Mission GETは参照専用、報酬DB失敗は非成功応答、成功時はライブ通知・見出しへの焦点移動・永続報酬表示を行う。補助ストリークDB障害は0へ変換せず`streakUnavailable`として分離する
+- **競争差の導線継続**: Homeで示す「あと何歩」を、歩数が記録されたユーザーのグローバルランキング・選択グループ・グループ詳細の自分順位サマリーでも表示する。0歩・不在時は順位・メダル・成功形の対象にせず、空行でランキング5行・72px固定仕様を維持する。取得失敗は未所属表示へ変換せず、Global/Group双方でエラーと再試行を明示する。計算は`getRankGapInsight()`へ集約する
 - **テーマ優先順位**: 明示的な端末内テーマを優先し、保存値がない端末だけDB装備テーマを初期値として使用する。item code変換は`lib/theme.ts`へ集約
 
 ## プロジェクト構造
