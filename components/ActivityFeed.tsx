@@ -1,25 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+
 import UserAvatar from '@/components/UserAvatar';
+import {
+    aggregateNotificationFeed,
+    getFeedBadgeCodes,
+    getFeedBadgeCount,
+    getFeedBadgeNames,
+    getFeedReactionCount,
+    getFeedReactionEmojis,
+} from '@/lib/services/notification-feed';
 import { Link } from '@/navigation';
+
+import type { FeedItem } from '@/lib/services/notification-feed';
 
 // ============================================
 // ActivityFeed — フォロー中ユーザーのアクティビティタイムライン
-// バッジ獲得・歩数マイルストーン・ストリーク記録を時系列で表示
+// バッジ獲得・リアクションを集約して時系列で表示
 // ============================================
-
-interface FeedItem {
-    id: string;
-    type: 'BADGE_EARNED' | 'STEP_MILESTONE' | 'STREAK_RECORD' | 'REACTION_RECEIVED' | 'GEAR_REACTION_RECEIVED';
-    userId: string;
-    userName: string | null;
-    userImage: string | null;
-    username: string | null;
-    timestamp: string;
-    data: Record<string, unknown>;
-}
 
 /**
  * イベント種別ごとのアイコン
@@ -64,12 +64,14 @@ function formatSteps(steps: number): string {
 
 export default function ActivityFeed() {
     const t = useTranslations('Feed');
+    const badgeT = useTranslations('Museum');
 
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
     const [hasMore, setHasMore] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [nextCursor, setNextCursor] = useState<string | undefined>();
 
     // フィードデータを取得
     const fetchFeed = useCallback(async (cursor?: string) => {
@@ -92,11 +94,14 @@ export default function ActivityFeed() {
             const items: FeedItem[] = data.feed || [];
 
             if (isInitial) {
-                setFeed(items);
+                setFeed(aggregateNotificationFeed(items));
             } else {
-                setFeed((prev) => [...prev, ...items]);
+                setFeed((previous) => aggregateNotificationFeed([...previous, ...items]));
             }
             setHasMore(data.hasMore || false);
+            setNextCursor(
+                typeof data.nextCursor === 'string' ? data.nextCursor : undefined,
+            );
         } catch {
             setError(true);
         } finally {
@@ -108,12 +113,6 @@ export default function ActivityFeed() {
     useEffect(() => {
         fetchFeed();
     }, [fetchFeed]);
-
-    // 「もっと見る」用カーソル
-    const nextCursor = useMemo(() => {
-        if (feed.length === 0) return undefined;
-        return feed[feed.length - 1].timestamp;
-    }, [feed]);
 
     // --- ローディング状態 ---
     if (isLoading) {
@@ -176,7 +175,7 @@ export default function ActivityFeed() {
         <div className="premium-card p-4">
             <div className="space-y-1">
                 {feed.map((item) => (
-                    <FeedItemCard key={item.id} item={item} t={t} />
+                    <FeedItemCard key={item.id} item={item} t={t} badgeT={badgeT} />
                 ))}
             </div>
 
@@ -218,46 +217,54 @@ export default function ActivityFeed() {
 // FeedItemCard — 個別のフィードアイテム
 // ============================================
 
-function FeedItemCard({ item, t }: { item: FeedItem; t: ReturnType<typeof useTranslations> }) {
+function FeedItemCard({
+    item,
+    t,
+    badgeT,
+}: {
+    item: FeedItem;
+    t: ReturnType<typeof useTranslations>;
+    badgeT: ReturnType<typeof useTranslations>;
+}) {
     const icon = getEventIcon(item.type);
     const relativeTime = getRelativeTime(item.timestamp, t);
     const displayName = item.userName || item.username || '???';
+    const profileHref = item.username
+        ? `/user/${encodeURIComponent(item.username)}`
+        : null;
+    const fallbackBadgeNames = getFeedBadgeNames(item);
+    const localizedBadgeNames = getFeedBadgeCodes(item).map((code, index) => {
+        const key = `badgeNames.${code}`;
+        return badgeT.has(key) ? badgeT(key) : fallbackBadgeNames[index] ?? code;
+    });
+    const badgeSummary = localizedBadgeNames.length > 3
+        ? `${localizedBadgeNames.slice(0, 3).join('・')} +${localizedBadgeNames.length - 3}`
+        : localizedBadgeNames.join('・');
 
-    return (
-        <div className="flex items-start gap-3 py-3 px-2 rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all">
-            {/* ユーザーアバター */}
-            <Link href={item.username ? `/user/${item.username}` : '#'}>
-                <UserAvatar
-                    src={item.userImage}
-                    name={item.userName}
-                    size="sm"
-                    alt={displayName}
-                />
-            </Link>
-
-            {/* コンテンツ */}
+    const content = (
+        <>
+            <UserAvatar
+                src={item.userImage}
+                name={item.userName}
+                size="sm"
+                alt=""
+            />
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-base">{icon}</span>
-                    <Link
-                        href={item.username ? `/user/${item.username}` : '#'}
-                        className="text-sm font-semibold text-gray-900 hover:text-[var(--theme-primary)] transition-colors truncate max-w-[120px] sm:max-w-[200px]"
-                    >
+                    <span className="max-w-[120px] truncate text-sm font-semibold text-[var(--color-text)] sm:max-w-[200px]">
                         {displayName}
-                    </Link>
-                    <span className="text-sm text-gray-600">
+                    </span>
+                    <span className="text-sm text-[var(--color-text-muted)]">
                         {getEventDescription(item, t)}
                     </span>
                 </div>
 
                 {/* バッジ詳細（バッジ獲得時のみ） */}
-                {item.type === 'BADGE_EARNED' && Boolean(item.data.badgeName) && (
-                    <div className="mt-1 flex items-center gap-2">
-                        {item.data.badgeImage ? (
-                            <span className="text-lg">{String(item.data.badgeImage)}</span>
-                        ) : null}
-                        <span className="text-xs font-medium text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-2 py-0.5 rounded-full">
-                            {String(item.data.badgeName)}
+                {item.type === 'BADGE_EARNED' && badgeSummary.length > 0 && (
+                    <div className="mt-1">
+                        <span className="rounded-full bg-[var(--color-reward-soft)] px-2 py-0.5 text-xs font-medium text-[var(--color-reward-strong)]">
+                            {badgeSummary}
                         </span>
                     </div>
                 )}
@@ -272,8 +279,33 @@ function FeedItemCard({ item, t }: { item: FeedItem; t: ReturnType<typeof useTra
                 )}
 
                 {/* タイムスタンプ */}
-                <p className="text-xs text-gray-400 mt-0.5">{relativeTime}</p>
+                <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{relativeTime}</p>
             </div>
+            {profileHref && (
+                <span
+                    aria-hidden="true"
+                    className="shrink-0 self-center text-[var(--color-text-muted)]"
+                >
+                    ›
+                </span>
+            )}
+        </>
+    );
+
+    if (profileHref) {
+        return (
+            <Link
+                href={profileHref}
+                className="flex min-h-[56px] cursor-pointer items-start gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset"
+            >
+                {content}
+            </Link>
+        );
+    }
+
+    return (
+        <div className="flex min-h-[56px] items-start gap-3 rounded-lg px-2 py-3">
+            {content}
         </div>
     );
 }
@@ -287,15 +319,27 @@ function getEventDescription(
 ): string {
     switch (item.type) {
         case 'BADGE_EARNED':
-            return t('earnedBadge');
+            return getFeedBadgeCount(item) > 1
+                ? t('earnedBadges', { count: getFeedBadgeCount(item) })
+                : t('earnedBadge');
         case 'STEP_MILESTONE':
             return t('reachedMilestone', { milestone: formatSteps(item.data.milestone as number) });
         case 'STREAK_RECORD':
             return t('streakRecord', { days: item.data.currentStreak as number });
         case 'REACTION_RECEIVED':
-            return t('reactedToYou', { emoji: String(item.data.emoji ?? '') });
+            return getFeedReactionCount(item) > 1
+                ? t('reactedMultipleToYou', {
+                    count: getFeedReactionCount(item),
+                    emojis: getFeedReactionEmojis(item).join(' '),
+                })
+                : t('reactedToYou', { emoji: String(item.data.emoji ?? '') });
         case 'GEAR_REACTION_RECEIVED':
-            return t('reactedToYourGear', { emoji: String(item.data.emoji ?? '') });
+            return getFeedReactionCount(item) > 1
+                ? t('reactedMultipleToYourGear', {
+                    count: getFeedReactionCount(item),
+                    emojis: getFeedReactionEmojis(item).join(' '),
+                })
+                : t('reactedToYourGear', { emoji: String(item.data.emoji ?? '') });
         default:
             return '';
     }

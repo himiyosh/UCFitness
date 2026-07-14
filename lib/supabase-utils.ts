@@ -1,5 +1,12 @@
 import { supabaseAdmin } from './supabase';
 
+export class PaginationLimitError extends Error {
+    constructor(maxRows: number) {
+        super(`Paginated query exceeded ${maxRows} rows`);
+        this.name = 'PaginationLimitError';
+    }
+}
+
 /**
  * PostgREST 1000行制限回避: ページネーション付きクエリユーティリティ
  *
@@ -18,22 +25,28 @@ import { supabaseAdmin } from './supabase';
  */
 export async function fetchAllWithPagination<T>(
     queryFactory: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-    pageSize: number = 900
+    pageSize: number = 900,
+    maxRows: number = Number.POSITIVE_INFINITY,
 ): Promise<{ data: T[]; error: unknown }> {
     let allData: T[] = [];
-    let page = 0;
 
     while (true) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
+        const remainingRows = maxRows - allData.length;
+        const requestedPageSize = Number.isFinite(maxRows)
+            ? Math.min(pageSize, remainingRows + 1)
+            : pageSize;
+        const from = allData.length;
+        const to = from + requestedPageSize - 1;
         const { data, error } = await queryFactory(from, to);
 
         if (error) return { data: allData, error };
         if (!data || data.length === 0) break;
+        if (data.length > remainingRows) {
+            return { data: allData, error: new PaginationLimitError(maxRows) };
+        }
 
         allData = allData.concat(data);
-        if (data.length < pageSize) break;
-        page++;
+        if (data.length < requestedPageSize) break;
     }
 
     return { data: allData, error: null };

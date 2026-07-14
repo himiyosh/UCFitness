@@ -1,26 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef, useId } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
+
 import UserAvatar from '@/components/UserAvatar';
+import {
+    aggregateNotificationFeed,
+    getFeedBadgeCodes,
+    getFeedBadgeCount,
+    getFeedBadgeNames,
+    getFeedReactionCount,
+    getFeedReactionEmojis,
+} from '@/lib/services/notification-feed';
 import { Link } from '@/navigation';
+
+import type { FeedItem } from '@/lib/services/notification-feed';
 
 // ============================================
 // NotificationBell — ヘッダーのベルアイコン + アクティビティフィードポップオーバー
-// フォロー中ユーザーのバッジ獲得・歩数マイルストーン・ストリーク記録を表示
+// フォロー中ユーザーのバッジ獲得・リアクションを集約表示
 // ============================================
-
-interface FeedItem {
-    id: string;
-    type: 'BADGE_EARNED' | 'STEP_MILESTONE' | 'STREAK_RECORD' | 'REACTION_RECEIVED' | 'GEAR_REACTION_RECEIVED';
-    userId: string;
-    userName: string | null;
-    userImage: string | null;
-    username: string | null;
-    timestamp: string;
-    data: Record<string, unknown>;
-}
 
 function getEventIcon(type: FeedItem['type']): string {
     switch (type) {
@@ -60,15 +60,27 @@ function getEventDescription(
 ): string {
     switch (item.type) {
         case 'BADGE_EARNED':
-            return t('earnedBadge');
+            return getFeedBadgeCount(item) > 1
+                ? t('earnedBadges', { count: getFeedBadgeCount(item) })
+                : t('earnedBadge');
         case 'STEP_MILESTONE':
             return t('reachedMilestone', { milestone: formatSteps(item.data.milestone as number) });
         case 'STREAK_RECORD':
             return t('streakRecord', { days: item.data.currentStreak as number });
         case 'REACTION_RECEIVED':
-            return t('reactedToYou', { emoji: String(item.data.emoji ?? '') });
+            return getFeedReactionCount(item) > 1
+                ? t('reactedMultipleToYou', {
+                    count: getFeedReactionCount(item),
+                    emojis: getFeedReactionEmojis(item).join(' '),
+                })
+                : t('reactedToYou', { emoji: String(item.data.emoji ?? '') });
         case 'GEAR_REACTION_RECEIVED':
-            return t('reactedToYourGear', { emoji: String(item.data.emoji ?? '') });
+            return getFeedReactionCount(item) > 1
+                ? t('reactedMultipleToYourGear', {
+                    count: getFeedReactionCount(item),
+                    emojis: getFeedReactionEmojis(item).join(' '),
+                })
+                : t('reactedToYourGear', { emoji: String(item.data.emoji ?? '') });
         default:
             return '';
     }
@@ -77,6 +89,7 @@ function getEventDescription(
 export default function NotificationBell() {
     const t = useTranslations('Feed');
     const commonT = useTranslations('Common');
+    const badgeT = useTranslations('Museum');
 
     // --- すべての Hooks を早期 return より前に配置 ---
     const [isOpen, setIsOpen] = useState(false);
@@ -87,10 +100,13 @@ export default function NotificationBell() {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasFetched, setHasFetched] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [nextCursor, setNextCursor] = useState<string | undefined>();
+    const [markReadError, setMarkReadError] = useState(false);
 
     const bellRef = useRef<HTMLButtonElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
+    const unreadRequestGenerationRef = useRef(0);
     const popoverId = useId();
     const popoverTitleId = `${popoverId}-title`;
     const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
@@ -115,11 +131,14 @@ export default function NotificationBell() {
             const items: FeedItem[] = data.feed || [];
 
             if (isInitial) {
-                setFeed(items);
+                setFeed(aggregateNotificationFeed(items));
             } else {
-                setFeed((prev) => [...prev, ...items]);
+                setFeed((previous) => aggregateNotificationFeed([...previous, ...items]));
             }
             setHasMore(data.hasMore || false);
+            setNextCursor(
+                typeof data.nextCursor === 'string' ? data.nextCursor : undefined,
+            );
             setHasFetched(true);
         } catch {
             setError(true);
@@ -129,36 +148,39 @@ export default function NotificationBell() {
         }
     }, []);
 
-    const nextCursor = useMemo(() => {
-        if (feed.length === 0) return undefined;
-        return feed[feed.length - 1].timestamp;
-    }, [feed]);
-
-    // 既読マークをサーバーに送信し、バッジをリセット
-    const markAsRead = useCallback(async () => {
-        setUnreadCount(0);
+    const refreshUnreadCount = useCallback(async (): Promise<void> => {
+        const generation = unreadRequestGenerationRef.current + 1;
+        unreadRequestGenerationRef.current = generation;
         try {
-            await fetch('/api/user/feed/read', { method: 'POST' });
+            const response = await fetch('/api/user/feed/unread-count');
+            if (!response.ok) return;
+            const data = await response.json();
+            if (unreadRequestGenerationRef.current === generation) {
+                setUnreadCount(data.unreadCount ?? 0);
+            }
         } catch {
-            // 既読マーク失敗は無視（UX をブロックしない）
+            // ヘッダーの補助情報なので、本文操作はブロックしない。
         }
     }, []);
 
+    // 既読マークをサーバーに送信し、バッジをリセット
+    const markAsRead = useCallback(async () => {
+        unreadRequestGenerationRef.current += 1;
+        setMarkReadError(false);
+        try {
+            const response = await fetch('/api/user/feed/read', { method: 'POST' });
+            if (!response.ok) throw new Error('Failed to mark notifications as read');
+            setUnreadCount(0);
+        } catch {
+            setMarkReadError(true);
+            void refreshUnreadCount();
+        }
+    }, [refreshUnreadCount]);
+
     // 初回マウント時に未読数を軽量 API で取得
     useEffect(() => {
-        const checkUnread = async () => {
-            try {
-                const res = await fetch('/api/user/feed/unread-count');
-                if (res.ok) {
-                    const data = await res.json();
-                    setUnreadCount(data.unreadCount ?? 0);
-                }
-            } catch {
-                // 未読チェック失敗は無視
-            }
-        };
-        checkUnread();
-    }, []);
+        void refreshUnreadCount();
+    }, [refreshUnreadCount]);
 
     // ポップオーバーを開いたときにフィードを取得
     useEffect(() => {
@@ -220,11 +242,26 @@ export default function NotificationBell() {
             }
         };
 
+        const handleFocusOutside = (event: FocusEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (
+                popoverRef.current
+                && !popoverRef.current.contains(target)
+                && bellRef.current
+                && !bellRef.current.contains(target)
+            ) {
+                setIsOpen(false);
+            }
+        };
+
         document.addEventListener('mousedown', handleClickOutside);
         document.addEventListener('keydown', handleEscape);
+        document.addEventListener('focusin', handleFocusOutside);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('keydown', handleEscape);
+            document.removeEventListener('focusin', handleFocusOutside);
         };
     }, [isOpen]);
 
@@ -244,7 +281,9 @@ export default function NotificationBell() {
             <button
                 ref={bellRef}
                 onClick={handleToggle}
-                aria-label={t('title')}
+                aria-label={unreadCount > 0
+                    ? t('notificationsUnread', { count: unreadCount })
+                    : t('title')}
                 aria-expanded={isOpen}
                 aria-haspopup="dialog"
                 aria-controls={isOpen ? popoverId : undefined}
@@ -266,11 +305,17 @@ export default function NotificationBell() {
 
                 {/* 未読バッジ */}
                 {unreadCount > 0 && (
-                    <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger-solid)] px-1 text-xs font-bold leading-none text-[var(--color-inverse-text)] ring-2 ring-[var(--color-surface-muted)]">
+                    <span
+                        aria-hidden="true"
+                        className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger-solid)] px-1 text-xs font-bold leading-none text-[var(--color-inverse-text)] ring-2 ring-[var(--color-surface-muted)]"
+                    >
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                 )}
             </button>
+            <span className="sr-only" role="status" aria-live="polite">
+                {unreadCount > 0 ? t('notificationsUnread', { count: unreadCount }) : ''}
+            </span>
 
             {/* ポップオーバー（createPortal でヘッダーの z-index 外に描画） */}
             {isOpen && typeof document !== 'undefined' && createPortal(
@@ -301,11 +346,12 @@ export default function NotificationBell() {
                                 onClick={markAsRead}
                                 aria-label={t('markAllRead')}
                                 title={t('markAllRead')}
-                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-[var(--theme-primary-light)] hover:text-[var(--theme-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset"
+                                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                 </svg>
+                                <span>{t('markAllRead')}</span>
                             </button>
                             {/* 閉じるボタン */}
                             <button
@@ -321,6 +367,14 @@ export default function NotificationBell() {
                             </button>
                         </div>
                     </div>
+                    {markReadError && (
+                        <p
+                            role="alert"
+                            className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs text-[var(--color-danger)]"
+                        >
+                            {t('markAllReadError')}
+                        </p>
+                    )}
 
                     {/* ポップオーバーコンテンツ（スクロール可能） */}
                     <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -362,7 +416,13 @@ export default function NotificationBell() {
                         {!isLoading && !error && feed.length > 0 && (
                             <div className="divide-y divide-[var(--color-border)]">
                                 {feed.map((item) => (
-                                    <FeedItemRow key={item.id} item={item} t={t} onClose={() => setIsOpen(false)} />
+                                    <FeedItemRow
+                                        key={item.id}
+                                        item={item}
+                                        t={t}
+                                        badgeT={badgeT}
+                                        onClose={() => setIsOpen(false)}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -405,16 +465,28 @@ export default function NotificationBell() {
 function FeedItemRow({
     item,
     t,
+    badgeT,
     onClose,
 }: {
     item: FeedItem;
     t: ReturnType<typeof useTranslations>;
+    badgeT: ReturnType<typeof useTranslations>;
     onClose: () => void;
 }) {
     const icon = getEventIcon(item.type);
     const relativeTime = getRelativeTime(item.timestamp, t);
     const displayName = item.userName || item.username || '???';
-    const profileHref = item.username ? `/user/${item.username}` : null;
+    const profileHref = item.username
+        ? `/user/${encodeURIComponent(item.username)}`
+        : null;
+    const fallbackBadgeNames = getFeedBadgeNames(item);
+    const localizedBadgeNames = getFeedBadgeCodes(item).map((code, index) => {
+        const key = `badgeNames.${code}`;
+        return badgeT.has(key) ? badgeT(key) : fallbackBadgeNames[index] ?? code;
+    });
+    const badgeSummary = localizedBadgeNames.length > 2
+        ? `${localizedBadgeNames.slice(0, 2).join('・')} +${localizedBadgeNames.length - 2}`
+        : localizedBadgeNames.join('・');
     const content = (
         <>
             <UserAvatar
@@ -431,10 +503,9 @@ function FeedItemRow({
                         {getEventDescription(item, t)}
                     </span>
                 </span>
-                {item.type === 'BADGE_EARNED' && Boolean(item.data.badgeName) && (
-                    <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[var(--color-primary-soft)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-primary-strong)]">
-                        {item.data.badgeImage ? String(item.data.badgeImage) : null}
-                        {String(item.data.badgeName)}
+                {item.type === 'BADGE_EARNED' && badgeSummary.length > 0 && (
+                    <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[var(--color-reward-soft)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-reward-strong)]">
+                        {badgeSummary}
                     </span>
                 )}
                 {item.type === 'STEP_MILESTONE' && (

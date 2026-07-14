@@ -288,7 +288,7 @@ npm run pages:build
 👤 User (VS Code Chat Panel / Slash Commands)
 │
 ├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
-│   │  専門ロールを委任し、認証安全性・通知i18n/集約・App Shell geometry・ホームの固定ランキング/社会性/状態分離・公開LP・通常ブラウザのCSS適用を完了前に実測
+│   │  専門ロールを委任し、認証安全性・通知i18n/集約/未読整合・App Shell geometry・ホームの固定ランキング/社会性/状態分離・公開LP・通常ブラウザのCSS適用を完了前に実測
 │   │
 │   ├── 📁 フロントエンド開発 (Next.js + React)
 │   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
@@ -367,7 +367,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Home Quest/Delight、認証App Shell、通知i18n/集約、320〜1280px境界、44px操作、canonicalプロフィール、日付水和、固定ランキング、OAuth・同期の安全性を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Home Quest/Delight、認証App Shell、通知i18n/集約/未読整合、320〜1280px境界、44px操作、canonicalプロフィール、日付水和、固定ランキング、OAuth・同期の安全性を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
