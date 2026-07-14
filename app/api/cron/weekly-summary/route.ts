@@ -1,6 +1,9 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
+
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendWebPushNotification } from '@/lib/api/web-push';
+import { sendWebPushNotifications } from '@/lib/api/web-push';
 import { reportError } from '@/lib/errors';
 import { getJSTDateString } from '@/lib/date-utils';
 import {
@@ -9,9 +12,9 @@ import {
     formatWeeklySummaryBody,
 } from '@/lib/services/push-messages';
 
+import type { StoredPushSubscriptionData } from '@/lib/api/web-push';
 import type { PushLocale } from '@/lib/services/push-messages';
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 /** バッチサイズ: 一度に処理するユーザー数 */
@@ -22,7 +25,7 @@ const BATCH_SIZE = 20;
  * 毎週月曜に実行され、各ユーザーに前週の歩数サマリーをプッシュ通知する。
  * CRON_SECRET による認証が必要。
  */
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
 
@@ -38,7 +41,7 @@ export async function GET(request: Request) {
         // プッシュ通知を購読しているユーザーの一覧を取得（ユニークなuser_idのみ）
         const { data: subscriptionRows, error: subError } = await supabaseAdmin
             .from('push_subscriptions')
-            .select('user_id, endpoint, p256dh, auth');
+            .select('id, user_id, endpoint, p256dh, auth, user_agent, created_at');
 
         if (subError) {
             throw new Error(`Failed to fetch subscriptions: ${subError.message}`);
@@ -54,28 +57,43 @@ export async function GET(request: Request) {
         }
 
         // ユーザーごとにサブスクリプションをグループ化
-        const userSubscriptions = new Map<string, typeof subscriptionRows>();
+        const userSubscriptions = new Map<string, StoredPushSubscriptionData[]>();
         for (const row of subscriptionRows) {
             const existing = userSubscriptions.get(row.user_id) || [];
-            existing.push(row);
+            existing.push({
+                id: row.id,
+                endpoint: row.endpoint,
+                p256dh: row.p256dh,
+                auth: row.auth,
+                user_agent: row.user_agent,
+                created_at: row.created_at,
+            });
             userSubscriptions.set(row.user_id, existing);
         }
 
         const userIds = Array.from(userSubscriptions.keys());
 
         // ユーザーの言語設定を一括取得
-        const { data: usersLangData } = await supabaseAdmin
+        const { data: usersLangData, error: usersLangError } = await supabaseAdmin
             .from('users')
-            .select('id, language')
+            .select('id, language, username')
             .in('id', userIds);
 
-        const userLangMap = new Map<string, PushLocale>();
+        if (usersLangError) {
+            throw new Error(`Failed to fetch notification locales: ${usersLangError.message}`);
+        }
+
+        const userContextMap = new Map<string, { locale: PushLocale; username: string | null }>();
         for (const u of usersLangData || []) {
-            userLangMap.set(u.id, normalizePushLocale(u.language));
+            userContextMap.set(u.id, {
+                locale: normalizePushLocale(u.language),
+                username: u.username,
+            });
         }
 
         let totalSent = 0;
         let totalFailed = 0;
+        let totalDeduplicated = 0;
 
         // バッチ処理: BATCH_SIZE ユーザーずつ並列処理
         for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
@@ -85,39 +103,35 @@ export async function GET(request: Request) {
                 batch.map(async (userId) => {
                     const summary = await getUserWeeklySummary(userId, weekStart, weekEnd);
                     const subs = userSubscriptions.get(userId) || [];
-                    const locale = userLangMap.get(userId) || 'ja';
+                    const userContext = userContextMap.get(userId);
+                    if (!userContext) {
+                        throw new Error('Missing notification user context');
+                    }
 
-                    const notificationBody = formatWeeklySummaryBody(locale, summary);
-
-                    // 全デバイスに通知を送信
-                    const sendResults = await Promise.allSettled(
-                        subs.map((sub) =>
-                            sendWebPushNotification(
-                                {
-                                    endpoint: sub.endpoint,
-                                    keys: { p256dh: sub.p256dh, auth: sub.auth },
-                                },
-                                {
-                                    title: weeklySummaryTitle(locale),
-                                    body: notificationBody,
-                                    url: '/profile',
-                                }
-                            )
-                        )
+                    const notificationBody = formatWeeklySummaryBody(
+                        userContext.locale,
+                        summary,
                     );
 
-                    const successCount = sendResults.filter(
-                        (r) => r.status === 'fulfilled' && r.value.success
-                    ).length;
+                    const delivery = await sendWebPushNotifications(userId, subs, {
+                        title: weeklySummaryTitle(userContext.locale),
+                        body: notificationBody,
+                        url: userContext.username
+                            ? `/user/${encodeURIComponent(userContext.username)}`
+                            : '/',
+                        locale: userContext.locale,
+                        tag: 'weekly-summary',
+                    });
 
-                    return { userId, successCount, totalDevices: subs.length };
+                    return { userId, delivery };
                 })
             );
 
             for (const result of results) {
                 if (result.status === 'fulfilled') {
-                    totalSent += result.value.successCount;
-                    totalFailed += result.value.totalDevices - result.value.successCount;
+                    totalSent += result.value.delivery.sent;
+                    totalFailed += result.value.delivery.failed;
+                    totalDeduplicated += result.value.delivery.skippedDuplicates;
                 } else {
                     totalFailed++;
                     reportError('cron/weekly-summary:batch', result.reason);
@@ -132,6 +146,7 @@ export async function GET(request: Request) {
             users: userIds.length,
             sent: totalSent,
             failed: totalFailed,
+            deduplicated: totalDeduplicated,
             timestamp: new Date().toISOString(),
         });
     } catch (error: unknown) {
@@ -206,6 +221,13 @@ async function getUserWeeklySummary(
             .lte('created_at', `${weekEnd}T23:59:59Z`)
             .gt('amount', 0),
     ]);
+
+    if (stepsResult.error) {
+        throw new Error(`Failed to load weekly steps: ${stepsResult.error.message}`);
+    }
+    if (coinsResult.error) {
+        throw new Error(`Failed to load weekly coins: ${coinsResult.error.message}`);
+    }
 
     // 歩数集計
     const stepsData = stepsResult.data || [];

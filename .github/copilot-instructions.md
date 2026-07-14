@@ -480,11 +480,19 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 
 ### プッシュ通知ルール
 
-- **i18n 必須**: プッシュ通知メッセージは必ずユーザーの `language` カラム（`users` テーブル）を参照し、`lib/push-messages.ts` のローカライズ関数で生成すること。ハードコードされた文字列は禁止
-- **通知集約（バッチ通知）必須**: 同一ユーザーに複数の通知（バッジ獲得等）が発生する場合、**1 通にまとめて送信**すること。バッジごとに個別通知を送信してはならない
-- **新規通知追加時**: `lib/push-messages.ts` にメッセージテンプレートを追加し、ja/en 両方を定義すること
+- **i18n は端末表示まで検証必須**: プッシュ通知メッセージは必ずユーザーの `language` カラム（`users` テーブル）を参照し、`lib/services/push-messages.ts` のローカライズ関数で生成する。生成関数の単体テストだけで完了せず、RFC 8291 `aes128gcm` payloadを復号して `title` / `body` / `locale` がService Workerへ届くことを検証する。ユーザー向け通知をpayloadなしのtickle送信へ戻さない
+- **通知集約（バッチ通知）必須**: 同一ユーザーに複数の通知（バッジ獲得等）が発生する場合、**カテゴリ内だけでなく最上位の実行単位で1通にまとめる**。個人・グローバル・グループを各1通にする実装は禁止。Service Workerの`tag`とWeb Pushの`Topic`も同じ種別で揃え、`renotify: false`で同種通知を置換する
+- **購読fan-outの重複防止**: `push_subscriptions`は再購読でendpointが増えるため、配信時は同一`user_agent`とlegacy行を最新1件へ集約する。再購読時は現在endpoint以外の同一UA・legacy行を整理し、Push Serviceが404/410を返したendpointは削除する。異なるUAの端末は維持する
+- **暗号化body上限**: `aes128gcm`はsalt/record/key-idを含む86-byte headerとdelimiter/tagを含めたHTTP body全体を4096 bytes以内にする。JSON payloadは最大3993 bytesとし、3993成功・3994拒否の境界テストを維持する
+- **再購読競合で0件にしない**: upsert後の旧endpoint整理は、作成時刻とIDで「現在行より古い行だけ」を削除する一方向winner、またはDB RPCの原子的処理にする。並行する2要求が互いを削除できるread-then-deleteは禁止
+- **全ユーザー無制限並列送信禁止**: Cronのユーザー単位通知は最大20件程度の固定バッチへ分割する。各ユーザー内の端末送信だけを並列化し、全購読者を裸の`Promise.all`へ渡さない
+- **DB障害を既定言語・0値へ変換しない**: `users.language`、週次歩数、UC集計の取得失敗時は通知を送らず明示的に失敗として記録する。DB照会失敗を日本語既定や0歩サマリーへ変換してはならない
+- **通知ベルも同じ集約単位に揃える**: 同日・同一ユーザーの複数バッジや短時間の同種リアクションは1行へまとめ、未読バッジ数も生イベント件数ではなく表示する集約通知件数と一致させる。バッジ名は`Museum.badgeNames`のja/en資産を再利用する
+- **新規通知追加時**: `lib/services/push-messages.ts` にメッセージテンプレートを追加し、ja/en 両方を定義すること
 - リファレンス実装:
-  - バッジ統合通知: `badge-awards.ts` の `sendConsolidatedBadgeNotification()`
+  - バッジ統合通知: `badge-allocator.ts` の `sendConsolidatedBadgeNotification()`
+  - Edge payload暗号化・購読集約: `lib/api/web-push.ts`
+  - 端末表示・同種置換: `public/sw.js`
   - ステップリマインダー: `cron/step-reminder/route.ts`
   - ウィークリーサマリー: `cron/weekly-summary/route.ts`
 

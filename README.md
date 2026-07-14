@@ -24,7 +24,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **バッジ & 称号** | 達成に応じたバッジ獲得・称号付与システム |
 | **コイン経済** | 歩数でコインを獲得、ショップでギアを購入 |
 | **ギア & リアクション** | プロフィールギア装着、メンバーへのリアクション |
-| **プッシュ通知** | Web Push による歩数リマインダー、ウィークリーサマリー通知 |
+| **プッシュ通知** | 言語設定対応のWeb Push、バッジ横断集約、歩数リマインダー、ウィークリーサマリー、端末重複制御 |
 | **i18n** | 日本語・英語の 2 言語対応 |
 | **PWA** | ホーム画面追加、オフライン対応 |
 
@@ -40,7 +40,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **DB** | Supabase (PostgreSQL) |
 | **i18n** | next-intl (ja/en) |
 | **チャート** | Recharts |
-| **プッシュ通知** | Web Push (web-push) |
+| **プッシュ通知** | Web Push API / RFC 8291 `aes128gcm` (Edge Web Crypto) |
 | **デプロイ** | Cloudflare Pages (Edge Runtime) |
 | **テスト** | Vitest |
 
@@ -68,6 +68,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **トークン保護**: Google HealthトークンはユーザーID・プロバイダ・用途をAADへ含めたAES-256-GCM v2で暗号化する。解除時はDB内で接続停止・同期リース無効化・資格情報消去を原子的に完了してからGoogle側の失効を試行し、失効失敗でも接続を復活させない
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
+- **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
@@ -287,7 +288,7 @@ npm run pages:build
 👤 User (VS Code Chat Panel / Slash Commands)
 │
 ├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
-│   │  専門ロールを委任し、認証安全性・App Shell geometry・ホームの固定ランキング/社会性/状態分離・公開LP・通常ブラウザのCSS適用を完了前に実測
+│   │  専門ロールを委任し、認証安全性・通知i18n/集約・App Shell geometry・ホームの固定ランキング/社会性/状態分離・公開LP・通常ブラウザのCSS適用を完了前に実測
 │   │
 │   ├── 📁 フロントエンド開発 (Next.js + React)
 │   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
@@ -366,7 +367,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Home Quest/Delight、認証App Shell、320〜1280px境界、44px操作、canonicalプロフィール、日付水和、固定ランキング、OAuth・同期の安全性を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Home Quest/Delight、認証App Shell、通知i18n/集約、320〜1280px境界、44px操作、canonicalプロフィール、日付水和、固定ランキング、OAuth・同期の安全性を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
