@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-14T23:41:16+09:00",
-  "lastAgent": "UCFitnessAgent (Sync Recovery + Self-Critique)",
-  "lastCommit": "a6f967483c62f41e3fdf5713737074cf5d5cbcb0",
+  "lastUpdated": "2026-07-15T02:59:13+09:00",
+  "lastAgent": "UCFitnessAgent (Notification + i18n + Accessibility + Self-Critique)",
+  "lastCommit": "1ccbc9d388bd9a7ee5411baee23b70a6b0e2ba3c",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "歩数同期失敗の根本原因だった未適用のfitness connection DB契約を復旧した。承認済みのmulti-provider migrationを本番Supabaseへ単一トランザクションで適用し、Fitbit接続11件・認証ID11件・対象ユーザー11件、public.users FK、同期RPC、mirror trigger、PostgREST可視性を確認。適用6分後の本番Cronで当日歩数10ユーザーが更新され、ローカル同期APIもmissing-table例外ではなく設計済みunavailableへ到達し、FITNESS_CONNECTION_DATABASE_ERRORが消えた。",
+  "summary": "通知品質を総合改善した。Web PushをpayloadなしtickleからEdge Web CryptoのRFC 8291 aes128gcmへ置換し、users.language由来のja/en文言・Topic/tagを端末へ届ける契約を復号テストで固定。個人/全体/グループのバッジをユーザー単位1通へ統合し、同一UA/legacy購読の最新化、404/410削除、再購読race、20ユーザーバッチを実装した。通知ベルは同日バッジ・10分内リアクションを集約し、7日snapshot+opaque offset cursor、未読実数、focusout、未読live status、56px行リンクへ統一。全223テスト、独立レビュー最終PASS、Mobile Beginner/Accessibility Keyboard再監査PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 216件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-14T23:41:16+09:00"
+    "lastVerified": "2026-07-15T02:59:13+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -21,6 +21,7 @@
     "カードリストのモバイル横スクロールは md ブレイクポイントで切替",
     "Google Healthの実OAuth E2Eは資格情報と接続状態の変更を伴うため未実施",
     "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
+    "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
     "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち"
   ],
@@ -547,6 +548,35 @@
       "commit": "",
       "filesChanged": [
         ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (Notification + i18n + Accessibility + Self-Critique)",
+      "action": "通知品質を横断監査し、16購読/4ユーザー・1ユーザー最大11 endpoint、payloadなし英語固定tickle、個人/全体/グループ別バッジ送信、通知Feedの生イベント未読を根本原因として修正。9f46708でRFC 8291暗号化・ja/en実payload・Topic/tag・購読重複/失効整理・バッジ最上位集約を実装し、1ccbc9dで通知Feed集約、7日snapshot cursor、未読実数、通知popover a11yを実装した。全223テスト、最終コードレビュー、Mobile Beginner/Accessibility Keyboard、Impeccable静的監査がPASS。",
+      "commit": "1ccbc9d388bd9a7ee5411baee23b70a6b0e2ba3c",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/api/cron/step-reminder/route.ts",
+        "app/api/cron/weekly-summary/route.ts",
+        "app/api/push/send/route.ts",
+        "app/api/push/subscribe/route.ts",
+        "app/api/user/feed/route.ts",
+        "app/api/user/feed/unread-count/route.ts",
+        "components/ActivityFeed.tsx",
+        "components/layout/NotificationBell.tsx",
+        "lib/api/web-push.ts",
+        "lib/services/badge-allocator.ts",
+        "lib/services/badge-awards.ts",
+        "lib/services/notification-feed.ts",
+        "lib/services/push-messages.ts",
+        "lib/supabase-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "public/sw.js"
       ]
     }
   ],
