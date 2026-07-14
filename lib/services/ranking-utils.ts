@@ -28,6 +28,33 @@ export interface RankGapInsight {
     targetRank: number | null;
     stepsToNextRank: number | null;
     isTopRank: boolean;
+    targetName: string | null;
+    leaderStepsGap: number;
+}
+
+export interface RankProgress {
+    value: number;
+    visualWidth: number;
+}
+
+export function getRankProgress(
+    currentSteps: number,
+    stepsToNextRank: number | null,
+    isTopRank: boolean,
+): RankProgress {
+    if (isTopRank) return { value: 100, visualWidth: 100 };
+    if (currentSteps <= 0 || !stepsToNextRank || stepsToNextRank <= 0) {
+        return { value: 0, visualWidth: 0 };
+    }
+
+    const value = Math.min(
+        99,
+        Math.floor((currentSteps / (currentSteps + stepsToNextRank)) * 100),
+    );
+    return {
+        value,
+        visualWidth: Math.max(6, value),
+    };
 }
 
 export function isRankingPeriod(value: string | null): value is Period {
@@ -59,18 +86,28 @@ export function getRankGapInsight(
             targetRank: null,
             stepsToNextRank: null,
             isTopRank: true,
+            targetName: null,
+            leaderStepsGap: 0,
         };
     }
 
     const targetRank = currentEntry.originalRank - 1;
     const targetEntry = rankings.find(entry => entry.originalRank === targetRank);
     if (!targetEntry) return null;
+    const leaderEntry = rankings.find(entry => entry.originalRank === 1);
+    const targetName = targetEntry.users.name?.trim()
+        || targetEntry.users.username?.trim()
+        || null;
 
     return {
         currentRank: currentEntry.originalRank,
         targetRank,
         stepsToNextRank: Math.max(1, targetEntry.steps - currentEntry.steps + 1),
         isTopRank: false,
+        targetName,
+        leaderStepsGap: leaderEntry
+            ? Math.max(0, leaderEntry.steps - currentEntry.steps)
+            : 0,
     };
 }
 
@@ -113,7 +150,8 @@ export async function enrichRankingsWithEquip(
 
 export function getDisplayRankings(allRankings: RankingEntry[], userId?: string | null, maxItems?: number): {
     displayRankings: RankingEntry[];
-    isTruncated: boolean
+    isTruncated: boolean;
+    totalCount: number;
 } {
     // 0歩は未参加として除外し、正の歩数だけに連続した順位を付ける。
     const rankedItems: RankingEntry[] = allRankings
@@ -126,7 +164,11 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
     if (!userId) {
         // Not logged in: Just show top 5 or maxItems
         const limit = maxItems || 5;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        return {
+            displayRankings: rankedItems.slice(0, limit),
+            isTruncated: rankedItems.length > limit,
+            totalCount: rankedItems.length,
+        };
     }
 
     const top3 = rankedItems.slice(0, 3);
@@ -135,13 +177,21 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
     if (userIndex === -1) {
         // User not in list
         const limit = maxItems || 3;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        return {
+            displayRankings: rankedItems.slice(0, limit),
+            isTruncated: rankedItems.length > limit,
+            totalCount: rankedItems.length,
+        };
     }
 
     // High Ranking User (Rank 1, 2, 3) -> Show Top 5 (or maxItems)
     if (userIndex < 3) {
         const limit = maxItems || 5;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        return {
+            displayRankings: rankedItems.slice(0, limit),
+            isTruncated: rankedItems.length > limit,
+            totalCount: rankedItems.length,
+        };
     }
 
     // Neighbors: User-1, User, User+1
@@ -175,7 +225,11 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
         }
     }
 
-    return { displayRankings: combined, isTruncated: rankedItems.length > combined.length };
+    return {
+        displayRankings: combined,
+        isTruncated: rankedItems.length > combined.length,
+        totalCount: rankedItems.length,
+    };
 }
 
 /**

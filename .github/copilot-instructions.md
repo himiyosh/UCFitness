@@ -1344,3 +1344,10 @@ export const runtime = "edge";
 - **根本原因**: 左右が異なる内部構造であることを理由に`items-start`を意図的と判断し、同じ視覚行としての下端整列を完了条件に含めなかった。
 - **対策**: `xl`以上で社会gridをstretchし、左stackを右パネル高へ合わせた。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分した。長名行へ`min-w-0`/`w-full`を明示し、リンク内アバターは装飾扱いにした。8主要routeの同一行候補をgeometry走査し、実利用中Leaderboardは既存stretchを維持した。
 - **教訓**: 内部構造が異なっても、同じ視覚行に置かれた主要パネルはユーザーが同格として比較する。ユーザーが下端整列を求めた場合は、独立カラムという実装都合より外形の下端差1px以内を優先する。ただし少数データ時に1行へ余剰を集中させず、意味ある発見行で一定行数を保つ。リファレンス: `app/[locale]/page.tsx`, `components/dashboard/DashboardFollowing.tsx`
+
+### LL-048: 下端を揃えても社会パネルと詳細ランキングが平板に見えた
+
+- **事象**: Home任意探索の下端整列・固定5行・実データ追加後も、ユーザーからFollowing等が「のっぺり」、詳細ランキングは「サイズ感がおかしく面白みがない」と再指摘された。
+- **根本原因**: QuickActionsをFollowingの上へ積んだことで固定ショートカットが動的社会データより先に見え、FollowingとRankingを直接比較できなかった。Followingは全行が白面・同じ重さで、実目標や活動集計を使っていなかった。詳細ランキングはSidebar出現と外側5:7分割を`lg`で同時適用し、さらにGroup内を5:7分割して1024/1280pxで過密化した。順位差も相手名・総参加者数・トップ差を欠いた。
+- **対策**: QuickActionsを独立Dockへ移し、Followingと週間Rankingをxlで直接同一行にした。Followingは個別目標、正歩数の活動人数、合計歩数、達成人数でPulse化し、0歩を活動人数から除外する。詳細Rankingは外側多列化を`2xl`へ遅らせ、固定行外のCompetition Missionへ現在順位・正歩数参加者数・次ライバル名・必要歩数・トップ差を集約する。各scopeは`Promise.allSettled`で障害分離し、非トップの実進捗は99%以下、最低視覚幅と`aria-valuenow`を分ける。
+- **教訓**: 外形整列だけではDelightにならない。固定ショートカットより変化する実データを先に読み取れる構造にし、同じ5行でも達成・進行・未記録の意味差を面と色で示す。Sidebar後に二重多列化するコンポーネントはviewportではなく最深部の実列幅で判断し、競争UIは順位数字だけでなく「誰へ・あと何歩・何人中」を3秒で理解できる行外ミッションを持つ。リファレンス: `app/[locale]/page.tsx`, `DashboardFollowing.tsx`, `DynamicLeaderboard.tsx`, `GroupRankingPanel.tsx`

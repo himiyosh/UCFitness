@@ -17,9 +17,9 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | 機能 | 説明 |
 |---|---|
 | **歩数トラッキング** | Fitbit API と Google Health の段階移行型自動歩数同期 |
-| **ホームダッシュボード** | 今日の進捗、固定5行の週間ランキングと自分の順位、仲間の今日歩数、今週トレンド、UC残高・活動ストリーク、チャレンジ、ミッション、次の行動を意味色と動的barで可視化 |
+| **ホームダッシュボード** | 今日の進捗、次ライバル差、固定5行ランキング、個別目標ベースのFriend Pulse、今週トレンド、UC残高、チャレンジ、ミッション、次の行動を意味色と動的barで可視化 |
 | **グループ対抗** | グループ作成・参加、メンバーランキング、週間レポート |
-| **リーダーボード** | 個人・グループ・パーセンタイルランキング |
+| **リーダーボード** | 個人・グループ順位に加え、参加人数・次ライバル名・必要歩数・トップ差をCompetition Missionで可視化 |
 | **チャレンジ** | 期間限定のウォーキングチャレンジ |
 | **バッジ & 称号** | 達成に応じたバッジ獲得・称号付与システム |
 | **コイン経済** | 歩数でコインを獲得、ショップでギアを購入 |
@@ -73,7 +73,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する
-- **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結し、Mission→Weekly→Reward→Challengeの後を任意探索章（Utility→Friend→Ranking）として明示する。UtilityはAnalytics / Link Builder / Group Create / Settingsへ限定し、1280pxではカードを2列、1536px以上で4列にする。同一grid行の4モジュールはmd以上で等高化し、角丸・paddingを統一する。任意探索のQuickActions+Following stackと週間ランキングもxl以上で下端を揃え、friend activityは実ユーザー＋発見行の5行を維持して余剰高を均等配分する。長名は行内へ収縮し、アバターはリンク内で装飾扱いにする。Home週間グラフとプロフィール活動グラフはcontainer queryでパネル幅に応じて拡大する。低活動時は未来志向、固定5行は未記録・記録済み0歩・参加済みでコピーを分け、状態motionは650ms以内・reduced motion 0秒とする。Mission GETは参照専用、報酬DB失敗は非成功応答、成功時はライブ通知・見出しへの焦点移動・永続報酬表示を行う。補助ストリークDB障害は0へ変換せず`streakUnavailable`として分離する
+- **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結する。Mission→Weekly→Reward→Challengeの後はQuickActionsを独立補助Dockとし、Friend Pulseと週間Rankingをxlで直接同一行にする。Friend Pulseは個別目標と正歩数の活動人数/合計/達成人数、Rankingは次ライバル名/必要歩数を表示する。詳細Rankingは固定5行を維持し、Competition Missionへ現在順位・参加者数・次ライバル・トップ差を集約、外側多列化は2xlへ遅らせる
 - **競争差の導線継続**: Homeで示す「あと何歩」を、歩数が記録されたユーザーのグローバルランキング・選択グループ・グループ詳細の自分順位サマリーでも表示する。0歩・不在時は順位・メダル・成功形の対象にせず、空行でランキング5行・72px固定仕様を維持する。取得失敗は未所属表示へ変換せず、Global/Group双方でエラーと再試行を明示する。計算は`getRankGapInsight()`へ集約する
 - **ランキング期間コンテキスト**: 期間filterはURLの`period`を唯一の状態として共有し、既存クエリを保持したまま置換する。主要ナビと仲間発見導線は週次へ統一し、グループ詳細もHero直後の分析を週次で開始する。Global・Group・Group detailの表示、再読込、共有URL、リアクション取得を同じ期間へ揃え、旧期間のリアクション応答は中断する。filterは固定semantic色・チェック・高contrast境界を使い、短い期間名とチャート説明を分離する。下部の愛用ギアへは初期viewportの44px導線を残す
 - **テーマ優先順位**: 明示的な端末内テーマを優先し、保存値がない端末だけDB装備テーマを初期値として使用する。item code変換は`lib/theme.ts`へ集約
@@ -288,7 +288,7 @@ npm run pages:build
 👤 User (VS Code Chat Panel / Slash Commands)
 │
 ├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
-│   │  専門ロールを委任し、認証安全性・通知i18n/集約/未読整合・App Shell geometry・ホームの固定ランキング/社会性/状態分離・公開LP・通常ブラウザのCSS適用を完了前に実測
+│   │  専門ロールを委任し、認証安全性・通知品質・App Shell geometry・Friend Pulse・Competition Mission・固定ランキング・公開LPを完了前に実測
 │   │
 │   ├── 📁 フロントエンド開発 (Next.js + React)
 │   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
@@ -367,7 +367,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Home Quest/Delight、認証App Shell、通知i18n/集約/未読整合、320〜1280px境界、44px操作、canonicalプロフィール、日付水和、固定ランキング、OAuth・同期の安全性を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Home Quest/Friend Pulse、Competition Mission、認証App Shell、通知品質、320〜1280px境界、固定ランキング、OAuth・同期安全性を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |

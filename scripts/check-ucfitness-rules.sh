@@ -228,11 +228,12 @@ if ! grep -q 'home-week-chart' 'app/[locale]/page.tsx' || \
   record "Home/Profileグラフのcontainer幅連動契約欠落" "Home WeeklyPulse / ActivityGraph / globals.css"
 fi
 if ! grep -q 'home-social-grid.*items-stretch' 'app/[locale]/page.tsx' || \
-   ! grep -q 'home-social-stack.*flex.*xl:h-full' 'app/[locale]/page.tsx' || \
-   ! grep -q 'DashboardFollowing className="home-friend-panel.*xl:flex-1"' 'app/[locale]/page.tsx' || \
+   ! grep -q 'QuickActions className="mb-3"' 'app/[locale]/page.tsx' || \
+   grep -q 'home-social-stack' 'app/[locale]/page.tsx' || \
+   ! grep -q 'DashboardFollowing className="home-friend-panel xl:h-full"' 'app/[locale]/page.tsx' || \
    ! grep -q 'auto-rows-fr gap-2' components/dashboard/DashboardFollowing.tsx || \
    ! grep -q 'className="flex flex-1 flex-col"' components/dashboard/DashboardFollowing.tsx; then
-  record "Home社会パネルの下端整列/余剰行配分契約欠落" "Home social grid / DashboardFollowing"
+  record "Home独立Dock/社会パネル下端整列/余剰行配分契約欠落" "Home social grid / QuickActions / DashboardFollowing"
 fi
 if ! grep -q 'missingActivityCount = Math.max(0, 5 - following.length)' components/dashboard/DashboardFollowing.tsx || \
    ! grep -q 'friend-discovery-' components/dashboard/DashboardFollowing.tsx || \
@@ -276,11 +277,16 @@ if (avatars.length !== 1 || attr(avatars[0], "alt") !== "") process.exit(1);
 ' components/dashboard/DashboardFollowing.tsx; then
   record "Home少数フォロー時の5行密度/長名リフロー契約欠落" "components/dashboard/DashboardFollowing.tsx"
 fi
-if ! grep -q 'lg:items-stretch' components/dashboard/DynamicLeaderboard.tsx; then
-  record "Leaderboard同一行パネルの下端整列契約欠落" "components/dashboard/DynamicLeaderboard.tsx"
+if ! grep -q '2xl:items-stretch' components/dashboard/DynamicLeaderboard.tsx || \
+   grep -q 'className="flex flex-col gap-4 lg:grid lg:grid-cols-12' components/dashboard/DynamicLeaderboard.tsx; then
+  record "Leaderboardの2xl境界/同一行パネル下端整列契約欠落" "components/dashboard/DynamicLeaderboard.tsx"
 fi
 if ! grep -q 'export function getRankGapInsight' lib/services/ranking-utils.ts || \
+   ! grep -q 'export function getRankProgress' lib/services/ranking-utils.ts || \
    ! grep -q 'targetEntry.steps - currentEntry.steps + 1' lib/services/ranking-utils.ts || \
+   ! grep -q 'targetName: string | null' lib/services/ranking-utils.ts || \
+   ! grep -q 'leaderStepsGap: number' lib/services/ranking-utils.ts || \
+   ! grep -q 'totalCount: number' lib/services/ranking-utils.ts || \
    ! grep -q 'currentEntry.steps <= 0' lib/services/ranking-utils.ts || \
    ! grep -q 'originalRank: index + 1' lib/services/ranking-service.ts || \
    ! grep -Fq '.filter(entry => entry.steps > 0)' lib/services/ranking-utils.ts || \
@@ -289,6 +295,7 @@ if ! grep -q 'export function getRankGapInsight' lib/services/ranking-utils.ts |
    [ "$(grep -Fc ', userId, 5)' components/dashboard/DynamicLeaderboard.tsx)" -ne 2 ] || \
    ! grep -q 'href="/leaderboard?period=WEEKLY"' 'app/[locale]/page.tsx' || \
    ! grep -q 'data-rank-gap="global"' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'getRankProgress(' components/dashboard/DynamicLeaderboard.tsx || \
    ! grep -q 'data-rank-gap="group"' components/group/GroupRankingPanel.tsx || \
    ! grep -q 'data-rank-gap="group-detail"' components/group/GroupDetailLeaderboard.tsx; then
   record "Homeから詳細ランキングへの到達可能差継続契約欠落" "ranking-utils / ranking components"
@@ -331,9 +338,17 @@ fi
 if ! grep -q 'data-ranking-state="global-error"' components/dashboard/DynamicLeaderboard.tsx || \
    ! grep -q 'data-ranking-state="group-error"' components/dashboard/DynamicLeaderboard.tsx || \
    ! grep -q 'data-ranking-state="group-empty"' components/dashboard/DynamicLeaderboard.tsx || \
-   ! grep -q '!isLoading && fetchError ?' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q '!isLoading && groupFetchError && groupRankingsList.length === 0 ?' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q '!isLoading && groupFetchError && groupRankingsList.length > 0' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'Promise.allSettled' components/dashboard/DynamicLeaderboard.tsx || \
    [ "$(grep -o 'onClick={handleRetry}' components/dashboard/DynamicLeaderboard.tsx | wc -l | tr -d ' ')" -lt 2 ]; then
   record "ランキング取得失敗と未所属空状態の分離契約欠落" "components/dashboard/DynamicLeaderboard.tsx"
+fi
+if ! grep -q '!isLoading && !fetchError && myRankGapInsight' components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q "t('missionChaseAnonymous'" components/dashboard/DynamicLeaderboard.tsx || \
+   ! grep -q 'friendProgressReached' components/dashboard/DashboardFollowing.tsx || \
+   ! grep -q 'user.todaySteps > 0' components/dashboard/DashboardFollowing.tsx; then
+  record "Home/Rankingの状態別読み上げ・匿名ライバル・0歩活動除外契約欠落" "DynamicLeaderboard / DashboardFollowing"
 fi
 if ! grep -q 'export function isRankingPeriod' lib/services/ranking-utils.ts || \
    ! grep -q 'export function buildRankingPeriodQuery' lib/services/ranking-utils.ts || \

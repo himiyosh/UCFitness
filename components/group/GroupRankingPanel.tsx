@@ -21,12 +21,13 @@ type Props = {
     userId?: string | null;
     index: number;
     totalCount: number;
+    memberCount?: number;
     groupId?: string;
     period: Period;
     showMoveButtons?: boolean;
 };
 
-export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId, period, showMoveButtons = true }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, memberCount, groupId, period, showMoveButtons = true }: Props) {
     const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
     const [moveDirection, setMoveDirection] = useState<'up' | 'down' | null>(null);
@@ -53,9 +54,11 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
         3: isMidnight
             ? { background: 'linear-gradient(160deg, #b45309, #ea580c)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' }
             : { background: 'linear-gradient(160deg, #c2410c, #f97316)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' },
-        default: isMidnight
-            ? { background: 'rgba(30,41,59,0.6)', color: '#64748b', border: '1px solid rgba(148,163,184,0.15)' }
-            : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' },
+        default: {
+            background: 'var(--color-surface-muted)',
+            color: 'var(--color-text-muted)',
+            border: '1px solid var(--color-border)',
+        },
     }), [isMidnight]);
 
     // リアクション管理（グローバル共通 — グループ/ダッシュボード間でリアクション数を連動）
@@ -109,28 +112,16 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
 
     return (
         <div
-            className={`rounded-xl shadow-sm relative group/panel h-full flex flex-col ${isMoving ? 'opacity-50' : ''}`}
-            style={isMidnight
-                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.35)' }
-                : { background: '#fff', border: '1px solid #6ee7b7' }
-            }
+            className={`group/panel relative flex h-full flex-col rounded-xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] shadow-sm ${isMoving ? 'opacity-50' : ''}`}
         >
             {/* Header — overflow-hidden + rounded-t-xl でヘッダー角丸を維持 */}
             <div
-                className="px-4 py-2.5 flex items-center gap-2 overflow-hidden rounded-t-xl"
-                style={isMidnight
-                    ? { borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(16,185,129,0.08)' }
-                    : { borderBottom: '1px solid #d1fae5', background: 'rgba(236,253,245,0.5)' }
-                }
+                className="flex items-center gap-2 overflow-hidden rounded-t-xl border-b border-[var(--color-competition)]/20 bg-[var(--color-competition-soft)]/55 px-4 py-2.5"
             >
-                <span className={`text-sm ${isMidnight ? 'opacity-90' : ''}`}>👥</span>
-                <span className={`text-xs font-bold tracking-wide ${isMidnight ? 'text-emerald-300' : 'text-emerald-700'}`}>{t('groupRankingPanelTitle')}</span>
+                <span className="text-sm" aria-hidden="true">👥</span>
+                <span className="text-xs font-bold text-[var(--color-competition-strong)]">{t('groupRankingPanelTitle')}</span>
                 <span
-                    className="ml-auto truncate py-0.5 px-2 rounded-full text-xs font-bold"
-                    style={isMidnight
-                        ? { background: 'rgba(52,211,153,0.15)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.3)' }
-                        : { background: '#d1fae5', color: '#047857', border: '1px solid #a7f3d0' }
-                    }
+                    className="ml-auto truncate rounded-full border border-[var(--color-competition)]/25 bg-[var(--color-surface)] px-2 py-0.5 text-xs font-bold text-[var(--color-competition-strong)]"
                 >{keyword}</span>
             </div>
             {showMoveButtons && <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
@@ -295,17 +286,24 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 </div>
             </div>
             {rankGapInsight && (
-                <div className={`mt-auto flex items-center justify-between gap-3 border-t px-4 py-2.5 sm:px-6 ${
+                <div className={`mt-auto flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5 sm:px-6 ${
                     rankGapInsight.isTopRank
                         ? 'border-[var(--color-success)]/25 bg-[var(--color-success-soft)]'
                         : 'border-[var(--color-competition)]/20 bg-[var(--color-competition-soft)]/40'
                 }`}>
-                    <span className={`text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-gray-600'}`}>
-                        {rankGapInsight.isTopRank ? lt('currentStatus') : lt('nextRankGoal')}
+                    <span className={`min-w-0 text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-gray-600'}`}>
+                        {memberCount
+                            ? lt('rankOutOf', {
+                                rank: rankGapInsight.currentRank,
+                                total: memberCount,
+                            })
+                            : rankGapInsight.isTopRank
+                                ? lt('currentStatus')
+                                : lt('nextRankGoal')}
                     </span>
                     <span
                         data-rank-gap="group"
-                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        className={`min-w-0 max-w-full whitespace-normal rounded-xl px-2.5 py-1 text-right text-xs font-bold [overflow-wrap:anywhere] ${
                             rankGapInsight.isTopRank
                                 ? 'bg-[var(--color-success-soft)] text-[var(--color-text)]'
                                 : 'bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]'
@@ -313,10 +311,16 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                     >
                         {rankGapInsight.isTopRank
                             ? lt('topRankStatus')
-                            : lt('nextRankGap', {
-                                steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
-                                rank: rankGapInsight.targetRank ?? 1,
-                            })}
+                            : rankGapInsight.targetName
+                                ? lt('nextRankGapWithName', {
+                                    steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                    rank: rankGapInsight.targetRank ?? 1,
+                                    name: rankGapInsight.targetName,
+                                })
+                                : lt('nextRankGap', {
+                                    steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                    rank: rankGapInsight.targetRank ?? 1,
+                                })}
                     </span>
                 </div>
             )}

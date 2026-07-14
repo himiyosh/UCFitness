@@ -158,6 +158,9 @@ export default async function Home(): Promise<ReactNode> {
   const nextRankGap = userRankStats && precedingRankStats
     ? Math.max(1, precedingRankStats.WEEKLY - userRankStats.WEEKLY + 1)
     : null;
+  const nextRankTargetName = precedingRankStats?.users?.name?.trim()
+    || precedingRankStats?.users?.username?.trim()
+    || t('leaderboardPreviewNextRival');
   const leaderboardPreview: LeaderboardPreviewEntry[] = weeklyRankings
     .slice(0, LEADERBOARD_PREVIEW_MIN_ROWS)
     .map(([rankingUserId, stats], index) => {
@@ -345,16 +348,21 @@ export default async function Home(): Promise<ReactNode> {
               </h2>
               <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{t('homeExploreDescription')}</p>
             </div>
+            <QuickActions className="mb-3" />
             <div className={`home-social-grid grid items-stretch gap-3 ${rankingDataError ? '' : 'xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]'}`}>
-              <div className="home-social-stack min-w-0 flex flex-col gap-3 xl:h-full">
-                <QuickActions className="shrink-0" />
-                <DashboardFollowing className="home-friend-panel xl:min-h-0 xl:flex-1" />
-              </div>
+              <DashboardFollowing className="home-friend-panel xl:h-full" />
               {!rankingDataError && (
                 <LeaderboardPreviewPanel
                   entries={leaderboardPreview}
                   currentSteps={userRankStats?.WEEKLY ?? null}
                   hasWeeklyRecord={hasWeeklyStepRecord}
+                  rankGapLabel={nextRankGap !== null
+                    ? t('leaderboardPreviewNextGap', {
+                        steps: nextRankGap.toLocaleString(),
+                        name: nextRankTargetName,
+                        rank: globalRank !== null ? Math.max(1, globalRank - 1) : 1,
+                      })
+                    : null}
                   labels={{
                     title: t('leaderboardPreviewTitle'),
                     subtitle: t('leaderboardPreviewSubtitle'),
@@ -627,6 +635,7 @@ interface LeaderboardPreviewPanelProps {
   entries: LeaderboardPreviewEntry[];
   currentSteps: number | null;
   hasWeeklyRecord: boolean;
+  rankGapLabel: string | null;
   labels: {
     title: string;
     subtitle: string;
@@ -647,6 +656,7 @@ function LeaderboardPreviewPanel({
   entries,
   currentSteps,
   hasWeeklyRecord,
+  rankGapLabel,
   labels,
 }: LeaderboardPreviewPanelProps): ReactNode {
   const maximumSteps = Math.max(1, ...entries.map(entry => entry.steps));
@@ -658,9 +668,9 @@ function LeaderboardPreviewPanel({
       : labels.openSlots;
 
   return (
-    <section className="home-rivalry-panel relative overflow-hidden rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="leaderboard-preview-title">
+    <section className="home-rivalry-panel relative flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 shadow-sm sm:p-4" aria-labelledby="leaderboard-preview-title">
       <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-[var(--color-competition-soft)]" aria-hidden="true" />
-      <div className="relative">
+      <div className="relative flex h-full flex-col">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-competition-solid)] text-white" aria-hidden="true">
@@ -681,9 +691,9 @@ function LeaderboardPreviewPanel({
         {entries.length === 0 && (
           <p className="mt-4 rounded-xl bg-[var(--color-surface-muted)] px-3 py-3 text-sm text-[var(--color-text-muted)]">{labels.noData}</p>
         )}
-        <ol className="mt-3 space-y-2">
+        <ol className="mt-3 grid flex-1 auto-rows-fr gap-2">
           {entries.map(entry => {
-            const rowClassName = `leaderboard-row group relative flex min-h-[4.5rem] flex-col justify-center overflow-visible rounded-xl border px-3 py-2 transition-colors sm:px-6 sm:py-2.5 ${
+            const rowClassName = `leaderboard-row group relative flex min-h-[4.5rem] flex-col justify-center h-full overflow-visible rounded-xl border px-3 py-2 transition-colors sm:px-6 sm:py-2.5 ${
               entry.rank === 1 ? 'rank-row-1' : entry.rank === 2 ? 'rank-row-2' : entry.rank === 3 ? 'rank-row-3' : ''
             } ${
                     entry.isCurrentUser
@@ -722,7 +732,7 @@ function LeaderboardPreviewPanel({
               </span>
             );
             return (
-              <li key={entry.id}>
+              <li key={entry.id} className="h-full">
                 {entry.username ? (
                   <Link
                     href={`/user/${entry.username}`}
@@ -741,7 +751,7 @@ function LeaderboardPreviewPanel({
           {Array.from({ length: emptyRowCount }, (_, index) => (
             <li
               key={`leaderboard-preview-empty-${index}`}
-              className="leaderboard-row pointer-events-none flex min-h-[4.5rem] flex-col justify-center rounded-xl border border-dashed border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)]/30 px-3 py-2 sm:px-6 sm:py-2.5"
+              className="leaderboard-row pointer-events-none flex h-full min-h-[4.5rem] flex-col justify-center rounded-xl border border-dashed border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)]/30 px-3 py-2 sm:px-6 sm:py-2.5"
             >
               <span className="flex items-center gap-3">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--color-competition)]/30 text-xs font-black text-[var(--color-competition-strong)]">
@@ -755,9 +765,11 @@ function LeaderboardPreviewPanel({
           ))}
         </ol>
 
-        <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--color-primary-soft)] px-3 py-2 text-sm">
-          <span className="font-semibold text-[var(--color-primary-strong)]">{labels.yourSteps}</span>
-          <span className="font-black tabular-nums text-[var(--color-primary-strong)]">
+        <div className="mt-3 flex flex-col gap-1 rounded-xl bg-[var(--color-competition-soft)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <span className="min-w-0 break-words font-semibold text-[var(--color-competition-strong)]">
+            {rankGapLabel ?? labels.yourSteps}
+          </span>
+          <span className="shrink-0 font-black tabular-nums text-[var(--color-competition-strong)]">
             {currentSteps !== null
               ? `${currentSteps.toLocaleString()} ${labels.steps}`
               : labels.unranked}

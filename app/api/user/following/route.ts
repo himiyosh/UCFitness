@@ -12,13 +12,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 // GET: 自分がフォローしているユーザーの一覧を取得
 // ============================================
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
     try {
         const session = await auth();
-        if (!session?.user || !(session.user as any).id) {
+        if (!session?.user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const userId = (session.user as any).id as string;
+        const userId = session.user.id;
         const today = getJSTDateString();
         const url = new URL(request.url);
         const rawLimit = url.searchParams.get("limit");
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         // ユーザー情報を取得（PII除外）
         const { data: users, error: usersErr } = await supabaseAdmin
             .from("users")
-            .select("id, name, image, username")
+            .select("id, name, image, username, step_goal")
             .in("id", followingIds);
 
         if (usersErr) {
@@ -96,6 +96,9 @@ export async function GET(request: Request) {
                     username: user.username,
                     todaySteps: stepsMap.get(user.id) ?? 0,
                     hasTodaySteps: stepsMap.has(user.id),
+                    stepGoal: typeof user.step_goal === "number" && user.step_goal > 0
+                        ? user.step_goal
+                        : 10_000,
                     followedAt: f.created_at,
                 };
             })

@@ -5,6 +5,7 @@ import {
     enrichCombinedRankings,
     getDisplayRankings,
     getRankGapInsight,
+    getRankProgress,
     isRankingPeriod,
 } from '../services/ranking-utils';
 import * as shopService from '../services/shop-service';
@@ -61,6 +62,8 @@ describe('enrichCombinedRankings', () => {
                 targetRank: 2,
                 stepsToNextRank: 501,
                 isTopRank: false,
+                targetName: 'second',
+                leaderStepsGap: 2_000,
             });
         });
 
@@ -73,6 +76,25 @@ describe('enrichCombinedRankings', () => {
             expect(insight?.stepsToNextRank).toBe(1);
         });
 
+        it('直上ユーザーが匿名でも順位差を維持し、名前だけnullにする', () => {
+            const anonymousTarget = createEntry('anonymous', 2, 8_500);
+            anonymousTarget.users.name = null;
+            anonymousTarget.users.username = null;
+
+            const insight = getRankGapInsight([
+                createEntry('first', 1, 10_000),
+                anonymousTarget,
+                createEntry('me', 3, 8_000),
+            ], 'me');
+
+            expect(insight).toMatchObject({
+                targetName: null,
+                targetRank: 2,
+                stepsToNextRank: 501,
+                isTopRank: false,
+            });
+        });
+
         it('1位の場合はトップ状態を返す', () => {
             expect(getRankGapInsight([
                 createEntry('me', 1, 10_000),
@@ -81,6 +103,8 @@ describe('enrichCombinedRankings', () => {
                 targetRank: null,
                 stepsToNextRank: null,
                 isTopRank: true,
+                targetName: null,
+                leaderStepsGap: 0,
             });
         });
 
@@ -100,6 +124,21 @@ describe('enrichCombinedRankings', () => {
             ], 'me')).toBeNull();
         });
 
+        it('未達状態は99%を上限とし、最低視覚幅と実値を分離する', () => {
+            expect(getRankProgress(10_000, 1, false)).toEqual({
+                value: 99,
+                visualWidth: 99,
+            });
+            expect(getRankProgress(1, 100_000, false)).toEqual({
+                value: 0,
+                visualWidth: 6,
+            });
+            expect(getRankProgress(10_000, null, true)).toEqual({
+                value: 100,
+                visualWidth: 100,
+            });
+        });
+
         it('0歩ユーザーを順位とメダルの対象から除外する', () => {
             const result = getDisplayRankings([
                 createEntry('active', 1, 1_000),
@@ -108,6 +147,7 @@ describe('enrichCombinedRankings', () => {
 
             expect(result.displayRankings.map(entry => entry.users.id)).toEqual(['active']);
             expect(result.displayRankings[0].originalRank).toBe(1);
+            expect(result.totalCount).toBe(1);
         });
 
         it('中下位ユーザーと直上順位を残しながら5行以内に収める', () => {
@@ -120,6 +160,7 @@ describe('enrichCombinedRankings', () => {
             expect(result.displayRankings).toHaveLength(5);
             expect(result.displayRankings.map(entry => entry.originalRank)).toEqual([1, 2, 3, 5, 6]);
             expect(result.displayRankings.some(entry => entry.users.id === 'me')).toBe(true);
+            expect(result.totalCount).toBe(7);
         });
     });
 
