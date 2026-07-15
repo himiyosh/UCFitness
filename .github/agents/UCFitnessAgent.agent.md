@@ -957,6 +957,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 30. **自然スクロールと全幅Footer** — 通常ページの`max-h-[calc(100dvh-...)]` + `overflow-y-auto`を禁止し、documentスクロールへ統一する。Footerは320pxから表示し、BottomNav予約領域の上で法務リンクへ到達可能にする
 31. **不可視table geometry** — screen reader用tableは`sr-only` wrapper内へ配置し、wrapperがabsolute 1×1pxで、tableがFooter後のデッドスペースを作らないことを実測する
 32. **Home Quest / Delight契約** — 認証ホームの先頭は進捗→競争→歩いた価値→次行動を同一Quest面で順序固定する。Mission→Weekly→Reward→Challengeの後は任意探索章（Utility→Friend→Ranking）として明示し、Quick DockはBottomNav/Sidebar/Reward panelと重複しない独立補助行にする。0歩は未記録・記録済み・ランキング参加済みでコピーを分離し、1280pxは2列・4列化は1536px以上、同一grid行はmd以上で等高化する。Followingと週間Rankingをxlで直接同一行・下端差1px以内とし、friend activityは実ユーザー＋発見行を5行維持、実目標progressと正歩数の活動人数/合計/達成人数でPulse化する。0歩を活動人数へ含めない。ランキングPreviewは次ライバル名と必要歩数を行外に表示する。詳細Rankingは固定行を変えずCompetition Missionへ現在順位・正歩数参加者数・次ライバル名・必要歩数・トップ差を集約し、外側多列化を2xlへ遅らせる。非トップ進捗は99%以下、最低視覚幅とaria値を分離し、scope障害を相互に巻き込まない。長名は`min-w-0`/break-wordで収縮させ、リンク内アバターは装飾扱いにする。グラフはcontainer queryでパネル幅に応じて拡大し、等高化の余剰を空白帯にしない。motionは状態変化のみ650ms以内・reduced motion 0秒とする。Mission GET再試行中はloadingへ戻し、準備POSTを同時に露出しない。報酬書き込み失敗は成功応答へ変換せず、成功状態はlive通知・焦点移動・永続表示を持つ。補助ストリーク障害は0へ落とさず、Challenge進捗失敗も0%へ変換しない
+33. **Challenge継続優先契約** — Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを先にし、残り歩数→期限→報酬で安定順序化する。優先帯の主表示は最大500歩の次アクション、🔥報酬は残り3日以内だけ、作成は一覧後の補助導線にする。進捗null/undefinedを0へ変換せず、JST期限を一覧・カード・参加APIで共有する。list/progress取得はAbortController+request generation、参加/離脱後はmounted ref+最新tab refで再取得し、開始前/終了/達成/無効チャレンジを優先帯へ出さない
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -1374,6 +1375,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | `sr-only` tableがProfile末尾へ約3,000pxの空白を作った | table本体へ`sr-only`を付け、table intrinsic layoutが1×1px制約を超えて文書高へ残った | **tableをabsolute 1×1pxの`sr-only` wrapperで包む。** AX構造だけでなくwrapper geometry、Footer後の残余高、全可視操作要素44pxを実ブラウザで検査する |
 | 実データ追加後もホームが単調だった | 週間・UC・ランキング・仲間を同じ角丸カード文法で並べ、データ間の因果と状態反応を設計していなかった | **HomeHeroをQuest storyへ再構成する。** 進捗→競争→歩いた価値→次の一歩を連結し、Mission/Weekly/Reward/Challengeを役割別に表現。低活動時は未来志向、motionは650ms以内の状態変化だけ、Mission GETはread-onlyにする |
 | Home下部の整列後ものっぺりし、詳細Rankingのサイズと競争感が不足した | QuickActions+Following stackが固定ショートカットを動的社会データより先に見せ、Followingは全行同じ白面だった。詳細RankingはSidebar出現と外側5:7分割をlgで同時適用し、Group内5:7との二重多列化で過密化した。次順位差も相手名・参加総数・トップ差を欠いた | **QuickActionsを独立Dockへ移し、Followingと週間Rankingを直接同一行にする。** Followingは個別目標と正歩数の活動人数/合計/達成人数でPulse化し、0歩を活動人数へ含めない。詳細Rankingは外側多列化を2xlへ遅らせ、固定行外のCompetition Missionへ現在順位・参加者数・次ライバル名・必要歩数・トップ差を集約する。scope取得はallSettledで障害分離し、非トップ進捗は99%以下、最低視覚幅とaria値を分ける |
+| Challenge作成が参加中の次行動より先で、期限と高目標が復帰を圧迫した | 一覧前の作成CTA、API順カード、分離した期限/報酬、残り総量表示により、継続ユーザーが今進める1件を選べなかった。進捗undefinedを0へ変換し、期限がUTC/端末/JSTで不一致、旧tabの参加操作が現tabを上書きできた | **参加中・active・開始済み・未終了・未達成・進捗取得済みだけを優先帯候補にし、残り歩数→期限→報酬で並べる。** 主表示は最大500歩、🔥は残り3日以内、作成は一覧後へ移す。null/undefinedは取得不能、期限はJST共通、list/progressはAbort+世代、参加/離脱後はmounted+最新tab refで再取得する |
 
 ---
 

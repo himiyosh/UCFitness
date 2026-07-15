@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { getChallengePriorityMetrics } from '@/lib/services/challenge-utils';
 
 const ChallengeDetailModal = dynamic(() => import('@/components/challenge/ChallengeDetailModal'));
 
@@ -70,26 +71,35 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
         dialogRef: leaveDialogRef,
         initialFocusRef: leaveCancelRef,
     });
-    const progressUnavailable = progress === null;
-    const progressValue = progress ?? 0;
+    const progressUnavailable = isJoined
+        && (progress === null || progress === undefined || !Number.isFinite(progress));
+    const progressValue = typeof progress === 'number' && Number.isFinite(progress)
+        ? progress
+        : 0;
 
     const progressPercent = useMemo(
-        () => Math.min(100, Math.round((progressValue / challenge.target_steps) * 100)),
+        () => progressValue >= challenge.target_steps
+            ? 100
+            : Math.min(
+                99,
+                Math.floor((progressValue / challenge.target_steps) * 100),
+            ),
         [progressValue, challenge.target_steps]
     );
-
-    // 残り日数計算
-    const daysLeft = useMemo(() => {
-        const endDate = new Date(challenge.end_date + 'T23:59:59');
-        return Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-    }, [challenge.end_date]);
-
-    const isExpired = useMemo(() => {
-        return daysLeft === 0 && new Date() > new Date(challenge.end_date + 'T23:59:59');
-    }, [daysLeft, challenge.end_date]);
+    const priorityMetrics = useMemo(
+        () => getChallengePriorityMetrics(
+            { ...challenge, is_joined: isJoined },
+            progress,
+        ),
+        [challenge, isJoined, progress],
+    );
+    const remainingSteps = priorityMetrics.remainingSteps ?? challenge.target_steps;
+    const daysLeft = priorityMetrics.daysLeft;
+    const isExpired = priorityMetrics.isExpired;
 
     const isCreator = currentUserId && challenge.created_by === currentUserId;
     const isCompleted = progressPercent >= 100 && isJoined;
+    const isUrgent = !isExpired && daysLeft <= 3;
     const avatars = challenge.participant_avatars || [];
 
     const handleJoin = useCallback(async (e: React.MouseEvent) => {
@@ -153,16 +163,16 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                 {/* 達成時のキラキラ装飾 */}
                 {isCompleted && (
                     <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none">
-                        <div className="absolute top-2 right-2 text-2xl animate-bounce">🏆</div>
-                        <div className="absolute top-1 right-10 text-xs animate-pulse" style={{ animationDelay: '0.3s' }}>✨</div>
-                        <div className="absolute top-8 right-1 text-xs animate-pulse" style={{ animationDelay: '0.7s' }}>✨</div>
+                        <div className="absolute right-2 top-2 animate-[cardEnter_0.45s_var(--spring)_both] text-2xl">🏆</div>
+                        <div className="absolute right-10 top-1 text-xs">✨</div>
+                        <div className="absolute right-1 top-8 text-xs">✨</div>
                     </div>
                 )}
 
                 {/* 参加お祝いアニメーション */}
                 {joinCelebrating && (
                     <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                        <div className="text-4xl animate-bounce">🎉</div>
+                        <div className="animate-[cardEnter_0.45s_var(--spring)_both] text-4xl">🎉</div>
                     </div>
                 )}
 
@@ -178,12 +188,17 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                     </span>
 
                     {!isExpired ? (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            daysLeft <= 2
-                                ? 'bg-red-50 text-red-500'
-                                : 'bg-gray-50 text-[var(--foreground-muted)]'
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                            isUrgent
+                                ? 'bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]'
+                                : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
                         }`}>
-                            🕐 {t('daysLeft', { count: daysLeft })}
+                            {isUrgent
+                                ? t('urgentReward', {
+                                    days: daysLeft,
+                                    reward: challenge.reward_uc.toLocaleString(),
+                                })
+                                : `🕐 ${t('daysLeft', { count: daysLeft })}`}
                         </span>
                     ) : (
                         <span className="text-xs font-semibold text-red-500 px-2 py-0.5 rounded-full bg-red-50">
@@ -206,10 +221,12 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                         <span className="text-[var(--foreground-muted)]">🎯</span>
                         <span className="font-bold text-gray-800">{challenge.target_steps.toLocaleString()}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <span className="text-amber-500">🪙</span>
-                        <span className="font-bold text-amber-600">{challenge.reward_uc} UC</span>
-                    </div>
+                    {!isUrgent && (
+                        <div className="flex items-center gap-1">
+                            <span className="text-[var(--color-reward)]">🪙</span>
+                            <span className="font-bold text-[var(--color-reward-strong)]">{challenge.reward_uc} UC</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* 進捗バー（参加済みの場合のみ） — より楽しいデザイン */}
@@ -221,19 +238,32 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                 {isJoined && !progressUnavailable && (
                     <div className="mb-3">
                         <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold text-[var(--foreground-muted)]">{t('progress')}</span>
+                            <span className="text-xs font-semibold text-[var(--foreground-muted)]">
+                                {isCompleted
+                                    ? t('detailCompleted')
+                                    : t('priorityRemaining', {
+                                        steps: remainingSteps.toLocaleString(),
+                                    })}
+                            </span>
                             <span className={`text-xs font-bold ${
                                 isCompleted ? 'text-green-600' : 'text-gray-800'
                             }`}>
                                 {isCompleted ? '🎉 ' : ''}{progressPercent}%
                             </span>
                         </div>
-                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100"
+                            role="progressbar"
+                            aria-label={t('progress')}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={progressPercent}
+                        >
                             <div
-                                className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                className={`h-full rounded-full transition-[width] duration-700 ease-out ${
                                     isCompleted
-                                        ? 'bg-gradient-to-r from-green-400 to-emerald-500'
-                                        : 'bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)]'
+                                        ? 'bg-[var(--color-success)]'
+                                        : 'bg-[var(--color-competition-solid)]'
                                 }`}
                                 style={{ width: `${progressPercent}%` }}
                             />
@@ -349,7 +379,7 @@ export default function ChallengeCard({ challenge, progress, currentUserId, onJo
                 </div>
 
                 {/* 詳細を見るヒント */}
-                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs text-gray-300 opacity-0 transition-opacity group-hover:opacity-100">
                     {t('detailTapToView')}
                 </div>
             </div>

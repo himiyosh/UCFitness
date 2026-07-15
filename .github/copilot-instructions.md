@@ -1351,3 +1351,10 @@ export const runtime = "edge";
 - **根本原因**: QuickActionsをFollowingの上へ積んだことで固定ショートカットが動的社会データより先に見え、FollowingとRankingを直接比較できなかった。Followingは全行が白面・同じ重さで、実目標や活動集計を使っていなかった。詳細ランキングはSidebar出現と外側5:7分割を`lg`で同時適用し、さらにGroup内を5:7分割して1024/1280pxで過密化した。順位差も相手名・総参加者数・トップ差を欠いた。
 - **対策**: QuickActionsを独立Dockへ移し、Followingと週間Rankingをxlで直接同一行にした。Followingは個別目標、正歩数の活動人数、合計歩数、達成人数でPulse化し、0歩を活動人数から除外する。詳細Rankingは外側多列化を`2xl`へ遅らせ、固定行外のCompetition Missionへ現在順位・正歩数参加者数・次ライバル名・必要歩数・トップ差を集約する。各scopeは`Promise.allSettled`で障害分離し、非トップの実進捗は99%以下、最低視覚幅と`aria-valuenow`を分ける。
 - **教訓**: 外形整列だけではDelightにならない。固定ショートカットより変化する実データを先に読み取れる構造にし、同じ5行でも達成・進行・未記録の意味差を面と色で示す。Sidebar後に二重多列化するコンポーネントはviewportではなく最深部の実列幅で判断し、競争UIは順位数字だけでなく「誰へ・あと何歩・何人中」を3秒で理解できる行外ミッションを持つ。リファレンス: `app/[locale]/page.tsx`, `DashboardFollowing.tsx`, `DynamicLeaderboard.tsx`, `GroupRankingPanel.tsx`
+
+### LL-049: チャレンジ作成が継続行動より先に見え、期限と高目標が復帰を圧迫した
+
+- **事象**: Challengesページで作成ボタンが一覧より先にあり、参加中・期限・残り歩数・報酬がAPI順のカードへ分散していた。低活動復帰ユーザーは高い残り総量と🔥報酬を先に見て、達成可能な次行動を判断できなかった。
+- **根本原因**: チャレンジを作成/閲覧リソースとして並べ、継続ユーザーの主ジョブ「参加中の未達成を少し進める」を優先度計算へ入れていなかった。進捗`undefined`を0へ変換し、一覧/カード/参加APIでUTC・端末ローカル・JSTが混在した。タブ変更中の旧参加操作も古いtabを再取得できた。
+- **対策**: 参加中・active・開始済み・未終了・未達成・進捗取得済みだけを優先帯候補にし、残り歩数→期限→報酬で並べる。主表示は残り総量ではなく最大500歩の次アクション、🔥は残り3日以内だけに限定する。作成ボタンは一覧後の補助導線へ移す。期限計算と一覧/参加APIをJSTへ統一し、null/undefinedは取得不能として0へ落とさない。list/progress取得はAbortController+request generation、参加/離脱後はmounted refと最新tab refで再取得する。
+- **教訓**: リテンション面では「作れるもの」より「今続けているもの」を先にする。期限・報酬は圧力ではなく補足であり、低活動時の主CTAは100〜500歩の達成可能な入口にする。状態を跨ぐ非同期操作は開始時tabのclosureではなく最新refへ戻し、期限の同一判定関数を表示・ソート・最終API認可まで共有する。リファレンス: `challenge-utils.ts`, `ChallengeList.tsx`, `ChallengeCard.tsx`, `ChallengesPageClient.tsx`

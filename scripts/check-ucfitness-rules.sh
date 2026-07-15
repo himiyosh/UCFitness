@@ -665,6 +665,28 @@ if ! grep -q 'grid grid-cols-3' components/challenge/ChallengeList.tsx || \
    ! grep -q 'flex min-h-\[44px\] min-w-0 items-center justify-center' components/challenge/ChallengeList.tsx; then
   record "Challenge tabsの3等分44px中央揃え欠落" "components/challenge/ChallengeList.tsx"
 fi
+challenge_list_line="$(grep -n '<ChallengeList' components/challenge/ChallengesPageClient.tsx | head -n 1 | cut -d: -f1)"
+challenge_create_line="$(grep -n 'setShowCreate(true)' components/challenge/ChallengesPageClient.tsx | head -n 1 | cut -d: -f1)"
+if [ -z "$challenge_list_line" ] || [ -z "$challenge_create_line" ] || \
+   [ "$challenge_create_line" -le "$challenge_list_line" ] || \
+   ! grep -q 'sortChallengesForAction' components/challenge/ChallengeList.tsx || \
+   ! grep -q 'isActionableChallenge' components/challenge/ChallengeList.tsx || \
+   ! grep -q 'requestIdRef' components/challenge/ChallengeList.tsx || \
+   ! grep -q 'tabRef.current' components/challenge/ChallengeList.tsx || \
+   ! grep -q 'mountedRef.current' components/challenge/ChallengeList.tsx || \
+   ! grep -q 'AbortController' components/challenge/ChallengeList.tsx || \
+   ! grep -q "t('priorityTitle')" components/challenge/ChallengeList.tsx || \
+   ! grep -q "t('priorityNextStep'" components/challenge/ChallengeList.tsx || \
+   ! grep -q "t('urgentReward'" components/challenge/ChallengeCard.tsx || \
+   ! grep -q 'getChallengePriorityMetrics' components/challenge/ChallengeCard.tsx || \
+   ! grep -q 'challenge.is_active' lib/services/challenge-utils.ts || \
+   ! grep -q 'metrics.hasStarted' lib/services/challenge-utils.ts || \
+   ! grep -q 'getJSTDateString' app/api/challenge/route.ts || \
+   ! grep -q 'getJSTDateString' 'app/api/challenge/[challengeId]/join/route.ts' || \
+   ! grep -q 'progressValue >= challenge.target_steps' components/challenge/ChallengeCard.tsx || \
+   ! grep -q 'Math.floor((progressValue / challenge.target_steps)' components/challenge/ChallengeCard.tsx; then
+  record "Challenge参加中優先/期限報酬/未達99%/作成補助導線契約欠落" "ChallengesPageClient / ChallengeList / ChallengeCard"
+fi
 if grep -Eq '>[^<{]*(Retry|Save|Cancel|Edit)[^<{]*<' components/StepGoalForm.tsx components/StepCalendar.tsx components/profile/AchievementProgress.tsx; then
   record "変更対象の条件付きUIに英語固定文言" "StepGoalForm / StepCalendar / AchievementProgress"
 fi

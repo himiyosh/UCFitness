@@ -1,7 +1,9 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
+import { getJSTDateString } from '@/lib/date-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
@@ -10,7 +12,7 @@ import { reportError } from '@/lib/errors';
 // ============================================
 
 /** GET: アクティブなチャレンジ一覧を取得 */
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
     try {
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type'); // 'INDIVIDUAL' | 'GROUP'
@@ -23,7 +25,7 @@ export async function GET(req: NextRequest) {
         }
         const userId = session.user.id;
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = getJSTDateString();
 
         let query = supabaseAdmin
             .from('challenges')
