@@ -80,33 +80,42 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ feed: [], hasMore: false });
         }
 
-        // 2. ユーザー情報 + 通知設定を並列取得（N+1防止）
-        const [usersResult, notifyResult] = await Promise.all([
+        // 2. ユーザー情報・既読時刻・任意の通知設定を並列取得（N+1防止）
+        const [usersResult, readStateResult, preferenceResult] = await Promise.all([
             supabaseAdmin
                 .from('users')
                 .select('id, name, image, username')
                 .in('id', targetIds),
-            // 通知設定 + 既読タイムスタンプ（カラムが未追加の場合でもエラーにならないよう別クエリで取得）
             supabaseAdmin
                 .from('users')
-                .select('id, notification_reactions, notification_gear_reactions, feed_last_read_at')
+                .select('feed_last_read_at')
+                .eq('id', userId)
+                .single(),
+            supabaseAdmin
+                .from('users')
+                .select('notification_reactions, notification_gear_reactions')
                 .eq('id', userId)
                 .single(),
         ]);
 
         const usersData = usersResult.data;
-        const notifyData = notifyResult.data;
-        if (usersResult.error || notifyResult.error) {
+        const readStateData = readStateResult.data;
+        const preferenceData = preferenceResult.data;
+        if (usersResult.error || readStateResult.error) {
             reportError(
                 'user/feed:userContext',
-                usersResult.error ?? notifyResult.error,
+                usersResult.error ?? readStateResult.error,
                 { userId },
             );
             return NextResponse.json({ error: 'Failed to fetch user context' }, { status: 500 });
         }
+        const notificationPreferencesAvailable = preferenceResult.error === null;
+        if (preferenceResult.error) {
+            reportError('user/feed:notificationPreferences', preferenceResult.error, { userId });
+        }
 
-        const feedLastReadAt = typeof notifyData?.feed_last_read_at === 'string'
-            ? notifyData.feed_last_read_at
+        const feedLastReadAt = typeof readStateData?.feed_last_read_at === 'string'
+            ? readStateData.feed_last_read_at
             : null;
 
         const userMap = new Map<string, { name: string | null; image: string | null; username: string | null; notification_reactions: boolean | null; notification_gear_reactions: boolean | null }>();
@@ -114,8 +123,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             const isCurrentUser = u.id === userId;
             userMap.set(u.id, {
                 name: u.name, image: u.image, username: u.username,
-                notification_reactions: isCurrentUser ? (notifyData?.notification_reactions ?? null) : null,
-                notification_gear_reactions: isCurrentUser ? (notifyData?.notification_gear_reactions ?? null) : null,
+                notification_reactions: isCurrentUser ? (preferenceData?.notification_reactions ?? null) : null,
+                notification_gear_reactions: isCurrentUser ? (preferenceData?.notification_gear_reactions ?? null) : null,
             });
         });
         const currentUserSettings = userMap.get(userId);
@@ -345,6 +354,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             hasMore,
             unreadCount,
             nextCursor,
+            notificationPreferencesAvailable,
         });
     } catch (err) {
         reportError('user/feed', err);

@@ -102,6 +102,7 @@ export default function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [nextCursor, setNextCursor] = useState<string | undefined>();
     const [markReadError, setMarkReadError] = useState(false);
+    const [notificationPreferencesAvailable, setNotificationPreferencesAvailable] = useState(true);
 
     const bellRef = useRef<HTMLButtonElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -136,6 +137,9 @@ export default function NotificationBell() {
                 setFeed((previous) => aggregateNotificationFeed([...previous, ...items]));
             }
             setHasMore(data.hasMore || false);
+            setNotificationPreferencesAvailable(
+                data.notificationPreferencesAvailable !== false,
+            );
             setNextCursor(
                 typeof data.nextCursor === 'string' ? data.nextCursor : undefined,
             );
@@ -157,6 +161,9 @@ export default function NotificationBell() {
             const data = await response.json();
             if (unreadRequestGenerationRef.current === generation) {
                 setUnreadCount(data.unreadCount ?? 0);
+                setNotificationPreferencesAvailable(
+                    data.notificationPreferencesAvailable !== false,
+                );
             }
         } catch {
             // ヘッダーの補助情報なので、本文操作はブロックしない。
@@ -373,6 +380,14 @@ export default function NotificationBell() {
                             className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs text-[var(--color-danger)]"
                         >
                             {t('markAllReadError')}
+                        </p>
+                    )}
+                    {!notificationPreferencesAvailable && (
+                        <p
+                            role="status"
+                            className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-2 text-xs leading-5 text-[var(--color-text)]"
+                        >
+                            {t('preferencesUnavailable')}
                         </p>
                     )}
 

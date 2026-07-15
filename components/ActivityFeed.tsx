@@ -72,6 +72,7 @@ export default function ActivityFeed() {
     const [hasMore, setHasMore] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | undefined>();
+    const [notificationPreferencesAvailable, setNotificationPreferencesAvailable] = useState(true);
 
     // フィードデータを取得
     const fetchFeed = useCallback(async (cursor?: string) => {
@@ -99,6 +100,9 @@ export default function ActivityFeed() {
                 setFeed((previous) => aggregateNotificationFeed([...previous, ...items]));
             }
             setHasMore(data.hasMore || false);
+            setNotificationPreferencesAvailable(
+                data.notificationPreferencesAvailable !== false,
+            );
             setNextCursor(
                 typeof data.nextCursor === 'string' ? data.nextCursor : undefined,
             );
@@ -113,6 +117,15 @@ export default function ActivityFeed() {
     useEffect(() => {
         fetchFeed();
     }, [fetchFeed]);
+
+    const preferenceWarning = !notificationPreferencesAvailable ? (
+        <p
+            role="status"
+            className="mb-3 rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface-muted)] p-3 text-xs leading-5 text-[var(--color-text)]"
+        >
+            {t('preferencesUnavailable')}
+        </p>
+    ) : null;
 
     // --- ローディング状態 ---
     if (isLoading) {
@@ -154,8 +167,9 @@ export default function ActivityFeed() {
     // --- 空状態 ---
     if (feed.length === 0) {
         return (
-            <div className="premium-card flex flex-col items-center justify-center min-h-[200px]">
-                <div className="text-center px-6 py-4">
+            <div className="premium-card flex min-h-[200px] flex-col p-4">
+                {preferenceWarning}
+                <div className="flex flex-1 flex-col items-center justify-center px-6 py-4 text-center">
                     <div className="text-5xl mb-4">\ud83d\udc65</div>
                     <p className="text-sm font-medium text-gray-600">{t('emptyMessage')}</p>
                     <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{t('emptyHint')}</p>
@@ -173,6 +187,7 @@ export default function ActivityFeed() {
     // --- データ表示 ---
     return (
         <div className="premium-card p-4">
+            {preferenceWarning}
             <div className="space-y-1">
                 {feed.map((item) => (
                     <FeedItemCard key={item.id} item={item} t={t} badgeT={badgeT} />

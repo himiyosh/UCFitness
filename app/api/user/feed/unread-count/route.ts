@@ -42,17 +42,34 @@ export async function GET(): Promise<NextResponse> {
         }
 
         const userId = session.user.id;
-        const { data: userData, error: userError } = await supabaseAdmin
-            .from('users')
-            .select('feed_last_read_at, notification_reactions, notification_gear_reactions')
-            .eq('id', userId)
-            .single();
-        if (userError) {
-            reportError('user/feed/unread-count:user', userError, { userId });
+        const [readStateResult, preferenceResult] = await Promise.all([
+            supabaseAdmin
+                .from('users')
+                .select('feed_last_read_at')
+                .eq('id', userId)
+                .single(),
+            supabaseAdmin
+                .from('users')
+                .select('notification_reactions, notification_gear_reactions')
+                .eq('id', userId)
+                .single(),
+        ]);
+        if (readStateResult.error) {
+            reportError('user/feed/unread-count:user', readStateResult.error, { userId });
             return NextResponse.json({ error: 'Failed to fetch notification settings' }, {
                 status: 500,
             });
         }
+        const notificationPreferencesAvailable = preferenceResult.error === null;
+        if (preferenceResult.error) {
+            reportError(
+                'user/feed/unread-count:notificationPreferences',
+                preferenceResult.error,
+                { userId },
+            );
+        }
+        const userData = readStateResult.data;
+        const preferenceData = preferenceResult.data;
 
         const snapshot = new Date().toISOString();
         const feedWindow = getNotificationFeedWindow(snapshot);
@@ -76,8 +93,8 @@ export async function GET(): Promise<NextResponse> {
             userId,
             ...(followingData ?? []).map((follow) => follow.following_id),
         ]));
-        const reactionsEnabled = userData?.notification_reactions !== false;
-        const gearReactionsEnabled = userData?.notification_gear_reactions !== false;
+        const reactionsEnabled = preferenceData?.notification_reactions !== false;
+        const gearReactionsEnabled = preferenceData?.notification_gear_reactions !== false;
         const [
             badgesResult,
             reactionsResult,
@@ -215,7 +232,10 @@ export async function GET(): Promise<NextResponse> {
             userData?.feed_last_read_at ?? null,
         );
 
-        return NextResponse.json({ unreadCount });
+        return NextResponse.json({
+            unreadCount,
+            notificationPreferencesAvailable,
+        });
     } catch (error: unknown) {
         reportError('user/feed/unread-count', error);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
