@@ -624,6 +624,10 @@ html {
   transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease !important;
 }
 
+[data-theme="midnight"] .settings-goal-card {
+  border-left: 4px solid var(--color-primary) !important;
+}
+
 /* Hover glow for interactive cards (links & buttons only) */
 [data-theme="midnight"] a.bg-white:hover,
 [data-theme="midnight"] button.bg-white:hover,

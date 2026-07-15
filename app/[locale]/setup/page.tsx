@@ -9,6 +9,12 @@ import { signOut, useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 
 import { reportError } from '@/lib/errors';
+import {
+    isValidStepGoal,
+    MAX_STEP_GOAL,
+    MIN_STEP_GOAL,
+    RECOMMENDED_STEP_GOAL,
+} from '@/lib/step-goal';
 
 import ProfileImageEditor from '@/components/profile/ProfileImageEditor';
 import Spinner from '@/components/ui/Spinner';
@@ -20,7 +26,7 @@ export default function SetupPage() {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
-    const [stepGoal, setStepGoal] = useState(5_000);
+    const [stepGoal, setStepGoal] = useState(RECOMMENDED_STEP_GOAL);
     const [provider, setProvider] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [statusLoading, setStatusLoading] = useState(true);
@@ -76,12 +82,7 @@ export default function SetupPage() {
                         setIsCustomImage(data.is_custom_image);
                     }
                     setProvider(typeof data.provider === 'string' ? data.provider : null);
-                    if (
-                        typeof data.step_goal === 'number'
-                        && Number.isInteger(data.step_goal)
-                        && data.step_goal >= 500
-                        && data.step_goal <= 100_000
-                    ) {
+                    if (isValidStepGoal(data.step_goal)) {
                         setStepGoal(data.step_goal);
                     } else if (data.step_goal !== null && data.step_goal !== undefined) {
                         throw new Error('Invalid setup step goal');
@@ -149,7 +150,7 @@ export default function SetupPage() {
             emailRef.current?.focus();
             return;
         }
-        if (!Number.isInteger(stepGoal) || stepGoal < 500 || stepGoal > 100_000) {
+        if (!isValidStepGoal(stepGoal)) {
             setError(t('stepGoalInvalid'));
             stepGoalRef.current?.focus();
             return;
@@ -482,9 +483,9 @@ export default function SetupPage() {
                                 name="step-goal"
                                 type="number"
                                 required
-                                min={500}
-                                max={100000}
-                                step={500}
+                                min={MIN_STEP_GOAL}
+                                max={MAX_STEP_GOAL}
+                                step={1}
                                 inputMode="numeric"
                                 aria-required="true"
                                 aria-describedby="step-goal-hint"

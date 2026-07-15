@@ -1,22 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import ProfileImageEditor from "@/components/profile/ProfileImageEditor";
-import BannerImageEditor from "@/components/BannerImageEditor";
-import ImageModal from "@/components/ui/ImageModal";
-import { useLocale, useTranslations } from 'next-intl';
-import { useRouter, usePathname, Link } from '@/navigation';
-import { useSession } from 'next-auth/react'; // Import useSession
-import { useTheme, Theme } from '@/components/ThemeProvider';
-import Spinner from '@/components/ui/Spinner';
-import PushNotificationManager from '@/components/PushNotificationManager';
-import UserAvatar from '@/components/UserAvatar';
-import { getFrameColor } from '@/lib/frame-utils';
-import TitleSelector, { type OwnedTitle } from '@/components/TitleSelector';
-import FrameSelector, { type OwnedFrame } from '@/components/FrameSelector';
-import ThemeSelector, { type OwnedTheme } from '@/components/ThemeSelector';
-import StepGoalForm from '@/components/StepGoalForm';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useSession } from 'next-auth/react';
+import { useLocale, useTranslations } from 'next-intl';
+
+import { getFrameColor } from '@/lib/frame-utils';
+import { Link, usePathname, useRouter } from '@/navigation';
+
+import BannerImageEditor from '@/components/BannerImageEditor';
+import FrameSelector, { type OwnedFrame } from '@/components/FrameSelector';
+import PushNotificationManager from '@/components/PushNotificationManager';
+import { useTheme } from '@/components/ThemeProvider';
+import ThemeSelector, { type OwnedTheme } from '@/components/ThemeSelector';
+import TitleSelector, { type OwnedTitle } from '@/components/TitleSelector';
+import UserAvatar from '@/components/UserAvatar';
+import ProfileImageEditor from '@/components/profile/ProfileImageEditor';
+import ImageModal from '@/components/ui/ImageModal';
+import Spinner from '@/components/ui/Spinner';
+
+import type { ReactNode } from 'react';
+import type { Theme } from '@/components/ThemeProvider';
 
 interface UserData {
     name: string | null;
@@ -29,7 +33,23 @@ interface UserData {
     notification_gear_reactions?: boolean | null;
 }
 
-export default function SettingsForm({ user, ownsMidnight = false, ownedTitles = [], ownedFrames = [], ownedThemes = [] }: { user: UserData; ownsMidnight?: boolean; ownedTitles?: OwnedTitle[]; ownedFrames?: OwnedFrame[]; ownedThemes?: OwnedTheme[] }) {
+interface SettingsFormProps {
+    user: UserData;
+    notificationSettingsLoadError?: boolean;
+    ownsMidnight?: boolean;
+    ownedTitles?: OwnedTitle[];
+    ownedFrames?: OwnedFrame[];
+    ownedThemes?: OwnedTheme[];
+}
+
+export default function SettingsForm({
+    user,
+    notificationSettingsLoadError = false,
+    ownsMidnight = false,
+    ownedTitles = [],
+    ownedFrames = [],
+    ownedThemes = [],
+}: SettingsFormProps): ReactNode {
     const [name, setName] = useState(user.name || '');
     const [username, setUsername] = useState(user.username || '');
     const [isSaving, setIsSaving] = useState(false);
@@ -165,7 +185,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             {/* Main Column */}
             <div className="space-y-3">
 
-            <section className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+            <section className="relative h-fit overflow-hidden rounded-xl border border-gray-100 bg-white p-3 shadow-sm sm:p-5">
                 {/* S8: 装飾的な背景グラデーション */}
                 <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[var(--theme-primary)]/5 to-transparent rounded-full -translate-y-20 translate-x-20 pointer-events-none" />
                 <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900">
@@ -230,7 +250,7 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="block min-h-[44px] w-full rounded-lg border-gray-300 py-2 text-gray-900 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm"
+                                className="block min-h-[44px] w-full rounded-lg border-gray-300 py-2 text-base text-gray-900 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm"
                                 maxLength={50}
                             />
                         </div>
@@ -243,10 +263,10 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    className="block min-h-[44px] w-full rounded-lg border-gray-300 py-2 pl-8 text-gray-900 focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm"
+                                    className="block min-h-[44px] w-full rounded-lg border-gray-300 py-2 pl-8 text-base text-gray-900 focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm"
                                     maxLength={30}
                                     minLength={3}
-                                    pattern="[a-zA-Z0-9_\-\.]+"
+                                    pattern="[A-Za-z0-9_.\-]+"
                                     aria-describedby="username-hint"
                                 />
                             </div>
@@ -371,13 +391,13 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
             <div className="space-y-3">
 
                 {/* Language Switcher */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                <section className="relative h-fit overflow-hidden rounded-xl border border-gray-100 bg-white p-3 shadow-sm sm:p-5">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full -translate-y-14 translate-x-14 pointer-events-none" />
-                    <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-gray-900 sm:text-lg">
                         <span className="text-xl">🌐</span>
                         {commonT('language')}
                     </h2>
-                    <p className="text-xs text-gray-500 mb-6 font-medium">{t('languageDescription')}</p>
+                    <p className="mb-3 text-xs font-medium text-gray-500">{t('languageDescription')}</p>
                     <div className="flex flex-col gap-2">
                         <button
                             onClick={() => handleLanguageChange('ja')}
@@ -419,47 +439,36 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                 </section>
 
                 {/* S2/S9: テーマカードスタイルスイッチャー */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                <section className="relative h-fit overflow-hidden rounded-xl border border-gray-100 bg-white p-3 shadow-sm sm:p-5">
                     <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-pink-500/5 to-transparent rounded-full translate-y-20 -translate-x-16 pointer-events-none" />
-                    <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-gray-900 sm:text-lg">
                         <span className="text-xl">🎨</span>
                         {t('theme')}
                     </h2>
-                    <p className="text-xs text-gray-500 mb-4 font-medium">{t('themeDescription')}</p>
+                    <p className="mb-3 text-xs font-medium text-gray-500">{t('themeDescription')}</p>
                     <ThemeSelector ownedThemes={ownedThemes} />
-                </section>
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
-                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-[var(--theme-primary)]/5 to-transparent rounded-full translate-y-14 translate-x-14 pointer-events-none" />
-                    <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                        <span className="text-xl">⚡</span>
-                        {t('dailyGoal')}
-                    </h2>
-                    <p className="text-xs text-gray-500 mb-6 font-medium">{t('setDailyGoal')}</p>
-                    <div className="w-full">
-                        <StepGoalForm initialGoal={user.step_goal || 10000} />
-                    </div>
                 </section>
 
                 {/* S5: アカウント統計 */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <section className="h-fit rounded-xl border border-gray-100 bg-white p-3 shadow-sm sm:p-5">
+                    <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900 sm:text-lg">
                         <span className="text-xl">📈</span>
                         {t('accountStats')}
                     </h2>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                        <div className="rounded-lg border border-[var(--theme-primary)]/10 bg-[var(--theme-primary-light)] p-3 text-center">
                             <div className="text-2xl font-black account-stat-number">{ownedTitles.length}</div>
                             <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('titlesOwned')}</div>
                         </div>
-                        <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                        <div className="rounded-lg border border-[var(--theme-primary)]/10 bg-[var(--theme-primary-light)] p-3 text-center">
                             <div className="text-2xl font-black account-stat-number">{ownedFrames.length}</div>
                             <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('framesOwned')}</div>
                         </div>
-                        <div className="bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                        <div className="col-span-2 rounded-lg border border-[var(--theme-primary)]/10 bg-[var(--theme-primary-light)] p-3 text-center sm:col-span-1">
                             <div className="text-2xl font-black account-stat-number">{ownedThemes.length}</div>
                             <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('themesOwned')}</div>
                         </div>
-                        <div className="col-span-3 bg-[var(--theme-primary-light)] rounded-lg p-3 text-center border border-[var(--theme-primary)]/10">
+                        <div className="col-span-2 rounded-lg border border-[var(--theme-primary)]/10 bg-[var(--theme-primary-light)] p-3 text-center sm:col-span-3">
                             <div className="text-sm font-bold text-gray-700 flex items-center justify-center gap-2">
                                 <span className="text-lg">🎨</span>
                                 {t('currentTheme')}: <span className="account-stat-number capitalize">{theme}</span>
@@ -469,86 +478,97 @@ export default function SettingsForm({ user, ownsMidnight = false, ownedTitles =
                 </section>
 
                 {/* Notifications */}
-                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit relative overflow-hidden">
+                <section className="relative h-fit overflow-hidden rounded-xl border border-gray-100 bg-white p-3 shadow-sm sm:p-5">
                     <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-purple-500/5 to-transparent rounded-full -translate-y-14 -translate-x-14 pointer-events-none" />
-                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-gray-900 sm:text-lg">
                         <span className="text-xl">🔔</span>
                         {t('notifications')}
                     </h2>
                     <PushNotificationManager />
 
-                    {/* リアクション通知トグル */}
-                    <div className="mt-6 space-y-4 border-t border-gray-100 pt-4">
-                        <h3 className="text-sm font-semibold text-gray-700">{t('activityNotifications')}</h3>
-                        <label className="flex items-center justify-between cursor-pointer group">
-                            <div className="flex items-center gap-2">
-                                <span className="text-base">👍</span>
-                                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">{t('reactionNotifications')}</span>
-                            </div>
-                            <button
-                                type="button"
-                                role="switch"
-                                aria-checked={notifyReactions}
-                                disabled={isSavingNotify}
-                                className={`relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={async () => {
-                                    const newVal = !notifyReactions;
-                                    setNotifyReactions(newVal);
-                                    setIsSavingNotify(true);
-                                    try {
-                                        const response = await fetch('/api/user/notification-settings', {
-                                            method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ notificationReactions: newVal, notificationGearReactions: notifyGearReactions }),
-                                        });
-                                        if (!response.ok) throw new Error('Failed to save notification settings');
-                                    } catch {
-                                        setNotifyReactions(!newVal);
-                                        setMessage({ text: t('saveError'), type: 'error' });
-                                    }
-                                    finally { setIsSavingNotify(false); }
-                                }}
-                            >
-                                <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifyReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'}`}>
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyReactions ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </span>
-                            </button>
-                        </label>
-                        <label className="flex items-center justify-between cursor-pointer group">
-                            <div className="flex items-center gap-2">
-                                <span className="text-base">🎁</span>
-                                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">{t('gearReactionNotifications')}</span>
-                            </div>
-                            <button
-                                type="button"
-                                role="switch"
-                                aria-checked={notifyGearReactions}
-                                disabled={isSavingNotify}
-                                className={`relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={async () => {
-                                    const newVal = !notifyGearReactions;
-                                    setNotifyGearReactions(newVal);
-                                    setIsSavingNotify(true);
-                                    try {
-                                        const response = await fetch('/api/user/notification-settings', {
-                                            method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ notificationReactions: notifyReactions, notificationGearReactions: newVal }),
-                                        });
-                                        if (!response.ok) throw new Error('Failed to save notification settings');
-                                    } catch {
-                                        setNotifyGearReactions(!newVal);
-                                        setMessage({ text: t('saveError'), type: 'error' });
-                                    }
-                                    finally { setIsSavingNotify(false); }
-                                }}
-                            >
-                                <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifyGearReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'}`}>
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${notifyGearReactions ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </span>
-                            </button>
-                        </label>
-                    </div>
+                    {notificationSettingsLoadError ? (
+                        <p
+                            role="alert"
+                            className="mt-4 rounded-xl border border-[var(--color-danger)]/25 bg-[var(--color-surface)] p-3 text-sm text-[var(--color-danger)]"
+                        >
+                            {t('notificationSettingsLoadError')}
+                        </p>
+                    ) : (
+                        /* リアクション通知トグル */
+                        <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+                            <h3 className="text-sm font-semibold text-gray-700">{t('activityNotifications')}</h3>
+                            <label className="group flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <span className="text-base">👍</span>
+                                    <span className="text-sm text-gray-700 transition-colors group-hover:text-gray-900">{t('reactionNotifications')}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={notifyReactions}
+                                    disabled={isSavingNotify}
+                                    className={`relative inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    onClick={async () => {
+                                        const newVal = !notifyReactions;
+                                        setNotifyReactions(newVal);
+                                        setIsSavingNotify(true);
+                                        try {
+                                            const response = await fetch('/api/user/notification-settings', {
+                                                method: 'PUT',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ notificationReactions: newVal, notificationGearReactions: notifyGearReactions }),
+                                            });
+                                            if (!response.ok) throw new Error('Failed to save notification settings');
+                                        } catch {
+                                            setNotifyReactions(!newVal);
+                                            setMessage({ text: t('saveError'), type: 'error' });
+                                        } finally {
+                                            setIsSavingNotify(false);
+                                        }
+                                    }}
+                                >
+                                    <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifyReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${notifyReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </span>
+                                </button>
+                            </label>
+                            <label className="group flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <span className="text-base">🎁</span>
+                                    <span className="text-sm text-gray-700 transition-colors group-hover:text-gray-900">{t('gearReactionNotifications')}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={notifyGearReactions}
+                                    disabled={isSavingNotify}
+                                    className={`relative inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2 ${isSavingNotify ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    onClick={async () => {
+                                        const newVal = !notifyGearReactions;
+                                        setNotifyGearReactions(newVal);
+                                        setIsSavingNotify(true);
+                                        try {
+                                            const response = await fetch('/api/user/notification-settings', {
+                                                method: 'PUT',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ notificationReactions: notifyReactions, notificationGearReactions: newVal }),
+                                            });
+                                            if (!response.ok) throw new Error('Failed to save notification settings');
+                                        } catch {
+                                            setNotifyGearReactions(!newVal);
+                                            setMessage({ text: t('saveError'), type: 'error' });
+                                        } finally {
+                                            setIsSavingNotify(false);
+                                        }
+                                    }}
+                                >
+                                    <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifyGearReactions ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${notifyGearReactions ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </span>
+                                </button>
+                            </label>
+                        </div>
+                    )}
                 </section>
             </div>
 

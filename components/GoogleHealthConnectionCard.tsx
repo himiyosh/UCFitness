@@ -239,7 +239,7 @@ export default function GoogleHealthConnectionCard({
         <>
             <section
                 aria-labelledby="google-health-heading"
-                className="mb-4 overflow-hidden rounded-xl bg-white p-3 shadow-sm md:p-5"
+                className="mb-3 overflow-hidden rounded-xl bg-white p-3 shadow-sm md:p-5"
             >
                 {message && !isDisconnectDialogOpen && (
                     <p

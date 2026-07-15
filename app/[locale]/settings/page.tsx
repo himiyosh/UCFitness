@@ -9,14 +9,14 @@ import { auth } from '@/lib/auth';
 import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
 import { reportError } from '@/lib/errors';
 import { parseGoogleHealthNotice } from '@/lib/google-health-oauth';
-import { getCoinBalance } from '@/lib/services/coin-service';
 import { getGoogleHealthConnectionSummary } from '@/lib/services/fitness-connection-service';
+import { RECOMMENDED_STEP_GOAL } from '@/lib/step-goal';
 import { supabaseAdmin } from '@/lib/supabase';
 
 import ExportButton from '@/components/ExportButton';
 import GoogleHealthConnectionCard from '@/components/GoogleHealthConnectionCard';
 import SettingsForm from '@/components/SettingsForm';
-import SmartGoalAdvisor from '@/components/SmartGoalAdvisor';
+import StepGoalForm from '@/components/StepGoalForm';
 import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import Footer from '@/components/layout/Footer';
 import PageIntro from '@/components/layout/PageIntro';
@@ -25,6 +25,55 @@ export const dynamic = 'force-dynamic';
 
 interface SettingsPageProps {
     searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+interface SettingsShopItem {
+    itemCode: string;
+    nameEn: string;
+    nameJa: string;
+    previewValue: string;
+    category: string;
+}
+
+interface SettingsOwnedItem {
+    id: string;
+    isEquipped: boolean;
+    shopItem: SettingsShopItem;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function parseOwnedItem(value: unknown): SettingsOwnedItem | null {
+    if (!isRecord(value) || typeof value.id !== 'string') {
+        return null;
+    }
+    const relation = Array.isArray(value.shop_items)
+        ? value.shop_items[0]
+        : value.shop_items;
+    if (
+        !isRecord(relation)
+        || typeof relation.item_code !== 'string'
+        || typeof relation.name_en !== 'string'
+        || typeof relation.name_ja !== 'string'
+        || typeof relation.preview_value !== 'string'
+        || typeof relation.category !== 'string'
+    ) {
+        return null;
+    }
+
+    return {
+        id: value.id,
+        isEquipped: value.is_equipped === true,
+        shopItem: {
+            itemCode: relation.item_code,
+            nameEn: relation.name_en,
+            nameJa: relation.name_ja,
+            previewValue: relation.preview_value,
+            category: relation.category,
+        },
+    };
 }
 
 export default async function SettingsPage({
@@ -53,12 +102,16 @@ export default async function SettingsPage({
     const userId = session.user.id;
 
     // ⚡ パフォーマンス: supabaseAdmin を使用し必要なカラムのみ取得
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseAdmin
         .from("users")
         .select("name, image, username, is_custom_image, step_goal, banner_url, provider")
         .eq("id", userId)
         .single();
 
+    if (userError) {
+        reportError('settings:user', userError, { userId });
+        throw new Error('Failed to load settings user');
+    }
     if (!user) {
         return <div className="flex items-center justify-center min-h-screen text-[var(--foreground-muted)]">{commonT('userNotFound')}</div>;
     }
@@ -67,18 +120,16 @@ export default async function SettingsPage({
         redirect('/setup');
     }
 
-    // 通知設定カラム（DB にカラムが未追加の場合でもエラーにならないよう別クエリで安全に取得）
-    const { data: notifySettings } = await supabaseAdmin
+    // 通知設定を独立取得し、障害時は既定値へ偽装せず明示する
+    const { data: notifySettings, error: notifySettingsError } = await supabaseAdmin
         .from("users")
         .select("notification_reactions, notification_gear_reactions")
         .eq("id", userId)
         .single();
 
-    // ⚡ パフォーマンス: Midnight テーマチェックと所持アイテムを並列取得
-    // スマートゴールアドバイザー用: 直近30日の歩数データを取得
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+    if (notifySettingsError) {
+        reportError('settings:notifications', notifySettingsError, { userId });
+    }
 
     const googleHealthAvailable = isGoogleHealthEnabled();
     const googleHealthStatePromise = getGoogleHealthConnectionSummary(userId)
@@ -91,8 +142,6 @@ export default async function SettingsPage({
     const [
         midnightResult,
         ownedItemsResult,
-        recentStepsResult,
-        coinBalance,
         googleHealthState,
     ] = await Promise.all([
         supabaseAdmin
@@ -106,51 +155,59 @@ export default async function SettingsPage({
             .select('id, is_equipped, shop_items(item_code, name_en, name_ja, preview_value, category)')
             .eq('user_id', userId)
             .order('purchased_at', { ascending: true }),
-        // スマートゴールアドバイザー用データ
-        supabaseAdmin
-            .from('daily_steps')
-            .select('date, steps')
-            .eq('user_id', userId)
-            .gte('date', thirtyDaysAgoStr)
-            .order('date', { ascending: true }),
-        getCoinBalance(userId),
         googleHealthStatePromise,
     ]);
+    if (midnightResult.error) {
+        reportError('settings:midnight-ownership', midnightResult.error, { userId });
+        throw new Error('Failed to load theme ownership');
+    }
+    if (ownedItemsResult.error) {
+        reportError('settings:owned-items', ownedItemsResult.error, { userId });
+        throw new Error('Failed to load owned items');
+    }
     const ownsMidnight = midnightResult.data !== null;
-    const ownedTitleItems = ownedItemsResult.data;
+    const parsedOwnedItems = (ownedItemsResult.data ?? []).map(parseOwnedItem);
+    if (parsedOwnedItems.some((item) => item === null)) {
+        const shapeError = new Error('Unexpected owned item response shape');
+        reportError('settings:owned-items-shape', shapeError, { userId });
+        throw shapeError;
+    }
+    const ownedItems = parsedOwnedItems.filter(
+        (item): item is SettingsOwnedItem => item !== null,
+    );
 
-    const ownedTitles = (ownedTitleItems || [])
-        .filter((item: any) => item.shop_items?.category === 'TITLE')
-        .map((item: any) => ({
+    const ownedTitles = ownedItems
+        .filter((item) => item.shopItem.category === 'TITLE')
+        .map((item) => ({
             userItemId: item.id,
-            itemCode: item.shop_items.item_code,
-            nameEn: item.shop_items.name_en,
-            nameJa: item.shop_items.name_ja,
-            emoji: item.shop_items.preview_value,
-            isEquipped: item.is_equipped,
+            itemCode: item.shopItem.itemCode,
+            nameEn: item.shopItem.nameEn,
+            nameJa: item.shopItem.nameJa,
+            emoji: item.shopItem.previewValue,
+            isEquipped: item.isEquipped,
         }));
 
     // 所持しているフレームアイテムを取得
-    const ownedFrames = (ownedTitleItems || [])
-        .filter((item: any) => item.shop_items?.category === 'ICON_FRAME')
-        .map((item: any) => ({
+    const ownedFrames = ownedItems
+        .filter((item) => item.shopItem.category === 'ICON_FRAME')
+        .map((item) => ({
             userItemId: item.id,
-            itemCode: item.shop_items.item_code,
-            nameEn: item.shop_items.name_en,
-            nameJa: item.shop_items.name_ja,
-            previewValue: item.shop_items.preview_value,
-            isEquipped: item.is_equipped,
+            itemCode: item.shopItem.itemCode,
+            nameEn: item.shopItem.nameEn,
+            nameJa: item.shopItem.nameJa,
+            previewValue: item.shopItem.previewValue,
+            isEquipped: item.isEquipped,
         }));
 
     // 所持しているテーマカラーアイテムを取得
-    const ownedThemes = (ownedTitleItems || [])
-        .filter((item: any) => item.shop_items?.category === 'THEME_COLOR')
-        .map((item: any) => ({
+    const ownedThemes = ownedItems
+        .filter((item) => item.shopItem.category === 'THEME_COLOR')
+        .map((item) => ({
             userItemId: item.id,
-            itemCode: item.shop_items.item_code,
-            nameEn: item.shop_items.name_en,
-            nameJa: item.shop_items.name_ja,
-            isEquipped: item.is_equipped,
+            itemCode: item.shopItem.itemCode,
+            nameEn: item.shopItem.nameEn,
+            nameJa: item.shopItem.nameJa,
+            isEquipped: item.isEquipped,
         }));
 
     return (
@@ -178,15 +235,48 @@ export default async function SettingsPage({
                     breadcrumbs={[{ label: t('title') }]}
                 />
 
-                <GoogleHealthConnectionCard
-                    available={googleHealthAvailable}
-                    connection={googleHealthState.connection}
-                    fitbitFallbackAvailable={user.provider === 'fitbit'}
-                    loadError={googleHealthState.loadError}
-                    notice={healthNotice}
-                />
+                <div data-settings-priority="health-and-goal">
+                    <GoogleHealthConnectionCard
+                        available={googleHealthAvailable}
+                        connection={googleHealthState.connection}
+                        fitbitFallbackAvailable={user.provider === 'fitbit'}
+                        loadError={googleHealthState.loadError}
+                        notice={healthNotice}
+                    />
 
-                <SettingsForm user={{ ...user, notification_reactions: notifySettings?.notification_reactions ?? null, notification_gear_reactions: notifySettings?.notification_gear_reactions ?? null }} ownsMidnight={ownsMidnight} ownedTitles={ownedTitles} ownedFrames={ownedFrames} ownedThemes={ownedThemes} />
+                    <section
+                        aria-labelledby="settings-daily-goal-heading"
+                        className="settings-goal-card mb-3 rounded-xl border border-[var(--color-border)] border-l-4 border-l-[var(--color-primary)] bg-white p-3 shadow-sm sm:p-5"
+                    >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                                <h2 id="settings-daily-goal-heading" className="flex items-center gap-2 text-base font-bold text-[var(--color-text)]">
+                                    <span aria-hidden="true" className="text-xl">🎯</span>
+                                    {t('dailyGoal')}
+                                </h2>
+                                <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
+                                    {t('stepGoalPriorityDescription')}
+                                </p>
+                            </div>
+                            <div className="w-full sm:w-auto sm:min-w-72">
+                                <StepGoalForm initialGoal={user.step_goal ?? RECOMMENDED_STEP_GOAL} />
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <SettingsForm
+                    user={{
+                        ...user,
+                        notification_reactions: notifySettings?.notification_reactions ?? null,
+                        notification_gear_reactions: notifySettings?.notification_gear_reactions ?? null,
+                    }}
+                    notificationSettingsLoadError={notifySettingsError !== null}
+                    ownsMidnight={ownsMidnight}
+                    ownedTitles={ownedTitles}
+                    ownedFrames={ownedFrames}
+                    ownedThemes={ownedThemes}
+                />
 
                 {/* データエクスポート */}
                 <div className="mt-8 max-w-sm">

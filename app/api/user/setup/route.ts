@@ -4,10 +4,8 @@ import { NextResponse } from 'next/server';
 
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
+import { isValidStepGoal } from '@/lib/step-goal';
 import { supabaseAdmin } from "@/lib/supabase";
-
-const MIN_STEP_GOAL = 500;
-const MAX_STEP_GOAL = 100_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -48,12 +46,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (!trimmedName || trimmedName.length > 50) {
             return NextResponse.json({ error: "Display name is required and must be 50 characters or less" }, { status: 400 });
         }
-        if (
-            typeof stepGoal !== 'number'
-            || !Number.isInteger(stepGoal)
-            || stepGoal < MIN_STEP_GOAL
-            || stepGoal > MAX_STEP_GOAL
-        ) {
+        if (!isValidStepGoal(stepGoal)) {
             return NextResponse.json({ error: "Invalid step goal" }, { status: 400 });
         }
 
