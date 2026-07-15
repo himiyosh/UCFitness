@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-15T18:09:11+09:00",
+  "lastUpdated": "2026-07-15T18:22:25+09:00",
   "lastAgent": "UCFitnessAgent (React + Competitive UX + Accessibility + QA + Self-Critique)",
-  "lastCommit": "f55b335195d1d47ee0c502d2c43f592768c4a53d",
+  "lastCommit": "3fac8d2c6a4e04ebb2eedd09de671b46c2ee96d1",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "全ページ再精査Cycle 7としてGroupsの所属者とランキング参加者を分離し、正歩数だけの連続順位、直上グループまでの平均歩数差、未所属参加導線を実装。group/user/membershipだけを必須境界とし、メンバー一覧/件数、順位、比較、期間別競争を個別障害へ分離。private group非メンバー404とpublic限定競争取得、relation型ガード、管理Dialogの44px/焦点/live/i18nを整備し、イベント/チャット/ギア/週間レポートを継続。全274テスト、Competitive Athlete/Accessibility Keyboard、独立レビュー、自己批判PASS。",
+  "summary": "全ページ再精査Cycle 7としてGroupsの所属者とランキング参加者を分離し、正歩数だけの連続順位、直上グループまでの平均歩数差、未所属参加導線を実装。group/user/membershipだけを必須境界とし、メンバー一覧/件数、順位、比較、期間別競争を個別障害へ分離。private group非メンバー404とpublic限定競争取得、relation型ガード、管理Dialogの44px/焦点/live/i18nを整備し、イベント/チャット/ギア/週間レポートを継続。最終再監査でプロフィールリンク固有の44px幅・高さ検査へ厳密化。全274テスト、独立レビュー、自己批判PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 172件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-15T18:09:11+09:00"
+    "lastVerified": "2026-07-15T18:22:25+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -766,6 +766,15 @@
         ".github/copilot-instructions.md",
         ".github/agents/UCFitnessAgent.agent.md",
         ".github/skills/self-critique-gate/SKILL.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "GitHub Copilot CLI + UCFitnessAgent",
+      "action": "Groupsの最終再監査で検出した短い表示名のプロフィールリンクの44px幅契約を、リンク固有のAWK検査へ厳密化。別の追加ボタンが同じクラスを持っても誤PASSせず、プロフィールリンクのmin-wを除いた疑似入力ではFAILすることを確認した。",
+      "commit": "3fac8d2c6a4e04ebb2eedd09de671b46c2ee96d1",
+      "filesChanged": [
         "scripts/check-ucfitness-rules.sh"
       ]
     }
