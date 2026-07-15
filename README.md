@@ -19,6 +19,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **歩数トラッキング** | Fitbit API と Google Health の段階移行型自動歩数同期 |
 | **初回セットアップ** | 歩数ソースと日次目標を確認し、保存後の「最初の500歩」からホームの価値ループへ接続 |
 | **設定** | 歩数ソースと日次目標をプロフィール・装飾より先に配置し、500〜100,000歩の共通Client/API契約で更新 |
+| **プロフィール** | 記録済み0歩・未記録・取得失敗を分離し、歩数・比較・バッジ・装備・コイン等を部分障害でも継続表示 |
 | **ホームダッシュボード** | 今日の進捗、次ライバル差、固定5行ランキング、個別目標ベースのFriend Pulse、今週トレンド、UC残高、チャレンジ、ミッション、次の行動を意味色と動的barで可視化 |
 | **グループ対抗** | グループ作成・参加、メンバーランキング、週間レポート |
 | **リーダーボード** | 個人・グループ順位に加え、参加人数・次ライバル名・必要歩数・トップ差をCompetition Missionで可視化 |
@@ -359,7 +360,7 @@ npm run pages:build
 │
 └── 🔧 Skills (再利用可能なドメイン知識)
     ├── modern-web-guidance                Chrome Modern Web Guidance / Baseline 2024 / Web 標準ベストプラクティス
-    ├── self-critique-gate                 完了前の自己批判・Setup/Settings健康行動・狭幅境界・44px・App Shell / PageIntro・水和・回帰防止ゲート
+    ├── self-critique-gate                 完了前の自己批判・Setup/Settings/Profile健康データ・狭幅境界・44px・App Shell / PageIntro・水和・回帰防止ゲート
     ├── web-design-reviewer                UI/UX ビジュアルチェック・レスポンシブ検証
     ├── ucfitness-rule-enforcement         UCFitness 固有ルールの静的検出・強制
     ├── postgresql-optimization            PostgreSQL クエリ最適化・パフォーマンス分析
@@ -370,7 +371,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings健康行動、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期安全性を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings/Profile健康データ、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期安全性を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
@@ -415,7 +416,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | スキル | 用途 |
 |---|---|
 | [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | Chrome Modern Web Guidance。HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善時に guide を検索・取得して適用する |
-| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。Setup/Settings健康行動・狭幅境界・全操作44px・不可視table geometry・route coverage・App Shell / PageIntro・日付水和・固定ランキング・回帰証拠を確認する |
+| [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。Setup/Settings/Profile健康データ・狭幅境界・全操作44px・不可視table geometry・route coverage・App Shell / PageIntro・日付水和・固定ランキング・回帰証拠を確認する |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
 | [ucfitness-rule-enforcement](.github/skills/ucfitness-rule-enforcement/SKILL.md) | UCFitness 固有ルール違反の静的検出・強制メカニズム |
 | [postgresql-optimization](.github/skills/postgresql-optimization/SKILL.md) | PostgreSQL クエリ最適化・パフォーマンス分析 |

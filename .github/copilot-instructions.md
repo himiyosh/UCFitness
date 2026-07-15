@@ -690,6 +690,15 @@ if (!dbUser?.username) {
 - 表示していないSmart Goal用の`daily_steps`やUC残高を取得しない。Settingsの初期表示で使うデータだけを並列取得する
 - モバイルパネルは`p-3 sm:p-5`を基本とし、2列統計の全幅行は`col-span-2 sm:col-span-3`、3件目は`col-span-2 sm:col-span-1`として320pxで暗黙3列を作らない。リファレンス: `app/[locale]/settings/page.tsx`, `components/SettingsForm.tsx`, `components/StepGoalForm.tsx`, `app/api/user/step-goal/route.ts`
 
+#### Profileの0歩・欠測・部分障害契約
+
+- 日次・週次・月次は`number | null`で扱い、記録済み0歩は`0`、未記録は`null`、取得失敗は別の`unavailable`状態として表示する。`|| 0`で3状態を統合しない
+- 期間平均は同じ期間の合計を記録日数で割り、記録済み0歩を分母へ含める。活動日数は正歩数の日だけを数え、累計歩数を直近期間の活動日数で割らない
+- Profileの必須ユーザー行だけを致命的な取得境界とする。歩数履歴、累計RPC、比較歩数、公開グループ、装備、バッジ、コイン、ランキング、おすすめの障害は各セクションへ明示し、他のプロフィール情報を表示し続ける
+- 閲覧者の比較歩数取得失敗や記録0件で対象プロフィールを停止しない。失敗・未記録を別コピーで示し、比較できる期間だけ数値差を表示する
+- ActivityGraphは主系列・比較系列とも`Map.has(date)`で記録済み0歩と欠測を分ける。視覚バーだけでなく`sr-only`表でも欠測を「未記録」と読み上げ、目標未設定時は10,000歩へ偽装せず目標線・達成色を出さない
+- PersonalRecordsは歩数系・コイン系を独立nullableにし、1ソース障害でカード全体を消さない。プロフィールの可視補助文字は12px以上を維持する。リファレンス: `app/[locale]/user/[username]/page.tsx`, `lib/profile-steps.ts`, `components/ActivityGraph.tsx`, `components/profile/PersonalRecords.tsx`
+
 #### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
 
 新規ページには最低限以下の翻訳キーを定義すること:
@@ -1405,3 +1414,10 @@ export const runtime = "edge";
 - **根本原因**: 必須の`feed_last_read_at`と任意の通知嗜好カラムを同じSELECTへ結合し、嗜好取得失敗をFeed全体の障害境界に置いた。DBマイグレーションの適用状態と機能可用性を分離していなかった。
 - **対策**: 既読時刻と通知嗜好を別クエリにし、嗜好取得失敗時も既定Feed・未読数を継続して`notificationPreferencesAvailable: false`を返す。ActivityFeed/NotificationBellは警告を表示し、通知設定APIは503利用不能を返す。Settingsは通知トグルだけを隠して他設定を維持する。
 - **教訓**: 任意機能のスキーマ不足をページ/Feed全体の障害へ拡大しない。ただし既定値へ無言変換せず、APIの可用性フラグとUI警告で部分障害を正直に伝える。リファレンス: `app/api/user/feed/route.ts`, `app/api/user/feed/unread-count/route.ts`, `components/ActivityFeed.tsx`, `components/layout/NotificationBell.tsx`
+
+### LL-053: Profileが欠測・0歩・補助障害を同じ0または全面エラーへ変換していた
+
+- **事象**: 今日の記録なしと記録済み0歩を`|| 0`で同一表示し、公開グループ・おすすめ・履歴・累計のどれか1件のDBエラーでプロフィール全体をthrowしていた。比較系列の欠測も0と読み上げ、累計歩数を直近活動日数で割る平均値が表示された。
+- **根本原因**: 可視数値を常に`number`へ正規化し、必須プロフィールと補助セクションを同じPromise障害境界へ置いた。平均の期間・分母契約と、比較チャートの`hasRecord`契約が主系列だけに存在した。
+- **対策**: `lib/profile-steps.ts`で日/週/月/平均を`number | null`として純粋集計し、記録済み0歩を記録日分母へ含める。必須ユーザー以外を個別結果へ分離し、セクション別エラーを表示する。ActivityGraph比較系列も`Map.has`で0/欠測を分け、PersonalRecordsを項目単位nullableにする。
+- **教訓**: 健康データでは0は有効な測定値であり、欠測や取得失敗のfallbackではない。ページの可用性は最小必須データで決め、補助機能の失敗を他の実データへ伝播させない。リファレンス: `app/[locale]/user/[username]/page.tsx`, `lib/profile-steps.ts`, `components/ActivityGraph.tsx`

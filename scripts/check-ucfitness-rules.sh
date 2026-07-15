@@ -561,8 +561,9 @@ VIEWER_STEPS_ERROR_BLOCK=$(sed -n '/if (vDataResult.error)/,/^[[:space:]]*}/p' '
 if ! printf '%s' "$VIEWER_STEPS_ERROR_BLOCK" | grep -q "reportError('profile:viewer-steps'"; then
   record "プロフィール閲覧者歩数DBエラーのreportError欠落" "app/[locale]/user/[username]/page.tsx"
 fi
-if ! printf '%s' "$VIEWER_STEPS_ERROR_BLOCK" | grep -q "throw new Error('Failed to load profile viewer steps')"; then
-  record "プロフィール閲覧者歩数DBエラーの伝播欠落" "app/[locale]/user/[username]/page.tsx"
+if ! printf '%s' "$VIEWER_STEPS_ERROR_BLOCK" | grep -q 'comparisonUnavailable = true' || \
+   printf '%s' "$VIEWER_STEPS_ERROR_BLOCK" | grep -q "throw new Error('Failed to load profile viewer steps')"; then
+  record "プロフィール閲覧者歩数DBエラーの比較限定部分障害欠落" "app/[locale]/user/[username]/page.tsx"
 fi
 if ! grep -q 'const profileHref = user.username' components/layout/UserMenu.tsx || \
    ! grep -q '{profileHref ? (' components/layout/UserMenu.tsx; then
@@ -762,6 +763,20 @@ if grep -Eq "'Just now'|m ago|h ago|d ago" 'app/[locale]/user/[username]/page.ts
    grep -q '>Group Name<' components/group/GroupSettings.tsx || \
    grep -Eq '>Daily<|>Weekly<' components/StepCalendar.tsx; then
   record "狭幅変更対象にja/en未対応の固定文言" "Profile / GroupSettings / StepCalendar"
+fi
+if grep -q 'as any\|: any\|any\[\]' 'app/[locale]/user/[username]/page.tsx' || \
+   grep -q '\.steps || 0\|step_goal || 10000' 'app/[locale]/user/[username]/page.tsx' || \
+   ! grep -q 'summarizeProfileSteps' 'app/[locale]/user/[username]/page.tsx' || \
+   ! grep -q 'historyUnavailable' 'app/[locale]/user/[username]/page.tsx' || \
+   ! grep -q 'comparisonUnavailable' 'app/[locale]/user/[username]/page.tsx' || \
+   grep -q 'profileQueryError' 'app/[locale]/user/[username]/page.tsx' || \
+   ! grep -q 'comparisonMap.has(day.fullDate)' components/ActivityGraph.tsx || \
+   ! grep -q 'stepGoal?: number | null' components/ActivityGraph.tsx || \
+   grep -Eq 'text-\\[(9|10|11)px\\]' 'app/[locale]/user/[username]/page.tsx' components/ActivityGraph.tsx components/profile/PersonalRecords.tsx || \
+   ! grep -q 'averageSteps: throughToday.length' lib/profile-steps.ts || \
+   ! grep -q 'throw error' lib/services/badge-service.ts || \
+   ! grep -q 'number | null' components/profile/PersonalRecords.tsx; then
+  record "Profileの0歩/欠測/部分障害/12px契約欠落" "Profile page / profile-steps / ActivityGraph / PersonalRecords"
 fi
 
 # ---------- 結果出力 ----------

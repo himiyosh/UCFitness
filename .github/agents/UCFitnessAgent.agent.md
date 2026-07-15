@@ -960,6 +960,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 33. **Challenge継続優先契約** — Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを先にし、残り歩数→期限→報酬で安定順序化する。優先帯の主表示は最大500歩の次アクション、🔥報酬は残り3日以内だけ、作成は一覧後の補助導線にする。進捗null/undefinedを0へ変換せず、JST期限を一覧・カード・参加APIで共有する。list/progress取得はAbortController+request generation、参加/離脱後はmounted ref+最新tab refで再取得し、開始前/終了/達成/無効チャレンジを優先帯へ出さない
 34. **Setup Activation契約** — 初回セットアップはプロフィール保存だけで終えず、DB正本のprovider、500〜100,000歩の整数目標、保存後の最初の500歩CTAまで提示する。目標はプロフィールと同一更新で保存し、Status API障害を未設定へ偽装しない。404は再ログイン、5xxは再試行へ分ける。Status初回取得/再試行はAbortControllerまたは世代IDで競合分離し、セットアップ済み判定を目標範囲検証より先にする。保存成功後はsession更新→永続完了面の順にし、全入力/CTAを44px以上、主色focus ringを即時表示、HTML `pattern`を`v`フラグ互換にして、OAuth再認可・接続切替を暗黙実行しない
 35. **Settings健康優先契約** — 歩数ソース→日次目標をプロフィール/装飾より先にし、目標500〜100,000歩を共有Client/API関数で検証する。目標入力はモバイル16px・44px・エラーfocus・成功statusを持ち、装備テーマでなく意味色`--color-primary*`を使う。Midnightの`bg-white !important`から`.settings-goal-card`の左4pxを局所復元し4テーマ実測する。user/テーマ所有/所持品のDB失敗を既定値へ変換せず、任意通知カラム失敗は通知トグルだけの明示エラーへ分離する。未表示データを取得せず、モバイル2列統計で素の`col-span-3`を使わない
+36. **Profile 0歩/部分障害契約** — 日/週/月を`number|null`で保持し、0歩・未記録・取得失敗を分ける。期間平均は記録済み0を含む記録日分母。必須ユーザー行以外の歩数/比較/グループ/装備/バッジ/コイン/ランキング/おすすめ障害はセクション単位で表示し、全体throwしない。ActivityGraph比較も`Map.has`、PersonalRecordsは項目nullable、補助文字12px以上にする
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -1381,6 +1382,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | 初回セットアップがプロフィール保存で終わり、歩き始める理由がなかった | 必須プロフィール項目の補完を完了条件とし、接続元・日次目標・達成可能な最初の行動をActivation体験へ含めていなかった。Status API障害も未設定へ見せ、入力は42px、username patternは`v`フラグで無効だった。Status再試行に競合分離がなく、旧目標範囲を先に検証すると完了済みユーザーも閉じ込められた | **DB正本のproviderとstep_goalを確認し、500〜100,000歩の整数目標をプロフィールと同時保存する。** 保存後は即redirectせず、完了状態と最初の500歩Questを永続表示する。Status API障害は5xxへ分離し、取得をAbortControllerで競合分離、完了済み判定を先行する。入力を44px化、HTML patternをUnicode Sets互換にして、セットアップからOAuth再認可を暗黙実行しない。リファレンス: `app/[locale]/setup/page.tsx`, `app/api/user/setup/route.ts`, `app/api/user/status/route.ts` |
 | Settingsで装飾が健康目標より先に並び、歩数目標の範囲も分裂していた | モバイルDOMをカラム追加順のままにし、Setupは500〜100,000、Settings UIは100〜1,000,000、APIは0〜1,000,000を個別定義していた。未表示Smart Goal用DB取得と、失敗時の通知ON/未所有既定化も残った | **歩数ソース→日次目標をSettingsFormより前へ置き、`lib/step-goal.ts`をClient/API/Setupで共有する。** 目標入力を16px/44px・エラーfocus・成功statusへ修正し、未使用取得を除去する。user/所有権DBエラーはページ、未適用環境のある通知カラムは通知トグルだけの明示エラーへ分離する。モバイル2列統計は`col-span-2`、smだけ3列spanにする |
 | 未適用の通知嗜好カラムがFeed全体と未読数を停止した | 必須の`feed_last_read_at`と任意嗜好カラムを同じSELECTへ結合し、実DBの42703をFeed全体の500へ拡大した。通知ベルは未読失敗を無言で無視した | **既読時刻と嗜好を別取得し、嗜好失敗時も既定Feed/未読を継続して`notificationPreferencesAvailable:false`を返す。** ActivityFeed/NotificationBellへ警告を表示し、設定GET/PUTは503、Settingsはトグルだけを部分障害にする |
+| Profileが欠測・0歩・補助障害を0または全面エラーへ変換した | `||0`と一括Promise障害境界により、有効な0・未記録・DB失敗を統合し、累計歩数を直近活動日数で割る期間不一致平均も表示した | **`lib/profile-steps.ts`で`number|null`と記録日平均を共有し、必須ユーザー以外を個別可用性へ分離する。** 比較Graphも`Map.has`、PersonalRecordsは項目nullable、補助文字12px以上にする |
 
 ---
 
