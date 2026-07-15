@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-15T18:22:25+09:00",
-  "lastAgent": "UCFitnessAgent (React + Competitive UX + Accessibility + QA + Self-Critique)",
-  "lastCommit": "3fac8d2c6a4e04ebb2eedd09de671b46c2ee96d1",
+  "lastUpdated": "2026-07-15T19:24:26+09:00",
+  "lastAgent": "UCFitnessAgent (React + Onboarding UX + Accessibility + QA + Self-Critique)",
+  "lastCommit": "bbf8871aeb0adb51029f9efdbfba7c555e5979af",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "全ページ再精査Cycle 7としてGroupsの所属者とランキング参加者を分離し、正歩数だけの連続順位、直上グループまでの平均歩数差、未所属参加導線を実装。group/user/membershipだけを必須境界とし、メンバー一覧/件数、順位、比較、期間別競争を個別障害へ分離。private group非メンバー404とpublic限定競争取得、relation型ガード、管理Dialogの44px/焦点/live/i18nを整備し、イベント/チャット/ギア/週間レポートを継続。最終再監査でプロフィールリンク固有の44px幅・高さ検査へ厳密化。全274テスト、独立レビュー、自己批判PASS。",
+  "summary": "F014オンボーディングフロー最適化を完了。Setupをプロフィール/歩数ソース、日次目標、グループ/チャレンジの3画面へ整理し、progressbar、各画面の後回し、戻る、見出し/エラー焦点、完了後500歩Activationを実装。必須入力を任意写真より先に置き、自動参加・OAuth再認可なしで既存の障害分離と原子的保存を維持。check:all、全45ファイル277テスト、ja/en 1596キー、未認証375/1280、2ペルソナ、独立レビュー、自己批判PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 172件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-15T18:22:25+09:00"
+    "lastVerified": "2026-07-15T19:24:26+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -23,7 +23,7 @@
     "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
     "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
     "認証済みGroups/Group detailの実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋順位テスト、ソース監査、2ペルソナ、独立レビューで代替",
-    "F014オンボーディングの3画面化・各画面スキップ・完走率80%プロトタイプ検証は未完了。Setup Activationの歩数ソース・日次目標・最初の500歩は実装済み",
+    "認証済みSetupの3画面実ブラウザ完走は実ユーザーPIIとDB書込みを避けて未実施。純粋遷移テスト、Mobile Beginner/Accessibility Keyboardの2ペルソナ、独立レビュー、未認証375/1280リダイレクトで代替",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
     "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち",
     "本番Supabaseにnotification_reactions / notification_gear_reactions列が未適用（42703）。Feed/未読/Settingsは部分障害fallback済みだが、通知嗜好を編集可能にするDB migration適用はユーザー承認待ち",
@@ -775,6 +775,25 @@
       "action": "Groupsの最終再監査で検出した短い表示名のプロフィールリンクの44px幅契約を、リンク固有のAWK検査へ厳密化。別の追加ボタンが同じクラスを持っても誤PASSせず、プロフィールリンクのmin-wを除いた疑似入力ではFAILすることを確認した。",
       "commit": "3fac8d2c6a4e04ebb2eedd09de671b46c2ee96d1",
       "filesChanged": [
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + Onboarding UX + Accessibility + QA + Self-Critique)",
+      "action": "F014オンボーディングをプロフィール/歩数ソース、日次目標、グループ/チャレンジの3画面へ整理。各画面の後回し、進捗、戻る、見出し/エラー焦点、完了後500歩Activationを追加し、必須入力を任意写真より先に配置。自動参加・OAuth再認可・DB検証書込みなしで既存保存契約を維持した。check:all、全45ファイル277テスト、ja/en 1596キー、未認証375/1280、2ペルソナ、独立レビュー、自己批判PASS。",
+      "commit": "bbf8871aeb0adb51029f9efdbfba7c555e5979af",
+      "filesChanged": [
+        "app/[locale]/setup/page.tsx",
+        "lib/setup-flow.ts",
+        "lib/setup-flow.test.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        "docs/PRODUCT.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-features.json",
         "scripts/check-ucfitness-rules.sh"
       ]
     }
