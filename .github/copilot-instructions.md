@@ -487,6 +487,7 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 - **再購読競合で0件にしない**: upsert後の旧endpoint整理は、作成時刻とIDで「現在行より古い行だけ」を削除する一方向winner、またはDB RPCの原子的処理にする。並行する2要求が互いを削除できるread-then-deleteは禁止
 - **全ユーザー無制限並列送信禁止**: Cronのユーザー単位通知は最大20件程度の固定バッチへ分割する。各ユーザー内の端末送信だけを並列化し、全購読者を裸の`Promise.all`へ渡さない
 - **DB障害を既定言語・0値へ変換しない**: `users.language`、週次歩数、UC集計の取得失敗時は通知を送らず明示的に失敗として記録する。DB照会失敗を日本語既定や0歩サマリーへ変換してはならない
+- **任意の通知嗜好カラム障害でFeedを停止しない**: `notification_reactions` / `notification_gear_reactions` は`feed_last_read_at`と別クエリにし、嗜好カラム未適用時もバッジ・リアクションFeedと未読集計を既定表示で継続する。APIは`notificationPreferencesAvailable: false`を返し、ActivityFeed/NotificationBellは「既定Feedを表示中」と明示する。通知設定GET/PUTは成功や既定ONへ偽装せず503 `NOTIFICATION_SETTINGS_UNAVAILABLE`を返す
 - **通知ベルも同じ集約単位に揃える**: 同日・同一ユーザーの複数バッジや短時間の同種リアクションは1行へまとめ、未読バッジ数も生イベント件数ではなく表示する集約通知件数と一致させる。バッジ名は`Museum.badgeNames`のja/en資産を再利用する
 - **通知時刻はイベント固有値を使う**: `daily_steps.updated_at`や`coin_balances.updated_at`のように別処理でも変わる汎用更新時刻を通知発生時刻に使わない。安定した`created_at`または専用イベント時刻がない派生状態は通知ソースから外し、既読後の再同期・報酬処理で偽未読を再発させない
 - **集約Feedのページング**: raw eventへlimitを適用してから集約したり、集約項目の最新/最古時刻だけをcursorにしてはならない。直近7日のsnapshot時刻を固定したopaque offset cursorで、全ソース集約後の論理通知をページ分割し、クライアントはAPIの`nextCursor`を保持する
@@ -677,6 +678,17 @@ if (!dbUser?.username) {
 - Setup入力のフォーカスリングは`--color-primary`で統一し、`transition-shadow`等で初期フレームを透明にせず即時表示する
 - 接続確認は既存の認証プロバイダを表示するだけとし、セットアップ改善を理由にOAuth再認可・接続切替・本番DB migrationを行わない
 - セットアップの意味色は青=目標/最初のクエスト、緑=接続/完了とし、実際のUC報酬を示す場合だけアンバーを使う。全面グラデーションやモノクロmarkへ戻さない。リファレンス: `app/[locale]/setup/page.tsx`, `app/api/user/setup/route.ts`, `app/api/user/status/route.ts`
+
+#### Settingsの健康行動優先契約
+
+- SettingsのDOM順は歩数ソース→日次歩数目標→プロフィール→言語/テーマ/統計/通知とし、健康行動を称号・フレーム・ショップ等の装飾より先に提示する
+- 日次目標は`lib/step-goal.ts`をClient/API/Setupで共有し、500〜100,000の整数だけを保存する。Settings APIだけ0歩や100万歩を受理する範囲差を作らない
+- 歩数目標の編集入力はモバイル16px、全操作44px以上、エラー時は入力へfocus、保存中は二重送信を防ぎ、成功/失敗を永続的なstatus/alertで通知する
+- 日次目標カードと入力は装備テーマ色ではなく意味色`--color-primary*`（青=目標）を使う。Pop/Sakura等でも青を固定し、Midnightだけコントラスト用の明色へ変える。プロフィール装飾の`--theme-primary`と同色化せず、健康行動とカスタマイズの役割差を維持する
+- Midnightの`.bg-white`は`border-left`まで`!important`で上書きするため、日次目標の4pxアクセントは`.settings-goal-card`のMidnight局所ルールで復元する。Classic/Midnight/Pop/Sakuraで左4px・他辺1pxをcomputed style実測する
+- `users`、テーマ所有権、所持アイテムのDB障害を未設定・未所有へ偽装せず、ページエラーへ分岐する。任意のアクティビティ通知カラム取得失敗は通知トグルだけを非表示にして明示エラーを出し、プロフィール・目標等の独立設定は利用可能に保つ
+- 表示していないSmart Goal用の`daily_steps`やUC残高を取得しない。Settingsの初期表示で使うデータだけを並列取得する
+- モバイルパネルは`p-3 sm:p-5`を基本とし、2列統計の全幅行は`col-span-2 sm:col-span-3`、3件目は`col-span-2 sm:col-span-1`として320pxで暗黙3列を作らない。リファレンス: `app/[locale]/settings/page.tsx`, `components/SettingsForm.tsx`, `components/StepGoalForm.tsx`, `app/api/user/step-goal/route.ts`
 
 #### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
 
@@ -1379,3 +1391,17 @@ export const runtime = "edge";
 - **根本原因**: セットアップをアカウント必須項目の補完として設計し、UCFitnessの価値ループ「歩く→競う→報われる」へ接続するActivation面として扱っていなかった。Status APIもDB障害を未設定へ見せ、目標と接続元を返していなかった。入力は42pxで、usernameのHTML `pattern`も現行ブラウザの`v`フラグでは未エスケープのハイフンにより無効だった。初回取得と再試行に世代分離がなく、Settingsの広い旧目標範囲を先に検証するとセットアップ済みユーザーも閉じ込められた。
 - **対策**: DB正本の接続元と目標を読み込み、500〜100,000歩の整数目標をプロフィールと同時保存する。保存後は即redirectせず、プロフィール・接続・目標の完了と最初の500歩Questを表示する。Status API障害は5xxとして分離し、全入力を44px化、`pattern`をUnicode Sets互換へ修正する。Status取得はAbortControllerで旧応答を破棄し、セットアップ済み判定をオンボーディング用目標検証より先に行う。
 - **教訓**: オンボーディングの完了条件は「必要情報を保存した」ではなく「次に何をすれば価値を体験できるか分かる」。初回目標は低活動でも達成可能な入口を持ち、保存成功の手応えを永続表示してからホームへ渡す。リファレンス: `app/[locale]/setup/page.tsx`, `app/api/user/setup/route.ts`, `app/api/user/status/route.ts`
+
+### LL-051: Settingsで装飾が健康目標より先に並び、歩数目標の範囲も分裂していた
+
+- **事象**: モバイルSettingsではプロフィール画像・称号・フレーム・ショップ・言語・テーマの後に日次目標があり、行動設定へ到達する前に装飾が続いた。Setupは500〜100,000歩、Settings UIは100〜1,000,000歩、APIは0〜1,000,000歩を受理していた。統計の`col-span-3`は2列モバイルgridに暗黙列を作った。
+- **根本原因**: Settingsを機能追加順で左右カラムへ積み、DOMのモバイル読み順を設計していなかった。歩数目標のClient/API制約を別々にハードコードし、未表示のSmart Goal用DB取得も残っていた。DBエラーは通知ON・アイテム未所有へ既定化されていた。Midnightの`.bg-white` global `!important`が新しい4px左アクセントも1pxへ戻した。
+- **対策**: 歩数ソースと日次目標をSettingsFormより前へ移し、`lib/step-goal.ts`で500〜100,000歩の整数契約を共有する。目標入力を16px/44px・focus付きエラー・成功statusへ修正し、未使用クエリを除去する。ユーザー/所有権データ失敗はページエラー、未適用環境があり得る通知カラム失敗は通知トグルだけの明示エラーへ分離し、統計spanを2列/3列で明示する。`.settings-goal-card`でMidnightだけ左4pxを局所復元する。
+- **教訓**: Settingsも情報アーキテクチャであり、利用頻度とサービス価値の高い健康行動を装飾より先に置く。Client制約とAPI認可は同じ純粋関数を使い、レスポンシブgridは各ブレイクポイントの列数を超えるspanを持たせない。リファレンス: `app/[locale]/settings/page.tsx`, `components/SettingsForm.tsx`, `components/StepGoalForm.tsx`, `lib/step-goal.ts`
+
+### LL-052: 未適用の通知嗜好カラムがFeed全体と未読数を停止していた
+
+- **事象**: 読み取り専用の実DB確認で`notification_reactions`がPostgreSQL 42703となり、SettingsだけでなくActivity Feed APIと未読数APIも500、通知ベルは失敗を無言で無視していた。
+- **根本原因**: 必須の`feed_last_read_at`と任意の通知嗜好カラムを同じSELECTへ結合し、嗜好取得失敗をFeed全体の障害境界に置いた。DBマイグレーションの適用状態と機能可用性を分離していなかった。
+- **対策**: 既読時刻と通知嗜好を別クエリにし、嗜好取得失敗時も既定Feed・未読数を継続して`notificationPreferencesAvailable: false`を返す。ActivityFeed/NotificationBellは警告を表示し、通知設定APIは503利用不能を返す。Settingsは通知トグルだけを隠して他設定を維持する。
+- **教訓**: 任意機能のスキーマ不足をページ/Feed全体の障害へ拡大しない。ただし既定値へ無言変換せず、APIの可用性フラグとUI警告で部分障害を正直に伝える。リファレンス: `app/api/user/feed/route.ts`, `app/api/user/feed/unread-count/route.ts`, `components/ActivityFeed.tsx`, `components/layout/NotificationBell.tsx`

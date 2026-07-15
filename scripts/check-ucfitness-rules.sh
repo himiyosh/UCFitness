@@ -690,7 +690,7 @@ fi
 if grep -Eq '>[^<{]*(Retry|Save|Cancel|Edit)[^<{]*<' components/StepGoalForm.tsx components/StepCalendar.tsx components/profile/AchievementProgress.tsx; then
   record "変更対象の条件付きUIに英語固定文言" "StepGoalForm / StepCalendar / AchievementProgress"
 fi
-if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(5_000)' 'app/[locale]/setup/page.tsx' || \
+if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(RECOMMENDED_STEP_GOAL)' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'const \[completed, setCompleted\]' 'app/[locale]/setup/page.tsx' || \
    ! grep -Fq "t(provider ? 'firstQuestTitle'" 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'step_goal: stepGoal' 'app/[locale]/setup/page.tsx' || \
@@ -712,8 +712,51 @@ if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(5_000)' 'app/[locale]/s
   record "Setupの接続/目標/最初の500歩/非gradient brand契約欠落" "Setup page / setup API / status API"
 fi
 if ! grep -q '<form onSubmit={handleSubmit} noValidate' components/StepGoalForm.tsx || \
-   [ "$(grep -o 'min-w-\[48px\]' components/StepGoalForm.tsx | wc -l | tr -d ' ')" -lt 2 ]; then
-  record "StepGoal custom validation/48px短ラベル契約欠落" "components/StepGoalForm.tsx"
+   [ "$(grep -o 'min-w-\[52px\]' components/StepGoalForm.tsx | wc -l | tr -d ' ')" -lt 2 ] || \
+   ! grep -q 'inputRef.current?.focus()' components/StepGoalForm.tsx || \
+   ! grep -q 'text-base' components/StepGoalForm.tsx; then
+  record "StepGoal custom validation/44px/16px/focus契約欠落" "components/StepGoalForm.tsx"
+fi
+if ! grep -q 'export const MIN_STEP_GOAL = 500' lib/step-goal.ts || \
+   ! grep -q 'export const MAX_STEP_GOAL = 100_000' lib/step-goal.ts || \
+   ! grep -q "from '@/lib/step-goal'" app/api/user/setup/route.ts || \
+   ! grep -q "from '@/lib/step-goal'" 'app/[locale]/setup/page.tsx' || \
+   ! grep -q "from '@/lib/step-goal'" app/api/user/step-goal/route.ts || \
+   ! grep -q "from '@/lib/step-goal'" components/StepGoalForm.tsx || \
+   ! grep -q 'step={1}' 'app/[locale]/setup/page.tsx' || \
+   grep -q '1_000_000' app/api/user/step-goal/route.ts components/StepGoalForm.tsx || \
+   grep -q 'as any' app/api/user/step-goal/route.ts; then
+  record "歩数目標500〜100,000歩の共有Client/API契約欠落" "lib/step-goal.ts / Setup / Settings / step-goal API"
+fi
+settings_priority_line="$(grep -n 'data-settings-priority="health-and-goal"' 'app/[locale]/settings/page.tsx' | head -n 1 | cut -d: -f1)"
+settings_form_line="$(grep -n '<SettingsForm' 'app/[locale]/settings/page.tsx' | head -n 1 | cut -d: -f1)"
+if ! grep -q 'data-settings-priority="health-and-goal"' 'app/[locale]/settings/page.tsx' || \
+! grep -q 'settings-goal-card' 'app/[locale]/settings/page.tsx' || \
+! grep -q '\[data-theme="midnight"\] .settings-goal-card' app/globals.css || \
+   ! grep -q 'stepGoalPriorityDescription' 'app/[locale]/settings/page.tsx' || \
+   ! grep -q 'notificationSettingsLoadError={notifySettingsError !== null}' 'app/[locale]/settings/page.tsx' || \
+   ! grep -q "t('notificationSettingsLoadError')" components/SettingsForm.tsx || \
+   [ "${settings_priority_line:-0}" -eq 0 ] || \
+   [ "${settings_form_line:-0}" -eq 0 ] || \
+   [ "$settings_priority_line" -ge "$settings_form_line" ] || \
+   grep -q 'StepGoalForm' components/SettingsForm.tsx || \
+   grep -q 'theme-primary' components/StepGoalForm.tsx || \
+   grep -q 'recentStepsResult\|getCoinBalance\|SmartGoalAdvisor' 'app/[locale]/settings/page.tsx' || \
+   grep -q ': any' 'app/[locale]/settings/page.tsx' || \
+   ! grep -q 'col-span-2.*sm:col-span-1' components/SettingsForm.tsx || \
+   ! grep -q 'col-span-2.*sm:col-span-3' components/SettingsForm.tsx || \
+   grep -q 'className="col-span-3' components/SettingsForm.tsx; then
+  record "Settingsの健康優先/不要取得/320px統計grid契約欠落" "Settings page / SettingsForm"
+fi
+if grep -q 'feed_last_read_at, notification_reactions' app/api/user/feed/route.ts app/api/user/feed/unread-count/route.ts || \
+   ! grep -q 'notificationPreferencesAvailable' app/api/user/feed/route.ts || \
+   ! grep -q 'notificationPreferencesAvailable' app/api/user/feed/unread-count/route.ts || \
+   ! grep -q 'notificationPreferencesAvailable' components/ActivityFeed.tsx || \
+   ! grep -q 'notificationPreferencesAvailable' components/layout/NotificationBell.tsx || \
+   ! grep -q 'premium-card flex min-h-\[200px\] flex-col p-4' components/ActivityFeed.tsx || \
+   ! grep -q 'NOTIFICATION_SETTINGS_UNAVAILABLE' app/api/user/notification-settings/route.ts || \
+   ! grep -q "t('preferencesUnavailable')" components/ActivityFeed.tsx components/layout/NotificationBell.tsx; then
+  record "通知嗜好カラム未適用時のFeed/未読/Settings部分障害契約欠落" "Feed API / NotificationBell / ActivityFeed / notification-settings API"
 fi
 if grep -Eq "'Just now'|m ago|h ago|d ago" 'app/[locale]/user/[username]/page.tsx' || \
    grep -q '>Group Name<' components/group/GroupSettings.tsx || \
