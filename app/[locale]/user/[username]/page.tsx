@@ -25,6 +25,12 @@ import AdSlot from '@/components/ui/AdSlot';
 import Footer from '@/components/layout/Footer';
 import nextDynamic from 'next/dynamic';
 import { getCoinBalance } from "@/lib/services/coin-service";
+import {
+    summarizeProfileSteps,
+    type ProfilePeriodSteps,
+    type ProfileStepRecord,
+} from '@/lib/profile-steps';
+import { isValidStepGoal } from '@/lib/step-goal';
 
 // 遅延読み込み: プロフィール追加コンポーネント
 const BadgeMuseum = nextDynamic(() => import('@/components/profile/BadgeMuseum'), {
@@ -39,6 +45,35 @@ const WalkingRoutes = nextDynamic(() => import('@/components/WalkingRoutes'), {
     loading: () => <ProfileSectionSkeleton />,
 });
 
+interface CapturedProfileDependency<T> {
+    data: T | null;
+    failed: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function getRankingUserId(value: unknown): string | null {
+    if (!isRecord(value)) {
+        return null;
+    }
+    const users = Array.isArray(value.users) ? value.users[0] : value.users;
+    return isRecord(users) && typeof users.id === 'string' ? users.id : null;
+}
+
+async function captureProfileDependency<T>(
+    operation: string,
+    userId: string,
+    promise: Promise<T>,
+): Promise<CapturedProfileDependency<T>> {
+    try {
+        return { data: await promise, failed: false };
+    } catch (error: unknown) {
+        reportError(operation, error, { userId });
+        return { data: null, failed: true };
+    }
+}
 
 
 
@@ -48,13 +83,12 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const params = await props.params;
     const session = await auth();
     const { username, locale } = params;
-    if (!session?.user) {
+    if (!session?.user?.id) {
         redirect(createLoginRequiredRedirect(locale, `/user/${encodeURIComponent(username)}`));
     }
     // ⚡ パフォーマンス: 翻訳取得を並列化
-    const [t, commonT, dashboardT] = await Promise.all([
+    const [t, dashboardT] = await Promise.all([
         getTranslations('Profile'),
-        getTranslations('Common'),
         getTranslations('Dashboard'),
     ]);
 
@@ -80,14 +114,23 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     recentDate.setDate(recentDate.getDate() - 400);
     const recentDateStr = recentDate.toISOString().split('T')[0];
 
-    const [publicGroupsResult, userBadges, equippedItems, recommendedResult, recentHistoryResult, statsResult, weeklyRankingsResult, coinBalance] = await Promise.all([
+    const [
+        publicGroupsResult,
+        userBadgesState,
+        equippedItemsState,
+        recommendedResult,
+        recentHistoryResult,
+        statsResult,
+        weeklyRankingsResult,
+        coinBalanceState,
+    ] = await Promise.all([
         supabaseAdmin
             .from('group_members')
             .select('groups!inner(keyword, is_public, name, header_image_url, image_url)')
             .eq('user_id', user.id)
             .eq('groups.is_public', true),
-        getUserBadges(user.id),
-        getEquippedItems(user.id),
+        captureProfileDependency('profile:badges', user.id, getUserBadges(user.id)),
+        captureProfileDependency('profile:equipped-items', user.id, getEquippedItems(user.id)),
         supabaseAdmin
             .from('recommended_items')
             .select('id, asin, title, image_url, affiliate_link, display_order, comment')
@@ -105,40 +148,52 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         supabaseAdmin
             .rpc('get_user_step_stats', { p_user_id: user.id }),
         // ⭐ パフォーマンス: ランキングも並列取得
-        getRankings('GLOBAL', 'WEEKLY')
-            .then((data) => ({ data, failed: false }))
-            .catch((error: unknown) => {
-                reportError('profile:weekly-ranking', error, { userId: user.id });
-                return { data: null, failed: true };
-            }),
+        captureProfileDependency(
+            'profile:weekly-ranking',
+            user.id,
+            getRankings('GLOBAL', 'WEEKLY'),
+        ),
         // コイン残高（パーソナルレコード用）
-        getCoinBalance(user.id),
+        captureProfileDependency('profile:coin-balance', user.id, getCoinBalance(user.id)),
     ]);
 
-    const profileQueryError = publicGroupsResult.error
-        ?? recommendedResult.error
-        ?? recentHistoryResult.error
-        ?? statsResult.error;
-    if (profileQueryError) {
-        reportError('profile:data', profileQueryError, { userId: user.id });
-        throw new Error('Failed to load profile data');
+    if (publicGroupsResult.error) {
+        reportError('profile:public-groups', publicGroupsResult.error, { userId: user.id });
     }
+    if (recommendedResult.error) {
+        reportError('profile:recommended-items', recommendedResult.error, { userId: user.id });
+    }
+    if (recentHistoryResult.error) {
+        reportError('profile:recent-history', recentHistoryResult.error, { userId: user.id });
+    }
+    if (statsResult.error) {
+        reportError('profile:lifetime-stats', statsResult.error, { userId: user.id });
+    }
+    const publicGroupsUnavailable = publicGroupsResult.error !== null;
+    const recommendedItemsUnavailable = recommendedResult.error !== null;
+    const historyUnavailable = recentHistoryResult.error !== null;
+    const lifetimeStatsUnavailable = statsResult.error !== null;
+    const badgesUnavailable = userBadgesState.failed;
+    const equippedItemsUnavailable = equippedItemsState.failed;
+    const coinBalanceUnavailable = coinBalanceState.failed;
+    const userBadges = userBadgesState.data ?? [];
+    const equippedItems = equippedItemsState.data;
+    const coinBalance = coinBalanceState.data;
 
-    let primaryGroup: any = undefined;
-    const publicGroups = publicGroupsResult.data;
+    const publicGroups = publicGroupsResult.data ?? [];
 
     // Override the denormalized group_keyword with actual public groups
-    if (publicGroups) {
-        user.group_keyword = publicGroups.map((g: any) => g.groups.keyword);
-        primaryGroup = publicGroups[0]?.groups;
-    } else {
-        user.group_keyword = [];
-    }
-    let frameColor = equippedItems.ICON_FRAME?.shop_items?.preview_value || null;
+    user.group_keyword = publicGroups.flatMap((membership) => {
+        const group = Array.isArray(membership.groups)
+            ? membership.groups[0]
+            : membership.groups;
+        return group && typeof group.keyword === 'string' ? [group.keyword] : [];
+    });
+    let frameColor = equippedItems?.ICON_FRAME?.shop_items?.preview_value || null;
     const titleName = (locale === 'ja'
-        ? equippedItems.TITLE?.shop_items?.name_ja
-        : equippedItems.TITLE?.shop_items?.name_en) || null;
-    const titleEmoji = equippedItems.TITLE?.shop_items?.preview_value || null;
+        ? equippedItems?.TITLE?.shop_items?.name_ja
+        : equippedItems?.TITLE?.shop_items?.name_en) || null;
+    const titleEmoji = equippedItems?.TITLE?.shop_items?.preview_value || null;
     if (frameColor) {
         const colorMap: Record<string, string> = { 'ring-green-400': '#4ade80', 'ring-blue-400': '#60a5fa', 'ring-yellow-400': '#facc15', 'ring-cyan-300': '#67e8f9', 'ring-purple-500': '#a855f7' };
         frameColor = colorMap[frameColor] || '#d1d5db';
@@ -156,27 +211,39 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     })) ?? null;
 
     // Fetch stats
-    let totalSteps = 0;
-    let bestDay = { date: '-', steps: 0 };
-    let allHistoryData: any[] = [];
+    let totalSteps: number | null = null;
+    let bestDay: { date: string; steps: number } | null = null;
+    let allHistoryData: ProfileStepRecord[] = [];
     let lastSyncedAt: string | null = null;
 
     // 集計データ（RPC から取得 — PostgREST 1000行制限を回避）
     // RPC が配列で返る場合と直接オブジェクトで返る場合の両方に対応
     const rawStats = statsResult.data;
     const statsData = Array.isArray(rawStats) ? rawStats[0] : rawStats;
-    if (statsData) {
-        totalSteps = statsData.total_steps || 0;
-        bestDay = {
-            date: statsData.best_date ? new Date(statsData.best_date).toLocaleDateString() : '-',
-            steps: statsData.best_steps || 0
-        };
-        lastSyncedAt = statsData.last_synced || null;
+    if (!lifetimeStatsUnavailable && statsData) {
+        totalSteps = typeof statsData.total_steps === 'number'
+            ? statsData.total_steps
+            : null;
+        if (
+            typeof statsData.best_date === 'string'
+            && typeof statsData.best_steps === 'number'
+        ) {
+            bestDay = {
+                date: new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
+                    dateStyle: 'medium',
+                    timeZone: 'UTC',
+                }).format(new Date(`${statsData.best_date}T00:00:00Z`)),
+                steps: statsData.best_steps,
+            };
+        }
+        lastSyncedAt = typeof statsData.last_synced === 'string'
+            ? statsData.last_synced
+            : null;
     }
 
     // 直近の歩数データ（グラフ + 今日/今週/今月の計算用）
     const recentHistory = recentHistoryResult.data;
-    if (recentHistory && recentHistory.length > 0) {
+    if (!historyUnavailable && recentHistory && recentHistory.length > 0) {
         allHistoryData = recentHistory;
     }
 
@@ -185,7 +252,9 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const weeklyRankings = weeklyRankingsResult.data;
     const weeklyRankingUnavailable = weeklyRankingsResult.failed;
     if (Array.isArray(weeklyRankings) && weeklyRankings.length > 0) {
-        const rankIndex = weeklyRankings.findIndex((r: any) => r.users?.id === user.id);
+        const rankIndex = weeklyRankings.findIndex(
+            (ranking) => getRankingUserId(ranking) === user.id,
+        );
         if (rankIndex >= 0) userWeeklyRank = rankIndex + 1;
     }
 
@@ -212,23 +281,35 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const [year, month] = todayStr.split('-');
     const monthlyStartStr = `${year}-${month}-01`;
 
-    // Target User Stats (In-Memory from allHistory)
-    const targetStats = {
-        daily: allHistoryData.find((r: any) => r.date === todayStr)?.steps || 0,
-        weekly: allHistoryData.filter((r: any) => r.date >= weeklyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0),
-        monthly: allHistoryData.filter((r: any) => r.date >= monthlyStartStr).reduce((acc: number, curr: any) => acc + curr.steps, 0)
-    };
+    const targetStats = summarizeProfileSteps(
+        allHistoryData,
+        todayStr,
+        weeklyStartStr,
+        monthlyStartStr,
+    );
+    const profileStepGoal = isValidStepGoal(user.step_goal)
+        ? user.step_goal
+        : null;
 
     // Viewer Stats (Fetch if logged in and different user)
     // 🛡️ Sentinel: email ではなく ID で所有者判定
-    const isOwner = (session?.user as any)?.id === user.id;
-    const viewerStats = { daily: 0, weekly: 0, monthly: 0 };
+    const isOwner = session.user.id === user.id;
+    let viewerStats: ProfilePeriodSteps = {
+        daily: null,
+        weekly: null,
+        monthly: null,
+        averageSteps: null,
+        activeDays: 0,
+        recordedDays: 0,
+    };
     let hasViewerStats = false;
-    let viewerUser = session?.user; // Default to session user
-    let viewerHistoryData: any[] = []; // グラフ比較用
+    let comparisonUnavailable = false;
+    let comparisonMissing = false;
+    let viewerUser = session.user;
+    let viewerHistoryData: ProfileStepRecord[] = [];
 
-    if (session?.user && !isOwner) {
-        const viewerId = (session.user as any).id;
+    if (!isOwner) {
+        const viewerId = session.user.id;
 
         // ⚡ パフォーマンス: 閲覧者データとステップデータを並列取得
         const [vUserResult, vDataResult] = await Promise.all([
@@ -251,10 +332,6 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             reportError('profile:viewer', vUserResult.error, { viewerId, username });
             throw new Error('Failed to load profile viewer');
         }
-        if (vDataResult.error) {
-            reportError('profile:viewer-steps', vDataResult.error, { viewerId, username });
-            throw new Error('Failed to load profile viewer steps');
-        }
         if (!vUser?.username) {
             redirect('/setup');
         }
@@ -265,19 +342,28 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
             username: vUser.username,
         };
 
-        const vData = vDataResult.data;
-
-        if (vData) {
-            viewerHistoryData = vData;
-            viewerStats.daily = vData.find(r => r.date === todayStr)?.steps || 0;
-            viewerStats.weekly = vData.filter(r => r.date >= weeklyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
-            viewerStats.monthly = vData.filter(r => r.date >= monthlyStartStr).reduce((acc, curr) => acc + curr.steps, 0);
-            hasViewerStats = true;
+        if (vDataResult.error) {
+            reportError('profile:viewer-steps', vDataResult.error, { viewerId, username });
+            comparisonUnavailable = true;
+        } else {
+            viewerHistoryData = vDataResult.data ?? [];
+            viewerStats = summarizeProfileSteps(
+                viewerHistoryData,
+                todayStr,
+                weeklyStartStr,
+                monthlyStartStr,
+            );
+            hasViewerStats = (
+                viewerStats.daily !== null
+                || viewerStats.weekly !== null
+                || viewerStats.monthly !== null
+            );
+            comparisonMissing = !hasViewerStats;
         }
     } else if (isOwner && user) {
         // If owner, we already have fresh user data
         viewerUser = {
-            ...session!.user,
+            ...session.user,
             name: user.name,
             image: user.image,
             username: user.username
@@ -290,6 +376,40 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     const headerUser = {
         ...viewerUser,
         username: viewerUsername,
+    };
+    const formatPeriodSteps = (value: number | null): string => {
+        if (historyUnavailable) {
+            return t('dataUnavailable');
+        }
+        return value === null ? t('stepsNotRecorded') : value.toLocaleString();
+    };
+    const renderComparisonValue = (
+        viewerValue: number | null,
+        targetValue: number | null,
+    ): React.ReactNode => {
+        if (viewerValue === null) {
+            return (
+                <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                    {t('stepsNotRecorded')}
+                </p>
+            );
+        }
+        const difference = targetValue === null ? null : viewerValue - targetValue;
+        return (
+            <>
+                <p className="text-sm font-semibold tabular-nums text-[var(--color-text)] sm:text-base">
+                    {viewerValue.toLocaleString()}
+                </p>
+                {difference !== null && (
+                    <p className={`text-xs tabular-nums sm:text-sm ${difference >= 0
+                        ? 'text-[var(--color-success-strong)]'
+                        : 'text-[var(--color-danger)]'
+                        }`}>
+                        ({difference >= 0 ? '▲' : '▼'}{Math.abs(difference).toLocaleString()})
+                    </p>
+                )}
+            </>
+        );
     };
 
     return (
@@ -315,8 +435,18 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                     {/* Left Column: Profile Card */}
                     <div className="md:col-span-1 space-y-6">
                         <ProfileHeader user={user} readonly={true} badges={userBadges} frameColor={frameColor} titleName={titleName} titleEmoji={titleEmoji}>
-                            <ShareMilestone totalSteps={totalSteps} username={username} isOwner={isOwner} />
+                            {!lifetimeStatsUnavailable && totalSteps !== null && (
+                                <ShareMilestone totalSteps={totalSteps} username={username} isOwner={isOwner} />
+                            )}
                         </ProfileHeader>
+                        {(publicGroupsUnavailable || equippedItemsUnavailable) && (
+                            <p
+                                role="status"
+                                className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                            >
+                                {t('profileDetailsUnavailable')}
+                            </p>
+                        )}
 
                         {/* フォローボタン（他ユーザーのプロフィール閲覧時のみ表示） */}
                         {session?.user && !isOwner && (
@@ -325,9 +455,18 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                             </div>
                         )}
 
-                        <div className="mt-2">
-                            <ProfileBadges badges={userBadges} />
-                        </div>
+                        {badgesUnavailable ? (
+                            <p
+                                role="status"
+                                className="mt-2 rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                            >
+                                {t('badgesUnavailable')}
+                            </p>
+                        ) : (
+                            <div className="mt-2">
+                                <ProfileBadges badges={userBadges} />
+                            </div>
+                        )}
 
                         {/* アチーブメント進捗表示 */}
                         <div className="mt-2">
@@ -343,15 +482,34 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         {/* Lifetime Stats */}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden divide-y divide-gray-100">
+                            {lifetimeStatsUnavailable && (
+                                <div className="px-4 py-2.5 text-xs font-medium text-[var(--color-danger)]" role="status">
+                                    {t('lifetimeStatsUnavailable')}
+                                </div>
+                            )}
                             <div className="flex items-center justify-between px-4 py-2.5">
                                 <span className="text-xs font-medium text-gray-500">{t('totalStepsRecorded')}</span>
-                                <span className="text-sm font-bold text-gray-900 tabular-nums">{totalSteps.toLocaleString()}</span>
+                                <span className="text-sm font-bold text-gray-900 tabular-nums">
+                                    {lifetimeStatsUnavailable
+                                        ? t('dataUnavailable')
+                                        : totalSteps === null
+                                            ? t('stepsNotRecorded')
+                                            : totalSteps.toLocaleString()}
+                                </span>
                             </div>
                             <div className="flex items-center justify-between px-4 py-2.5">
                                 <span className="text-xs font-medium text-gray-500">{t('allTimeBestDay')}</span>
                                 <div className="text-right">
-                                    <span className="text-sm font-bold text-green-600 tabular-nums">{bestDay.steps.toLocaleString()}</span>
-                                    {bestDay.date !== '-' && <span className="text-xs text-gray-400 ml-1.5">{bestDay.date}</span>}
+                                    {lifetimeStatsUnavailable ? (
+                                        <span className="text-xs font-medium text-[var(--color-text-muted)]">{t('dataUnavailable')}</span>
+                                    ) : bestDay ? (
+                                        <>
+                                            <span className="text-sm font-bold text-green-600 tabular-nums">{bestDay.steps.toLocaleString()}</span>
+                                            <span className="ml-1.5 text-xs text-gray-400">{bestDay.date}</span>
+                                        </>
+                                    ) : (
+                                        <span className="text-xs font-medium text-[var(--color-text-muted)]">{t('stepsNotRecorded')}</span>
+                                    )}
                                 </div>
                             </div>
                             {userWeeklyRank && (
@@ -407,37 +565,61 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         </div>
 
+                        {historyUnavailable && (
+                            <p
+                                role="alert"
+                                className="rounded-xl border border-[var(--color-danger)]/25 bg-[var(--color-surface)] p-3 text-sm text-[var(--color-danger)]"
+                            >
+                                {t('stepHistoryUnavailable')}
+                            </p>
+                        )}
+                        {!isOwner && comparisonUnavailable && (
+                            <p
+                                role="status"
+                                className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                            >
+                                {t('comparisonUnavailable')}
+                            </p>
+                        )}
+                        {!isOwner && comparisonMissing && (
+                            <p
+                                role="status"
+                                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text-muted)]"
+                            >
+                                {t('comparisonNotRecorded')}
+                            </p>
+                        )}
 
                         {/* Stats Card */}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                            {isOwner || !hasViewerStats ? (
+                            {historyUnavailable || isOwner || !hasViewerStats ? (
                                 /* Owner view: simple centered 3-column */
                                 <>
                                 <div className="grid grid-cols-3 divide-x divide-gray-100">
                                     <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
-                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
+                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{formatPeriodSteps(targetStats.daily)}</p>
                                     </div>
                                     <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisWeek')}</p>
-                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
+                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{formatPeriodSteps(targetStats.weekly)}</p>
                                     </div>
                                     <div className="px-3 py-4 sm:px-5 sm:py-5 text-center">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
-                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
+                                        <p className="mt-1 text-xl sm:text-3xl font-black text-gray-900 tabular-nums">{formatPeriodSteps(targetStats.monthly)}</p>
                                     </div>
                                 </div>
                                 {/* Goal Progress Bar */}
-                                {(user.step_goal || 10000) > 0 && (
+                                {!historyUnavailable && targetStats.daily !== null && profileStepGoal !== null && (
                                     <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/40">
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('goalProgress', { goal: (user.step_goal || 10000).toLocaleString() })}</span>
-                                            <span className="text-xs font-bold text-gray-500 tabular-nums">{Math.min(100, Math.round((targetStats.daily / (user.step_goal || 10000)) * 100))}%</span>
+                                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('goalProgress', { goal: profileStepGoal.toLocaleString() })}</span>
+                                            <span className="text-xs font-bold text-gray-500 tabular-nums">{Math.min(100, Math.round((targetStats.daily / profileStepGoal) * 100))}%</span>
                                         </div>
                                         <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-500 ${targetStats.daily >= (user.step_goal || 10000) ? 'bg-green-500' : 'bg-[var(--theme-primary)]'}`}
-                                                style={{ width: `${Math.min(100, (targetStats.daily / (user.step_goal || 10000)) * 100)}%` }}
+                                                className={`h-full rounded-full transition-all duration-500 ${targetStats.daily >= profileStepGoal ? 'bg-green-500' : 'bg-[var(--theme-primary)]'}`}
+                                                style={{ width: `${Math.min(100, (targetStats.daily / profileStepGoal) * 100)}%` }}
                                             />
                                         </div>
                                     </div>
@@ -470,13 +652,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                             </div>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.daily.toLocaleString()}</p>
+                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{formatPeriodSteps(targetStats.daily)}</p>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.weekly.toLocaleString()}</p>
+                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{formatPeriodSteps(targetStats.weekly)}</p>
                                         </div>
                                         <div className="px-2 py-3 sm:px-3 sm:py-4 text-center">
-                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{targetStats.monthly.toLocaleString()}</p>
+                                            <p className="text-lg sm:text-2xl font-black text-gray-900 tabular-nums">{formatPeriodSteps(targetStats.monthly)}</p>
                                         </div>
                                     </div>
                                     {/* Viewer (You) Row — subdued */}
@@ -490,22 +672,13 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                                             </div>
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
-                                            <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.daily.toLocaleString()}</p>
-                                            <p className={`text-xs sm:text-sm tabular-nums ${viewerStats.daily >= targetStats.daily ? 'text-green-500/50' : 'text-red-400/50'}`}>
-                                                ({viewerStats.daily - targetStats.daily >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.daily - targetStats.daily).toLocaleString()})
-                                            </p>
+                                            {renderComparisonValue(viewerStats.daily, targetStats.daily)}
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
-                                            <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.weekly.toLocaleString()}</p>
-                                            <p className={`text-xs sm:text-sm tabular-nums ${viewerStats.weekly >= targetStats.weekly ? 'text-green-500/50' : 'text-red-400/50'}`}>
-                                                ({viewerStats.weekly - targetStats.weekly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.weekly - targetStats.weekly).toLocaleString()})
-                                            </p>
+                                            {renderComparisonValue(viewerStats.weekly, targetStats.weekly)}
                                         </div>
                                         <div className="px-2 py-2 sm:px-3 sm:py-2.5 text-center">
-                                            <p className={`text-sm sm:text-base font-semibold tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/70' : 'text-red-400/70'}`}>{viewerStats.monthly.toLocaleString()}</p>
-                                            <p className={`text-xs sm:text-sm tabular-nums ${viewerStats.monthly >= targetStats.monthly ? 'text-green-500/50' : 'text-red-400/50'}`}>
-                                                ({viewerStats.monthly - targetStats.monthly >= 0 ? '▲' : '▼'}{Math.abs(viewerStats.monthly - targetStats.monthly).toLocaleString()})
-                                            </p>
+                                            {renderComparisonValue(viewerStats.monthly, targetStats.monthly)}
                                         </div>
                                     </div>
                                 </>
@@ -513,37 +686,47 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
                         </div>
 
                         {/* Activity Graph */}
-                        <ActivityGraph
-                            data={allHistoryData}
-                            todayDate={todayStr}
-                            stepGoal={user.step_goal || 10000}
-                            comparisonData={!isOwner && hasViewerStats ? viewerHistoryData : undefined}
-                            comparisonLabel={!isOwner && hasViewerStats ? (t('yourSteps') as string) : undefined}
-                        />
+                        {!historyUnavailable && (
+                            <ActivityGraph
+                                data={allHistoryData}
+                                todayDate={todayStr}
+                                stepGoal={profileStepGoal}
+                                comparisonData={!isOwner && hasViewerStats ? viewerHistoryData : undefined}
+                                comparisonLabel={!isOwner && hasViewerStats ? t('yourSteps') : undefined}
+                            />
+                        )}
 
                         {/* Step Heatmap Calendar */}
                         <StepCalendar userId={user.id} />
 
                         {/* バッジミュージアム — タイムライン表示 */}
-                        {userBadges.length > 0 && (
+                        {!badgesUnavailable && userBadges.length > 0 && (
                             <BadgeMuseum badges={userBadges} />
                         )}
 
                         {/* パーソナルレコード */}
                         <PersonalRecords
-                            totalSteps={totalSteps}
-                            bestDaySteps={bestDay.steps}
-                            bestDayDate={bestDay.date}
-                            bestStreak={coinBalance?.best_streak ?? 0}
-                            currentStreak={coinBalance?.current_streak ?? 0}
-                            activeDays={allHistoryData.filter((d: any) => d.steps > 0).length}
-                            totalDays={allHistoryData.length}
-                            investorRank={coinBalance?.investor_rank ?? 'BEGINNER'}
-                            totalEarned={coinBalance?.total_earned ?? 0}
+                            totalSteps={lifetimeStatsUnavailable ? null : totalSteps}
+                            bestDaySteps={lifetimeStatsUnavailable ? null : bestDay?.steps ?? null}
+                            bestDayDate={lifetimeStatsUnavailable ? null : bestDay?.date ?? null}
+                            bestStreak={coinBalanceUnavailable ? null : coinBalance?.best_streak ?? 0}
+                            currentStreak={coinBalanceUnavailable ? null : coinBalance?.current_streak ?? 0}
+                            averageSteps={historyUnavailable ? null : targetStats.averageSteps}
+                            activeDays={historyUnavailable ? null : targetStats.activeDays}
+                            recordedDays={historyUnavailable ? null : targetStats.recordedDays}
+                            investorRank={coinBalanceUnavailable ? null : coinBalance?.investor_rank ?? 'BEGINNER'}
+                            totalEarned={coinBalanceUnavailable ? null : coinBalance?.total_earned ?? 0}
                         />
 
                         {/* Recommended Items — 愛用アイテム */}
-                        {(isOwner || (recommendedItems && recommendedItems.length > 0)) && (
+                        {recommendedItemsUnavailable ? (
+                            <p
+                                role="status"
+                                className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                            >
+                                {t('recommendedItemsUnavailable')}
+                            </p>
+                        ) : (isOwner || (recommendedItems && recommendedItems.length > 0)) && (
                             <RecommendedItems
                                 items={recommendedItems || []}
                                 isOwner={isOwner}

@@ -11,7 +11,7 @@ type StepRecord = {
 type ActivityGraphProps = {
     data: StepRecord[];
     todayDate: string;
-    stepGoal?: number;
+    stepGoal?: number | null;
     comparisonData?: StepRecord[];
     comparisonLabel?: string;
     groupInfo?: {
@@ -26,7 +26,7 @@ import { useLocale, useTranslations } from 'next-intl';
 
 type ViewMode = 'WEEKLY' | 'MONTHLY' | 'ALL';
 
-export default function ActivityGraph({ data, todayDate, stepGoal = 10000, groupInfo, comparisonData, comparisonLabel }: ActivityGraphProps) {
+export default function ActivityGraph({ data, todayDate, stepGoal, groupInfo, comparisonData, comparisonLabel }: ActivityGraphProps) {
     const t = useTranslations('Graph');
     const locale = useLocale();
     const weekdayLabels = useMemo(
@@ -49,6 +49,9 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
             : copySuccess
                 ? t('shareSucceeded')
                 : t('shareStatistics');
+    const resolvedStepGoal = typeof stepGoal === 'number' && stepGoal > 0
+        ? stepGoal
+        : null;
 
 
     const processedData = useMemo(() => {
@@ -153,9 +156,14 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
         const compMax = comparisonData
             ? processedData.reduce((max, d) => Math.max(max, comparisonMap.get(d.fullDate) || 0), 0)
             : 0;
-        const max = Math.max(dataMax, compMax, stepGoal, 2000) * 1.2;
-        return { maxSteps: max, goalPercentage: Math.min((stepGoal / max) * 100, 100) };
-    }, [processedData, comparisonData, comparisonMap, stepGoal]);
+        const max = Math.max(dataMax, compMax, resolvedStepGoal ?? 0, 2000) * 1.2;
+        return {
+            maxSteps: max,
+            goalPercentage: resolvedStepGoal === null
+                ? null
+                : Math.min((resolvedStepGoal / max) * 100, 100),
+        };
+    }, [processedData, comparisonData, comparisonMap, resolvedStepGoal]);
 
     // Calculate Total for displayed period
     const totalDisplayedSteps = useMemo(() => {
@@ -421,10 +429,12 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                             <span className="block w-3 h-0.5 bg-[var(--theme-primary)] rounded-full"></span>
                             {t('totalLabel')} <span className="font-bold text-[var(--theme-primary)]">{totalDisplayedSteps.toLocaleString()}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 shrink-0">
-                            <span className="block w-2 sm:w-3 h-0.5 bg-red-400 border-t border-dashed border-red-500"></span>
-                            {t('targetLabel')} {stepGoal.toLocaleString()}
-                        </div>
+                        {resolvedStepGoal !== null && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500 shrink-0">
+                                <span className="block w-2 sm:w-3 h-0.5 bg-red-400 border-t border-dashed border-red-500"></span>
+                                {t('targetLabel')} {resolvedStepGoal.toLocaleString()}
+                            </div>
+                        )}
                         {comparisonData && comparisonLabel && (
                             <div className="flex items-center gap-2 text-xs text-gray-400 shrink-0">
                                 <span className="block w-3 h-2 bg-gray-300/60 rounded-sm"></span>
@@ -453,7 +463,11 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                 <th scope="row">{day.fullDate}</th>
                                 <td>{day.hasRecord ? day.value.toLocaleString() : t('notRecorded')}</td>
                                 {comparisonData && (
-                                    <td>{(comparisonMap.get(day.fullDate) ?? 0).toLocaleString()}</td>
+                                    <td>
+                                        {comparisonMap.has(day.fullDate)
+                                            ? (comparisonMap.get(day.fullDate) ?? 0).toLocaleString()
+                                            : t('notRecorded')}
+                                    </td>
                                 )}
                             </tr>
                         ))}
@@ -475,10 +489,12 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                     {/* Coordinate System Container - Leaves 1.5rem (24px) at bottom for labels */}
                     <div className="absolute top-6 left-0 right-0 bottom-6">
                         {/* Goal Line */}
-                        <div
-                            className="activity-graph-goal-line absolute z-10 w-full border-t-2 border-dashed border-[var(--color-danger-strong)] pointer-events-none"
-                            style={{ bottom: `${goalPercentage}%` }}
-                        ></div>
+                        {goalPercentage !== null && (
+                            <div
+                                className="activity-graph-goal-line absolute z-10 w-full border-t-2 border-dashed border-[var(--color-danger-strong)] pointer-events-none"
+                                style={{ bottom: `${goalPercentage}%` }}
+                            ></div>
+                        )}
 
                         {/* Scroll Container */}
                         <div
@@ -493,7 +509,8 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                     {processedData.map((day, dayIndex) => {
                                         // Use same maxSteps for bars
                                         const heightPercentage = Math.min((day.value / maxSteps) * 100, 100);
-                                        const compValue = comparisonMap.get(day.fullDate) || 0;
+                                        const comparisonHasRecord = comparisonMap.has(day.fullDate);
+                                        const compValue = comparisonMap.get(day.fullDate) ?? 0;
                                         const compHeightPercentage = Math.min((compValue / maxSteps) * 100, 100);
 
                                         // Sparse labels logic
@@ -524,7 +541,8 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                             : 'flex-1 min-w-0';
 
                                         // Highlight goal achievement
-                                        const isGoalReached = day.value >= stepGoal;
+                                        const isGoalReached = resolvedStepGoal !== null
+                                            && day.value >= resolvedStepGoal;
                                         const barColor = isGoalReached
                                             ? 'bg-[var(--color-success-strong)] group-hover:bg-[var(--color-success)]'
                                             : 'bg-[var(--theme-primary)] group-hover:bg-[var(--theme-primary)]/80';
@@ -582,7 +600,7 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                                                 onMouseLeave={() => setTooltip(null)}
                                             >
                                                 {/* Comparison bar (behind main bar) */}
-                                                {comparisonData && compValue > 0 && (
+                                                {comparisonData && comparisonHasRecord && (
                                                     <div
                                                         className="activity-graph-comparison-bar absolute bottom-0 left-0 right-0 rounded-t-sm bg-gray-300/40 pointer-events-none"
                                                         style={{
@@ -699,7 +717,8 @@ export default function ActivityGraph({ data, todayDate, stepGoal = 10000, group
                         {/* Explicitly set height in pixels for safer capture */}
                         <div className="w-full flex items-end justify-between gap-4 px-8 mb-12" style={{ height: '400px' }}>
                             {processedData.map((d, i) => {
-                                const isGoal = d.value >= stepGoal;
+                                const isGoal = resolvedStepGoal !== null
+                                    && d.value >= resolvedStepGoal;
                                 const height = d.value > 0
                                     ? Math.max((d.value / maxSteps) * 100, 2)
                                     : 0;
