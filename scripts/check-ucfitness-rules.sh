@@ -839,7 +839,14 @@ if ! grep -q 'export function sortActiveGroupRankings' lib/services/ranking-util
    ! grep -q 'FocusAnchorLink' components/group/GroupAnalytics.tsx || \
    ( ! grep -q 'grid-cols-1' components/group/GroupMembersPanel.tsx && \
      ! grep -q 'flex flex-col' components/group/GroupMembersPanel.tsx ) || \
-   ! grep -q 'min-h-\[44px\] min-w-\[44px\]' components/group/GroupMembersPanel.tsx || \
+   ! awk '
+     /href=\{`\/user\/\$\{member\.users\.username\}`\}/ { profileLink = 1; next }
+     profileLink && /className=/ {
+       if ($0 ~ /min-h-\[44px\]/ && $0 ~ /min-w-\[44px\]/) found = 1
+       profileLink = 0
+     }
+     END { exit(found ? 0 : 1) }
+   ' components/group/GroupMembersPanel.tsx || \
    grep -q "throw new Error('Failed to load member count')" 'app/[locale]/groups/[groupId]/page.tsx'; then
   record "Groupsの正歩数順位/未所属CTA/部分障害契約欠落" "Groups pages / ranking services / member dialog"
 fi
