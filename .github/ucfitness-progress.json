@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-15T07:42:46+09:00",
-  "lastAgent": "UCFitnessAgent (React + UX + Competitive Persona + Accessibility + Self-Critique)",
-  "lastCommit": "00fbf9232402aa55b6b44bbb36674194dba339ef",
+  "lastUpdated": "2026-07-15T09:03:43+09:00",
+  "lastAgent": "UCFitnessAgent (React + UX + Low-Activity Persona + Self-Critique)",
+  "lastCommit": "1d70a188483aef3de8e4968616540ec3f2a6c98a",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "全17ルートを再監査し、最優先Cycle 1としてHome下部と詳細Rankingを改善した。QuickActionsを独立Dockへ移し、Friend Pulseと週間Rankingを直接同一行化。Friend Pulseは個別目標、正歩数活動人数、合計歩数、達成人数、状態別行を表示し、Previewへ次ライバル名/必要歩数を接続した。詳細Rankingは外側多列化を2xlへ遅らせ、固定5行外のCompetition Missionへ現在順位・正歩数参加者数・次ライバル名・必要歩数・トップ差・期間を集約。global/group取得をallSettledで障害分離し、進捗a11y・長名・Midnight contrastを修正。全226テスト、3ペルソナ、最終レビュー、Impeccable監査PASS。",
+  "summary": "全ページ再精査Cycle 2としてChallengesの継続行動を改善した。参加中・active・開始済み・未終了・未達成・進捗取得済みだけを焦点候補にし、残り歩数→期限→報酬で並び替え。主表示を最大500歩の次アクション、🔥を残り3日以内、作成CTAを一覧後へ変更した。進捗null/undefinedを0へ変換せず、一覧・カード・参加APIのJST期限を統一。タブ/参加/離脱raceをAbortController、request generation、mounted ref、最新tab refで隔離し、未達bar99%・一度だけmotionへ修正。全230テスト、Mobile Beginner/Returning Low Activity、最終レビュー、Impeccable監査PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 216件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-15T07:42:46+09:00"
+    "lastVerified": "2026-07-15T09:03:43+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -22,7 +22,7 @@
     "Google Healthの実OAuth E2Eは資格情報と接続状態の変更を伴うため未実施",
     "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
     "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
-    "全ページ再精査のP1 backlogとしてChallenges、Onboarding/Setup、Settings、Profile、Wallet、Groups/Group detailの改善が継続中",
+    "全ページ再精査のP1 backlogとしてOnboarding/Setup、Settings、Profile、Wallet、Groups/Group detailの改善が継続中",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
     "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち"
   ],
@@ -592,6 +592,29 @@
         "components/dashboard/DynamicLeaderboard.tsx",
         "components/group/GroupRankingPanel.tsx",
         "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Low-Activity Persona + Self-Critique)",
+      "action": "全ページ再精査Cycle 2でChallengesの継続導線を改善。参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬でソート。優先帯は次の最大500歩、🔥は3日以内、作成は一覧後へ移動。進捗不明の0偽装、タブ/操作race、JST期限不一致、開始前/終了/達成/無効の優先表示を修正し、カードmotionとprogress a11yも整理した。全230テスト、Mobile Beginner/Returning Low Activity、独立レビュー、Impeccable監査PASS。",
+      "commit": "1d70a188483aef3de8e4968616540ec3f2a6c98a",
+      "filesChanged": [
+        "app/api/challenge/route.ts",
+        "app/api/challenge/[challengeId]/join/route.ts",
+        "components/challenge/ChallengesPageClient.tsx",
+        "components/challenge/ChallengeList.tsx",
+        "components/challenge/ChallengeCard.tsx",
+        "lib/services/challenge-utils.ts",
         "messages/en.json",
         "messages/ja.json",
         "scripts/check-ucfitness-rules.sh",
