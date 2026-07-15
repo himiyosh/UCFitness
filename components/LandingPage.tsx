@@ -7,6 +7,12 @@ import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { usePathname, useRouter } from '@/navigation';
+import {
+    AUTH_CALLBACK_STORAGE_KEY,
+    getAuthErrorMessageKey,
+    getLocaleSwitchQuery,
+    getSafeAuthCallbackPath,
+} from '@/lib/auth-flow';
 
 import AuthButtons from '@/components/auth/AuthButtons';
 
@@ -52,6 +58,12 @@ interface AuthContext {
     callbackUrl: string;
 }
 
+interface AuthErrorContext {
+    title: string;
+    description: string;
+    action: string;
+}
+
 type LandingTranslations = ReturnType<typeof useTranslations<'Landing'>>;
 
 export default function LandingPage() {
@@ -63,6 +75,11 @@ export default function LandingPage() {
     const searchParams = useSearchParams();
     const [switching, setSwitching] = useState(false);
     const [showProofScrollCue, setShowProofScrollCue] = useState(true);
+    const [storedAuthCallbackUrl, setStoredAuthCallbackUrl] = useState<string | undefined>(() => {
+        if (typeof window === 'undefined') return undefined;
+        const storedPath = window.sessionStorage.getItem(AUTH_CALLBACK_STORAGE_KEY);
+        return storedPath ? getSafeAuthCallbackPath(storedPath, locale) : undefined;
+    });
 
     useEffect(() => {
         setSwitching(false);
@@ -77,7 +94,7 @@ export default function LandingPage() {
     const toggleLocale = () => {
         if (switching) return;
         const next = locale === 'ja' ? 'en' : 'ja';
-        const query = searchParams.toString();
+        const query = getLocaleSwitchQuery(searchParams.toString(), next);
         const href = query ? `${pathname}?${query}` : pathname;
         setSwitching(true);
         router.replace(href, { locale: next });
@@ -187,6 +204,25 @@ export default function LandingPage() {
     const authContext = searchParams.get('auth') === 'required'
         ? getAuthContext(searchParams.get('next'), locale, t)
         : null;
+    const authErrorKey = getAuthErrorMessageKey(searchParams.get('error'));
+    const authErrorContext = authErrorKey
+        ? {
+            title: t(`authError.${authErrorKey}.title`),
+            description: t(`authError.${authErrorKey}.desc`),
+            action: t('authError.action'),
+        }
+        : null;
+
+    useEffect(() => {
+        if (!authErrorKey || authContext?.callbackUrl) {
+            setStoredAuthCallbackUrl(undefined);
+            return;
+        }
+        const storedPath = window.sessionStorage.getItem(AUTH_CALLBACK_STORAGE_KEY);
+        setStoredAuthCallbackUrl(
+            storedPath ? getSafeAuthCallbackPath(storedPath, locale) : undefined,
+        );
+    }, [authContext?.callbackUrl, authErrorKey, locale]);
 
     return (
         <div className="min-h-screen overflow-x-clip bg-[var(--color-bg)] pt-14 text-[var(--color-text)] sm:pt-16">
@@ -272,6 +308,12 @@ export default function LandingPage() {
                 tabIndex={-1}
                 className="scroll-mt-14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
             >
+                {authErrorContext && (
+                    <AuthErrorNotice
+                        context={authErrorContext}
+                        callbackUrl={authContext?.callbackUrl ?? storedAuthCallbackUrl}
+                    />
+                )}
                 {authContext && <AuthGateNotice context={authContext} />}
 
                 <section className="relative overflow-hidden border-b border-[var(--color-border)]" aria-labelledby="landing-headline">
@@ -299,12 +341,14 @@ export default function LandingPage() {
                                     {t('heroDesc')}
                                 </p>
 
-                                <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                                    <AuthButtons callbackUrl={authContext?.callbackUrl} />
-                                    <p className="sr-only sm:not-sr-only sm:max-w-56 sm:text-sm sm:font-medium sm:leading-5 sm:text-[var(--color-text-muted)]">
-                                        {t('connectFitbit')}
-                                    </p>
-                                </div>
+                                {!authErrorContext && (
+                                    <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                                        <AuthButtons callbackUrl={authContext?.callbackUrl} />
+                                        <p className="sr-only sm:not-sr-only sm:max-w-56 sm:text-sm sm:font-medium sm:leading-5 sm:text-[var(--color-text-muted)]">
+                                            {t('connectFitbit')}
+                                        </p>
+                                    </div>
+                                )}
 
                                 <ul aria-label={t('trustLabel')} className="mt-5 hidden min-w-0 flex-wrap gap-x-4 gap-y-2 sm:flex">
                                     <TrustItem label={t('trust.fitbit')} className="inline-flex" />
@@ -468,7 +512,10 @@ export default function LandingPage() {
                             </p>
                         </div>
                         <div className="shrink-0">
-                            <AuthButtons callbackUrl={authContext?.callbackUrl} />
+                            <AuthButtons
+                                callbackUrl={authContext?.callbackUrl ?? storedAuthCallbackUrl}
+                                label={authErrorContext?.action}
+                            />
                         </div>
                     </div>
                 </section>
@@ -495,7 +542,7 @@ export default function LandingPage() {
 }
 
 function getAuthContext(nextPath: string | null, locale: string, t: LandingTranslations): AuthContext | null {
-    const safeNextPath = getSafeNextPath(nextPath, locale);
+    const safeNextPath = getSafeAuthCallbackPath(nextPath, locale);
     if (!nextPath) return null;
 
     const contextKey = getAuthContextKey(safeNextPath);
@@ -504,13 +551,6 @@ function getAuthContext(nextPath: string | null, locale: string, t: LandingTrans
         description: t(`authGate.${contextKey}.desc`),
         callbackUrl: safeNextPath,
     };
-}
-
-function getSafeNextPath(nextPath: string | null, locale: string): string {
-    if (!nextPath || !nextPath.startsWith('/') || nextPath.startsWith('//')) {
-        return `/${locale}`;
-    }
-    return nextPath;
 }
 
 function getAuthContextKey(nextPath: string): string {
@@ -536,6 +576,30 @@ function AuthGateNotice({ context }: { context: AuthContext }) {
                 <p className="mt-1 text-sm leading-6">{context.description}</p>
             </div>
         </div>
+    );
+}
+
+function AuthErrorNotice({
+    context,
+    callbackUrl,
+}: {
+    context: AuthErrorContext;
+    callbackUrl?: string;
+}) {
+    return (
+        <section className="mx-auto w-full max-w-7xl px-4 pt-3 sm:px-6 lg:px-8" aria-label={context.title}>
+            <div className="rounded-xl border border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3 shadow-sm">
+                <div role="alert" aria-atomic="true">
+                    <p className="text-sm font-bold text-[var(--color-danger-strong)]">{context.title}</p>
+                    <p className="mt-1 max-w-prose text-sm leading-6 text-[var(--color-text)]">
+                        {context.description}
+                    </p>
+                </div>
+                <div className="mt-3">
+                    <AuthButtons callbackUrl={callbackUrl} label={context.action} />
+                </div>
+            </div>
+        </section>
     );
 }
 

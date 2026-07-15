@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { CallbackRouteError } from "@auth/core/errors";
 import { supabaseAdmin } from "./supabase";
 import { backfillUserSteps } from "@/lib/services/step-manager";
 import { reportError } from "./errors";
@@ -47,6 +48,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             clientSecret: process.env.FITBIT_CLIENT_SECRET || "",
         }),
     ],
+    pages: {
+        error: "/",
+        signIn: "/",
+    },
     // debug: true, // Enable for debugging if needed
     callbacks: {
         async signIn({ user, account }: { user: any; account?: any; profile?: any }) {
@@ -63,7 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             if (selectError && selectError.code !== 'PGRST116') {
                 reportError('auth.signIn:lookupByProvider', selectError);
-                return false;
+                throw new CallbackRouteError('User lookup failed during sign-in');
             }
 
             let error;
@@ -126,7 +131,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             if (error) {
                 reportError('auth.signIn:saveUser', error);
-                return false;
+                throw new CallbackRouteError('User persistence failed during sign-in');
             }
 
             return true;

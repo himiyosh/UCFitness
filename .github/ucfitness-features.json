@@ -670,9 +670,9 @@
         "cta_clarity": "ファーストビューで CTA が即認識",
         "error_handling": "OAuth 失敗時にユーザーに明示"
       },
-      "status": "in-progress",
-      "lastAttempt": "2026-07-11T21:39:40+09:00",
-      "lastError": "公開LPのCTA明確化とja/en表示は検証済み。実Fitbit OAuthコールバック後の/setup遷移と失敗メッセージは資格情報を伴うE2E未実施。"
+      "status": "passing",
+      "lastAttempt": "2026-07-15T21:23:31+09:00",
+      "lastError": null
     },
     {
       "id": "F028",

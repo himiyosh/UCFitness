@@ -693,6 +693,21 @@ fi
 if grep -Eq '>[^<{]*(Retry|Save|Cancel|Edit)[^<{]*<' components/StepGoalForm.tsx components/StepCalendar.tsx components/profile/AchievementProgress.tsx; then
   record "変更対象の条件付きUIに英語固定文言" "StepGoalForm / StepCalendar / AchievementProgress"
 fi
+if ! grep -Fq 'error: "/"' lib/auth.ts || \
+   ! grep -Fq 'signIn: "/"' lib/auth.ts || \
+   [ "$(grep -c 'throw new CallbackRouteError' lib/auth.ts)" -lt 2 ] || \
+   ! grep -q 'getAuthErrorMessageKey' components/LandingPage.tsx || \
+   ! grep -q 'getLocaleSwitchQuery' components/LandingPage.tsx || \
+   ! grep -q 'AUTH_CALLBACK_STORAGE_KEY' components/auth/AuthButtons.tsx || \
+   ! grep -q 'getPostSetupReturnPath' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q "t('startFirstQuest')" 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'returnToRequestedPage' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'role="alert"' components/LandingPage.tsx || \
+   ! grep -q 'getPostLoginRedirect' 'app/[locale]/page.tsx' || \
+   ! grep -q "return '/setup'" lib/auth-flow.ts || \
+   ! grep -q 'getSafeAuthCallbackPath' components/LandingPage.tsx; then
+  record "OAuthログインのsetup遷移/障害分離/ja-en安全エラー/戻り先再試行契約欠落" "auth config / AuthButtons / LandingPage / auth-flow / home"
+fi
 if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(RECOMMENDED_STEP_GOAL)' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'const \[completed, setCompleted\]' 'app/[locale]/setup/page.tsx' || \
    ! grep -Fq "t(provider ? 'firstQuestTitle'" 'app/[locale]/setup/page.tsx' || \

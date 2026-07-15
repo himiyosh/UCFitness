@@ -361,6 +361,7 @@
     "firstQuestTitle": "Walk your first 500 steps",
     "firstQuestDescription": "The home screen tracks today's progress, your next rank, and the distance to UC rewards.",
     "startFirstQuest": "Start the first 500 steps from Home",
+    "returnToRequestedPage": "Return to where you left off",
     "reviewConnection": "Review the step source in Settings",
     "openGroups": "Explore groups",
     "openChallenges": "Browse challenges"
@@ -455,6 +456,25 @@
       "profile": {
         "title": "Sign in to view your profile",
         "desc": "After signing in, you can see badges, titles, and your step progress in one profile."
+      }
+    },
+    "authError": {
+      "action": "Sign in with Fitbit again",
+      "accessDenied": {
+        "title": "Sign-in was not completed",
+        "desc": "Fitbit authorization was canceled or denied. No UCFitness settings were changed. Sign in again when you are ready."
+      },
+      "accountMismatch": {
+        "title": "This Fitbit account cannot sign in automatically",
+        "desc": "Sign in with the Fitbit account previously connected to UCFitness. Contact support if you need to use a different account."
+      },
+      "unavailable": {
+        "title": "Sign-in is currently unavailable",
+        "desc": "We are checking the UCFitness authentication setup. Try again later, or contact support if this message continues."
+      },
+      "retry": {
+        "title": "There was a problem signing in",
+        "desc": "The connection was not completed. Check your network and sign in again."
       }
     },
     "benefits": {

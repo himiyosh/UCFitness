@@ -361,6 +361,7 @@
     "firstQuestTitle": "まず500歩を歩いてみよう",
     "firstQuestDescription": "ホームでは今日の進捗、次の順位、UC報酬までの距離を確認できます。",
     "startFirstQuest": "ホームで最初の500歩を始める",
+    "returnToRequestedPage": "元の画面へ戻る",
     "reviewConnection": "設定で歩数ソースを確認する",
     "openGroups": "グループを探す",
     "openChallenges": "チャレンジを見る"
@@ -455,6 +456,25 @@
       "profile": {
         "title": "プロフィールを見るにはログインが必要です",
         "desc": "ログイン後、バッジ・称号・歩数の積み上がりをプロフィールで確認できます。"
+      }
+    },
+    "authError": {
+      "action": "もう一度 Fitbit でログイン",
+      "accessDenied": {
+        "title": "ログインは完了しませんでした",
+        "desc": "Fitbit 側で認証がキャンセルまたは拒否されました。UCFitnessの設定は変更されていません。準備ができたら、もう一度ログインしてください。"
+      },
+      "accountMismatch": {
+        "title": "このFitbitアカウントでは自動ログインできません",
+        "desc": "以前UCFitnessへ接続したFitbitアカウントでログインしてください。別のアカウントを使う必要がある場合は、お問い合わせください。"
+      },
+      "unavailable": {
+        "title": "現在ログインを利用できません",
+        "desc": "UCFitnessの認証設定を確認しています。時間をおいて再試行してください。繰り返し表示される場合は、お問い合わせください。"
+      },
+      "retry": {
+        "title": "ログイン中に問題が発生しました",
+        "desc": "接続は完了していません。通信状態を確認して、もう一度ログインしてください。"
       }
     },
     "benefits": {

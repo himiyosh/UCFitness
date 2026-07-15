@@ -6,8 +6,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { signOut, useSession } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
+import {
+    AUTH_CALLBACK_STORAGE_KEY,
+    getPostSetupReturnPath,
+} from '@/lib/auth-flow';
 import { reportError } from '@/lib/errors';
 import {
     getCommunityDestination,
@@ -33,6 +37,7 @@ import Spinner from '@/components/ui/Spinner';
 export default function SetupPage() {
     const { data: session, status, update } = useSession();
     const router = useRouter();
+    const locale = useLocale();
     const t = useTranslations('Setup');
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
@@ -50,6 +55,10 @@ export default function SetupPage() {
     const [needsEmail, setNeedsEmail] = useState(false);
     const [currentImage, setCurrentImage] = useState<string | null>(null);
     const [isCustomImage, setIsCustomImage] = useState(false);
+    const [storedAuthCallbackPath] = useState<string | null>(() => {
+        if (typeof window === 'undefined') return null;
+        return window.sessionStorage.getItem(AUTH_CALLBACK_STORAGE_KEY);
+    });
     const completionHeadingRef = useRef<HTMLHeadingElement>(null);
     const usernameRef = useRef<HTMLInputElement>(null);
     const nameRef = useRef<HTMLInputElement>(null);
@@ -59,6 +68,14 @@ export default function SetupPage() {
     const stepHeadingRef = useRef<HTMLHeadingElement>(null);
     const previousStepRef = useRef<SetupStep>(1);
     const pendingStepFocusRef = useRef<'heading' | 'username'>('heading');
+    const postSetupReturnPath = provider
+        ? getPostSetupReturnPath(storedAuthCallbackPath, locale)
+        : null;
+
+    const handleCompletionNavigation = (destination: string): void => {
+        window.sessionStorage.removeItem(AUTH_CALLBACK_STORAGE_KEY);
+        router.push(destination);
+    };
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -368,11 +385,26 @@ export default function SetupPage() {
                     </div>
                     <button
                         type="button"
-                        onClick={() => router.push(provider ? '/' : '/settings')}
+                        onClick={() => handleCompletionNavigation(
+                            postSetupReturnPath ?? (provider ? '/' : '/settings'),
+                        )}
                         className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[var(--color-primary-solid)] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                     >
-                        {t(provider ? 'startFirstQuest' : 'reviewConnection')}
+                        {t(postSetupReturnPath
+                            ? 'returnToRequestedPage'
+                            : provider
+                                ? 'startFirstQuest'
+                                : 'reviewConnection')}
                     </button>
+                    {postSetupReturnPath && provider && (
+                        <button
+                            type="button"
+                            onClick={() => handleCompletionNavigation('/')}
+                            className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                        >
+                            {t('startFirstQuest')}
+                        </button>
+                    )}
                     {communityDestination && (
                         <button
                             type="button"

@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { auth } from "@/lib/auth";
+import { getPostLoginRedirect } from '@/lib/auth-flow';
 import { reportError } from '@/lib/errors';
 import { getCachedGlobalRankingMap } from '@/lib/services/ranking-service';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -112,9 +113,8 @@ export default async function Home(): Promise<ReactNode> {
     if (userData.name) session.user.name = userData.name;
   }
 
-  if (!userResult.error && !userData?.username) {
-    redirect('/setup');
-  }
+  const postLoginRedirect = getPostLoginRedirect(Boolean(userResult.error), userData?.username);
+  if (postLoginRedirect) redirect(postLoginRedirect);
 
   // 歩数をメモリ内で集計
   const stepsMap = new Map<string, number>();

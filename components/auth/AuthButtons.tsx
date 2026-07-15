@@ -3,24 +3,36 @@
 import { useCallback, useState } from 'react';
 
 import { signIn, useSession } from "next-auth/react";
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+
+import {
+    AUTH_CALLBACK_STORAGE_KEY,
+    getSafeAuthCallbackPath,
+} from '@/lib/auth-flow';
 
 interface AuthButtonsProps {
     callbackUrl?: string;
+    label?: string;
 }
 
-export default function AuthButtons({ callbackUrl }: AuthButtonsProps) {
+export default function AuthButtons({ callbackUrl, label }: AuthButtonsProps) {
     const { data: session } = useSession();
     const t = useTranslations('Common');
+    const locale = useLocale();
     const [loading, setLoading] = useState(false);
-    const safeCallbackUrl = callbackUrl?.startsWith('/') === true && !callbackUrl.startsWith('//')
-        ? callbackUrl
+    const safeCallbackUrl = callbackUrl
+        ? getSafeAuthCallbackPath(callbackUrl, locale)
         : undefined;
 
     const handleSignIn = useCallback(async (): Promise<void> => {
         if (loading) return;
         setLoading(true);
         try {
+            if (safeCallbackUrl) {
+                window.sessionStorage.setItem(AUTH_CALLBACK_STORAGE_KEY, safeCallbackUrl);
+            } else {
+                window.sessionStorage.removeItem(AUTH_CALLBACK_STORAGE_KEY);
+            }
             await signIn('fitbit', safeCallbackUrl ? { callbackUrl: safeCallbackUrl } : undefined);
         } finally {
             setLoading(false);
@@ -44,7 +56,7 @@ export default function AuthButtons({ callbackUrl }: AuthButtonsProps) {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
                 )}
-                {loading ? t('loading') : t('signInWithFitbit')}
+                {loading ? t('loading') : (label ?? t('signInWithFitbit'))}
             </button>
         </div>
     );
