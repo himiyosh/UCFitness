@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-15T11:41:33+09:00",
-  "lastAgent": "UCFitnessAgent (React + UX + Accessibility + QA + Self-Critique)",
-  "lastCommit": "c4b995f72382f7fdec25c56aafcaec395b6932aa",
+  "lastUpdated": "2026-07-15T14:12:09+09:00",
+  "lastAgent": "UCFitnessAgent (React + UX + Accessibility + QA + Notification Safety + Self-Critique)",
+  "lastCommit": "5b4a4b0a234ad55c00f43357f129601e5409422f",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "全ページ再精査Cycle 3としてSetupをプロフィール保存からActivationへ拡張した。DB正本の歩数ソース・500〜100,000歩目標を確認・同時保存し、完了面から最初の500歩へ接続。Status 5xx再試行、404再ログイン、未接続Settings導線、AbortController競合分離、session更新失敗の成功維持、44px・即時focus・HTML patternを実装。5幅×Classic/Midnight、正常/障害/未接続/完了/旧目標を実ブラウザ確認し、全239テスト、2ペルソナ、独立レビュー、自己批判PASS。",
+  "summary": "全ページ再精査Cycle 4としてSettingsを歩数ソース→日次目標→プロフィール→装飾/通知の順へ再構成し、500〜100,000歩の共有Client/API契約、16px/44px、エラーfocus、成功status、320px統計gridを実装。未表示DB取得とanyを除去し、設定正本障害を明示化。実DBで通知嗜好カラム42703を発見し、Feed/未読を警告付き既定表示で継続、Settingsはトグルだけ部分障害、設定APIは503へ修正。全254テスト、2ペルソナ、2独立レビュー、4テーマ境界実測、自己批判PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 202件はF033継続対応。今回変更によるLint errorは0。",
+    "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 191件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-15T11:41:33+09:00"
+    "lastVerified": "2026-07-15T14:12:09+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -22,10 +22,11 @@
     "Google Healthの実OAuth E2Eは資格情報と接続状態の変更を伴うため未実施",
     "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
     "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
-    "全ページ再精査のP1 backlogとしてSettings、Profile、Wallet、Groups/Group detailの改善が継続中",
+    "全ページ再精査のP1 backlogとしてProfile、Wallet、Groups/Group detailの改善が継続中",
     "F014オンボーディングの3画面化・各画面スキップ・完走率80%プロトタイプ検証は未完了。Setup Activationの歩数ソース・日次目標・最初の500歩は実装済み",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
-    "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち"
+    "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち",
+    "本番Supabaseにnotification_reactions / notification_gear_reactions列が未適用（42703）。Feed/未読/Settingsは部分障害fallback済みだが、通知嗜好を編集可能にするDB migration適用はユーザー承認待ち"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -648,6 +649,50 @@
         ".github/agents/UCFitnessAgent.agent.md",
         ".github/skills/self-critique-gate/SKILL.md",
         ".github/ucfitness-features.json"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + QA + Self-Critique)",
+      "action": "全ページ再精査Cycle 4でSettingsの情報順を歩数ソース→日次目標→プロフィール→装飾/通知へ変更。`lib/step-goal.ts`で500〜100,000歩の整数契約をSetup/Settings Client/APIへ共有し、目標編集を16px/44px・エラーfocus・成功statusへ改善。320px統計grid、カード密度、DB障害伝播、未表示query、owned items型を修正し、4テーマで目標カード左4pxを実測した。",
+      "commit": "abe8e39f2fd133133fe20fd9cf774e7102173be3",
+      "filesChanged": [
+        "app/[locale]/settings/page.tsx",
+        "app/[locale]/setup/page.tsx",
+        "app/api/user/setup/route.ts",
+        "app/api/user/step-goal/route.ts",
+        "app/api/user/step-goal/route.test.ts",
+        "app/globals.css",
+        "components/GoogleHealthConnectionCard.tsx",
+        "components/SettingsForm.tsx",
+        "components/StepGoalForm.tsx",
+        "lib/step-goal.ts",
+        "messages/en.json",
+        "messages/ja.json"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (Notification Safety + Accessibility + Self-Critique)",
+      "action": "実DBの通知嗜好カラム未適用42703がFeed/未読を停止するP0を修正。既読時刻と嗜好を別取得し、嗜好失敗でも警告付き既定Feed・未読数を継続して可用性フラグを返す。ActivityFeed/NotificationBellへja/en警告、通知設定APIへ503、Settingsへトグル限定エラーを追加。API fallback 5テストを含む全254テスト、独立レビュー、自己批判PASS。",
+      "commit": "bdf72f8401d5df54808d22f2a03622260c08aff0",
+      "filesChanged": [
+        "app/api/user/feed/route.ts",
+        "app/api/user/feed/unread-count/route.ts",
+        "app/api/user/feed/preferences-fallback.test.ts",
+        "app/api/user/notification-settings/route.ts",
+        "app/api/user/notification-settings/route.test.ts",
+        "components/ActivityFeed.tsx",
+        "components/layout/NotificationBell.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        "components/SettingsForm.tsx",
+        "app/[locale]/settings/page.tsx",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "scripts/check-ucfitness-rules.sh"
       ]
     }
   ],
