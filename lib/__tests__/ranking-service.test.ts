@@ -67,7 +67,7 @@ describe('deriveBatchGroupRankings', () => {
         expect(user3).toBeUndefined();
     });
 
-    it('should handle users with 0 steps (missing from global rankings)', async () => {
+    it('0歩ユーザーをグループ順位から除外する', async () => {
         const groupIds = ['group1'];
         const groupMembers = [
             { group_id: 'group1', user_id: 'user1' },
@@ -91,10 +91,30 @@ describe('deriveBatchGroupRankings', () => {
 
         const result = await deriveBatchGroupRankings(groupIds, globalRankings as any);
 
-        expect(result['group1'].DAILY).toHaveLength(2);
+        expect(result['group1'].DAILY).toHaveLength(1);
 
         const zeroUser = result['group1'].DAILY.find((r: any) => r.users.id === 'userZero');
-        expect(zeroUser).toBeDefined();
-        expect(zeroUser?.steps).toBe(0);
+        expect(zeroUser).toBeUndefined();
+    });
+
+    it('メンバー取得に失敗した場合は順位データ障害を送出する', async () => {
+        mockIn.mockResolvedValueOnce({
+            data: null,
+            error: {
+                message: 'database unavailable',
+                details: '',
+                hint: '',
+                code: 'PGRST500',
+            },
+        });
+
+        await expect(
+            deriveBatchGroupRankings(['group1'], {
+                DAILY: [],
+                WEEKLY: [],
+                MONTHLY: [],
+                YEARLY: [],
+            }),
+        ).rejects.toThrow('GROUP_MEMBER_RANKING_DATABASE_ERROR');
     });
 });

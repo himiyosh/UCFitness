@@ -94,6 +94,8 @@ Do not make UCFitness look like:
 - Build date-driven initial UI from a server-provided `YYYY-MM-DD` and deterministic UTC arithmetic so Edge and browser hydration produce the same structure.
 - Keep the information order: today's progress, reachable competition gap, UC reward, then the next action. Detailed rankings and friend activity follow that decision layer.
 - Carry the reachable competition gap into detailed global and group ranking summaries once the user has positive recorded progress, so navigation does not remove the next actionable target. Exclude zero-step and absent users from ranks, medals, and success states while retaining the fixed row geometry with empty placeholders. Keep this insight outside fixed-height ranking rows.
+- Treat group membership and ranking participation as different states. Rank only users and groups with positive steps, label ranking-derived counts as ranking participants, and never turn a failed member-count query into zero members.
+- Keep group identity, viewer identity, and membership authorization as the required group-detail boundary. Member details/count, member rankings, comparison data, and each competition period fail independently with visible warnings while available events, chat, gear, and weekly reports remain usable. Private groups still return not found to non-members.
 - Separate recorded zero, missing data, and database/API failure. Recorded zero belongs in recorded-day averages but not active-day or best-day counts.
 - Compare an in-progress month with the previous month through the same day, not with the previous full month.
 - Give returning low-activity users an achievable 100–500 step entry point before harder optional goals.

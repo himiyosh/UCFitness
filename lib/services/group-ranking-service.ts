@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
+import { sortActiveGroupRankings } from '@/lib/services/ranking-utils';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
@@ -141,8 +142,7 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         };
     });
 
-    // Sort by Average Descending
-    return rankings.sort((a, b) => b.averageSteps - a.averageSteps);
+    return sortActiveGroupRankings(rankings);
 };
 
 // ⚡ Bolt Optimization: Fetch all periods in one go to reduce DB calls
@@ -252,7 +252,7 @@ export const getCombinedGroupCompetitionRankings = async () => {
     };
 
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
-        result[period] = groups.map(g => {
+        result[period] = sortActiveGroupRankings(groups.map(g => {
             const stats = groupStats.get(g.id);
             const count = groupMemberCounts.get(g.id) || 0;
             const total = stats ? stats[period] : 0;
@@ -267,7 +267,7 @@ export const getCombinedGroupCompetitionRankings = async () => {
                 averageSteps: average,
                 memberCount: count
             };
-        }).sort((a, b) => b.averageSteps - a.averageSteps);
+        }));
     });
 
     return result;

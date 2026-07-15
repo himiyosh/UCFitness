@@ -60,6 +60,35 @@ describe('getRankings', () => {
         ).rejects.toThrow('Failed to load ranking group');
         expect(mocks.fetchDailyStepsPaginated).not.toHaveBeenCalled();
     });
+
+    it('記録済み0歩のユーザーを全体順位から除外する', async () => {
+        mocks.fetchDailyStepsPaginated.mockResolvedValue({
+            data: [
+                { user_id: 'user-zero', steps: 0 },
+                { user_id: 'user-active', steps: 500 },
+            ],
+            error: null,
+        });
+        mocks.from.mockReturnValue({
+            select: () => ({
+                in: vi.fn().mockResolvedValue({
+                    data: [
+                        { id: 'user-zero', name: 'Zero', image: null, username: 'zero' },
+                        { id: 'user-active', name: 'Active', image: null, username: 'active' },
+                    ],
+                    error: null,
+                }),
+            }),
+        });
+
+        const rankings = await getRankings('GLOBAL', 'DAILY');
+
+        expect(rankings).toHaveLength(1);
+        expect(rankings[0]).toMatchObject({
+            steps: 500,
+            users: { id: 'user-active' },
+        });
+    });
 });
 
 describe('getAllGroupRankings', () => {

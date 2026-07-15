@@ -288,9 +288,10 @@ if ! grep -q 'export function getRankGapInsight' lib/services/ranking-utils.ts |
    ! grep -q 'leaderStepsGap: number' lib/services/ranking-utils.ts || \
    ! grep -q 'totalCount: number' lib/services/ranking-utils.ts || \
    ! grep -q 'currentEntry.steps <= 0' lib/services/ranking-utils.ts || \
+   ! grep -q 'export function sortPositiveStepRankings' lib/services/ranking-utils.ts || \
    ! grep -q 'originalRank: index + 1' lib/services/ranking-service.ts || \
-   ! grep -Fq '.filter(entry => entry.steps > 0)' lib/services/ranking-utils.ts || \
-   ! grep -Fq '.filter(entry => entry.steps > 0)' lib/services/ranking-service.ts || \
+   ! grep -q 'sortPositiveStepRankings' lib/services/ranking-service.ts || \
+   ! grep -q 'sortPositiveStepRankings' 'app/api/group/[groupId]/ranking/route.ts' || \
    [ "$(grep -Fc 'getDisplayRankings(' components/dashboard/DynamicLeaderboard.tsx)" -ne 2 ] || \
    [ "$(grep -Fc ', userId, 5)' components/dashboard/DynamicLeaderboard.tsx)" -ne 2 ] || \
    ! grep -q 'href="/leaderboard?period=WEEKLY"' 'app/[locale]/page.tsx' || \
@@ -413,7 +414,8 @@ if [ "$(grep -Fo 'bg-[var(--color-primary-solid)]' components/dashboard/DynamicL
    ! grep -Fq 'bg-[var(--color-primary-solid)] text-white' components/group/GroupAnalytics.tsx || \
    grep -q 'ranking-filter-button[^`]*transition-colors' components/dashboard/DynamicLeaderboard.tsx || \
    grep -q 'ranking-filter-button[^`]*transition-colors' components/group/GroupAnalytics.tsx || \
-   ! grep -q 'href="#group-gear"' components/group/GroupAnalytics.tsx || \
+   ( ! grep -q 'href="#group-gear"' components/group/GroupAnalytics.tsx && \
+     ! grep -q 'FocusAnchorLink' components/group/GroupAnalytics.tsx ) || \
    ! grep -q 'id="group-gear"' 'app/[locale]/groups/[groupId]/page.tsx' || \
    ! grep -q 'data-group-gear-empty' components/group/GroupGear.tsx || \
    ! grep -q "if (!res.ok) throw new Error('fetch failed')" components/group/GroupGear.tsx || \
@@ -799,6 +801,47 @@ if grep -q 'todayEarned = transactions' 'app/[locale]/wallet/page.tsx' || \
    grep -q '<table className="sr-only"' components/CoinGrowthChart.tsx || \
    grep -Eq 'text-\[(9|10|11)px\]|text-gray-400' components/CoinBalanceCard.tsx components/TransactionHistory.tsx components/CoinGrowthChart.tsx components/EarningBreakdown.tsx; then
   record "Walletの獲得/支出/net/次報酬/自然スクロール/チャート代替契約欠落" "Wallet page / wallet-summary / Wallet components"
+fi
+if ! grep -q 'export function sortActiveGroupRankings' lib/services/ranking-utils.ts || \
+   ! grep -Fq '.filter((entry) => entry.totalSteps > 0 && entry.averageSteps > 0)' lib/services/ranking-utils.ts || \
+   ! grep -q 'export function sortPositiveStepRankings' lib/services/ranking-utils.ts || \
+   ! grep -q 'sortPositiveStepRankings' lib/services/ranking-service.ts || \
+   ! grep -q 'sortPositiveStepRankings' 'app/api/group/[groupId]/ranking/route.ts' || \
+   ! grep -q 'originalRank: index + 1' lib/services/ranking-service.ts || \
+   ! grep -q 'return sortActiveGroupRankings(rankings)' lib/services/group-ranking-service.ts || \
+   ! grep -q 'export function getViewerRankingActivities' lib/services/ranking-utils.ts || \
+   ! grep -q 'export function getViewerRankingStatus' lib/services/ranking-utils.ts || \
+   ! grep -q "t('findFirstGroup')" 'app/[locale]/groups/page.tsx' || \
+   ! grep -q 'FocusAnchorLink' 'app/[locale]/groups/page.tsx' || \
+   ! grep -q 'id="group-join-panel"' 'app/[locale]/groups/page.tsx' || \
+   ! grep -q 'aria-labelledby="group-join-panel-title"' 'app/[locale]/groups/page.tsx' || \
+   ! grep -q "t('totalGroupMembers')" 'app/[locale]/groups/page.tsx' || \
+   ! grep -q 'captureGroupDependency' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'getViewerGroupRankingActivities' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'viewerRankingActivities={viewerRankingActivities}' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'aria-labelledby="group-gear-title"' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'const memberCount = memberCountResult.error ? null' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'membersUnavailable={membersUnavailable}' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'membersIncomplete={membersIncomplete}' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'rankingsUnavailable={rankingsUnavailable}' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'comparisonUnavailable={comparisonUnavailable}' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'competitionUnavailableByPeriod={competitionUnavailableByPeriod}' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'group.is_public' 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q "detailT('rankingsUnavailable')" 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q "detailT('comparisonUnavailable')" 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q "detailT('competitionUnavailable')" 'app/[locale]/groups/[groupId]/page.tsx' || \
+   ! grep -q 'membersUnavailable || (membersIncomplete' components/group/GroupHeaderActions.tsx || \
+   ! grep -q '!rankingsUnavailable && (' components/group/GroupAnalytics.tsx || \
+   ! grep -q '!comparisonUnavailable && (' components/group/GroupAnalytics.tsx || \
+   ! grep -q '!competitionUnavailableByPeriod\[period\]' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'getViewerRankingStatus' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'data-user-ranking-state' components/group/GroupAnalytics.tsx || \
+   ! grep -q 'FocusAnchorLink' components/group/GroupAnalytics.tsx || \
+   ( ! grep -q 'grid-cols-1' components/group/GroupMembersPanel.tsx && \
+     ! grep -q 'flex flex-col' components/group/GroupMembersPanel.tsx ) || \
+   ! grep -q 'min-h-\[44px\] min-w-\[44px\]' components/group/GroupMembersPanel.tsx || \
+   grep -q "throw new Error('Failed to load member count')" 'app/[locale]/groups/[groupId]/page.tsx'; then
+  record "Groupsの正歩数順位/未所属CTA/部分障害契約欠落" "Groups pages / ranking services / member dialog"
 fi
 
 # ---------- 結果出力 ----------

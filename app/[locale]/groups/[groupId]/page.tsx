@@ -2,15 +2,25 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import {
+    getJSTDateString,
+    getMonthStartDate,
+    getWeekStartDate,
+    getYearStartDate,
+} from "@/lib/date-utils";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { notFound, redirect } from "next/navigation";
-import GroupDetailLeaderboard from "@/components/group/GroupDetailLeaderboard";
 import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import GroupHeaderActions from "@/components/group/GroupHeaderActions";
 import Breadcrumbs from '@/components/layout/Breadcrumbs';
 import { getAllGroupRankings } from "@/lib/services/ranking-service";
-import { enrichRankingsWithEquip, isRankingPeriod } from "@/lib/services/ranking-utils";
+import {
+    createUnavailableViewerRankingActivities,
+    enrichRankingsWithEquip,
+    getViewerRankingActivities,
+    isRankingPeriod,
+} from "@/lib/services/ranking-utils";
 import { getGroupCompetitionRankings } from "@/lib/services/group-ranking-service";
 import JoinGroupPreview from "@/components/group/JoinGroupPreview";
 import nextDynamic from 'next/dynamic';
@@ -19,6 +29,14 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import Footer from '@/components/layout/Footer';
 import GroupEventList from "@/components/group/GroupEventList";
 import GroupWeeklyReport from "@/components/group/GroupWeeklyReport";
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import type { ChartData } from '@/lib/services/group-comparison-service';
+import type { GroupRankingEntry } from '@/lib/services/group-ranking-service';
+import type {
+    RankingEntry,
+    ViewerRankingActivities,
+} from '@/lib/services/ranking-utils';
 
 // ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
 const GroupAnalytics = nextDynamic(() => import('@/components/group/GroupAnalytics'));
@@ -32,14 +50,107 @@ interface GroupDetailPageProps {
     searchParams: Promise<{ period?: string | string[] }>;
 }
 
-export default async function GroupDetailPage(props: GroupDetailPageProps) {
+interface CapturedGroupDependency<T> {
+    data: T | null;
+    failed: boolean;
+}
+
+interface GroupMember {
+    user_id: string;
+    role: 'OWNER' | 'ADMIN' | 'MEMBER';
+    users: {
+        id: string;
+        name: string | null;
+        image: string | null;
+        username: string | null;
+    };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function normalizeGroupMember(value: unknown): GroupMember | null {
+    if (
+        !isRecord(value)
+        || typeof value.user_id !== 'string'
+        || (value.role !== 'OWNER' && value.role !== 'ADMIN' && value.role !== 'MEMBER')
+    ) {
+        return null;
+    }
+    const relation = Array.isArray(value.users) ? value.users[0] : value.users;
+    if (!isRecord(relation) || typeof relation.id !== 'string') {
+        return null;
+    }
+    return {
+        user_id: value.user_id,
+        role: value.role,
+        users: {
+            id: relation.id,
+            name: typeof relation.name === 'string' ? relation.name : null,
+            image: typeof relation.image === 'string' ? relation.image : null,
+            username: typeof relation.username === 'string' ? relation.username : null,
+        },
+    };
+}
+
+async function captureGroupDependency<T>(
+    operation: string,
+    userId: string,
+    groupId: string,
+    promise: Promise<T>,
+): Promise<CapturedGroupDependency<T>> {
+    try {
+        return { data: await promise, failed: false };
+    } catch (error: unknown) {
+        reportError(operation, error, { userId, groupId });
+        return { data: null, failed: true };
+    }
+}
+
+function createEmptyComparisonData(): Record<Period, ChartData> {
+    return {
+        DAILY: { data: [], users: [] },
+        WEEKLY: { data: [], users: [] },
+        MONTHLY: { data: [], users: [] },
+        YEARLY: { data: [], users: [] },
+    };
+}
+
+async function getViewerGroupRankingActivities(userId: string): Promise<ViewerRankingActivities> {
+    const today = getJSTDateString();
+    const { data, error } = await supabaseAdmin
+        .from('daily_steps')
+        .select('date, steps')
+        .eq('user_id', userId)
+        .gte('date', getYearStartDate(today))
+        .lte('date', today);
+
+    if (error) throw error;
+
+    return getViewerRankingActivities(data ?? [], {
+        DAILY: today,
+        WEEKLY: getWeekStartDate(today),
+        MONTHLY: getMonthStartDate(today),
+        YEARLY: getYearStartDate(today),
+    });
+}
+
+const EMPTY_RANKINGS: Record<Period, RankingEntry[]> = {
+    DAILY: [],
+    WEEKLY: [],
+    MONTHLY: [],
+    YEARLY: [],
+};
+
+export default async function GroupDetailPage(props: GroupDetailPageProps): Promise<React.ReactNode> {
     const [params, resolvedSearchParams] = await Promise.all([
         props.params,
         props.searchParams,
     ]);
     const [session, locale] = await Promise.all([auth(), getLocale()]);
 
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
         const requestedPeriod = typeof resolvedSearchParams.period === 'string'
             ? resolvedSearchParams.period
             : null;
@@ -50,14 +161,15 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
         redirect(createLoginRequiredRedirect(locale, nextPath));
     }
 
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
     const { groupId } = params;
 
     // ⚡ パフォーマンス: 翻訳取得を並列化
-    const [dashboardT, groupsT, detailT] = await Promise.all([
+    const [dashboardT, groupsT, detailT, gearT] = await Promise.all([
         getTranslations('Dashboard'),
         getTranslations('Groups'),
         getTranslations('GroupDetail'),
+        getTranslations('GroupGear'),
     ]);
 
     // ⚡ パフォーマンス: 3つの独立クエリを並列実行
@@ -80,7 +192,7 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
             .single(),
         supabaseAdmin
             .from('group_members')
-            .select('*', { count: 'exact', head: true })
+            .select('user_id', { count: 'exact', head: true })
             .eq('group_id', groupId),
     ]);
 
@@ -103,8 +215,8 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
     }
     if (memberCountResult.error) {
         reportError('groups/detail:member-count', memberCountResult.error, { userId, groupId });
-        throw new Error('Failed to load member count');
     }
+    const memberCount = memberCountResult.error ? null : memberCountResult.count;
 
     if (!dbUser?.username) {
         redirect('/setup');
@@ -158,7 +270,7 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
                             image_url: group.image_url,
                             header_image_url: group.header_image_url,
                         }}
-                        memberCount={memberCountResult.count ?? 0}
+                        memberCount={memberCount}
                     />
                 </div>
                 <Footer />
@@ -166,14 +278,37 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
         );
     }
 
-    // ⚡ パフォーマンス: ランキング・コンペ・比較データ・メンバーを並列実行
-    const [rawRankings, compDaily, compWeekly, compMonthly, compYearly, comparisonData, membersResult] = await Promise.all([
-        getAllGroupRankings(groupId),
-        getGroupCompetitionRankings('DAILY'),
-        getGroupCompetitionRankings('WEEKLY'),
-        getGroupCompetitionRankings('MONTHLY'),
-        getGroupCompetitionRankings('YEARLY'),
-        getAllGroupComparisonData(groupId, userId),
+    // ランキング・比較・メンバーを個別の障害境界で並列取得
+    const [
+        rawRankingsState,
+        compDailyState,
+        compWeeklyState,
+        compMonthlyState,
+        compYearlyState,
+        comparisonState,
+        viewerRankingActivitiesState,
+        membersResult,
+    ] = await Promise.all([
+        captureGroupDependency('groups/detail:rankings', userId, groupId, getAllGroupRankings(groupId)),
+        group.is_public
+            ? captureGroupDependency('groups/detail:competition-daily', userId, groupId, getGroupCompetitionRankings('DAILY'))
+            : Promise.resolve<CapturedGroupDependency<GroupRankingEntry[]>>({ data: [], failed: false }),
+        group.is_public
+            ? captureGroupDependency('groups/detail:competition-weekly', userId, groupId, getGroupCompetitionRankings('WEEKLY'))
+            : Promise.resolve<CapturedGroupDependency<GroupRankingEntry[]>>({ data: [], failed: false }),
+        group.is_public
+            ? captureGroupDependency('groups/detail:competition-monthly', userId, groupId, getGroupCompetitionRankings('MONTHLY'))
+            : Promise.resolve<CapturedGroupDependency<GroupRankingEntry[]>>({ data: [], failed: false }),
+        group.is_public
+            ? captureGroupDependency('groups/detail:competition-yearly', userId, groupId, getGroupCompetitionRankings('YEARLY'))
+            : Promise.resolve<CapturedGroupDependency<GroupRankingEntry[]>>({ data: [], failed: false }),
+        captureGroupDependency('groups/detail:comparison', userId, groupId, getAllGroupComparisonData(groupId, userId)),
+        captureGroupDependency(
+            'groups/detail:viewer-ranking-activity',
+            userId,
+            groupId,
+            getViewerGroupRankingActivities(userId),
+        ),
         supabaseAdmin
             .from('group_members')
             .select(`
@@ -189,27 +324,51 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
             .eq('group_id', groupId)
             .order('role', { ascending: false }),
     ]);
-
-    const rankings = await enrichRankingsWithEquip(rawRankings);
-    // Supabase の group_members → users は多対一リレーション（単一オブジェクト返却）だが
-    // 型推論では配列として推論されるため、実際の型にキャスト
-    const members = membersResult.data as Array<{
-        user_id: string;
-        role: 'OWNER' | 'MEMBER';
-        users: {
-            id: string;
-            name: string | null;
-            image: string | null;
-            username: string | null;
-        };
-    }> | null;
+    if (membersResult.error) {
+        reportError('groups/detail:members', membersResult.error, { userId, groupId });
+    }
+    const enrichedRankingsState = rawRankingsState.data
+        ? await captureGroupDependency(
+            'groups/detail:ranking-equipment',
+            userId,
+            groupId,
+            enrichRankingsWithEquip(rawRankingsState.data),
+        )
+        : { data: null, failed: rawRankingsState.failed };
+    const rankings = enrichedRankingsState.data ?? EMPTY_RANKINGS;
+    const rankingsUnavailable = rawRankingsState.failed || enrichedRankingsState.failed;
+    const viewerRankingActivities = viewerRankingActivitiesState.data
+        ?? createUnavailableViewerRankingActivities();
+    const competitionUnavailableByPeriod: Record<Period, boolean> = {
+        DAILY: compDailyState.failed,
+        WEEKLY: compWeeklyState.failed,
+        MONTHLY: compMonthlyState.failed,
+        YEARLY: compYearlyState.failed,
+    };
+    const competitionUnavailable = Object.values(competitionUnavailableByPeriod).some(Boolean);
+    const comparisonUnavailable = comparisonState.failed;
+    const membersUnavailable = Boolean(membersResult.error);
+    const normalizedMembers = (membersResult.data ?? []).map(normalizeGroupMember);
+    const membersIncomplete = !membersUnavailable
+        && normalizedMembers.some((member) => member === null);
+    if (membersIncomplete) {
+        reportError(
+            'groups/detail:members-shape',
+            new Error('Unexpected group member response shape'),
+            { userId, groupId },
+        );
+    }
+    const members = normalizedMembers.filter(
+        (member): member is GroupMember => member !== null,
+    );
 
     const groupCompetitionRankings = {
-        DAILY: compDaily,
-        WEEKLY: compWeekly,
-        MONTHLY: compMonthly,
-        YEARLY: compYearly
+        DAILY: compDailyState.data ?? [],
+        WEEKLY: compWeeklyState.data ?? [],
+        MONTHLY: compMonthlyState.data ?? [],
+        YEARLY: compYearlyState.data ?? [],
     };
+    const comparisonData = comparisonState.data ?? createEmptyComparisonData();
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
@@ -236,6 +395,22 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
                         </span>
                     )}
                 </div>
+                {(membersUnavailable || membersIncomplete) && (
+                    <p
+                        role="status"
+                        className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                    >
+                        {detailT('memberDataUnavailable')}
+                    </p>
+                )}
+                {memberCount === null && (
+                    <p
+                        role="status"
+                        className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                    >
+                        {groupsT('memberCountUnavailable')}
+                    </p>
+                )}
 
                 {/* Group Info Card / Hero */}
                 <section className="relative overflow-hidden rounded-2xl border border-gray-200 shadow-lg bg-white group min-h-[140px] sm:min-h-[200px] flex items-end">
@@ -264,12 +439,12 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
                             </div>
 
                             {/* Text */}
-                            <div className={`flex-1 ${group.header_image_url ? "text-white text-shadow-sm" : "text-gray-900"}`}>
+                            <div className={`min-w-0 flex-1 ${group.header_image_url ? "text-white text-shadow-sm" : "text-gray-900"}`}>
                                 <h1 className="text-2xl sm:text-4xl font-black tracking-tight mb-1 sm:mb-2 line-clamp-1">{group.name}</h1>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <div className={`px-2 py-0.5 sm:py-1 rounded text-xs font-mono select-all flex items-center gap-2 ${group.header_image_url ? 'bg-white/20 text-white backdrop-blur-sm border border-white/30' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+                                    <div className={`flex max-w-full min-w-0 items-center gap-2 rounded px-2 py-0.5 text-xs font-mono select-all sm:py-1 ${group.header_image_url ? 'bg-white/20 text-white backdrop-blur-sm border border-white/30' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
                                         <span className="opacity-70">ID:</span>
-                                        <span className="font-bold">{group.keyword}</span>
+                                        <span className="min-w-0 break-all font-bold">{group.keyword}</span>
                                     </div>
                                 </div>
                             </div>
@@ -277,15 +452,51 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
 
                         {/* Right: Actions */}
                         <div className="w-full sm:w-auto flex flex-col items-end gap-2 shrink-0 sm:relative">
-                            <GroupHeaderActions group={group} isOwner={isOwner} members={members || []} currentUserId={userId} />
+                            <GroupHeaderActions
+                                group={group}
+                                isOwner={isOwner}
+                                members={members}
+                                membersUnavailable={membersUnavailable}
+                                membersIncomplete={membersIncomplete}
+                                currentUserId={userId}
+                            />
                         </div>
                     </div>
                 </section>
+
+                {rankingsUnavailable && (
+                    <p
+                        role="status"
+                        className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                    >
+                        {detailT('rankingsUnavailable')}
+                    </p>
+                )}
+                {comparisonUnavailable && (
+                    <p
+                        role="status"
+                        className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                    >
+                        {detailT('comparisonUnavailable')}
+                    </p>
+                )}
+                {competitionUnavailable && (
+                    <p
+                        role="status"
+                        className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                    >
+                        {detailT('competitionUnavailable')}
+                    </p>
+                )}
 
                 <GroupAnalytics
                     rankings={rankings}
                     comparisonData={comparisonData}
                     groupCompetitionRankings={groupCompetitionRankings}
+                    rankingsUnavailable={rankingsUnavailable}
+                    comparisonUnavailable={comparisonUnavailable}
+                    competitionUnavailableByPeriod={competitionUnavailableByPeriod}
+                    viewerRankingActivities={viewerRankingActivities}
                     userId={userId}
                     currentGroupId={groupId}
                     currentUsername={dbUser?.name || session.user.name || undefined}
@@ -307,7 +518,13 @@ export default async function GroupDetailPage(props: GroupDetailPageProps) {
                 </div>
 
                 {/* メンバーの愛用ギア */}
-                <section id="group-gear" className="scroll-mt-24">
+                <section
+                    id="group-gear"
+                    tabIndex={-1}
+                    aria-labelledby="group-gear-title"
+                    className="scroll-mt-24 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)] focus-visible:ring-offset-2"
+                >
+                    <h2 id="group-gear-title" className="sr-only">{gearT('title')}</h2>
                     <GroupGear groupId={groupId} userId={userId} />
                 </section>
 

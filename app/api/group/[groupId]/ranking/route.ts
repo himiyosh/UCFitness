@@ -1,7 +1,11 @@
+export const runtime = 'edge';
+
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { sortPositiveStepRankings } from '@/lib/services/ranking-utils';
+import { supabaseAdmin } from '@/lib/supabase';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
@@ -287,8 +291,7 @@ export async function GET(
             entry.steps += Number(row.steps);
         });
 
-        const rankings = Array.from(userMap.values())
-            .sort((a, b) => b.steps - a.steps)
+        const rankings = sortPositiveStepRankings(Array.from(userMap.values()))
             .map((item, index) => ({
                 rank: index + 1,
                 steps: item.steps,
@@ -307,5 +310,3 @@ export async function GET(
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-export const runtime = 'edge';

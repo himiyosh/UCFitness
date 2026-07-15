@@ -6,7 +6,7 @@ import GroupMembersPanel from './GroupMembersPanel';
 /** メンバー情報の型定義（GroupMembersPanel の Member 型と一致） */
 interface GroupMember {
     user_id: string;
-    role: 'OWNER' | 'MEMBER';
+    role: 'OWNER' | 'ADMIN' | 'MEMBER';
     users: {
         id: string;
         name: string | null;

@@ -13,7 +13,7 @@ import GroupSettingsLayout from './GroupSettingsLayout';
 /** メンバー情報の型定義 */
 interface GroupMember {
     user_id: string;
-    role: 'OWNER' | 'MEMBER';
+    role: 'OWNER' | 'ADMIN' | 'MEMBER';
     users: {
         id: string;
         name: string | null;
@@ -34,11 +34,22 @@ interface Props {
     isOwner: boolean;
     /** メンバー一覧（メンバー管理モーダル用） */
     members?: GroupMember[];
+    /** メンバー一覧の取得に失敗したか */
+    membersUnavailable?: boolean;
+    /** 一部のメンバー行だけ解析できなかったか */
+    membersIncomplete?: boolean;
     /** 現在のユーザーID */
     currentUserId?: string;
 }
 
-export default function GroupHeaderActions({ group, isOwner, members, currentUserId }: Props) {
+export default function GroupHeaderActions({
+    group,
+    isOwner,
+    members,
+    membersUnavailable = false,
+    membersIncomplete = false,
+    currentUserId,
+}: Props) {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isMembersOpen, setIsMembersOpen] = useState(false);
     const t = useTranslations('GroupDetail');
@@ -125,13 +136,27 @@ export default function GroupHeaderActions({ group, isOwner, members, currentUse
                         </div>
                         {/* コンテンツ */}
                         <div className="p-5">
-                            {members && currentUserId ? (
-                                <GroupSettingsLayout
-                                    members={members}
-                                    group={group}
-                                    isOwner={isOwner}
-                                    currentUserId={currentUserId}
-                                />
+                            {membersUnavailable || (membersIncomplete && members?.length === 0) ? (
+                                <p role="status" className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+                                    {t('memberDataUnavailable')}
+                                </p>
+                            ) : members && currentUserId ? (
+                                <div className="space-y-3">
+                                    {membersIncomplete && (
+                                        <p
+                                            role="status"
+                                            className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-text)]"
+                                        >
+                                            {t('memberDataUnavailable')}
+                                        </p>
+                                    )}
+                                    <GroupSettingsLayout
+                                        members={members}
+                                        group={group}
+                                        isOwner={isOwner}
+                                        currentUserId={currentUserId}
+                                    />
+                                </div>
                             ) : (
                                 <p className="text-sm text-gray-500 text-center py-8">Loading...</p>
                             )}

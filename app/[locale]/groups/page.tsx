@@ -9,6 +9,7 @@ import { Link } from '@/navigation';
 import GroupList from "@/components/group/GroupList";
 import GroupSettings from "@/components/group/GroupSettings";
 import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
+import { FocusAnchorLink } from '@/components/layout/SkipLink';
 import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/services/ranking-service";
 import { getLocale, getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
@@ -19,11 +20,11 @@ export const dynamic = 'force-dynamic';
 export default async function MyGroupsPage() {
     const [session, locale] = await Promise.all([auth(), getLocale()]);
 
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
         redirect(createLoginRequiredRedirect(locale, "/groups"));
     }
 
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     // ⚡ パフォーマンス: ユーザーデータ、メンバーシップ、翻訳を並列取得
     const [userResult, membershipResult, t, dashboardT, commonT] = await Promise.all([
@@ -88,9 +89,15 @@ export default async function MyGroupsPage() {
             rankingDataError = true;
         }
     }
-    const batchRankings = globalRankings
-        ? await deriveBatchGroupRankings(groupIds, globalRankings)
-        : {};
+    let batchRankings: Awaited<ReturnType<typeof deriveBatchGroupRankings>> = {};
+    if (globalRankings) {
+        try {
+            batchRankings = await deriveBatchGroupRankings(groupIds, globalRankings);
+        } catch (error: unknown) {
+            reportError('groups:batch-rankings', error, { userId });
+            rankingDataError = true;
+        }
+    }
 
     const membershipsWithRank = normalizedMemberships.map((m: any) => {
         const groupRankings = batchRankings[m.groups.id];
@@ -231,8 +238,15 @@ export default async function MyGroupsPage() {
                         </div>
 
                         {!memberships || memberships.length === 0 ? (
-                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                                <p className="text-gray-500">{t('noGroups')}</p>
+                            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center sm:p-6">
+                                <p className="font-semibold text-[var(--color-text)]">{t('noGroups')}</p>
+                                <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-[var(--color-text-muted)]">{t('noGroupsDescription')}</p>
+                                <FocusAnchorLink
+                                    targetId="group-join-panel"
+                                    className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[var(--color-competition-solid)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-competition-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2"
+                                >
+                                    {t('findFirstGroup')}
+                                </FocusAnchorLink>
                             </div>
                         ) : (
                             <GroupList initialMemberships={sortedMemberships} />
@@ -240,11 +254,16 @@ export default async function MyGroupsPage() {
                     </section>
 
                     {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
-                    <aside className="w-full xl:w-80 flex-shrink-0 xl:sticky xl:top-24 space-y-3">
+                    <aside
+                        id="group-join-panel"
+                        tabIndex={-1}
+                        aria-labelledby="group-join-panel-title"
+                        className="w-full scroll-mt-24 flex-shrink-0 space-y-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2 xl:sticky xl:top-24 xl:w-80"
+                    >
                         {/* Join / Create */}
                         <div>
                             <div className="flex items-center mb-2">
-                                <h2 className="text-base font-bold text-gray-900">{t('joinOrCreate')}</h2>
+                                <h2 id="group-join-panel-title" className="text-base font-bold text-gray-900">{t('joinOrCreate')}</h2>
                             </div>
                             <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-[var(--theme-primary-light)] via-white to-white border border-[var(--theme-primary)]/20 shadow-sm">
                                 {/* 装飾 — デスクトップのみ */}
@@ -275,7 +294,7 @@ export default async function MyGroupsPage() {
                             <span className="text-xl md:text-2xl md:mb-1 shrink-0">🏃‍♂️</span>
                             <div className="min-w-0">
                                 <div className="font-bold text-sm">{t('createGroup')}</div>
-                                <div className="text-[11px] md:text-xs text-white/80">{t('createGroupDesc')}</div>
+                                <div className="text-xs text-white/80">{t('createGroupDesc')}</div>
                             </div>
                         </Link>
                     </aside>

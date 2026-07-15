@@ -58,6 +58,7 @@ describe('Ranking Optimization', () => {
     it('getAllRankings (GLOBAL) returns correct structure', async () => {
         // Mock fetchDailyStepsPaginated
         const mockSteps = [
+            { user_id: 'u0', steps: 0, date: '2024-01-01' },
             { user_id: 'u1', steps: 1000, date: '2024-01-01' },
             { user_id: 'u2', steps: 500, date: '2024-01-01' }
         ];
@@ -66,6 +67,7 @@ describe('Ranking Optimization', () => {
         // Mock users fetch
         mockIn.mockResolvedValueOnce({
             data: [
+                { id: 'u0', name: 'User 0' },
                 { id: 'u1', name: 'User 1' },
                 { id: 'u2', name: 'User 2' }
             ],
@@ -79,6 +81,7 @@ describe('Ranking Optimization', () => {
         expect(result.DAILY[0].steps).toBe(1000);
         expect(result.DAILY[1].users.id).toBe('u2');
         expect(result.DAILY[1].steps).toBe(500);
+        expect(result.DAILY.some((entry) => entry.users.id === 'u0')).toBe(false);
     });
 
     it('getAllRankings_DB取得失敗時_エラーを伝播する', async () => {

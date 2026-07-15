@@ -5,13 +5,22 @@ import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
+import { FocusAnchorLink } from '@/components/layout/SkipLink';
 import { useTheme } from '@/components/ThemeProvider';
-import { buildRankingPeriodQuery, isRankingPeriod } from '@/lib/services/ranking-utils';
+import {
+    buildRankingPeriodQuery,
+    getGroupRankGapInsight,
+    getViewerRankingStatus,
+    isRankingPeriod,
+} from '@/lib/services/ranking-utils';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 import type { ChartData } from '@/lib/services/group-comparison-service';
 import type { GroupRankingEntry } from '@/lib/services/group-ranking-service';
-import type { RankingEntry } from '@/lib/services/ranking-utils';
+import type {
+    RankingEntry,
+    ViewerRankingActivities,
+} from '@/lib/services/ranking-utils';
 
 const GroupComparisonChart = dynamic(() => import('@/components/group/GroupComparisonChart'), {
     ssr: false,
@@ -28,6 +37,10 @@ interface GroupAnalyticsProps {
     rankings: Record<Period, RankingEntry[]>;
     comparisonData: Record<Period, ChartData>;
     groupCompetitionRankings: Record<Period, GroupRankingEntry[]>;
+    rankingsUnavailable?: boolean;
+    comparisonUnavailable?: boolean;
+    competitionUnavailableByPeriod?: Record<Period, boolean>;
+    viewerRankingActivities: ViewerRankingActivities;
     userId?: string | null;
     currentGroupId: string;
     currentUsername?: string;
@@ -48,10 +61,18 @@ export default function GroupAnalytics({
     rankings,
     comparisonData,
     groupCompetitionRankings,
+    rankingsUnavailable = false,
+    comparisonUnavailable = false,
+    competitionUnavailableByPeriod = {
+        DAILY: false,
+        WEEKLY: false,
+        MONTHLY: false,
+        YEARLY: false,
+    },
+    viewerRankingActivities,
     userId,
     currentGroupId,
     currentUsername,
-    children,
     isPublic,
     groupName,
     groupImage
@@ -93,7 +114,7 @@ export default function GroupAnalytics({
         return { userRank: rank, userEntry: entry };
     }, [allData, userId]);
 
-    const { groupRank, totalGroups, averageSteps } = useMemo(() => {
+    const { groupRank, totalGroups, averageSteps, groupRankGap } = useMemo(() => {
         const periodGroupRankings = groupCompetitionRankings?.[period];
         const idx = periodGroupRankings && currentGroupId
             ? periodGroupRankings.findIndex(g => g.groupId === currentGroupId)
@@ -102,9 +123,24 @@ export default function GroupAnalytics({
             groupRank: idx !== -1 ? idx + 1 : undefined,
             totalGroups: periodGroupRankings?.length || 0,
             averageSteps: idx !== -1 ? periodGroupRankings?.[idx]?.averageSteps : undefined,
+            groupRankGap: getGroupRankGapInsight(periodGroupRankings ?? [], currentGroupId),
         };
     }, [groupCompetitionRankings, period, currentGroupId]);
 
+    const viewerRankingStatus = getViewerRankingStatus(
+        Boolean(userEntry),
+        rankingsUnavailable,
+        viewerRankingActivities[period],
+    );
+    const viewerRankingStatusMessage = viewerRankingStatus === 'zero-steps'
+        ? ga('rankZeroSteps')
+        : viewerRankingStatus === 'not-recorded'
+            ? ga('rankNotRecorded')
+            : viewerRankingStatus === 'unavailable'
+                ? ga('rankUnavailable')
+                : viewerRankingStatus === 'not-reflected'
+                    ? ga('rankNotReflected')
+                    : null;
 
 
     return (
@@ -113,9 +149,11 @@ export default function GroupAnalytics({
             aria-labelledby="group-analytics-title"
             data-group-analytics
         >
-            <p className="sr-only" role="status">
-                {lt('rankingsUpdated', { period: activePeriodLabel })}
-            </p>
+            {!rankingsUnavailable && (
+                <p className="sr-only" role="status">
+                    {lt('rankingsUpdated', { period: activePeriodLabel })}
+                </p>
+            )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
                     <h2 id="group-analytics-title" className="text-lg font-black text-[var(--color-text)]">
@@ -124,12 +162,12 @@ export default function GroupAnalytics({
                     <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
                         {ga('description')}
                     </p>
-                    <a
-                        href="#group-gear"
+                    <FocusAnchorLink
+                        targetId="group-gear"
                         className="mt-2 inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-[var(--color-reward-soft)] px-3 py-2 text-xs font-bold text-[var(--color-reward-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]"
                     >
                         {ga('viewGear')}<span aria-hidden="true">↓</span>
-                    </a>
+                    </FocusAnchorLink>
                 </div>
                 <div
                     role="group"
@@ -163,65 +201,82 @@ export default function GroupAnalytics({
             </div>
 
             {/* ━━━ パネル1: グループ内ランキング + グラフ + あなたの順位 ━━━ */}
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-all duration-300">
-                {/* パネルヘッダー + あなたの順位 */}
-                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/30">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
-                            {ga('memberRankings')}
-                        </h3>
-                        {userEntry && (
-                            <div className="bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg px-3 py-2 sm:px-4 sm:py-2 text-white shadow-md flex items-center gap-3 sm:gap-4 w-fit">
-                                <div className="flex items-baseline gap-1.5">
-                                    <span className="text-white/80 text-xs font-bold uppercase tracking-wider">{ga('yourRank')}</span>
-                                    <span className="text-lg sm:text-xl font-black leading-none">#{userRank}</span>
-                                    <span className="text-xs font-medium opacity-80">{ga('inGroup')}</span>
-                                </div>
-                                <div className="border-l border-white/30 pl-3">
-                                    <span className="text-sm sm:text-base font-bold">{userEntry.steps.toLocaleString()}</span>
-                                    <span className="text-xs text-white/80 font-medium ml-1">{ga('steps')}</span>
-                                </div>
+            {(!rankingsUnavailable || !comparisonUnavailable) && (
+                <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 transition-shadow duration-300">
+                    {/* パネルヘッダー + あなたの順位 */}
+                    <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/30">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <h3 className="flex items-center gap-2 text-base font-bold text-gray-900">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--theme-primary)]"></span>
+                                    {ga('memberRankings')}
+                                </h3>
+                                {viewerRankingStatusMessage && (
+                                    <p
+                                        role="status"
+                                        data-user-ranking-state={viewerRankingStatus}
+                                        className="mt-2 max-w-xl rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-surface)] px-3 py-2 text-xs leading-5 text-[var(--color-text)]"
+                                    >
+                                        {viewerRankingStatusMessage}
+                                    </p>
+                                )}
                             </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* メンバーランキング + 比較チャート */}
-                <div className="p-4 sm:p-6">
-                    <div className="flex flex-col xl:flex-row gap-4 items-stretch">
-                        {/* Leaderboard */}
-                        <div className="flex-1 min-w-0">
-                            <GroupDetailLeaderboard
-                                rankings={rankings}
-                                userId={userId}
-                                period={period}
-                                currentPage={currentPage}
-                                onPageChange={setCurrentPage}
-                                groupId={currentGroupId}
-                            />
-                        </div>
-
-                        {/* Chart */}
-                        <div className="flex-1 min-w-0 flex flex-col">
-                            <GroupComparisonChart
-                                data={currentChartData?.data || []}
-                                users={currentChartData?.users || []}
-                                currentUsername={currentUsername}
-                                title={ga(`comparisonTitle.${period === 'DAILY' ? 'daily' : period === 'WEEKLY' ? 'weekly' : period === 'MONTHLY' ? 'monthly' : 'yearly'}`)}
-                                groupName={groupName}
-                                groupImage={groupImage}
-                            />
+                            {userEntry && (
+                                <div className="bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] rounded-lg px-3 py-2 sm:px-4 sm:py-2 text-white shadow-md flex items-center gap-3 sm:gap-4 w-fit">
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-white/80 text-xs font-bold uppercase tracking-wider">{ga('yourRank')}</span>
+                                        <span className="text-lg sm:text-xl font-black leading-none">#{userRank}</span>
+                                        <span className="text-xs font-medium opacity-80">{ga('inGroup')}</span>
+                                    </div>
+                                    <div className="border-l border-white/30 pl-3">
+                                        <span className="text-sm sm:text-base font-bold">{userEntry.steps.toLocaleString()}</span>
+                                        <span className="text-xs text-white/80 font-medium ml-1">{ga('steps')}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* メンバーランキング + 比較チャート */}
+                    <div className="p-4 sm:p-6">
+                        <div className="flex flex-col xl:flex-row gap-4 items-stretch">
+                            {/* Leaderboard */}
+                            {!rankingsUnavailable && (
+                                <div className="flex-1 min-w-0">
+                                    <GroupDetailLeaderboard
+                                        rankings={rankings}
+                                        userId={userId}
+                                        period={period}
+                                        currentPage={currentPage}
+                                        onPageChange={setCurrentPage}
+                                        groupId={currentGroupId}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Chart */}
+                            {!comparisonUnavailable && (
+                                <div className="flex-1 min-w-0 flex flex-col">
+                                    <GroupComparisonChart
+                                        data={currentChartData?.data || []}
+                                        users={currentChartData?.users || []}
+                                        currentUsername={currentUsername}
+                                        title={ga(`comparisonTitle.${period === 'DAILY' ? 'daily' : period === 'WEEKLY' ? 'weekly' : period === 'MONTHLY' ? 'monthly' : 'yearly'}`)}
+                                        groupName={groupName}
+                                        groupImage={groupImage}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* ━━━ パネル2: 全グループランキング + グループ順位 ━━━ */}
             <div className="flex flex-col xl:flex-row gap-4">
                 <div className="flex-1 min-w-0">
-                    {groupCompetitionRankings && groupCompetitionRankings[period] && isPublic && (
-                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col transition-all duration-300">
+                    {!competitionUnavailableByPeriod[period] && groupCompetitionRankings[period] && isPublic && (
+                        <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col transition-shadow duration-300">
                             {/* パネルヘッダー + グループ順位 */}
                             <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/30">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -240,18 +295,27 @@ export default function GroupAnalytics({
                                             {groupRank ? (
                                                 <div className="flex items-baseline gap-1">
                                                     <span className="text-lg sm:text-xl font-black text-[var(--theme-primary)] leading-none">#{groupRank}</span>
-                                                    <span className="text-xs font-bold text-gray-400">/ {totalGroups}</span>
+                                                    <span className="text-xs font-bold text-[var(--color-text-muted)]">/ {totalGroups}</span>
                                                 </div>
                                             ) : (
-                                                <span className="text-sm font-bold text-gray-400">N/A</span>
+                                                <span className="text-sm font-bold text-[var(--color-text-muted)]">N/A</span>
                                             )}
-                                            <span className="text-xs text-gray-400 border-l border-gray-200 pl-2 ml-1">
+                                            <span className="text-xs text-[var(--color-text-muted)] border-l border-gray-200 pl-2 ml-1">
                                                 {ga('average')} {averageSteps?.toLocaleString() ?? '—'} {ga('steps')}
                                             </span>
                                         </div>
                                         <span className="hidden sm:inline text-xs text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-md">{ga('byAverageSteps')}</span>
                                     </div>
                                 </div>
+                                {groupRankGap && (
+                                    <p className="mt-3 rounded-lg bg-[var(--color-competition-soft)] px-3 py-2 text-xs font-bold leading-5 text-[var(--color-competition-strong)]">
+                                        {ga('nextGroupGap', {
+                                            name: groupRankGap.targetName,
+                                            rank: groupRankGap.targetRank,
+                                            steps: groupRankGap.averageStepsToNextRank.toLocaleString(),
+                                        })}
+                                    </p>
+                                )}
                             </div>
                             <GroupCompetitionList
                                 initialRankings={groupCompetitionRankings[period]}

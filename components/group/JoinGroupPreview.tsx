@@ -15,7 +15,7 @@ interface JoinGroupPreviewProps {
         description?: string | null; // Future proofing
     };
     userId?: string;
-    memberCount: number;
+    memberCount: number | null;
 }
 
 export default function JoinGroupPreview({ group, memberCount }: JoinGroupPreviewProps) {
@@ -61,7 +61,7 @@ export default function JoinGroupPreview({ group, memberCount }: JoinGroupPrevie
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
 
             {/* Preview Card */}
-            <div className="w-full max-w-lg bg-[var(--card-bg,#fff)] rounded-3xl shadow-xl overflow-hidden border border-[var(--theme-primary-light)] transform transition-all hover:scale-[1.01] duration-500">
+            <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[var(--theme-primary-light)] bg-[var(--card-bg,#fff)] shadow-xl transition-shadow duration-300 hover:shadow-2xl">
 
                 {/* Header Image */}
                 <div className="h-32 sm:h-48 bg-gray-200 relative">
@@ -103,7 +103,9 @@ export default function JoinGroupPreview({ group, memberCount }: JoinGroupPrevie
                     <p className="mb-8 flex flex-wrap items-center justify-center gap-2 font-medium text-[var(--foreground-muted)]">
                         <span className="max-w-full min-w-0 break-all rounded bg-gray-100 px-2 py-1 text-left font-mono text-xs text-gray-600">ID: {group.keyword}</span>
                         <span className="rounded bg-[var(--color-competition-soft)] px-2 py-1 text-xs font-semibold text-[var(--color-competition-strong)]">
-                            {t('memberCount', { count: memberCount })}
+                            {memberCount === null
+                                ? t('memberCountUnavailable')
+                                : t('memberCount', { count: memberCount })}
                         </span>
                     </p>
 
@@ -111,7 +113,7 @@ export default function JoinGroupPreview({ group, memberCount }: JoinGroupPrevie
                         <button
                             onClick={handleJoin}
                             disabled={isJoining}
-                            className="w-full py-4 px-6 rounded-xl bg-[var(--theme-primary)] hover:brightness-110 text-white font-bold text-lg shadow-lg shadow-[var(--theme-primary)]/20 transition-all transform active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-primary)]"
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-primary-solid)] px-6 py-4 text-lg font-bold text-white shadow-lg transition-colors hover:bg-[var(--color-primary-strong)] active:brightness-90 disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-strong)]"
                         >
                             {isJoining ? (
                                 <>

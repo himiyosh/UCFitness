@@ -260,6 +260,7 @@ body {
 - QuickActionsは独立Dockとし、Followingと週間ランキングを`xl`以上で直接同一行・下端差1px以内にする。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分する。`xl`では行間12px・各行上限72pxとし、1〜2人時に実ユーザー行だけを拡大せず、パネル末尾へ連続した空白帯も残さない。Friend Pulseの要約は個別目標を使い、正歩数の活動人数・合計歩数・目標達成人数を表示し、0歩を活動扱いしない。
 - 詳細Rankingは固定5行・`min-h-[4.5rem]`・padding・22pxリアクション領域を維持し、行外のCompetition Missionへ現在順位、正歩数参加者数、次ライバル名、必要歩数、トップ差、期間を集約する。外側のGlobal/Group多列化は`2xl`まで遅らせ、1024/1280pxは単列とする。非トップの実進捗は99%以下で、6%の最低視覚幅と`aria-valuenow`を分離する。loading/error/unrankedでは確定progressbarを表示しない。
 - Challenge一覧は参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。焦点帯の主文は最大500歩の次アクション、期限/報酬は補助pill、🔥は残り3日以内だけにする。作成CTAは一覧後へ置き、カードの期限・一覧filter・参加APIはJST日付契約を共有する。null/undefined進捗を0へ変換せず、未達barは99%以下、motionは一度だけの`cardEnter`とwidth transitionに限定する。
+- Groupsの未所属空状態はcompetition solid面の44px CTAで参加パネルへ接続する。グループ内ユーザー/グループ対抗順位は正歩数だけを対象にし、ランキング配列長は「ランキング参加人数」と表示する。補助取得失敗はwarning境界+可読テキストで示し、0人・空順位・未所属の通常面へ偽装しない。部分障害でも利用可能なイベント、チャット、ギア、週間レポートのパネルは自然高で維持する。
 - プロフィール活動グラフは上端24pxを値ラベル用に予約し、先頭・末尾ラベルをプロット端へclampする。数値代替表がある場合、視覚軸・棒・曜日ラベルは`aria-hidden`にする。
 - Forced ColorsではHome/Profileの棒を`Highlight`、境界を`CanvasText`、比較棒を`GrayText`で描画し、色面が無効化されても形状を残す。
 

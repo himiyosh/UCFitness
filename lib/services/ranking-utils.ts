@@ -37,6 +37,121 @@ export interface RankProgress {
     visualWidth: number;
 }
 
+export type ViewerRankingActivityState = 'recorded' | 'not-recorded' | 'unavailable';
+
+export interface ViewerRankingActivity {
+    state: ViewerRankingActivityState;
+    steps: number | null;
+}
+
+export interface ViewerStepRecord {
+    date: string;
+    steps: number;
+}
+
+export type ViewerRankingActivities = Record<Period, ViewerRankingActivity>;
+
+export type ViewerRankingStatus =
+    | 'ranked'
+    | 'zero-steps'
+    | 'not-recorded'
+    | 'unavailable'
+    | 'not-reflected';
+
+export interface GroupRankGapInsight {
+    targetRank: number;
+    targetName: string;
+    averageStepsToNextRank: number;
+}
+
+function getViewerRankingActivity(
+    records: ViewerStepRecord[],
+    periodStart: string,
+): ViewerRankingActivity {
+    let hasRecord = false;
+    let steps = 0;
+
+    for (const record of records) {
+        if (record.date < periodStart) continue;
+        hasRecord = true;
+        steps += record.steps;
+    }
+
+    return hasRecord
+        ? { state: 'recorded', steps }
+        : { state: 'not-recorded', steps: null };
+}
+
+export function getViewerRankingActivities(
+    records: ViewerStepRecord[],
+    periodStarts: Record<Period, string>,
+): ViewerRankingActivities {
+    return {
+        DAILY: getViewerRankingActivity(records, periodStarts.DAILY),
+        WEEKLY: getViewerRankingActivity(records, periodStarts.WEEKLY),
+        MONTHLY: getViewerRankingActivity(records, periodStarts.MONTHLY),
+        YEARLY: getViewerRankingActivity(records, periodStarts.YEARLY),
+    };
+}
+
+export function createUnavailableViewerRankingActivities(): ViewerRankingActivities {
+    return {
+        DAILY: { state: 'unavailable', steps: null },
+        WEEKLY: { state: 'unavailable', steps: null },
+        MONTHLY: { state: 'unavailable', steps: null },
+        YEARLY: { state: 'unavailable', steps: null },
+    };
+}
+
+export function getViewerRankingStatus(
+    isRanked: boolean,
+    rankingsUnavailable: boolean,
+    activity: ViewerRankingActivity,
+): ViewerRankingStatus {
+    if (isRanked) return 'ranked';
+    if (rankingsUnavailable || activity.state === 'unavailable') return 'unavailable';
+    if (activity.state === 'not-recorded') return 'not-recorded';
+    if (activity.steps === 0) return 'zero-steps';
+    return 'not-reflected';
+}
+
+export function sortPositiveStepRankings<T extends { steps: number }>(rankings: T[]): T[] {
+    return rankings
+        .filter((entry) => entry.steps > 0)
+        .sort((a, b) => b.steps - a.steps);
+}
+
+export function sortActiveGroupRankings<T extends { totalSteps: number; averageSteps: number }>(
+    rankings: T[],
+): T[] {
+    return rankings
+        .filter((entry) => entry.totalSteps > 0 && entry.averageSteps > 0)
+        .sort((a, b) => b.averageSteps - a.averageSteps);
+}
+
+export function getGroupRankGapInsight<
+    T extends { groupId: string; groupName: string; averageSteps: number },
+>(
+    rankings: T[],
+    currentGroupId?: string | null,
+): GroupRankGapInsight | null {
+    if (!currentGroupId) return null;
+
+    const currentIndex = rankings.findIndex((entry) => entry.groupId === currentGroupId);
+    if (currentIndex <= 0) return null;
+
+    const currentEntry = rankings[currentIndex];
+    const targetEntry = rankings[currentIndex - 1];
+    return {
+        targetRank: currentIndex,
+        targetName: targetEntry.groupName,
+        averageStepsToNextRank: Math.max(
+            1,
+            targetEntry.averageSteps - currentEntry.averageSteps + 1,
+        ),
+    };
+}
+
 export function getRankProgress(
     currentSteps: number,
     stepsToNextRank: number | null,

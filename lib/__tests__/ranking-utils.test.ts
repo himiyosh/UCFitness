@@ -2,11 +2,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     buildRankingPeriodQuery,
+    createUnavailableViewerRankingActivities,
     enrichCombinedRankings,
     getDisplayRankings,
+    getGroupRankGapInsight,
     getRankGapInsight,
     getRankProgress,
+    getViewerRankingActivities,
+    getViewerRankingStatus,
     isRankingPeriod,
+    sortActiveGroupRankings,
+    sortPositiveStepRankings,
 } from '../services/ranking-utils';
 import * as shopService from '../services/shop-service';
 
@@ -47,6 +53,51 @@ describe('enrichCombinedRankings', () => {
 
                 expect(params.get('view')).toBe('compact');
                 expect(params.get('period')).toBe('MONTHLY');
+            });
+        });
+
+        describe('getViewerRankingStatus', () => {
+            const periodStarts = {
+                DAILY: '2026-07-15',
+                WEEKLY: '2026-07-13',
+                MONTHLY: '2026-07-01',
+                YEARLY: '2026-01-01',
+            };
+
+            it('記録済み0歩の場合、順位なしの理由としてzero-stepsを返す', () => {
+                const activity = getViewerRankingActivities([
+                    { date: '2026-07-15', steps: 0 },
+                ], periodStarts).DAILY;
+
+                expect(getViewerRankingStatus(false, false, activity)).toBe('zero-steps');
+            });
+
+            it('期間内に記録がない場合、順位なしの理由としてnot-recordedを返す', () => {
+                const activity = getViewerRankingActivities([], periodStarts).DAILY;
+
+                expect(getViewerRankingStatus(false, false, activity)).toBe('not-recorded');
+            });
+
+            it('順位データを取得できない場合、unavailableを返す', () => {
+                const activity = getViewerRankingActivities([
+                    { date: '2026-07-15', steps: 500 },
+                ], periodStarts).DAILY;
+
+                expect(getViewerRankingStatus(false, true, activity)).toBe('unavailable');
+            });
+
+            it('正歩数が順位へ反映されない場合、not-reflectedを返す', () => {
+                const activity = getViewerRankingActivities([
+                    { date: '2026-07-15', steps: 500 },
+                ], periodStarts).DAILY;
+
+                expect(getViewerRankingStatus(false, false, activity)).toBe('not-reflected');
+            });
+
+            it('閲覧者歩数の取得が失敗した場合、unavailableを返す', () => {
+                const activity = createUnavailableViewerRankingActivities().DAILY;
+
+                expect(getViewerRankingStatus(false, false, activity)).toBe('unavailable');
             });
         });
 
@@ -148,6 +199,51 @@ describe('enrichCombinedRankings', () => {
             expect(result.displayRankings.map(entry => entry.users.id)).toEqual(['active']);
             expect(result.displayRankings[0].originalRank).toBe(1);
             expect(result.totalCount).toBe(1);
+        });
+
+        it('0歩グループを競争順位から除外する', () => {
+            const result = sortActiveGroupRankings([
+                { groupId: 'zero', totalSteps: 0, averageSteps: 0 },
+                { groupId: 'rounded-zero', totalSteps: 1, averageSteps: 0 },
+                { groupId: 'second', totalSteps: 500, averageSteps: 250 },
+                { groupId: 'first', totalSteps: 1_000, averageSteps: 500 },
+            ]);
+
+            expect(result.map((entry) => entry.groupId)).toEqual(['first', 'second']);
+        });
+
+        it('直上グループへ届くために必要な平均歩数差を返す', () => {
+            const insight = getGroupRankGapInsight([
+                { groupId: 'first', groupName: 'First', averageSteps: 1_000 },
+                { groupId: 'target', groupName: 'Target', averageSteps: 750 },
+                { groupId: 'current', groupName: 'Current', averageSteps: 700 },
+            ], 'current');
+
+            expect(insight).toEqual({
+                targetRank: 2,
+                targetName: 'Target',
+                averageStepsToNextRank: 51,
+            });
+        });
+
+        it('先頭または順位外のグループには平均歩数差を返さない', () => {
+            const rankings = [
+                { groupId: 'first', groupName: 'First', averageSteps: 1_000 },
+                { groupId: 'second', groupName: 'Second', averageSteps: 500 },
+            ];
+
+            expect(getGroupRankGapInsight(rankings, 'first')).toBeNull();
+            expect(getGroupRankGapInsight(rankings, 'missing')).toBeNull();
+        });
+
+        it('0歩ユーザーを全体順位から除外する', () => {
+            const result = sortPositiveStepRankings([
+                { userId: 'zero', steps: 0 },
+                { userId: 'second', steps: 500 },
+                { userId: 'first', steps: 1_000 },
+            ]);
+
+            expect(result.map((entry) => entry.userId)).toEqual(['first', 'second']);
         });
 
         it('中下位ユーザーと直上順位を残しながら5行以内に収める', () => {
