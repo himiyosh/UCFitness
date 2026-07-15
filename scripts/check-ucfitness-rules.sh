@@ -700,7 +700,13 @@ if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(RECOMMENDED_STEP_GOAL)'
    ! grep -q 'completionHeadingRef.current?.focus()' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'aria-live="polite"' 'app/[locale]/setup/page.tsx' || \
    ! grep -q "const \[statusError, setStatusError\] = useState<'retryable' | 'missing' | null>(null)" 'app/[locale]/setup/page.tsx' || \
-   ! grep -q 'disabled={loading || statusLoading || statusError !== null}' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'const \[currentStep, setCurrentStep\] = useState<SetupStep>(1)' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'SETUP_STEPS = \[1, 2, 3\]' lib/setup-flow.ts || \
+   ! grep -q 'getSetupProgressPercent(currentStep)' 'app/[locale]/setup/page.tsx' || \
+   [ "$(grep -c 'name=\"community-intent\"' 'app/[locale]/setup/page.tsx')" -lt 3 ] || \
+   ! grep -q 'useRecommendedGoal' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'skipConnection' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'skipCommunity' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'const controller = new AbortController()' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'signal: controller.signal' 'app/[locale]/setup/page.tsx' || \
    ! grep -q 'disabled={statusLoading}' 'app/[locale]/setup/page.tsx' || \
@@ -712,7 +718,7 @@ if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(RECOMMENDED_STEP_GOAL)'
    grep -q 'theme-primary' 'app/[locale]/setup/page.tsx' || \
    grep -q 'transition-shadow' 'app/[locale]/setup/page.tsx' || \
    grep -q 'bg-gradient-to-br' 'app/[locale]/setup/page.tsx'; then
-  record "Setupの接続/目標/最初の500歩/非gradient brand契約欠落" "Setup page / setup API / status API"
+  record "Setupの3画面/スキップ/接続/目標/最初の500歩/非gradient brand契約欠落" "Setup page / setup flow / setup API / status API"
 fi
 if ! grep -q '<form onSubmit={handleSubmit} noValidate' components/StepGoalForm.tsx || \
    [ "$(grep -o 'min-w-\[52px\]' components/StepGoalForm.tsx | wc -l | tr -d ' ')" -lt 2 ] || \

@@ -370,9 +370,9 @@
         "completion_rate": "プロトタイプで 80% 以上が完走",
         "ui_clarity": "各画面で次アクションが明確"
       },
-      "status": "in-progress",
-      "lastAttempt": "2026-07-15T11:27:11+09:00",
-      "lastError": "DB正本の歩数ソース・日次目標・保存後の最初の500歩Activation、障害/未接続分岐は実装・検証済み。仕様上の3画面化、各画面のスキップ選択、完走率80%のプロトタイプ検証は未実施。"
+      "status": "passing",
+      "lastAttempt": "2026-07-15T19:23:55+09:00",
+      "lastError": null
     },
     {
       "id": "F015",

@@ -10,6 +10,17 @@ import { useTranslations } from 'next-intl';
 
 import { reportError } from '@/lib/errors';
 import {
+    getCommunityDestination,
+    getNextSetupStep,
+    getPreviousSetupStep,
+    getSetupProgressPercent,
+    parseCommunityIntent,
+    SETUP_STEPS,
+    SETUP_TOTAL_STEPS,
+    type CommunityIntent,
+    type SetupStep,
+} from '@/lib/setup-flow';
+import {
     isValidStepGoal,
     MAX_STEP_GOAL,
     MIN_STEP_GOAL,
@@ -34,6 +45,8 @@ export default function SetupPage() {
     const [error, setError] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<'retryable' | 'missing' | null>(null);
     const [completed, setCompleted] = useState(false);
+    const [currentStep, setCurrentStep] = useState<SetupStep>(1);
+    const [communityIntent, setCommunityIntent] = useState<CommunityIntent>('later');
     const [needsEmail, setNeedsEmail] = useState(false);
     const [currentImage, setCurrentImage] = useState<string | null>(null);
     const [isCustomImage, setIsCustomImage] = useState(false);
@@ -43,6 +56,9 @@ export default function SetupPage() {
     const emailRef = useRef<HTMLInputElement>(null);
     const stepGoalRef = useRef<HTMLInputElement>(null);
     const setupCompletedRef = useRef(false);
+    const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+    const previousStepRef = useRef<SetupStep>(1);
+    const pendingStepFocusRef = useRef<'heading' | 'username'>('heading');
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -115,17 +131,28 @@ export default function SetupPage() {
         }
     }, [completed]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    useEffect(() => {
+        if (previousStepRef.current !== currentStep) {
+            if (pendingStepFocusRef.current === 'username') {
+                usernameRef.current?.focus();
+            } else {
+                stepHeadingRef.current?.focus();
+            }
+            pendingStepFocusRef.current = 'heading';
+            previousStepRef.current = currentStep;
+        }
+    }, [currentStep]);
+
+    const validateProfileStep = (): boolean => {
         setError(null);
         const sessionUser = session?.user;
         if (!sessionUser) {
             setError(t('sessionExpired'));
-            return;
+            return false;
         }
         if (statusLoading || statusError !== null) {
             setError(t('statusLoadError'));
-            return;
+            return false;
         }
         const trimmedUsername = username.trim();
         const trimmedName = name.trim();
@@ -133,28 +160,72 @@ export default function SetupPage() {
         if (!trimmedName) {
             setError(t('displayNameRequired'));
             nameRef.current?.focus();
-            return;
+            return false;
         }
         if (trimmedUsername.length < 3 || trimmedUsername.length > 30 || !/^[a-zA-Z0-9_.-]+$/.test(trimmedUsername)) {
             setError(t('usernameInvalid'));
             usernameRef.current?.focus();
-            return;
+            return false;
         }
         if (needsEmail && !trimmedEmail) {
             setError(t('emailRequired'));
             emailRef.current?.focus();
-            return;
+            return false;
         }
         if (needsEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
             setError(t('emailInvalid'));
             emailRef.current?.focus();
-            return;
+            return false;
         }
+
+        return true;
+    };
+
+    const validateGoalStep = (): boolean => {
+        setError(null);
         if (!isValidStepGoal(stepGoal)) {
             setError(t('stepGoalInvalid'));
             stepGoalRef.current?.focus();
+            return false;
+        }
+
+        return true;
+    };
+
+    const moveToStep = (step: SetupStep): void => {
+        setError(null);
+        setCurrentStep(step);
+    };
+
+    const handleProfileImageSuccess = async (newUrl: string | null): Promise<void> => {
+        if (newUrl) {
+            setCurrentImage(newUrl);
+            setIsCustomImage(true);
+        } else {
+            setIsCustomImage(false);
+            window.location.reload();
+        }
+        await update({
+            ...session,
+            user: {
+                ...session?.user,
+                image: newUrl || session?.user?.image,
+            },
+        });
+    };
+
+    const saveSetup = async (intent: CommunityIntent): Promise<void> => {
+        const sessionUser = session?.user;
+        if (!sessionUser) {
+            setError(t('sessionExpired'));
             return;
         }
+        const trimmedUsername = username.trim();
+        const trimmedName = name.trim();
+        const trimmedEmail = email.trim();
+
+        setCommunityIntent(intent);
+        setError(null);
         setLoading(true);
 
         try {
@@ -172,6 +243,10 @@ export default function SetupPage() {
             const data = await res.json();
 
             if (!res.ok) {
+                if (res.status === 400 || res.status === 409) {
+                    pendingStepFocusRef.current = 'username';
+                    setCurrentStep(1);
+                }
                 throw new Error(data.error || 'Something went wrong');
             }
 
@@ -199,12 +274,45 @@ export default function SetupPage() {
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Something went wrong';
             setError(msg);
-            // エラー時に最初の入力フィールドにフォーカス
-            usernameRef.current?.focus();
         } finally {
             setLoading(false);
         }
     };
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+        event.preventDefault();
+
+        if (currentStep === 1) {
+            if (validateProfileStep()) {
+                moveToStep(getNextSetupStep(currentStep));
+            }
+            return;
+        }
+
+        if (currentStep === 2) {
+            if (validateGoalStep()) {
+                moveToStep(getNextSetupStep(currentStep));
+            }
+            return;
+        }
+
+        const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+        await saveSetup(parseCommunityIntent(submitter?.value));
+    };
+
+    const setupStepLabels = [
+        t('profileStepShort'),
+        t('goalStepShort'),
+        t('communityStepShort'),
+    ];
+    const communityDestination = getCommunityDestination(communityIntent);
+    const completionCommunityLabel = t(
+        communityIntent === 'groups'
+            ? 'completeCommunityGroups'
+            : communityIntent === 'challenges'
+                ? 'completeCommunityChallenges'
+                : 'completeCommunityLater',
+    );
 
     if (status !== 'authenticated' || !session) {
         return (
@@ -234,7 +342,7 @@ export default function SetupPage() {
                     <ul className="mt-4 space-y-2">
                         {[t('completeProfile'), t(provider ? 'completeConnection' : 'completeConnectionPending'), t('completeGoal', {
                             goal: stepGoal.toLocaleString(),
-                        })].map((item) => (
+                        }), completionCommunityLabel].map((item) => (
                             <li key={item} className="flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--color-success-soft)]/60 px-3 py-2 text-sm font-semibold text-[var(--color-text)]">
                                 <span className="text-[var(--color-success-strong)]" aria-hidden="true">✓</span>
                                 {item}
@@ -265,6 +373,15 @@ export default function SetupPage() {
                     >
                         {t(provider ? 'startFirstQuest' : 'reviewConnection')}
                     </button>
+                    {communityDestination && (
+                        <button
+                            type="button"
+                            onClick={() => router.push(communityDestination)}
+                            className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                        >
+                            {t(communityIntent === 'groups' ? 'openGroups' : 'openChallenges')}
+                        </button>
+                    )}
                 </section>
             </main>
         );
@@ -288,10 +405,53 @@ export default function SetupPage() {
                 <p className="mt-2 text-center text-sm text-[var(--color-text-muted)]">
                     {t('subtitle')}
                 </p>
+                <div className="mt-5" aria-label={t('progressLabel')}>
+                    <div
+                        role="progressbar"
+                        aria-label={t('progressValue', {
+                            current: currentStep,
+                            total: SETUP_TOTAL_STEPS,
+                        })}
+                        aria-valuemin={1}
+                        aria-valuemax={SETUP_TOTAL_STEPS}
+                        aria-valuenow={currentStep}
+                        className="h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-muted)]"
+                    >
+                        <div
+                            className="h-full rounded-full bg-[var(--color-primary-solid)] transition-[width] motion-reduce:transition-none"
+                            style={{ width: `${getSetupProgressPercent(currentStep)}%` }}
+                        />
+                    </div>
+                    <ol className="mt-2 grid grid-cols-3 gap-2">
+                        {SETUP_STEPS.map((step, index) => (
+                            <li
+                                key={step}
+                                aria-current={step === currentStep ? 'step' : undefined}
+                                className={`min-w-0 text-center text-xs font-semibold ${step === currentStep
+                                    ? 'text-[var(--color-primary-strong)]'
+                                    : step < currentStep
+                                        ? 'text-[var(--color-success-strong)]'
+                                        : 'text-[var(--color-text-muted)]'
+                                    }`}
+                            >
+                                <span className="block tabular-nums" aria-hidden="true">
+                                    {step < currentStep ? '✓' : step}
+                                </span>
+                                <span className="block truncate">{setupStepLabels[index]}</span>
+                            </li>
+                        ))}
+                    </ol>
+                </div>
             </div>
 
             <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
-                {statusError === 'retryable' && (
+                {currentStep === 1 && statusLoading && (
+                    <div className="mb-3 flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-muted)]" role="status">
+                        <Spinner size="xs" />
+                        <span>{t('loadingSetupStatus')}</span>
+                    </div>
+                )}
+                {currentStep === 1 && statusError === 'retryable' && (
                     <div className="mb-3 rounded-xl border border-[var(--color-danger)]/25 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
                         <p>{t('statusLoadError')}</p>
                         <button
@@ -304,7 +464,7 @@ export default function SetupPage() {
                         </button>
                     </div>
                 )}
-                {statusError === 'missing' && (
+                {currentStep === 1 && statusError === 'missing' && (
                     <div className="mb-3 rounded-xl border border-[var(--color-danger)]/25 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-danger)]" role="alert">
                         <p>{t('accountMissing')}</p>
                         <button
@@ -316,13 +476,13 @@ export default function SetupPage() {
                         </button>
                     </div>
                 )}
-                {!statusLoading && statusError === null && !provider && (
+                {currentStep === 1 && !statusLoading && statusError === null && !provider && (
                     <div className="mb-4 rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface-muted)] px-3 py-2.5">
                         <p className="text-sm font-bold text-[var(--color-text)]">{t('connectionMissingTitle')}</p>
                         <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{t('connectionMissingDescription')}</p>
                     </div>
                 )}
-                {provider && (
+                {currentStep === 1 && provider && (
                     <div
                         role="status"
                         aria-live="polite"
@@ -338,62 +498,6 @@ export default function SetupPage() {
                     </div>
                 )}
 
-                {/* アバター選択 */}
-                <div className="mb-6 flex justify-center">
-                    <ProfileImageEditor
-                        initialImage={currentImage}
-                        isCustom={isCustomImage}
-                        onSuccess={async (newUrl) => {
-                            if (newUrl) {
-                                setCurrentImage(newUrl);
-                                setIsCustomImage(true);
-                            } else {
-                                setIsCustomImage(false);
-                                window.location.reload();
-                            }
-                            await update({
-                                ...session,
-                                user: {
-                                    ...session?.user,
-                                    image: newUrl || session?.user?.image
-                                }
-                            });
-                        }}
-                    >
-                        <div
-                            className="relative group cursor-pointer"
-                            role="button"
-                            tabIndex={0}
-                            aria-label={t('changePhoto')}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                    event.preventDefault();
-                                    event.currentTarget.click();
-                                }
-                            }}
-                        >
-                            <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-[var(--color-surface)] shadow-lg bg-[var(--surface-container)]">
-                                {currentImage ? (
-                                    <img src={currentImage} alt="" className="h-full w-full object-cover" />
-                                ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-[var(--color-primary-soft)] text-3xl font-bold text-[var(--color-primary-strong)]">
-                                        {(session?.user?.name?.[0] || 'U')}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </div>
-                            <div className="absolute bottom-0 right-0 bg-[var(--color-primary-solid)] rounded-full p-1.5 border-2 border-[var(--color-surface)] shadow-sm">
-                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                            </div>
-                        </div>
-                    </ProfileImageEditor>
-                </div>
-
                 <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-6">
                     <form className="space-y-5" onSubmit={handleSubmit} aria-busy={loading || statusLoading}>
                         {error && (
@@ -402,7 +506,25 @@ export default function SetupPage() {
                             </div>
                         )}
 
-                        <div>
+                        {currentStep === 1 && (
+                            <>
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-primary-strong)]">
+                                        {t('stepCount', { current: 1, total: SETUP_TOTAL_STEPS })}
+                                    </p>
+                                    <h2
+                                        ref={stepHeadingRef}
+                                        tabIndex={-1}
+                                        className="mt-1 text-xl font-black text-[var(--color-text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-primary)]"
+                                    >
+                                        {t('profileStepTitle')}
+                                    </h2>
+                                    <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
+                                        {t(provider ? 'profileStepDescriptionConnected' : 'profileStepDescription')}
+                                    </p>
+                                </div>
+
+                                <div>
                             <label htmlFor="username" className="mb-1 block text-sm font-semibold text-[var(--color-text)]">
                                 {t('usernameLabel')}
                             </label>
@@ -416,10 +538,11 @@ export default function SetupPage() {
                                 maxLength={30}
                                 pattern="[A-Za-z0-9_.\-]+"
                                 autoComplete="username"
+                                enterKeyHint="next"
                                 aria-required="true"
                                 aria-invalid={error ? 'true' : undefined}
                                 aria-describedby="username-hint"
-                                className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] shadow-sm placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-base text-[var(--color-text)] shadow-sm placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 placeholder={t('usernamePlaceholder')}
@@ -427,9 +550,9 @@ export default function SetupPage() {
                             <p id="username-hint" className="mt-1 text-xs text-[var(--color-text-muted)]">
                                 {t('usernameHint')}
                             </p>
-                        </div>
+                                </div>
 
-                        <div>
+                                <div>
                             <label htmlFor="name" className="mb-1 block text-sm font-semibold text-[var(--color-text)]">
                                 {t('displayNameLabel')}
                             </label>
@@ -440,17 +563,18 @@ export default function SetupPage() {
                                 type="text"
                                 required
                                 autoComplete="name"
+                                enterKeyHint={needsEmail ? 'next' : 'done'}
                                 aria-required="true"
-                                className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] shadow-sm placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-base text-[var(--color-text)] shadow-sm placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder={t('displayNamePlaceholder')}
                                 maxLength={50}
                             />
-                        </div>
+                                </div>
 
-                        {needsEmail && (
-                            <div>
+                                {needsEmail && (
+                                    <div>
                                 <label htmlFor="email" className="mb-1 block text-sm font-semibold text-[var(--color-text)]">
                                     {t('emailLabel')}
                                 </label>
@@ -461,19 +585,61 @@ export default function SetupPage() {
                                     type="email"
                                     required
                                     autoComplete="email"
+                                    enterKeyHint="done"
                                     aria-required="true"
                                     aria-describedby="email-hint"
-                                    className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] shadow-sm placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                    className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-base text-[var(--color-text)] shadow-sm placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                 />
                                 <p id="email-hint" className="mt-1 text-xs text-[var(--color-text-muted)]">
                                     {t('emailHint')}
                                 </p>
-                            </div>
+                                    </div>
+                                )}
+
+                                <ProfileImageEditor
+                                    initialImage={currentImage}
+                                    isCustom={isCustomImage}
+                                    onSuccess={handleProfileImageSuccess}
+                                >
+                                    <button
+                                        type="button"
+                                        className="flex min-h-[44px] w-full items-center gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2 text-left transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 motion-reduce:transition-none"
+                                    >
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary-soft)] text-sm font-black text-[var(--color-primary-strong)]">
+                                            {currentImage ? (
+                                                <img src={currentImage} alt="" className="h-full w-full object-cover" />
+                                            ) : (
+                                                (session.user.name?.[0] || 'U')
+                                            )}
+                                        </span>
+                                        <span className="min-w-0">
+                                            <span className="block text-sm font-bold text-[var(--color-text)]">{t('changePhoto')}</span>
+                                            <span className="block text-xs leading-5 text-[var(--color-text-muted)]">{t('photoOptional')}</span>
+                                        </span>
+                                    </button>
+                                </ProfileImageEditor>
+                            </>
                         )}
 
-                        <div>
+                        {currentStep === 2 && (
+                            <>
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-primary-strong)]">
+                                        {t('stepCount', { current: 2, total: SETUP_TOTAL_STEPS })}
+                                    </p>
+                                    <h2
+                                        ref={stepHeadingRef}
+                                        tabIndex={-1}
+                                        className="mt-1 text-xl font-black text-[var(--color-text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-primary)]"
+                                    >
+                                        {t('goalStepTitle')}
+                                    </h2>
+                                    <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">{t('goalStepDescription')}</p>
+                                </div>
+
+                                <div>
                             <label htmlFor="step-goal" className="mb-1 block text-sm font-semibold text-[var(--color-text)]">
                                 {t('stepGoalLabel')}
                             </label>
@@ -487,25 +653,135 @@ export default function SetupPage() {
                                 max={MAX_STEP_GOAL}
                                 step={1}
                                 inputMode="numeric"
+                                enterKeyHint="done"
                                 aria-required="true"
                                 aria-describedby="step-goal-hint"
-                                className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm font-semibold tabular-nums text-[var(--color-text)] shadow-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                                className="block min-h-[44px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-base font-semibold tabular-nums text-[var(--color-text)] shadow-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm"
                                 value={stepGoal}
                                 onChange={(event) => setStepGoal(Number(event.target.value))}
                             />
                             <p id="step-goal-hint" className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
                                 {t('stepGoalHint')}
                             </p>
-                        </div>
+                                </div>
+                            </>
+                        )}
 
-                        <button
-                            type="submit"
-                            disabled={loading || statusLoading || statusError !== null}
-                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-primary-solid)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--color-primary-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 disabled:opacity-50"
-                        >
-                            {loading && <Spinner size="xs" />}
-                            {loading ? t('saving') : t('submit')}
-                        </button>
+                        {currentStep === 3 && (
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-primary-strong)]">
+                                    {t('stepCount', { current: 3, total: SETUP_TOTAL_STEPS })}
+                                </p>
+                                <h2
+                                    ref={stepHeadingRef}
+                                    tabIndex={-1}
+                                    className="mt-1 text-xl font-black text-[var(--color-text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-primary)]"
+                                >
+                                    {t('communityStepTitle')}
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">{t('communityStepDescription')}</p>
+                                <div className="mt-4 space-y-3">
+                                    <button
+                                        type="submit"
+                                        name="community-intent"
+                                        value="groups"
+                                        disabled={loading}
+                                        className="flex min-h-[56px] w-full items-center gap-3 rounded-xl border border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)] px-3 py-2 text-left transition-colors hover:border-[var(--color-competition)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-competition)] text-xl text-white" aria-hidden="true">👥</span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-sm font-black text-[var(--color-text)]">{t('groupsChoiceTitle')}</span>
+                                            <span className="block text-xs leading-5 text-[var(--color-text-muted)]">{t('groupsChoiceDescription')}</span>
+                                        </span>
+                                        <span className="text-[var(--color-competition)]" aria-hidden="true">›</span>
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        name="community-intent"
+                                        value="challenges"
+                                        disabled={loading}
+                                        className="flex min-h-[56px] w-full items-center gap-3 rounded-xl border border-[var(--color-success)]/30 bg-[var(--color-success-soft)] px-3 py-2 text-left transition-colors hover:border-[var(--color-success)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-success)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-success-strong)] text-xl text-white" aria-hidden="true">🎯</span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-sm font-black text-[var(--color-text)]">{t('challengesChoiceTitle')}</span>
+                                            <span className="block text-xs leading-5 text-[var(--color-text-muted)]">{t('challengesChoiceDescription')}</span>
+                                        </span>
+                                        <span className="text-[var(--color-success-strong)]" aria-hidden="true">›</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentStep === 1 && (
+                            <div className="space-y-2">
+                                <button
+                                    type="submit"
+                                    disabled={statusLoading || statusError !== null}
+                                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[var(--color-primary-solid)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {t('continue')}
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={statusLoading || statusError !== null}
+                                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {t(provider ? 'skipPhoto' : 'skipConnection')}
+                                </button>
+                            </div>
+                        )}
+
+                        {currentStep === 2 && (
+                            <div className="space-y-2">
+                                <button
+                                    type="submit"
+                                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[var(--color-primary-solid)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                                >
+                                    {t('continue')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStepGoal(RECOMMENDED_STEP_GOAL);
+                                        moveToStep(getNextSetupStep(currentStep));
+                                    }}
+                                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                                >
+                                    {t('useRecommendedGoal', { goal: RECOMMENDED_STEP_GOAL.toLocaleString() })}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => moveToStep(getPreviousSetupStep(currentStep))}
+                                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                                >
+                                    {t('back')}
+                                </button>
+                            </div>
+                        )}
+
+                        {currentStep === 3 && (
+                            <div className="space-y-2">
+                                <button
+                                    type="submit"
+                                    name="community-intent"
+                                    value="later"
+                                    disabled={loading}
+                                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-primary-solid)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {loading && <Spinner size="xs" />}
+                                    {loading ? t('saving') : t('skipCommunity')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => moveToStep(getPreviousSetupStep(currentStep))}
+                                    disabled={loading}
+                                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {t('back')}
+                                </button>
+                            </div>
+                        )}
                     </form>
                 </div>
             </div>

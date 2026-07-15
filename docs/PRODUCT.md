@@ -27,7 +27,9 @@ Turn everyday steps into a loop people want to repeat:
 
 ## First-session activation
 
-- Setup is complete only when the user can confirm their step source, choose a sustainable daily goal, and understand the next action.
+- Setup uses three focused screens: profile and step source, sustainable daily goal, then a group or challenge handoff.
+- Every screen offers a safe defer path. Deferring never fabricates a connection, joins a group or challenge, or hides a failed status lookup.
+- Setup is complete only when the user can confirm what was saved and understand the next action.
 - Daily goals must stay within 500 to 100,000 whole steps; the suggested starting point is 5,000.
 - Saving the profile leads to a persistent completion state rather than an immediate redirect.
 - The first quest is a reachable 500-step action that hands off to Home, where progress, competition, and UC reward distance remain visible.
