@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-15T19:24:26+09:00",
-  "lastAgent": "UCFitnessAgent (React + Onboarding UX + Accessibility + QA + Self-Critique)",
-  "lastCommit": "bbf8871aeb0adb51029f9efdbfba7c555e5979af",
+  "lastUpdated": "2026-07-15T21:25:07+09:00",
+  "lastAgent": "UCFitnessAgent (Next.js + React + Auth UX + Accessibility + Security + QA + Self-Critique)",
+  "lastCommit": "4db5a352c7319134baecd80eb278205f24f731d9",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F014オンボーディングフロー最適化を完了。Setupをプロフィール/歩数ソース、日次目標、グループ/チャレンジの3画面へ整理し、progressbar、各画面の後回し、戻る、見出し/エラー焦点、完了後500歩Activationを実装。必須入力を任意写真より先に置き、自動参加・OAuth再認可なしで既存の障害分離と原子的保存を維持。check:all、全45ファイル277テスト、ja/en 1596キー、未認証375/1280、2ペルソナ、独立レビュー、自己批判PASS。",
+  "summary": "F027ログイン・登録フロー再設計を完了。Auth.jsの拒否・アカウント不一致・DB障害を分離して公開LPへja/enのalertと再ログインCTAを表示し、生エラーを非表示化。安全な戻り先をlocale切替、認証失敗、未設定ユーザーの3ステップsetup完了後まで維持し、500歩Activationも残した。check:all、全46ファイル296テスト、ja/en 1606キー、375/1280、2ペルソナ、独立レビュー、自己批判PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 172件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-15T19:24:26+09:00"
+    "lastVerified": "2026-07-15T21:25:07+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -24,6 +24,7 @@
     "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
     "認証済みGroups/Group detailの実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋順位テスト、ソース監査、2ペルソナ、独立レビューで代替",
     "認証済みSetupの3画面実ブラウザ完走は実ユーザーPIIとDB書込みを避けて未実施。純粋遷移テスト、Mobile Beginner/Accessibility Keyboardの2ペルソナ、独立レビュー、未認証375/1280リダイレクトで代替",
+    "Fitbit実OAuthの成功・拒否コールバックE2Eは外部認証と資格情報を伴うため未実施。Auth.js設定、19件の認証フロー純粋テスト、公開エラー画面、2ペルソナ、独立レビューで代替",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
     "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち",
     "本番Supabaseにnotification_reactions / notification_gear_reactions列が未適用（42703）。Feed/未読/Settingsは部分障害fallback済みだが、通知嗜好を編集可能にするDB migration適用はユーザー承認待ち",
@@ -794,6 +795,28 @@
         ".github/copilot-instructions.md",
         ".github/agents/UCFitnessAgent.agent.md",
         ".github/ucfitness-features.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (Next.js + React + Auth UX + Accessibility + Security + QA + Self-Critique)",
+      "action": "F027ログイン・登録フローを完了。Auth.jsのerror/signInを公開LPへ統合し、拒否・アカウント不一致・DB障害を安全なja/en文言へ分類。保護画面のcallbackを外部URL拒否の共有関数で検証し、言語切替・認証失敗・未設定ユーザーのsetup完了後まで保持した。エラー時は再ログインCTAを明示し、500歩Activationも維持。check:all、全46ファイル296テスト、1606翻訳キー、375/1280、Mobile Beginner/Accessibility Keyboard、独立レビュー、自己批判PASS。外部OAuthとDB書込みは未実施。",
+      "commit": "4db5a352c7319134baecd80eb278205f24f731d9",
+      "filesChanged": [
+        "lib/auth.ts",
+        "lib/auth-flow.ts",
+        "lib/auth-flow.test.ts",
+        "components/auth/AuthButtons.tsx",
+        "components/LandingPage.tsx",
+        "app/[locale]/page.tsx",
+        "app/[locale]/setup/page.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
         "scripts/check-ucfitness-rules.sh"
       ]
     }
