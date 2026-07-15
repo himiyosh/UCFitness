@@ -699,6 +699,17 @@ if (!dbUser?.username) {
 - ActivityGraphは主系列・比較系列とも`Map.has(date)`で記録済み0歩と欠測を分ける。視覚バーだけでなく`sr-only`表でも欠測を「未記録」と読み上げ、目標未設定時は10,000歩へ偽装せず目標線・達成色を出さない
 - PersonalRecordsは歩数系・コイン系を独立nullableにし、1ソース障害でカード全体を消さない。プロフィールの可視補助文字は12px以上を維持する。リファレンス: `app/[locale]/user/[username]/page.tsx`, `lib/profile-steps.ts`, `components/ActivityGraph.tsx`, `components/profile/PersonalRecords.tsx`
 
+#### Walletの獲得・支出・次報酬契約
+
+- 今日の獲得は正額取引だけ、支出は負額の絶対値、純増減は獲得−支出として別表示する。購入後の負値を「今日の入金」として表示しない
+- 今日の内訳は直近N件の履歴sliceから計算せず、JST当日の全取引を専用クエリで集計する。取引履歴の件数上限が日次サマリーを欠落させないこと
+- 次報酬は今日の記録歩数と有効な目標から、次の最大100歩または目標到達までの基本UCを計算する。目標到達時だけ目標ボーナスを追加し、歩数未記録・目標未設定・DB失敗を別コピーにする
+- 残高、取引履歴、資産推移、今日取引、今日歩数の障害をパネル単位へ分離し、1クエリ失敗でWallet全体を停止したり0へ偽装しない
+- 取引履歴は見出し直後に正額/負額/取引後残高の説明を置く。通常ページ内の固定高`overflow-y-auto`へ閉じ込めずdocumentスクロールを使い、12px補助文字は`--color-text-muted`で4.5:1以上を維持する
+- 取引履歴は初期10件を表示し、44pxの「さらに表示」で10件ずつ開示する。残高/ランクが欠落した2列gridでは履歴を`lg:col-span-2`へ広げ、空いた狭い列へ押し込まない
+- ランクと履歴を並べる`lg` gridは`items-start`にし、子カードから`h-full`を外す。件数の多い履歴が短いランクカードをstretchしてカード内空白を作らない
+- 資産推移の棒は「日次獲得」でなく購入を含む「日次純増減」と呼び、`sr-only` wrapper内のcaption/th付き表で日付・純増減・残高へ到達できるようにする。リファレンス: `app/[locale]/wallet/page.tsx`, `lib/wallet-summary.ts`, `components/CoinBalanceCard.tsx`, `components/TransactionHistory.tsx`, `components/CoinGrowthChart.tsx`
+
 #### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
 
 新規ページには最低限以下の翻訳キーを定義すること:
@@ -1421,3 +1432,10 @@ export const runtime = "edge";
 - **根本原因**: 可視数値を常に`number`へ正規化し、必須プロフィールと補助セクションを同じPromise障害境界へ置いた。平均の期間・分母契約と、比較チャートの`hasRecord`契約が主系列だけに存在した。
 - **対策**: `lib/profile-steps.ts`で日/週/月/平均を`number | null`として純粋集計し、記録済み0歩を記録日分母へ含める。必須ユーザー以外を個別結果へ分離し、セクション別エラーを表示する。ActivityGraph比較系列も`Map.has`で0/欠測を分け、PersonalRecordsを項目単位nullableにする。
 - **教訓**: 健康データでは0は有効な測定値であり、欠測や取得失敗のfallbackではない。ページの可用性は最小必須データで決め、補助機能の失敗を他の実データへ伝播させない。リファレンス: `app/[locale]/user/[username]/page.tsx`, `lib/profile-steps.ts`, `components/ActivityGraph.tsx`
+
+### LL-054: Walletの「今日の入金」が購入支出で負になり得た
+
+- **事象**: Walletは当日の全取引amountを合算して「今日の入金」と表示したため、ショップ購入後に入金が負数になった。日次チャートも購入を含む値を「日次獲得」と呼び、履歴の増減・残高説明は表より後まで分からなかった。
+- **根本原因**: 獲得・支出・純増減を1つのsigned amountで表現し、直近60件の履歴sliceを日次正本として再利用した。次に得られる歩数UCもWalletに接続していなかった。
+- **対策**: `lib/wallet-summary.ts`で正額獲得・負額支出・純増減を純粋集計し、JST当日の全取引を専用取得する。現在歩数/目標から次100歩または目標到達の基本UCを計算し、ストリーク等は同期時加算と明記する。残高本体・今日内訳・次報酬を独立表示し、履歴説明を前置、10件ずつ段階開示、残高欠落時はgrid全幅化、`items-start`、チャートを日次純増減へ改称する。
+- **教訓**: 金融的なUIでは符号付き合計を「入金」「獲得」と呼ばない。獲得と消費を別々に見せ、ユーザーが残高変化の理由と次に得られる価値を同時に理解できるようにする。リファレンス: `app/[locale]/wallet/page.tsx`, `lib/wallet-summary.ts`, `components/CoinBalanceCard.tsx`

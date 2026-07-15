@@ -772,11 +772,33 @@ if grep -q 'as any\|: any\|any\[\]' 'app/[locale]/user/[username]/page.tsx' || \
    grep -q 'profileQueryError' 'app/[locale]/user/[username]/page.tsx' || \
    ! grep -q 'comparisonMap.has(day.fullDate)' components/ActivityGraph.tsx || \
    ! grep -q 'stepGoal?: number | null' components/ActivityGraph.tsx || \
-   grep -Eq 'text-\\[(9|10|11)px\\]' 'app/[locale]/user/[username]/page.tsx' components/ActivityGraph.tsx components/profile/PersonalRecords.tsx || \
+   grep -Eq 'text-\[(9|10|11)px\]' 'app/[locale]/user/[username]/page.tsx' components/ActivityGraph.tsx components/profile/PersonalRecords.tsx || \
    ! grep -q 'averageSteps: throughToday.length' lib/profile-steps.ts || \
    ! grep -q 'throw error' lib/services/badge-service.ts || \
    ! grep -q 'number | null' components/profile/PersonalRecords.tsx; then
   record "Profileの0歩/欠測/部分障害/12px契約欠落" "Profile page / profile-steps / ActivityGraph / PersonalRecords"
+fi
+if grep -q 'todayEarned = transactions' 'app/[locale]/wallet/page.tsx' || \
+   ! grep -q 'summarizeWalletTransactions' 'app/[locale]/wallet/page.tsx' || \
+   ! grep -q "from('coin_transactions')" 'app/[locale]/wallet/page.tsx' || \
+   ! grep -q 'getNextWalletReward' 'app/[locale]/wallet/page.tsx' || \
+   ! grep -q 'todaySummary: WalletTransactionSummary | null' components/CoinBalanceCard.tsx || \
+   ! grep -q '^    } | null;' components/CoinBalanceCard.tsx || \
+   grep -q '{balance ? (' 'app/[locale]/wallet/page.tsx' || \
+   ! grep -q "t('todaySpent')" components/CoinBalanceCard.tsx || \
+   ! grep -q "t('todayNet')" components/CoinBalanceCard.tsx || \
+   ! grep -q "lg:col-span-2 xl:col-span-1" 'app/[locale]/wallet/page.tsx' || \
+   ! grep -q 'grid grid-cols-1 items-start gap-3' 'app/[locale]/wallet/page.tsx' || \
+   grep -Eq 'investor-rank-panel[^"]*h-full|midnight-solid-panel[^"]*h-full' components/InvestorRankPanel.tsx components/TransactionHistory.tsx || \
+   grep -q 'max-h-64\|overflow-y-auto' components/TransactionHistory.tsx || \
+   ! grep -q 'const TRANSACTION_PAGE_SIZE = 10' components/TransactionHistory.tsx || \
+   ! grep -q "t('loadMoreTransactions'" components/TransactionHistory.tsx || \
+   ! grep -q 'transactionHistoryDescription' components/TransactionHistory.tsx || \
+   ! grep -q "t('dailyNetChange')" components/CoinGrowthChart.tsx || \
+   ! grep -q "t('nextRewardBonusNote')" components/CoinBalanceCard.tsx || \
+   grep -q '<table className="sr-only"' components/CoinGrowthChart.tsx || \
+   grep -Eq 'text-\[(9|10|11)px\]|text-gray-400' components/CoinBalanceCard.tsx components/TransactionHistory.tsx components/CoinGrowthChart.tsx components/EarningBreakdown.tsx; then
+  record "Walletの獲得/支出/net/次報酬/自然スクロール/チャート代替契約欠落" "Wallet page / wallet-summary / Wallet components"
 fi
 
 # ---------- 結果出力 ----------
