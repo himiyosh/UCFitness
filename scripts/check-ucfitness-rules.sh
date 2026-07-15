@@ -690,6 +690,27 @@ fi
 if grep -Eq '>[^<{]*(Retry|Save|Cancel|Edit)[^<{]*<' components/StepGoalForm.tsx components/StepCalendar.tsx components/profile/AchievementProgress.tsx; then
   record "変更対象の条件付きUIに英語固定文言" "StepGoalForm / StepCalendar / AchievementProgress"
 fi
+if ! grep -q 'const \[stepGoal, setStepGoal\] = useState(5_000)' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'const \[completed, setCompleted\]' 'app/[locale]/setup/page.tsx' || \
+   ! grep -Fq "t(provider ? 'firstQuestTitle'" 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'step_goal: stepGoal' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'completionHeadingRef.current?.focus()' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'aria-live="polite"' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q "const \[statusError, setStatusError\] = useState<'retryable' | 'missing' | null>(null)" 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'disabled={loading || statusLoading || statusError !== null}' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'const controller = new AbortController()' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'signal: controller.signal' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q 'disabled={statusLoading}' 'app/[locale]/setup/page.tsx' || \
+   ! grep -q "t(provider ? 'completeConnection' : 'completeConnectionPending')" 'app/[locale]/setup/page.tsx' || \
+   ! grep -Fq 'pattern="[A-Za-z0-9_.\-]+"' 'app/[locale]/setup/page.tsx' || \
+   [ "$(grep -Fc 'className="block min-h-[44px]' 'app/[locale]/setup/page.tsx')" -lt 4 ] || \
+   ! grep -q 'provider, step_goal' app/api/user/status/route.ts || \
+   ! grep -q 'step_goal: stepGoal' app/api/user/setup/route.ts || \
+   grep -q 'theme-primary' 'app/[locale]/setup/page.tsx' || \
+   grep -q 'transition-shadow' 'app/[locale]/setup/page.tsx' || \
+   grep -q 'bg-gradient-to-br' 'app/[locale]/setup/page.tsx'; then
+  record "Setupの接続/目標/最初の500歩/非gradient brand契約欠落" "Setup page / setup API / status API"
+fi
 if ! grep -q '<form onSubmit={handleSubmit} noValidate' components/StepGoalForm.tsx || \
    [ "$(grep -o 'min-w-\[48px\]' components/StepGoalForm.tsx | wc -l | tr -d ' ')" -lt 2 ]; then
   record "StepGoal custom validation/48px短ラベル契約欠落" "components/StepGoalForm.tsx"

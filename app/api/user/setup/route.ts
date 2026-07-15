@@ -1,21 +1,33 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
+
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 
-export async function POST(request: Request) {
+const MIN_STEP_GOAL = 500;
+const MAX_STEP_GOAL = 100_000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
     const session = await auth();
 
-    if (!session || !session.user || !session.user.email) {
+    if (!session?.user?.id || !session.user.email) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 🛡️ セキュリティ: IDベースのユーザー特定（メール衝突によるIDOR防止）
-    const userId = (session.user as any).id as string | undefined;
+    const userId = session.user.id;
 
     try {
-        const body = await request.json();
-        const { username, email, name } = body;
+        const body: unknown = await request.json();
+        if (!isRecord(body)) {
+            return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+        }
+        const { username, email, name, step_goal: stepGoal } = body;
         const trimmedUsername = typeof username === 'string' ? username.trim() : '';
         const trimmedName = typeof name === 'string' ? name.trim() : '';
         const trimmedEmail = typeof email === 'string' ? email.trim() : '';
@@ -36,6 +48,14 @@ export async function POST(request: Request) {
         if (!trimmedName || trimmedName.length > 50) {
             return NextResponse.json({ error: "Display name is required and must be 50 characters or less" }, { status: 400 });
         }
+        if (
+            typeof stepGoal !== 'number'
+            || !Number.isInteger(stepGoal)
+            || stepGoal < MIN_STEP_GOAL
+            || stepGoal > MAX_STEP_GOAL
+        ) {
+            return NextResponse.json({ error: "Invalid step goal" }, { status: 400 });
+        }
 
         // 🛡️ Sentinel: Reject reserved usernames
         const RESERVED_USERNAMES = ['admin', 'system', 'support', 'help', 'api', 'root', 'null', 'undefined', 'moderator', 'mod', 'official', 'ucfitness', 'undoucoin'];
@@ -47,9 +67,10 @@ export async function POST(request: Request) {
         // If the user already has a valid email, they might not send it, or send same.
         // But logic says we ask for email if it's pending.
 
-        const updates: { username: string; name: string; updated_at: string; email?: string } = {
+        const updates: { username: string; name: string; step_goal: number; updated_at: string; email?: string } = {
             username: trimmedUsername,
             name: trimmedName,
+            step_goal: stepGoal,
             updated_at: new Date().toISOString()
         };
 
@@ -83,15 +104,15 @@ export async function POST(request: Request) {
                 ? supabaseAdmin
                     .from('users')
                     .select('id')
-                    .eq('email', updates.email!)
-                    .neq(userId ? 'id' : 'email', userId || session.user.email)
+                    .eq('email', updates.email ?? '')
+                    .neq('id', userId)
                     .single()
                 : Promise.resolve({ data: null }),
             supabaseAdmin
                 .from('users')
                 .select('id')
                 .eq('username', trimmedUsername)
-                .neq(userId ? 'id' : 'email', userId || session.user.email) // Ignore self
+                .neq('id', userId)
                 .single(),
         ]);
 
@@ -115,7 +136,7 @@ export async function POST(request: Request) {
         const { error: updateError } = await supabaseAdmin
             .from('users')
             .update(updates)
-            .eq(userId ? 'id' : 'email', userId || session.user.email);
+            .eq('id', userId);
 
         if (updateError) {
             reportError("user-setup", updateError);
@@ -129,5 +150,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
-
-export const runtime = 'edge';
