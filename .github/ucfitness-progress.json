@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-15T14:51:07+09:00",
-  "lastAgent": "UCFitnessAgent (React + UX + Low-Activity + Accessibility + QA + Self-Critique)",
-  "lastCommit": "fa7bf408ff6f0b43a9307447a9830d90911496df",
+  "lastUpdated": "2026-07-15T16:36:51+09:00",
+  "lastAgent": "UCFitnessAgent (React + Reward UX + Accessibility + QA + Self-Critique)",
+  "lastCommit": "6a9470f95357997a2b5295b591011e99f2dc1fc2",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "全ページ再精査Cycle 5としてProfileの記録済み0歩・未記録・取得失敗をnumber/null/unavailableへ分離した。日/週/月/平均を純粋集計し、記録済み0歩を記録日分母、活動日を正歩数だけにした。必須ユーザー以外の履歴/RPC/比較/公開group/装備/バッジ/coin/ranking/recommendedをセクション単位へ隔離。ActivityGraph比較の欠測と0、目標null、PersonalRecords項目nullable、12pxを実装。全257テスト、低活動/Keyboardペルソナ、独立レビュー、自己批判PASS。",
+  "summary": "全ページ再精査Cycle 6としてWalletの今日の獲得・支出・純増減をJST当日全取引から分離し、購入で入金が負になる誤表示を解消。現在歩数/目標から次100歩または目標到達の基本UC・目標ボーナスを提示し、ストリーク等は同期時加算と明記。残高/内訳/次報酬/履歴/推移を部分障害へ分離。履歴説明前置、10件段階開示、自然スクロール、lg grid自然高、日次純増減chart+sr-only表を実装。全263テスト、Reward/Keyboardペルソナ、独立レビュー、自己批判PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-any など既存warning 176件はF033継続対応。今回変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-15T14:51:07+09:00"
+    "lastVerified": "2026-07-15T16:36:51+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -22,12 +22,13 @@
     "Google Healthの実OAuth E2Eは資格情報と接続状態の変更を伴うため未実施",
     "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
     "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
-    "全ページ再精査のP1 backlogとしてWallet、Groups/Group detailの改善が継続中",
+    "全ページ再精査のP1 backlogとしてGroups/Group detailの改善が継続中",
     "F014オンボーディングの3画面化・各画面スキップ・完走率80%プロトタイプ検証は未完了。Setup Activationの歩数ソース・日次目標・最初の500歩は実装済み",
     "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
     "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち",
     "本番Supabaseにnotification_reactions / notification_gear_reactions列が未適用（42703）。Feed/未読/Settingsは部分障害fallback済みだが、通知嗜好を編集可能にするDB migration適用はユーザー承認待ち",
-    "認証済みProfileの375/1280実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋集計テスト、ソース監査、2ペルソナ、独立レビューで代替"
+    "認証済みProfileの375/1280実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋集計テスト、ソース監査、2ペルソナ、独立レビューで代替",
+    "認証済みWalletの実ブラウザは実ユーザー取引PIIを避けて未実施。wallet-summary純粋テスト、1100px grid合成DOM、2ペルソナ、独立レビューで代替"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -708,6 +709,29 @@
         "lib/profile-steps.ts",
         "lib/profile-steps.test.ts",
         "lib/services/badge-service.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + Reward UX + Accessibility + QA + Self-Critique)",
+      "action": "全ページ再精査Cycle 6でWalletの正額獲得・負額支出・純増減をJST当日全取引から分離し、現在歩数/目標から次100歩または目標到達の基本UCを提示。残高・今日内訳・次報酬・履歴・推移を独立障害境界にし、履歴説明前置、内部scroll撤廃、初期10件段階開示、lg grid items-start/root h-full除去、日次純増減chartとsr-only表を実装。全263テスト、Reward Shop/Accessibility Keyboard、独立レビュー、自己批判PASS。",
+      "commit": "832b86c89f72710bc23167e7806822dec0e04138",
+      "filesChanged": [
+        "app/[locale]/wallet/page.tsx",
+        "components/CoinBalanceCard.tsx",
+        "components/CoinGrowthChart.tsx",
+        "components/EarningBreakdown.tsx",
+        "components/InvestorRankPanel.tsx",
+        "components/TransactionHistory.tsx",
+        "lib/wallet-summary.ts",
+        "lib/wallet-summary.test.ts",
         "messages/en.json",
         "messages/ja.json",
         "README.md",
