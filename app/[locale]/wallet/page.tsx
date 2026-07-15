@@ -4,6 +4,12 @@ import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
 import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
+import { getJSTDateString } from '@/lib/date-utils';
+import { isValidStepGoal } from '@/lib/step-goal';
+import {
+    getNextWalletReward,
+    summarizeWalletTransactions,
+} from '@/lib/wallet-summary';
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import UCHintBalloon from "@/components/ui/UCHintBalloon";
@@ -26,7 +32,25 @@ const EarningBreakdown = nextDynamic(() => import('@/components/EarningBreakdown
 
 export const dynamic = 'force-dynamic';
 
-export default async function BankPage() {
+interface CapturedWalletDependency<T> {
+    data: T | null;
+    failed: boolean;
+}
+
+async function captureWalletDependency<T>(
+    operation: string,
+    userId: string,
+    promise: Promise<T>,
+): Promise<CapturedWalletDependency<T>> {
+    try {
+        return { data: await promise, failed: false };
+    } catch (error: unknown) {
+        reportError(operation, error, { userId });
+        return { data: null, failed: true };
+    }
+}
+
+export default async function BankPage(): Promise<React.ReactNode> {
     const session = await auth();
     // ⚡ パフォーマンス: 翻訳取得を並列化
     const [t, dashboardT, locale] = await Promise.all([
@@ -35,18 +59,17 @@ export default async function BankPage() {
         getLocale(),
     ]);
 
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
         redirect(createLoginRequiredRedirect(locale, "/wallet"));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     // ユーザー情報取得
     // ⚡ パフォーマンス: 必要なカラムのみ取得
     const { data: user, error: userError } = await supabaseAdmin
         .from("users")
-        .select("name, image, username")
+        .select("name, image, username, step_goal")
         .eq("id", userId)
         .single();
 
@@ -58,20 +81,58 @@ export default async function BankPage() {
         redirect('/setup');
     }
 
-    // データを並列取得
-    const [balance, transactions, balanceHistory] = await Promise.all([
-        getCoinBalance(userId),
-        getRecentTransactions(userId, 60),
-        getDailyBalanceHistory(userId, 30),
-    ]);
+    const today = getJSTDateString();
 
-    // 今日の獲得コインを計算
-    const now = new Date();
-    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const today = jstDate.toISOString().split('T')[0];
-    const todayEarned = transactions
-        .filter(tx => tx.date === today)
-        .reduce((sum, tx) => sum + tx.amount, 0);
+    // データを並列取得し、各パネルの障害を相互に隔離
+    const [
+        balanceState,
+        transactionsState,
+        balanceHistoryState,
+        todayTransactionsResult,
+        todayStepsResult,
+    ] = await Promise.all([
+        captureWalletDependency('wallet:balance', userId, getCoinBalance(userId)),
+        captureWalletDependency('wallet:transactions', userId, getRecentTransactions(userId, 60)),
+        captureWalletDependency('wallet:balance-history', userId, getDailyBalanceHistory(userId, 30)),
+        supabaseAdmin
+            .from('coin_transactions')
+            .select('date, amount')
+            .eq('user_id', userId)
+            .eq('date', today),
+        supabaseAdmin
+            .from('daily_steps')
+            .select('steps')
+            .eq('user_id', userId)
+            .eq('date', today)
+            .maybeSingle(),
+    ]);
+    if (todayStepsResult.error) {
+        reportError('wallet:today-steps', todayStepsResult.error, { userId, today });
+    }
+    if (todayTransactionsResult.error) {
+        reportError('wallet:today-transactions', todayTransactionsResult.error, { userId, today });
+    }
+
+    const balance = balanceState.data;
+    const transactions = transactionsState.data ?? [];
+    const balanceHistory = balanceHistoryState.data ?? [];
+    const todaySummary = todayTransactionsResult.error
+        ? null
+        : summarizeWalletTransactions(todayTransactionsResult.data ?? [], today);
+    const todaySteps = typeof todayStepsResult.data?.steps === 'number'
+        ? todayStepsResult.data.steps
+        : null;
+    const stepGoal = isValidStepGoal(user.step_goal) ? user.step_goal : null;
+    const nextReward = todayStepsResult.error
+        ? null
+        : getNextWalletReward(todaySteps, stepGoal);
+    const nextRewardStatus = todayStepsResult.error
+        ? 'unavailable' as const
+        : todaySteps === null
+            ? 'steps-missing' as const
+            : stepGoal === null
+                ? 'goal-missing' as const
+                : 'ready' as const;
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
@@ -102,13 +163,30 @@ export default async function BankPage() {
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
                     <div className="min-w-0 space-y-3">
                         {/* 残高カード + 統計 */}
-                        <CoinBalanceCard balance={balance} todayEarned={todayEarned} />
+                        <CoinBalanceCard
+                            balance={balance}
+                            todaySummary={todaySummary}
+                            nextReward={nextReward}
+                            nextRewardStatus={nextRewardStatus}
+                        />
 
                         {/* 資産推移チャート */}
-                        <CoinGrowthChart data={balanceHistory} />
+                        {balanceHistoryState.failed ? (
+                            <p role="status" className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
+                                {t('balanceHistoryUnavailable')}
+                            </p>
+                        ) : (
+                            <CoinGrowthChart data={balanceHistory} />
+                        )}
 
                         {/* コイン獲得分析 */}
-                        <EarningBreakdown transactions={transactions} />
+                        {transactionsState.failed ? (
+                            <p role="status" className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
+                                {t('transactionsUnavailable')}
+                            </p>
+                        ) : (
+                            <EarningBreakdown transactions={transactions} />
+                        )}
                     </div>
 
                     <div className="min-w-0 space-y-3">
@@ -133,9 +211,19 @@ export default async function BankPage() {
                             </div>
                         </Link>
 
-                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] xl:grid-cols-1">
-                            <InvestorRankPanel currentRank={balance.investor_rank} lifetimeEarnings={balance.total_earned + balance.total_bonus} />
-                            <TransactionHistory transactions={transactions} />
+                        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] xl:grid-cols-1">
+                            {balance && (
+                                <InvestorRankPanel currentRank={balance.investor_rank} lifetimeEarnings={balance.total_earned + balance.total_bonus} />
+                            )}
+                            <div className={!balance ? 'lg:col-span-2 xl:col-span-1' : undefined}>
+                                {transactionsState.failed ? (
+                                    <p role="status" className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
+                                        {t('transactionsUnavailable')}
+                                    </p>
+                                ) : (
+                                    <TransactionHistory transactions={transactions} />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

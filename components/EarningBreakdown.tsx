@@ -78,25 +78,26 @@ export default function EarningBreakdown({ transactions }: EarningBreakdownProps
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/40 shadow-lg p-4 sm:p-5">
       {/* ヘッダー */}
-      <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
+      <h3 className="text-lg font-bold flex items-center gap-2 mb-1">
         <span>📊</span>
         <span className="text-[var(--color-reward-strong)]">
           {t('title')}
         </span>
       </h3>
+      <p className="mb-3 text-xs leading-5 text-[var(--color-text-muted)]">{t('description')}</p>
 
       {/* サマリー行 */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-green-50 rounded-lg p-2.5 text-center">
-          <div className="text-[10px] text-green-600 font-semibold">{t('earned')}</div>
+          <div className="text-xs text-green-600 font-semibold">{t('earned')}</div>
           <div className="text-sm font-bold text-green-700 tabular-nums">+{totalEarned.toLocaleString()}</div>
         </div>
         <div className="bg-red-50 rounded-lg p-2.5 text-center">
-          <div className="text-[10px] text-red-600 font-semibold">{t('spent')}</div>
+          <div className="text-xs text-red-600 font-semibold">{t('spent')}</div>
           <div className="text-sm font-bold text-red-700 tabular-nums">-{totalSpent.toLocaleString()}</div>
         </div>
         <div className="bg-[var(--theme-primary)]/5 rounded-lg p-2.5 text-center">
-          <div className="text-[10px] text-[var(--theme-primary)] font-semibold">{t('net')}</div>
+          <div className="text-xs text-[var(--theme-primary)] font-semibold">{t('net')}</div>
           <div className="text-sm font-bold text-[var(--theme-primary)] tabular-nums">
             {netEarnings >= 0 ? '+' : ''}{netEarnings.toLocaleString()}
           </div>
