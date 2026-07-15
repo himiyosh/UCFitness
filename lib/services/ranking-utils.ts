@@ -230,9 +230,9 @@ export function getRankGapInsight(
  * ランキングデータに装備アイテム情報を注入する
  * Record<Period, RankingEntry[]> 形式に対応
  */
-export async function enrichRankingsWithEquip(
-    rankings: Record<string, RankingEntry[]>
-): Promise<Record<string, RankingEntry[]>> {
+export async function enrichRankingsWithEquip<T extends { users: RankingEntry['users'] }>(
+    rankings: Record<string, T[]>
+): Promise<Record<string, T[]>> {
     // 全ユーザーIDを収集
     const userIdSet = new Set<string>();
     for (const period of Object.keys(rankings)) {

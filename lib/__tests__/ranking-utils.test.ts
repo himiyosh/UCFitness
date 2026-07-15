@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     buildRankingPeriodQuery,
@@ -272,7 +271,7 @@ describe('enrichCombinedRankings', () => {
             ],
         };
 
-        const groupRankings = [
+        const groupRankings: { neighbors: Record<string, RankingEntry[]> }[] = [
             {
                 neighbors: {
                     DAILY: [
@@ -289,23 +288,23 @@ describe('enrichCombinedRankings', () => {
             u3: { frameColor: 'green', titleNameJa: null, titleNameEn: null, titleEmoji: null },
         };
 
-        (shopService.getEquippedItemsForUsers as any).mockResolvedValue(mockEquipMap);
+        vi.mocked(shopService.getEquippedItemsForUsers).mockResolvedValue(mockEquipMap);
 
-        await enrichCombinedRankings(globalRankings, groupRankings as any);
+        await enrichCombinedRankings(globalRankings, groupRankings);
 
         // Check if getEquippedItemsForUsers was called with unique IDs
         expect(shopService.getEquippedItemsForUsers).toHaveBeenCalledTimes(1);
-        const calledIds = (shopService.getEquippedItemsForUsers as any).mock.calls[0][0];
+        const calledIds = vi.mocked(shopService.getEquippedItemsForUsers).mock.calls[0][0];
         expect(calledIds).toHaveLength(3);
         expect(calledIds).toContain('u1');
         expect(calledIds).toContain('u2');
         expect(calledIds).toContain('u3');
 
         // Check if equipment was applied
-        expect((globalRankings.DAILY[0].users as any).frameColor).toBe('red');
-        expect((globalRankings.DAILY[1].users as any).frameColor).toBe('blue');
-        expect((groupRankings[0].neighbors.DAILY[0].users as any).frameColor).toBe('blue');
-        expect((groupRankings[0].neighbors.DAILY[1].users as any).frameColor).toBe('green');
+        expect(globalRankings.DAILY[0].users.frameColor).toBe('red');
+        expect(globalRankings.DAILY[1].users.frameColor).toBe('blue');
+        expect(groupRankings[0].neighbors.DAILY[0].users.frameColor).toBe('blue');
+        expect(groupRankings[0].neighbors.DAILY[1].users.frameColor).toBe('green');
     });
 
     it('should handle empty rankings gracefully', async () => {

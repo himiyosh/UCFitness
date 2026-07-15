@@ -31,8 +31,7 @@ export default async function AnalyticsPage() {
         redirect(createLoginRequiredRedirect(locale, "/analytics"));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
     const user = session.user;
 
     // DB からカスタムプロフィール画像を取得（Fitbit OAuth 画像ではなく）

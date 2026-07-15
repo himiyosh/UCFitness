@@ -6,6 +6,13 @@ import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
 import { sortActiveGroupRankings } from '@/lib/services/ranking-utils';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import type { DailyStepRow } from '@/types/database';
+
+/** `fetchDailyStepsPaginated({ selectFields: 'user_id, steps' })` の行 */
+type UserStepsOnly = Pick<DailyStepRow, 'user_id' | 'steps'>;
+
+/** `fetchDailyStepsPaginated({})` (selectFields 省略、既定の user_id/steps/date) の行 */
+type UserStepsWithDate = Pick<DailyStepRow, 'user_id' | 'steps' | 'date'>;
 
 export interface GroupRankingEntry {
     groupId: string;
@@ -58,7 +65,7 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         supabase
             .from('group_members')
             .select('group_id, user_id'),
-        fetchDailyStepsPaginated({
+        fetchDailyStepsPaginated<UserStepsOnly>({
             startDate,
             selectFields: 'user_id, steps',
         }),
@@ -181,7 +188,7 @@ export const getCombinedGroupCompetitionRankings = async () => {
         supabase
             .from('group_members')
             .select('group_id, user_id'),
-        fetchDailyStepsPaginated({
+        fetchDailyStepsPaginated<UserStepsWithDate>({
             startDate: yearlyStart,
         }),
     ]);

@@ -7,6 +7,7 @@ import { getFrameColor } from '@/lib/frame-utils';
 import Spinner from '@/components/ui/Spinner';
 
 import type { ShopItem } from '@/lib/services/shop-service';
+import type { useTranslations } from 'next-intl';
 
 // 前方宣言: ランク短縮ラベル（ShopPreviewDialog に定義）
 import { getRankShortLabel } from '@/components/shop/ShopPreviewDialog';
@@ -26,8 +27,7 @@ export default function ShopItemCard({
     isLoading: boolean;
     onBuy: () => void;
     onPreview: () => void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: ReturnType<typeof useTranslations>;
     userImage: string | null;
     userName: string | null;
 }) {

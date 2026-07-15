@@ -27,8 +27,7 @@ export async function GET() {
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
     const today = getJSTDateString();
 
     // 今日のミッションが既にあるか確認
@@ -73,8 +72,7 @@ export async function POST(request: Request) {
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     const body = await request.json().catch(() => ({}));
     const { action } = body as { action?: string };

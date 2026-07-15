@@ -9,6 +9,8 @@ import {
     normalizePushLocale,
 } from './push-messages';
 
+import type { UserStepStatsRpcRow } from '@/types/database';
+
 export const dynamic = 'force-dynamic';
 
 interface BadgeDefinition {
@@ -65,8 +67,8 @@ export async function checkAndAwardBadges(userId: string): Promise<void> {
     const earnedBadgeIds = new Set(userBadges?.map(ub => ub.badge_code));
 
     const stepsToday = dailyResult.data?.steps ?? 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const statsData = statsResult.data as any;
+    const rawStats = statsResult.data as UserStepStatsRpcRow | UserStepStatsRpcRow[] | null;
+    const statsData = Array.isArray(rawStats) ? rawStats[0] : rawStats;
     const totalSteps = statsData?.total_steps ?? 0;
 
     // 4. Evaluate Badges

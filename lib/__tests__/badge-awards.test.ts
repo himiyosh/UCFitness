@@ -18,6 +18,21 @@ const mockSingle = vi.fn();
 const mockIn = vi.fn();
 const mockInsert = vi.fn();
 
+/** Supabase クエリチェーンの汎用 thenable モック (実データ型はテストごとに then の resolve 呼び出しで決まる) */
+interface MockChain {
+    select: typeof mockSelect;
+    eq: typeof mockEq;
+    lte: typeof mockLte;
+    gte: typeof mockGte;
+    order: typeof mockOrder;
+    limit: typeof mockLimit;
+    single: typeof mockSingle;
+    in: typeof mockIn;
+    insert: typeof mockInsert;
+    range: ReturnType<typeof vi.fn>;
+    then: (resolve: (result: { data: unknown; error: unknown }) => unknown) => unknown;
+}
+
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: {
         from: mockFrom,
@@ -75,7 +90,7 @@ describe('assignBadges Performance Test', () => {
         let dailyStepsCallCount = 0;
 
         mockFrom.mockImplementation((table: string) => {
-            const chain: any = {
+            const chain: MockChain = {
                 select: mockSelect,
                 eq: mockEq,
                 lte: mockLte,
@@ -86,22 +101,22 @@ describe('assignBadges Performance Test', () => {
                 in: mockIn,
                 insert: mockInsert,
                 range: vi.fn().mockReturnThis(), // Added range
-                then: (resolve: any) => resolve({ data: [], error: null }) // Default empty
+                then: (resolve) => resolve({ data: [], error: null }) // Default empty
             };
 
             if (table === 'groups') {
-                chain.then = (r: any) => r({ data: [], error: null });
+                chain.then = (r) => r({ data: [], error: null });
                 return chain;
             }
 
             if (table === 'group_members') {
-                chain.then = (r: any) => r({ data: [], error: null });
+                chain.then = (r) => r({ data: [], error: null });
                 return chain;
             }
 
             if (table === 'users') {
                 // Return dummy data for goal fetches
-                chain.then = (r: any) => r({
+                chain.then = (r) => r({
                     data: Array.from({length: 10}, (_, i) => ({ id: `user-${i}`, step_goal: 10000 })),
                     error: null
                 });
@@ -128,7 +143,7 @@ describe('assignBadges Performance Test', () => {
             }
 
              if (table === 'push_subscriptions') {
-                chain.then = (r: any) => r({
+                chain.then = (r) => r({
                     data: [{
                         id: 'subscription',
                         endpoint: 'https://fcm.googleapis.com/test',
@@ -146,7 +161,7 @@ describe('assignBadges Performance Test', () => {
                 dailyStepsCallCount++;
 
                 // We need to return the Promise for data here
-                chain.then = (resolve: any) => {
+                chain.then = (resolve) => {
                      if (dailyStepsCallCount === 1) {
                          // Global Rankings
                          return resolve({ data: [], error: null });

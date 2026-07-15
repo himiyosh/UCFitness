@@ -31,8 +31,7 @@ export default async function ChallengesPage() {
         redirect(createLoginRequiredRedirect(locale, '/challenges'));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     const { data: dbUser, error: dbUserError } = await supabaseAdmin
         .from('users')

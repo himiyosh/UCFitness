@@ -26,8 +26,7 @@ export default async function RecommendationsPage() {
         redirect(createLoginRequiredRedirect(locale, "/recommendations"));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     const { data: user, error: userError } = await supabaseAdmin
         .from("users")

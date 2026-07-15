@@ -53,9 +53,8 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('next/server', () => ({
     NextResponse: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        json: vi.fn((data: any, init?: any) => ({
-            status: init?.status || 200,
+        json: vi.fn(<T extends object>(data: T, options?: { status?: number }) => ({
+            status: options?.status || 200,
             json: async () => data,
             ...data
         }))

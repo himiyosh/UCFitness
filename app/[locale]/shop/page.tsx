@@ -33,8 +33,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         redirect(createLoginRequiredRedirect(locale, nextPath));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     // ユーザー情報取得
     // ⚡ パフォーマンス: 必要なカラムのみ取得

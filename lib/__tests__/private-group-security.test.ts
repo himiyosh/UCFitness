@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/user/group/route';
+import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
 
 const { mockSupabase, mockFrom } = vi.hoisted(() => {
     const mockFrom = vi.fn();
@@ -19,7 +20,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('next/server', () => ({
     NextResponse: {
-        json: vi.fn((data: any, options: any) => ({
+        json: vi.fn(<T extends object>(data: T, options?: { status?: number }) => ({
             status: options?.status || 200,
             json: async () => data,
             ...data
@@ -32,7 +33,7 @@ describe('POST /api/user/group - Private Group Security', () => {
         vi.clearAllMocks();
     });
 
-    const createChain = (data: any = {}) => ({
+    const createChain = (data: Record<string, unknown> = {}) => ({
         select: () => createChain(data),
         eq: () => createChain(data),
         single: () => Promise.resolve({ data }),
@@ -40,7 +41,7 @@ describe('POST /api/user/group - Private Group Security', () => {
         update: () => Promise.resolve({ error: null }),
         delete: () => Promise.resolve({ error: null }),
         filter: () => createChain(data),
-        then: (resolve: any) => resolve({ data, error: null }),
+        then: (resolve: (result: { data: Record<string, unknown>; error: null }) => unknown) => resolve({ data, error: null }),
         upsert: () => Promise.resolve({ error: null })
     });
 
@@ -58,9 +59,7 @@ describe('POST /api/user/group - Private Group Security', () => {
                     select: (cols: string) => {
                         if (cols === 'groups(keyword)') {
                             return {
-                                eq: () => ({
-                                    then: (resolve: any) => resolve({ data: [] })
-                                })
+                                eq: () => mockQueryResult([])
                             };
                         }
                         return createChain();

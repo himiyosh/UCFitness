@@ -3,6 +3,20 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+interface DbCheckTableResult {
+    ok: boolean;
+    error: string | null;
+}
+
+interface DbCheckResult {
+    env: {
+        url_configured: boolean;
+        key_configured: boolean;
+    };
+    users_table?: DbCheckTableResult;
+    daily_steps_table?: DbCheckTableResult;
+}
+
 export async function GET(request: Request) {
     // 🛡️ Sentinel: Security Check
     // Allow access only if:
@@ -18,7 +32,7 @@ export async function GET(request: Request) {
         return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const results: any = {
+    const results: DbCheckResult = {
         env: {
             url_configured: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
             key_configured: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -27,17 +41,17 @@ export async function GET(request: Request) {
 
     // Check Users Table
     try {
-        const { data, error } = await supabaseAdmin.from('users').select('count', { count: 'exact', head: true });
+        const { error } = await supabaseAdmin.from('users').select('count', { count: 'exact', head: true });
         results.users_table = { ok: !error, error: error ? 'Query failed' : null };
-    } catch (e: any) {
+    } catch {
         results.users_table = { ok: false, error: 'Query failed' };
     }
 
     // Check Daily Steps Table
     try {
-        const { data, error } = await supabaseAdmin.from('daily_steps').select('count', { count: 'exact', head: true });
+        const { error } = await supabaseAdmin.from('daily_steps').select('count', { count: 'exact', head: true });
         results.daily_steps_table = { ok: !error, error: error ? 'Query failed' : null };
-    } catch (e: any) {
+    } catch {
         results.daily_steps_table = { ok: false, error: 'Query failed' };
     }
 

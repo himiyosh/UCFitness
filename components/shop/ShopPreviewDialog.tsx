@@ -12,6 +12,7 @@ import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 import type { Theme } from '@/components/ThemeProvider';
 import type { ShopItem } from '@/lib/services/shop-service';
+import type { useTranslations } from 'next-intl';
 
 /** item_code → アプリテーマのマッピング */
 export const THEME_MAP: Record<string, Theme> = { ...THEME_BY_ITEM_CODE };
@@ -86,8 +87,7 @@ export function ItemPreviewDialog({
     isLoading: boolean;
     onBuy: () => void;
     onClose: () => void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: ReturnType<typeof useTranslations>;
     userImage: string | null;
     userName: string | null;
 }) {
@@ -222,8 +222,7 @@ export function ConfirmDialog({
     locale: string;
     onConfirm: () => void;
     onCancel: () => void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: ReturnType<typeof useTranslations>;
     userImage: string | null;
     userName: string | null;
 }) {

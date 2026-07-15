@@ -15,7 +15,32 @@ import { getLocale, getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
 import PageIntro from '@/components/layout/PageIntro';
 
+import type { GroupRow, UserRow } from '@/types/database';
+
 export const dynamic = 'force-dynamic';
+
+/** `group_members.groups(...)` の埋め込みリレーション行 (親カラムのみ選択) */
+type GroupMembershipRelation = Pick<GroupRow, 'id' | 'name' | 'keyword' | 'image_url' | 'header_image_url'>;
+
+/** `.select('role, joined_at, groups(...)')` の生取得行 (groups は object/array 両対応) */
+interface MembershipRow {
+    role: string;
+    joined_at: string;
+    groups: GroupMembershipRelation | GroupMembershipRelation[] | null;
+}
+
+/** groups の object/array を正規化した後の membership */
+interface NormalizedMembership {
+    role: string;
+    joined_at: string;
+    groups: GroupMembershipRelation;
+}
+
+/** ランキング付与後の membership */
+interface MembershipWithRank extends NormalizedMembership {
+    rank: number | null;
+    totalMembers: number;
+}
 
 export default async function MyGroupsPage() {
     const [session, locale] = await Promise.all([auth(), getLocale()]);
@@ -32,7 +57,8 @@ export default async function MyGroupsPage() {
             .from('users')
             .select('name, group_keyword, image, username')
             .eq('id', userId)
-            .single(),
+            .single()
+            .returns<Pick<UserRow, 'name' | 'group_keyword' | 'image' | 'username'>>(),
         supabaseAdmin
             .from('group_members')
             .select(`
@@ -46,7 +72,8 @@ export default async function MyGroupsPage() {
         header_image_url
       )
     `)
-            .eq('user_id', userId),
+            .eq('user_id', userId)
+            .returns<MembershipRow[]>(),
         getTranslations('Groups'),
         getTranslations('Dashboard'),
         getTranslations('Common'),
@@ -68,18 +95,23 @@ export default async function MyGroupsPage() {
     }
 
     // Ensure it's an array
-    const groupOrder = Array.isArray(userData?.group_keyword)
-        ? userData?.group_keyword
+    const groupOrder: string[] = Array.isArray(userData?.group_keyword)
+        ? userData.group_keyword
         : (userData?.group_keyword ? [userData.group_keyword] : []);
 
     // Normalize memberships (Handle array vs object for joined table)
-    const normalizedMemberships = (memberships || []).map((m: any) => ({
-        ...m,
-        groups: Array.isArray(m.groups) ? m.groups[0] : m.groups
-    }));
+    const normalizedMemberships: NormalizedMembership[] = (memberships || []).map((membership) => {
+        const group = Array.isArray(membership.groups)
+            ? membership.groups[0]
+            : membership.groups;
+        if (!group) {
+            throw new Error('GROUP_MEMBERSHIP_RELATION_MISSING');
+        }
+        return { ...membership, groups: group };
+    });
 
     // ⚡ N+1 解消: グローバルランキングキャッシュからバッチで全グループのランキングを導出
-    const groupIds = normalizedMemberships.map((m: any) => m.groups.id);
+    const groupIds = normalizedMemberships.map((m) => m.groups.id);
     let globalRankings: Awaited<ReturnType<typeof getCachedGlobalRankings>> | null = null;
     if (!pageDataError) {
         try {
@@ -99,10 +131,10 @@ export default async function MyGroupsPage() {
         }
     }
 
-    const membershipsWithRank = normalizedMemberships.map((m: any) => {
+    const membershipsWithRank: MembershipWithRank[] = normalizedMemberships.map((m) => {
         const groupRankings = batchRankings[m.groups.id];
         const weeklyRankings = groupRankings?.WEEKLY || [];
-        const myRankIndex = weeklyRankings.findIndex((r: any) => r.users.id === userId);
+        const myRankIndex = weeklyRankings.findIndex((r) => r.users.id === userId);
 
         return {
             ...m,
@@ -112,7 +144,7 @@ export default async function MyGroupsPage() {
     });
 
     // Sort memberships based on groupOrder
-    const sortedMemberships = membershipsWithRank.sort((a: any, b: any) => {
+    const sortedMemberships = membershipsWithRank.sort((a, b) => {
         const indexA = groupOrder.indexOf(a.groups.keyword);
         const indexB = groupOrder.indexOf(b.groups.keyword);
 
@@ -129,16 +161,16 @@ export default async function MyGroupsPage() {
     });
 
     // G1/G8: グループサマリーデータの計算
-    const totalMembers = membershipsWithRank.reduce((sum: number, m: any) => sum + (m.totalMembers || 0), 0);
-    const bestRank = membershipsWithRank.reduce((best: number | null, m: any) => {
+    const totalMembers = membershipsWithRank.reduce((sum, m) => sum + (m.totalMembers || 0), 0);
+    const bestRank = membershipsWithRank.reduce((best: number | null, m) => {
         if (!m.rank) return best;
         if (best === null) return m.rank;
         return m.rank < best ? m.rank : best;
     }, null as number | null);
     // 全グループのTop3ランクを収集（グループ順に依存せず全て表示）
     const topRankedGroups = membershipsWithRank
-        .filter((m: any) => m.rank && m.rank <= 3)
-        .sort((a: any, b: any) => a.rank - b.rank);
+        .filter((m) => m.rank && m.rank <= 3)
+        .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
 
     // Use custom image if available, otherwise fallback to session image
     const finalUser = {
@@ -201,7 +233,7 @@ export default async function MyGroupsPage() {
                                     <div className="mb-2.5">
                                         <div className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-500">{t('todayHighlight')}</div>
                                         <div className="flex items-center gap-1 flex-wrap">
-                                            {topRankedGroups.map((m: any) => (
+                                            {topRankedGroups.map((m) => (
                                                 <span key={m.groups.id} className="inline-flex items-center gap-0.5 text-xs font-bold text-gray-700">
                                                     <span>{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
                                                     <span className="truncate max-w-[120px]">{m.groups.name}</span>

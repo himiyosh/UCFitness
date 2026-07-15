@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
+
 const mocks = vi.hoisted(() => ({
     fetchDailyStepsPaginated: vi.fn(),
     from: vi.fn(),
@@ -71,13 +73,10 @@ describe('getRankings', () => {
         });
         mocks.from.mockReturnValue({
             select: () => ({
-                in: vi.fn().mockResolvedValue({
-                    data: [
-                        { id: 'user-zero', name: 'Zero', image: null, username: 'zero' },
-                        { id: 'user-active', name: 'Active', image: null, username: 'active' },
-                    ],
-                    error: null,
-                }),
+                in: vi.fn().mockReturnValue(mockQueryResult([
+                    { id: 'user-zero', name: 'Zero', image: null, username: 'zero' },
+                    { id: 'user-active', name: 'Active', image: null, username: 'active' },
+                ])),
             }),
         });
 
@@ -125,14 +124,11 @@ describe('getAllGroupRankings', () => {
             if (table === 'users') {
                 return {
                     select: () => ({
-                        in: vi.fn().mockResolvedValue({
-                            data: [
-                                { id: 'user-1', name: 'User 1', image: null, username: 'user1' },
-                                { id: 'user-2', name: 'User 2', image: null, username: 'user2' },
-                                { id: 'user-3', name: 'User 3', image: null, username: 'user3' },
-                            ],
-                            error: null,
-                        }),
+                        in: vi.fn().mockReturnValue(mockQueryResult([
+                            { id: 'user-1', name: 'User 1', image: null, username: 'user1' },
+                            { id: 'user-2', name: 'User 2', image: null, username: 'user2' },
+                            { id: 'user-3', name: 'User 3', image: null, username: 'user3' },
+                        ])),
                     }),
                 };
             }

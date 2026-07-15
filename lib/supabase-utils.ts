@@ -52,19 +52,24 @@ export async function fetchAllWithPagination<T>(
     return { data: allData, error: null };
 }
 
+/** `fetchDailyStepsPaginated` の既定の select 列 (`selectFields` 省略時) の行型 */
+export type DailyStepDefaultRow = { user_id: string; steps: number; date: string };
+
 /**
  * daily_steps テーブルからページネーション付きで全行取得
  * ランキング・集計系クエリで使用
+ *
+ * `selectFields` を渡す場合は呼び出し側で対応する行型を型引数 `T` として明示すること。
+ * 省略時は既定の `user_id, steps, date` 列に対応する `DailyStepDefaultRow` が使われる。
  */
-export async function fetchDailyStepsPaginated(options: {
+export async function fetchDailyStepsPaginated<T = DailyStepDefaultRow>(options: {
     startDate: string;
     userIds?: string[];
     selectFields?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}): Promise<{ data: any[]; error: unknown }> {
+}): Promise<{ data: T[]; error: unknown }> {
     const fields = options.selectFields || 'user_id, steps, date';
 
-    return fetchAllWithPagination(
+    return fetchAllWithPagination<T>(
         (from, to) => {
             let q = supabaseAdmin
                 .from('daily_steps')
@@ -75,7 +80,7 @@ export async function fetchDailyStepsPaginated(options: {
                 q = q.in('user_id', options.userIds);
             }
 
-            return q.range(from, to);
+            return q.range(from, to).returns<T[]>();
         }
     );
 }

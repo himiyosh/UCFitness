@@ -39,7 +39,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 |---|---|
 | **フレームワーク** | Next.js 15 (App Router) |
 | **UI** | React 18.3.1, Tailwind CSS v4, CSS カスタムプロパティ (テーマ) |
-| **言語** | TypeScript 5 |
+| **言語** | TypeScript 5（明示的な `any` なし、Supabase Database型を利用） |
 | **認証** | NextAuth v5 (beta) / Fitbit OAuth 2.0 |
 | **健康データ** | Fitbit Web API / Google Health API (opt-in) |
 | **DB** | Supabase (PostgreSQL) |
@@ -66,6 +66,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **Server Component 優先**: ページはサーバーサイドでレンダリングし、インタラクティブ部分のみ `'use client'`
 - **Edge Runtime 必須**: すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` を宣言
 - **supabaseAdmin**: サーバーサイドの DB アクセスはサービスロールキーを使用
+- **型安全性契約**: 外部データは具体型または `unknown` + 型ガードで扱い、Supabaseの選択列・RPC応答は`types/database.ts`のDatabase型から射影する。明示的な`any`と`no-explicit-any`抑制は使用しない
 - **Dual-Library Strategy**: Google Health を明示的に接続したユーザーは同APIを優先し、未接続または明示解除したユーザーはFitbitを継続利用。再認証待ち・エラー時はデータ混在を避けるため暗黙切替しない
 - **責務分離**: 認証IDの継続照合記録 (`user_auth_identities`) と健康データ接続 (`fitness_connections`) を分離する。ログインは `provider + provider_account_id` だけで照合し、メール一致による暗黙リンクは行わない
 - **OAuthコールバック保護**: Google HealthのOAuth stateは有効期限・nonce・開始ユーザーIDをHMAC署名へ含め、コールバック時のセッションユーザー不一致をトークン交換前に拒否する。Google Health IDの継続性確認、更新トークン保持、資格情報保存はユーザー行ロック下の単一DB関数で原子的に行う
@@ -138,7 +139,7 @@ UCFitness/
 |   +-- ja.json              # 日本語
 |   +-- en.json              # 英語
 +-- migrations/              # Supabase DB マイグレーション SQL
-+-- types/                   # TypeScript 型定義
++-- types/                   # NextAuth拡張・Supabase Database型
 +-- public/                  # 静的ファイル (PWA マニフェスト、アイコン)
 +-- scripts/                 # ユーティリティスクリプト
 +-- docs/                    # ドキュメント

@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { notFound } from 'next/navigation';
 
+import type { DailyStepRow, UserRow } from "@/types/database";
+
 export const dynamic = 'force-dynamic';
 
 export default async function SessionDebugPage() {
@@ -12,21 +14,21 @@ export default async function SessionDebugPage() {
     }
     const session = await auth();
 
-    let dbUser = null;
-    let stepsRecord = null;
+    let dbUser: Pick<UserRow, 'id' | 'name' | 'email' | 'image' | 'username' | 'provider'> | null = null;
+    let stepsRecord: Pick<DailyStepRow, 'user_id' | 'steps' | 'date'> | null = null;
     const today = new Date().toISOString().split('T')[0];
 
     if (session?.user) {
         // セキュリティ: userIdで検索（emailではなくIDOR防止）
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const userId = (session.user as any).id;
+        const userId = session.user.id;
 
         // 1. Fetch DB User
         const { data: user } = await supabaseAdmin
             .from('users')
             .select('id, name, email, image, username, provider')
             .eq('id', userId)
-            .single();
+            .single()
+            .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'image' | 'username' | 'provider'>>();
         dbUser = user;
 
         // 2. Fetch Steps using DB ID (if found)
@@ -36,7 +38,8 @@ export default async function SessionDebugPage() {
                 .select('user_id, steps, date')
                 .eq('user_id', user.id)
                 .eq('date', today)
-                .single();
+                .single()
+                .returns<Pick<DailyStepRow, 'user_id' | 'steps' | 'date'>>();
             stepsRecord = steps;
         }
     }
@@ -51,16 +54,16 @@ export default async function SessionDebugPage() {
                     <pre className="text-xs overflow-auto">
                         {JSON.stringify({
                             user: {
-                                id: (session?.user as any)?.id || 'UNDEFINED',
+                                id: session?.user?.id || 'UNDEFINED',
                                 email: session?.user?.email || 'UNDEFINED',
                                 name: session?.user?.name || 'UNDEFINED',
                                 // セキュリティ: トークン等の機密情報はリダクト
                             },
-                            expires: (session as any)?.expires || 'UNDEFINED',
+                            expires: session?.expires || 'UNDEFINED',
                         }, null, 2)}
                     </pre>
                     <div className="mt-2 text-sm">
-                        <p><strong>User ID in Session:</strong> {(session?.user as any)?.id || 'UNDEFINED'}</p>
+                        <p><strong>User ID in Session:</strong> {session?.user?.id || 'UNDEFINED'}</p>
                         <p><strong>Email in Session:</strong> {session?.user?.email || 'UNDEFINED'}</p>
                     </div>
                 </div>
@@ -99,8 +102,8 @@ export default async function SessionDebugPage() {
                         {!session ? "No session. Sign in first." :
                             !dbUser ? "Session exists but DB user missing. Email mismatch?" :
                                 !stepsRecord ? "User exists but steps missing. Refresh required?" :
-                                    (session?.user as any)?.id !== dbUser.id ?
-                                        <span className="text-red-600 font-bold">CRITICAL: Session ID ({(session?.user as any)?.id}) does not match DB ID ({dbUser.id}). &quot;My Stats&quot; will fail.</span> :
+                                    (session?.user?.id) !== dbUser.id ?
+                                        <span className="text-red-600 font-bold">CRITICAL: Session ID ({session?.user?.id}) does not match DB ID ({dbUser.id}). &quot;My Stats&quot; will fail.</span> :
                                         <span className="text-green-600 font-bold">IDs match. &quot;My Stats&quot; should work.</span>
                         }
                     </p>

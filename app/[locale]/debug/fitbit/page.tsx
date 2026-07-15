@@ -30,8 +30,7 @@ export default async function FitbitDebugPage() {
         );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     // セキュリティ: userIdで検索（emailではなくIDOR防止）
     const { data: user } = await supabaseAdmin

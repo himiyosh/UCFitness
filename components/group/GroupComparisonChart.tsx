@@ -11,6 +11,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
+import type { DefaultLegendContentProps as RechartsLegendProps } from 'recharts';
 
 import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
@@ -70,8 +71,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     }), [isMidnight]);
 
     // Custom Legend Component — must be declared before conditional returns (Rules of Hooks)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const renderLegend = useCallback((props: any) => {
+    const renderLegend = useCallback((props: RechartsLegendProps) => {
         const payload = props.payload as LegendPayloadEntry[] | undefined;
         if (!payload) return null;
         return (

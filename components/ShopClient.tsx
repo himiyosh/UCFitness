@@ -89,7 +89,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             });
             const data = await res.json();
             if (!res.ok) {
-                const errorKey = `error${data.error?.charAt(0).toUpperCase()}${data.error?.slice(1).replace(/_([a-z])/g, (_: string, l: string) => l.toUpperCase())}` as any;
+                const errorKey = `error${data.error?.charAt(0).toUpperCase()}${data.error?.slice(1).replace(/_([a-z])/g, (_: string, l: string) => l.toUpperCase())}`;
                 showToast(t.has(errorKey) ? t(errorKey) : t('errorGeneric'), 'error');
                 return;
             }
@@ -327,7 +327,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                 }`}
                             >
                                 <span>{tab.icon}</span>
-                                {t(tab.labelKey as any)}
+                                {t(tab.labelKey)}
                             </button>
                         ))}
                     </div>

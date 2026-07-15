@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import { CallbackRouteError } from "@auth/core/errors";
+import type { OAuthConfig } from "@auth/core/providers/oauth";
 import { supabaseAdmin } from "./supabase";
 import { backfillUserSteps } from "@/lib/services/step-manager";
 import { reportError } from "./errors";
@@ -14,7 +15,18 @@ interface FitbitProfile {
     };
 }
 
-const FitbitProvider = (options: { clientId: string; clientSecret: string }) => ({
+/** users テーブルの認証関連フィールド更新 (auth.signIn の既存ユーザー分岐で使用) */
+interface UserAuthUpdate {
+    provider: string;
+    provider_account_id: string;
+    access_token?: string;
+    refresh_token?: string;
+    token_expires_at?: number;
+    updated_at: string;
+    image?: string | null;
+}
+
+const FitbitProvider = (options: { clientId: string; clientSecret: string }): OAuthConfig<FitbitProfile> => ({
     id: "fitbit",
     name: "Fitbit",
     type: "oauth",
@@ -33,7 +45,6 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
     clientSecret: options.clientSecret,
     style: {
         logo: "https://authjs.dev/img/providers/fitbit.svg",
-        logoDark: "https://authjs.dev/img/providers/fitbit.svg",
         bg: "#00B0B9",
         text: "#fff",
     },
@@ -42,7 +53,6 @@ const FitbitProvider = (options: { clientId: string; clientSecret: string }) => 
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     providers: [
-        // @ts-expect-error FitbitProvider type mismatch with NextAuth v5 beta
         FitbitProvider({
             clientId: process.env.FITBIT_CLIENT_ID || "",
             clientSecret: process.env.FITBIT_CLIENT_SECRET || "",
@@ -54,7 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     // debug: true, // Enable for debugging if needed
     callbacks: {
-        async signIn({ user, account }: { user: any; account?: any; profile?: any }) {
+        async signIn({ user, account }) {
             if (!account) return false;
 
             // Provider identity is the only safe automatic account-linking key.
@@ -79,7 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 // The user might have updated their email in the setup process.
                 // We only update tokens and potentially image.
 
-                const updates: Record<string, string | undefined> = {
+                const updates: UserAuthUpdate = {
                     provider: account.provider,
                     provider_account_id: account.providerAccountId,
                     access_token: account.access_token,
@@ -136,7 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
             return true;
         },
-        async session({ session, token }: { session: any; token: any }) {
+        async session({ session, token }) {
             if (session.user) {
                 const tokenProvider = typeof token.provider === 'string'
                     ? token.provider
@@ -198,7 +208,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
             return session;
         },
-        async jwt({ token, account, user, trigger, session }: { token: any; account?: any; user?: any; trigger?: string; session?: any }) {
+        async jwt({ token, account, user, trigger, session }) {
             // Initial sign in
             if (account && user) {
                 token.accessToken = account.access_token;

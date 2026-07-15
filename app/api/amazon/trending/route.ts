@@ -3,6 +3,17 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 import { auth } from '@/lib/auth';
 
+import type { RecommendedItemRow } from '@/types/database';
+
+/** `.select('..., users!inner(username, image)')` の埋め込み結果の行 (to-one 関係) */
+type TrendingItemRow = Pick<
+    RecommendedItemRow,
+    'asin' | 'title' | 'image_url' | 'affiliate_link' | 'comment'
+> & {
+    user_id: string;
+    users: { username: string | null; image: string | null } | null;
+};
+
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +36,8 @@ export async function GET() {
             .from('recommended_items')
             .select('asin, title, image_url, affiliate_link, comment, user_id, users!inner(username, image)')
             .order('updated_at', { ascending: false })
-            .limit(200);
+            .limit(200)
+            .returns<TrendingItemRow[]>();
 
         if (error) {
             reportError('[API] トレンドアイテム取得エラー', error);
@@ -50,8 +62,7 @@ export async function GET() {
 
         for (const item of data) {
             const existing = asinMap.get(item.asin);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const user = item.users as any;
+            const user = item.users;
             if (existing) {
                 existing.count += 1;
                 if (user?.username && existing.users.length < 3) {

@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString, getJSTHour } from '@/lib/date-utils';
 
+import type { UserStepStatsRpcRow } from '@/types/database';
+
 /**
  * 称号達成チェック & 自動付与サービス
  * ステップ同期後に呼ばれ、条件を満たした称号を自動で user_items に追加する
@@ -170,8 +172,8 @@ async function buildContext(userId: string): Promise<AchievementContext> {
             .limit(400),
     ]);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const statsData = statsResult.data as any;
+    const rawStats = statsResult.data as UserStepStatsRpcRow | UserStepStatsRpcRow[] | null;
+    const statsData = Array.isArray(rawStats) ? rawStats[0] : rawStats;
     const totalSteps = statsData?.total_steps ?? 0;
     const stepsToday = todayResult.data?.steps || 0;
     const stepGoal = userResult.data?.step_goal || 10000;

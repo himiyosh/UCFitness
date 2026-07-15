@@ -817,9 +817,9 @@
         "buildStability": "tsc・lint 両方 PASS",
         "maintainability": "eslint-disable に理由コメントがある"
       },
-      "status": "in-progress",
-      "lastAttempt": "2026-05-23T20:57:00+09:00",
-      "lastError": "P0/P1 修正のため no-explicit-any は一時的に warning 化済み。残警告の型付けは継続対応。"
+      "status": "passing",
+      "lastAttempt": "2026-07-16T07:54:18+09:00",
+      "lastError": null
     },
     {
       "id": "F034",

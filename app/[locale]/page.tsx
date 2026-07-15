@@ -45,8 +45,7 @@ export default async function Home(): Promise<ReactNode> {
     return <LandingPage />;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userId = (session.user as any).id;
+  const userId = session.user.id;
   let username = '';
   let mySteps = 0;
   let stepGoal = 10000;

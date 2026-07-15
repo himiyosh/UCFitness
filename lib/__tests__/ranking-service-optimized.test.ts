@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { deriveBatchGroupRankings, getAllRankings } from '../services/ranking-service';
+import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
 
 // Hoist mocks
 const { mockSupabase, mockSelect, mockIn, mockFrom, mockEq, mockSingle } = vi.hoisted(() => {
@@ -26,7 +27,7 @@ vi.mock('@/lib/supabase-utils', () => ({
 }));
 
 vi.mock('next/cache', () => ({
-    unstable_cache: (fn: any) => fn,
+    unstable_cache: <T extends (...args: unknown[]) => Promise<unknown>>(fn: T): T => fn,
 }));
 
 // Mock Date utils to ensure consistent testing
@@ -51,7 +52,7 @@ describe('Ranking Optimization', () => {
         mockFrom.mockReturnValue({ select: mockSelect });
         mockSelect.mockReturnValue({ eq: mockEq, in: mockIn });
         mockEq.mockReturnValue({ single: mockSingle, in: mockIn });
-        mockIn.mockResolvedValue({ data: [], error: null });
+        mockIn.mockReturnValue(mockQueryResult([]));
         mockSingle.mockResolvedValue({ data: null, error: null });
     });
 
@@ -62,17 +63,14 @@ describe('Ranking Optimization', () => {
             { user_id: 'u1', steps: 1000, date: '2024-01-01' },
             { user_id: 'u2', steps: 500, date: '2024-01-01' }
         ];
-        (fetchDailyStepsPaginated as any).mockResolvedValue({ data: mockSteps, error: null });
+        vi.mocked(fetchDailyStepsPaginated).mockResolvedValue({ data: mockSteps, error: null });
 
         // Mock users fetch
-        mockIn.mockResolvedValueOnce({
-            data: [
-                { id: 'u0', name: 'User 0' },
-                { id: 'u1', name: 'User 1' },
-                { id: 'u2', name: 'User 2' }
-            ],
-            error: null
-        });
+        mockIn.mockReturnValueOnce(mockQueryResult([
+            { id: 'u0', name: 'User 0' },
+            { id: 'u1', name: 'User 1' },
+            { id: 'u2', name: 'User 2' }
+        ]));
 
         const result = await getAllRankings('GLOBAL');
 
@@ -101,19 +99,16 @@ describe('Ranking Optimization', () => {
     it('deriveBatchGroupRankings works with list input (current)', async () => {
         const groupIds = ['g1'];
         // Mock group members
-        mockIn.mockResolvedValueOnce({
-            data: [{ group_id: 'g1', user_id: 'u1' }],
-            error: null
-        });
+        mockIn.mockReturnValueOnce(mockQueryResult([{ group_id: 'g1', user_id: 'u1' }]));
 
         const globalRankings = {
-            DAILY: [{ steps: 1000, users: { id: 'u1' } }],
+            DAILY: [{ steps: 1000, users: { id: 'u1', name: null, image: null, username: 'u1' } }],
             WEEKLY: [],
             MONTHLY: [],
             YEARLY: []
         };
 
-        const result = await deriveBatchGroupRankings(groupIds, globalRankings as any);
+        const result = await deriveBatchGroupRankings(groupIds, globalRankings);
 
         expect(result['g1']).toBeDefined();
         expect(result['g1'].DAILY).toHaveLength(1);
@@ -122,14 +117,11 @@ describe('Ranking Optimization', () => {
 
     it('deriveBatchGroupRankings works with Map input (optimized)', async () => {
         const groupIds = ['g1'];
-        mockIn.mockResolvedValueOnce({
-            data: [{ group_id: 'g1', user_id: 'u1' }],
-            error: null
-        });
+        mockIn.mockReturnValueOnce(mockQueryResult([{ group_id: 'g1', user_id: 'u1' }]));
 
         const globalRankingMap = {
             'u1': {
-                users: { id: 'u1' },
+                users: { id: 'u1', name: null, image: null, username: 'u1' },
                 DAILY: 1000,
                 WEEKLY: 0,
                 MONTHLY: 0,
@@ -140,7 +132,7 @@ describe('Ranking Optimization', () => {
             }
         };
 
-        const result = await deriveBatchGroupRankings(groupIds, globalRankingMap as any);
+        const result = await deriveBatchGroupRankings(groupIds, globalRankingMap);
 
         expect(result['g1']).toBeDefined();
         expect(result['g1'].DAILY).toHaveLength(1);

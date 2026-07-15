@@ -19,7 +19,7 @@ const eslintConfig = [
     // UCFitness プロジェクト固有の禁止ルール
     files: ["**/*.{ts,tsx,js,jsx}"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       "no-restricted-imports": [
         "error",
         {

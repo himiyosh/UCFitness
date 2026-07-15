@@ -10,8 +10,7 @@ import { refreshFitbitToken, getFitbitProfile } from "@/lib/api/fitbit";
 // NextAuth v5 beta の auth() は複数オーバーロードを持つため、
 // ReturnType<typeof auth> ではなく Session 型を直接参照
 function getSessionUserId(session: { user?: { id?: string } | null } | null): string {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session?.user as any)?.id as string | undefined;
+    const userId = session?.user?.id;
     if (!userId) throw new Error("Not authenticated");
     return userId;
 }

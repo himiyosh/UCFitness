@@ -5,6 +5,7 @@ import { sendBadgeNotification } from '@/lib/api/teams';
 import { sendConsolidatedBadgeNotification } from '@/lib/services/badge-allocator';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import type { BatchUserStepTotalsRpcRow } from '@/types/database';
 
 const BADGE_DEFINITIONS = {
     GLOBAL: {
@@ -138,8 +139,8 @@ const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> =
 
         // 累計マップ: userId -> { total_steps, total_days }
         const totalsMap = new Map<string, { total_steps: number; total_days: number }>();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (totalsResult.data as any[] || []).forEach((row: any) => {
+        const totalsRows = (totalsResult.data as BatchUserStepTotalsRpcRow[] | null) || [];
+        totalsRows.forEach((row) => {
             totalsMap.set(row.user_id, { total_steps: Number(row.total_steps), total_days: Number(row.total_days) });
         });
 
