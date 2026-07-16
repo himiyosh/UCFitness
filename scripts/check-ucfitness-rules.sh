@@ -872,6 +872,15 @@ if ! grep -q 'export function sortActiveGroupRankings' lib/services/ranking-util
   record "Groupsの正歩数順位/未所属CTA/部分障害契約欠落" "Groups pages / ranking services / member dialog"
 fi
 
+# ---------- 35. カスタムエージェント設定 ----------
+AGENT_CHECK_OUTPUT=$(node scripts/check-custom-agents.mjs 2>&1)
+AGENT_CHECK_STATUS=$?
+if [ "$AGENT_CHECK_STATUS" -ne 0 ]; then
+  record "カスタムエージェント設定" "$AGENT_CHECK_OUTPUT"
+else
+  printf "%s\n" "$AGENT_CHECK_OUTPUT"
+fi
+
 # ---------- 結果出力 ----------
 if [ "$VIOLATIONS" -eq 0 ]; then
   echo "OK: UCFitness rule-check passed (0 violations)"
