@@ -11,6 +11,10 @@ type MembershipKeywordRow = {
     groups: { keyword: string } | { keyword: string }[] | null;
 };
 
+type UserMembershipKeywordRow = MembershipKeywordRow & {
+    user_id: string;
+};
+
 /** レガシー `users.group_keyword` 配列同期用に、メンバーシップ行から group keyword を取り出す */
 function extractGroupKeyword(groups: MembershipKeywordRow['groups']): string | undefined {
     if (Array.isArray(groups)) {
@@ -536,12 +540,24 @@ export async function POST(request: Request) {
       }
 
       // 削除前に全メンバーのuser_idを取得（レガシー配列同期用）
-      const { data: members } = await supabaseAdmin
+      const { data: members, error: membersError } = await supabaseAdmin
         .from('group_members')
         .select('user_id')
         .eq('group_id', group.id);
 
-      const memberUserIds = members?.map(m => m.user_id) || [];
+      if (membersError) {
+        reportError('user/group:delete_group:members', membersError, {
+          groupId: group.id,
+        });
+        return NextResponse.json(
+          { error: "Failed to load group members" },
+          { status: 500 },
+        );
+      }
+
+      const memberUserIds = Array.from(new Set(
+        (members ?? []).map((member) => member.user_id),
+      ));
 
       // グループ削除（ON DELETE CASCADEでgroup_membersも自動削除される）
       const { error: deleteError } = await supabaseAdmin
@@ -554,21 +570,63 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Failed to delete group" }, { status: 500 });
       }
 
-      // 全メンバーのレガシー group_keyword 配列を同期（並列実行）
-      await Promise.all(memberUserIds.map(async (memberId) => {
-        const { data: memberships } = await supabaseAdmin
+      // 残存membershipを一括取得し、影響ユーザーだけレガシー配列を同期する。
+      if (memberUserIds.length > 0) {
+        const {
+          data: remainingMemberships,
+          error: remainingMembershipsError,
+        } = await supabaseAdmin
           .from('group_members')
-          .select('groups(keyword)')
-          .eq('user_id', memberId)
-          .returns<MembershipKeywordRow[]>();
+          .select('user_id, groups(keyword)')
+          .in('user_id', memberUserIds)
+          .returns<UserMembershipKeywordRow[]>();
 
-        const newKeywords = memberships?.map((m) => extractGroupKeyword(m.groups)).filter(Boolean) || [];
+        if (remainingMembershipsError) {
+          reportError(
+            'user/group:delete_group:legacy_memberships',
+            remainingMembershipsError,
+            { groupId: group.id },
+          );
+        } else {
+          const keywordSetsByUserId = new Map<string, Set<string>>(
+            memberUserIds.map((memberId) => [memberId, new Set<string>()]),
+          );
 
-        await supabaseAdmin
-          .from('users')
-          .update({ group_keyword: newKeywords })
-          .eq('id', memberId);
-      }));
+          for (const membership of remainingMemberships ?? []) {
+            const keyword = extractGroupKeyword(membership.groups);
+            if (keyword) {
+              keywordSetsByUserId.get(membership.user_id)?.add(keyword);
+            }
+          }
+
+          await Promise.all(memberUserIds.map(async (memberId) => {
+            try {
+              const { error: updateError } = await supabaseAdmin
+                .from('users')
+                .update({
+                  group_keyword: Array.from(
+                    keywordSetsByUserId.get(memberId) ?? [],
+                  ),
+                })
+                .eq('id', memberId);
+
+              if (updateError) {
+                reportError(
+                  'user/group:delete_group:legacy_update',
+                  updateError,
+                  { groupId: group.id, memberId },
+                );
+              }
+            } catch (updateError) {
+              reportError(
+                'user/group:delete_group:legacy_update',
+                updateError,
+                { groupId: group.id, memberId },
+              );
+            }
+          }));
+        }
+      }
 
       // ストレージのグループ画像をクリーンアップ
       const imagesToDelete: string[] = [];

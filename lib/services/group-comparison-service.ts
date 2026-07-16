@@ -195,6 +195,7 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
     const buildChartData = (startStr: string, endStr: string, aggregation: 'day' | 'week' | 'month'): ComparisonDataPoint[] => {
         const map = new Map<string, ComparisonDataPoint>();
+        const weekStartByDate = new Map<string, string>();
 
         const current = new Date(startStr);
         // Ensure end comparison handles string correctly or use dates loop
@@ -226,6 +227,15 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
 
                 // Use weekStartStr as key
                 map.set(weekStartStr, { date: weekStartStr, label });
+                const weekStartUtc = new Date(`${weekStartStr}T00:00:00Z`);
+                for (let offset = 0; offset < 7; offset += 1) {
+                    const day = new Date(weekStartUtc);
+                    day.setUTCDate(day.getUTCDate() + offset);
+                    const dayStr = day.toISOString().split('T')[0];
+                    if (dayStr <= endStr) {
+                        weekStartByDate.set(dayStr, weekStartStr);
+                    }
+                }
 
                 current.setDate(current.getDate() + 7);
             }
@@ -270,22 +280,8 @@ export const getAllGroupComparisonData = async (groupId: string, currentUserId?:
             if (aggregation === 'month') {
                 key = rowDateStr.substring(0, 7); // YYYY-MM
             } else if (aggregation === 'week') {
-                const rowDate = new Date(rowDateStr);
-                // Find the latest key <= rowDate
-                let bestKey = null;
-                for (const k of map.keys()) {
-                    // k is a YYYY-MM-DD string representing the start of a week
-                    // We need to check if rowDate falls within the week starting at k
-                    const weekStartDate = new Date(k);
-                    const weekEndDate = new Date(weekStartDate);
-                    weekEndDate.setDate(weekEndDate.getDate() + 6); // End of the week
-
-                    if (rowDate >= weekStartDate && rowDate <= weekEndDate) {
-                        bestKey = k;
-                        break; // Found the correct week
-                    }
-                }
-                key = bestKey || ''; // If no week found, it won't be added
+                // 期間生成時に作成した日付→週開始キーMapをO(1)で参照する。
+                key = weekStartByDate.get(rowDateStr) ?? '';
             }
 
             if (map.has(key)) {
