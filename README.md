@@ -453,6 +453,7 @@ npm run test:coverage
 ```
 
 - テストフレームワーク: **Vitest**
+- Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
 - テストファイル: `lib/__tests__/` 配下
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 

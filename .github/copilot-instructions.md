@@ -1466,3 +1466,10 @@ export const runtime = "edge";
 - **根本原因**: 描画条件の`isPublic`だけを確認し、データ取得と可用性判定を同じ公開範囲へ揃えていなかった。
 - **対策**: グループ対抗順位の取得・障害判定はpublic groupだけで実行する。private groupは空の正常スキップ状態とし、競争障害を表示しない。
 - **教訓**: 非表示機能の取得失敗をユーザー向け障害へ昇格させない。認可・公開範囲・取得・描画の条件を一貫させる。リファレンス: `app/[locale]/groups/[groupId]/page.tsx`
+
+### LL-057: `vmForks`のモック漏洩がCIの実行順でだけ顕在化した
+
+- **事象**: ローカル検証では296件がPASSしていたが、PRのGitHub ActionsではSupabaseをファイル単位でモックする4テストファイルが相互干渉し、11件失敗した。単一workerで再現すると、別ファイルの`vi.mock()`とモジュールキャッシュが残り、`.in()`欠落や誤った認可結果が発生した。
+- **根本原因**: `vitest.config.ts`で高速化目的の`vmForks` poolを使い、ファイルローカルのモジュールモックがworker再利用時も確実に分離されると仮定した。通常の並列ローカル実行だけを証拠にし、CI相当の少数worker・異なるファイル順を検証していなかった。
+- **対策**: Vitestを標準の`forks` pool + `isolate: true`へ変更した。モックを多用するテスト群は、通常の全テストに加えて`--maxWorkers=1`でも実行し、テスト期待値を緩めずにファイル分離を確認する。
+- **教訓**: テストpoolの高速化は、モジュールモックの独立性より優先しない。CIでのみ失敗した場合は、実装や期待値を変更する前にworker数・pool・isolate・実行順を再現し、モック漏洩を切り分ける。リファレンス: `vitest.config.ts`, `lib/__tests__/ranking-service*.test.ts`, `lib/__tests__/*group-security.test.ts`

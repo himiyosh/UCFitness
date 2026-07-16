@@ -43,6 +43,7 @@ UCFitness の主な変更をこのファイルに記録します。
 - 固定ヘッダー、BottomNav、safe-area、Footer、スキップリンク、モーダル焦点管理の見切れを修正
 - Safariのlocalhost CSSをHTTPSへ変換していた開発CSPを修正
 - Serverとブラウザの日付差、不正なDOM入れ子、全画面ローダーによる水和・表示問題を修正
+- Vitestの`vmForks`でテストファイル間のSupabaseモックが漏れる問題を、`forks` + 明示的なファイル分離へ変更して修正
 
 ### セキュリティ
 
@@ -77,7 +78,8 @@ UCFitness の主な変更をこのファイルに記録します。
 ### 関連情報
 
 - Pull Request: [#227](https://github.com/himiyosh/UCFitness/pull/227)
-- 統合対象コミット: `8430026..5258b6c`
+- 主要実装コミット範囲: `8430026..5258b6c`
+- CHANGELOG・CI修正を含む完全な履歴はPull Request #227のコミット一覧を参照
 
 ## v0.1.0 - 初期リリース
 

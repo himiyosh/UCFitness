@@ -8,7 +8,8 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
-        pool: 'vmForks',
+        pool: 'forks',
+        isolate: true,
         include: ['**/*.test.ts'],
         exclude: ['node_modules', '.next'],
     },
