@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-16T08:07:43+09:00",
-  "lastAgent": "UCFitnessAgent (TypeScript + Supabase Type Safety + QA + Self-Critique)",
-  "lastCommit": "c4a315b00e9eb359b9c4e17ac9608652e6525114",
+  "lastUpdated": "2026-07-16T10:26:00+09:00",
+  "lastAgent": "UCFitnessAgent (Next.js + Performance + Accessibility + QA + Self-Critique)",
+  "lastCommit": "af73bf0692cd4078c3804da6a0229adf04b1e624",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F033型安全性向上を完了。lintで検出したno-explicit-any 102件と、抑制下を含む明示的any約152件を0へ削減。Supabase Database射影、relation/RPC型ガード、ジェネリックpagination、型付きquery mockを導入し、Auth.js・ランキング・API・i18n・テストの挙動を維持した。no-explicit-anyをerrorへ強化。check:all、全46ファイル296テスト、ja/en 1606キー、独立レビュー、自己批判PASS。UIランタイム変更なし。",
+  "summary": "F019 Core Web Vitals最適化を完了。公開LPをServer Componentと最小Client islandsへ分割し、未認証時の不要なDashboard翻訳・Client bundleを削減。日本語グローバルWebフォントとヒーロー初期transformを除去し、Lighthouse Mobile（Fast 3G相当・CPU 4倍）でLCP 2,349ms、CLS 0、操作Event Timing最大48msを達成。375/768/1280/1920のClassic/Midnight、2ペルソナ、独立レビュー、自己批判、check:all、全46ファイル296テスト、ja/en 1606キーをPASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更によるLint errorは0。",
+    "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、F019変更によるLint errorは0。",
     "devServerRunning": true,
-    "lastVerified": "2026-07-16T08:07:43+09:00"
+    "lastVerified": "2026-07-16T10:26:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -839,6 +839,25 @@
         "i18n.ts",
         "README.md",
         ".github/ucfitness-features.json"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (Next.js + Performance + Accessibility + QA + Self-Critique)",
+      "action": "F019 Core Web Vitals最適化を完了。公開LPをServer Component＋言語切替・横スクロール・認証callback復元の最小Client islandsへ分割し、未認証時の不要なDashboard翻訳を除去。Noto Sans JP複数weightのグローバル配信をシステム日本語フォントへ変更し、ヒーロー初期transformを除去。開発baseline LCP約18.4秒、production初回6.158秒から、Lighthouse MobileのFast 3G相当・CPU 4倍でLCP 2,349ms、CLS 0、操作Event Timing最大48msへ改善。375/768/1280/1920×Classic/Midnight、Mobile Beginner/Accessibility Keyboard、双方向locale切替、details Escape焦点復帰、console/network、独立レビュー、自己批判、check:all、全46ファイル296テスト、1606翻訳キーPASS。DB書込み、OAuth、外部状態変更、push/mergeなし。",
+      "commit": "af73bf0692cd4078c3804da6a0229adf04b1e624",
+      "filesChanged": [
+        "components/LandingPage.tsx",
+        "components/landing/LandingInteractions.tsx",
+        "components/landing/StoredCallbackAuthButtons.tsx",
+        "app/[locale]/page.tsx",
+        "app/[locale]/layout.tsx",
+        "app/globals.css",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        "scripts/check-ucfitness-rules.sh"
       ]
     }
   ],
