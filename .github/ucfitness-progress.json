@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-16T10:26:00+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + Performance + Accessibility + QA + Self-Critique)",
-  "lastCommit": "af73bf0692cd4078c3804da6a0229adf04b1e624",
+  "lastUpdated": "2026-07-16T11:59:11+09:00",
+  "lastAgent": "UCFitnessAgent (QA + Debug + Self-Critique)",
+  "lastCommit": "7aeb1fdc735c2497dc16a634511ec7a5fa9f9f45",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F019 Core Web Vitals最適化を完了。公開LPをServer Componentと最小Client islandsへ分割し、未認証時の不要なDashboard翻訳・Client bundleを削減。日本語グローバルWebフォントとヒーロー初期transformを除去し、Lighthouse Mobile（Fast 3G相当・CPU 4倍）でLCP 2,349ms、CLS 0、操作Event Timing最大48msを達成。375/768/1280/1920のClassic/Midnight、2ペルソナ、独立レビュー、自己批判、check:all、全46ファイル296テスト、ja/en 1606キーをPASS。",
+  "summary": "PR #227のGitHub Actionsで失敗した11件を修正。VitestのvmForks poolでファイル単位のSupabaseモックがworker再利用時に漏洩していたため、forks pool + isolate: trueへ変更した。対象4ファイル11件と全46ファイル296件を単一workerでもPASSし、check:all、ja/en 1606キー、U+FFFD、diff check、自己批判ゲートを確認。README、CHANGELOG、LL-057を同期。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
@@ -858,6 +858,19 @@
         ".github/copilot-instructions.md",
         ".github/agents/UCFitnessAgent.agent.md",
         "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (QA + Debug + Self-Critique)",
+      "action": "PR #227のCIで検出したSupabaseモックのファイル間漏洩を修正。vmForksからforks pool + isolate: trueへ変更し、CI失敗対象4ファイル11件、通常の全46ファイル296件、単一workerの全296件、check:allをPASSした。README、CHANGELOG、LL-057へ原因と再発防止を同期した。",
+      "commit": "7aeb1fdc735c2497dc16a634511ec7a5fa9f9f45",
+      "filesChanged": [
+        "vitest.config.ts",
+        "README.md",
+        "CHANGELOG.md",
+        ".github/copilot-instructions.md",
+        ".github/ucfitness-progress.json"
       ]
     }
   ],
