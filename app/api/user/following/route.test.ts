@@ -39,7 +39,7 @@ interface QueryChain extends PromiseLike<QueryResult> {
     in: ReturnType<typeof vi.fn>;
 }
 
-function createQueryChain(result: QueryResult): QueryChain {
+function createQueryChain(result: QueryResult | Promise<QueryResult>): QueryChain {
     // Supabase builderの自己参照thenableを、実装と同じ連鎖形でモックするための型固定。
     const chain = {
         select: vi.fn(),
@@ -124,5 +124,105 @@ describe('GET /api/user/following', () => {
                 stepGoal: 12_000,
             }),
         ]);
+    });
+
+    it('プロフィールと当日歩数を独立クエリとして並列に開始する', async () => {
+        let resolveUsers: (result: QueryResult) => void = () => undefined;
+        const usersResult = new Promise<QueryResult>((resolve) => {
+            resolveUsers = resolve;
+        });
+
+        mocks.from.mockImplementation((table: string) => {
+            if (table === 'user_follows') {
+                return createQueryChain({
+                    data: [{ following_id: 'user-1', created_at: '2026-07-15T03:00:00Z' }],
+                    error: null,
+                    count: 1,
+                });
+            }
+            if (table === 'users') {
+                return createQueryChain(usersResult);
+            }
+            return createQueryChain({
+                data: [{ user_id: 'user-1', steps: 1_000 }],
+                error: null,
+            });
+        });
+
+        const responsePromise = GET(new Request(
+            'http://localhost/api/user/following?limit=1&sort=steps',
+        ));
+
+        await vi.waitFor(() => {
+            expect(mocks.from).toHaveBeenCalledWith('users');
+        });
+        const stepsStartedBeforeUsersResolved = mocks.from.mock.calls
+            .some(([table]) => table === 'daily_steps');
+
+        resolveUsers({
+            data: [{ id: 'user-1', name: 'One', image: null, username: 'one', step_goal: 10_000 }],
+            error: null,
+        });
+        const response = await responsePromise;
+
+        expect(response.status).toBe(200);
+        expect(stepsStartedBeforeUsersResolved).toBe(true);
+    });
+
+    it('プロフィール取得だけが失敗した場合、歩数取得も開始して5xxを返す', async () => {
+        mocks.from.mockImplementation((table: string) => {
+            if (table === 'user_follows') {
+                return createQueryChain({
+                    data: [{ following_id: 'user-1', created_at: '2026-07-15T03:00:00Z' }],
+                    error: null,
+                    count: 1,
+                });
+            }
+            if (table === 'users') {
+                return createQueryChain({
+                    data: [],
+                    error: { message: 'users unavailable' },
+                });
+            }
+            return createQueryChain({
+                data: [{ user_id: 'user-1', steps: 1_000 }],
+                error: null,
+            });
+        });
+
+        const response = await GET(new Request(
+            'http://localhost/api/user/following?limit=1&sort=steps',
+        ));
+
+        expect(response.status).toBe(500);
+        expect(mocks.from).toHaveBeenCalledWith('daily_steps');
+    });
+
+    it('当日歩数取得だけが失敗した場合、プロフィール取得成功を空状態に変換せず5xxを返す', async () => {
+        mocks.from.mockImplementation((table: string) => {
+            if (table === 'user_follows') {
+                return createQueryChain({
+                    data: [{ following_id: 'user-1', created_at: '2026-07-15T03:00:00Z' }],
+                    error: null,
+                    count: 1,
+                });
+            }
+            if (table === 'users') {
+                return createQueryChain({
+                    data: [{ id: 'user-1', name: 'One', image: null, username: 'one', step_goal: 10_000 }],
+                    error: null,
+                });
+            }
+            return createQueryChain({
+                data: [],
+                error: { message: 'steps unavailable' },
+            });
+        });
+
+        const response = await GET(new Request(
+            'http://localhost/api/user/following?limit=1&sort=steps',
+        ));
+
+        expect(response.status).toBe(500);
     });
 });

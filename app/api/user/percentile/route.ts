@@ -29,9 +29,10 @@ export async function GET(): Promise<NextResponse> {
             });
         }
 
-        // 各期間のソート済みリストを作成してパーセンタイルを計算
+        // 各期間で現在ユーザーより歩数が多い人数を数えて順位を計算
         const periods = ['DAILY', 'WEEKLY', 'MONTHLY'] as const;
         const periodKeys = { DAILY: 'daily', WEEKLY: 'weekly', MONTHLY: 'monthly' } as const;
+        const rankingStats = Object.values(rankingMap);
 
         const percentile: Record<string, number | null> = {
             daily: null,
@@ -40,16 +41,19 @@ export async function GET(): Promise<NextResponse> {
         };
 
         for (const period of periods) {
-            const entries = Object.entries(rankingMap)
-                .map(([id, stats]) => ({ id, steps: stats[period] }))
-                .sort((a, b) => b.steps - a.steps);
-
-            const userIndex = entries.findIndex((e) => e.id === userId);
-            if (userIndex === -1 || entries[userIndex].steps === 0) {
+            const userSteps = rankingMap[userId]?.[period];
+            if (userSteps === undefined || userSteps === 0) {
                 percentile[periodKeys[period]] = null;
             } else {
+                // 厳密に大きい値だけを数え、同歩数は格納順に依存せず同順位とする。
+                let usersAhead = 0;
+                for (const stats of rankingStats) {
+                    if (stats[period] > userSteps) {
+                        usersAhead += 1;
+                    }
+                }
                 // パーセンタイル = (順位 / 全ユーザー数) * 100（上位何%）
-                const rank = userIndex + 1;
+                const rank = usersAhead + 1;
                 percentile[periodKeys[period]] = Math.round((rank / totalUsers) * 100);
             }
         }

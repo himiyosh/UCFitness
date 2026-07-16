@@ -304,7 +304,7 @@ npm run pages:build
 👤 User (VS Code Chat Panel / Slash Commands)
 │
 ├── ⚙️ UCFitnessAgent [Orchestrator — Layer 1]
-│   │  専門ロールを委任し、認証安全性・通知品質・Friend Pulse・Competition Mission・Challenge継続・固定ランキング・公開LPを完了前に実測
+│   │  専門ロールを委任し、認証・同期・並行membershipの原子性、通知品質、Friend Pulse、Competition Mission、Challenge継続、固定ランキング、公開LPを完了前に検証
 │   │
 │   ├── 📁 フロントエンド開発 (Next.js + React)
 │   │   ├── 🟦 Next.js Expert              ページ追加 / SSR / Edge Runtime / i18n
@@ -383,7 +383,7 @@ npm run pages:build
 
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
-| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings/Profile/Wallet/Groups状態分離、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期安全性を統括する |
+| **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings/Profile/Wallet/Groups状態分離、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期・並行membershipの原子性を統括する |
 | Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
@@ -472,6 +472,7 @@ npm run test:coverage
 - **Google Health最小権限** --- `googlehealth.activity_and_fitness.readonly` のみを要求し、日次歩数合計以外の健康・医療データを保存しない
 - **Google Healthリリース前提** --- OAuth同意画面の本番公開、必要資格情報、暗号鍵、DBマイグレーションの準備が完了するまで `GOOGLE_HEALTH_ENABLED=false` を維持
 - **デプロイ制限あり** --- Cloudflare Pages のデプロイ制限があるため、`git push` は明示的な許可後に実行すること
+- **Project / worktree同一性** --- 子セッション作成前に、ユーザー画面上のproject名、project ID / 内部名、main path、cwd、branchを確認する。同じrepositoryの別projectへ無断fallbackせず、目的projectを修復できない場合は現行セッションで専門agentを直接実行する。別project利用はユーザー確認後に限る
 
 ## 関連ドキュメント
 

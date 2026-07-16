@@ -22,10 +22,13 @@ description: "UCFitness 統合エキスパートエージェント。リクエ�
 
 ```
 pwd
+git rev-parse --show-toplevel
 git branch --show-current
 ```
 
 - `main` / `master` にいる場合は作業ブランチに切替（絶対遵守ルール）
+- 子セッション作成・専門agent委任の前に、ユーザー画面上のproject名、project ID / 内部名、main path、対象cwd、branchを照合する。同じGitHub repositoryであることだけを同一projectの根拠にしない
+- 目的projectの初期化失敗時は同一repositoryの別projectへ無断fallbackしない。修復不能なら目的project内の現行セッションで専門agentを直接実行し、別project利用は対象project名とmain pathを提示してユーザー確認を得た後に限る
 
 ### Step B-2: 進捗ファイル + Feature List 読込
 
@@ -963,6 +966,7 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 36. **Profile 0歩/部分障害契約** — 日/週/月を`number|null`で保持し、0歩・未記録・取得失敗を分ける。期間平均は記録済み0を含む記録日分母。必須ユーザー行以外の歩数/比較/グループ/装備/バッジ/コイン/ランキング/おすすめ障害はセクション単位で表示し、全体throwしない。ActivityGraph比較も`Map.has`、PersonalRecordsは項目nullable、補助文字12px以上にする
 37. **Wallet獲得/支出契約** — 今日の正額獲得、負額支出、純増減をJST当日全取引から別集計し、購入を入金へ含めない。現在歩数/目標から次100歩または目標到達の基本UCを示し、追加ボーナスは同期時加算と明記、未記録/目標なし/障害を分ける。残高本体/今日内訳/次報酬/履歴/推移を独立表示し、履歴は自然スクロール+初期10件の段階開示、`lg` gridはitems-startかつ子にh-fullなし、残高欠落時はgrid全幅、チャートは日次純増減+sr-only表にする
 38. **Groups順位/部分障害契約** — グループ内ユーザーとグループ対抗は正歩数だけを順位化し、除外後に連続順位を付ける。ランキング配列長はメンバー数ではなくランキング参加人数と表示する。group/user/membership認可だけを必須境界とし、private group非メンバー404を維持する。グループ対抗順位の取得と障害表示はpublic groupだけで行い、private groupで非表示機能の警告を出さない。メンバー一覧/件数、順位、比較、期間別競争は個別障害として警告し、空・0・未所属へ偽装せず、イベント/チャット/ギア/週間レポートを継続する。メンバーrelationは配列/オブジェクトを型ガードで正規化し、管理Dialogにも取得不能を表示する
+39. **PostgREST全件取得契約** — 読み取り専用または取得中に不変と保証できる集合では、既定1000行切り捨てを避けるpagination + 選択列を含む一意なstable order + 有限上限を使い、error時の部分dataを捨てる。一方、並行更新される集合から不可逆操作や派生同期を行う場合、stable order付きOFFSET paginationだけでは複数要求間のsnapshotを保証できない。収集・更新・削除を単一transactional RPCへ集約し、row lockまたは一貫したsnapshotをDB内で保証するまでアプリ側一括最適化を採用しない。リファレンス: `.github/copilot-instructions.md` LL-059、`migrations/20260617_add_multi_provider_connections.sql`の`FOR UPDATE`パターン
 
 ### 🎨 サブエージェント: UI/UX
 
@@ -1396,6 +1400,8 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | Groupsが0歩を順位化し、補助障害でGroup detail全体を停止した | 所属者をランキング参加者と同一視し、バッチ順位へ0歩ユーザーを再注入した。必須認可とメンバー/順位/比較/競争を一括障害境界へ置き、relation形状を型アサーションで隠していた | **正歩数だけを順位化し、ランキング参加人数として表示する。** group/user/membershipだけを必須境界とし、補助取得を個別警告へ分離する。relationは型ガードで正規化し、管理Dialogでも空一覧へ偽装しない。リファレンス: `app/[locale]/groups/[groupId]/page.tsx`, `lib/services/ranking-service.ts` |
 | private groupで非表示の対抗順位障害を警告した | 描画だけを`isPublic`で制御し、全期間の競争データ取得と可用性判定はprivate groupでも実行していた | **取得・可用性・描画の公開範囲を揃える。** グループ対抗順位はpublic groupだけ取得し、private groupでは正常スキップして競争障害を表示しない。リファレンス: `app/[locale]/groups/[groupId]/page.tsx` |
 | 複数weightの日本語`next/font`が公開LPのLCPを支配した | `Noto_Sans_JP`を5weightでグローバル適用し、unicode-rangeを含む約471KBのCSSと約158KBの転送がFast 3G相当のFCP/LCPを遅延させた。ページ全体のClient化とヒーローtransform入場もelement render delayを増やした | **公開LPをServer Component＋最小Client islandsへ分割し、日本語本文をHiragino Sans / Yu Gothic / Meiryoのシステムスタックへ戻す。** Webフォント採用時は生成CSS・転送量・LCPを必ず実測し、ファーストビューの可視テキストへ初期opacity/transformを付けない。リファレンス: `components/LandingPage.tsx`, `components/landing/LandingInteractions.tsx`, `app/[locale]/layout.tsx`, `app/globals.css` |
+| 同一repositoryの別projectへ子セッションを作成した | canonical projectの初期化失敗後、repository一致をproject同一性と誤認し、ユーザー画面上のproject名とmain pathを確認せず「UCFitness-旧」へfallbackした | **Session Bootstrap Step B-1でproject名、ID / 内部名、main path、cwd、branchを照合する。** 目的projectの初期化失敗時は別projectへfallbackせず、現行project/session内で専門agentを直接実行する。別project利用はユーザーの明示確認後に限る。リファレンス: `.github/copilot-instructions.md` LL-058 |
+| stable order付きOFFSET paginationで可変membershipを安全に全件取得できると誤認した | 一意順序による各queryの決定性と、複数PostgREST要求が同じMVCC snapshotを参照することを混同した。ページ間のjoin / leave / kickでOFFSETが移動し、行欠落・重複が起こり得た | **読み取り専用・不変集合はpagination + unique order、mutation-sensitiveな集合はtransactional RPC + row lock / snapshotを使い分ける。** DB原子化なしで収集→削除→派生同期を一括最適化しない。今回の実装は撤回済み。リファレンス: `.github/copilot-instructions.md` LL-059、`migrations/20260617_add_multi_provider_connections.sql` |
 
 ---
 

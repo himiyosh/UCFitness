@@ -56,23 +56,26 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         const followingIds = follows.map((f) => f.following_id);
 
-        // ユーザー情報を取得（PII除外）
-        const { data: users, error: usersErr } = await supabaseAdmin
-            .from("users")
-            .select("id, name, image, username, step_goal")
-            .in("id", followingIds);
+        // 独立したユーザー情報・当日歩数を並列取得
+        const [
+            { data: users, error: usersErr },
+            { data: todaySteps, error: todayStepsErr },
+        ] = await Promise.all([
+            supabaseAdmin
+                .from("users")
+                .select("id, name, image, username, step_goal")
+                .in("id", followingIds),
+            supabaseAdmin
+                .from("daily_steps")
+                .select("user_id, steps")
+                .in("user_id", followingIds)
+                .eq("date", today),
+        ]);
 
         if (usersErr) {
             reportError("GET /api/user/following users", usersErr);
             return NextResponse.json({ error: "Failed to fetch following users" }, { status: 500 });
         }
-
-        // 今日の歩数を取得
-        const { data: todaySteps, error: todayStepsErr } = await supabaseAdmin
-            .from("daily_steps")
-            .select("user_id, steps")
-            .in("user_id", followingIds)
-            .eq("date", today);
 
         if (todayStepsErr) {
             reportError("GET /api/user/following steps", todayStepsErr);

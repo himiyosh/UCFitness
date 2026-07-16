@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-16T11:59:11+09:00",
-  "lastAgent": "UCFitnessAgent (QA + Debug + Self-Critique)",
-  "lastCommit": "7aeb1fdc735c2497dc16a634511ec7a5fa9f9f45",
+  "lastUpdated": "2026-07-16T14:40:54+09:00",
+  "lastAgent": "UCFitnessAgent (Next.js + PostgreSQL/Supabase + QA + Self-Critique)",
+  "lastCommit": "6df4659d0ad2dc28901aac98be6ad71ba4511489",
   "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "PR #227のGitHub Actionsで失敗した11件を修正。VitestのvmForks poolでファイル単位のSupabaseモックがworker再利用時に漏洩していたため、forks pool + isolate: trueへ変更した。対象4ファイル11件と全46ファイル296件を単一workerでもPASSし、check:all、ja/en 1606キー、U+FFFD、diff check、自己批判ゲートを確認。README、CHANGELOG、LL-057を同期。",
+  "summary": "独立再レビューでstable order付きOFFSET paginationが並行join/leave/kick下のsnapshotを保証しないと確認し、安全でないgroup削除同期最適化を撤回。routeとtestをorigin/mainへ完全復元し、CHANGELOG/READMEの未出荷成果を除去、LL-059とAgent契約をtransactional RPC + row lock/snapshot必須へ訂正した。関連4件、全50ファイル319件を通常・単一workerでPASS。check:allは0 error・既存warning 65件で増加なし、U+FFFD scan 0件。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、F019変更によるLint errorは0。",
-    "devServerRunning": true,
-    "lastVerified": "2026-07-16T10:26:00+09:00"
+    "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
+    "devServerRunning": false,
+    "lastVerified": "2026-07-16T14:40:54+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -871,6 +871,65 @@
         "CHANGELOG.md",
         ".github/copilot-instructions.md",
         ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (Security + Performance + QA + Workflow + Self-Critique)",
+      "action": "canonical worktree内で、公開プロフィール対象UUID、reactions DELETE、画像MIME由来拡張子を検証し、Following独立取得の並列化、Percentileの線形同順位、JST週開始Map、group削除後membership一括同期を実装。別projectへの無断fallbackを防ぐLL-058とSession Bootstrapを追加した。関連33件、全50ファイル323件を通常・単一workerでPASSし、check:allは0 error・既存warning 65件で増加なし。UI、外部依存、環境変数、DB migration、push、PR、mergeなし。",
+      "commit": "d829b44f1300a1b1ab309b33b42143e8397d1d6b / 2e072faefe7e72effc4586de261fa46ccb332294",
+      "filesChanged": [
+        "app/actions.ts",
+        "app/api/reactions/route.ts",
+        "app/api/reactions/route.test.ts",
+        "app/api/user/achievement-progress/route.ts",
+        "app/api/user/follow/status/route.ts",
+        "app/api/user/step-calendar/route.ts",
+        "app/api/user/public-target-routes.test.ts",
+        "lib/__tests__/upload-security.test.ts",
+        "app/api/user/following/route.ts",
+        "app/api/user/following/route.test.ts",
+        "app/api/user/percentile/route.ts",
+        "app/api/user/percentile/route.test.ts",
+        "lib/services/group-comparison-service.ts",
+        "lib/__tests__/group-comparison-service.test.ts",
+        "app/api/user/group/route.ts",
+        "app/api/user/group/route.test.ts",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-progress.json",
+        "README.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (Next.js + PostgreSQL/Supabase + QA + Self-Critique)",
+      "action": "独立レビューで検出されたgroup削除同期のPostgREST既定1000行切り捨てを修正。削除前はuser_id順で全件取得後だけ削除し、削除後は100 UUID chunkをuser_id/group_id順で全件取得してから20件batch更新する。途中error・有限上限超過・DB失敗では部分dataを捨て、削除前は5xx停止、削除後は成功維持とreportErrorに分離した。1000行超、2ページ目error、chunk、上限の回帰を含む関連15件、全50ファイル328件を通常・単一workerでPASS。check:allは0 error・既存warning 65件で増加なし。UI、外部依存、環境変数、DB migration、push、PR、mergeなし。",
+      "commit": "",
+      "filesChanged": [
+        "app/api/user/group/route.ts",
+        "app/api/user/group/route.test.ts",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-progress.json",
+        "README.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (PostgreSQL/Supabase + QA + Self-Critique)",
+      "action": "独立再レビューでstable order付きOFFSET paginationが並行join/leave/kick下のsnapshotを保証せず、行欠落からlegacy keywordを誤同期し得ると確認したため、commit 6df4659のgroup削除同期最適化を撤回。routeとtestをorigin/mainへ完全復元し、CHANGELOG/READMEの未出荷成果を除去、LL-059とAgent契約をtransactional RPC + row lock/snapshot必須へ訂正した。関連4件、全50ファイル319件を通常・単一workerでPASS。check:allは0 error・既存warning 65件で増加なし、U+FFFD scan 0件。UI、外部依存、環境変数、DB migration、push、PR、mergeなし。",
+      "commit": "",
+      "filesChanged": [
+        "app/api/user/group/route.ts",
+        "app/api/user/group/route.test.ts",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-progress.json",
+        "README.md",
+        "CHANGELOG.md"
       ]
     }
   ],

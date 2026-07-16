@@ -61,6 +61,9 @@ UCFitness の主な変更をこのファイルに記録します。
 - 日本語Webフォント依存とLCP要素の初期transformを除去
 - Lighthouse MobileのFast 3G相当・CPU 4倍条件でLCPを約18.4秒から2,349msへ改善
 - 同条件でCLS 0、操作Event Timing最大48msを確認
+- Following APIの独立したプロフィール・当日歩数取得を並列化し、片側障害の分離を維持
+- Percentile APIを全件ソートから線形カウントへ変更。同歩数は格納順に依存しない同順位とし、0歩・欠測は従来どおり順位なしを維持
+- グループ比較の週探索を日付キーMapへ変更し、JST月曜〜日曜の期間定義を維持したままO(1)参照化
 
 ### 品質
 
@@ -68,6 +71,7 @@ UCFitness の主な変更をこのファイルに記録します。
 - Vitest 46ファイル・296件を通過
 - 375 / 768 / 1280 / 1920px、Classic / Midnightテーマの回帰監査を実施
 - ペルソナ回遊、独立レビュー、自己批判ゲートを完了
+- 子セッション作成前のproject名・ID / 内部名・main path・cwd・branch照合を必須化し、初期化失敗時の別projectへの無断fallbackを禁止
 
 ### 既知の制約
 
