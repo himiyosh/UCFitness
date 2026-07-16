@@ -1,8 +1,9 @@
 export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabase";
 import { reportError } from "@/lib/errors";
+import { supabaseAdmin } from "@/lib/supabase";
+import { isValidUUID } from "@/lib/validation";
 import { NextResponse } from "next/server";
 
 // 歩数カレンダー用API: 指定年の日別歩数データを返す
@@ -19,6 +20,9 @@ export async function GET(request: Request) {
 
     if (!userId) {
         return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    }
+    if (!isValidUUID(userId)) {
+        return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
     }
 
     const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { uploadBannerImage, uploadProfileImage } from '@/app/actions';
 import { POST } from '@/app/api/upload/group/route';
 
 const {
@@ -49,6 +50,15 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/lib/auth', () => ({
     auth: vi.fn().mockResolvedValue({ user: { id: 'user-id' } })
+}));
+
+vi.mock('@/lib/api/fitbit', () => ({
+    getFitbitProfile: vi.fn(),
+    refreshFitbitToken: vi.fn(),
+}));
+
+vi.mock('next/cache', () => ({
+    revalidatePath: vi.fn(),
 }));
 
 vi.mock('next/server', () => ({
@@ -114,6 +124,70 @@ describe('POST /api/upload/group', () => {
             expect.objectContaining({
                 contentType: 'image/png'
             })
+        );
+    });
+});
+
+describe('プロフィール画像Server Action', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        mockFrom.mockImplementation((table: string) => {
+            if (table === 'users') {
+                return {
+                    update: vi.fn(() => ({
+                        eq: vi.fn().mockResolvedValue({ error: null }),
+                    })),
+                };
+            }
+            return {};
+        });
+        mockStorageFrom.mockReturnValue({
+            upload: mockUpload,
+            getPublicUrl: mockGetPublicUrl,
+        });
+        mockUpload.mockResolvedValue({ data: { path: 'path' }, error: null });
+        mockGetPublicUrl.mockReturnValue({
+            data: { publicUrl: 'https://example.com/image' },
+        });
+    });
+
+    it.each([
+        ['image/jpeg', 'avatar.png', /\.jpg$/],
+        ['image/png', 'avatar.jpg', /\.png$/],
+        ['image/webp', 'avatar.gif', /\.webp$/],
+        ['image/gif', 'avatar.webp', /\.gif$/],
+    ])('uploadProfileImage_%sの場合_MIME由来の拡張子とcontentTypeを使用する', async (
+        mimeType,
+        originalName,
+        expectedExtension,
+    ) => {
+        const formData = new FormData();
+        formData.append('file', new File(['image'], originalName, { type: mimeType }));
+
+        await uploadProfileImage(formData);
+
+        expect(mockUpload).toHaveBeenCalledWith(
+            expect.stringMatching(expectedExtension),
+            expect.any(File),
+            expect.objectContaining({
+                contentType: mimeType,
+            }),
+        );
+    });
+
+    it('uploadBannerImage_WebPをJPEG名で受けた場合_MIME由来の拡張子とcontentTypeを使用する', async () => {
+        const formData = new FormData();
+        formData.append('file', new File(['image'], 'banner.jpg', { type: 'image/webp' }));
+
+        await uploadBannerImage(formData);
+
+        expect(mockUpload).toHaveBeenCalledWith(
+            expect.stringMatching(/\.webp$/),
+            expect.any(File),
+            expect.objectContaining({
+                contentType: 'image/webp',
+            }),
         );
     });
 });

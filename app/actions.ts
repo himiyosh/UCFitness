@@ -15,8 +15,14 @@ function getSessionUserId(session: { user?: { id?: string } | null } | null): st
     return userId;
 }
 
-// 🛡️ セキュリティ: 許可されたファイルタイプとサイズ制限
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+// 🛡️ セキュリティ: 保存拡張子を検証済みMIMEと一致させ、元ファイル名を信頼しない
+const IMAGE_EXTENSION_BY_MIME_TYPE: Readonly<Record<string, string>> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+};
+const ALLOWED_IMAGE_TYPES = new Set(Object.keys(IMAGE_EXTENSION_BY_MIME_TYPE));
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 function validateImageFile(file: File): void {
@@ -26,6 +32,15 @@ function validateImageFile(file: File): void {
     if (file.size > MAX_FILE_SIZE) {
         throw new Error("File too large. Maximum size: 5MB");
     }
+}
+
+function getValidatedImageExtension(file: File): string {
+    validateImageFile(file);
+    const extension = IMAGE_EXTENSION_BY_MIME_TYPE[file.type];
+    if (!extension) {
+        throw new Error("Invalid file type. Allowed: JPEG, PNG, WebP, GIF");
+    }
+    return extension;
 }
 
 export async function updateProfileImage(imageUrl: string | null) {
@@ -136,10 +151,7 @@ export async function uploadProfileImage(formData: FormData) {
 
     const userId = getSessionUserId(session);
 
-    // 🛡️ セキュリティ: ファイル検証
-    validateImageFile(file);
-
-    const fileExt = file.name.split('.').pop();
+    const fileExt = getValidatedImageExtension(file);
     const filePath = `${userId}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseAdmin
@@ -191,11 +203,7 @@ export async function uploadBannerImage(formData: FormData) {
 
     const userId = getSessionUserId(session);
 
-    // 🛡️ セキュリティ: ファイル検証
-    validateImageFile(file);
-
-    // Client compresses to JPEG, so we enforce .jpg extension to match content type
-    const fileExt = 'jpg';
+    const fileExt = getValidatedImageExtension(file);
     const filePath = `${userId}-banner-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseAdmin

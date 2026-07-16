@@ -76,6 +76,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
+- **公開プロフィールAPIの入力契約**: Achievement進捗と年間歩数カレンダーは認証を要求しつつ、UUID検証済みの公開target `userId`をそのまま照会する。フォロー状態と公開リアクションもtarget UUID・emoji・periodをDB操作前に検証する。プロフィール/バナー画像の保存拡張子は元ファイル名ではなく検証済みMIMEから決定し、`contentType`と一致させる
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する

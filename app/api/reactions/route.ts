@@ -4,9 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
-
-// UUID形式バリデーション（IDOR攻撃防止）
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isValidUUID } from '@/lib/validation';
 
 // グローバルリーダーボード用リアクションAPI
 // group_reactions テーブルを group_id='__global__' で再利用
@@ -71,7 +69,7 @@ export async function POST(request: NextRequest) {
         const { toUserId, emoji, period } = body;
 
         // バリデーション
-        if (!toUserId || typeof toUserId !== 'string' || !UUID_REGEX.test(toUserId)) {
+        if (!isValidUUID(toUserId)) {
             return NextResponse.json({ error: 'toUserId is required' }, { status: 400 });
         }
         if (!VALID_EMOJIS.includes(emoji)) {
@@ -123,6 +121,15 @@ export async function DELETE(request: NextRequest) {
 
         if (!toUserId || !emoji || !period) {
             return NextResponse.json({ error: 'toUserId, emoji, period are required' }, { status: 400 });
+        }
+        if (!isValidUUID(toUserId)) {
+            return NextResponse.json({ error: 'Invalid toUserId' }, { status: 400 });
+        }
+        if (!VALID_EMOJIS.includes(emoji as typeof VALID_EMOJIS[number])) {
+            return NextResponse.json({ error: 'Invalid emoji' }, { status: 400 });
+        }
+        if (!VALID_PERIODS.includes(period as typeof VALID_PERIODS[number])) {
+            return NextResponse.json({ error: 'Invalid period' }, { status: 400 });
         }
 
         const { error } = await supabaseAdmin
