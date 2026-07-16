@@ -1020,6 +1020,12 @@ export const runtime = "edge";
 > **設計根拠**: Anthropic "Effective Harnesses for Long-Running Agents" + everything-claude-code の Continuous Learning / Memory Persistence パターンに基づく。
 > エージェントがセッション間で文脈を失わないための構造化ハンドオフシステム。
 
+#### Project / worktree の同一性確認
+
+- 子セッション作成・専門agent委任の前に、**ユーザー画面上のproject名、project ID / 内部名、main path、対象cwd、branch**を確認する。同じGitHub repositoryを指すことだけでは同一projectと判断しない
+- 目的projectの初期化に失敗しても、同じrepositoryを指す別projectへ無断でfallbackしない
+- 目的projectを修復できない場合は、そのproject内の現行セッションで専門agentを直接実行する。別projectの利用は、ユーザーへ対象project名とmain pathを示して明示確認を得た後に限る
+
 #### 進捗ファイル (`ucfitness-progress.json`)
 
 - **場所**: `.github/ucfitness-progress.json`
@@ -1473,3 +1479,10 @@ export const runtime = "edge";
 - **根本原因**: `vitest.config.ts`で高速化目的の`vmForks` poolを使い、ファイルローカルのモジュールモックがworker再利用時も確実に分離されると仮定した。通常の並列ローカル実行だけを証拠にし、CI相当の少数worker・異なるファイル順を検証していなかった。
 - **対策**: Vitestを標準の`forks` pool + `isolate: true`へ変更した。モックを多用するテスト群は、通常の全テストに加えて`--maxWorkers=1`でも実行し、テスト期待値を緩めずにファイル分離を確認する。
 - **教訓**: テストpoolの高速化は、モジュールモックの独立性より優先しない。CIでのみ失敗した場合は、実装や期待値を変更する前にworker数・pool・isolate・実行順を再現し、モック漏洩を切り分ける。リファレンス: `vitest.config.ts`, `lib/__tests__/ranking-service*.test.ts`, `lib/__tests__/*group-security.test.ts`
+
+### LL-058: 同一repositoryの別projectへ無断fallbackし、誤った画面に作業セッションを作成した
+
+- **事象**: canonical projectのworkspace初期化に失敗した後、同じGitHub repositoryを指すことだけを根拠に、ユーザー画面上の別project「UCFitness-旧」へ子セッションを作成し、ユーザーから「違うところに作っていますね」と指摘された。
+- **根本原因**: repository URLの一致をprojectの同一性と誤認し、ユーザー画面上のproject名、project ID / 内部名、main path、対象cwdを子セッション作成前に照合しなかった。初期化失敗時の停止条件もなく、別projectを安全なfallbackとして扱った。
+- **対策**: セッション作成・委任前の同一性確認をproject名、ID / 内部名、main path、cwd、branchの組で必須化する。目的projectの初期化失敗時は別projectへfallbackせず、修復不能なら目的project内の現行セッションで専門agentを直接実行する。別project利用は対象名とmain pathを提示し、ユーザーの明示確認後に限る。
+- **教訓**: GitHub repositoryが同じでも、project、main path、worktree、ユーザーが見ている作業面は別物である。自動復旧は作業場所を変えずに行い、場所の変更は利便性よりユーザーの明示的な選択を優先する。リファレンス: `.github/agents/UCFitnessAgent.agent.md` Session Bootstrap Step B-1、`README.md`「注意事項 / 制約」

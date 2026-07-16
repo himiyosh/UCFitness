@@ -472,6 +472,7 @@ npm run test:coverage
 - **Google Health最小権限** --- `googlehealth.activity_and_fitness.readonly` のみを要求し、日次歩数合計以外の健康・医療データを保存しない
 - **Google Healthリリース前提** --- OAuth同意画面の本番公開、必要資格情報、暗号鍵、DBマイグレーションの準備が完了するまで `GOOGLE_HEALTH_ENABLED=false` を維持
 - **デプロイ制限あり** --- Cloudflare Pages のデプロイ制限があるため、`git push` は明示的な許可後に実行すること
+- **Project / worktree同一性** --- 子セッション作成前に、ユーザー画面上のproject名、project ID / 内部名、main path、cwd、branchを確認する。同じrepositoryの別projectへ無断fallbackせず、目的projectを修復できない場合は現行セッションで専門agentを直接実行する。別project利用はユーザー確認後に限る
 
 ## 関連ドキュメント
 
