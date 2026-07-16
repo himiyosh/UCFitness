@@ -1487,9 +1487,9 @@ export const runtime = "edge";
 - **対策**: セッション作成・委任前の同一性確認をproject名、ID / 内部名、main path、cwd、branchの組で必須化する。目的projectの初期化失敗時は別projectへfallbackせず、修復不能なら目的project内の現行セッションで専門agentを直接実行する。別project利用は対象名とmain pathを提示し、ユーザーの明示確認後に限る。
 - **教訓**: GitHub repositoryが同じでも、project、main path、worktree、ユーザーが見ている作業面は別物である。自動復旧は作業場所を変えずに行い、場所の変更は利便性よりユーザーの明示的な選択を優先する。リファレンス: `.github/agents/UCFitnessAgent.agent.md` Session Bootstrap Step B-1、`README.md`「注意事項 / 制約」
 
-### LL-059: PostgRESTの1000行切り捨てを成功と誤認し、部分データでlegacy同期し得た
+### LL-059: stable order付きOFFSET paginationを並行変異下のsnapshotと誤認した
 
-- **事象**: グループ削除時のN+1解消で、削除前メンバーと削除後の残存membershipを単一SELECTへまとめたが、PostgREST既定上限の1000行を超えると`error: null`のまま正常に切り捨てられ、有効な`users.group_keyword`を消し得た。
-- **根本原因**: `.error`がないことを全件取得成功と同一視し、既存の`fetchAllWithPagination`、ページを跨いでも一意なstable order、有限上限、全ページ・全chunk取得後の書き込み開始を一括最適化へ適用しなかった。大量UUIDを単一`.in()`へ渡し、更新も無制限`Promise.all`にしていた。
-- **対策**: 削除前は`user_id`順で全ページ取得が成功した場合だけ削除する。削除後はuser IDを100件ずつ順次chunkし、各chunkを`user_id, group_id`の一意順でページ取得する。途中error・有限上限超過・DB失敗では部分データを捨て、削除成功は維持しつつlegacy更新を全件スキップして`reportError`する。全件取得後の更新も20件固定batchへ制限した。
-- **教訓**: PostgRESTの1000行切り捨てはエラーにならない。1000行を超え得る全件SELECTは`fetchAllWithPagination`と一意なstable orderを必須とし、`.in()`は固定件数へchunkする。全ページ・全chunk成功前に不可逆操作や派生書き込みを始めず、helperが返すerror時の部分dataは使用しない。リファレンス: `app/api/user/group/route.ts`, `app/api/user/group/route.test.ts`, `lib/supabase-utils.ts`
+- **事象**: グループ削除同期のN+1解消で、PostgREST既定1000行切り捨てを避けるstable order付きOFFSET paginationを導入した。しかしページ取得中にjoin / leave / kickが発生するとOFFSETが移動し、行の欠落・重複から有効な`users.group_keyword`を誤同期し得るため、実装を撤回して`app/api/user/group/route.ts`とテストを`origin/main`へ戻した。
+- **根本原因**: 一意な順序が各queryの決定性を保証することと、複数queryが同じMVCC snapshotを参照することを混同した。PostgRESTの各OFFSET要求は別トランザクションであり、可変なmembership集合の完全性を保証しない。削除前収集→削除→派生同期というmutation-sensitiveな処理を、DB transactionなしでアプリ側一括最適化した。
+- **対策**: 読み取り専用または取得中に不変と保証できる集合に限り、pagination + 一意なstable orderを使用する。並行更新されるmembership集合から不可逆操作や派生同期を行う場合は、収集・削除・同期を単一transactional RPCへ集約し、必要なrow lockまたは一貫したsnapshotをDB内で保証する。migration禁止の今回タスクでは安全な原子化を追加できないため、一括最適化を採用しない。
+- **教訓**: stable orderはsnapshotではない。PostgRESTの1000行切り捨て対策だけで、可変集合に対する複数OFFSET要求の完全性を保証したと判断してはならない。mutation-sensitiveな複合操作はDB transaction / RPC / row lockを前提に設計し、それがない間は性能改善候補を撤回する。リファレンス: `.github/agents/UCFitnessAgent.agent.md`「PostgREST全件取得契約」、`migrations/20260617_add_multi_provider_connections.sql`のtransactional RPC + `FOR UPDATE`パターン
