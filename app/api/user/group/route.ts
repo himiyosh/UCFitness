@@ -2,9 +2,19 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { reportError } from "@/lib/errors";
+import {
+  fetchAllWithPagination,
+  PaginationLimitError,
+} from "@/lib/supabase-utils";
 
 // UUID形式バリデーション（IDOR攻撃防止）
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const GROUP_DELETE_PAGE_SIZE = 900;
+const GROUP_DELETE_MAX_MEMBERS = 10_000;
+const GROUP_DELETE_USER_ID_CHUNK_SIZE = 100;
+const GROUP_DELETE_MAX_MEMBERSHIPS_PER_CHUNK = 10_000;
+const GROUP_DELETE_MAX_REMAINING_MEMBERSHIPS = 100_000;
+const GROUP_DELETE_LEGACY_UPDATE_BATCH_SIZE = 20;
 
 /** `group_members.select('groups(keyword)')` の埋め込み結果。関係性の解決状況により配列・単一オブジェクトいずれの形でも返りうる */
 type MembershipKeywordRow = {
@@ -12,6 +22,11 @@ type MembershipKeywordRow = {
 };
 
 type UserMembershipKeywordRow = MembershipKeywordRow & {
+    user_id: string;
+    group_id: string;
+};
+
+type GroupMemberUserIdRow = {
     user_id: string;
 };
 
@@ -540,10 +555,18 @@ export async function POST(request: Request) {
       }
 
       // 削除前に全メンバーのuser_idを取得（レガシー配列同期用）
-      const { data: members, error: membersError } = await supabaseAdmin
-        .from('group_members')
-        .select('user_id')
-        .eq('group_id', group.id);
+      const { data: members, error: membersError } =
+        await fetchAllWithPagination<GroupMemberUserIdRow>(
+          (from, to) => supabaseAdmin
+            .from('group_members')
+            .select('user_id')
+            .eq('group_id', group.id)
+            .order('user_id', { ascending: true })
+            .range(from, to)
+            .returns<GroupMemberUserIdRow[]>(),
+          GROUP_DELETE_PAGE_SIZE,
+          GROUP_DELETE_MAX_MEMBERS,
+        );
 
       if (membersError) {
         reportError('user/group:delete_group:members', membersError, {
@@ -572,14 +595,51 @@ export async function POST(request: Request) {
 
       // 残存membershipを一括取得し、影響ユーザーだけレガシー配列を同期する。
       if (memberUserIds.length > 0) {
-        const {
-          data: remainingMemberships,
-          error: remainingMembershipsError,
-        } = await supabaseAdmin
-          .from('group_members')
-          .select('user_id, groups(keyword)')
-          .in('user_id', memberUserIds)
-          .returns<UserMembershipKeywordRow[]>();
+        const remainingMemberships: UserMembershipKeywordRow[] = [];
+        let remainingMembershipsError: unknown = null;
+
+        // `.in()` のURL肥大化を避け、各chunkを順番に全件取得する。
+        // 途中失敗時に部分データで更新しないよう、全chunk成功後まで書き込みを開始しない。
+        for (
+          let offset = 0;
+          offset < memberUserIds.length;
+          offset += GROUP_DELETE_USER_ID_CHUNK_SIZE
+        ) {
+          const memberIdChunk = memberUserIds.slice(
+            offset,
+            offset + GROUP_DELETE_USER_ID_CHUNK_SIZE,
+          );
+          const {
+            data: chunkMemberships,
+            error: chunkMembershipsError,
+          } = await fetchAllWithPagination<UserMembershipKeywordRow>(
+            (from, to) => supabaseAdmin
+              .from('group_members')
+              .select('user_id, group_id, groups(keyword)')
+              .in('user_id', memberIdChunk)
+              .order('user_id', { ascending: true })
+              .order('group_id', { ascending: true })
+              .range(from, to)
+              .returns<UserMembershipKeywordRow[]>(),
+            GROUP_DELETE_PAGE_SIZE,
+            GROUP_DELETE_MAX_MEMBERSHIPS_PER_CHUNK,
+          );
+
+          if (chunkMembershipsError) {
+            remainingMembershipsError = chunkMembershipsError;
+            break;
+          }
+          if (
+            remainingMemberships.length + chunkMemberships.length
+            > GROUP_DELETE_MAX_REMAINING_MEMBERSHIPS
+          ) {
+            remainingMembershipsError = new PaginationLimitError(
+              GROUP_DELETE_MAX_REMAINING_MEMBERSHIPS,
+            );
+            break;
+          }
+          remainingMemberships.push(...chunkMemberships);
+        }
 
         if (remainingMembershipsError) {
           reportError(
@@ -599,32 +659,42 @@ export async function POST(request: Request) {
             }
           }
 
-          await Promise.all(memberUserIds.map(async (memberId) => {
-            try {
-              const { error: updateError } = await supabaseAdmin
-                .from('users')
-                .update({
-                  group_keyword: Array.from(
-                    keywordSetsByUserId.get(memberId) ?? [],
-                  ),
-                })
-                .eq('id', memberId);
+          for (
+            let offset = 0;
+            offset < memberUserIds.length;
+            offset += GROUP_DELETE_LEGACY_UPDATE_BATCH_SIZE
+          ) {
+            const updateBatch = memberUserIds.slice(
+              offset,
+              offset + GROUP_DELETE_LEGACY_UPDATE_BATCH_SIZE,
+            );
+            await Promise.all(updateBatch.map(async (memberId) => {
+              try {
+                const { error: updateError } = await supabaseAdmin
+                  .from('users')
+                  .update({
+                    group_keyword: Array.from(
+                      keywordSetsByUserId.get(memberId) ?? [],
+                    ),
+                  })
+                  .eq('id', memberId);
 
-              if (updateError) {
+                if (updateError) {
+                  reportError(
+                    'user/group:delete_group:legacy_update',
+                    updateError,
+                    { groupId: group.id, memberId },
+                  );
+                }
+              } catch (updateError) {
                 reportError(
                   'user/group:delete_group:legacy_update',
                   updateError,
                   { groupId: group.id, memberId },
                 );
               }
-            } catch (updateError) {
-              reportError(
-                'user/group:delete_group:legacy_update',
-                updateError,
-                { groupId: group.id, memberId },
-              );
-            }
-          }));
+            }));
+          }
         }
       }
 

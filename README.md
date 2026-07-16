@@ -67,6 +67,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **Edge Runtime 必須**: すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` を宣言
 - **supabaseAdmin**: サーバーサイドの DB アクセスはサービスロールキーを使用
 - **型安全性契約**: 外部データは具体型または `unknown` + 型ガードで扱い、Supabaseの選択列・RPC応答は`types/database.ts`のDatabase型から射影する。明示的な`any`と`no-explicit-any`抑制は使用しない
+- **PostgREST全件取得契約**: 1000行を超え得るSELECTは`lib/supabase-utils.ts`の`fetchAllWithPagination`と一意なstable orderを使い、有限上限内の全ページ成功後だけ結果を利用する。大量UUIDの`.in()`は100件以下へchunkし、全chunk取得完了前に派生更新を始めない
 - **Dual-Library Strategy**: Google Health を明示的に接続したユーザーは同APIを優先し、未接続または明示解除したユーザーはFitbitを継続利用。再認証待ち・エラー時はデータ混在を避けるため暗黙切替しない
 - **責務分離**: 認証IDの継続照合記録 (`user_auth_identities`) と健康データ接続 (`fitness_connections`) を分離する。ログインは `provider + provider_account_id` だけで照合し、メール一致による暗黙リンクは行わない
 - **OAuthコールバック保護**: Google HealthのOAuth stateは有効期限・nonce・開始ユーザーIDをHMAC署名へ含め、コールバック時のセッションユーザー不一致をトークン交換前に拒否する。Google Health IDの継続性確認、更新トークン保持、資格情報保存はユーザー行ロック下の単一DB関数で原子的に行う

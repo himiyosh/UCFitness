@@ -44,6 +44,7 @@ UCFitness の主な変更をこのファイルに記録します。
 - Safariのlocalhost CSSをHTTPSへ変換していた開発CSPを修正
 - Serverとブラウザの日付差、不正なDOM入れ子、全画面ローダーによる水和・表示問題を修正
 - Vitestの`vmForks`でテストファイル間のSupabaseモックが漏れる問題を、`forks` + 明示的なファイル分離へ変更して修正
+- グループ削除時のPostgREST既定1000行切り捨てを修正。削除前後のmembershipをstable paginationと100件UUID chunkで全件取得し、途中失敗・安全上限超過では部分データによるlegacy keyword更新を行わない
 
 ### セキュリティ
 

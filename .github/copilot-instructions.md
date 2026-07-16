@@ -1486,3 +1486,10 @@ export const runtime = "edge";
 - **根本原因**: repository URLの一致をprojectの同一性と誤認し、ユーザー画面上のproject名、project ID / 内部名、main path、対象cwdを子セッション作成前に照合しなかった。初期化失敗時の停止条件もなく、別projectを安全なfallbackとして扱った。
 - **対策**: セッション作成・委任前の同一性確認をproject名、ID / 内部名、main path、cwd、branchの組で必須化する。目的projectの初期化失敗時は別projectへfallbackせず、修復不能なら目的project内の現行セッションで専門agentを直接実行する。別project利用は対象名とmain pathを提示し、ユーザーの明示確認後に限る。
 - **教訓**: GitHub repositoryが同じでも、project、main path、worktree、ユーザーが見ている作業面は別物である。自動復旧は作業場所を変えずに行い、場所の変更は利便性よりユーザーの明示的な選択を優先する。リファレンス: `.github/agents/UCFitnessAgent.agent.md` Session Bootstrap Step B-1、`README.md`「注意事項 / 制約」
+
+### LL-059: PostgRESTの1000行切り捨てを成功と誤認し、部分データでlegacy同期し得た
+
+- **事象**: グループ削除時のN+1解消で、削除前メンバーと削除後の残存membershipを単一SELECTへまとめたが、PostgREST既定上限の1000行を超えると`error: null`のまま正常に切り捨てられ、有効な`users.group_keyword`を消し得た。
+- **根本原因**: `.error`がないことを全件取得成功と同一視し、既存の`fetchAllWithPagination`、ページを跨いでも一意なstable order、有限上限、全ページ・全chunk取得後の書き込み開始を一括最適化へ適用しなかった。大量UUIDを単一`.in()`へ渡し、更新も無制限`Promise.all`にしていた。
+- **対策**: 削除前は`user_id`順で全ページ取得が成功した場合だけ削除する。削除後はuser IDを100件ずつ順次chunkし、各chunkを`user_id, group_id`の一意順でページ取得する。途中error・有限上限超過・DB失敗では部分データを捨て、削除成功は維持しつつlegacy更新を全件スキップして`reportError`する。全件取得後の更新も20件固定batchへ制限した。
+- **教訓**: PostgRESTの1000行切り捨てはエラーにならない。1000行を超え得る全件SELECTは`fetchAllWithPagination`と一意なstable orderを必須とし、`.in()`は固定件数へchunkする。全ページ・全chunk成功前に不可逆操作や派生書き込みを始めず、helperが返すerror時の部分dataは使用しない。リファレンス: `app/api/user/group/route.ts`, `app/api/user/group/route.test.ts`, `lib/supabase-utils.ts`
