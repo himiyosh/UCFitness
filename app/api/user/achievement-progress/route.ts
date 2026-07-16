@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
-import { NextRequest, NextResponse } from 'next/server';
 import { reportError } from '@/lib/errors';
+import { supabaseAdmin } from '@/lib/supabase';
+import { isValidUUID } from '@/lib/validation';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * アチーブメント進捗データ定義
@@ -78,8 +79,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    if (!userId || typeof userId !== 'string') {
+    if (!userId) {
         return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
+    if (!isValidUUID(userId)) {
+        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
 
     try {
