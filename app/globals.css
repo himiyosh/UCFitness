@@ -14,8 +14,8 @@
 
 /* --- グローバルフォント & スムージング --- */
 body {
-  font-family: var(--font-inter), var(--font-noto-sans-jp), -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-inter), "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    Meiryo, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -1434,7 +1434,7 @@ html {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  --font-sans: "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   --font-mono: var(--font-geist-mono);
   /* Accent Colors for Tailwind */
   --color-coral: var(--accent-coral);
@@ -1456,7 +1456,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   transform: none;
   transform-origin: top left;
   width: 100%;
@@ -3144,24 +3144,6 @@ body::before {
   transform-origin: center bottom;
 }
 
-@keyframes landingHeroCopyIn {
-  from {
-    transform: translate3d(0, 14px, 0);
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes landingHeroPreviewIn {
-  from {
-    transform: translate3d(20px, 0, 0) scale(0.985);
-  }
-  to {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-}
-
 @keyframes landingOrbitPlay {
   0%,
   100% {
@@ -3244,14 +3226,6 @@ body::before {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .landing-hero-copy {
-    animation: landingHeroCopyIn 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  .landing-hero-preview {
-    animation: landingHeroPreviewIn 820ms 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
   .landing-sync-dot {
     animation: landingSyncPulse 900ms 750ms ease-out 2;
   }
@@ -3312,8 +3286,6 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-hero-copy,
-  .landing-hero-preview,
   .landing-orbit,
   .landing-sync-dot,
   .landing-step-ring,

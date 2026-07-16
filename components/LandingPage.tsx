@@ -1,20 +1,17 @@
-'use client';
+import { getTranslations } from 'next-intl/server';
 
-import { useEffect, useState } from 'react';
-import type { KeyboardEvent, MouseEvent, UIEvent } from 'react';
-import { useSearchParams } from 'next/navigation';
-
-import { useLocale, useTranslations } from 'next-intl';
-
-import { usePathname, useRouter } from '@/navigation';
 import {
-    AUTH_CALLBACK_STORAGE_KEY,
     getAuthErrorMessageKey,
-    getLocaleSwitchQuery,
     getSafeAuthCallbackPath,
 } from '@/lib/auth-flow';
 
 import AuthButtons from '@/components/auth/AuthButtons';
+import {
+    EscapeClosableDetails,
+    LandingHeaderControls,
+    LandingProofScroller,
+} from '@/components/landing/LandingInteractions';
+import StoredCallbackAuthButtons from '@/components/landing/StoredCallbackAuthButtons';
 
 interface BenefitItem {
     metric: string;
@@ -64,62 +61,18 @@ interface AuthErrorContext {
     action: string;
 }
 
-type LandingTranslations = ReturnType<typeof useTranslations<'Landing'>>;
+type LandingTranslations = Awaited<ReturnType<typeof getTranslations<'Landing'>>>;
 
-export default function LandingPage() {
-    const t = useTranslations('Landing');
-    const footerT = useTranslations('Footer');
-    const locale = useLocale();
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const [switching, setSwitching] = useState(false);
-    const [showProofScrollCue, setShowProofScrollCue] = useState(true);
-    const [storedAuthCallbackUrl, setStoredAuthCallbackUrl] = useState<string | undefined>(() => {
-        if (typeof window === 'undefined') return undefined;
-        const storedPath = window.sessionStorage.getItem(AUTH_CALLBACK_STORAGE_KEY);
-        return storedPath ? getSafeAuthCallbackPath(storedPath, locale) : undefined;
-    });
+interface LandingPageProps {
+    locale: string;
+    searchParams: Record<string, string | string[] | undefined>;
+}
 
-    useEffect(() => {
-        setSwitching(false);
-    }, [locale]);
-
-    useEffect(() => {
-        if (!switching) return;
-        const timer = setTimeout(() => setSwitching(false), 5000);
-        return () => clearTimeout(timer);
-    }, [switching]);
-
-    const toggleLocale = () => {
-        if (switching) return;
-        const next = locale === 'ja' ? 'en' : 'ja';
-        const query = getLocaleSwitchQuery(searchParams.toString(), next);
-        const href = query ? `${pathname}?${query}` : pathname;
-        setSwitching(true);
-        router.replace(href, { locale: next });
-    };
-
-    const handleNavClick = (event: MouseEvent<HTMLAnchorElement>): void => {
-        event.currentTarget.closest('details')?.removeAttribute('open');
-        const targetId = event.currentTarget.hash.slice(1);
-        window.requestAnimationFrame(() => {
-            document.getElementById(targetId)?.focus({ preventScroll: true });
-        });
-    };
-
-    const handleMobileNavKeyDown = (event: KeyboardEvent<HTMLDetailsElement>): void => {
-        if (event.key !== 'Escape' || !event.currentTarget.open) return;
-        event.preventDefault();
-        event.currentTarget.open = false;
-        event.currentTarget.querySelector('summary')?.focus();
-    };
-
-    const handleProofScroll = (event: UIEvent<HTMLDListElement>): void => {
-        const { clientWidth, scrollLeft, scrollWidth } = event.currentTarget;
-        const shouldShowCue = scrollLeft + clientWidth < scrollWidth - 1;
-        setShowProofScrollCue((current) => current === shouldShowCue ? current : shouldShowCue);
-    };
+export default async function LandingPage({ locale, searchParams }: LandingPageProps) {
+    const [t, footerT] = await Promise.all([
+        getTranslations('Landing'),
+        getTranslations('Footer'),
+    ]);
 
     const benefits: BenefitItem[] = [
         {
@@ -201,10 +154,13 @@ export default function LandingPage() {
             description: t('journey.reward.desc'),
         },
     ];
-    const authContext = searchParams.get('auth') === 'required'
-        ? getAuthContext(searchParams.get('next'), locale, t)
+    const authParam = getSearchParam(searchParams.auth);
+    const nextParam = getSearchParam(searchParams.next);
+    const errorParam = getSearchParam(searchParams.error);
+    const authContext = authParam === 'required'
+        ? getAuthContext(nextParam, locale, t)
         : null;
-    const authErrorKey = getAuthErrorMessageKey(searchParams.get('error'));
+    const authErrorKey = getAuthErrorMessageKey(errorParam);
     const authErrorContext = authErrorKey
         ? {
             title: t(`authError.${authErrorKey}.title`),
@@ -212,17 +168,6 @@ export default function LandingPage() {
             action: t('authError.action'),
         }
         : null;
-
-    useEffect(() => {
-        if (!authErrorKey || authContext?.callbackUrl) {
-            setStoredAuthCallbackUrl(undefined);
-            return;
-        }
-        const storedPath = window.sessionStorage.getItem(AUTH_CALLBACK_STORAGE_KEY);
-        setStoredAuthCallbackUrl(
-            storedPath ? getSafeAuthCallbackPath(storedPath, locale) : undefined,
-        );
-    }, [authContext?.callbackUrl, authErrorKey, locale]);
 
     return (
         <div className="min-h-screen overflow-x-clip bg-[var(--color-bg)] pt-14 text-[var(--color-text)] sm:pt-16">
@@ -243,63 +188,12 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-3">
-                        <nav aria-label={t('nav.label')} className="hidden lg:block">
-                            <ul className="flex items-center gap-5">
-                                {navItems.map((item) => (
-                                    <li key={item.href}>
-                                        <a
-                                            href={item.href}
-                                            onClick={handleNavClick}
-                                            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-1 text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-primary-strong)] focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-                                        >
-                                            {item.label}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
-                        </nav>
-                        <details className="group relative lg:hidden" onKeyDown={handleMobileNavKeyDown}>
-                            <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
-                                <span className="sr-only">{t('nav.label')}</span>
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                                    <path strokeLinecap="round" d="M5 7h14M5 12h14M5 17h14" />
-                                </svg>
-                            </summary>
-                            <nav
-                                aria-label={t('nav.label')}
-                                className="absolute right-0 top-[calc(100%+0.5rem)] z-30 hidden w-52 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg group-open:block"
-                            >
-                                <ul className="grid gap-1">
-                                    {navItems.map((item) => (
-                                        <li key={item.href}>
-                                            <a
-                                                href={item.href}
-                                                onClick={handleNavClick}
-                                                className="flex min-h-[44px] items-center rounded-xl px-3 text-sm font-semibold text-[var(--color-text)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-                                            >
-                                                {item.label}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </nav>
-                        </details>
-                        <button
-                            onClick={toggleLocale}
-                            disabled={switching}
-                            aria-label={locale === 'ja' ? 'Switch to English' : '日本語に切り替え'}
-                            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
-                        >
-                            {switching && (
-                                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                            )}
-                            {locale === 'ja' ? 'English' : '日本語'}
-                        </button>
-                    </div>
+                    <LandingHeaderControls
+                        locale={locale}
+                        navItems={navItems}
+                        navLabel={t('nav.label')}
+                        switchLabel={locale === 'ja' ? 'Switch to English' : '日本語に切り替え'}
+                    />
                 </div>
             </header>
 
@@ -311,7 +205,7 @@ export default function LandingPage() {
                 {authErrorContext && (
                     <AuthErrorNotice
                         context={authErrorContext}
-                        callbackUrl={authContext?.callbackUrl ?? storedAuthCallbackUrl}
+                        callbackUrl={authContext?.callbackUrl}
                     />
                 )}
                 {authContext && <AuthGateNotice context={authContext} />}
@@ -337,7 +231,7 @@ export default function LandingPage() {
                                     <span className="block">{t('headlinePart1')}</span>
                                     <span className="block text-[var(--color-primary-strong)]">{t('headlinePart2')}</span>
                                 </h1>
-                                <p className="mt-4 max-w-xl text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base sm:leading-7">
+                                <p className="mt-4 max-w-xl text-pretty text-base leading-7 text-[var(--color-text-muted)]">
                                     {t('heroDesc')}
                                 </p>
 
@@ -369,24 +263,11 @@ export default function LandingPage() {
 
                 <section id="proof" tabIndex={-1} aria-label={t('statsLabel')} className="scroll-mt-16 bg-[var(--color-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]">
                     <div className="relative mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 sm:py-10 lg:px-8">
-                        <p id="landing-proof-scroll-hint" className="sr-only sm:hidden">{t('statsScrollHint')}</p>
-                        <dl
-                            tabIndex={0}
-                            aria-label={t('statsLabel')}
-                            aria-describedby="landing-proof-scroll-hint"
-                            onScroll={handleProofScroll}
-                            className="flex w-full min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto pb-1 focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] sm:hidden"
-                        >
+                        <LandingProofScroller label={t('statsLabel')} hint={t('statsScrollHint')}>
                             {proofItems.map((item) => (
                                 <ProofTile key={item.label} item={item} />
                             ))}
-                        </dl>
-                        <span
-                            aria-hidden="true"
-                            className={`pointer-events-none absolute right-1 top-1/2 flex h-8 w-4 -translate-y-1/2 items-center justify-center text-xl font-black text-[var(--color-reward-strong)] transition-opacity sm:hidden ${showProofScrollCue ? 'opacity-100' : 'opacity-0'}`}
-                        >
-                            →
-                        </span>
+                        </LandingProofScroller>
                         <dl aria-label={t('statsLabel')} className="hidden w-full min-w-0 sm:grid sm:grid-cols-2 sm:gap-4">
                             {proofItems.map((item) => (
                                 <ProofTile key={item.label} item={item} />
@@ -395,130 +276,15 @@ export default function LandingPage() {
                     </div>
                 </section>
 
-                <section
-                    id="how-it-works"
-                    tabIndex={-1}
-                    aria-labelledby="landing-journey-title"
-                    className="scroll-mt-16 border-y border-[var(--color-border)] bg-[var(--color-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
-                >
-                    <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-start lg:gap-14 lg:px-8 lg:py-16">
-                        <div className="max-w-xl lg:sticky lg:top-28">
-                            <p className="text-sm font-bold text-[var(--color-competition-strong)]">{t('journeyLabel')}</p>
-                            <h2 id="landing-journey-title" className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
-                                {t('journeyTitle')}
-                            </h2>
-                            <p className="mt-3 max-w-lg text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
-                                {t('journeyDesc')}
-                            </p>
-                        </div>
-                        <ol className="grid gap-4 sm:grid-cols-2 sm:gap-5">
-                            {journeyItems.map((item, index) => (
-                                <JourneyCard key={item.label} item={item} index={index} />
-                            ))}
-                        </ol>
-                    </div>
-                </section>
-
-                <section className="bg-[var(--color-surface)]">
-                    <div className="mx-auto grid w-full max-w-7xl items-center gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:gap-14 lg:px-8 lg:py-16">
-                        <div className="min-w-0">
-                            <p className="text-sm font-semibold text-[var(--color-competition-strong)]">{t('showcaseLabel')}</p>
-                            <h2 className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
-                                {t('showcaseTitle')}
-                            </h2>
-                            <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
-                                {t('showcaseDesc')}
-                            </p>
-                            <div className="mt-6 space-y-4">
-                                <ShowcaseCard title={t('showcase.today.title')} description={t('showcase.today.desc')} index={0} />
-                                <ShowcaseCard title={t('showcase.league.title')} description={t('showcase.league.desc')} index={1} />
-                            </div>
-                        </div>
-                        <div className="landing-showcase-stage relative grid grid-cols-[1.15fr_0.85fr] gap-3 overflow-hidden rounded-[2rem] bg-[var(--color-primary-soft)] p-4 lg:block lg:min-h-80 lg:p-6">
-                            <div className="h-40 lg:h-52 lg:w-[72%]">
-                                <MiniDashboardGraphic t={t} />
-                            </div>
-                            <div className="h-40 lg:absolute lg:bottom-6 lg:right-6 lg:h-36 lg:w-[48%]">
-                                <MiniLeagueGraphic />
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section
-                    id="rewards"
-                    tabIndex={-1}
-                    aria-labelledby="landing-rewards-title"
-                    className="scroll-mt-16 bg-[var(--color-reward-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
-                >
-                    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-16">
-                        <div className="max-w-2xl">
-                            <p className="text-sm font-bold text-[var(--color-reward-strong)]">{t('rewardPreview.label')}</p>
-                            <h2 id="landing-rewards-title" className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
-                                {t('rewardPreview.title')}
-                            </h2>
-                            <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-[var(--color-reward-strong)] sm:text-base">
-                                {t('rewardPreview.desc')}
-                            </p>
-                        </div>
-                        <ol className="mt-6 grid gap-4 sm:grid-cols-3 lg:mt-8 lg:gap-8">
-                            {rewardPreviewItems.map((item, index) => (
-                                <RewardPreviewCard key={item.label} item={item} index={index} />
-                            ))}
-                        </ol>
-                    </div>
-                </section>
-
-                <section className="relative overflow-hidden bg-[var(--color-primary-solid)] text-[var(--color-inverse-text)]">
-                    <div className="pointer-events-none absolute -right-16 -top-20 hidden h-56 w-56 rounded-full bg-white/10 lg:block" aria-hidden="true" />
-                    <div className="relative mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8 xl:py-12">
-                        <details className="group xl:hidden">
-                            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-primary-solid)] [&::-webkit-details-marker]:hidden">
-                                <h2 className="text-balance text-lg font-black tracking-tight text-white">
-                                    {t('benefitsTitle')}
-                                </h2>
-                                <svg className="h-5 w-5 shrink-0 text-white transition-transform duration-200 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-                                </svg>
-                            </summary>
-                            <BenefitList benefits={benefits} compact />
-                            <div className="mt-5 border-t border-white/30 pt-4">
-                                <p className="text-sm font-bold text-white">{t('trustLabel')}</p>
-                                <ul className="mt-3 grid gap-2">
-                                    <TrustItem label={t('trust.fitbit')} className="flex" inverse />
-                                    <TrustItem label={t('trust.privacy')} className="flex" inverse />
-                                    <TrustItem label={t('trust.pwa')} className="flex" inverse />
-                                    <TrustItem label={t('trust.i18n')} className="flex" inverse />
-                                </ul>
-                            </div>
-                        </details>
-                        <div className="hidden xl:block">
-                            <h2 className="max-w-2xl text-balance text-2xl font-black tracking-tight sm:text-3xl">
-                                {t('benefitsTitle')}
-                            </h2>
-                            <BenefitList benefits={benefits} />
-                        </div>
-                    </div>
-                </section>
-
-                <section id="start" className="scroll-mt-16 bg-[var(--color-play-soft)] sm:scroll-mt-[4.25rem]">
-                    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12 md:flex-row md:items-center md:justify-between lg:px-8">
-                        <div className="max-w-3xl">
-                            <h2 className="text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
-                                {t('finalCta.title')}
-                            </h2>
-                            <p className="mt-3 text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
-                                {t('finalCta.desc')}
-                            </p>
-                        </div>
-                        <div className="shrink-0">
-                            <AuthButtons
-                                callbackUrl={authContext?.callbackUrl ?? storedAuthCallbackUrl}
-                                label={authErrorContext?.action}
-                            />
-                        </div>
-                    </div>
-                </section>
+                <DeferredLandingSections
+                    t={t}
+                    journeyItems={journeyItems}
+                    rewardPreviewItems={rewardPreviewItems}
+                    benefits={benefits}
+                    callbackUrl={authContext?.callbackUrl}
+                    authAction={authErrorContext?.action}
+                    restoreStoredCallback={Boolean(authErrorContext)}
+                />
             </main>
 
             <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
@@ -541,6 +307,156 @@ export default function LandingPage() {
     );
 }
 
+interface DeferredLandingSectionsProps {
+    t: LandingTranslations;
+    journeyItems: JourneyItem[];
+    rewardPreviewItems: RewardPreviewItem[];
+    benefits: BenefitItem[];
+    callbackUrl?: string;
+    authAction?: string;
+    restoreStoredCallback: boolean;
+}
+
+function DeferredLandingSections({
+    t,
+    journeyItems,
+    rewardPreviewItems,
+    benefits,
+    callbackUrl,
+    authAction,
+    restoreStoredCallback,
+}: DeferredLandingSectionsProps) {
+    return (
+        <>
+            <section
+                id="how-it-works"
+                tabIndex={-1}
+                aria-labelledby="landing-journey-title"
+                className="scroll-mt-16 border-y border-[var(--color-border)] bg-[var(--color-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
+            >
+                <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-start lg:gap-14 lg:px-8 lg:py-16">
+                    <div className="max-w-xl lg:sticky lg:top-28">
+                        <p className="text-sm font-bold text-[var(--color-competition-strong)]">{t('journeyLabel')}</p>
+                        <h2 id="landing-journey-title" className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                            {t('journeyTitle')}
+                        </h2>
+                        <p className="mt-3 max-w-lg text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
+                            {t('journeyDesc')}
+                        </p>
+                    </div>
+                    <ol className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+                        {journeyItems.map((item, index) => (
+                            <JourneyCard key={item.label} item={item} index={index} />
+                        ))}
+                    </ol>
+                </div>
+            </section>
+
+            <section className="bg-[var(--color-surface)]">
+                <div className="mx-auto grid w-full max-w-7xl items-center gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:gap-14 lg:px-8 lg:py-16">
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--color-competition-strong)]">{t('showcaseLabel')}</p>
+                        <h2 className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                            {t('showcaseTitle')}
+                        </h2>
+                        <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
+                            {t('showcaseDesc')}
+                        </p>
+                        <div className="mt-6 space-y-4">
+                            <ShowcaseCard title={t('showcase.today.title')} description={t('showcase.today.desc')} index={0} />
+                            <ShowcaseCard title={t('showcase.league.title')} description={t('showcase.league.desc')} index={1} />
+                        </div>
+                    </div>
+                    <div className="landing-showcase-stage relative grid grid-cols-[1.15fr_0.85fr] gap-3 overflow-hidden rounded-[2rem] bg-[var(--color-primary-soft)] p-4 lg:block lg:min-h-80 lg:p-6">
+                        <div className="h-40 lg:h-52 lg:w-[72%]">
+                            <MiniDashboardGraphic t={t} />
+                        </div>
+                        <div className="h-40 lg:absolute lg:bottom-6 lg:right-6 lg:h-36 lg:w-[48%]">
+                            <MiniLeagueGraphic />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                id="rewards"
+                tabIndex={-1}
+                aria-labelledby="landing-rewards-title"
+                className="scroll-mt-16 bg-[var(--color-reward-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] sm:scroll-mt-[4.25rem]"
+            >
+                <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-16">
+                    <div className="max-w-2xl">
+                        <p className="text-sm font-bold text-[var(--color-reward-strong)]">{t('rewardPreview.label')}</p>
+                        <h2 id="landing-rewards-title" className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                            {t('rewardPreview.title')}
+                        </h2>
+                        <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-[var(--color-reward-strong)] sm:text-base">
+                            {t('rewardPreview.desc')}
+                        </p>
+                    </div>
+                    <ol className="mt-6 grid gap-4 sm:grid-cols-3 lg:mt-8 lg:gap-8">
+                        {rewardPreviewItems.map((item, index) => (
+                            <RewardPreviewCard key={item.label} item={item} index={index} />
+                        ))}
+                    </ol>
+                </div>
+            </section>
+
+            <section className="relative overflow-hidden bg-[var(--color-primary-solid)] text-[var(--color-inverse-text)]">
+                <div className="pointer-events-none absolute -right-16 -top-20 hidden h-56 w-56 rounded-full bg-white/10 lg:block" aria-hidden="true" />
+                <div className="relative mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8 xl:py-12">
+                    <EscapeClosableDetails className="group xl:hidden">
+                        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-primary-solid)] [&::-webkit-details-marker]:hidden">
+                            <h2 className="text-balance text-lg font-black tracking-tight text-white">
+                                {t('benefitsTitle')}
+                            </h2>
+                            <svg className="h-5 w-5 shrink-0 text-white transition-transform duration-200 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                            </svg>
+                        </summary>
+                        <BenefitList benefits={benefits} compact />
+                        <div className="mt-5 border-t border-white/30 pt-4">
+                            <p className="text-sm font-bold text-white">{t('trustLabel')}</p>
+                            <ul className="mt-3 grid gap-2">
+                                <TrustItem label={t('trust.fitbit')} className="flex" inverse />
+                                <TrustItem label={t('trust.privacy')} className="flex" inverse />
+                                <TrustItem label={t('trust.pwa')} className="flex" inverse />
+                                <TrustItem label={t('trust.i18n')} className="flex" inverse />
+                            </ul>
+                        </div>
+                    </EscapeClosableDetails>
+                    <div className="hidden xl:block">
+                        <h2 className="max-w-2xl text-balance text-2xl font-black tracking-tight sm:text-3xl">
+                            {t('benefitsTitle')}
+                        </h2>
+                        <BenefitList benefits={benefits} />
+                    </div>
+                </div>
+            </section>
+
+            <section id="start" className="scroll-mt-16 bg-[var(--color-play-soft)] sm:scroll-mt-[4.25rem]">
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12 md:flex-row md:items-center md:justify-between lg:px-8">
+                    <div className="max-w-3xl">
+                        <h2 className="text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                            {t('finalCta.title')}
+                        </h2>
+                        <p className="mt-3 text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
+                            {t('finalCta.desc')}
+                        </p>
+                    </div>
+                    <div className="shrink-0">
+                        <StoredCallbackAuthButtons
+                            callbackUrl={callbackUrl}
+                            label={authAction}
+                            restoreStoredCallback={restoreStoredCallback}
+                        />
+                    </div>
+                </div>
+            </section>
+        </>
+    );
+}
+
 function getAuthContext(nextPath: string | null, locale: string, t: LandingTranslations): AuthContext | null {
     const safeNextPath = getSafeAuthCallbackPath(nextPath, locale);
     if (!nextPath) return null;
@@ -551,6 +467,10 @@ function getAuthContext(nextPath: string | null, locale: string, t: LandingTrans
         description: t(`authGate.${contextKey}.desc`),
         callbackUrl: safeNextPath,
     };
+}
+
+function getSearchParam(value: string | string[] | undefined): string | null {
+    return typeof value === 'string' ? value : null;
 }
 
 function getAuthContextKey(nextPath: string): string {
@@ -596,7 +516,11 @@ function AuthErrorNotice({
                     </p>
                 </div>
                 <div className="mt-3">
-                    <AuthButtons callbackUrl={callbackUrl} label={context.action} />
+                    <StoredCallbackAuthButtons
+                        callbackUrl={callbackUrl}
+                        label={context.action}
+                        restoreStoredCallback
+                    />
                 </div>
             </div>
         </section>
@@ -763,7 +687,7 @@ function BenefitIcon({ index }: { index: number }) {
     );
 }
 
-function ProductPreview({ t }: { t: ReturnType<typeof useTranslations<'Landing'>> }) {
+function ProductPreview({ t }: { t: LandingTranslations }) {
     return (
         <figure
             aria-label={t('showcase.today.title')}

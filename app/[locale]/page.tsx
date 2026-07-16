@@ -11,21 +11,21 @@ import { reportError } from '@/lib/errors';
 import { getCachedGlobalRankingMap } from '@/lib/services/ranking-service';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Link } from '@/navigation';
-import AutoSync from '@/components/AutoSync';
-import DailyMissions from '@/components/dashboard/DailyMissions';
-import DashboardChallenges from '@/components/dashboard/DashboardChallenges';
-import DashboardFollowing from '@/components/dashboard/DashboardFollowing';
 import Footer from '@/components/layout/Footer';
 import LandingPage from '@/components/LandingPage';
-import QuickActions from '@/components/dashboard/QuickActions';
-import HomeHero from '@/components/dashboard/HomeHero';
-import RefreshButton from '@/components/layout/RefreshButton';
-import UserMenu from '@/components/layout/UserMenu';
-import UserAvatar from '@/components/UserAvatar';
 
 import type { ReactNode } from 'react';
 
-// ⚡ パフォーマンス: 補助的なクライアント機能だけを遅延読み込み
+// 未認証LPの初期JSへ認証ホーム専用のClient Componentsを混在させない。
+const AutoSync = nextDynamic(() => import('@/components/AutoSync'));
+const DailyMissions = nextDynamic(() => import('@/components/dashboard/DailyMissions'));
+const DashboardChallenges = nextDynamic(() => import('@/components/dashboard/DashboardChallenges'));
+const DashboardFollowing = nextDynamic(() => import('@/components/dashboard/DashboardFollowing'));
+const QuickActions = nextDynamic(() => import('@/components/dashboard/QuickActions'));
+const HomeHero = nextDynamic(() => import('@/components/dashboard/HomeHero'));
+const RefreshButton = nextDynamic(() => import('@/components/layout/RefreshButton'));
+const UserMenu = nextDynamic(() => import('@/components/layout/UserMenu'));
+const UserAvatar = nextDynamic(() => import('@/components/UserAvatar'));
 const LoginBonusToast = nextDynamic(() => import('@/components/auth/LoginBonusToast'));
 const NotificationBell = nextDynamic(() => import('@/components/layout/NotificationBell'));
 
@@ -33,17 +33,25 @@ const LEADERBOARD_PREVIEW_MIN_ROWS = 5;
 
 export const dynamic = 'force-dynamic';
 
-export default async function Home(): Promise<ReactNode> {
-  const [session, t, commonT, locale] = await Promise.all([
+interface HomePageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function Home({ searchParams }: HomePageProps): Promise<ReactNode> {
+  const [session, locale, resolvedSearchParams] = await Promise.all([
     auth(),
-    getTranslations('Dashboard'),
-    getTranslations('Common'),
     getLocale(),
+    searchParams,
   ]);
 
   if (!session?.user) {
-    return <LandingPage />;
+    return <LandingPage locale={locale} searchParams={resolvedSearchParams} />;
   }
+
+  const [t, commonT] = await Promise.all([
+    getTranslations('Dashboard'),
+    getTranslations('Common'),
+  ]);
 
   const userId = session.user.id;
   let username = '';

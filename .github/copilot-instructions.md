@@ -40,6 +40,9 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - **CSS 方針**: 既存の Tailwind + CSS カスタムプロパティを維持しつつ、状態表現は不要な JS state より `:has()` / `:where()` / `:not()` 等のブラウザ標準セレクタを優先する。ただしセレクタは狭く保ち、`body:has(...)` のような広域監視は避ける
 - **レイアウト方針**: 固定幅・固定高さより intrinsic sizing、`aspect-ratio`、`minmax()`、container query units、`min-width: 0` を優先し、横スクロールと CLS を防ぐ
 - **パフォーマンス方針**: Above-the-fold の LCP 画像は lazy load しない。必要な `width` / `height` / `sizes` / `fetchpriority` を明示する。長いクライアント処理は 50ms を目安に分割し、重い処理は `scheduler.yield()` フォールバックまたは Web Worker を検討する
+- **公開面はServer-first**: 未認証LPの静的本文・翻訳はServer Componentで描画し、言語切替、ブラウザ保存値、局所スクロールなどにClient islandを限定する。ページ全体を`'use client'`へ戻さない
+- **日本語Webフォントを無測定でグローバル配信しない**: `next/font`で日本語フォントを複数weight指定すると、unicode-range CSSとフォント転送がLCPを支配し得る。本文はHiragino Sans / Yu Gothic / Meiryoのシステムスタックを既定とし、Webフォント採用時は生成CSSサイズ、転送量、Fast 3G相当のLCPを実測する。リファレンス: `app/[locale]/layout.tsx`, `app/globals.css`
+- **テキストLCP候補を初期モーションで遅延させない**: ファーストビューの主要見出し・説明へ初期`opacity`や`transform`アニメーションを適用せず、LighthouseのLCP要素とelement render delayを確認する。リファレンス: `components/LandingPage.tsx`
 - **content-visibility 方針**: 長いリストや下部の重いセクションに限定して `content-visibility: auto` + `contain-intrinsic-size` を検討する。ファーストビューや検索・アクセシビリティ上 discoverable であるべき内容には安易に使わない
 
 #### Import 整理ルール

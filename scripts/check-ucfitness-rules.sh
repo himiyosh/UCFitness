@@ -697,7 +697,7 @@ if ! grep -Fq 'error: "/"' lib/auth.ts || \
    ! grep -Fq 'signIn: "/"' lib/auth.ts || \
    [ "$(grep -c 'throw new CallbackRouteError' lib/auth.ts)" -lt 2 ] || \
    ! grep -q 'getAuthErrorMessageKey' components/LandingPage.tsx || \
-   ! grep -q 'getLocaleSwitchQuery' components/LandingPage.tsx || \
+   ! grep -q 'getLocaleSwitchQuery' components/landing/LandingInteractions.tsx || \
    ! grep -q 'AUTH_CALLBACK_STORAGE_KEY' components/auth/AuthButtons.tsx || \
    ! grep -q 'getPostSetupReturnPath' 'app/[locale]/setup/page.tsx' || \
    ! grep -q "t('startFirstQuest')" 'app/[locale]/setup/page.tsx' || \

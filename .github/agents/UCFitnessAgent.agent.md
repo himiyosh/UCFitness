@@ -1074,6 +1074,9 @@ Playwright テストを `runSubagent` で委任する際は以下のプロンプ
 7. **INP 改善** — 50ms を超えるクライアント処理は分割し、`scheduler.yield()` + `setTimeout` フォールバック、または Web Worker を検討する
 8. **CSS containment** — 長いリストや重い下部セクションでは `content-visibility: auto` + `contain-intrinsic-size` を検討する。ファーストビューには使わない
 9. **レイアウトスラッシング禁止** — DOM read (`getBoundingClientRect` 等) と write (`style` 更新等) を同じループで交互に実行しない。読む処理と書く処理を分離する
+10. **Server-first境界** — 公開面の静的本文・翻訳はServer Componentへ置き、Client islandをブラウザ状態が必要な操作へ限定する。分割後は認証callback・locale切替・SSR/hydrationを回帰確認する
+11. **日本語フォント予算** — 日本語`next/font`を複数weightでグローバル配信しない。採用時はunicode-rangeを含む生成CSSサイズ、フォント転送量、Fast 3G相当のLCPを比較し、システムフォントより悪化する場合は不採用とする
+12. **LCP候補の安定化** — ファーストビューの可視テキストへ初期`opacity`/`transform`アニメーションを付けず、LCP要素とelement render delayをトレースで特定する。見出しサイズ変更だけで数値を合わせず、情報階層と375px foldを同時確認する
 
 ### 🔒 サブエージェント: Security
 
@@ -1392,6 +1395,7 @@ tool_search_tool_regex(pattern="mcp_com_supabase", limit=50)
 | Walletの「今日の入金」が購入後に負数になった | signed amountを入金と呼び、直近60件sliceを当日集計へ流用して獲得/支出/netを分けなかった。チャートも購入込み値を日次獲得と呼んだ | **JST当日全取引を専用取得し、正額獲得・負額支出・純増減を別表示する。** 現在歩数から次UCを示し、パネル障害を分離、履歴説明を前置、チャートを日次純増減へ改称する |
 | Groupsが0歩を順位化し、補助障害でGroup detail全体を停止した | 所属者をランキング参加者と同一視し、バッチ順位へ0歩ユーザーを再注入した。必須認可とメンバー/順位/比較/競争を一括障害境界へ置き、relation形状を型アサーションで隠していた | **正歩数だけを順位化し、ランキング参加人数として表示する。** group/user/membershipだけを必須境界とし、補助取得を個別警告へ分離する。relationは型ガードで正規化し、管理Dialogでも空一覧へ偽装しない。リファレンス: `app/[locale]/groups/[groupId]/page.tsx`, `lib/services/ranking-service.ts` |
 | private groupで非表示の対抗順位障害を警告した | 描画だけを`isPublic`で制御し、全期間の競争データ取得と可用性判定はprivate groupでも実行していた | **取得・可用性・描画の公開範囲を揃える。** グループ対抗順位はpublic groupだけ取得し、private groupでは正常スキップして競争障害を表示しない。リファレンス: `app/[locale]/groups/[groupId]/page.tsx` |
+| 複数weightの日本語`next/font`が公開LPのLCPを支配した | `Noto_Sans_JP`を5weightでグローバル適用し、unicode-rangeを含む約471KBのCSSと約158KBの転送がFast 3G相当のFCP/LCPを遅延させた。ページ全体のClient化とヒーローtransform入場もelement render delayを増やした | **公開LPをServer Component＋最小Client islandsへ分割し、日本語本文をHiragino Sans / Yu Gothic / Meiryoのシステムスタックへ戻す。** Webフォント採用時は生成CSS・転送量・LCPを必ず実測し、ファーストビューの可視テキストへ初期opacity/transformを付けない。リファレンス: `components/LandingPage.tsx`, `components/landing/LandingInteractions.tsx`, `app/[locale]/layout.tsx`, `app/globals.css` |
 
 ---
 

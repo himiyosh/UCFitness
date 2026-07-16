@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Sans_JP } from "next/font/google";
+import { Inter } from "next/font/google";
 
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -43,13 +43,6 @@ const inter = Inter({
   weight: ['700', '800', '900'],
   variable: '--font-inter',
   display: 'swap',
-});
-
-const notoSansJp = Noto_Sans_JP({
-  weight: ['400', '500', '700', '800', '900'],
-  variable: '--font-noto-sans-jp',
-  display: 'swap',
-  preload: false,
 });
 
 async function getShellUser(userId: string | undefined, locale: string): Promise<ShellUser | null> {
@@ -152,7 +145,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body className={`${inter.variable} ${notoSansJp.variable}`}>
+      <body className={inter.variable}>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <ToastProvider>
