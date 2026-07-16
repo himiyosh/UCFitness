@@ -475,6 +475,7 @@ npm run test:coverage
 
 | ドキュメント | 説明 |
 |---|---|
+| [CHANGELOG.md](CHANGELOG.md) | リリース単位の追加・変更・修正・既知制約 |
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Copilot 共通指示 (コーディング規約、ページパターン等) |
 | [docs/PRODUCT.md](docs/PRODUCT.md) | 対象ユーザー、価値提案、ブランド人格、LPの段階的提示・狭幅補助情報の開示・モーション制約 |
 | [docs/professional-ui-redesign-spec.md](docs/professional-ui-redesign-spec.md) | プロ品質 UI への大幅リデザイン設計書（殺風景化フィードバック対応を含む） |
@@ -486,6 +487,8 @@ npm run test:coverage
 
 <details>
 <summary>変更履歴 (クリックで展開)</summary>
+
+詳細な変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
 
 ### v0.1.0 (初期リリース)
 
