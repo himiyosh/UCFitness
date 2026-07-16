@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 interface ImageModalProps {
     src: string | null;
@@ -12,32 +14,14 @@ interface ImageModalProps {
 
 export default function ImageModal({ src, alt = '', isOpen, onClose }: ImageModalProps) {
     const [mounted, setMounted] = useState(false);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    useDialogFocus({ isOpen: isOpen && Boolean(src), onClose, dialogRef, initialFocusRef: closeButtonRef });
 
     useEffect(() => {
         setMounted(true);
     }, []);
-
-    // Prevent scrolling when modal is open
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [isOpen]);
-
-    // Keyboard support: Escape to close
-    useEffect(() => {
-        if (!isOpen) return;
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
 
     const handleBackdropClick = useCallback(() => onClose(), [onClose]);
 
@@ -49,14 +33,16 @@ export default function ImageModal({ src, alt = '', isOpen, onClose }: ImageModa
 
     return createPortal(
         <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={alt || 'Image preview'}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
             onClick={handleBackdropClick}
         >
             <div
-                className="relative max-w-4xl max-h-[90vh] w-auto h-auto overflow-hidden rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label={alt || 'Image preview'}
+                tabIndex={-1}
+                className="relative h-auto max-h-[90dvh] w-auto max-w-4xl overflow-hidden rounded-lg shadow-2xl outline-none animate-in zoom-in-95 duration-200"
                 onClick={handleContentClick}
             >
                 <img
@@ -65,9 +51,10 @@ export default function ImageModal({ src, alt = '', isOpen, onClose }: ImageModa
                     className="max-w-full max-h-[90vh] object-contain"
                 />
                 <button
+                    ref={closeButtonRef}
                     onClick={onClose}
                     aria-label="Close image preview"
-                    className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                    className="absolute right-2 top-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

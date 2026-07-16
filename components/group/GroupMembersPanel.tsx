@@ -1,17 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import { useTranslations } from 'next-intl';
+
 import ImageModal from '@/components/ui/ImageModal';
 import UserAvatar from '@/components/UserAvatar';
 import { useToast } from '@/components/ui/Toast';
-import { useTranslations } from 'next-intl';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+
 import LeaveGroupButton from './LeaveGroupButton';
 
 type Member = {
     user_id: string;
-    role: 'OWNER' | 'MEMBER';
+    role: 'OWNER' | 'ADMIN' | 'MEMBER';
     users: {
         id: string;
         name: string | null;
@@ -58,6 +63,15 @@ export default function GroupMembersPanel({
     const commonT = useTranslations('Common');
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchAbortRef = useRef<AbortController | null>(null);
+    const confirmDialogRef = useRef<HTMLDivElement>(null);
+    const confirmCancelButtonRef = useRef<HTMLButtonElement>(null);
+
+    useDialogFocus({
+        isOpen: Boolean(confirmAction),
+        onClose: () => setConfirmAction(null),
+        dialogRef: confirmDialogRef,
+        initialFocusRef: confirmCancelButtonRef,
+    });
 
     useEffect(() => {
         setMembers(initialMembers);
@@ -195,15 +209,18 @@ export default function GroupMembersPanel({
                     const existingIds = new Set(members.map(m => m.user_id));
                     const filtered = (data.users || []).filter((u: SearchUser) => !existingIds.has(u.id));
                     setSearchResults(filtered);
+                } else {
+                    setSearchResults([]);
+                    toastError(detailT('searchFailed'));
                 }
             } catch (err) {
                 if (err instanceof DOMException && err.name === 'AbortError') return;
-                toastError('Search failed. Please try again.');
+                toastError(detailT('searchFailed'));
             } finally {
                 setIsSearching(false);
             }
         }, 300);
-    }, [members, toastError]);
+    }, [detailT, members, toastError]);
 
     const handleInvite = useCallback(async (userId: string) => {
         setIsProcessing(userId);
@@ -230,7 +247,7 @@ export default function GroupMembersPanel({
             setIsInviteOpen(false);
             router.refresh();
         } catch {
-            toastError('Failed to invite user');
+            toastError(detailT('inviteFailed'));
         } finally {
             setIsProcessing(null);
         }
@@ -293,15 +310,17 @@ export default function GroupMembersPanel({
                 <div className="flex gap-2">
                     {isOwner && (
                         <button
+                            type="button"
                             onClick={() => setIsInviteOpen(!isInviteOpen)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isInviteOpen ? 'bg-[var(--theme-primary)] text-white' : 'text-[var(--theme-primary)] bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20'}`}
+                            className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-strong)] ${isInviteOpen ? 'bg-[var(--color-primary-solid)] text-white' : 'text-[var(--color-primary-strong)] bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] border border-[var(--theme-primary)]/20'}`}
                         >
                             {isInviteOpen ? detailT('close') : detailT('invite')}
                         </button>
                     )}
                     <button
+                        type="button"
                         onClick={onToggleEdit}
-                        className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${isEditing ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
+                        className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-strong)] ${isEditing ? 'bg-gray-800 text-white' : 'text-[var(--color-text-muted)] hover:text-gray-900 hover:bg-gray-100'}`}
                     >
                         {isEditing ? detailT('done') : detailT('edit')}
                     </button>
@@ -313,12 +332,17 @@ export default function GroupMembersPanel({
                 <div className="p-4 bg-[var(--theme-primary-light)] border-b border-[var(--theme-primary)]/20 animate-fade-in">
                     <p className="text-sm text-[var(--theme-primary)] mb-2 font-bold">{detailT('inviteNewMember')}</p>
                     <div className="relative">
+                        <label className="sr-only" htmlFor="group-member-search">
+                            {detailT('searchLabel')}
+                        </label>
                         <input
+                            id="group-member-search"
                             type="text"
                             placeholder={detailT('searchPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => handleSearch(e.target.value)}
-                            className="w-full pl-4 pr-4 py-2 text-sm text-gray-900 border border-[var(--theme-primary)]/30 rounded-lg focus:ring-2 focus:ring-[var(--theme-primary)] outline-none bg-white"
+                            aria-busy={isSearching}
+                            className="min-h-[44px] w-full rounded-lg border border-[var(--theme-primary)]/30 bg-white py-2 pl-4 pr-10 text-base text-gray-900 outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
                         />
                         {isSearching && (
                             <div className="absolute right-3 top-2.5">
@@ -326,6 +350,15 @@ export default function GroupMembersPanel({
                             </div>
                         )}
                     </div>
+                    <p className="sr-only" role="status" aria-live="polite">
+                        {isSearching
+                            ? detailT('searchInProgress')
+                            : searchQuery.length >= 3 && searchResults.length > 0
+                                ? detailT('searchResults', { count: searchResults.length })
+                                : searchQuery.length >= 3
+                                    ? detailT('noUsersFound')
+                                    : ''}
+                    </p>
 
                     {/* Results */}
                     {searchResults.length > 0 && (
@@ -340,9 +373,10 @@ export default function GroupMembersPanel({
                                         </div>
                                     </div>
                                     <button
+                                        type="button"
                                         onClick={() => handleInvite(user.id)}
                                         disabled={!!isProcessing}
-                                        className="text-xs font-bold text-white bg-[var(--theme-primary)] px-3 py-1.5 rounded hover:bg-[var(--theme-primary)]/90 transition-colors disabled:opacity-50"
+                                        className="min-h-[44px] min-w-[44px] rounded-lg bg-[var(--color-primary-solid)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-strong)] focus-visible:ring-offset-2"
                                     >
                                         {isProcessing === user.id ? detailT('adding') : detailT('add')}
                                     </button>
@@ -357,26 +391,29 @@ export default function GroupMembersPanel({
             )}
 
             {/* 確認ダイアログ（alert/confirm の代替） */}
-            {confirmAction && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmAction(null)}>
-                    <div className="bg-white rounded-xl shadow-xl p-6 mx-4 max-w-sm w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            {confirmAction && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={() => setConfirmAction(null)}>
+                    <div ref={confirmDialogRef} role="dialog" aria-modal="true" aria-labelledby="group-member-confirm-title" tabIndex={-1} className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl outline-none animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <h2 id="group-member-confirm-title" className="sr-only">{detailT('confirm')}</h2>
                         <p className="text-sm mb-4 text-[var(--foreground)]">{confirmAction.message}</p>
                         <div className="flex gap-2 justify-end">
                             <button
+                                ref={confirmCancelButtonRef}
                                 onClick={() => setConfirmAction(null)}
-                                className="text-xs font-bold px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-[var(--foreground-muted)]"
+                                className="min-h-[44px] rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-[var(--foreground-muted)] transition-colors hover:bg-gray-100"
                             >
                                 {detailT('cancel')}
                             </button>
                             <button
                                 onClick={confirmAction.onConfirm}
-                                className="text-xs font-bold px-4 py-2 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-opacity"
+                                className="min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)]"
                             >
                                 {detailT('confirm')}
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
 
             <ul className="divide-y divide-gray-100">
@@ -385,53 +422,80 @@ export default function GroupMembersPanel({
                         <p className="text-sm text-[var(--foreground-muted)]">{detailT('noMembersYet')}</p>
                     </li>
                 )}
-                {members.map((member) => (
-                    <li key={member.user_id} className="py-3 sm:py-4 grid grid-cols-[1fr_auto] gap-4 items-center hover:bg-gray-50 hover:shadow-sm transition-all rounded-lg px-2">
+                {members.map((member) => {
+                    const memberName = member.users.name || detailT('unknownUser');
+                    const memberImage = member.users.image;
+                    return (
+                        <li key={member.user_id} className="flex flex-col gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-gray-50 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:py-4">
                         <div className="flex items-center gap-3 min-w-0">
                             {/* Avatar */}
-                            <div
-                                className="h-10 w-10 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={(e) => {
-                                    e.preventDefault(); // Prevent Link navigation
-                                    if (member.users.image) {
-                                        setSelectedImage({ src: member.users.image, alt: member.users.name || 'User' });
-                                    }
-                                }}
-                            >
-                                <UserAvatar src={member.users.image} name={member.users.name || '?'} size="md" borderClass="border-gray-200" />
-                            </div>
+                            {memberImage ? (
+                                <button
+                                    type="button"
+                                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-strong)] focus-visible:ring-offset-2"
+                                    aria-label={detailT('viewAvatar', { name: memberName })}
+                                    onClick={() => {
+                                        setSelectedImage({ src: memberImage, alt: memberName });
+                                    }}
+                                >
+                                    <UserAvatar src={memberImage} name={memberName} size="md" borderClass="border-gray-200" />
+                                </button>
+                            ) : (
+                                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center">
+                                    <UserAvatar src={null} name={memberName} size="md" borderClass="border-gray-200" />
+                                </div>
+                            )}
 
                             <div className="min-w-0">
-                                <Link href={member.users.username ? `/user/${member.users.username}` : '#'} className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--theme-primary)] transition-colors truncate block flex items-center gap-2" aria-label={`View profile of ${member.users.name || detailT('unknownUser')}`}>
-                                    <span>{member.users.name || detailT('unknownUser')}</span>
-                                    {member.user_id === currentUserId && (
-                                        <span className="text-xs font-bold text-[var(--theme-primary)] bg-[var(--theme-primary-light)] px-1.5 py-0.5 rounded border border-[var(--theme-primary)]/20 shrink-0">{commonT('you')}</span>
-                                    )}
-                                </Link>
+                                {member.users.username ? (
+                                    <Link
+                                        href={`/user/${member.users.username}`}
+                                        className="flex min-h-[44px] min-w-[44px] items-center gap-2 truncate text-sm font-medium text-[var(--foreground)] transition-colors hover:text-[var(--theme-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-strong)]"
+                                        aria-label={detailT('viewProfile', { name: memberName })}
+                                    >
+                                        <span>{memberName}</span>
+                                        {member.user_id === currentUserId && (
+                                            <span className="shrink-0 rounded border border-[var(--theme-primary)]/20 bg-[var(--theme-primary-light)] px-1.5 py-0.5 text-xs font-bold text-[var(--theme-primary)]">{commonT('you')}</span>
+                                        )}
+                                    </Link>
+                                ) : (
+                                    <p className="flex min-h-[44px] items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+                                        <span>{memberName}</span>
+                                        {member.user_id === currentUserId && (
+                                            <span className="shrink-0 rounded border border-[var(--theme-primary)]/20 bg-[var(--theme-primary-light)] px-1.5 py-0.5 text-xs font-bold text-[var(--theme-primary)]">{commonT('you')}</span>
+                                        )}
+                                    </p>
+                                )}
                                 <p className="text-xs text-gray-500 truncate">
-                                    {member.role === 'OWNER' ? detailT('owner') : detailT('member')}
+                                    {member.role === 'OWNER'
+                                        ? detailT('owner')
+                                        : member.role === 'ADMIN'
+                                            ? detailT('admin')
+                                            : detailT('member')}
                                 </p>
                             </div>
                         </div>
 
                         {/* Actions */}
                         {isOwner && (
-                            <div className={`flex flex-wrap gap-1.5 sm:gap-2 shrink-0 ${!isEditing ? 'invisible pointer-events-none' : ''}`}>
+                            <div className={`flex w-full flex-wrap gap-1.5 sm:w-auto sm:shrink-0 sm:gap-2 ${!isEditing ? 'invisible pointer-events-none' : ''}`}>
                                 {member.user_id === currentUserId ? (
                                     member.role === 'OWNER' && (
                                         <>
                                             <button
-                                                onClick={() => handleDemote(member.user_id, 'yourself', true)}
+                                                type="button"
+                                                onClick={() => handleDemote(member.user_id, memberName, true)}
                                                 disabled={!!isProcessing}
-                                                className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
+                                                className="min-h-[44px] rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 hover:text-amber-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
                                             >
                                                 {isProcessing === member.user_id ? '...' : detailT('demoteSelf')}
                                             </button>
                                             {ownerCount > 1 && (
                                                 <button
+                                                    type="button"
                                                     onClick={handleLeaveGroup}
                                                     disabled={!!isProcessing}
-                                                    className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
+                                                    className="min-h-[44px] rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-100 hover:text-red-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700"
                                                 >
                                                     {detailT('leave')}
                                                 </button>
@@ -442,25 +506,28 @@ export default function GroupMembersPanel({
                                     <>
                                         {member.role === 'OWNER' ? (
                                             <button
-                                                onClick={() => handleDemote(member.user_id, member.users.name || 'this user', false)}
+                                                type="button"
+                                                onClick={() => handleDemote(member.user_id, memberName, false)}
                                                 disabled={!!isProcessing}
-                                                className="text-xs text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-100 whitespace-nowrap"
+                                                className="min-h-[44px] rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 hover:text-amber-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
                                             >
                                                 {isProcessing === member.user_id ? '...' : detailT('demote')}
                                             </button>
                                         ) : (
                                             <button
-                                                onClick={() => handleTransferOwnership(member.user_id, member.users.name || 'this user')}
+                                                type="button"
+                                                onClick={() => handleTransferOwnership(member.user_id, memberName)}
                                                 disabled={!!isProcessing}
-                                                className="text-xs text-[var(--theme-primary)] hover:text-[var(--theme-primary)] font-bold px-3 py-1.5 rounded-lg bg-[var(--theme-primary-light)] hover:bg-[var(--theme-primary-light)] transition-colors border border-[var(--theme-primary)]/20 whitespace-nowrap"
+                                                className="min-h-[44px] rounded-lg border border-[var(--theme-primary)]/20 bg-[var(--theme-primary-light)] px-3 py-2 text-xs font-bold text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--theme-primary-light)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-strong)]"
                                             >
                                                 {isProcessing === member.user_id ? '...' : detailT('makeOwner')}
                                             </button>
                                         )}
                                         <button
-                                            onClick={() => handleKick(member.user_id, member.users.name || 'this user')}
+                                            type="button"
+                                            onClick={() => handleKick(member.user_id, memberName)}
                                             disabled={!!isProcessing}
-                                            className="text-xs text-red-500 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-100 whitespace-nowrap"
+                                            className="min-h-[44px] rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-100 hover:text-red-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700"
                                         >
                                             {isProcessing === member.user_id ? '...' : detailT('remove')}
                                         </button>
@@ -468,8 +535,9 @@ export default function GroupMembersPanel({
                                 )}
                             </div>
                         )}
-                    </li>
-                ))}
+                        </li>
+                    );
+                })}
             </ul>
 
             {/* Group Actions (Leave) - Only Visible in Edit Mode for Non-Owners */}

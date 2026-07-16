@@ -48,6 +48,7 @@ __pycache__/
 
 # プロジェクト固有の除外
 .jules/
+.impeccable/hook.cache.json
 
 # Playwright / ブラウザ検証スクリーンショット（ルート散乱防止）
 /*.png

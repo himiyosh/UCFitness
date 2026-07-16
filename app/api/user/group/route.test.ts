@@ -1,19 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
+import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
 
 // Mock dependencies
+const { mockAuth, mockFrom } = vi.hoisted(() => ({
+  mockAuth: vi.fn(),
+  mockFrom: vi.fn(),
+}));
+
 vi.mock('@/lib/auth', () => ({
-  auth: vi.fn(),
+  auth: mockAuth,
 }));
 
 vi.mock('@/lib/supabase', () => ({
   supabaseAdmin: {
-    from: vi.fn(),
+    from: mockFrom,
   },
 }));
-
-import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 
 describe('POST /api/user/group - Security Validation', () => {
   const mockUser = { id: 'user-123' };
@@ -21,8 +24,7 @@ describe('POST /api/user/group - Security Validation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (auth as any).mockResolvedValue(mockSession);
+    mockAuth.mockResolvedValue(mockSession);
   });
 
   it('should allow adding a group with valid name', async () => {
@@ -32,11 +34,9 @@ describe('POST /api/user/group - Security Validation', () => {
     const upsertMock = vi.fn().mockResolvedValue({ error: null });
 
     // Mock sync legacy array
-    const membershipsMock = vi.fn().mockResolvedValue({ data: [] });
     const userUpdateMock = vi.fn().mockResolvedValue({ error: null });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabaseAdmin.from as any).mockImplementation((table: string) => {
+    mockFrom.mockImplementation((table: string) => {
       if (table === 'groups') {
         return {
           select: () => ({ eq: () => ({ single: selectMock }) }),
@@ -46,7 +46,7 @@ describe('POST /api/user/group - Security Validation', () => {
       if (table === 'group_members') {
         return {
           upsert: () => ({ select: () => ({ single: upsertMock }) }),
-          select: () => ({ eq: membershipsMock }),
+          select: () => ({ eq: () => mockQueryResult([]) }),
           delete: () => ({ eq: vi.fn().mockResolvedValue({ error: null }) }),
         };
       }
@@ -84,8 +84,7 @@ describe('POST /api/user/group - Security Validation', () => {
     // Should NOT reach insert if validation fails
     const insertMock = vi.fn().mockResolvedValue({ data: { id: 'group-123' }, error: null });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabaseAdmin.from as any).mockImplementation((table: string) => {
+    mockFrom.mockImplementation((table: string) => {
       if (table === 'groups') {
         return {
           select: () => ({ eq: () => ({ single: selectMock }) }),
@@ -120,8 +119,7 @@ describe('POST /api/user/group - Security Validation', () => {
     const selectMemberMock = vi.fn().mockResolvedValue({ data: { role: 'OWNER' } });
     const updateMock = vi.fn().mockResolvedValue({ error: null });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabaseAdmin.from as any).mockImplementation((table: string) => {
+    mockFrom.mockImplementation((table: string) => {
       if (table === 'groups') {
         return {
           select: () => ({ eq: () => ({ single: selectGroupMock }) }),
@@ -161,8 +159,7 @@ describe('POST /api/user/group - Security Validation', () => {
     const selectMemberMock = vi.fn().mockResolvedValue({ data: { role: 'OWNER' } });
     const updateMock = vi.fn().mockResolvedValue({ error: null });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabaseAdmin.from as any).mockImplementation((table: string) => {
+    mockFrom.mockImplementation((table: string) => {
       if (table === 'groups') {
         return {
           select: () => ({ eq: () => ({ single: selectGroupMock }) }),

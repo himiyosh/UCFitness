@@ -7,6 +7,7 @@ import { getFrameColor } from '@/lib/frame-utils';
 import Spinner from '@/components/ui/Spinner';
 
 import type { ShopItem } from '@/lib/services/shop-service';
+import type { useTranslations } from 'next-intl';
 
 // 前方宣言: ランク短縮ラベル（ShopPreviewDialog に定義）
 import { getRankShortLabel } from '@/components/shop/ShopPreviewDialog';
@@ -26,8 +27,7 @@ export default function ShopItemCard({
     isLoading: boolean;
     onBuy: () => void;
     onPreview: () => void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: ReturnType<typeof useTranslations>;
     userImage: string | null;
     userName: string | null;
 }) {
@@ -37,15 +37,14 @@ export default function ShopItemCard({
 
     return (
         <div
-            className={`rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md cursor-pointer ${
+            className={`overflow-hidden rounded-xl border shadow-sm transition-shadow hover:shadow-md ${
                 isComingSoon ? 'bg-gray-50 border-dashed border-gray-300'
                     : isOwned ? 'bg-white border-green-200'
                     : 'bg-white border-gray-100'
             }`}
-            onClick={onPreview}
         >
             {/* プレビュー + バッジ ラッパー */}
-            <div className="relative">
+            <button type="button" onClick={onPreview} aria-label={`${name} ${t('preview')}`} className="relative block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-reward)]">
                 {/* プレビュー領域（Coming Soon時はぼかし / 背景は常に表示） */}
                 <div className={`flex h-16 items-center justify-center midnight-preserve-bg sm:h-20 ${isComingSoon ? 'opacity-40' : ''}`} style={{
                     background: isComingSoon
@@ -81,7 +80,7 @@ export default function ShopItemCard({
                         ✅ {isEquipped ? t('equipped') : t('owned')}
                     </div>
                 )}
-            </div>
+            </button>
 
             {/* 情報 + アクション */}
             <div className={`p-2 ${isComingSoon ? 'text-gray-400' : ''}`}>
@@ -96,7 +95,7 @@ export default function ShopItemCard({
                         <button
                             onClick={(e) => { e.stopPropagation(); onBuy(); }}
                             disabled={!canAfford || !meetsRank || isLoading}
-                            className={`min-h-[44px] rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                            className={`min-h-[44px] min-w-[44px] rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
                                 canAfford && meetsRank
                                     ? 'bg-amber-600 text-white hover:bg-amber-700 active:scale-95'
                                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'

@@ -91,7 +91,7 @@ export default function TitleSelector({ ownedTitles }: TitleSelectorProps) {
                     onChange={(e) => handleChange(e.target.value)}
                     disabled={loading}
                     aria-label={t('titleLabel')}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] sm:text-sm py-2.5 text-gray-900 appearance-none pl-3 pr-8 bg-white disabled:opacity-60 cursor-pointer"
+                    className="block min-h-[44px] w-full cursor-pointer appearance-none rounded-lg border-gray-300 bg-white py-2.5 pl-3 pr-8 text-gray-900 shadow-sm focus:border-[var(--theme-primary)] focus:ring-[var(--theme-primary)] disabled:opacity-60 sm:text-sm"
                 >
                     <option value="none">{t('noTitle')}</option>
                     {titles.map(title => (

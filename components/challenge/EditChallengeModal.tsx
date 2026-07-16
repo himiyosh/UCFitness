@@ -1,7 +1,11 @@
 'use client';
 
+import { useCallback, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
 import { useTranslations } from 'next-intl';
-import { useState, useCallback } from 'react';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 // ============================================
 // チャレンジ編集モーダル コンポーネント
@@ -38,6 +42,18 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
     const [isActive, setIsActive] = useState(challenge.is_active);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const titleInputRef = useRef<HTMLInputElement>(null);
+    const handleClose = useCallback(() => {
+        if (!submitting) onClose();
+    }, [onClose, submitting]);
+
+    useDialogFocus({
+        isOpen,
+        onClose: handleClose,
+        dialogRef,
+        initialFocusRef: titleInputRef,
+    });
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -63,6 +79,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
             const res = await fetch(`/api/challenge/${challenge.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(30_000),
                 body: JSON.stringify({
                     title: title.trim(),
                     description: description.trim() || null,
@@ -88,24 +105,25 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         }
     }, [title, description, targetSteps, rewardUC, startDate, endDate, isActive, submitting, challenge.id, onUpdated, onClose, t]);
 
-    if (!isOpen) return null;
+    if (!isOpen || typeof document === 'undefined') return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* オーバーレイ */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
 
             {/* モーダル */}
-            <div className="relative w-full max-w-lg bg-white midnight-solid-panel rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="edit-challenge-dialog-title" tabIndex={-1} className="relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl outline-none midnight-solid-panel">
                 {/* ヘッダー */}
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <h2 id="edit-challenge-dialog-title" className="text-lg font-bold text-gray-900 flex items-center gap-2">
                         ✏️ {t('edit')}
                     </h2>
                     <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
-                        aria-label="Close"
+                        onClick={handleClose}
+                        disabled={submitting}
+                        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                        aria-label={t('closeCreateDialog')}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -120,6 +138,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                         <label htmlFor="edit-challenge-title" className="block text-sm font-semibold text-gray-700 mb-1">{t('titleLabel')}</label>
                         <input
                             id="edit-challenge-title"
+                            ref={titleInputRef}
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
@@ -157,7 +176,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                     </div>
 
                     {/* 日付 */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label htmlFor="edit-challenge-start" className="block text-sm font-semibold text-gray-700 mb-1">{t('startDate')}</label>
                             <input
@@ -225,7 +244,8 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                     <div className="flex items-center gap-3 pt-2">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
+                            disabled={submitting}
                             className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
                         >
                             {t('cancelEdit') || 'キャンセル'}
@@ -248,6 +268,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }

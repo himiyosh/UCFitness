@@ -65,6 +65,7 @@ function formatNumber(n: number): string {
 
 export default function AchievementProgress({ userId }: AchievementProgressProps) {
     const t = useTranslations('Achievement');
+    const commonT = useTranslations('Common');
     const [items, setItems] = useState<AchievementItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -141,9 +142,9 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
                 <p className="text-xs text-gray-500 mb-3">{t('noProgress')}</p>
                 <button
                     onClick={() => { setError(false); setLoading(true); fetch(`/api/user/achievement-progress?userId=${encodeURIComponent(userId)}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => setItems(data.progress || [])).catch(() => setError(true)).finally(() => setLoading(false)); }}
-                    className="text-xs font-semibold text-[var(--theme-primary)] hover:underline"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-3 text-xs font-semibold text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]"
                 >
-                    🔄 Retry
+                    🔄 {commonT('retry')}
                 </button>
             </div>
         );
@@ -281,7 +282,7 @@ export default function AchievementProgress({ userId }: AchievementProgressProps
             {/* 展開/折りたたみボタン */}
             <button
                 onClick={() => setExpanded(prev => !prev)}
-                className="w-full px-4 py-2 text-xs font-semibold text-[var(--theme-primary)] hover:bg-gray-50 transition-colors border-t border-gray-100 flex items-center justify-center gap-1"
+                className="flex min-h-[44px] w-full items-center justify-center gap-1 border-t border-gray-100 px-4 py-2 text-xs font-semibold text-[var(--theme-primary)] transition-colors hover:bg-gray-50"
             >
                 {expanded ? t('hideDetails') : t('showDetails')}
                 <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

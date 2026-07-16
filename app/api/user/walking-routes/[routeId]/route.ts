@@ -12,6 +12,16 @@ interface RouteParams {
     params: Promise<{ routeId: string }>;
 }
 
+/** PATCH /walking-routes/[routeId] で更新可能なフィールドの部分集合 */
+interface WalkingRouteUpdate {
+    updated_at: string;
+    is_favorite?: boolean;
+    walk_count?: number;
+    last_walked_at?: string;
+    name?: string;
+    description?: string;
+}
+
 /**
  * PATCH /api/user/walking-routes/[routeId]
  * コースの更新（お気に入り切替、歩いた記録など）
@@ -45,8 +55,7 @@ export async function PATCH(
         }
 
         const body = await request.json();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+        const updates: WalkingRouteUpdate = { updated_at: new Date().toISOString() };
 
         // お気に入り切替
         if (typeof body?.is_favorite === 'boolean') {

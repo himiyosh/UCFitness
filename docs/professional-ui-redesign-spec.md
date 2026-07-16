@@ -10,7 +10,7 @@
 
 ## 1. 結論
 
-UCFitness は **「ポップな歩数ゲーム」から「信頼感のあるフィットネス習慣化プラットフォーム」へ**寄せるべきです。
+UCFitness の認証済み画面は **「ポップな歩数ゲーム」から「信頼感のあるフィットネス習慣化プラットフォーム」へ**寄せるべきです。一方、公開ランディングページはブランド面として、歩く・競う・報われる熱量を明るい意味色で明示します。
 
 現状の主な課題は、機能不足ではなく **表現の統制不足** です。グラデーション、絵文字、ガラスカード、多数テーマ、アニメーションがそれぞれ単体では楽しい一方、全体として「何が一番重要か」「本当に健康データを預けてよいか」が伝わりにくくなっています。
 
@@ -22,6 +22,16 @@ UCFitness は **「ポップな歩数ゲーム」から「信頼感のあるフ�
 4. **ランキングは順位表ではなく「あと何歩で上がれるか」を中心に再設計する**
 5. **UC はゲーム内コインではなく、努力が積み上がる成果として見せる**
 6. **初回体験を「Fitbit 連携 → 目標設定 → 最初のチャレンジ」の 3 ステップに絞る**
+
+### 1.1 公開ランディングページの例外
+
+認証済みアプリ画面はニュートラル基調の Product register、公開 LP は Full Palette の Brand register として扱います。公開 LP の抑制しすぎは、サービス固有の楽しさ・競争・報酬を消し、汎用的な暗色 SaaS に見せるため禁止します。
+
+- 明るい背景と自然高さを基本にし、`min-h-screen` + `flex-1` で空白を引き伸ばさない。
+- 青=目標・主 CTA、緑=達成・同期、紫=競争・順位、アンバー=UC・報酬として使い分ける。
+- 375px でも歩数リング、順位差、UC、チャレンジの実 UI を表示する。モバイルだけプレビューを隠さない。
+- 暗色全面ヒーロー、青紫のぼかし中心の SaaS 表現、グラデーション文字、装飾目的の全面 glassmorphism は使わない。
+- ファーストビューで主要 CTA と、歩数進捗・順位差・報酬・チャレンジのうち最低 2 つを認識できること。
 
 ---
 
@@ -151,12 +161,23 @@ UCFitness は、医療・高級ウェルネスに寄りすぎず、ゲームに�
   --color-border: #DDE3EA;
 
   --color-primary: #2563EB;
+  --color-primary-strong: #1D4ED8;
   --color-primary-soft: #DBEAFE;
   --color-primary-solid: #1D4ED8;
   --color-success: #16A34A;
+  --color-success-strong: #166534;
+  --color-success-soft: #DCFCE7;
   --color-warning: #D97706;
   --color-danger: #DC2626;
   --color-reward: #B7791F;
+  --color-reward-strong: #92400E;
+  --color-reward-soft: #FEF3C7;
+  --color-competition: #7C3AED;
+  --color-competition-strong: #5B21B6;
+  --color-competition-soft: #EDE9FE;
+  --color-competition-solid: #6D28D9;
+  --color-play: #E11D48;
+  --color-play-soft: #FFE4E6;
   --color-inverse-surface: #0F172A;
   --color-inverse-text: #FFFFFF;
 }
@@ -165,13 +186,17 @@ UCFitness は、医療・高級ウェルネスに寄りすぎず、ゲームに�
 #### 使用ルール
 
 - `--color-primary` はアクセント文字、選択状態、重要な進捗だけ。
+- 淡い主色面の文字には `--color-primary-strong`、白文字を載せる塗り面には `--color-primary-solid` を使う。
 - 白文字を載せる塗り CTA には `--color-primary-solid` を使う。
 - 濃色ヒーローやプロダクトモックには `--color-inverse-surface` / `--color-inverse-text` を使い、`--color-text` を背景色として流用しない。
 - Success は達成、同期成功、ストリーク継続。
+- Competition は順位、対戦、グループ競争。
+- Competitionの白文字付き塗り面には `--color-competition-solid` を使う。
 - Warning は期限間近、あと少し、注意。
 - Danger は失敗、削除、重大エラー。
 - Reward は UC、報酬、バッジに限定。
-- 背景グラデーションは原則廃止。使う場合はランディング Hero または達成カードだけ。
+- Play は公開 LP の最終 CTA や限定的な楽しさの表現に使用し、エラー色と混同しない。
+- 背景グラデーションは原則廃止。公開 LP も単色の意味面を組み合わせ、文字へのグラデーションは使わない。
 
 ### 5.3 タイポグラフィ
 

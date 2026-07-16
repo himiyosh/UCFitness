@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+
 import TopUsersChart from '@/components/TopUsersChart';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
-import { RankingEntry } from '@/lib/services/ranking-utils';
+import { getRankGapInsight } from '@/lib/services/ranking-utils';
+import { Link } from '@/navigation';
 import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 type Props = {
     keyword: string;
@@ -16,23 +21,27 @@ type Props = {
     userId?: string | null;
     index: number;
     totalCount: number;
+    memberCount?: number;
     groupId?: string;
-    period?: string;
+    period: Period;
     showMoveButtons?: boolean;
 };
 
-import { useTranslations } from 'next-intl';
-
-export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, groupId, period = 'DAILY', showMoveButtons = true }: Props) {
+export default function GroupRankingPanel({ keyword, neighbors, userId, index, totalCount, memberCount, groupId, period, showMoveButtons = true }: Props) {
     const locale = useLocale();
     const [isMoving, setIsMoving] = useState(false);
     const [moveDirection, setMoveDirection] = useState<'up' | 'down' | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
     const router = useRouter();
     const t = useTranslations('Graph');
+    const lt = useTranslations('Leaderboard');
     const commonT = useTranslations('Common');
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
+    const rankGapInsight = useMemo(
+        () => getRankGapInsight(neighbors, userId),
+        [neighbors, userId],
+    );
 
     // パフォーマンス: ランクバッジのスタイルを事前計算し、レンダーごとの再生成を防止
     const rankBadgeStyles = useMemo(() => ({
@@ -45,9 +54,11 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
         3: isMidnight
             ? { background: 'linear-gradient(160deg, #b45309, #ea580c)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' }
             : { background: 'linear-gradient(160deg, #c2410c, #f97316)', color: '#ffffff', boxShadow: '0 2px 6px rgba(249, 115, 22, 0.3)' },
-        default: isMidnight
-            ? { background: 'rgba(30,41,59,0.6)', color: '#64748b', border: '1px solid rgba(148,163,184,0.15)' }
-            : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' },
+        default: {
+            background: 'var(--color-surface-muted)',
+            color: 'var(--color-text-muted)',
+            border: '1px solid var(--color-border)',
+        },
     }), [isMidnight]);
 
     // リアクション管理（グローバル共通 — グループ/ダッシュボード間でリアクション数を連動）
@@ -101,40 +112,28 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
 
     return (
         <div
-            className={`rounded-xl shadow-sm relative group/panel h-full flex flex-col ${isMoving ? 'opacity-50' : ''}`}
-            style={isMidnight
-                ? { background: 'rgba(30,41,59,0.85)', border: '1px solid rgba(52,211,153,0.25)', borderLeft: '3px solid #34d399' }
-                : { background: '#fff', border: '1px solid #a7f3d0', borderLeft: '3px solid #10b981' }
-            }
+            className={`group/panel relative flex h-full flex-col rounded-xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] shadow-sm ${isMoving ? 'opacity-50' : ''}`}
         >
             {/* Header — overflow-hidden + rounded-t-xl でヘッダー角丸を維持 */}
             <div
-                className="px-4 py-2.5 flex items-center gap-2 overflow-hidden rounded-t-xl"
-                style={isMidnight
-                    ? { borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(16,185,129,0.08)' }
-                    : { borderBottom: '1px solid #d1fae5', background: 'rgba(236,253,245,0.5)' }
-                }
+                className="flex items-center gap-2 overflow-hidden rounded-t-xl border-b border-[var(--color-competition)]/20 bg-[var(--color-competition-soft)]/55 px-4 py-2.5"
             >
-                <span className={`text-sm ${isMidnight ? 'opacity-90' : ''}`}>👥</span>
-                <span className={`text-xs font-bold tracking-wide ${isMidnight ? 'text-emerald-300' : 'text-emerald-700'}`}>Group Ranking</span>
+                <span className="text-sm" aria-hidden="true">👥</span>
+                <span className="text-xs font-bold text-[var(--color-competition-strong)]">{t('groupRankingPanelTitle')}</span>
                 <span
-                    className="ml-auto truncate py-0.5 px-2 rounded-full text-xs font-bold"
-                    style={isMidnight
-                        ? { background: 'rgba(52,211,153,0.15)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.3)' }
-                        : { background: '#d1fae5', color: '#047857', border: '1px solid #a7f3d0' }
-                    }
+                    className="ml-auto truncate rounded-full border border-[var(--color-competition)]/25 bg-[var(--color-surface)] px-2 py-0.5 text-xs font-bold text-[var(--color-competition-strong)]"
                 >{keyword}</span>
             </div>
             {showMoveButtons && <div className="absolute top-12 right-4 z-10 flex items-center gap-1">
                 {moveError && (
-                    <span className="text-xs text-red-500 font-bold animate-pulse mr-1">Error</span>
+                    <span className="mr-1 text-xs font-bold text-red-700" role="alert">{t('reorderError')}</span>
                 )}
                 {!isFirst && (
                     <button
                         onClick={() => handleMove('up')}
-                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded transition-colors ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                        title="Move Up"
-                        aria-label="Move group up"
+                        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-600 transition-colors hover:text-[var(--theme-primary)] ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                        title={t('moveGroupUp')}
+                        aria-label={t('moveGroupUp')}
                         disabled={isMoving}
                     >
                         {isMoving && moveDirection === 'up' ? (
@@ -149,9 +148,9 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                 {!isLast && (
                     <button
                         onClick={() => handleMove('down')}
-                        className={`p-1 text-gray-400 hover:text-[var(--theme-primary)] rounded transition-colors ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                        title="Move Down"
-                        aria-label="Move group down"
+                        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-gray-600 transition-colors hover:text-[var(--theme-primary)] ${isMidnight ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                        title={t('moveGroupDown')}
+                        aria-label={t('moveGroupDown')}
                         disabled={isMoving}
                     >
                         {isMoving && moveDirection === 'down' ? (
@@ -191,8 +190,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             </div>
                                         )}
                                         <div
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible ${(hoveredUserId === entryId || longPressUserId === entryId) ? 'z-50' : ''} ${entry.users?.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
-                                            onClick={() => { if (entry.users?.username) window.location.href = `/user/${entry.users.username}`; }}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] ${(hoveredUserId === entryId || longPressUserId === entryId) ? 'z-50' : ''} ${entry.users?.username ? 'cursor-pointer' : ''} ${entry.originalRank === 1 ? 'rank-row-1' : entry.originalRank === 2 ? 'rank-row-2' : entry.originalRank === 3 ? 'rank-row-3' : ''}`}
                                             onMouseEnter={() => setHoveredUserId(entryId)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entryId ? null : prev)}
                                             onTouchStart={() => {
@@ -204,7 +202,15 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
-                                          <div className="flex items-center justify-between">
+                                          {entry.users?.username && (
+                                              <Link
+                                                  href={`/user/${entry.users.username}`}
+                                                  className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]"
+                                              >
+                                                  <span className="sr-only">{entry.users.name || commonT('anonymous')}</span>
+                                              </Link>
+                                          )}
+                                          <div className="pointer-events-none relative z-10 flex items-center justify-between">
                                             {/* Content Wrapper */}
                                             <div className="relative z-10 flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                                                 <span className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-xs font-bold shrink-0"
@@ -225,7 +231,7 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                                     )}
                                                     {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="pointer-events-auto mt-0.5 h-[22px]" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entryId}
@@ -265,15 +271,59 @@ export default function GroupRankingPanel({ keyword, neighbors, userId, index, t
                                 );
                             })}{/* 5人分の高さを埋めるプレースホルダー行 */}
                             {Array.from({ length: emptyRowCount }).map((_, i) => (
-                                <div key={`empty-${i}`} role="listitem" className="min-h-[4.5rem]" />
+                                <div key={`empty-${i}`} role="listitem" className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5" aria-hidden="true" />
                             ))}
                             </>);
                         })()
                     ) : (
-                        <p className={`text-center py-4 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
+                        <>
+                            <p className={`text-center py-4 ${isMidnight ? 'text-slate-500' : 'text-gray-400'}`}>{t('noGroupActivityYet')}</p>
+                            {Array.from({ length: 5 }, (_, index) => (
+                                <div key={`empty-group-${index}`} role="listitem" className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5" aria-hidden="true" />
+                            ))}
+                        </>
                     )}
                 </div>
             </div>
+            {rankGapInsight && (
+                <div className={`mt-auto flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5 sm:px-6 ${
+                    rankGapInsight.isTopRank
+                        ? 'border-[var(--color-success)]/25 bg-[var(--color-success-soft)]'
+                        : 'border-[var(--color-competition)]/20 bg-[var(--color-competition-soft)]/40'
+                }`}>
+                    <span className={`min-w-0 text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-gray-600'}`}>
+                        {memberCount
+                            ? lt('rankOutOf', {
+                                rank: rankGapInsight.currentRank,
+                                total: memberCount,
+                            })
+                            : rankGapInsight.isTopRank
+                                ? lt('currentStatus')
+                                : lt('nextRankGoal')}
+                    </span>
+                    <span
+                        data-rank-gap="group"
+                        className={`min-w-0 max-w-full whitespace-normal rounded-xl px-2.5 py-1 text-right text-xs font-bold [overflow-wrap:anywhere] ${
+                            rankGapInsight.isTopRank
+                                ? 'bg-[var(--color-success-soft)] text-[var(--color-text)]'
+                                : 'bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]'
+                        }`}
+                    >
+                        {rankGapInsight.isTopRank
+                            ? lt('topRankStatus')
+                            : rankGapInsight.targetName
+                                ? lt('nextRankGapWithName', {
+                                    steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                    rank: rankGapInsight.targetRank ?? 1,
+                                    name: rankGapInsight.targetName,
+                                })
+                                : lt('nextRankGap', {
+                                    steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                    rank: rankGapInsight.targetRank ?? 1,
+                                })}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }

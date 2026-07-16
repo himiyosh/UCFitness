@@ -5,6 +5,7 @@ import { getFrameColor } from '@/lib/frame-utils';
 import Spinner from '@/components/ui/Spinner';
 
 import type { UserItem, EquippedItems } from '@/lib/services/shop-service';
+import type { useTranslations } from 'next-intl';
 
 // ============================================
 // サブコンポーネント: インベントリ
@@ -17,8 +18,7 @@ export default function InventoryView({
     locale: string;
     isLoading: string | null;
     onEquip: (ui: UserItem, action: 'equip' | 'unequip') => void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: ReturnType<typeof useTranslations>;
 }) {
     if (userItems.length === 0) {
         return (

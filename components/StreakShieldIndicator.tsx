@@ -43,7 +43,7 @@ export default function StreakShieldIndicator() {
 
     if (remaining === null || remaining <= 0) {
         return (
-            <Link href="/shop" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors"
+            <Link href="/shop" className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
                 style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-text-secondary)' }}
                 title={t('buyMore')}>
                 <span className="opacity-50">🛡️</span>

@@ -1,7 +1,9 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
+import { getJSTDateString } from '@/lib/date-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
@@ -13,7 +15,7 @@ import { reportError } from '@/lib/errors';
 export async function POST(
     _req: NextRequest,
     { params }: { params: Promise<{ challengeId: string }> }
-) {
+): Promise<NextResponse> {
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -38,7 +40,7 @@ export async function POST(
             return NextResponse.json({ error: 'Challenge is no longer active' }, { status: 400 });
         }
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = getJSTDateString();
         if (today > challenge.end_date) {
             return NextResponse.json({ error: 'Challenge has ended' }, { status: 400 });
         }

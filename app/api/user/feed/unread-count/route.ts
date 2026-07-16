@@ -1,15 +1,38 @@
 export const runtime = 'edge';
 
-import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
-import { reportError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 
-// ============================================
-// GET /api/user/feed/unread-count
-// 未読通知数のみを軽量に返す（フィード全体を取得しない）
-// NotificationBell の初回マウント時に使用
-// ============================================
+import { auth } from '@/lib/auth';
+import { reportError } from '@/lib/errors';
+import {
+    countUnreadNotificationFeed,
+    getNotificationFeedWindow,
+} from '@/lib/services/notification-feed';
+import { supabaseAdmin } from '@/lib/supabase';
+import { fetchAllWithPagination } from '@/lib/supabase-utils';
+
+import type { FeedItem, FeedItemType } from '@/lib/services/notification-feed';
+
+const MAX_NOTIFICATION_EVENTS = 10000;
+
+function createUnreadItem(
+    id: string,
+    type: FeedItemType,
+    userId: string,
+    timestamp: string,
+    data: Record<string, unknown>,
+): FeedItem {
+    return {
+        id,
+        type,
+        userId,
+        userName: null,
+        userImage: null,
+        username: null,
+        timestamp,
+        data,
+    };
+}
 
 export async function GET(): Promise<NextResponse> {
     try {
@@ -19,73 +42,202 @@ export async function GET(): Promise<NextResponse> {
         }
 
         const userId = session.user.id;
+        const [readStateResult, preferenceResult] = await Promise.all([
+            supabaseAdmin
+                .from('users')
+                .select('feed_last_read_at')
+                .eq('id', userId)
+                .single(),
+            supabaseAdmin
+                .from('users')
+                .select('notification_reactions, notification_gear_reactions')
+                .eq('id', userId)
+                .single(),
+        ]);
+        if (readStateResult.error) {
+            reportError('user/feed/unread-count:user', readStateResult.error, { userId });
+            return NextResponse.json({ error: 'Failed to fetch notification settings' }, {
+                status: 500,
+            });
+        }
+        const notificationPreferencesAvailable = preferenceResult.error === null;
+        if (preferenceResult.error) {
+            reportError(
+                'user/feed/unread-count:notificationPreferences',
+                preferenceResult.error,
+                { userId },
+            );
+        }
+        const userData = readStateResult.data;
+        const preferenceData = preferenceResult.data;
 
-        // feed_last_read_at を取得
-        const { data: userData } = await supabaseAdmin
-            .from('users')
-            .select('feed_last_read_at')
-            .eq('id', userId)
-            .single();
+        const snapshot = new Date().toISOString();
+        const feedWindow = getNotificationFeedWindow(snapshot);
+        const lastReadTime = userData?.feed_last_read_at
+            ? Date.parse(userData.feed_last_read_at)
+            : 0;
+        const sinceDate = lastReadTime > Date.parse(feedWindow.sinceIso)
+            ? userData?.feed_last_read_at ?? feedWindow.sinceIso
+            : feedWindow.sinceIso;
 
-        const lastReadAt = userData?.feed_last_read_at as string | null;
-
-        // 未読数を計算: feed_last_read_at が null の場合は全件が未読
-        // パフォーマンスのため、各ソースから最新アイテム数のみカウント
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const sinceDate = lastReadAt || sevenDaysAgo.toISOString();
-
-        // フォロー中ユーザー取得
-        const { data: followingData } = await supabaseAdmin
+        const { data: followingData, error: followingError } = await supabaseAdmin
             .from('user_follows')
             .select('following_id')
             .eq('follower_id', userId);
-
-        const followingIds = (followingData || []).map((f) => f.following_id);
-        const targetIds = [userId, ...followingIds];
-
-        if (targetIds.length === 0) {
-            return NextResponse.json({ unreadCount: 0 });
+        if (followingError) {
+            reportError('user/feed/unread-count:follows', followingError, { userId });
+            return NextResponse.json({ error: 'Failed to fetch following' }, { status: 500 });
         }
 
-        // 各ソースの未読数を並列カウント
-        const [badgesCount, reactionsCount, gearReactionsCount] = await Promise.all([
-            // バッジ獲得（最も頻繁な通知ソース）
-            supabaseAdmin
-                .from('user_badges')
-                .select('id', { count: 'exact', head: true })
-                .in('user_id', targetIds)
-                .gt('awarded_at', sinceDate),
-
-            // 自分へのリアクション
-            supabaseAdmin
-                .from('group_reactions')
-                .select('id', { count: 'exact', head: true })
-                .eq('to_user_id', userId)
-                .neq('from_user_id', userId)
-                .neq('period', 'GEAR')
-                .gt('created_at', sinceDate),
-
-            // ギアリアクション（自分のギアへの反応）— 簡易カウント
-            supabaseAdmin
-                .from('group_reactions')
-                .select('id', { count: 'exact', head: true })
-                .eq('period', 'GEAR')
-                .neq('from_user_id', userId)
-                .gt('created_at', sinceDate),
+        const targetIds = Array.from(new Set([
+            userId,
+            ...(followingData ?? []).map((follow) => follow.following_id),
+        ]));
+        const reactionsEnabled = preferenceData?.notification_reactions !== false;
+        const gearReactionsEnabled = preferenceData?.notification_gear_reactions !== false;
+        const [
+            badgesResult,
+            reactionsResult,
+            gearItemsResult,
+        ] = await Promise.all([
+            fetchAllWithPagination(
+                (from, to) => supabaseAdmin
+                    .from('user_badges')
+                    .select('id, user_id, badge_code, awarded_at, period_date')
+                    .in('user_id', targetIds)
+                    .gt('awarded_at', sinceDate)
+                    .lt('awarded_at', snapshot)
+                    .order('awarded_at', { ascending: false })
+                    .order('id', { ascending: false })
+                    .range(from, to),
+                900,
+                MAX_NOTIFICATION_EVENTS,
+            ),
+            reactionsEnabled
+                ? fetchAllWithPagination(
+                    (from, to) => supabaseAdmin
+                        .from('group_reactions')
+                        .select('id, from_user_id, emoji, period, group_id, created_at')
+                        .eq('to_user_id', userId)
+                        .neq('from_user_id', userId)
+                        .neq('period', 'GEAR')
+                        .gt('created_at', sinceDate)
+                        .lt('created_at', snapshot)
+                        .order('created_at', { ascending: false })
+                        .order('id', { ascending: false })
+                        .range(from, to),
+                    900,
+                    MAX_NOTIFICATION_EVENTS,
+                )
+                : Promise.resolve({ data: [], error: null }),
+            gearReactionsEnabled
+                ? fetchAllWithPagination(
+                    (from, to) => supabaseAdmin
+                        .from('recommended_items')
+                        .select('id, asin')
+                        .eq('user_id', userId)
+                        .order('id', { ascending: false })
+                        .range(from, to),
+                    900,
+                    MAX_NOTIFICATION_EVENTS,
+                )
+                : Promise.resolve({ data: [], error: null }),
         ]);
 
-        const totalUnread =
-            (badgesCount.count ?? 0) +
-            (reactionsCount.count ?? 0) +
-            (gearReactionsCount.count ?? 0);
+        const sourceError = badgesResult.error
+            ?? reactionsResult.error
+            ?? gearItemsResult.error;
+        if (sourceError) {
+            reportError('user/feed/unread-count:sources', sourceError, { userId });
+            return NextResponse.json({ error: 'Failed to count notifications' }, { status: 500 });
+        }
 
-        // 上限を設けて返す（9+ 表示のため）
+        const gearAsins = (gearItemsResult.data ?? []).map((item) => item.asin);
+        const gearReactionsResult = gearReactionsEnabled && gearAsins.length > 0
+            ? await fetchAllWithPagination(
+                (from, to) => supabaseAdmin
+                    .from('group_reactions')
+                    .select('id, from_user_id, to_user_id, emoji, group_id, created_at')
+                    .eq('period', 'GEAR')
+                    .neq('from_user_id', userId)
+                    .in('to_user_id', gearAsins)
+                    .gt('created_at', sinceDate)
+                    .lt('created_at', snapshot)
+                    .order('created_at', { ascending: false })
+                    .order('id', { ascending: false })
+                    .range(from, to),
+                900,
+                MAX_NOTIFICATION_EVENTS,
+            )
+            : { data: [], error: null };
+        if (gearReactionsResult.error) {
+            reportError(
+                'user/feed/unread-count:gearReactions',
+                gearReactionsResult.error,
+                { userId },
+            );
+            return NextResponse.json({ error: 'Failed to count gear notifications' }, {
+                status: 500,
+            });
+        }
+
+        const feedItems: FeedItem[] = [];
+        for (const badge of badgesResult.data ?? []) {
+            feedItems.push(createUnreadItem(
+                `badge-${badge.id}`,
+                'BADGE_EARNED',
+                badge.user_id,
+                badge.awarded_at,
+                {
+                    badgeCode: badge.badge_code,
+                    badgeCodes: [badge.badge_code],
+                    badgeCount: 1,
+                    periodDate: badge.period_date,
+                },
+            ));
+        }
+        for (const reaction of reactionsResult.data ?? []) {
+            feedItems.push(createUnreadItem(
+                `reaction-${reaction.id}`,
+                'REACTION_RECEIVED',
+                reaction.from_user_id,
+                reaction.created_at,
+                {
+                    emoji: reaction.emoji,
+                    emojis: [reaction.emoji],
+                    reactionCount: 1,
+                    groupId: reaction.group_id,
+                    period: reaction.period,
+                },
+            ));
+        }
+        for (const reaction of gearReactionsResult.data ?? []) {
+            feedItems.push(createUnreadItem(
+                `gear-reaction-${reaction.id}`,
+                'GEAR_REACTION_RECEIVED',
+                reaction.from_user_id,
+                reaction.created_at,
+                {
+                    emoji: reaction.emoji,
+                    emojis: [reaction.emoji],
+                    reactionCount: 1,
+                    asin: reaction.to_user_id,
+                    groupId: reaction.group_id,
+                },
+            ));
+        }
+
+        const unreadCount = countUnreadNotificationFeed(
+            feedItems,
+            userData?.feed_last_read_at ?? null,
+        );
+
         return NextResponse.json({
-            unreadCount: Math.min(totalUnread, 99),
+            unreadCount,
+            notificationPreferencesAvailable,
         });
-    } catch (err) {
-        reportError('user/feed/unread-count', err);
-        return NextResponse.json({ unreadCount: 0 });
+    } catch (error: unknown) {
+        reportError('user/feed/unread-count', error);
+        return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }

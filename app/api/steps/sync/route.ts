@@ -1,14 +1,14 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
-import { auth } from "@/lib/auth";
-import { updateUserSteps, backfillUserSteps } from '@/lib/services/step-manager';
+import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { backfillUserSteps, syncUserSteps } from '@/lib/services/step-manager';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+export async function POST(): Promise<Response> {
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -26,8 +26,20 @@ export async function POST() {
         await backfillUserSteps(userId);
 
         // 今日の歩数を同期 + バッジ/称号/コイン処理
-        const steps = await updateUserSteps(userId);
-        return NextResponse.json({ success: true, steps });
+        const result = await syncUserSteps(userId);
+        const status = result.code === 'updated' || result.code === 'no_data'
+            ? 200
+            : result.code === 'reauthorization_required'
+                || result.code === 'sync_in_progress'
+                ? 409
+                : 503;
+        return NextResponse.json(
+            {
+                success: result.code === 'updated',
+                ...result,
+            },
+            { status },
+        );
     } catch (error: unknown) {
         reportError('steps/sync', error, { userId });
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

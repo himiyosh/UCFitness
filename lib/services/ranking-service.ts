@@ -1,13 +1,52 @@
+import { unstable_cache } from 'next/cache';
+
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
-import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { unstable_cache } from 'next/cache';
 import { getJSTDateString, getWeekStartDate, getMonthStartDate, getYearStartDate } from '@/lib/date-utils';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import type { DailyStepRow, UserRow } from '@/types/database';
+
+import { sortPositiveStepRankings } from './ranking-utils';
+
+import type { RankingEntry } from './ranking-utils';
+
+// --- 内部集計用の型定義 ---
+// RankingAccumulatorEntry / RankingUser はテストコードからも参照するため export する。
+
+/** RankingEntry.users と同じ形 (装備情報は enrich 前は未設定) */
+export type RankingUser = RankingEntry['users'];
+
+/** fetchDailyStepsPaginated は selectFields 省略時に 'user_id, steps, date' を返す */
+type DailyStepRecord = Pick<DailyStepRow, 'user_id' | 'steps' | 'date'>;
+
+/** `.select('id, name, image, username, group_keyword')` の行 */
+type RankingUserWithGroupKeyword = Pick<UserRow, 'id' | 'name' | 'image' | 'username' | 'group_keyword'>;
+
+/** `.select('id, name, image, username')` の行 */
+type RankingUserSummary = Pick<UserRow, 'id' | 'name' | 'image' | 'username'>;
+
+/** `group_members` から `users(id, name, image, username)` を埋め込み取得した行 */
+type GroupMemberWithUser = {
+    user_id: string;
+    users: RankingUserSummary | null;
+};
+
+/** originalRank 付与前のランキングエントリ (getRankings / getGroupRankings 系の内部集計・返り値) */
+export type RankingAccumulatorEntry = {
+    steps: number;
+    prevSteps?: number;
+    users: RankingUser;
+};
+
+/** UserStats の前期間集計フィールド (PREV_DAILY/PREV_WEEKLY/PREV_MONTHLY) */
+type PrevPeriodKey = 'PREV_DAILY' | 'PREV_WEEKLY' | 'PREV_MONTHLY';
+
 
 // Define type for User Stats Map
 export type UserStats = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    users: any;
+    users: RankingUser;
     DAILY: number;
     WEEKLY: number;
     MONTHLY: number;
@@ -34,59 +73,78 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
 
     // ⚡ Bolt Optimization: Split user and step fetching to avoid heavy joins
     let userIds: string[] | null = null;
-    const usersMap = new Map<string, any>();
+    const usersMap = new Map<string, RankingUser>();
 
-    if (scope === 'GROUP' && groupKeyword) {
+    if (scope === 'GROUP') {
+        if (!groupKeyword) throw new Error('Group keyword is required for group rankings');
+
         // group_members テーブルからメンバーを取得 (レガシー group_keyword 配列に依存しない)
-        const { data: groupData } = await supabase
+        const { data: groupData, error: groupError } = await supabase
             .from('groups')
             .select('id')
             .eq('keyword', groupKeyword)
             .single();
 
+        if (groupError && groupError.code !== 'PGRST116') {
+            reportError('ranking-service:getRankings:group', groupError, { groupKeyword });
+            throw new Error('Failed to load ranking group');
+        }
         if (!groupData) return [];
 
-        const { data: members } = await supabase
+        const { data: members, error: membersError } = await supabase
             .from('group_members')
             .select('user_id, users(id, name, image, username)')
-            .eq('group_id', groupData.id);
+            .eq('group_id', groupData.id)
+            .returns<GroupMemberWithUser[]>();
 
+        if (membersError) {
+            reportError('ranking-service:getRankings:members', membersError, {
+                groupId: groupData.id,
+            });
+            throw new Error('Failed to load ranking members');
+        }
         if (!members || members.length === 0) return [];
 
         userIds = members.map(m => m.user_id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        members.forEach((m: any) => { if (m.users) usersMap.set(m.users.id, m.users); });
+        members.forEach((m) => { if (m.users) usersMap.set(m.users.id, m.users); });
     }
 
     // PostgREST 1000行制限回避: ページネーション付き取得
-    const { data: rawSteps, error } = await fetchDailyStepsPaginated({
+    const { data: rawSteps, error } = await fetchDailyStepsPaginated<DailyStepRecord>({
         startDate,
         userIds: userIds || undefined,
     });
 
     if (error) {
-        console.error(`Error fetching ${scope} rankings`);
-        return [];
+        reportError('ranking-service:getRankings:steps', error, { scope, period });
+        throw new Error(`Failed to load ${scope.toLowerCase()} ranking steps`);
     }
 
     // If GLOBAL (userIds was null), we need to fetch users now based on the steps we got
     if (!userIds) {
-        const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
+        const uniqueUserIds = Array.from(new Set(rawSteps?.map((r) => r.user_id)));
 
         if (uniqueUserIds.length > 0) {
-            const { data: users } = await supabase
+            const { data: users, error: usersError } = await supabase
                 .from('users')
                 .select('id, name, image, username, group_keyword')
-                .in('id', uniqueUserIds);
+                .in('id', uniqueUserIds)
+                .returns<RankingUserWithGroupKeyword[]>();
 
-            users?.forEach((u: any) => usersMap.set(u.id, u));
+            if (usersError) {
+                reportError('ranking-service:getRankings:users', usersError, {
+                    userCount: uniqueUserIds.length,
+                });
+                throw new Error('Failed to load ranking users');
+            }
+            users?.forEach((u) => usersMap.set(u.id, u));
         }
     }
 
     // Aggregate steps by user
-    const userStats = new Map<string, any>();
+    const userStats = new Map<string, RankingAccumulatorEntry>();
 
-    rawSteps?.forEach((row: any) => {
+    rawSteps?.forEach((row) => {
         const userId = row.user_id;
         const user = usersMap.get(userId);
 
@@ -99,11 +157,11 @@ export const getRankings = async (scope: 'GLOBAL' | 'GROUP', period: Period, gro
             });
         }
         const entry = userStats.get(userId);
-        entry.steps += Number(row.steps);
+        if (entry) entry.steps += Number(row.steps);
     });
 
     // Convert to array and sort
-    const sortedRankings = Array.from(userStats.values()).sort((a, b) => b.steps - a.steps);
+    const sortedRankings = sortPositiveStepRankings(Array.from(userStats.values()));
 
     return sortedRankings;
 };
@@ -155,33 +213,37 @@ const fetchGlobalRankingMap = async (): Promise<GlobalRankingMap> => {
     const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
     // PostgREST 1000行制限回避: ページネーション付き取得
-    const { data: rawSteps, error } = await fetchDailyStepsPaginated({
+    const { data: rawSteps, error } = await fetchDailyStepsPaginated<DailyStepRecord>({
         startDate: queryStartStr,
         userIds: undefined, // All users
     });
 
     if (error) {
-        console.error(`Error fetching GLOBAL all rankings`);
-        return {};
+        throw new Error('GLOBAL_RANKING_DATABASE_ERROR');
     }
 
-    const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
-    const usersMap = new Map<string, any>();
+    const uniqueUserIds = Array.from(new Set(rawSteps?.map((r) => r.user_id)));
+    const usersMap = new Map<string, RankingUser>();
 
     if (uniqueUserIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users, error: usersError } = await supabase
             .from('users')
             .select('id, name, image, username, group_keyword')
-            .in('id', uniqueUserIds);
+            .in('id', uniqueUserIds)
+            .returns<RankingUserWithGroupKeyword[]>();
 
-        users?.forEach((u: any) => usersMap.set(u.id, u));
+        if (usersError) {
+            throw new Error('GLOBAL_RANKING_USERS_DATABASE_ERROR');
+        }
+
+        users?.forEach((u) => usersMap.set(u.id, u));
     }
 
     // Aggregate
     // structure: Map<userId, UserStats>
     const aggMap: GlobalRankingMap = {};
 
-    rawSteps?.forEach((row: any) => {
+    rawSteps?.forEach((row) => {
         const userId = row.user_id;
         const user = usersMap.get(userId);
 
@@ -251,8 +313,8 @@ export const getCachedGlobalRankingMap = unstable_cache(
 );
 
 // Helper to transform the map into sorted lists (for UI consumption)
-export const transformRankingMapToLists = (aggMap: GlobalRankingMap): Record<Period, any[]> => {
-    const result: Record<string, any[]> = {
+export const transformRankingMapToLists = (aggMap: GlobalRankingMap): Record<Period, RankingAccumulatorEntry[]> => {
+    const result: Record<string, RankingAccumulatorEntry[]> = {
         DAILY: [],
         WEEKLY: [],
         MONTHLY: [],
@@ -261,7 +323,7 @@ export const transformRankingMapToLists = (aggMap: GlobalRankingMap): Record<Per
 
     const allEntries = Object.values(aggMap);
 
-    const prevKeyMap: Record<string, keyof UserStats | null> = {
+    const prevKeyMap: Record<string, PrevPeriodKey | null> = {
         DAILY: 'PREV_DAILY',
         WEEKLY: 'PREV_WEEKLY',
         MONTHLY: 'PREV_MONTHLY',
@@ -271,19 +333,18 @@ export const transformRankingMapToLists = (aggMap: GlobalRankingMap): Record<Per
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
         const prevKey = prevKeyMap[key];
         // Create ranking entries for this key
-        const list = allEntries.map(e => {
+        const list = sortPositiveStepRankings(allEntries.map(e => {
             return {
                 steps: e[key],
                 users: e.users,
                 ...(prevKey ? { prevSteps: e[prevKey] } : {})
             };
-        })
-            .sort((a, b) => b.steps - a.steps);
+        }));
 
         result[key] = list;
     });
 
-    return result as Record<Period, any[]>;
+    return result as Record<Period, RankingAccumulatorEntry[]>;
 };
 
 export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: string) => {
@@ -339,7 +400,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
 
     // GROUP Logic (retained)
     let userIds: string[] | null = null;
-    const usersMap = new Map<string, any>();
+    const usersMap = new Map<string, RankingUser>();
 
     if (scope === 'GROUP' && groupKeyword) {
         // 🐛 Fix: group_members テーブルを使用（レガシー group_keyword 配列に依存しない）
@@ -354,17 +415,17 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         const { data: members } = await supabase
             .from('group_members')
             .select('user_id, users(id, name, image, username)')
-            .eq('group_id', groupData.id);
+            .eq('group_id', groupData.id)
+            .returns<GroupMemberWithUser[]>();
 
         if (!members || members.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
         userIds = members.map(m => m.user_id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        members.forEach((m: any) => { if (m.users) usersMap.set(m.users.id, m.users); });
+        members.forEach((m) => { if (m.users) usersMap.set(m.users.id, m.users); });
     }
 
     // PostgREST 1000行制限回避: ページネーション付き取得
-    const { data: rawSteps, error } = await fetchDailyStepsPaginated({
+    const { data: rawSteps, error } = await fetchDailyStepsPaginated<DailyStepRecord>({
         startDate: queryStartStr,
         userIds: userIds || undefined,
     });
@@ -376,23 +437,24 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
 
     // GROUP scope: userIds が null の場合（安全策フォールバック）
     if (!userIds) {
-        const uniqueUserIds = Array.from(new Set(rawSteps?.map((r: any) => r.user_id)));
+        const uniqueUserIds = Array.from(new Set(rawSteps?.map((r) => r.user_id)));
 
         if (uniqueUserIds.length > 0) {
             const { data: users } = await supabase
                 .from('users')
                 .select('id, name, image, username, group_keyword')
-                .in('id', uniqueUserIds);
+                .in('id', uniqueUserIds)
+                .returns<RankingUserWithGroupKeyword[]>();
 
-            users?.forEach((u: any) => usersMap.set(u.id, u));
+            users?.forEach((u) => usersMap.set(u.id, u));
         }
     }
 
     // Aggregate
     // structure: Map<userId, { user: User, daily: 0, weekly: 0, monthly: 0, yearly: 0 }>
-    const aggMap = new Map<string, any>();
+    const aggMap = new Map<string, UserStats>();
 
-    rawSteps?.forEach((row: any) => {
+    rawSteps?.forEach((row) => {
         const userId = row.user_id;
         const user = usersMap.get(userId);
 
@@ -410,7 +472,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
                 PREV_MONTHLY: 0
             });
         }
-        const entry = aggMap.get(userId);
+        const entry = aggMap.get(userId)!;
         const steps = Number(row.steps);
         const date = row.date;
 
@@ -452,7 +514,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     });
 
     // Transform to separated arrays and sort
-    const result: Record<string, any[]> = {
+    const result: Record<string, RankingAccumulatorEntry[]> = {
         DAILY: [],
         WEEKLY: [],
         MONTHLY: [],
@@ -461,7 +523,7 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
 
     const allEntries = Array.from(aggMap.values());
 
-    const prevKeyMap: Record<string, string | null> = {
+    const prevKeyMap: Record<string, PrevPeriodKey | null> = {
         DAILY: 'PREV_DAILY',
         WEEKLY: 'PREV_WEEKLY',
         MONTHLY: 'PREV_MONTHLY',
@@ -471,20 +533,18 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
         const prevKey = prevKeyMap[key];
         // Create ranking entries for this key
-        const list = allEntries.map(e => {
+        const list = sortPositiveStepRankings(allEntries.map(e => {
             return {
                 steps: e[key],
                 users: e.users,
                 ...(prevKey ? { prevSteps: e[prevKey] } : {})
             };
-        })
-            // .filter(e => e.steps > 0 || key === 'DAILY') // Removed: Show all users even with 0 steps
-            .sort((a, b) => b.steps - a.steps);
+        }));
 
         result[key] = list;
     });
 
-    return result as Record<Period, any[]>;
+    return result as Record<Period, RankingAccumulatorEntry[]>;
 };
 
 // New Functions using 'groups' table
@@ -537,18 +597,19 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
 
     // ⭐ Performance: JOIN を分割して並列取得 + PostgREST 1000行制限回避
     const [stepsResult, usersResult] = await Promise.all([
-        fetchDailyStepsPaginated({
+        fetchDailyStepsPaginated<DailyStepRecord>({
             startDate,
             userIds,
         }),
         supabase
             .from('users')
             .select('id, name, image, username')
-            .in('id', userIds),
+            .in('id', userIds)
+            .returns<RankingUserSummary[]>(),
     ]);
 
     const { data: rawSteps, error } = stepsResult;
-    const { data: users } = usersResult;
+    const users = usersResult.data;
 
     if (error) {
         console.error('Error fetching group rankings');
@@ -558,8 +619,8 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
     const usersLookup = new Map(users?.map(u => [u.id, u]));
 
     // Aggregate
-    const userMap = new Map<string, any>();
-    rawSteps?.forEach((row: any) => {
+    const userMap = new Map<string, RankingAccumulatorEntry>();
+    rawSteps?.forEach((row) => {
         const userId = row.user_id;
         const user = usersLookup.get(userId);
         if (!user) return;
@@ -570,12 +631,11 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
                 users: user
             });
         }
-        const entry = userMap.get(userId);
+        const entry = userMap.get(userId)!;
         entry.steps += Number(row.steps);
     });
 
-    return Array.from(userMap.values())
-        .sort((a, b) => b.steps - a.steps);
+    return sortPositiveStepRankings(Array.from(userMap.values()));
 };
 
 export const getAllGroupRankings = async (groupId: string) => {
@@ -629,17 +689,21 @@ export const getAllGroupRankings = async (groupId: string) => {
     const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
     // Fetch Members
-    const { data: groupMembers } = await supabase
+    const { data: groupMembers, error: groupMembersError } = await supabase
         .from('group_members')
         .select('user_id')
         .eq('group_id', groupId);
 
+    if (groupMembersError) {
+        reportError('ranking-service:getAllGroupRankings:members', groupMembersError, { groupId });
+        throw new Error('Failed to load group ranking members');
+    }
     const userIds = groupMembers?.map(m => m.user_id) || [];
     if (userIds.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
     // ⚡ Performance: ステップとユーザー情報を並列取得 + PostgREST 1000行制限回避
     const [stepsResult, usersResult] = await Promise.all([
-        fetchDailyStepsPaginated({
+        fetchDailyStepsPaginated<DailyStepRecord>({
             startDate: queryStartStr,
             userIds,
         }),
@@ -647,20 +711,25 @@ export const getAllGroupRankings = async (groupId: string) => {
             .from('users')
             .select('id, name, image, username')
             .in('id', userIds)
+            .returns<RankingUserSummary[]>()
     ]);
 
     const { data: rawSteps, error } = stepsResult;
-    const { data: users } = usersResult;
+    const { data: users, error: usersError } = usersResult;
 
     if (error) {
-        console.error('Error fetching all group rankings');
-        return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+        reportError('ranking-service:getAllGroupRankings:steps', error, { groupId });
+        throw new Error('Failed to load group ranking steps');
+    }
+    if (usersError) {
+        reportError('ranking-service:getAllGroupRankings:users', usersError, { groupId });
+        throw new Error('Failed to load group ranking users');
     }
 
     const usersMap = new Map(users?.map(u => [u.id, u]));
 
     // Aggregate
-    const aggMap = new Map<string, any>();
+    const aggMap = new Map<string, UserStats>();
 
     // Initialize for ALL users (Ensure 0 step users are included)
     users?.forEach(u => {
@@ -676,7 +745,7 @@ export const getAllGroupRankings = async (groupId: string) => {
         });
     });
 
-    rawSteps?.forEach((row: any) => {
+    rawSteps?.forEach((row) => {
         const userId = row.user_id;
         const entry = aggMap.get(userId);
 
@@ -696,10 +765,10 @@ export const getAllGroupRankings = async (groupId: string) => {
         if (date >= lastMonthStartStr && date < monthlyStartStr) entry.PREV_MONTHLY += steps;
     });
 
-    const result: Record<string, any[]> = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+    const result: Record<string, RankingEntry[]> = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     const allEntries = Array.from(aggMap.values());
 
-    const prevKeyMap: Record<string, string | null> = {
+    const prevKeyMap: Record<string, PrevPeriodKey | null> = {
         DAILY: 'PREV_DAILY',
         WEEKLY: 'PREV_WEEKLY',
         MONTHLY: 'PREV_MONTHLY',
@@ -708,16 +777,18 @@ export const getAllGroupRankings = async (groupId: string) => {
 
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
         const prevKey = prevKeyMap[key];
-        result[key] = allEntries.map(e => ({
+        result[key] = sortPositiveStepRankings(allEntries.map(e => ({
             steps: e[key],
             users: e.users,
             ...(prevKey ? { prevSteps: e[prevKey] } : {})
-        }))
-            // .filter(e => e.steps > 0 || key === 'DAILY')
-            .sort((a, b) => b.steps - a.steps);
+        })))
+            .map((entry, index) => ({
+                ...entry,
+                originalRank: index + 1,
+            }));
     });
 
-    return result as Record<Period, any[]>;
+    return result as Record<Period, RankingEntry[]>;
 };
 
 export const getBatchGroupRankings = async (groupIds: string[]) => {
@@ -786,7 +857,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 
     // 3. ⚡ Performance: ステップとユーザー情報を並列取得 + PostgREST 1000行制限回避
     const [stepsResult, usersResult] = await Promise.all([
-        fetchDailyStepsPaginated({
+        fetchDailyStepsPaginated<DailyStepRecord>({
             startDate: queryStartStr,
             userIds: uniqueUserIds,
         }),
@@ -794,10 +865,11 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
             .from('users')
             .select('id, name, image, username')
             .in('id', uniqueUserIds)
+            .returns<RankingUserSummary[]>()
     ]);
 
     const { data: rawSteps, error } = stepsResult;
-    const { data: users } = usersResult;
+    const users = usersResult.data;
 
     if (error) {
         console.error('Error fetching batch group rankings');
@@ -806,7 +878,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 
     // 4. Aggregate Steps per User
     // Map<UserId, { user: User, DAILY: number, ... }>
-    const userStats = new Map<string, any>();
+    const userStats = new Map<string, UserStats>();
 
     // Initialize for ALL users
     users?.forEach(u => {
@@ -822,7 +894,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
         });
     });
 
-    rawSteps?.forEach((row: any) => {
+    rawSteps?.forEach((row) => {
         const userId = row.user_id;
         const entry = userStats.get(userId);
 
@@ -843,7 +915,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     });
 
     // 5. Distribute to Groups
-    const result: Record<string, Record<Period, any[]>> = {};
+    const result: Record<string, Record<Period, RankingAccumulatorEntry[]>> = {};
 
     // Initialize result for all requested groups
     groupIds.forEach(gid => {
@@ -860,7 +932,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     });
 
     // Build rankings for each group
-    const prevKeyMap: Record<string, string | null> = {
+    const prevKeyMap: Record<string, PrevPeriodKey | null> = {
         DAILY: 'PREV_DAILY',
         WEEKLY: 'PREV_WEEKLY',
         MONTHLY: 'PREV_MONTHLY',
@@ -869,7 +941,7 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 
     groupIds.forEach(gid => {
         const memberIds = groupUsersMap.get(gid) || [];
-        const groupEntries: any[] = [];
+        const groupEntries: UserStats[] = [];
 
         memberIds.forEach(uid => {
             const stats = userStats.get(uid);
@@ -881,13 +953,11 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
         // Split into periods and sort
         (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
             const prevKey = prevKeyMap[key];
-            result[gid][key] = groupEntries.map(e => ({
+            result[gid][key] = sortPositiveStepRankings(groupEntries.map(e => ({
                 steps: e[key],
                 users: e.users,
                 ...(prevKey ? { prevSteps: e[prevKey] } : {})
-            }))
-                // .filter(e => e.steps > 0 || key === 'DAILY')
-                .sort((a, b) => b.steps - a.steps);
+            })));
         });
     });
 
@@ -897,22 +967,25 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
 // ⚡ Bolt Optimization: Derive group rankings from cached global rankings to avoid expensive DB calls
 export const deriveBatchGroupRankings = async (
     groupIds: string[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    globalRankings: Record<Period, any[]> | GlobalRankingMap
+    globalRankings: Record<Period, RankingAccumulatorEntry[]> | GlobalRankingMap
 ) => {
     if (groupIds.length === 0) return {};
 
     // 1. Fetch Members for ALL groups
-    const { data: groupMembers } = await supabase
+    const { data: groupMembers, error: groupMembersError } = await supabase
         .from('group_members')
         .select('group_id, user_id')
         .in('group_id', groupIds);
 
+    if (groupMembersError) {
+        reportError('ranking-service:deriveBatchGroupRankings:members', groupMembersError, { groupIds });
+        throw new Error('GROUP_MEMBER_RANKING_DATABASE_ERROR');
+    }
     if (!groupMembers || groupMembers.length === 0) return {};
 
     // 2. Build User Stats Map from Global Rankings (In-Memory pivot)
     // Map<UserId, { user: User, DAILY: number, WEEKLY: number, ..., PREV_DAILY: number, ... }>
-    const userStats = new Map<string, any>();
+    const userStats = new Map<string, UserStats>();
 
     // Optimization: Filter for target users immediately
     const targetUserIds = new Set(groupMembers.map(m => m.user_id));
@@ -922,12 +995,14 @@ export const deriveBatchGroupRankings = async (
     // But wait, GlobalRankingMap is Record<string, UserStats>. UserStats has DAILY as number.
     // We can check type of 'DAILY'.
 
-    const isLegacyFormat = (input: any): input is Record<Period, any[]> => {
+    const isLegacyFormat = (
+        input: Record<Period, RankingAccumulatorEntry[]> | GlobalRankingMap
+    ): input is Record<Period, RankingAccumulatorEntry[]> => {
         return Array.isArray(input.DAILY);
     };
 
     if (isLegacyFormat(globalRankings)) {
-        const prevFieldMap: Record<string, string> = {
+        const prevFieldMap: Record<string, PrevPeriodKey> = {
             DAILY: 'PREV_DAILY',
             WEEKLY: 'PREV_WEEKLY',
             MONTHLY: 'PREV_MONTHLY'
@@ -936,8 +1011,7 @@ export const deriveBatchGroupRankings = async (
         (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
             const list = globalRankings[period];
             if (list) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                list.forEach((entry: any) => {
+                list.forEach((entry) => {
                     const userId = entry.users.id;
 
                     // ⚡ Bolt Optimization: Only process users relevant to the requested groups
@@ -950,18 +1024,19 @@ export const deriveBatchGroupRankings = async (
                             PREV_DAILY: 0, PREV_WEEKLY: 0, PREV_MONTHLY: 0
                         });
                     }
-                    userStats.get(userId)[period] = entry.steps;
+                    const stats = userStats.get(userId)!;
+                    stats[period] = entry.steps;
                     // Carry prevSteps from global rankings
                     const prevField = prevFieldMap[period];
                     if (prevField && entry.prevSteps !== undefined) {
-                        userStats.get(userId)[prevField] = entry.prevSteps;
+                        stats[prevField] = entry.prevSteps;
                     }
                 });
             }
         });
     } else {
         // New Optimized Path: Direct Map Lookup O(M)
-        const rankingMap = globalRankings as GlobalRankingMap;
+        const rankingMap = globalRankings;
         targetUserIds.forEach(userId => {
             if (rankingMap[userId]) {
                 userStats.set(userId, rankingMap[userId]);
@@ -983,7 +1058,8 @@ export const deriveBatchGroupRankings = async (
         const { data: users } = await supabase
             .from('users')
             .select('id, name, image, username')
-            .in('id', missingUserIds);
+            .in('id', missingUserIds)
+            .returns<RankingUserSummary[]>();
 
         users?.forEach(u => {
             userStats.set(u.id, {
@@ -995,7 +1071,7 @@ export const deriveBatchGroupRankings = async (
     }
 
     // 5. Distribute to Groups
-    const result: Record<string, Record<Period, any[]>> = {};
+    const result: Record<string, Record<Period, RankingEntry[]>> = {};
     groupIds.forEach(gid => {
         result[gid] = { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
     });
@@ -1008,7 +1084,7 @@ export const deriveBatchGroupRankings = async (
         groupUsersMap.get(m.group_id)?.push(m.user_id);
     });
 
-    const prevKeyMap: Record<string, string | null> = {
+    const prevKeyMap: Record<string, PrevPeriodKey | null> = {
         DAILY: 'PREV_DAILY',
         WEEKLY: 'PREV_WEEKLY',
         MONTHLY: 'PREV_MONTHLY',
@@ -1017,8 +1093,7 @@ export const deriveBatchGroupRankings = async (
 
     groupIds.forEach(gid => {
         const memberIds = groupUsersMap.get(gid) || [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const groupEntries: any[] = [];
+        const groupEntries: UserStats[] = [];
 
         memberIds.forEach(uid => {
             const stats = userStats.get(uid);
@@ -1029,11 +1104,15 @@ export const deriveBatchGroupRankings = async (
 
         (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(key => {
             const prevKey = prevKeyMap[key];
-            result[gid][key] = groupEntries.map(e => ({
+            result[gid][key] = sortPositiveStepRankings(groupEntries.map(e => ({
                 steps: e[key],
                 users: { ...e.users }, // Clone to avoid mutating shared/cached objects
                 ...(prevKey ? { prevSteps: e[prevKey] } : {})
-            })).sort((a, b) => b.steps - a.steps);
+            })))
+                .map((entry, index) => ({
+                    ...entry,
+                    originalRank: index + 1,
+                }));
         });
     });
 

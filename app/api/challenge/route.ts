@@ -1,7 +1,9 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
+import { getJSTDateString } from '@/lib/date-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
 
@@ -9,8 +11,52 @@ import { reportError } from '@/lib/errors';
 // チャレンジ一覧取得 & 新規作成 API
 // ============================================
 
+/**
+ * `challenge_participants(count)` の埋め込みカウントを取り出す。
+ * Supabase のバージョン・クエリ形状により配列 (`[{count:N}]`) と
+ * 単一オブジェクト (`{count:N}`) のどちらも返り得るため、両方をガードする。
+ */
+function extractParticipantCount(cp: unknown): number {
+    if (Array.isArray(cp)) {
+        const first: unknown = cp[0];
+        if (first && typeof first === 'object' && 'count' in first) {
+            const count = (first as { count?: unknown }).count;
+            return typeof count === 'number' ? count : 0;
+        }
+        return 0;
+    }
+    if (cp && typeof cp === 'object' && 'count' in cp) {
+        const count = (cp as { count?: unknown }).count;
+        return typeof count === 'number' ? count : 0;
+    }
+    return 0;
+}
+
+/** GET チャレンジ一覧クエリの選択列に対応する行型 */
+interface ChallengeListRow {
+    id: string;
+    title: string;
+    description: string | null;
+    type: 'INDIVIDUAL' | 'GROUP';
+    target_steps: number;
+    start_date: string;
+    end_date: string;
+    reward_uc: number;
+    is_active: boolean;
+    created_by: string;
+    group_id: string | null;
+    created_at: string;
+    /** Supabase バージョンにより配列・単一オブジェクトいずれの形でも返る (extractParticipantCount で吸収) */
+    challenge_participants: { count: number }[] | { count: number } | null;
+    recent_participants: {
+        user: { username: string | null; name: string | null; image: string | null } | null;
+        joined_at: string;
+    }[];
+    creator: { username: string | null; name: string | null; image: string | null } | null;
+}
+
 /** GET: アクティブなチャレンジ一覧を取得 */
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
     try {
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type'); // 'INDIVIDUAL' | 'GROUP'
@@ -23,7 +69,7 @@ export async function GET(req: NextRequest) {
         }
         const userId = session.user.id;
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = getJSTDateString();
 
         let query = supabaseAdmin
             .from('challenges')
@@ -69,7 +115,7 @@ export async function GET(req: NextRequest) {
 
         // メインクエリと参加状況を並列取得
         const [queryResult, participationsResult] = await Promise.all([
-            query.limit(50),
+            query.limit(50).returns<ChallengeListRow[]>(),
             userId
                 ? supabaseAdmin
                     .from('challenge_participants')
@@ -90,27 +136,21 @@ export async function GET(req: NextRequest) {
         const challenges = (data || []).map(challenge => {
             // challenge_participants(count) はSupabaseバージョンにより
             // [{count: N}] (配列) または {count: N} (オブジェクト) を返す
-            const cp = challenge.challenge_participants;
-            const participantCount = Array.isArray(cp)
-                ? (cp[0]?.count ?? 0)
-                : (cp as unknown as { count: number } | null)?.count ?? 0;
+            const participantCount = extractParticipantCount(challenge.challenge_participants);
 
             // 参加者のアバター情報（最新5人まで）
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const recentParticipants = (challenge as any).recent_participants;
-            const participantAvatars = Array.isArray(recentParticipants)
-                ? recentParticipants
-                    .filter((p: { user: unknown }) => p.user)
-                    .sort((a: { joined_at: string }, b: { joined_at: string }) =>
-                        new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime()
-                    )
-                    .slice(0, 5)
-                    .map((p: { user: { username?: string; name?: string; image?: string } }) => ({
-                        username: p.user.username,
-                        name: p.user.name,
-                        image: p.user.image,
-                    }))
-                : [];
+            const recentParticipants = challenge.recent_participants;
+            const participantAvatars = recentParticipants
+                .filter((p) => p.user)
+                .sort((a, b) =>
+                    new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime()
+                )
+                .slice(0, 5)
+                .map((p) => ({
+                    username: p.user?.username,
+                    name: p.user?.name,
+                    image: p.user?.image,
+                }));
 
             return {
                 ...challenge,

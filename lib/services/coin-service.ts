@@ -252,12 +252,16 @@ async function updateCoinBalance(userId: string, currentStreak: number) {
  */
 export async function getCoinBalance(userId: string) {
     // ⚡ 必要カラムのみ取得
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
         .from('coin_balances')
         .select('user_id, total_balance, total_earned, total_bonus, current_streak, best_streak, investor_rank')
         .eq('user_id', userId)
         .single();
 
+    if (error && error.code !== 'PGRST116') {
+        reportError('getCoinBalance', error, { userId });
+        throw error;
+    }
     return data || {
         user_id: userId,
         total_balance: 0,
@@ -295,6 +299,14 @@ export async function getRecentTransactions(userId: string, limit: number = 30) 
 
     const currentBalance = balanceResult.data?.total_balance || 0;
     const recentTx = txResult.data;
+    if (balanceResult.error && balanceResult.error.code !== 'PGRST116') {
+        reportError('getRecentTransactions:balance', balanceResult.error, { userId });
+        throw balanceResult.error;
+    }
+    if (txResult.error) {
+        reportError('getRecentTransactions:transactions', txResult.error, { userId });
+        throw txResult.error;
+    }
 
     if (!recentTx || recentTx.length === 0) return [];
 
@@ -340,6 +352,14 @@ export async function getDailyBalanceHistory(userId: string, days: number = 30) 
     ]);
 
     const transactions = txResult.data;
+    if (txResult.error) {
+        reportError('getDailyBalanceHistory:transactions', txResult.error, { userId });
+        throw txResult.error;
+    }
+    if (priorResult.error) {
+        reportError('getDailyBalanceHistory:prior', priorResult.error, { userId });
+        throw priorResult.error;
+    }
     if (!transactions || transactions.length === 0) return [];
 
     // 日別に集計

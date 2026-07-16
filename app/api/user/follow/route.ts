@@ -16,10 +16,10 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export async function POST(request: Request) {
     try {
         const session = await auth();
-        if (!session?.user || !(session.user as any).id) {
+        if (!session?.user || !session.user.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const userId = (session.user as any).id as string;
+        const userId = session.user.id;
 
         const body = await request.json();
         const { targetUserId } = body;
@@ -71,10 +71,10 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
     try {
         const session = await auth();
-        if (!session?.user || !(session.user as any).id) {
+        if (!session?.user || !session.user.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const userId = (session.user as any).id as string;
+        const userId = session.user.id;
 
         const body = await request.json();
         const { targetUserId } = body;

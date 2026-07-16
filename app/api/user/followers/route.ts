@@ -5,6 +5,8 @@ import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
+import type { PublicUserSummary, UserFollowRow } from "@/types/database";
+
 // ============================================
 // フォロワー一覧 API
 // GET: 自分をフォローしているユーザーの一覧を取得
@@ -13,17 +15,18 @@ import { NextResponse } from "next/server";
 export async function GET() {
     try {
         const session = await auth();
-        if (!session?.user || !(session.user as any).id) {
+        if (!session?.user || !session.user.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const userId = (session.user as any).id as string;
+        const userId = session.user.id;
 
         // フォロワーを取得
         const { data: followers, error: followersErr } = await supabaseAdmin
             .from("user_follows")
             .select("follower_id, created_at")
             .eq("following_id", userId)
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: false })
+            .returns<Pick<UserFollowRow, 'follower_id' | 'created_at'>[]>();
 
         if (followersErr) {
             reportError("GET /api/user/followers", followersErr);
@@ -40,9 +43,10 @@ export async function GET() {
         const { data: users } = await supabaseAdmin
             .from("users")
             .select("id, name, image, username")
-            .in("id", followerIds);
+            .in("id", followerIds)
+            .returns<PublicUserSummary[]>();
 
-        const usersMap = new Map<string, any>();
+        const usersMap = new Map<string, PublicUserSummary>();
         users?.forEach((u) => usersMap.set(u.id, u));
 
         const result = followers

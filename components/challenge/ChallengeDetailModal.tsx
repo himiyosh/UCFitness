@@ -1,9 +1,13 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import { useTranslations } from 'next-intl';
+
 import UserAvatar from '@/components/UserAvatar';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 // ============================================
 // チャレンジ詳細モーダル
@@ -54,6 +58,10 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
     const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    useDialogFocus({ isOpen, onClose, dialogRef, initialFocusRef: closeButtonRef });
 
     const fetchDetail = useCallback(async () => {
         setLoading(true);
@@ -73,17 +81,6 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
     useEffect(() => {
         if (isOpen) fetchDetail();
     }, [isOpen, fetchDetail]);
-
-    // Escape キーで閉じる
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        if (isOpen) {
-            document.addEventListener('keydown', handleKeyDown);
-            return () => document.removeEventListener('keydown', handleKeyDown);
-        }
-    }, [isOpen, onClose]);
 
     // 参加者を進捗順にソート
     const sortedParticipants = useMemo(() => {
@@ -118,15 +115,15 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
         return `${rank + 1}`;
     }, []);
 
-    if (!isOpen) return null;
+    if (!isOpen || typeof document === 'undefined') return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* オーバーレイ */}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
             {/* モーダル */}
-            <div className="relative w-full max-w-lg bg-white midnight-solid-panel rounded-2xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden animate-[modalSlideUp_0.3s_ease-out]">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={challenge?.title ?? t('detailViewDetail')} tabIndex={-1} className="relative flex max-h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl outline-none animate-[modalSlideUp_0.3s_ease-out] midnight-solid-panel">
                 {/* ヘッダー — 装飾付き */}
                 <div className="relative overflow-hidden px-5 pt-5 pb-4 border-b border-gray-100">
                     {/* 背景グラデーション装飾 */}
@@ -150,14 +147,15 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                                             {challenge.type === 'INDIVIDUAL' ? '👤' : '👥'}
                                             {challenge.type === 'INDIVIDUAL' ? t('individual') : t('group')}
                                         </span>
-                                        <h2 className="text-lg font-bold text-gray-900 line-clamp-2">{challenge.title}</h2>
+                                        <h2 id="challenge-detail-dialog-title" className="text-lg font-bold text-gray-900 line-clamp-2">{challenge.title}</h2>
                                     </>
                                 ) : null}
                             </div>
                             <button
+                                ref={closeButtonRef}
                                 onClick={onClose}
-                                className="ml-2 p-1.5 rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600 flex-shrink-0"
-                                aria-label="Close"
+                                className="ml-2 inline-flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                                aria-label={t('closeDetailDialog')}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -177,9 +175,9 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                     )}
 
                     {error && (
-                        <div className="text-center py-8">
-                            <span className="text-3xl block mb-2">⚠️</span>
-                            <p className="text-sm text-red-500 mb-3">{t('retry')}</p>
+                        <div className="text-center py-8" role="alert">
+                            <span className="text-3xl block mb-2" aria-hidden="true">⚠️</span>
+                            <p className="text-sm text-red-700 mb-3">{t('loadError')}</p>
                             <button
                                 onClick={fetchDetail}
                                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[var(--theme-primary)] min-h-[44px] hover:scale-105 active:scale-95 transition-transform"
@@ -232,20 +230,20 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
 
                             {/* GROUP チャレンジの合計進捗 */}
                             {challenge.type === 'GROUP' && sortedParticipants.length > 0 && (
-                                <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100">
+                                <div className="rounded-xl border border-[var(--color-competition)]/30 bg-[var(--color-competition-soft)] p-4">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-bold text-purple-800">🤝 {t('detailGroupProgress')}</span>
-                                        <span className="text-sm font-bold text-purple-700">
+                                        <span className="text-sm font-bold text-[var(--color-competition-strong)]">🤝 {t('detailGroupProgress')}</span>
+                                        <span className="text-sm font-bold text-[var(--color-competition-strong)]">
                                             {Math.min(100, Math.round((totalGroupSteps / challenge.target_steps) * 100))}%
                                         </span>
                                     </div>
-                                    <div className="w-full h-3 bg-purple-100 rounded-full overflow-hidden">
+                                    <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
                                         <div
-                                            className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-700 ease-out"
+                                            className="h-full rounded-full bg-[var(--color-competition-solid)] transition-[width] duration-700 ease-out"
                                             style={{ width: `${Math.min(100, (totalGroupSteps / challenge.target_steps) * 100)}%` }}
                                         />
                                     </div>
-                                    <div className="text-xs text-purple-600 mt-1">
+                                    <div className="mt-1 text-xs text-[var(--color-competition-strong)]">
                                         {totalGroupSteps.toLocaleString()} / {challenge.target_steps.toLocaleString()} {t('stepsUnit')}
                                     </div>
                                 </div>
@@ -307,7 +305,7 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                                                             router.push(`/user/${username}`);
                                                         }
                                                     }}
-                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                                                    className={`challenge-participant-enter flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                                                         isCompleted
                                                             ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:border-green-300'
                                                             : index < 3
@@ -390,6 +388,7 @@ export default function ChallengeDetailModal({ challengeId, isOpen, onClose }: C
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }

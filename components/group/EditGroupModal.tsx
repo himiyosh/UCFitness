@@ -3,6 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+
+import { useTranslations } from 'next-intl';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+
 import DeleteGroupButton from './DeleteGroupButton';
 
 const MAX_NAME_LENGTH = 50;
@@ -22,6 +27,7 @@ interface EditGroupModalProps {
 
 export default function EditGroupModal({ groupId, groupKeyword, currentName, currentIcon, currentHeader, isVisible, isOpen, onClose }: EditGroupModalProps) {
     const router = useRouter();
+    const t = useTranslations('EditGroup');
     const [name, setName] = useState(currentName);
     const [isPublic, setIsPublic] = useState(isVisible);
     const [iconFile, setIconFile] = useState<File | null>(null);
@@ -37,6 +43,8 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
     const headerUrlRef = useRef<string | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
+    useDialogFocus({ isOpen, onClose, dialogRef: modalRef });
+
     // オブジェクトURLのメモリリーク防止
     useEffect(() => {
         return () => {
@@ -44,21 +52,6 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
             if (headerUrlRef.current) URL.revokeObjectURL(headerUrlRef.current);
         };
     }, []);
-
-    // Escキーでモーダルを閉じる
-    useEffect(() => {
-        if (!isOpen) return;
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && !isSubmitting) onClose();
-        };
-        document.addEventListener('keydown', handleEscape);
-        return () => document.removeEventListener('keydown', handleEscape);
-    }, [isOpen, isSubmitting, onClose]);
-
-    // モーダルオープン時にフォーカス
-    useEffect(() => {
-        if (isOpen && modalRef.current) modalRef.current.focus();
-    }, [isOpen]);
 
     // プロパティ変更時に状態を同期（モーダルが開くたびに最新値を反映）
     useEffect(() => {
@@ -76,13 +69,13 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
 
     const validateFile = useCallback((file: File): string | null => {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-            return 'Invalid file type. Please use JPEG, PNG, GIF, or WebP.';
+            return t('invalidFileType');
         }
         if (file.size > MAX_FILE_SIZE) {
-            return 'File is too large. Maximum size is 5MB.';
+            return t('fileTooLarge');
         }
         return null;
-    }, []);
+    }, [t]);
 
     const handleIconChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -119,11 +112,11 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
         // 名前のバリデーション
         const trimmedName = name.trim();
         if (!trimmedName) {
-            setError('Group name cannot be empty.');
+            setError(t('nameRequired'));
             return;
         }
         if (trimmedName.length > MAX_NAME_LENGTH) {
-            setError(`Group name must be ${MAX_NAME_LENGTH} characters or fewer.`);
+            setError(t('nameTooLong', { count: MAX_NAME_LENGTH }));
             return;
         }
 
@@ -187,11 +180,11 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
             router.refresh();
             onClose();
         } catch {
-            setError('Failed to update group settings. Please try again.');
+            setError(t('updateFailed'));
         } finally {
             setIsSubmitting(false);
         }
-    }, [name, currentIcon, currentHeader, iconFile, headerFile, groupId, groupKeyword, isPublic, router, onClose]);
+    }, [name, currentIcon, currentHeader, iconFile, headerFile, groupId, groupKeyword, isPublic, router, onClose, t]);
 
     const [mounted, setMounted] = useState(false);
 
@@ -202,13 +195,13 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
     if (!mounted || !isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 isolate" role="dialog" aria-modal="true" aria-label="Edit Group Details">
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={!isSubmitting ? onClose : undefined} aria-hidden="true" />
+        <div className="fixed inset-0 z-[100] isolate flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="edit-group-dialog-title">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} aria-hidden="true" />
 
-            <div ref={modalRef} tabIndex={-1} className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in z-50 max-h-[90vh] overflow-y-auto outline-none">
+            <div ref={modalRef} tabIndex={-1} className="relative z-50 max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl bg-white shadow-xl outline-none animate-fade-in">
                 <form onSubmit={handleSubmit}>
-                    <div className="p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6">Edit Group Details</h2>
+                    <div className="p-4 sm:p-6">
+                        <h2 id="edit-group-dialog-title" className="mb-4 text-xl font-bold text-gray-900">{t('title')}</h2>
 
                         {/* エラー表示 */}
                         {error && (
@@ -220,7 +213,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
 
                         {/* Name Input */}
                         <div className="mb-6">
-                            <label htmlFor="group-name" className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
+                            <label htmlFor="group-name" className="block text-sm font-medium text-gray-700 mb-2">{t('groupName')}</label>
                             <input
                                 id="group-name"
                                 type="text"
@@ -236,13 +229,13 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
 
                         {/* Header Image Input */}
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Header Image</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">{t('headerImage')}</label>
                             <div className="relative h-32 w-full rounded-xl bg-gray-100 overflow-hidden border border-dashed border-gray-300 group cursor-pointer hover:border-[var(--theme-primary)] transition-colors">
                                 {headerPreview ? (
-                                    <img src={headerPreview} alt="Header Preview" className="h-full w-full object-cover" />
+                                    <img src={headerPreview} alt={t('headerPreviewAlt')} className="h-full w-full object-cover" />
                                 ) : (
                                     <div className="flex items-center justify-center h-full text-gray-400">
-                                        <span className="text-xs">Click to upload header</span>
+                                        <span className="text-xs">{t('uploadHeaderHint')}</span>
                                     </div>
                                 )}
                                 <input
@@ -250,7 +243,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                     accept="image/*"
                                     onChange={handleHeaderChange}
                                     className="absolute inset-0 opacity-0 cursor-pointer"
-                                    aria-label="Upload header image"
+                                    aria-label={t('uploadHeader')}
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
                                     <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
@@ -261,33 +254,35 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                         {/* Visibility Toggle */}
                         <div className="mb-6 flex items-center justify-between">
                             <div className="flex flex-col">
-                                <span className="text-sm font-medium text-gray-700">Show in Rankings</span>
-                                <span className="text-xs text-gray-500">If disabled, the group will be hidden from public leaderboards.</span>
+                                <span className="text-sm font-medium text-gray-700">{t('showInRankings')}</span>
+                                <span className="text-xs text-gray-500">{t('showInRankingsDescription')}</span>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsPublic(!isPublic)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:ring-offset-2 ${isPublic ? 'bg-[var(--theme-primary)]' : 'bg-gray-200'}`}
                                 role="switch"
                                 aria-checked={isPublic}
-                                aria-label="Show in Rankings"
+                                aria-label={t('showInRankings')}
+                                className="inline-flex min-h-[44px] min-w-[56px] flex-shrink-0 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-primary)] focus-visible:ring-offset-2"
                             >
                                 <span
                                     aria-hidden="true"
-                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublic ? 'translate-x-5' : 'translate-x-0'}`}
-                                />
+                                    className={`relative inline-flex h-6 w-11 rounded-full transition-colors ${isPublic ? 'bg-[var(--theme-primary)]' : 'bg-gray-300'}`}
+                                >
+                                    <span className={`pointer-events-none inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${isPublic ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                </span>
                             </button>
                         </div>
 
                         {/* Icon Input */}
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Group Icon</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">{t('groupIcon')}</label>
                             <div className="flex items-center gap-4">
                                 <div className="relative h-20 w-20 rounded-xl bg-[var(--theme-primary-light)] overflow-hidden border border-dashed border-gray-300 group cursor-pointer hover:border-[var(--theme-primary)] transition-colors flex-shrink-0">
                                     {iconPreview ? (
-                                        <img src={iconPreview} alt="Icon Preview" className="h-full w-full object-cover" />
+                                        <img src={iconPreview} alt={t('iconPreviewAlt')} className="h-full w-full object-cover" />
                                     ) : (
-                                        <div className="flex items-center justify-center h-full text-indigo-300 font-bold text-2xl">
+                                        <div className="flex h-full items-center justify-center text-2xl font-bold text-[var(--color-primary-strong)]">
                                             {currentName.substring(0, 1).toUpperCase()}
                                         </div>
                                     )}
@@ -296,67 +291,64 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                         accept="image/*"
                                         onChange={handleIconChange}
                                         className="absolute inset-0 opacity-0 cursor-pointer"
-                                        aria-label="Upload group icon"
+                                        aria-label={t('uploadIcon')}
                                     />
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
                                         <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                                     </div>
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                    <p>Recommended: Square image</p>
-                                    <p>Click image to change.</p>
+                                    <p>{t('squareImageHint')}</p>
+                                    <p>{t('changeImageHint')}</p>
                                 </div>
                             </div>
                         </div>
 
                     </div>
 
-                    <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+                    <div className="flex justify-end gap-3 rounded-b-xl bg-gray-50 px-4 py-3 sm:px-6 sm:py-4">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                            disabled={isSubmitting}
+                            className="min-h-[44px] rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
                         >
-                            Cancel
+                            {t('cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="px-4 py-2 text-sm font-medium text-white bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[var(--theme-primary)]/90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 <>
                                     <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    Saving...
+                                    {t('saving')}
                                 </>
                             ) : (
-                                'Save Changes'
+                                t('save')
                             )}
                         </button>
                     </div>
                 </form>
-
-                <div className="h-12 bg-transparent"></div>
 
                 {showDangerZone ? (
                     <div className="px-6 pb-6 bg-red-50/30 animate-in slide-in-from-top-2 fade-in duration-200">
                         <DeleteGroupButton groupKeyword={groupKeyword} groupName={currentName} />
                         <button
                             onClick={() => setShowDangerZone(false)}
-                            className="w-full mt-2 text-center text-xs text-gray-400 hover:text-gray-600 hover:underline"
+                            className="mt-2 min-h-[44px] w-full text-center text-xs text-gray-600 hover:text-gray-800 hover:underline"
                         >
-                            Cancel and Hide
+                            {t('cancelDangerZone')}
                         </button>
                     </div>
                 ) : (
                     <div className="px-6 py-4 flex justify-center opacity-75 hover:opacity-100 transition-opacity">
                         <button
                             onClick={() => setShowDangerZone(true)}
-                            className="text-xs font-bold text-gray-400 hover:text-red-600 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                            className="flex min-h-[44px] items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-gray-600 transition-colors hover:text-red-700"
                         >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Delete Group
+                            {t('deleteGroup')}
                         </button>
                     </div>
                 )}
@@ -365,4 +357,3 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
         document.body
     );
 }
-

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { useTranslations } from 'next-intl';
+
 interface Props {
     groupKeyword: string;
     groupName: string;
@@ -14,6 +16,7 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
     const [isThinking, setIsThinking] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const t = useTranslations('EditGroup');
 
     const handleDelete = async () => {
         if (!confirmText || confirmText !== groupName) {
@@ -42,7 +45,7 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
             router.refresh();
 
         } catch {
-            setError('Failed to delete group. Please try again.');
+            setError(t('deleteFailed'));
             setIsThinking(false);
         }
     };
@@ -50,19 +53,19 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
     if (isConfirming) {
         return (
             <div className="bg-red-50 border border-red-100 rounded-xl p-4 mt-6">
-                <h3 className="text-red-800 font-bold mb-2">Delete Group</h3>
+                <h3 className="text-red-800 font-bold mb-2">{t('deleteGroup')}</h3>
                 <p className="text-red-600 text-sm mb-4">
-                    This action is <span className="font-bold">irreversible</span>. All members will be removed and the group data will be permanently deleted.
+                    {t('deleteWarning')}
                 </p>
                 <div className="mb-4">
                     <label className="block text-xs font-bold text-red-700 mb-1">
-                        Type <span className="select-all bg-white px-1 rounded border border-red-200">{groupName}</span> to confirm:
+                        {t('typeToConfirm', { name: groupName })}
                     </label>
                     <input
                         type="text"
                         value={confirmText}
                         onChange={(e) => setConfirmText(e.target.value)}
-                        className="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                        className="min-h-[44px] w-full rounded-lg border border-red-300 px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500"
                         placeholder={groupName}
                     />
                 </div>
@@ -70,19 +73,19 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
                     <button
                         onClick={handleDelete}
                         disabled={isThinking || confirmText !== groupName}
-                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-bold py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-1.5"
+                        className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:bg-red-300"
                     >
                         {isThinking && (
                             <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                         )}
-                        {isThinking ? 'Deleting...' : 'Delete Group'}
+                        {isThinking ? t('deleting') : t('deleteGroup')}
                     </button>
                     <button
                         onClick={() => { setIsConfirming(false); setConfirmText(''); setError(null); }}
                         disabled={isThinking}
-                        className="px-4 py-2 bg-white text-gray-700 border border-gray-300 font-medium rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="min-h-[44px] rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Cancel
+                        {t('cancel')}
                     </button>
                 </div>
                 {error && (
@@ -94,16 +97,16 @@ export default function DeleteGroupButton({ groupKeyword, groupName }: Props) {
 
     return (
         <div className="pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-bold text-gray-900 mb-2">Danger Zone</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-2">{t('dangerZone')}</h3>
             <p className="text-xs text-gray-500 mb-4">
-                Once you delete a group, there is no going back. Please be certain.
+                {t('dangerZoneDescription')}
             </p>
             <button
                 onClick={() => setIsConfirming(true)}
-                className="w-full bg-white text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 font-bold py-2 px-4 rounded-xl transition-all text-sm flex items-center justify-center gap-2"
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition-colors hover:bg-red-50 hover:text-red-800"
             >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                Delete this Group
+                {t('deleteThisGroup')}
             </button>
         </div>
     );

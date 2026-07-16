@@ -1,6 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { deriveBatchGroupRankings } from '../services/ranking-service';
+import type { RankingAccumulatorEntry } from '../services/ranking-service';
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
 
 const { mockSupabase, mockSelect, mockIn, mockFrom } = vi.hoisted(() => {
     const mockSelect = vi.fn();
@@ -21,8 +23,13 @@ vi.mock('@/lib/supabase', () => ({
 
 // Mock next/cache since it is used in ranking-service
 vi.mock('next/cache', () => ({
-    unstable_cache: (fn: any) => fn,
+    unstable_cache: <T extends (...args: unknown[]) => Promise<unknown>>(fn: T): T => fn,
 }));
+
+/** テスト用の最小ユーザー (RankingUser の必須フィールドを明示的に埋める) */
+function testUser(id: string, name: string): RankingAccumulatorEntry['users'] {
+    return { id, name, image: null, username: null };
+}
 
 describe('deriveBatchGroupRankings', () => {
     beforeEach(() => {
@@ -31,7 +38,7 @@ describe('deriveBatchGroupRankings', () => {
         // Setup chainable mocks
         mockFrom.mockReturnValue({ select: mockSelect });
         mockSelect.mockReturnValue({ in: mockIn });
-        mockIn.mockResolvedValue({ data: [], error: null });
+        mockIn.mockReturnValue(mockQueryResult([]));
     });
 
     it('should derive rankings for users in the group', async () => {
@@ -42,20 +49,20 @@ describe('deriveBatchGroupRankings', () => {
         ];
 
         // Mock group_members response
-        mockIn.mockResolvedValueOnce({ data: groupMembers, error: null });
+        mockIn.mockReturnValueOnce(mockQueryResult(groupMembers));
 
-        const globalRankings = {
+        const globalRankings: Record<Period, RankingAccumulatorEntry[]> = {
             DAILY: [
-                { steps: 100, users: { id: 'user1', name: 'User 1' } },
-                { steps: 50, users: { id: 'user2', name: 'User 2' } },
-                { steps: 200, users: { id: 'user3', name: 'User 3' } } // Not in group
+                { steps: 100, users: testUser('user1', 'User 1') },
+                { steps: 50, users: testUser('user2', 'User 2') },
+                { steps: 200, users: testUser('user3', 'User 3') } // Not in group
             ],
             WEEKLY: [],
             MONTHLY: [],
             YEARLY: []
         };
 
-        const result = await deriveBatchGroupRankings(groupIds, globalRankings as any);
+        const result = await deriveBatchGroupRankings(groupIds, globalRankings);
 
         expect(result['group1']).toBeDefined();
         expect(result['group1'].DAILY).toHaveLength(2);
@@ -63,11 +70,11 @@ describe('deriveBatchGroupRankings', () => {
         expect(result['group1'].DAILY[1].users.id).toBe('user2');
 
         // Ensure user3 is NOT in the result
-        const user3 = result['group1'].DAILY.find((r: any) => r.users.id === 'user3');
+        const user3 = result['group1'].DAILY.find((r) => r.users.id === 'user3');
         expect(user3).toBeUndefined();
     });
 
-    it('should handle users with 0 steps (missing from global rankings)', async () => {
+    it('0歩ユーザーをグループ順位から除外する', async () => {
         const groupIds = ['group1'];
         const groupMembers = [
             { group_id: 'group1', user_id: 'user1' },
@@ -75,26 +82,43 @@ describe('deriveBatchGroupRankings', () => {
         ];
 
         // Mock group_members response
-        mockIn.mockResolvedValueOnce({ data: groupMembers, error: null }); // for group_members query
+        mockIn.mockReturnValueOnce(mockQueryResult(groupMembers)); // for group_members query
 
         // Mock missing users query
-        mockIn.mockResolvedValueOnce({ data: [{ id: 'userZero', name: 'User Zero' }], error: null });
+        mockIn.mockReturnValueOnce(mockQueryResult([{ id: 'userZero', name: 'User Zero', image: null, username: null }]));
 
-        const globalRankings = {
+        const globalRankings: Record<Period, RankingAccumulatorEntry[]> = {
             DAILY: [
-                { steps: 100, users: { id: 'user1', name: 'User 1' } }
+                { steps: 100, users: testUser('user1', 'User 1') }
             ],
             WEEKLY: [],
             MONTHLY: [],
             YEARLY: []
         };
 
-        const result = await deriveBatchGroupRankings(groupIds, globalRankings as any);
+        const result = await deriveBatchGroupRankings(groupIds, globalRankings);
 
-        expect(result['group1'].DAILY).toHaveLength(2);
+        expect(result['group1'].DAILY).toHaveLength(1);
 
-        const zeroUser = result['group1'].DAILY.find((r: any) => r.users.id === 'userZero');
-        expect(zeroUser).toBeDefined();
-        expect(zeroUser?.steps).toBe(0);
+        const zeroUser = result['group1'].DAILY.find((r) => r.users.id === 'userZero');
+        expect(zeroUser).toBeUndefined();
+    });
+
+    it('メンバー取得に失敗した場合は順位データ障害を送出する', async () => {
+        mockIn.mockReturnValueOnce(mockQueryResult(null, {
+            message: 'database unavailable',
+            details: '',
+            hint: '',
+            code: 'PGRST500',
+        }));
+
+        await expect(
+            deriveBatchGroupRankings(['group1'], {
+                DAILY: [],
+                WEEKLY: [],
+                MONTHLY: [],
+                YEARLY: [],
+            }),
+        ).rejects.toThrow('GROUP_MEMBER_RANKING_DATABASE_ERROR');
     });
 });

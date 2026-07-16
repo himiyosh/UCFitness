@@ -1,7 +1,15 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
-import { normalizePushLocale, badgeUnlockedTitle, badgeUnlockedBody } from './push-messages';
+import { sendWebPushNotifications } from '@/lib/api/web-push';
+import {
+    badgeUnlockedBody,
+    badgeUnlockedTitle,
+    formatLocalizedBadgeNames,
+    normalizePushLocale,
+} from './push-messages';
+
+import type { UserStepStatsRpcRow } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +26,7 @@ interface BadgeDefinition {
  * Main function to check and award badges for a user.
  * Should be called after step updates.
  */
-export async function checkAndAwardBadges(userId: string) {
+export async function checkAndAwardBadges(userId: string): Promise<void> {
     if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
         return;
     }
@@ -59,8 +67,8 @@ export async function checkAndAwardBadges(userId: string) {
     const earnedBadgeIds = new Set(userBadges?.map(ub => ub.badge_code));
 
     const stepsToday = dailyResult.data?.steps ?? 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const statsData = statsResult.data as any;
+    const rawStats = statsResult.data as UserStepStatsRpcRow | UserStepStatsRpcRow[] | null;
+    const statsData = Array.isArray(rawStats) ? rawStats[0] : rawStats;
     const totalSteps = statsData?.total_steps ?? 0;
 
     // 4. Evaluate Badges
@@ -114,46 +122,56 @@ export async function checkAndAwardBadges(userId: string) {
         if (insertError) {
             reportError('checkAndAwardBadges:insertBadges', insertError);
         } else {
-            // Send Push Notifications for newly earned badges
-            try {
-                // ユーザーの言語設定と Push 購読を並列取得
-                const [userLangResult, subsResult] = await Promise.all([
-                    supabaseAdmin
-                        .from('users')
-                        .select('language')
-                        .eq('id', userId)
-                        .single(),
-                    supabaseAdmin
-                        .from('push_subscriptions')
-                        .select('endpoint, p256dh, auth')
-                        .eq('user_id', userId),
-                ]);
-
-                const subs = subsResult.data;
-
-                if (subs && subs.length > 0) {
-                    const { sendWebPushNotification } = await import('@/lib/api/web-push');
-
-                    const locale = normalizePushLocale(userLangResult.data?.language);
-                    const badgeMap = new Map((allBadges as BadgeDefinition[]).map(def => [def.code, def.name]));
-                    const badgeNames = newBadges
-                        .map(b => badgeMap.get(b.badge_code))
-                        .filter(Boolean)
-                        .join(', ');
-
-                    await Promise.allSettled(
-                        subs.map(sub =>
-                            sendWebPushNotification(sub, {
-                                title: badgeUnlockedTitle(locale),
-                                body: badgeUnlockedBody(locale, badgeNames),
-                                url: '/profile'
-                            })
-                        )
-                    );
-                }
-            } catch (error: unknown) {
-                reportError('checkAndAwardBadges:notify', error);
-            }
+            await sendConsolidatedBadgeNotification(
+                userId,
+                newBadges.map((badge) => badge.badge_code),
+            );
         }
+    }
+}
+
+export async function sendConsolidatedBadgeNotification(
+    userId: string,
+    badgeCodes: string[],
+): Promise<void> {
+    try {
+        const [userResult, subscriptionsResult] = await Promise.all([
+            supabaseAdmin
+                .from('users')
+                .select('language, username')
+                .eq('id', userId)
+                .single(),
+            supabaseAdmin
+                .from('push_subscriptions')
+                .select('id, endpoint, p256dh, auth, user_agent, created_at')
+                .eq('user_id', userId),
+        ]);
+
+        if (userResult.error) {
+            reportError('sendConsolidatedBadgeNotification:user', userResult.error, { userId });
+            return;
+        }
+        if (subscriptionsResult.error) {
+            reportError(
+                'sendConsolidatedBadgeNotification:subscriptions',
+                subscriptionsResult.error,
+                { userId },
+            );
+            return;
+        }
+        if (!subscriptionsResult.data || subscriptionsResult.data.length === 0) return;
+
+        const locale = normalizePushLocale(userResult.data?.language);
+        const badgeNames = formatLocalizedBadgeNames(locale, badgeCodes);
+        const username = userResult.data?.username;
+        await sendWebPushNotifications(userId, subscriptionsResult.data, {
+            title: badgeUnlockedTitle(locale, badgeNames.count),
+            body: badgeUnlockedBody(locale, badgeNames.label, badgeNames.count),
+            url: username ? `/user/${encodeURIComponent(username)}` : '/',
+            locale,
+            tag: 'ucfitness-badges',
+        });
+    } catch (error: unknown) {
+        reportError('sendConsolidatedBadgeNotification', error, { userId, badgeCodes });
     }
 }

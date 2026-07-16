@@ -1,5 +1,7 @@
 import { getEquippedItemsForUsers } from './shop-service';
 
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+
 export type RankingEntry = {
     steps: number;
     /** 前期間の歩数（DAILY=昨日, WEEKLY=先週, MONTHLY=先月） */
@@ -21,13 +23,216 @@ export type RankingEntry = {
     originalRank: number;
 };
 
+export interface RankGapInsight {
+    currentRank: number;
+    targetRank: number | null;
+    stepsToNextRank: number | null;
+    isTopRank: boolean;
+    targetName: string | null;
+    leaderStepsGap: number;
+}
+
+export interface RankProgress {
+    value: number;
+    visualWidth: number;
+}
+
+export type ViewerRankingActivityState = 'recorded' | 'not-recorded' | 'unavailable';
+
+export interface ViewerRankingActivity {
+    state: ViewerRankingActivityState;
+    steps: number | null;
+}
+
+export interface ViewerStepRecord {
+    date: string;
+    steps: number;
+}
+
+export type ViewerRankingActivities = Record<Period, ViewerRankingActivity>;
+
+export type ViewerRankingStatus =
+    | 'ranked'
+    | 'zero-steps'
+    | 'not-recorded'
+    | 'unavailable'
+    | 'not-reflected';
+
+export interface GroupRankGapInsight {
+    targetRank: number;
+    targetName: string;
+    averageStepsToNextRank: number;
+}
+
+function getViewerRankingActivity(
+    records: ViewerStepRecord[],
+    periodStart: string,
+): ViewerRankingActivity {
+    let hasRecord = false;
+    let steps = 0;
+
+    for (const record of records) {
+        if (record.date < periodStart) continue;
+        hasRecord = true;
+        steps += record.steps;
+    }
+
+    return hasRecord
+        ? { state: 'recorded', steps }
+        : { state: 'not-recorded', steps: null };
+}
+
+export function getViewerRankingActivities(
+    records: ViewerStepRecord[],
+    periodStarts: Record<Period, string>,
+): ViewerRankingActivities {
+    return {
+        DAILY: getViewerRankingActivity(records, periodStarts.DAILY),
+        WEEKLY: getViewerRankingActivity(records, periodStarts.WEEKLY),
+        MONTHLY: getViewerRankingActivity(records, periodStarts.MONTHLY),
+        YEARLY: getViewerRankingActivity(records, periodStarts.YEARLY),
+    };
+}
+
+export function createUnavailableViewerRankingActivities(): ViewerRankingActivities {
+    return {
+        DAILY: { state: 'unavailable', steps: null },
+        WEEKLY: { state: 'unavailable', steps: null },
+        MONTHLY: { state: 'unavailable', steps: null },
+        YEARLY: { state: 'unavailable', steps: null },
+    };
+}
+
+export function getViewerRankingStatus(
+    isRanked: boolean,
+    rankingsUnavailable: boolean,
+    activity: ViewerRankingActivity,
+): ViewerRankingStatus {
+    if (isRanked) return 'ranked';
+    if (rankingsUnavailable || activity.state === 'unavailable') return 'unavailable';
+    if (activity.state === 'not-recorded') return 'not-recorded';
+    if (activity.steps === 0) return 'zero-steps';
+    return 'not-reflected';
+}
+
+export function sortPositiveStepRankings<T extends { steps: number }>(rankings: T[]): T[] {
+    return rankings
+        .filter((entry) => entry.steps > 0)
+        .sort((a, b) => b.steps - a.steps);
+}
+
+export function sortActiveGroupRankings<T extends { totalSteps: number; averageSteps: number }>(
+    rankings: T[],
+): T[] {
+    return rankings
+        .filter((entry) => entry.totalSteps > 0 && entry.averageSteps > 0)
+        .sort((a, b) => b.averageSteps - a.averageSteps);
+}
+
+export function getGroupRankGapInsight<
+    T extends { groupId: string; groupName: string; averageSteps: number },
+>(
+    rankings: T[],
+    currentGroupId?: string | null,
+): GroupRankGapInsight | null {
+    if (!currentGroupId) return null;
+
+    const currentIndex = rankings.findIndex((entry) => entry.groupId === currentGroupId);
+    if (currentIndex <= 0) return null;
+
+    const currentEntry = rankings[currentIndex];
+    const targetEntry = rankings[currentIndex - 1];
+    return {
+        targetRank: currentIndex,
+        targetName: targetEntry.groupName,
+        averageStepsToNextRank: Math.max(
+            1,
+            targetEntry.averageSteps - currentEntry.averageSteps + 1,
+        ),
+    };
+}
+
+export function getRankProgress(
+    currentSteps: number,
+    stepsToNextRank: number | null,
+    isTopRank: boolean,
+): RankProgress {
+    if (isTopRank) return { value: 100, visualWidth: 100 };
+    if (currentSteps <= 0 || !stepsToNextRank || stepsToNextRank <= 0) {
+        return { value: 0, visualWidth: 0 };
+    }
+
+    const value = Math.min(
+        99,
+        Math.floor((currentSteps / (currentSteps + stepsToNextRank)) * 100),
+    );
+    return {
+        value,
+        visualWidth: Math.max(6, value),
+    };
+}
+
+export function isRankingPeriod(value: string | null): value is Period {
+    return value === 'DAILY' || value === 'WEEKLY' || value === 'MONTHLY' || value === 'YEARLY';
+}
+
+export function buildRankingPeriodQuery(search: string, period: Period): string {
+    const params = new URLSearchParams(search);
+    params.set('period', period);
+    return params.toString();
+}
+
+/**
+ * 表示用ランキングから、現在ユーザーが直上順位を追い越すための歩数を求める。
+ * getDisplayRankings は現在ユーザーと直上ユーザーを保持するため、抜粋配列でも計算できる。
+ */
+export function getRankGapInsight(
+    rankings: RankingEntry[],
+    userId?: string | null,
+): RankGapInsight | null {
+    if (!userId) return null;
+
+    const currentEntry = rankings.find(entry => entry.users.id === userId);
+    if (!currentEntry || currentEntry.steps <= 0) return null;
+
+    if (currentEntry.originalRank === 1) {
+        return {
+            currentRank: 1,
+            targetRank: null,
+            stepsToNextRank: null,
+            isTopRank: true,
+            targetName: null,
+            leaderStepsGap: 0,
+        };
+    }
+
+    const targetRank = currentEntry.originalRank - 1;
+    const targetEntry = rankings.find(entry => entry.originalRank === targetRank);
+    if (!targetEntry) return null;
+    const leaderEntry = rankings.find(entry => entry.originalRank === 1);
+    const targetName = targetEntry.users.name?.trim()
+        || targetEntry.users.username?.trim()
+        || null;
+
+    return {
+        currentRank: currentEntry.originalRank,
+        targetRank,
+        stepsToNextRank: Math.max(1, targetEntry.steps - currentEntry.steps + 1),
+        isTopRank: false,
+        targetName,
+        leaderStepsGap: leaderEntry
+            ? Math.max(0, leaderEntry.steps - currentEntry.steps)
+            : 0,
+    };
+}
+
 /**
  * ランキングデータに装備アイテム情報を注入する
  * Record<Period, RankingEntry[]> 形式に対応
  */
-export async function enrichRankingsWithEquip(
-    rankings: Record<string, RankingEntry[]>
-): Promise<Record<string, RankingEntry[]>> {
+export async function enrichRankingsWithEquip<T extends { users: RankingEntry['users'] }>(
+    rankings: Record<string, T[]>
+): Promise<Record<string, T[]>> {
     // 全ユーザーIDを収集
     const userIdSet = new Set<string>();
     for (const period of Object.keys(rankings)) {
@@ -60,18 +265,25 @@ export async function enrichRankingsWithEquip(
 
 export function getDisplayRankings(allRankings: RankingEntry[], userId?: string | null, maxItems?: number): {
     displayRankings: RankingEntry[];
-    isTruncated: boolean
+    isTruncated: boolean;
+    totalCount: number;
 } {
-    // Assign original ranks manually since we're filtering
-    const rankedItems: RankingEntry[] = allRankings.map((r, i) => ({
-        ...r,
-        originalRank: i + 1
-    }));
+    // 0歩は未参加として除外し、正の歩数だけに連続した順位を付ける。
+    const rankedItems: RankingEntry[] = allRankings
+        .filter(entry => entry.steps > 0)
+        .map((entry, index) => ({
+            ...entry,
+            originalRank: index + 1,
+        }));
 
     if (!userId) {
         // Not logged in: Just show top 5 or maxItems
         const limit = maxItems || 5;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        return {
+            displayRankings: rankedItems.slice(0, limit),
+            isTruncated: rankedItems.length > limit,
+            totalCount: rankedItems.length,
+        };
     }
 
     const top3 = rankedItems.slice(0, 3);
@@ -80,13 +292,21 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
     if (userIndex === -1) {
         // User not in list
         const limit = maxItems || 3;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        return {
+            displayRankings: rankedItems.slice(0, limit),
+            isTruncated: rankedItems.length > limit,
+            totalCount: rankedItems.length,
+        };
     }
 
     // High Ranking User (Rank 1, 2, 3) -> Show Top 5 (or maxItems)
     if (userIndex < 3) {
         const limit = maxItems || 5;
-        return { displayRankings: rankedItems.slice(0, limit), isTruncated: rankedItems.length > limit };
+        return {
+            displayRankings: rankedItems.slice(0, limit),
+            isTruncated: rankedItems.length > limit,
+            totalCount: rankedItems.length,
+        };
     }
 
     // Neighbors: User-1, User, User+1
@@ -120,7 +340,11 @@ export function getDisplayRankings(allRankings: RankingEntry[], userId?: string 
         }
     }
 
-    return { displayRankings: combined, isTruncated: rankedItems.length > combined.length };
+    return {
+        displayRankings: combined,
+        isTruncated: rankedItems.length > combined.length,
+        totalCount: rankedItems.length,
+    };
 }
 
 /**

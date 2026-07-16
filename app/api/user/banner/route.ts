@@ -16,12 +16,12 @@ const MIME_TO_EXT: Record<string, string> = {
 export async function POST(request: Request) {
     const session = await auth();
 
-    if (!session || !session.user || !(session.user as any).id) {
+    if (!session || !session.user || !session.user.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
-        const userId = (session.user as { id: string }).id;
+        const userId = session.user.id;
         const rateLimit = checkRateLimit(`banner-upload:${userId}`, 10, 60 * 60 * 1000);
         if (!rateLimit.allowed) {
             return rateLimitResponse(rateLimit.retryAfterSeconds);

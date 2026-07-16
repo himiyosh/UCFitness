@@ -1,7 +1,18 @@
+import { unstable_cache } from 'next/cache';
+
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { fetchDailyStepsPaginated } from '@/lib/supabase-utils';
-import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { unstable_cache } from 'next/cache';
+import { sortActiveGroupRankings } from '@/lib/services/ranking-utils';
+
+import type { Period } from '@/components/dashboard/LeaderboardTabs';
+import type { DailyStepRow } from '@/types/database';
+
+/** `fetchDailyStepsPaginated({ selectFields: 'user_id, steps' })` の行 */
+type UserStepsOnly = Pick<DailyStepRow, 'user_id' | 'steps'>;
+
+/** `fetchDailyStepsPaginated({})` (selectFields 省略、既定の user_id/steps/date) の行 */
+type UserStepsWithDate = Pick<DailyStepRow, 'user_id' | 'steps' | 'date'>;
 
 export interface GroupRankingEntry {
     groupId: string;
@@ -54,7 +65,7 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         supabase
             .from('group_members')
             .select('group_id, user_id'),
-        fetchDailyStepsPaginated({
+        fetchDailyStepsPaginated<UserStepsOnly>({
             startDate,
             selectFields: 'user_id, steps',
         }),
@@ -64,6 +75,18 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
     const members = membersRes.data;
     const stepsData = stepsRes.data;
 
+    if (groupsRes.error) {
+        reportError('group-ranking-service:groups', groupsRes.error, { period });
+        throw new Error('Failed to load competition groups');
+    }
+    if (membersRes.error) {
+        reportError('group-ranking-service:members', membersRes.error, { period });
+        throw new Error('Failed to load competition members');
+    }
+    if (stepsRes.error) {
+        reportError('group-ranking-service:steps', stepsRes.error, { period });
+        throw new Error('Failed to load competition steps');
+    }
     if (!groups || !members) return [];
 
     // Map UserId -> GroupIds[]
@@ -126,8 +149,7 @@ export const getGroupCompetitionRankings = async (period: Period): Promise<Group
         };
     });
 
-    // Sort by Average Descending
-    return rankings.sort((a, b) => b.averageSteps - a.averageSteps);
+    return sortActiveGroupRankings(rankings);
 };
 
 // ⚡ Bolt Optimization: Fetch all periods in one go to reduce DB calls
@@ -166,7 +188,7 @@ export const getCombinedGroupCompetitionRankings = async () => {
         supabase
             .from('group_members')
             .select('group_id, user_id'),
-        fetchDailyStepsPaginated({
+        fetchDailyStepsPaginated<UserStepsWithDate>({
             startDate: yearlyStart,
         }),
     ]);
@@ -237,7 +259,7 @@ export const getCombinedGroupCompetitionRankings = async () => {
     };
 
     (['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).forEach(period => {
-        result[period] = groups.map(g => {
+        result[period] = sortActiveGroupRankings(groups.map(g => {
             const stats = groupStats.get(g.id);
             const count = groupMemberCounts.get(g.id) || 0;
             const total = stats ? stats[period] : 0;
@@ -252,7 +274,7 @@ export const getCombinedGroupCompetitionRankings = async () => {
                 averageSteps: average,
                 memberCount: count
             };
-        }).sort((a, b) => b.averageSteps - a.averageSteps);
+        }));
     });
 
     return result;

@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+
+import { useTranslations } from 'next-intl';
+
 import { updateProfileImage, uploadProfileImage } from '@/app/actions';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { compressImage } from '@/lib/image-utils';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -25,6 +29,21 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
     const [error, setError] = useState<string | null>(null);
     const [confirmingReset, setConfirmingReset] = useState(false);
     const router = useRouter();
+    const t = useTranslations('ProfileImageEditor');
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const handleClose = useCallback(() => {
+        setIsOpen(false);
+        setError(null);
+        setConfirmingReset(false);
+    }, []);
+
+    useDialogFocus({
+        isOpen,
+        onClose: handleClose,
+        dialogRef,
+        initialFocusRef: closeButtonRef,
+    });
 
     // Reset preview when reopening or props change
     useEffect(() => {
@@ -40,14 +59,14 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
 
             // Validate file type
             if (!ALLOWED_IMAGE_TYPES.includes(selectedFile.type)) {
-                setError('Please select a valid image file (JPEG, PNG, WebP, GIF).');
+                setError(t('invalidType'));
                 e.target.value = '';
                 return;
             }
 
             // Validate file size
             if (selectedFile.size > MAX_FILE_SIZE) {
-                setError(`File size must be under ${MAX_FILE_SIZE_MB}MB.`);
+                setError(t('fileTooLarge', { size: MAX_FILE_SIZE_MB }));
                 e.target.value = '';
                 return;
             }
@@ -62,7 +81,7 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
             setFile(selectedFile);
             setPreviewUrl(URL.createObjectURL(selectedFile));
         }
-    }, [previewUrl]);
+    }, [previewUrl, t]);
 
     // Cleanup object URLs on unmount
     useEffect(() => {
@@ -89,7 +108,7 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                 if (onSuccess) onSuccess(previewUrl);
             }
         } catch (_) {
-            setError('Failed to update image. Please try again.');
+            setError(t('updateFailed'));
         } finally {
             setIsLoading(false);
         }
@@ -109,11 +128,11 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
             router.refresh();
             onSuccess?.(null);
         } catch (_) {
-            setError('Failed to reset image. Please try again.');
+            setError(t('resetFailed'));
         } finally {
             setIsLoading(false);
         }
-    }, [confirmingReset, router, onSuccess]);
+    }, [confirmingReset, router, onSuccess, t]);
 
     return (
         <>
@@ -122,8 +141,9 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
             ) : (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-200 text-gray-500 hover:text-[var(--theme-primary)] transition-colors"
-                    title="Change Profile Image"
+                    className="absolute bottom-0 right-0 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-gray-200 bg-white p-1.5 text-gray-500 shadow-md transition-colors hover:text-[var(--theme-primary)]"
+                    title={t('changeImage')}
+                    aria-label={t('changeImage')}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                         <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
@@ -133,23 +153,25 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
             )}
 
             {isOpen && typeof document !== 'undefined' && createPortal(
-                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative" role="dialog" aria-modal="true" aria-label="Edit Profile Image">
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50" onClick={handleClose} aria-hidden="true" />
+                    <div ref={dialogRef} className="relative w-full max-w-md rounded-xl bg-white p-4 shadow-xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="profile-image-editor-title" tabIndex={-1}>
                         <button
-                            onClick={() => { setIsOpen(false); setError(null); setConfirmingReset(false); }}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                            aria-label="Close"
+                            ref={closeButtonRef}
+                            onClick={handleClose}
+                            className="absolute right-2 top-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 sm:right-4 sm:top-4"
+                            aria-label={t('close')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
 
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">Edit Profile Image</h3>
+                        <h3 id="profile-image-editor-title" className="mb-4 pr-12 text-xl font-bold text-gray-900">{t('editTitle')}</h3>
 
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="profile-file-input" className="block text-sm font-medium text-gray-700 mb-1">Upload New Image</label>
+                                <label htmlFor="profile-file-input" className="block text-sm font-medium text-gray-700 mb-1">{t('uploadLabel')}</label>
                                 <input
                                     id="profile-file-input"
                                     type="file"
@@ -162,7 +184,7 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                                         file:bg-[var(--theme-primary-light)] file:text-[var(--theme-primary)]
                                         hover:file:bg-[var(--theme-primary-light)]"
                                 />
-                                <p className="text-xs text-gray-400 mt-1">Max {MAX_FILE_SIZE_MB}MB. JPEG, PNG, WebP, GIF.</p>
+                                <p className="text-xs text-gray-600 mt-1">{t('fileHelp', { size: MAX_FILE_SIZE_MB })}</p>
                                 {error && (
                                     <p className="text-xs text-red-500 mt-1 font-medium" role="alert">{error}</p>
                                 )}
@@ -170,7 +192,7 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
 
                             {previewUrl && (
                                 <div className="flex justify-center py-4 bg-gray-50 rounded-lg">
-                                    <img src={previewUrl} alt="Preview" className="h-20 w-20 rounded-full object-cover border-2 border-white shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                    <img src={previewUrl} alt={t('previewAlt')} className="h-20 w-20 rounded-full object-cover border-2 border-white shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                 </div>
                             )}
 
@@ -180,14 +202,14 @@ export default function ProfileImageEditor({ initialImage, isCustom, children, o
                                     disabled={isLoading || !isCustom}
                                     className={`flex-1 px-4 py-2 text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${confirmingReset ? 'text-white bg-red-600 hover:bg-red-700' : 'text-red-600 bg-red-50 hover:bg-red-100'}`}
                                 >
-                                    {confirmingReset ? 'Confirm Reset?' : 'Reset to Fitbit'}
+                                    {confirmingReset ? t('confirmReset') : t('resetToFitbit')}
                                 </button>
                                 <button
                                     onClick={handleSave}
                                     disabled={isLoading || !file}
                                     className="flex-1 px-4 py-2 text-sm font-medium text-white bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isLoading ? 'Saving...' : 'Save & Close'}
+                                    {isLoading ? t('saving') : t('save')}
                                 </button>
                             </div>
                         </div>

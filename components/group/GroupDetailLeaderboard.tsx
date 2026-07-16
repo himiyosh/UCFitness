@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { Link } from '@/navigation';
 import { Period } from '@/components/dashboard/LeaderboardTabs';
-import { RankingEntry } from '@/lib/services/ranking-utils';
+import { getRankGapInsight } from '@/lib/services/ranking-utils';
 import UserAvatar from '@/components/UserAvatar';
 import { useTheme } from '@/components/ThemeProvider';
 import GroupReactions from '@/components/group/GroupReactions';
 import { useGroupReactions } from '@/hooks/useGroupReactions';
+
+import type { RankingEntry } from '@/lib/services/ranking-utils';
 
 function FadeInWrapper({ children, className = "" }: { children: ReactNode, className?: string }) {
     const [show, setShow] = useState(false);
@@ -58,6 +61,10 @@ export default function GroupDetailLeaderboard({
     const isMidnight = theme === 'midnight';
     const ITEMS_PER_PAGE = 5;
     const totalPages = useMemo(() => Math.ceil(allData.length / ITEMS_PER_PAGE), [allData.length]);
+    const rankGapInsight = useMemo(
+        () => getRankGapInsight(allData, userId),
+        [allData, userId],
+    );
 
     // --- リアクション管理（グローバル共通 — グループ/ダッシュボード間でリアクション数を連動） ---
     const { reactions, handleReactionToggle } = useGroupReactions('__global__', userId, period);
@@ -84,6 +91,7 @@ export default function GroupDetailLeaderboard({
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const displayData = useMemo(() => allData.slice(startIndex, startIndex + ITEMS_PER_PAGE), [allData, startIndex]);
+    const emptyRowCount = Math.max(0, ITEMS_PER_PAGE - displayData.length);
 
     // ページネーションウィンドウを正しくクランプ（末尾付近でボタンが消えないように）
     const paginationPages = useMemo(() => {
@@ -94,6 +102,13 @@ export default function GroupDetailLeaderboard({
         start = Math.max(1, end - maxVisible + 1);
         return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     }, [totalPages, currentPage]);
+    const compactPaginationPages = useMemo(() => {
+        const maxVisible = Math.min(3, totalPages);
+        let start = Math.max(1, currentPage - 1);
+        const end = Math.min(totalPages, start + maxVisible - 1);
+        start = Math.max(1, end - maxVisible + 1);
+        return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+    }, [currentPage, totalPages]);
 
     const handlePrevPage = useCallback(() => {
         onPageChange(Math.max(1, currentPage - 1));
@@ -104,8 +119,15 @@ export default function GroupDetailLeaderboard({
     }, [currentPage, totalPages, onPageChange]);
 
     return (
-        <div className="space-y-6">
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex flex-col h-full">
+        <div
+            className="space-y-6"
+            data-reaction-count={reactions.length}
+            data-reaction-period={period}
+        >
+            <div
+                className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm"
+                data-group-detail-ranking
+            >
                 <div className="px-5 py-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)]"></span>
@@ -116,20 +138,10 @@ export default function GroupDetailLeaderboard({
                     </div>
                 </div>
 
-                <div className="bg-white px-0 relative flex-1" style={{ minHeight: `${ITEMS_PER_PAGE * 48}px` }}>
-                    {/* 5人 × 48px = 240px 固定高 */}
+                <div className="relative flex-1 bg-white px-0">
                     <FadeInWrapper key={`${period}-${currentPage}`}>
                         <ul role="list" className={`divide-y ${isMidnight ? 'divide-slate-600/20' : 'divide-gray-50'}`}>
-                            {displayData.length === 0 ? (
-                                <li className="text-gray-500 text-center py-12 flex flex-col items-center gap-2 list-none">
-                                    <span className="bg-gray-50 p-3 rounded-full">
-                                        <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                        </svg>
-                                    </span>
-                                    <span>{lt('noData')}</span>
-                                </li>
-                            ) : (
+                            {displayData.length === 0 ? null : (
                                 displayData.map((entry, index) => {
                                     // Calculate rank dynamically based on list position since it's a full list for the group
                                     const rank = startIndex + index + 1;
@@ -137,8 +149,7 @@ export default function GroupDetailLeaderboard({
 
                                     return (
                                         <li key={entry.users.id}
-                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible ${(hoveredUserId === entry.users.id || longPressUserId === entry.users.id) ? 'z-50' : ''} ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
-                                            onClick={() => { if (entry.users.username) window.location.href = `/user/${entry.users.username}`; }}
+                                            className={`leaderboard-row relative px-3 sm:px-6 py-2 sm:py-2.5 min-h-[4.5rem] flex flex-col justify-center transition-colors overflow-visible focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] ${(hoveredUserId === entry.users.id || longPressUserId === entry.users.id) ? 'z-50' : ''} ${entry.users.username ? 'cursor-pointer' : ''} ${rank <= 3 ? `rank-row-${rank}` : ''} ${isCurrentUser ? 'bg-[var(--theme-primary-light)]' : ''}`}
                                             onMouseEnter={() => setHoveredUserId(entry.users.id)}
                                             onMouseLeave={() => setHoveredUserId(prev => prev === entry.users.id ? null : prev)}
                                             onTouchStart={() => {
@@ -150,7 +161,15 @@ export default function GroupDetailLeaderboard({
                                             onTouchEnd={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                             onTouchMove={() => { if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; } }}
                                         >
-                                          <div className="flex items-center justify-between">
+                                          {entry.users.username && (
+                                              <Link
+                                                  href={`/user/${entry.users.username}`}
+                                                  className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]"
+                                              >
+                                                  <span className="sr-only">{entry.users.name || commonT('anonymous')}</span>
+                                              </Link>
+                                          )}
+                                          <div className="pointer-events-none relative z-10 flex items-center justify-between">
                                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0"
                                                     style={rank === 1 ? {
@@ -192,7 +211,7 @@ export default function GroupDetailLeaderboard({
                                                     )}
                                                     {/* リアクション — 称号の下に固定高さで行内表示 */}
                                                     {groupId && userId && (
-                                                        <div className="h-[22px] mt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="pointer-events-auto mt-0.5 h-[22px]" onClick={(e) => e.stopPropagation()}>
                                                             <GroupReactions
                                                                 groupId={groupId}
                                                                 toUserId={entry.users.id}
@@ -230,31 +249,50 @@ export default function GroupDetailLeaderboard({
                                     );
                                 })
                             )}
+                            {Array.from({ length: emptyRowCount }, (_, index) => {
+                                const showNoData = displayData.length === 0 && index === 0;
+                                return (
+                                    <li
+                                        key={`detail-empty-${index}`}
+                                        className="leaderboard-row flex min-h-[4.5rem] flex-col justify-center px-3 py-2 sm:px-6 sm:py-2.5"
+                                        aria-hidden={showNoData ? undefined : true}
+                                    >
+                                        {showNoData && (
+                                            <span className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                                                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                                </svg>
+                                                {lt('noData')}
+                                            </span>
+                                        )}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </FadeInWrapper>
                 </div>
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <nav aria-label="Pagination" className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <nav aria-label={lt('paginationLabel')} className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
                         <button
                             onClick={handlePrevPage}
                             disabled={currentPage === 1}
-                            aria-label="Previous page"
-                            className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                            aria-label={lt('previousPage')}
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 text-sm font-medium text-gray-700 transition-colors hover:text-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-gray-700"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                            {lt('prev')}
+                            <span className="hidden sm:inline">{lt('prev')}</span>
                         </button>
                         <div className="flex gap-1.5">
                             {paginationPages.map((p) => (
                                 <button
                                     key={p}
                                     onClick={() => onPageChange(p)}
-                                    aria-label={`Go to page ${p}`}
+                                    aria-label={lt('goToPage', { page: p })}
                                     aria-current={currentPage === p ? 'page' : undefined}
-                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${currentPage === p
-                                        ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-110'
+                                    className={`${compactPaginationPages.includes(p) ? 'inline-flex' : 'hidden sm:inline-flex'} h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-xs font-bold transition-colors duration-200 ${currentPage === p
+                                        ? 'bg-[var(--color-primary-solid)] text-white shadow-sm'
                                         : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
                                         }`}
                                 >
@@ -265,13 +303,40 @@ export default function GroupDetailLeaderboard({
                         <button
                             onClick={handleNextPage}
                             disabled={currentPage === totalPages}
-                            aria-label="Next page"
-                            className="text-sm font-medium text-gray-700 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:hover:text-gray-700 transition-colors flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                            aria-label={lt('nextPage')}
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 text-sm font-medium text-gray-700 transition-colors hover:text-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-gray-700"
                         >
-                            {lt('next')}
+                            <span className="hidden sm:inline">{lt('next')}</span>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </nav>
+                )}
+
+                {rankGapInsight && (
+                    <div className={`flex items-center justify-between gap-3 border-t px-5 py-2.5 ${
+                        rankGapInsight.isTopRank
+                            ? 'border-[var(--color-success)]/25 bg-[var(--color-success-soft)]'
+                            : 'border-[var(--color-competition)]/20 bg-[var(--color-competition-soft)]/40'
+                    }`}>
+                        <span className={`text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-gray-600'}`}>
+                            {rankGapInsight.isTopRank ? lt('currentStatus') : lt('nextRankGoal')}
+                        </span>
+                        <span
+                            data-rank-gap="group-detail"
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                rankGapInsight.isTopRank
+                                    ? 'bg-[var(--color-success-soft)] text-[var(--color-text)]'
+                                    : 'bg-[var(--color-competition-soft)] text-[var(--color-competition-strong)]'
+                            }`}
+                        >
+                            {rankGapInsight.isTopRank
+                                ? lt('topRankStatus')
+                                : lt('nextRankGap', {
+                                    steps: rankGapInsight.stepsToNextRank?.toLocaleString() ?? '—',
+                                    rank: rankGapInsight.targetRank ?? 1,
+                                })}
+                        </span>
+                    </div>
                 )}
             </div>
 

@@ -11,6 +11,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
+import type { DefaultLegendContentProps as RechartsLegendProps } from 'recharts';
 
 import { useTheme } from '@/components/ThemeProvider';
 import { useTranslations } from 'next-intl';
@@ -46,8 +47,18 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     const [activeUser, setActiveUser] = useState<string | null>(null);
     const [isSharing, setIsSharing] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    const [shareError, setShareError] = useState(false);
     const shareCardRef = useRef<HTMLDivElement>(null);
-    const t = useTranslations('Leaderboard');
+    const shareCaptureRef = useRef<HTMLDivElement>(null);
+    const t = useTranslations('Graph');
+    const resolvedTitle = title ?? t('comparison');
+    const shareStatus = isSharing
+        ? t('sharing')
+        : shareError
+            ? t('shareFailed')
+            : copySuccess
+                ? t('shareSucceeded')
+                : t('shareStatistics');
 
     const { theme } = useTheme();
     const isMidnight = theme === 'midnight';
@@ -60,8 +71,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
     }), [isMidnight]);
 
     // Custom Legend Component — must be declared before conditional returns (Rules of Hooks)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const renderLegend = useCallback((props: any) => {
+    const renderLegend = useCallback((props: RechartsLegendProps) => {
         const payload = props.payload as LegendPayloadEntry[] | undefined;
         if (!payload) return null;
         return (
@@ -69,14 +79,13 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                 {payload.map((entry, index) => {
                     const isHidden = activeUser && activeUser !== entry.value;
                     return (
-                        <div
+                        <button
+                            type="button"
                             key={`item-${index}`}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Toggle ${entry.value}`}
+                            aria-label={t('toggleSeries', { name: entry.value })}
+                            aria-pressed={activeUser === entry.value}
                             onClick={() => setActiveUser(activeUser === entry.value ? null : entry.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveUser(activeUser === entry.value ? null : entry.value); } }}
-                            className={`flex items-center gap-1.5 cursor-pointer transition-opacity duration-200 ${isHidden ? 'opacity-30' : 'opacity-100'}`}
+                            className={`flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-lg px-2 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 ${isHidden ? 'opacity-30' : 'opacity-100'}`}
                         >
                             <div
                                 style={{ backgroundColor: entry.color }}
@@ -85,15 +94,19 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                             <span className={`text-xs font-medium truncate max-w-[80px] sm:max-w-[120px] ${isMidnight ? 'text-slate-400' : 'text-gray-600'}`}>
                                 {entry.value}
                             </span>
-                        </div>
+                        </button>
                     );
                 })}
             </div>
         );
-    }, [activeUser, isMidnight]);
+    }, [activeUser, isMidnight, t]);
 
     useEffect(() => {
         setIsMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (shareCaptureRef.current) shareCaptureRef.current.inert = true;
     }, []);
 
     // Custom Tooltip Component — memoized via useCallback（Hooks は早期 return の前に配置必須）
@@ -137,7 +150,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
             <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className={`text-lg font-bold flex items-center gap-2 flex-none ${isMidnight ? 'text-slate-200' : 'text-gray-900'}`}>
                     <svg className="w-5 h-5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
-                    {title || 'Comparison'}
+                    {resolvedTitle}
                 </h3>
 
                 {/* Share Button */}
@@ -146,6 +159,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         if (isSharing) return;
                         setIsSharing(true);
                         setCopySuccess(false);
+                        setShareError(false);
 
                         try {
                             const { toBlob } = await import('html-to-image');
@@ -161,7 +175,18 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                 pixelRatio: 1
                             });
 
-                            if (!blob) return;
+                            if (!blob) throw new Error('Image generation returned no data');
+
+                            const downloadBlob = (): void => {
+                                const url = URL.createObjectURL(blob);
+                                const anchor = document.createElement('a');
+                                anchor.href = url;
+                                anchor.download = 'group_activity.png';
+                                document.body.appendChild(anchor);
+                                anchor.click();
+                                document.body.removeChild(anchor);
+                                URL.revokeObjectURL(url);
+                            };
 
                             // 1. Copy to Clipboard
                             try {
@@ -179,39 +204,42 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                             // 2. Share
                             const file = new File([blob], 'group_activity.png', { type: 'image/png' });
 
-                            if (navigator.share) {
+                            const shareData = {
+                                title: t('shareGroupTitle'),
+                                text: t('shareGroupText'),
+                                files: [file],
+                            };
+                            if (navigator.share && navigator.canShare?.(shareData)) {
                                 try {
-                                    await navigator.share({
-                                        title: 'Group Activity',
-                                        text: 'Check out our group activity on UCFitness!',
-                                        files: [file]
-                                    });
-                                } catch {
-                                    // Share canceled or not supported
+                                    await navigator.share(shareData);
+                                } catch (shareFailure: unknown) {
+                                    if (shareFailure instanceof DOMException && shareFailure.name === 'AbortError') {
+                                        return;
+                                    }
+                                    downloadBlob();
+                                    setCopySuccess(true);
                                 }
                             } else {
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = 'group_activity.png';
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
+                                downloadBlob();
+                                setCopySuccess(true);
                             }
                         } catch {
-                            // Image generation failed silently
+                            setShareError(true);
                         } finally {
                             setIsSharing(false);
                         }
                     }}
                     disabled={isSharing}
-                    className={`p-1.5 rounded-full transition-all ${isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--theme-primary)] cursor-wait' : `${isMidnight ? 'text-slate-500' : 'text-gray-400'} hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]`}`}
-                    aria-label="Share Group Stats"
-                    title="Share Group Stats"
+                    className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors ${shareError ? 'bg-red-50 text-red-700' : isSharing || copySuccess ? 'bg-[var(--theme-primary-light)] text-[var(--color-primary-strong)] cursor-wait' : `${isMidnight ? 'text-slate-300' : 'text-gray-600'} hover:text-[var(--color-primary-strong)] hover:bg-[var(--theme-primary-light)]`}`}
+                    aria-label={shareStatus}
+                    title={shareStatus}
                 >
                     {isSharing ? (
                         <div className="w-5 h-5 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin"></div>
+                    ) : shareError ? (
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                        </svg>
                     ) : copySuccess ? (
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-500 animate-in zoom-in spin-in-180 duration-300">
                             <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
@@ -222,18 +250,23 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                         </svg>
                     )}
                 </button>
+                <span className="sr-only" role="status" aria-live="polite">{shareStatus}</span>
             </div>
 
-            <div className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] select-none" role="img" aria-label={`${title || 'Comparison'}: ${data.length} data points, ${users.length} members`}>
-                <style jsx global>{`
-                    .recharts-wrapper, .recharts-surface { outline: none !important; }
-                    *:focus { outline: none !important; }
-                    -webkit-tap-highlight-color: transparent;
-                `}</style>
+            <div
+                className="w-full h-[300px] xl:h-auto xl:flex-1 xl:min-h-[300px] select-none"
+                role="img"
+                aria-label={t('comparisonSummary', {
+                    title: resolvedTitle,
+                    points: data.length,
+                    members: users.length,
+                })}
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={data}
                         margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                        accessibilityLayer={false}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                         <XAxis
@@ -275,9 +308,32 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                     </LineChart>
                 </ResponsiveContainer>
             </div>
+            <table className="sr-only">
+                <caption>{resolvedTitle}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">{t('periodLabel')}</th>
+                        {users.map((user) => (
+                            <th key={user.username} scope="col">{user.username}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {data.map((dataPoint) => (
+                        <tr key={dataPoint.label}>
+                            <th scope="row">{dataPoint.label}</th>
+                            {users.map((user) => (
+                                <td key={user.username}>
+                                    {Number(dataPoint[user.username] ?? 0).toLocaleString()}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
 
             {/* Hidden Share Card (1080x1920) */}
-            <div style={{ width: 0, height: 0, overflow: 'hidden' }}>
+            <div ref={shareCaptureRef} aria-hidden="true" style={{ width: 0, height: 0, overflow: 'hidden' }}>
                 <div
                     ref={shareCardRef}
                     style={{
@@ -316,6 +372,7 @@ export default function GroupComparisonChart({ data, users, currentUsername, tit
                                     <LineChart
                                         data={data}
                                         margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                                        accessibilityLayer={false}
                                     >
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
                                         <XAxis

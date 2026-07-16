@@ -2,37 +2,63 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
 import GroupList from "@/components/group/GroupList";
-import UserMenu from "@/components/layout/UserMenu";
-import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
 import GroupSettings from "@/components/group/GroupSettings";
-import Breadcrumbs from '@/components/layout/Breadcrumbs';
+import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
+import { FocusAnchorLink } from '@/components/layout/SkipLink';
 import { getCachedGlobalRankings, deriveBatchGroupRankings } from "@/lib/services/ranking-service";
 import { getLocale, getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
+import PageIntro from '@/components/layout/PageIntro';
+
+import type { GroupRow, UserRow } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
+
+/** `group_members.groups(...)` の埋め込みリレーション行 (親カラムのみ選択) */
+type GroupMembershipRelation = Pick<GroupRow, 'id' | 'name' | 'keyword' | 'image_url' | 'header_image_url'>;
+
+/** `.select('role, joined_at, groups(...)')` の生取得行 (groups は object/array 両対応) */
+interface MembershipRow {
+    role: string;
+    joined_at: string;
+    groups: GroupMembershipRelation | GroupMembershipRelation[] | null;
+}
+
+/** groups の object/array を正規化した後の membership */
+interface NormalizedMembership {
+    role: string;
+    joined_at: string;
+    groups: GroupMembershipRelation;
+}
+
+/** ランキング付与後の membership */
+interface MembershipWithRank extends NormalizedMembership {
+    rank: number | null;
+    totalMembers: number;
+}
 
 export default async function MyGroupsPage() {
     const [session, locale] = await Promise.all([auth(), getLocale()]);
 
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
         redirect(createLoginRequiredRedirect(locale, "/groups"));
     }
 
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     // ⚡ パフォーマンス: ユーザーデータ、メンバーシップ、翻訳を並列取得
-    const [userResult, membershipResult, t, dashboardT] = await Promise.all([
+    const [userResult, membershipResult, t, dashboardT, commonT] = await Promise.all([
         supabaseAdmin
             .from('users')
             .select('name, group_keyword, image, username')
             .eq('id', userId)
-            .single(),
+            .single()
+            .returns<Pick<UserRow, 'name' | 'group_keyword' | 'image' | 'username'>>(),
         supabaseAdmin
             .from('group_members')
             .select(`
@@ -46,38 +72,69 @@ export default async function MyGroupsPage() {
         header_image_url
       )
     `)
-            .eq('user_id', userId),
+            .eq('user_id', userId)
+            .returns<MembershipRow[]>(),
         getTranslations('Groups'),
         getTranslations('Dashboard'),
+        getTranslations('Common'),
     ]);
 
     const userData = userResult.data;
     const memberships = membershipResult.data;
+    const pageDataError = Boolean(userResult.error || membershipResult.error);
+    let rankingDataError = false;
+    if (userResult.error) {
+        reportError('groups:user', userResult.error, { userId });
+    }
+    if (membershipResult.error) {
+        reportError('groups:memberships', membershipResult.error, { userId });
+    }
 
-    if (!userData?.username) {
+    if (!userResult.error && !userData?.username) {
         redirect('/setup');
     }
 
     // Ensure it's an array
-    const groupOrder = Array.isArray(userData?.group_keyword)
-        ? userData?.group_keyword
+    const groupOrder: string[] = Array.isArray(userData?.group_keyword)
+        ? userData.group_keyword
         : (userData?.group_keyword ? [userData.group_keyword] : []);
 
     // Normalize memberships (Handle array vs object for joined table)
-    const normalizedMemberships = (memberships || []).map((m: any) => ({
-        ...m,
-        groups: Array.isArray(m.groups) ? m.groups[0] : m.groups
-    }));
+    const normalizedMemberships: NormalizedMembership[] = (memberships || []).map((membership) => {
+        const group = Array.isArray(membership.groups)
+            ? membership.groups[0]
+            : membership.groups;
+        if (!group) {
+            throw new Error('GROUP_MEMBERSHIP_RELATION_MISSING');
+        }
+        return { ...membership, groups: group };
+    });
 
     // ⚡ N+1 解消: グローバルランキングキャッシュからバッチで全グループのランキングを導出
-    const groupIds = normalizedMemberships.map((m: any) => m.groups.id);
-    const globalRankings = await getCachedGlobalRankings();
-    const batchRankings = await deriveBatchGroupRankings(groupIds, globalRankings);
+    const groupIds = normalizedMemberships.map((m) => m.groups.id);
+    let globalRankings: Awaited<ReturnType<typeof getCachedGlobalRankings>> | null = null;
+    if (!pageDataError) {
+        try {
+            globalRankings = await getCachedGlobalRankings();
+        } catch (error: unknown) {
+            reportError('groups:rankings', error, { userId });
+            rankingDataError = true;
+        }
+    }
+    let batchRankings: Awaited<ReturnType<typeof deriveBatchGroupRankings>> = {};
+    if (globalRankings) {
+        try {
+            batchRankings = await deriveBatchGroupRankings(groupIds, globalRankings);
+        } catch (error: unknown) {
+            reportError('groups:batch-rankings', error, { userId });
+            rankingDataError = true;
+        }
+    }
 
-    const membershipsWithRank = normalizedMemberships.map((m: any) => {
+    const membershipsWithRank: MembershipWithRank[] = normalizedMemberships.map((m) => {
         const groupRankings = batchRankings[m.groups.id];
         const weeklyRankings = groupRankings?.WEEKLY || [];
-        const myRankIndex = weeklyRankings.findIndex((r: any) => r.users.id === userId);
+        const myRankIndex = weeklyRankings.findIndex((r) => r.users.id === userId);
 
         return {
             ...m,
@@ -87,7 +144,7 @@ export default async function MyGroupsPage() {
     });
 
     // Sort memberships based on groupOrder
-    const sortedMemberships = membershipsWithRank.sort((a: any, b: any) => {
+    const sortedMemberships = membershipsWithRank.sort((a, b) => {
         const indexA = groupOrder.indexOf(a.groups.keyword);
         const indexB = groupOrder.indexOf(b.groups.keyword);
 
@@ -104,75 +161,68 @@ export default async function MyGroupsPage() {
     });
 
     // G1/G8: グループサマリーデータの計算
-    const totalMembers = membershipsWithRank.reduce((sum: number, m: any) => sum + (m.totalMembers || 0), 0);
-    const bestRank = membershipsWithRank.reduce((best: number | null, m: any) => {
+    const totalMembers = membershipsWithRank.reduce((sum, m) => sum + (m.totalMembers || 0), 0);
+    const bestRank = membershipsWithRank.reduce((best: number | null, m) => {
         if (!m.rank) return best;
         if (best === null) return m.rank;
         return m.rank < best ? m.rank : best;
     }, null as number | null);
     // 全グループのTop3ランクを収集（グループ順に依存せず全て表示）
     const topRankedGroups = membershipsWithRank
-        .filter((m: any) => m.rank && m.rank <= 3)
-        .sort((a: any, b: any) => a.rank - b.rank);
+        .filter((m) => m.rank && m.rank <= 3)
+        .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
 
     // Use custom image if available, otherwise fallback to session image
     const finalUser = {
         ...session.user,
+        username: userResult.error ? null : userData?.username,
         name: userData?.name || session.user.name,
         image: userData?.image || session.user.image,
     };
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-            {/* Header */}
-            <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-                <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                {dashboardT('title')}
-                            </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                {dashboardT('beta')}
-                            </span>
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <RefreshButton />
-                        <NotificationBell />
-                        <UserMenu user={finalUser} />
-                    </div>
-                </div>
-            </header>
+            <AuthenticatedPageHeader
+                appTitle={dashboardT('title')}
+                betaLabel={dashboardT('beta')}
+                contextLabel={t('title')}
+                user={finalUser}
+            />
 
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                <PageIntro
+                    headingId="groups-page-title"
+                    title={t('title')}
+                    description={t('headerDesc')}
+                    icon="groups"
+                    tone="competition"
+                    breadcrumbs={[{ label: t('title') }]}
+                />
 
-                {/* パンくずリスト */}
-                <div className="mb-4 sm:mb-6">
-                    <Breadcrumbs items={[{ label: t('title') }]} />
-                </div>
+                {pageDataError ? (
+                    <section className="mb-4 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-surface)] p-4 shadow-sm" role="alert">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm font-semibold text-[var(--color-text)]">{commonT('error')}</p>
+                            <form action="/groups" method="get">
+                                <button
+                                    type="submit"
+                                    className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                                >
+                                    {commonT('retry')}
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+                ) : (
+                    <>
+                {rankingDataError && (
+                    <section className="mb-4 rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-surface)] p-3 shadow-sm" role="status">
+                        <p className="text-sm font-bold text-[var(--color-text)]">{dashboardT('rankingUnavailableTitle')}</p>
+                        <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{dashboardT('rankingUnavailableDescription')}</p>
+                    </section>
+                )}
 
-                {/* ヒーローセクション — ランキングページと統一デザイン */}
-                <div className="mb-6 sm:mb-8 relative overflow-hidden rounded-2xl leaderboard-hero-bg p-5 sm:p-6 text-white leaderboard-card-enter">
-                    {/* 背景デコレーション */}
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-                        <div className="absolute -top-4 -right-4 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full blur-2xl" />
-                        <div className="absolute bottom-0 left-1/4 w-16 h-16 sm:w-20 sm:h-20 bg-white/5 rounded-full blur-xl" />
-                    </div>
-
-                    <div className="relative z-10">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight flex items-center gap-2.5">
-                            <span>👥</span>
-                            <span>{t('title')}</span>
-                        </h1>
-                        <p className="mt-1.5 text-sm sm:text-base text-white/80">
-                            {t('headerDesc')}
-                        </p>
-                        <div className="mt-4 h-0.5 w-20 rounded-full bg-white/30" />
-                    </div>
-                </div>
-
-                <div className="flex flex-col lg:flex-row gap-8 items-start">
+                <div className="flex flex-col xl:flex-row gap-4 xl:gap-8 items-start">
                     {/* Group List (Left on Desktop, Top on Mobile) */}
                     <section className="flex-1 w-full">
                         {/* ハイライト + サマリー統合パネル */}
@@ -181,10 +231,10 @@ export default async function MyGroupsPage() {
                                 {/* ハイライトバナー */}
                                 {topRankedGroups.length > 0 && (
                                     <div className="mb-2.5">
-                                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">{t('todayHighlight')}</div>
+                                        <div className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-500">{t('todayHighlight')}</div>
                                         <div className="flex items-center gap-1 flex-wrap">
-                                            {topRankedGroups.map((m: any) => (
-                                                <span key={m.groups.id} className="inline-flex items-center gap-0.5 text-[11px] font-bold text-gray-700">
+                                            {topRankedGroups.map((m) => (
+                                                <span key={m.groups.id} className="inline-flex items-center gap-0.5 text-xs font-bold text-gray-700">
                                                     <span>{m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : '🥉'}</span>
                                                     <span className="truncate max-w-[120px]">{m.groups.name}</span>
                                                 </span>
@@ -199,14 +249,18 @@ export default async function MyGroupsPage() {
                                         <span className="font-black text-base text-[var(--theme-primary)]">{sortedMemberships.length}</span>
                                         <span className="font-medium text-gray-500">{t('groupsJoined')}</span>
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5 text-xs">
-                                        <span className="font-black text-base text-[var(--theme-primary)]">{totalMembers}</span>
-                                        <span className="font-medium text-gray-500">{t('totalGroupMembers')}</span>
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5 text-xs">
-                                        <span className="font-black text-base text-[var(--theme-primary)]">{bestRank ? `#${bestRank}` : '—'}</span>
-                                        <span className="font-medium text-gray-500">{t('bestRank')}</span>
-                                    </span>
+                                    {!rankingDataError && (
+                                        <>
+                                            <span className="inline-flex items-center gap-1.5 text-xs">
+                                                <span className="font-black text-base text-[var(--theme-primary)]">{totalMembers}</span>
+                                                <span className="font-medium text-gray-500">{t('totalGroupMembers')}</span>
+                                            </span>
+                                            <span className="inline-flex items-center gap-1.5 text-xs">
+                                                <span className="font-black text-base text-[var(--theme-primary)]">{bestRank ? `#${bestRank}` : '—'}</span>
+                                                <span className="font-medium text-gray-500">{t('bestRank')}</span>
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -216,8 +270,15 @@ export default async function MyGroupsPage() {
                         </div>
 
                         {!memberships || memberships.length === 0 ? (
-                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                                <p className="text-gray-500">{t('noGroups')}</p>
+                            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center sm:p-6">
+                                <p className="font-semibold text-[var(--color-text)]">{t('noGroups')}</p>
+                                <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-[var(--color-text-muted)]">{t('noGroupsDescription')}</p>
+                                <FocusAnchorLink
+                                    targetId="group-join-panel"
+                                    className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[var(--color-competition-solid)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-competition-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2"
+                                >
+                                    {t('findFirstGroup')}
+                                </FocusAnchorLink>
                             </div>
                         ) : (
                             <GroupList initialMemberships={sortedMemberships} />
@@ -225,11 +286,16 @@ export default async function MyGroupsPage() {
                     </section>
 
                     {/* Join / Create Section (Right on Desktop, Bottom on Mobile) */}
-                    <aside className="w-full lg:w-80 flex-shrink-0 lg:sticky lg:top-24 space-y-3">
+                    <aside
+                        id="group-join-panel"
+                        tabIndex={-1}
+                        aria-labelledby="group-join-panel-title"
+                        className="w-full scroll-mt-24 flex-shrink-0 space-y-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] focus-visible:ring-offset-2 xl:sticky xl:top-24 xl:w-80"
+                    >
                         {/* Join / Create */}
                         <div>
                             <div className="flex items-center mb-2">
-                                <h2 className="text-base font-bold text-gray-900">{t('joinOrCreate')}</h2>
+                                <h2 id="group-join-panel-title" className="text-base font-bold text-gray-900">{t('joinOrCreate')}</h2>
                             </div>
                             <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-[var(--theme-primary-light)] via-white to-white border border-[var(--theme-primary)]/20 shadow-sm">
                                 {/* 装飾 — デスクトップのみ */}
@@ -260,14 +326,15 @@ export default async function MyGroupsPage() {
                             <span className="text-xl md:text-2xl md:mb-1 shrink-0">🏃‍♂️</span>
                             <div className="min-w-0">
                                 <div className="font-bold text-sm">{t('createGroup')}</div>
-                                <div className="text-[11px] md:text-xs text-white/80">{t('createGroupDesc')}</div>
+                                <div className="text-xs text-white/80">{t('createGroupDesc')}</div>
                             </div>
                         </Link>
                     </aside>
                 </div>
+                    </>
+                )}
             </div>
             <Footer />
         </main>
     );
 }
-

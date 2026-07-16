@@ -4,6 +4,16 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
+import type { RecommendedItemRow } from '@/types/database';
+
+/** `.select('..., users (username, image)')` の埋め込み結果の行 (to-one 関係) */
+type GroupGearItemRow = Pick<
+    RecommendedItemRow,
+    'id' | 'asin' | 'title' | 'image_url' | 'affiliate_link' | 'user_id' | 'comment' | 'updated_at'
+> & {
+    users: { username: string | null; image: string | null } | null;
+};
+
 // ============================================
 // グループメンバーの愛用ギア API
 // メンバーの recommended_items を ASIN 別に集計して返却
@@ -16,8 +26,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
     const groupId = request.nextUrl.searchParams.get('groupId');
     if (!groupId) {
         return NextResponse.json({ error: 'groupId is required' }, { status: 400 });
@@ -53,7 +62,8 @@ export async function GET(request: NextRequest) {
         .select('id, asin, title, image_url, affiliate_link, user_id, comment, updated_at, users (username, image)')
         .in('user_id', memberIds)
         .order('updated_at', { ascending: false })
-        .limit(100);
+        .limit(100)
+        .returns<GroupGearItemRow[]>();
 
     if (!rawItems || rawItems.length === 0) {
         return NextResponse.json({ items: [] });
@@ -72,7 +82,7 @@ export async function GET(request: NextRequest) {
 
     for (const item of rawItems) {
         const existing = asinMap.get(item.asin);
-        const user = item.users as unknown as { username: string; image: string | null } | null;
+        const user = item.users;
         const userInfo = user ? { username: user.username || 'User', image: user.image, comment: item.comment || null } : null;
 
         if (existing) {

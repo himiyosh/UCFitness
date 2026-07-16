@@ -26,8 +26,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('next/server', () => ({
     NextResponse: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        json: vi.fn((data: any) => ({
+        json: vi.fn(<T extends { users?: unknown[] }>(data: T) => ({
             status: 200,
             json: async () => data,
             users: data.users || []

@@ -1,30 +1,19 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/components/ThemeProvider';
 import { useToast } from '@/components/ui/Toast';
 import UserAvatar from '@/components/UserAvatar';
 import { getFrameColor } from '@/lib/frame-utils';
+import { getThemeFromItemCode } from '@/lib/theme';
 import ShopRecommendations from '@/components/ShopRecommendations';
 import ShopItemCard from '@/components/shop/ShopItemCard';
 import InventoryView from '@/components/shop/ShopInventoryView';
 import { ItemPreviewDialog, ConfirmDialog } from '@/components/shop/ShopPreviewDialog';
 
 import type { ShopCategory, ShopItem, UserItem, EquippedItems } from '@/lib/services/shop-service';
-import type { Theme } from '@/components/ThemeProvider';
-
-/** item_code → アプリテーマのマッピング */
-const THEME_MAP: Record<string, Theme> = {
-    theme_pop: 'pop',
-    theme_midnight: 'midnight',
-    theme_sakura: 'sakura',
-    theme_ocean: 'ocean',
-    theme_forest: 'forest',
-    theme_sunset: 'sunset',
-    theme_cyberpunk: 'cyberpunk',
-    theme_galaxy: 'galaxy',
-};
 
 // --- 型定義 ---
 interface ShopClientProps {
@@ -59,6 +48,7 @@ const RANK_ORDER: Record<string, number> = {
 
 // --- メインコンポーネント ---
 export default function ShopClient({ items, userItems, equipped, balance, userRank, locale, userImage, userName, initialViewMode = 'shop' }: ShopClientProps) {
+    const router = useRouter();
     const t = useTranslations('Shop');
     const { setTheme } = useTheme();
     const { success: toastSuccess, error: toastError } = useToast();
@@ -99,22 +89,17 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
             });
             const data = await res.json();
             if (!res.ok) {
-                const errorKey = `error${data.error?.charAt(0).toUpperCase()}${data.error?.slice(1).replace(/_([a-z])/g, (_: string, l: string) => l.toUpperCase())}` as any;
+                const errorKey = `error${data.error?.charAt(0).toUpperCase()}${data.error?.slice(1).replace(/_([a-z])/g, (_: string, l: string) => l.toUpperCase())}`;
                 showToast(t.has(errorKey) ? t(errorKey) : t('errorGeneric'), 'error');
                 return;
             }
             // 成功
-            setOwnedItemIds(prev => new Set([...prev, item.id]));
             setCurrentBalance(prev => data.newBalance ?? prev - item.price);
-            // ユーザーアイテムリスト更新（サーバーから返された実IDを使用）
-            if (data.userItem) {
-                setUserItemsState(prev => [data.userItem, ...prev]);
-            } else {
-                // フォールバック: サーバーがuserItemを返さなかった場合
-                setUserItemsState(prev => [
-                    { id: crypto.randomUUID(), user_id: '', item_id: item.id, purchased_at: new Date().toISOString(), is_equipped: false, shop_items: item },
-                    ...prev,
-                ]);
+            if (item.category !== 'CONSUMABLE') {
+                setOwnedItemIds(prev => new Set([...prev, item.id]));
+                if (data.userItem) {
+                    setUserItemsState(prev => [data.userItem, ...prev]);
+                }
             }
             const itemName = locale === 'ja' ? item.name_ja : item.name_en;
             showToast(t('purchaseSuccessDesc', { item: itemName }), 'success');
@@ -150,7 +135,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 }));
                 // テーマカラー装備時はアプリテーマも切り替え
                 if (category === 'THEME_COLOR') {
-                    const mappedTheme = THEME_MAP[userItem.shop_items?.item_code ?? ''];
+                    const mappedTheme = getThemeFromItemCode(userItem.shop_items?.item_code);
                     if (mappedTheme) setTheme(mappedTheme);
                 }
                 showToast(t('equipSuccess'), 'success');
@@ -165,12 +150,13 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 }
                 showToast(t('unequipSuccess'), 'success');
             }
+            router.refresh();
         } catch {
             showToast(t('errorGeneric'), 'error');
         } finally {
             setIsLoading(null);
         }
-    }, [showToast, setTheme, t]);
+    }, [router, showToast, setTheme, t]);
 
     // ランクチェック
     const meetsRank = (requiredRank: string) => (RANK_ORDER[userRank] ?? 0) >= (RANK_ORDER[requiredRank] ?? 0);
@@ -226,9 +212,9 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                 <div className="relative flex flex-col gap-3 p-3 sm:flex-row sm:justify-between sm:p-4">
                     {/* UCShop ロゴ + 残高（モバイル中央寄せ） */}
                     <div className="flex flex-col items-center sm:items-start justify-center shrink-0">
-                        <h1 className="text-3xl font-black leading-none tracking-tighter text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] sm:text-4xl">
+                        <h2 className="text-3xl font-black leading-none tracking-tighter text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] sm:text-4xl">
                             UC<span className="text-yellow-200 drop-shadow-[0_0_20px_rgba(253,224,71,0.4)]">Shop</span>
-                        </h1>
+                        </h2>
                         <div className="mt-2 flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 backdrop-blur-sm">
                             <span className="text-base">💰</span>
                             <p className="text-base font-black text-white tabular-nums">
@@ -309,7 +295,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     <button
                         key={tab.key}
                         onClick={() => setViewMode(tab.key)}
-                        className={`flex-1 rounded-lg px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
+                        className={`flex min-h-[44px] flex-1 items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
                             viewMode === tab.key
                                 ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
@@ -341,7 +327,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                                 }`}
                             >
                                 <span>{tab.icon}</span>
-                                {t(tab.labelKey as any)}
+                                {t(tab.labelKey)}
                             </button>
                         ))}
                     </div>
@@ -353,7 +339,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                             <p>{t('noItems')}</p>
                         </div>
                     ) : (
-                         <div className="grid max-h-[calc(100dvh-20rem)] grid-cols-2 gap-2 overflow-y-auto pr-1 styled-scrollbar sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                             {filteredItems.map(item => (
                                 <ShopItemCard
                                     key={item.id}
@@ -402,7 +388,11 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     meetsRank={meetsRank(previewItem.rank_required)}
                     canAfford={currentBalance >= previewItem.price}
                     isLoading={isLoading === previewItem.id}
-                    onBuy={() => handlePurchase(previewItem)}
+                    onBuy={() => {
+                        const item = previewItem;
+                        setPreviewItem(null);
+                        setConfirmDialog({ item });
+                    }}
                     onClose={() => setPreviewItem(null)}
                     t={t}
                     userImage={userImage}
@@ -425,4 +415,3 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
         </div>
     );
 }
-

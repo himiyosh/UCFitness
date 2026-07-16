@@ -67,7 +67,7 @@ function SortableGroupCard({ m, t }: { m: GroupMembership; t: ReturnType<typeof 
         >
             {/* ドラッグハンドル */}
             <button
-                className="cursor-grab active:cursor-grabbing p-1.5 rounded-lg text-gray-400 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] transition-colors shrink-0 touch-none"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 touch-none cursor-grab items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[var(--theme-primary-light)] hover:text-[var(--theme-primary)] active:cursor-grabbing"
                 aria-label={t('dragToReorder')}
                 {...attributes}
                 {...listeners}
@@ -175,7 +175,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
 
     // 招待リンクコピー
     const handleShareInvite = useCallback(async (keyword: string, groupId: string) => {
-        const url = `${window.location.origin}/groups/join?keyword=${encodeURIComponent(keyword)}`;
+        const url = `${window.location.origin}/groups/${encodeURIComponent(groupId)}`;
         try {
             await navigator.clipboard.writeText(url);
             setCopiedId(groupId);
@@ -215,14 +215,14 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                     <div className="flex items-center gap-2">
                         <button
                             onClick={cancelEditing}
-                            className="px-3 py-1.5 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            className="inline-flex min-h-[44px] items-center rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-200"
                         >
                             {t('cancel')}
                         </button>
                         <button
                             onClick={saveOrder}
                             disabled={isUpdating}
-                            className="px-3 py-1.5 text-sm font-semibold text-white bg-[var(--theme-primary)] hover:opacity-90 rounded-lg transition-opacity flex items-center gap-1.5 disabled:opacity-50"
+                            className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-[var(--theme-primary)] px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                         >
                             {isUpdating && <Spinner size="sm" className="text-white" />}
                             {t('saveOrder')}
@@ -257,7 +257,7 @@ export default function GroupList({ initialMemberships }: { initialMemberships: 
                 <div className="flex justify-end mb-3">
                     <button
                         onClick={startEditing}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-200"
                         aria-label={t('editOrder')}
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

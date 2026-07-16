@@ -16,8 +16,7 @@ export async function GET(request: Request) {
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     const url = new URL(request.url);
     const period = url.searchParams.get('period') || 'WEEKLY';

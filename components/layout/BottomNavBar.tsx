@@ -1,47 +1,76 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import { Link, usePathname } from '@/navigation';
 import { useTranslations } from 'next-intl';
 
 /**
  * ネイティブアプリ風の固定ボトムナビゲーションバー
- * モバイルで常時表示、sm 以上では非表示（ヘッダーナビで代替）
+ * サイドバーが表示されるlg未満で常時表示
  */
-export default function BottomNavBar() {
+interface BottomNavBarProps {
+  username: string;
+}
+
+export default function BottomNavBar({ username }: BottomNavBarProps) {
+  const navRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
   const t = useTranslations('BottomNav');
   const dashT = useTranslations('Dashboard');
 
   const navItems = [
     { href: '/' as const, icon: HomeIcon, label: t('home') },
-    { href: '/leaderboard' as const, icon: RankingIcon, label: t('ranking') },
+    { href: '/leaderboard?period=WEEKLY' as const, icon: RankingIcon, label: t('ranking') },
     { href: '/challenges' as const, icon: ChallengeIcon, label: dashT('challenges') },
     { href: '/groups' as const, icon: GroupIcon, label: t('groups') },
-    { href: '/profile' as const, icon: ProfileIcon, label: t('profile') },
+    { href: `/user/${encodeURIComponent(username)}`, icon: ProfileIcon, label: t('profile') },
   ];
+  const profileHref = `/user/${encodeURIComponent(username)}`;
+
+  useEffect(() => {
+    const keepFocusedControlVisible = (event: FocusEvent): void => {
+      const nav = navRef.current;
+      const target = event.target;
+      if (!nav || !(target instanceof HTMLElement) || nav.contains(target)) return;
+      if (window.getComputedStyle(nav).display === 'none') return;
+
+      const navRect = nav.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const overlap = targetRect.bottom - (navRect.top - 12);
+      if (overlap > 0) {
+        window.scrollBy({ top: overlap, behavior: 'auto' });
+      }
+    };
+
+    document.addEventListener('focusin', keepFocusedControlVisible);
+    return () => document.removeEventListener('focusin', keepFocusedControlVisible);
+  }, []);
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 safe-area-bottom sm:hidden"
+      ref={navRef}
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 safe-area-bottom lg:hidden"
       role="navigation"
       aria-label={t('label')}
     >
       <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
         {navItems.map((item) => {
-          const isActive = item.href === '/'
+          const itemPath = item.href.split('?')[0];
+          const isActive = itemPath === '/'
             ? pathname === '/'
-            : item.href === '/profile'
-              ? pathname === '/profile' || pathname.startsWith('/user/')
-              : pathname.startsWith(item.href);
+            : itemPath.startsWith('/user/')
+              ? pathname === profileHref
+              : pathname.startsWith(itemPath);
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex min-h-[44px] min-w-[56px] flex-col items-center justify-center transition-colors ${
+              className={`relative flex min-h-[44px] min-w-[56px] flex-col items-center justify-center rounded-lg transition-colors active:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
                 isActive
-                  ? 'text-[var(--theme-primary)]'
-                  : 'text-gray-400 hover:text-gray-600'
+                  ? 'text-[var(--color-primary-strong)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
               }`}
               aria-current={isActive ? 'page' : undefined}
             >
@@ -56,7 +85,7 @@ export default function BottomNavBar() {
               <span className="relative z-10 mt-1">
                 <item.icon active={isActive} />
               </span>
-              <span className={`relative z-10 mt-0.5 text-[10px] font-medium leading-none ${isActive ? 'font-semibold' : ''}`}>
+              <span className={`relative z-10 mt-0.5 text-xs font-medium leading-none ${isActive ? 'font-semibold' : ''}`}>
                 {item.label}
               </span>
             </Link>

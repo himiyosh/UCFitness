@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 // ============================================
 // WalkingRoutes — ウォーキングコース記録コンポーネント
@@ -42,6 +44,16 @@ export default function WalkingRoutes() {
     const [isSaving, setIsSaving] = useState(false);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const deleteDialogRef = useRef<HTMLDivElement>(null);
+    const deleteCancelRef = useRef<HTMLButtonElement>(null);
+    const closeDeleteDialog = useCallback(() => setDeleteConfirmId(null), []);
+
+    useDialogFocus({
+        isOpen: Boolean(deleteConfirmId),
+        onClose: closeDeleteDialog,
+        dialogRef: deleteDialogRef,
+        initialFocusRef: deleteCancelRef,
+    });
 
     // フォーム入力
     const [formName, setFormName] = useState('');
@@ -299,7 +311,7 @@ export default function WalkingRoutes() {
                             id="route-difficulty"
                             value={formDifficulty}
                             onChange={(e) => setFormDifficulty(e.target.value as Difficulty)}
-                            className="text-sm border border-gray-200 rounded-lg px-2 py-1 min-h-[36px] focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30"
+                            className="min-h-[44px] rounded-lg border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30"
                         >
                             <option value="easy">{t('difficultyEasy')}</option>
                             <option value="normal">{t('difficultyNormal')}</option>
@@ -333,7 +345,7 @@ export default function WalkingRoutes() {
                 <div className="text-center py-6">
                     <p className="text-2xl mb-1">🗺️</p>
                     <p className="text-xs text-gray-400">{t('empty')}</p>
-                    <p className="text-[10px] text-gray-300 mt-1">{t('emptyHint')}</p>
+                    <p className="mt-1 text-xs text-gray-500">{t('emptyHint')}</p>
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -353,16 +365,16 @@ export default function WalkingRoutes() {
                                             <h4 className="text-sm font-semibold text-gray-800 truncate">
                                                 {route.name}
                                             </h4>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${diff.colorClass}`}>
+                                            <span className={`rounded-full px-1.5 py-0.5 text-xs ${diff.colorClass}`}>
                                                 {diff.emoji} {t(`difficulty${route.difficulty.charAt(0).toUpperCase() + route.difficulty.slice(1)}` as 'difficultyEasy' | 'difficultyNormal' | 'difficultyHard')}
                                             </span>
                                         </div>
 
                                         {route.description && (
-                                            <p className="text-[11px] text-gray-400 line-clamp-1">{route.description}</p>
+                                            <p className="line-clamp-1 text-xs text-gray-500">{route.description}</p>
                                         )}
 
-                                        <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
+                                        <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
                                             {route.distance_km !== null && (
                                                 <span>📏 {route.distance_km} km</span>
                                             )}
@@ -378,7 +390,7 @@ export default function WalkingRoutes() {
                                         <button
                                             onClick={() => handleLogWalk(route.id)}
                                             disabled={isActioning}
-                                            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-xs hover:bg-green-50 text-green-600 transition-colors"
+                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-green-700 transition-colors hover:bg-green-50"
                                             aria-label={t('logWalk')}
                                             title={t('logWalk')}
                                         >
@@ -391,7 +403,7 @@ export default function WalkingRoutes() {
                                         <button
                                             onClick={() => handleToggleFavorite(route.id, route.is_favorite)}
                                             disabled={isActioning}
-                                            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-xs hover:bg-amber-50 transition-colors"
+                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs transition-colors hover:bg-amber-50"
                                             aria-label={route.is_favorite ? t('unfavorite') : t('favorite')}
                                             title={route.is_favorite ? t('unfavorite') : t('favorite')}
                                         >
@@ -400,7 +412,7 @@ export default function WalkingRoutes() {
                                         <button
                                             onClick={() => setDeleteConfirmId(route.id)}
                                             disabled={isActioning}
-                                            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-xs hover:bg-red-50 text-red-400 transition-colors"
+                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-red-700 transition-colors hover:bg-red-50"
                                             aria-label={t('delete')}
                                             title={t('delete')}
                                         >
@@ -418,15 +430,16 @@ export default function WalkingRoutes() {
             {deleteConfirmId &&
                 createPortal(
                     <div
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-                        onClick={() => setDeleteConfirmId(null)}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label={t('deleteConfirm')}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
                     >
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeDeleteDialog} aria-hidden="true" />
                         <div
-                            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
-                            onClick={(e) => e.stopPropagation()}
+                            ref={deleteDialogRef}
+                            className="relative w-full max-w-sm rounded-xl bg-white p-4 shadow-xl sm:p-6"
+                            role="alertdialog"
+                            aria-modal="true"
+                            aria-label={t('deleteConfirm')}
+                            tabIndex={-1}
                         >
                             <h4 className="text-base font-bold text-gray-900 mb-2">{t('deleteConfirm')}</h4>
                             <p className="text-sm text-gray-500 mb-4">{t('deleteConfirmDesc')}</p>
@@ -438,7 +451,8 @@ export default function WalkingRoutes() {
                                     {t('delete')}
                                 </button>
                                 <button
-                                    onClick={() => setDeleteConfirmId(null)}
+                                    ref={deleteCancelRef}
+                                    onClick={closeDeleteDialog}
                                     className="flex-1 px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                                 >
                                     {t('cancel')}

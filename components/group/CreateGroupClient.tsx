@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+
 import Spinner from '@/components/ui/Spinner';
 
 const KEYWORD_REGEX = /^[a-zA-Z0-9_-]{3,50}$/;
@@ -32,6 +33,7 @@ export default function CreateGroupClient() {
   const [isSearching, setIsSearching] = useState(false);
   const [invitedMembers, setInvitedMembers] = useState<SearchUser[]>([]);
   const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [removingInvitedId, setRemovingInvitedId] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<Set<string>>(new Set());
   const [inviteError, setInviteError] = useState<string | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -45,6 +47,7 @@ export default function CreateGroupClient() {
 
   // ── 完了 ──
   const [createdKeyword, setCreatedKeyword] = useState('');
+  const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
 
   const router = useRouter();
   const t = useTranslations('Groups');
@@ -101,7 +104,9 @@ export default function CreateGroupClient() {
         const data = await response.json();
         throw new Error(data.error || t('createError'));
       }
+      const data = await response.json();
       setCreatedKeyword(id);
+      setCreatedGroupId(typeof data.groupId === 'string' ? data.groupId : null);
       setStep(2);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('createError'));
@@ -139,12 +144,38 @@ export default function CreateGroupClient() {
     }
   };
 
-  const handleRemoveInvited = (userId: string) => {
-    setInvitedMembers(prev => prev.filter(m => m.id !== userId));
+  const handleRemoveInvited = async (userId: string) => {
+    setRemovingInvitedId(userId);
+    setInviteError(null);
+    try {
+      const response = await fetch('/api/user/group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'kick',
+          keyword: createdKeyword,
+          targetUserId: userId,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || t('removeInviteFailed'));
+      }
+      setInvitedMembers(prev => prev.filter(member => member.id !== userId));
+      setInviteSuccess(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    } catch (removeError: unknown) {
+      setInviteError(removeError instanceof Error ? removeError.message : t('removeInviteFailed'));
+    } finally {
+      setRemovingInvitedId(null);
+    }
   };
 
   const handleFinish = () => {
-    router.push(`/groups/${createdKeyword}`);
+    router.push(createdGroupId ? `/groups/${createdGroupId}` : '/groups');
     router.refresh();
   };
 
@@ -185,31 +216,7 @@ export default function CreateGroupClient() {
   ), [step, t]);
 
   return (
-    <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-4 space-y-4">
-
-        {/* パンくずリスト */}
-        <nav className="flex items-center gap-1.5 text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-700 transition-colors">🏠</Link>
-          <span className="text-gray-300">/</span>
-          <Link href="/groups" className="hover:text-[var(--theme-primary)] transition-colors">{t('title')}</Link>
-          <span className="text-gray-300">/</span>
-          <span className="text-gray-900 font-medium">{t('createPageTitle')}</span>
-        </nav>
-
-        {/* ヘッダー */}
-        <div className="text-center sm:text-left">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center justify-center sm:justify-start gap-2.5">
-            <span className="text-3xl">🏃‍♂️</span>
-            <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
-              {t('createPageTitle')}
-            </span>
-          </h1>
-          <p className="mt-2 text-sm text-gray-500">
-            {t('createPageDesc')}
-          </p>
-          <div className="mt-4 h-1 w-24 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60 mx-auto sm:mx-0" />
-        </div>
+    <div className="space-y-4">
 
         {/* ステップインジケーター */}
         {stepIndicator}
@@ -428,7 +435,7 @@ export default function CreateGroupClient() {
                       <button
                         onClick={() => handleInvite(user)}
                         disabled={invitingId === user.id}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[var(--theme-primary)] text-white hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                        className="flex min-h-[44px] items-center gap-1 rounded-lg bg-[var(--color-primary-solid)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {invitingId === user.id ? <Spinner size="sm" /> : <span>+</span>}
                         {t('invite')}
@@ -475,10 +482,12 @@ export default function CreateGroupClient() {
                         <span className="text-xs font-medium text-green-800">{user.name || user.username}</span>
                         <button
                           onClick={() => handleRemoveInvited(user.id)}
-                          className="text-green-400 hover:text-red-500 transition-colors text-xs cursor-pointer"
+                          disabled={removingInvitedId === user.id}
+                          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xs text-green-700 transition-colors hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                           title={t('removeInvite')}
+                          aria-label={t('removeInvite')}
                         >
-                          ✕
+                          {removingInvitedId === user.id ? <Spinner size="sm" /> : '✕'}
                         </button>
                       </div>
                     ))}
@@ -517,7 +526,6 @@ export default function CreateGroupClient() {
           </div>
         )}
 
-      </div>
-    </main>
+    </div>
   );
 }

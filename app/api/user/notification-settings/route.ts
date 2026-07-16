@@ -1,9 +1,10 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // 通知設定 API
 // GET: 現在の通知設定を取得
@@ -24,6 +25,12 @@ export async function GET(): Promise<NextResponse> {
 
         if (error) {
             reportError('user/notification-settings:get', error, { userId: session.user.id });
+            if (error.code === '42703') {
+                return NextResponse.json({
+                    error: 'Notification settings unavailable',
+                    code: 'NOTIFICATION_SETTINGS_UNAVAILABLE',
+                }, { status: 503 });
+            }
             return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
         }
 
@@ -44,12 +51,22 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { notificationReactions, notificationGearReactions } = body;
+        const body: unknown = await request.json();
+        if (typeof body !== 'object' || body === null) {
+            return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+        }
+        const notificationReactions = 'notificationReactions' in body
+            ? body.notificationReactions
+            : undefined;
+        const notificationGearReactions = 'notificationGearReactions' in body
+            ? body.notificationGearReactions
+            : undefined;
 
         // バリデーション: boolean のみ許可
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updateData: Record<string, any> = {};
+        const updateData: {
+            notification_reactions?: boolean;
+            notification_gear_reactions?: boolean;
+        } = {};
         if (typeof notificationReactions === 'boolean') {
             updateData.notification_reactions = notificationReactions;
         }
@@ -68,6 +85,12 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
         if (error) {
             reportError('user/notification-settings:put', error, { userId: session.user.id });
+            if (error.code === '42703') {
+                return NextResponse.json({
+                    error: 'Notification settings unavailable',
+                    code: 'NOTIFICATION_SETTINGS_UNAVAILABLE',
+                }, { status: 503 });
+            }
             return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
         }
 

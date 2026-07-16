@@ -32,8 +32,7 @@ describe('Group Join Performance Optimization Logic', () => {
     const validGroupIds: string[] = [];
 
     // 3. The Logic Block (to be pasted into page.tsx)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockMemberships?.forEach((m: any) => {
+    mockMemberships?.forEach((m) => {
       const g = m.groups;
       if (g && g.keyword) {
         groupKeywords.push(g.keyword);

@@ -1,24 +1,35 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-05-23T20:57:00+09:00",
-  "lastAgent": "UCFitnessAgent",
-  "lastCommit": "73b785f",
-  "lastBranch": "agents/ui-functionality-improvement-research-1402d7c8",
+  "lastUpdated": "2026-07-16T11:59:11+09:00",
+  "lastAgent": "UCFitnessAgent (QA + Debug + Self-Critique)",
+  "lastCommit": "7aeb1fdc735c2497dc16a634511ec7a5fa9f9f45",
+  "lastBranch": "himiyosh-integrate-auth-ui-canonical",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "監査結果の P0/P1 対応 — Hooks 違反修正、CreateChallengeModal a11y/i18n 改善、Push API 統一、URL/CSP/rate-limit/log redaction、CI と安全な hooks、README/Skill/Agent 整合性を更新。",
+  "summary": "PR #227のGitHub Actionsで失敗した11件を修正。VitestのvmForks poolでファイル単位のSupabaseモックがworker再利用時に漏洩していたため、forks pool + isolate: trueへ変更した。対象4ファイル11件と全46ファイル296件を単一workerでもPASSし、check:all、ja/en 1606キー、U+FFFD、diff check、自己批判ゲートを確認。README、CHANGELOG、LL-057を同期。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-any は F033 継続対応として一時 warning 化。npm run lint -- --quiet は 0 error。",
-    "devServerRunning": false,
-    "lastVerified": "2026-05-23T20:57:00+09:00"
+    "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、F019変更によるLint errorは0。",
+    "devServerRunning": true,
+    "lastVerified": "2026-07-16T10:26:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
     "Creators API 資格未達（10件/30日）",
-    "カードリストのモバイル横スクロールは md ブレイクポイントで切替"
+    "カードリストのモバイル横スクロールは md ブレイクポイントで切替",
+    "Google Healthの実OAuth E2Eは資格情報と接続状態の変更を伴うため未実施",
+    "認証済み設定画面のGoogle Health接続・再接続・解除UIは実OAuth環境準備後に最終確認が必要",
+    "Web Pushの実端末表示は購読・既読等の状態変更を避けたため未実施。RFC 8291復号テストと2ペルソナのソース監査はPASS",
+    "認証済みGroups/Group detailの実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋順位テスト、ソース監査、2ペルソナ、独立レビューで代替",
+    "認証済みSetupの3画面実ブラウザ完走は実ユーザーPIIとDB書込みを避けて未実施。純粋遷移テスト、Mobile Beginner/Accessibility Keyboardの2ペルソナ、独立レビュー、未認証375/1280リダイレクトで代替",
+    "Fitbit実OAuthの成功・拒否コールバックE2Eは外部認証と資格情報を伴うため未実施。Auth.js設定、19件の認証フロー純粋テスト、公開エラー画面、2ペルソナ、独立レビューで代替",
+    "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
+    "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち",
+    "本番Supabaseにnotification_reactions / notification_gear_reactions列が未適用（42703）。Feed/未読/Settingsは部分障害fallback済みだが、通知嗜好を編集可能にするDB migration適用はユーザー承認待ち",
+    "認証済みProfileの375/1280実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋集計テスト、ソース監査、2ペルソナ、独立レビューで代替",
+    "認証済みWalletの実ブラウザは実ユーザー取引PIIを避けて未実施。wallet-summary純粋テスト、1100px grid合成DOM、2ペルソナ、独立レビューで代替"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -30,7 +41,7 @@
   },
   "featureBacklogRef": {
     "file": ".github/ucfitness-features.json",
-    "totalFeatures": 33,
+    "totalFeatures": 34,
     "$comment": "個別 feature の詳細 (description / verificationSteps / judgeRubric / status) は features.json を参照。Coding Agent は status フィールドのみ更新可能。"
   },
   "sessionLog": [
@@ -72,6 +83,794 @@
         ".github/ucfitness-progress.json",
         ".github/agents/UCFitnessAgent.agent.md",
         ".github/copilot-instructions.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "Fitbit Web API終了に備えたGoogle Health段階移行基盤を実装。認証IDと健康データ接続の分離、AES-256-GCM、OAuth安全策、履歴置換と当日単調同期、所有者UUID付き同期リース、設定UI、ja/en、API結果分類、回帰テスト、README・ルールを追加。",
+      "commit": "",
+      "filesChanged": [
+        "migrations/20260617_add_multi_provider_connections.sql",
+        "lib/api/google-health.ts",
+        "lib/services/fitness-connection-service.ts",
+        "lib/services/google-health-step-source.ts",
+        "lib/services/step-manager.ts",
+        "app/api/health-connections/google/",
+        "components/GoogleHealthConnectionCard.tsx",
+        "app/[locale]/settings/page.tsx",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "最終独立レビューの5指摘を修正。OAuth stateの開始ユーザー拘束、復号障害の非破壊隔離、Google接続保存の原子化、Fitbit履歴書き込み時のデータソース再検証、恒久的認証失敗の再認証結果化を追加し、PostgreSQL WASM・全158テスト・静的検査・375px/1280px未認証回帰で確認。",
+      "commit": "",
+      "filesChanged": [
+        "lib/google-health-oauth.ts",
+        "app/api/health-connections/google/authorize/route.ts",
+        "app/api/health-connections/google/callback/route.ts",
+        "lib/services/fitness-connection-service.ts",
+        "lib/services/step-manager.ts",
+        "migrations/20260617_add_multi_provider_connections.sql",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "最終ペルソナ監査の指摘を修正。セッション切れ後もGoogle Health再認証通知と戻り先を保持し、Fitbitログインの役割を明示。スキップリンクをサイドバー後の本文コンテナへ移し、375px/1280pxのキーボード操作、Lighthouse Accessibility 100、全159テストで確認。",
+      "commit": "",
+      "filesChanged": [
+        "lib/google-health-oauth.ts",
+        "lib/__tests__/google-health-oauth.test.ts",
+        "app/[locale]/layout.tsx",
+        "components/LandingPage.tsx",
+        "messages/ja.json",
+        "messages/en.json",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "自己批判ゲートで検出したスキップリンクの操作領域不足を修正。フォーカス時44px高を375px/1280pxで実測し、本文フォーカス移動、横スクロールなし、全159テスト、型・Lint・ルール・i18nを再確認。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/layout.tsx"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "Google Health段階移行基盤と最終UX修正をコミットし、外部資格情報と本番データ変更承認を要する実環境検証のみblockedとして引き継ぎ。",
+      "commit": "59f4ff4ba7ed9afdef09362b27baf68a68ba834d",
+      "filesChanged": [
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "公開LPを明るく高密度なブランド体験へ再設計。目標・達成・競争・報酬の意味色、歩数・順位・UC・チャレンジの実UI、低活動ユーザー向け復帰導線、ランドマーク・スキップ移動・320pxリフロー、保存済みMidnightテーマのコントラストを整備し、全159テストとLighthouse 100で確認。",
+      "commit": "97a905c93e1eb1af67c9958d8f276cafe08a2456",
+      "filesChanged": [
+        "components/LandingPage.tsx",
+        "app/[locale]/layout.tsx",
+        "app/globals.css",
+        "messages/ja.json",
+        "messages/en.json",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-features.json",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "agent": "UCFitnessAgent",
+      "action": "ローカル閲覧タブを検証用375px表示から1280×800・スクロール先頭へ復元し、再読み込み・前面化。LISTEN、HTTP 200、readyState、主要見出し、横スクロールなし、閲覧タブのスクリーンショットを確認し、サーバー稼働とユーザー可視性を分離する完了条件をルール化。",
+      "commit": "07e15b6eba8291f681acd997d0a27ece6490742b",
+      "filesChanged": [
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Next.js + Debug + Self-Critique)",
+      "action": "SafariでlocalhostのCSSが外れる障害を修復。開発CSPからupgrade-insecure-requestsを除外し、本番CSPでは維持した。CSSのHTTP 200・text/css配信とSafari実表示を確認し、開発CSPと通常ブラウザ表示の検査手順をルール化。",
+      "commit": "59acce37345891d708c3924471978cf3becc24c0",
+      "filesChanged": [
+        "next.config.ts",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-progress.json",
+        "README.md"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent",
+      "action": "Git worktreeメタデータ欠損に対し、GitHub mainから新しい作業コピーを作成して現在の全ソース差分を再適用。元フォルダは変更せず保持し、復旧先で型・Lint・ルール・i18n・全159テストを確認。",
+      "commit": "59acce37345891d708c3924471978cf3becc24c0",
+      "filesChanged": [
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Next.js + React + UX + Self-Critique)",
+      "action": "認証後ホームを今日の進捗→週間順位の追いつける差→UC報酬→次の行動へ再構成。ランキングキャッシュから0歩を除く週間順位と差を読み取り専用で導出し、モバイルは768px未満までコンパクト入口を維持した。ホーム、ミッション、チャレンジ、クイックアクション、サイドバーを既存の青・緑・紫・アンバー意味トークンへ統一し、44px操作領域と見出し階層を整備。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "components/dashboard/HomeHero.tsx",
+        "components/dashboard/HomePortal.tsx",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/DailyMissions.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "components/dashboard/DashboardSidebar.tsx",
+        "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Next.js + React + UX + Self-Critique)",
+      "action": "認証後ホームと共通App Shellの最終改善を完了。達成時の緑フィードバック、事前に見える+100 UC、UserMenuのTab離脱・Escape復帰・識別子付きラベル、通知の死リンク回避、認証本文の自然スクロールを追加した。型・Lint・ルール・i18n・全159テスト、Classic/Midnightの375/768/1280/1920px公開ルート、3ペルソナ監査、自己批判ゲートを確認。認証済み実画面は資格情報を偽装せず静的監査で補完した。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        "components/dashboard/HomeHero.tsx",
+        "components/dashboard/HomePortal.tsx",
+        "components/dashboard/DailyMissions.tsx",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/DashboardSidebar.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "components/layout/UserMenu.tsx",
+        "components/layout/NotificationBell.tsx",
+        "messages/ja.json",
+        "messages/en.json",
+        "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Final Review Fix)",
+      "action": "最終コードレビューで検出されたホームのデスクトップFooter非表示を修正。全認証ページ向けのFooter非表示契約は維持し、home-desktop-footer配下だけを768px以上で明示表示するopt-in CSSを追加した。実CSSのカスケードを375px/1280pxで検証し、モバイル非表示・デスクトップ表示・横あふれなしを確認した。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (Final Review Fix)",
+      "action": "Footer例外の自己批判で検出したホーム内側コンテナの左右基準を、既存Footerと同じpx-4/sm:px-6/lg:px-8へ統一した。unlayered CSS例外の確認不足はLL-032として固定し、ホーム機能説明と変更記録を同期した。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "復旧コミット列を正本へ移管し、認証後モバイル導線の残存P0/P1を修正。BottomNavの可読性とsafe-area予約、Shop導線、チャレンジ参加状態・エラー翻訳・未参加時の進捗誤認を改善し、375/768/1280/1920pxのClassic/Midnight、全159テスト、5ペルソナ、自己批判ゲートで確認した。",
+      "commit": "fe220c95a75090cac93e9a7a91163f09482539aa",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        "README.md",
+        "app/[locale]/layout.tsx",
+        "app/globals.css",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "認証後UIの次イテレーションで、主要ラベルの12px統一、固定ボトムナビの明示フォーカス、通知詳細のAAコントラスト、低活動ユーザー向けチャレンジ空状態を改善。375/768/1280/1920pxのClassic/Midnight、全159テスト、5ペルソナ、CRLF-aware差分検査と自己批判ゲートで確認した。",
+      "commit": "e6cb481398f78407f7acd600a9d1ddce8139bdc2",
+      "filesChanged": [
+        "README.md",
+        "app/globals.css",
+        "components/challenge/ChallengeList.tsx",
+        "components/dashboard/DailyMissions.tsx",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/HomeHero.tsx",
+        "components/layout/NotificationBell.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "Footer中央浮き、PC余白、header visual/badge見切れ、モノクロlogo、panel押下可否、mobile app前提の6フィードバックを修正。全auth header/footer共通化、home 1440px bento、viewport safe-area、root sticky、DB失敗状態分離、ranking障害回帰テスト、rules/agent/skill/static harnessを更新し、4幅2テーマ・160テスト・5ペルソナ・自己批判PASSを確認した。",
+      "commit": "91a8a72db0833431f000f1a4ad457e644c4d31ed",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/layout.tsx",
+        "app/[locale]/page.tsx",
+        "app/[locale]/groups/page.tsx",
+        "app/[locale]/leaderboard/page.tsx",
+        "app/globals.css",
+        "components/dashboard/DashboardChallenges.tsx",
+        "components/dashboard/DashboardSidebar.tsx",
+        "components/dashboard/QuickActions.tsx",
+        "components/layout/BottomNavBar.tsx",
+        "components/layout/NotificationBell.tsx",
+        "components/layout/RefreshButton.tsx",
+        "components/layout/UserMenu.tsx",
+        "lib/services/ranking-service.ts",
+        "lib/__tests__/ranking-service-optimized.test.ts",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『ページがスカスカでリッチではない』フィードバックを受け、装飾や再配置ではなく実データrichnessへ修正。今週歩数bar、今週サマリー、UC残高、活動ストリーク、Wallet/Shop導線を追加し、欠測・0歩・未来日・UC取得失敗を分離。375/1280のパネル実測、160テスト、5ペルソナ、self-critique PASSを確認した。",
+      "commit": "da8d6d755079cae3fe26e0fff524e1227dbc6451",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        "components/dashboard/HomeHero.tsx",
+        "docs/DESIGN_TOKENS.md",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "認証ホームへ固定5行ランキングと仲間アクティビティを追加。情報順・意味色・ランキング固定契約を維持し、following APIのlimit/sort、取得失敗・未記録・実0歩、匿名プロフィールを分離した。320/375/768/1280/1920pxのClassic/Midnight、Lighthouse全カテゴリ100、160テスト、5ペルソナ、独立コードレビュー、自己批判全6軸PASSを確認した。",
+      "commit": "8733248d000c60e01861e3e0d6a2fe4aa89bb198",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        ".github/ucfitness-progress.json",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/api/user/following/route.ts",
+        "components/dashboard/DashboardFollowing.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-13",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『ホームだけでなく全ページを徹底的に見直す』フィードバックに対応。17ルートを4監査群で精査し、共通Dialog stack、私有GROUP情報保護、ランキング/比較DB障害伝播、0歩・欠測・未来日・MTD分離、低活動向け100〜500歩ミッション、装備テーマ初期値、チャート数値表、Forced Colors、SSR skip、ja/en、44px操作領域を改善。localhost:3000の17ルート200、CSS/CSP、375/1280/1920、Classic/Midnight、31ファイル188テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "16b10c506b8d453ecbcf09024dd279dbcca65925",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/",
+        "app/api/rankings/",
+        "app/api/user/missions/",
+        "components/",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "lib/amazon-url.ts",
+        "lib/theme.ts",
+        "lib/services/analytics-service.ts",
+        "lib/services/mission-utils.ts",
+        "lib/services/ranking-service.ts",
+        "messages/ja.json",
+        "messages/en.json"
+      ]
+    },
+    {
+      "date": "2026-07-13",
+      "agent": "UCFitnessAgent (Next.js + React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『各ページのサイトタイトル等が統一されていない』『プロフィールページは何も表示されない』フィードバックに対応。AuthenticatedPageHeader・AppBrandMark・PageIntroへ標準認証ページを統一し、canonicalプロフィール導線、route loading、Server確定日付、Badge DOM/Tooltip、DB障害伝播を修正した。localhost:3000のHTML/CSS/CSP、375/768/1280/1920pxのClassic/Midnight計48画面、375/1280のTooltip二段Escape、31ファイル188テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "cae8b7244c6ed77cb5ceb2556bcef5990e444b32",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/",
+        "app/globals.css",
+        "components/ActivityGraph.tsx",
+        "components/layout/",
+        "components/profile/",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-13",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『ウィンドウサイズを狭めた場合のレイアウト・デザイン』フィードバックに対応。320〜1280pxの境界を再設計し、Sidebar後の実コンテンツ幅に合わせて複雑な多列化をxlへ移動、Profileの不可視table空白、Shop/Settings内部縦スクロール、全幅Footer、通常/編集/エラー状態の44px、カルーセル前後focus、ja/en固定文言を修正した。公開20条件・認証160条件・タッチ96条件・条件付き状態ブラウザ、31ファイル188テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "c6a8e907d53d3ddb6b9cc388c0ab9e6976dd552a",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/instructions/accessibility.instructions.md",
+        ".github/instructions/mobile-first.instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/",
+        "app/globals.css",
+        "components/",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (Next.js + React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『特にホーム画面がシンプルすぎて面白みがない』フィードバックに対応。HomeHeroを進捗→到達可能な競争差→UC価値→次行動のQuestへ再構成し、Mission→Weekly→Reward→Challenge後を任意探索章として整理した。Utility導線、1280/1536列契約、固定5行の状態別コピー、仲間空状態、意味あるmotion、通知badge contrast、Mission GET参照専用・POST障害伝播・focus/live/永続報酬・streak部分状態、Challenge進捗障害分離を追加。375/1024/1280/1920×Classic/Midnightの32画面とfixture3状態、31ファイル192テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "021aaa4a78293333a548fdb02b9a9efb1cd193f2",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/api/user/missions/",
+        "app/globals.css",
+        "components/challenge/ChallengeDetailModal.tsx",
+        "components/dashboard/",
+        "components/layout/",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『ホーム画面を含めパネルの大きさが統一されていない』『グラフがパネル内で小さい』フィードバックに対応。Home 4モジュールを同一grid行で等高化し、角丸24px・padding12pxへ統一。Home週間グラフを128〜144px、Profile活動グラフを288〜384pxへcontainer queryで拡大した。拡大後の値/端ラベルclip、完全な代替表、視覚層のaria-hidden、Forced Colorsの棒・目標線、隠しスクロールのTab順も修正。Home/Analytics/Wallet/Profileを4幅×2テーマで監査し、Home 1920pxの高さ差126px→0px、全192テスト、Mobile Beginner/Accessibility Keyboard、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "b0a3b9ee20b1d677e416d2236e207529a6ebf21b",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        "components/ActivityGraph.tsx",
+        "components/dashboard/DashboardChallenges.tsx",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "『フォロー中のアクティビティと今週のランキングの下辺が揃わない』『同種箇所を精査』フィードバックに対応。Home/Analytics/Wallet/Settings/Groups/Challenges/Leaderboard/Profileを1280/1920・Classic/Midnightでgeometry走査し、Home社会rowの26〜32px差を修正した。QuickActions+Following stackをランキング高へstretchし、実ユーザー＋発見行を常に5行として余剰を均等配分。ready1/2/4/5人、loading/empty/error、375長名・大歩数を126 fixtureで検証し、下端差0px、行61.2〜72px、末尾空白0、overflow0、名前・歩数・操作の一重読み上げを確認。全192テスト、5ペルソナ、独立レビュー、自己批判全6軸PASS。",
+      "commit": "b4a10de1ccfd1a8153f74f0816dbb9b61c88a9f3",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/[locale]/page.tsx",
+        "components/dashboard/DashboardFollowing.tsx",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        "messages/ja.json",
+        "messages/en.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "自主改善としてHome週間ランキングの期間文脈と到達可能な競争差をGlobal・選択Group・Group detailへ継続した。正歩数だけを順位化し、0歩・不在・503を順位、メダル、成功、未所属へ変換しない。中下位でも直上と本人を含む固定5行、全員0歩の詳細5行、全メンバー平均、期間/Group filterの状態通知・即時focus・Forced Colorsを追加。A〜F×375/1280×Classic/Midnightの24組合せ、Group detail 4組合せ、Forced Colors 2テーマ、31ファイル200テスト、5ペルソナ、独立レビュー、自己批判全6軸PASSを確認。",
+      "commit": "1ca3ccb97e85ed41158a7906d372d9185afafb89",
+      "filesChanged": [
+        "README.md",
+        "app/[locale]/page.tsx",
+        "app/globals.css",
+        "components/dashboard/DynamicLeaderboard.tsx",
+        "components/group/GroupAnalytics.tsx",
+        "components/group/GroupDetailLeaderboard.tsx",
+        "components/group/GroupRankingPanel.tsx",
+        "docs/PRODUCT.md",
+        "lib/__tests__/ranking-utils.test.ts",
+        "lib/services/ranking-service.test.ts",
+        "lib/services/ranking-service.ts",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + Persona Journey + Self-Critique)",
+      "action": "自立改善としてランキングperiodをURL・再読込・共有・ranking API・reaction APIで統一し、bare URLと主要入口を週次化した。Group分析をHero直後へ移し、短いfilter名とchart説明、選択チェック、9テーマ固定色、44pxギア導線を追加。未認証MONTHLY/YEARLY復元とINVALID除外、連打取消、GET abort、POST/DELETEのABA generation隔離、rollback重複防止、Gear 0件/4件/API500を検証した。5幅×2テーマ×2画面、9テーマ、全202テスト、5ペルソナ、独立レビュー、自己批判全6軸PASS。",
+      "commit": "066c9c51c11915b789270c11b4034be582777f7c",
+      "filesChanged": [
+        "README.md",
+        "app/[locale]/groups/[groupId]/page.tsx",
+        "app/[locale]/leaderboard/page.tsx",
+        "components/dashboard/DynamicLeaderboard.tsx",
+        "components/group/GroupAnalytics.tsx",
+        "components/group/GroupDetailLeaderboard.tsx",
+        "components/group/GroupGear.tsx",
+        "components/group/GroupRankingPanel.tsx",
+        "components/layout/BottomNavBar.tsx",
+        "hooks/useGroupReactions.ts",
+        "lib/__tests__/ranking-utils.test.ts",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "agent": "UCFitnessAgent (Sync Recovery + Self-Critique)",
+      "action": "歩数同期失敗を再現し、未適用のfitness_connections・user_auth_identities・同期RPC契約を根本原因と特定。承認済みの20260617 multi-provider migrationを本番Supabaseへ単一トランザクションで適用し、Fitbit接続・認証ID・対象ユーザー各11件、public.users FK、RPC、trigger、PostgREST可視性を確認した。適用6分後の本番Cronで当日歩数10ユーザーが更新され、同期APIでもFITNESS_CONNECTION_DATABASE_ERRORが再発しないこと、check:allと全202テストのPASSを確認した。",
+      "commit": "",
+      "filesChanged": [
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (Notification + i18n + Accessibility + Self-Critique)",
+      "action": "通知品質を横断監査し、16購読/4ユーザー・1ユーザー最大11 endpoint、payloadなし英語固定tickle、個人/全体/グループ別バッジ送信、通知Feedの生イベント未読を根本原因として修正。9f46708でRFC 8291暗号化・ja/en実payload・Topic/tag・購読重複/失効整理・バッジ最上位集約を実装し、1ccbc9dで通知Feed集約、7日snapshot cursor、未読実数、通知popover a11yを実装した。全223テスト、最終コードレビュー、Mobile Beginner/Accessibility Keyboard、Impeccable静的監査がPASS。",
+      "commit": "1ccbc9d388bd9a7ee5411baee23b70a6b0e2ba3c",
+      "filesChanged": [
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/copilot-instructions.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "README.md",
+        "app/api/cron/step-reminder/route.ts",
+        "app/api/cron/weekly-summary/route.ts",
+        "app/api/push/send/route.ts",
+        "app/api/push/subscribe/route.ts",
+        "app/api/user/feed/route.ts",
+        "app/api/user/feed/unread-count/route.ts",
+        "components/ActivityFeed.tsx",
+        "components/layout/NotificationBell.tsx",
+        "lib/api/web-push.ts",
+        "lib/services/badge-allocator.ts",
+        "lib/services/badge-awards.ts",
+        "lib/services/notification-feed.ts",
+        "lib/services/push-messages.ts",
+        "lib/supabase-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "public/sw.js"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Competitive Persona + Accessibility + Self-Critique)",
+      "action": "全17ルートを再監査し、Cycle 1でHome任意探索と詳細Rankingを改善。QuickActions独立Dock、個別目標Friend Pulse、次ライバル差Preview、Competition Mission、2xl外側多列化、scope別allSettled障害分離、匿名ライバル/長名/進捗a11y/Midnight contrastを実装した。固定5行・72px・padding・reaction Portalは維持。全226テスト、Mobile Beginner/Competitive Athlete/Accessibility Keyboard、独立レビュー、Impeccable静的監査がPASS。",
+      "commit": "00fbf9232402aa55b6b44bbb36674194dba339ef",
+      "filesChanged": [
+        "app/[locale]/page.tsx",
+        "app/api/user/following/route.ts",
+        "components/dashboard/DashboardFollowing.tsx",
+        "components/dashboard/DynamicLeaderboard.tsx",
+        "components/group/GroupRankingPanel.tsx",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Low-Activity Persona + Self-Critique)",
+      "action": "全ページ再精査Cycle 2でChallengesの継続導線を改善。参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬でソート。優先帯は次の最大500歩、🔥は3日以内、作成は一覧後へ移動。進捗不明の0偽装、タブ/操作race、JST期限不一致、開始前/終了/達成/無効の優先表示を修正し、カードmotionとprogress a11yも整理した。全230テスト、Mobile Beginner/Returning Low Activity、独立レビュー、Impeccable監査PASS。",
+      "commit": "1d70a188483aef3de8e4968616540ec3f2a6c98a",
+      "filesChanged": [
+        "app/api/challenge/route.ts",
+        "app/api/challenge/[challengeId]/join/route.ts",
+        "components/challenge/ChallengesPageClient.tsx",
+        "components/challenge/ChallengeList.tsx",
+        "components/challenge/ChallengeCard.tsx",
+        "lib/services/challenge-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + QA + Self-Critique)",
+      "action": "全ページ再精査Cycle 3で初回Setupをプロフィール保存からActivationへ拡張。DB正本のprovider/step_goal、500〜100,000歩の目標保存、完了面と最初の500歩を追加した。Status 5xx再試行・404再ログイン・未接続Settings導線、AbortController、完了focus/live status、44px、Unicode Sets互換pattern、即時focus ringを実装。Setup/Status APIに9境界テストを追加し、320/375/768/1280/1920×Classic/Midnight、障害・未接続・旧500,000歩の完了済みredirectを検証。全239テスト、Mobile Beginner/Accessibility Keyboard、独立コードレビュー、自己批判PASS。",
+      "commit": "c4b995f72382f7fdec25c56aafcaec395b6932aa",
+      "filesChanged": [
+        "app/[locale]/setup/page.tsx",
+        "app/api/user/setup/route.ts",
+        "app/api/user/setup/route.test.ts",
+        "app/api/user/status/route.ts",
+        "app/api/user/status/route.test.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "scripts/check-ucfitness-rules.sh",
+        "README.md",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        ".github/ucfitness-features.json"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Accessibility + QA + Self-Critique)",
+      "action": "全ページ再精査Cycle 4でSettingsの情報順を歩数ソース→日次目標→プロフィール→装飾/通知へ変更。`lib/step-goal.ts`で500〜100,000歩の整数契約をSetup/Settings Client/APIへ共有し、目標編集を16px/44px・エラーfocus・成功statusへ改善。320px統計grid、カード密度、DB障害伝播、未表示query、owned items型を修正し、4テーマで目標カード左4pxを実測した。",
+      "commit": "abe8e39f2fd133133fe20fd9cf774e7102173be3",
+      "filesChanged": [
+        "app/[locale]/settings/page.tsx",
+        "app/[locale]/setup/page.tsx",
+        "app/api/user/setup/route.ts",
+        "app/api/user/step-goal/route.ts",
+        "app/api/user/step-goal/route.test.ts",
+        "app/globals.css",
+        "components/GoogleHealthConnectionCard.tsx",
+        "components/SettingsForm.tsx",
+        "components/StepGoalForm.tsx",
+        "lib/step-goal.ts",
+        "messages/en.json",
+        "messages/ja.json"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (Notification Safety + Accessibility + Self-Critique)",
+      "action": "実DBの通知嗜好カラム未適用42703がFeed/未読を停止するP0を修正。既読時刻と嗜好を別取得し、嗜好失敗でも警告付き既定Feed・未読数を継続して可用性フラグを返す。ActivityFeed/NotificationBellへja/en警告、通知設定APIへ503、Settingsへトグル限定エラーを追加。API fallback 5テストを含む全254テスト、独立レビュー、自己批判PASS。",
+      "commit": "bdf72f8401d5df54808d22f2a03622260c08aff0",
+      "filesChanged": [
+        "app/api/user/feed/route.ts",
+        "app/api/user/feed/unread-count/route.ts",
+        "app/api/user/feed/preferences-fallback.test.ts",
+        "app/api/user/notification-settings/route.ts",
+        "app/api/user/notification-settings/route.test.ts",
+        "components/ActivityFeed.tsx",
+        "components/layout/NotificationBell.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        "components/SettingsForm.tsx",
+        "app/[locale]/settings/page.tsx",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + UX + Low-Activity + Accessibility + QA + Self-Critique)",
+      "action": "全ページ再精査Cycle 5でProfileの0歩・未記録・取得失敗を分離。`lib/profile-steps.ts`で日/週/月/記録日平均をnumber|null集計し、必須ユーザー以外の履歴・累計・比較・公開グループ・装備・バッジ・コイン・ランキング・おすすめをセクション単位へ隔離した。ActivityGraph比較のMap.hasとsr-only表、目標null、PersonalRecords項目nullable、12pxを実装。全257テスト、Returning Low Activity/Accessibility Keyboard、独立レビュー、自己批判PASS。",
+      "commit": "2f4634ce2ecd315e97a8c1d394a244c335e9af2a",
+      "filesChanged": [
+        "app/[locale]/user/[username]/page.tsx",
+        "components/ActivityGraph.tsx",
+        "components/profile/PersonalRecords.tsx",
+        "lib/profile-steps.ts",
+        "lib/profile-steps.test.ts",
+        "lib/services/badge-service.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + Reward UX + Accessibility + QA + Self-Critique)",
+      "action": "全ページ再精査Cycle 6でWalletの正額獲得・負額支出・純増減をJST当日全取引から分離し、現在歩数/目標から次100歩または目標到達の基本UCを提示。残高・今日内訳・次報酬・履歴・推移を独立障害境界にし、履歴説明前置、内部scroll撤廃、初期10件段階開示、lg grid items-start/root h-full除去、日次純増減chartとsr-only表を実装。全263テスト、Reward Shop/Accessibility Keyboard、独立レビュー、自己批判PASS。",
+      "commit": "832b86c89f72710bc23167e7806822dec0e04138",
+      "filesChanged": [
+        "app/[locale]/wallet/page.tsx",
+        "components/CoinBalanceCard.tsx",
+        "components/CoinGrowthChart.tsx",
+        "components/EarningBreakdown.tsx",
+        "components/InvestorRankPanel.tsx",
+        "components/TransactionHistory.tsx",
+        "lib/wallet-summary.ts",
+        "lib/wallet-summary.test.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + Competitive UX + Accessibility + QA + Self-Critique)",
+      "action": "全ページ再精査Cycle 7でGroupsの正歩数順位と部分障害を改善。所属者とランキング参加者を分離して除外後に連続順位を付与し、直上グループまでの平均歩数差を追加。group/user/membershipだけを必須境界とし、メンバー一覧/件数、順位、比較、期間別競争を個別捕捉した。public groupだけ対抗順位を取得し、private 404、固定5行/72px、イベント/チャット/ギア/週間レポートを維持。relation型ガード、管理Dialogの44px・focus・live・i18nを整備。check:all、全274テスト、4幅×2テーマの公開リダイレクト、Competitive Athlete/Accessibility Keyboard、独立レビュー、自己批判PASS。認証済みGroups実ブラウザは資格情報を偽装せず未実施。",
+      "commit": "f55b335195d1d47ee0c502d2c43f592768c4a53d",
+      "filesChanged": [
+        "app/[locale]/groups/page.tsx",
+        "app/[locale]/groups/[groupId]/page.tsx",
+        "app/api/group/[groupId]/ranking/route.ts",
+        "components/group/GroupAnalytics.tsx",
+        "components/group/GroupHeaderActions.tsx",
+        "components/group/GroupMembersPanel.tsx",
+        "components/group/JoinGroupPreview.tsx",
+        "components/layout/SkipLink.tsx",
+        "lib/services/ranking-service.ts",
+        "lib/services/group-ranking-service.ts",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        "docs/PRODUCT.md",
+        "docs/DESIGN_TOKENS.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/skills/self-critique-gate/SKILL.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "GitHub Copilot CLI + UCFitnessAgent",
+      "action": "Groupsの最終再監査で検出した短い表示名のプロフィールリンクの44px幅契約を、リンク固有のAWK検査へ厳密化。別の追加ボタンが同じクラスを持っても誤PASSせず、プロフィールリンクのmin-wを除いた疑似入力ではFAILすることを確認した。",
+      "commit": "3fac8d2c6a4e04ebb2eedd09de671b46c2ee96d1",
+      "filesChanged": [
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (React + Onboarding UX + Accessibility + QA + Self-Critique)",
+      "action": "F014オンボーディングをプロフィール/歩数ソース、日次目標、グループ/チャレンジの3画面へ整理。各画面の後回し、進捗、戻る、見出し/エラー焦点、完了後500歩Activationを追加し、必須入力を任意写真より先に配置。自動参加・OAuth再認可・DB検証書込みなしで既存保存契約を維持した。check:all、全45ファイル277テスト、ja/en 1596キー、未認証375/1280、2ペルソナ、独立レビュー、自己批判PASS。",
+      "commit": "bbf8871aeb0adb51029f9efdbfba7c555e5979af",
+      "filesChanged": [
+        "app/[locale]/setup/page.tsx",
+        "lib/setup-flow.ts",
+        "lib/setup-flow.test.ts",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        "docs/PRODUCT.md",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        ".github/ucfitness-features.json",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-15",
+      "agent": "UCFitnessAgent (Next.js + React + Auth UX + Accessibility + Security + QA + Self-Critique)",
+      "action": "F027ログイン・登録フローを完了。Auth.jsのerror/signInを公開LPへ統合し、拒否・アカウント不一致・DB障害を安全なja/en文言へ分類。保護画面のcallbackを外部URL拒否の共有関数で検証し、言語切替・認証失敗・未設定ユーザーのsetup完了後まで保持した。エラー時は再ログインCTAを明示し、500歩Activationも維持。check:all、全46ファイル296テスト、1606翻訳キー、375/1280、Mobile Beginner/Accessibility Keyboard、独立レビュー、自己批判PASS。外部OAuthとDB書込みは未実施。",
+      "commit": "4db5a352c7319134baecd80eb278205f24f731d9",
+      "filesChanged": [
+        "lib/auth.ts",
+        "lib/auth-flow.ts",
+        "lib/auth-flow.test.ts",
+        "components/auth/AuthButtons.tsx",
+        "components/LandingPage.tsx",
+        "app/[locale]/page.tsx",
+        "app/[locale]/setup/page.tsx",
+        "messages/en.json",
+        "messages/ja.json",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (TypeScript + Supabase Type Safety + QA + Self-Critique)",
+      "action": "F033型安全性向上を完了。lintで検出したno-explicit-any 102件と、抑制下を含む明示的any約152件を具体型・unknown型ガード・NextAuth推論型へ置換して0件化した。Supabase Database射影とreturns<T>()、relation/RPC正規化、ジェネリックpagination、型付きquery mockを導入し、no-explicit-anyをerrorへ強化。check:all、全46ファイル296テスト、1606翻訳キー、独立レビュー、自己批判PASS。UIランタイム変更、DB書込み、OAuth、push/mergeなし。",
+      "commit": "c4a315b00e9eb359b9c4e17ac9608652e6525114",
+      "filesChanged": [
+        "types/database.ts",
+        "lib/services/ranking-service.ts",
+        "lib/services/ranking-utils.ts",
+        "lib/supabase-utils.ts",
+        "lib/auth.ts",
+        "app/api/",
+        "app/[locale]/",
+        "components/",
+        "lib/__tests__/test-utils/supabase-query-mock.ts",
+        "eslint.config.mjs",
+        "i18n.ts",
+        "README.md",
+        ".github/ucfitness-features.json"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (Next.js + Performance + Accessibility + QA + Self-Critique)",
+      "action": "F019 Core Web Vitals最適化を完了。公開LPをServer Component＋言語切替・横スクロール・認証callback復元の最小Client islandsへ分割し、未認証時の不要なDashboard翻訳を除去。Noto Sans JP複数weightのグローバル配信をシステム日本語フォントへ変更し、ヒーロー初期transformを除去。開発baseline LCP約18.4秒、production初回6.158秒から、Lighthouse MobileのFast 3G相当・CPU 4倍でLCP 2,349ms、CLS 0、操作Event Timing最大48msへ改善。375/768/1280/1920×Classic/Midnight、Mobile Beginner/Accessibility Keyboard、双方向locale切替、details Escape焦点復帰、console/network、独立レビュー、自己批判、check:all、全46ファイル296テスト、1606翻訳キーPASS。DB書込み、OAuth、外部状態変更、push/mergeなし。",
+      "commit": "af73bf0692cd4078c3804da6a0229adf04b1e624",
+      "filesChanged": [
+        "components/LandingPage.tsx",
+        "components/landing/LandingInteractions.tsx",
+        "components/landing/StoredCallbackAuthButtons.tsx",
+        "app/[locale]/page.tsx",
+        "app/[locale]/layout.tsx",
+        "app/globals.css",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/copilot-instructions.md",
+        ".github/agents/UCFitnessAgent.agent.md",
+        "scripts/check-ucfitness-rules.sh"
+      ]
+    },
+    {
+      "date": "2026-07-16",
+      "agent": "UCFitnessAgent (QA + Debug + Self-Critique)",
+      "action": "PR #227のCIで検出したSupabaseモックのファイル間漏洩を修正。vmForksからforks pool + isolate: trueへ変更し、CI失敗対象4ファイル11件、通常の全46ファイル296件、単一workerの全296件、check:allをPASSした。README、CHANGELOG、LL-057へ原因と再発防止を同期した。",
+      "commit": "7aeb1fdc735c2497dc16a634511ec7a5fa9f9f45",
+      "filesChanged": [
+        "vitest.config.ts",
+        "README.md",
+        "CHANGELOG.md",
+        ".github/copilot-instructions.md",
+        ".github/ucfitness-progress.json"
       ]
     }
   ],

@@ -2,14 +2,19 @@ export const runtime = 'edge';
 
 import { auth } from "@/lib/auth";
 import { createLoginRequiredRedirect } from "@/lib/auth-redirect";
+import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
+import { getJSTDateString } from '@/lib/date-utils';
+import { isValidStepGoal } from '@/lib/step-goal';
+import {
+    getNextWalletReward,
+    summarizeWalletTransactions,
+} from '@/lib/wallet-summary';
 import { redirect } from "next/navigation";
 import { Link } from '@/navigation';
-import UserMenu from "@/components/layout/UserMenu";
-import RefreshButton from '@/components/layout/RefreshButton';
-import NotificationBell from '@/components/layout/NotificationBell';
 import UCHintBalloon from "@/components/ui/UCHintBalloon";
-import Breadcrumbs from "@/components/layout/Breadcrumbs";
+import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
+import PageIntro from '@/components/layout/PageIntro';
 import CoinBalanceCard from "@/components/CoinBalanceCard";
 import nextDynamic from 'next/dynamic';
 import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/services/coin-service";
@@ -27,7 +32,25 @@ const EarningBreakdown = nextDynamic(() => import('@/components/EarningBreakdown
 
 export const dynamic = 'force-dynamic';
 
-export default async function BankPage() {
+interface CapturedWalletDependency<T> {
+    data: T | null;
+    failed: boolean;
+}
+
+async function captureWalletDependency<T>(
+    operation: string,
+    userId: string,
+    promise: Promise<T>,
+): Promise<CapturedWalletDependency<T>> {
+    try {
+        return { data: await promise, failed: false };
+    } catch (error: unknown) {
+        reportError(operation, error, { userId });
+        return { data: null, failed: true };
+    }
+}
+
+export default async function BankPage(): Promise<React.ReactNode> {
     const session = await auth();
     // ⚡ パフォーマンス: 翻訳取得を並列化
     const [t, dashboardT, locale] = await Promise.all([
@@ -36,98 +59,134 @@ export default async function BankPage() {
         getLocale(),
     ]);
 
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
         redirect(createLoginRequiredRedirect(locale, "/wallet"));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     // ユーザー情報取得
     // ⚡ パフォーマンス: 必要なカラムのみ取得
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseAdmin
         .from("users")
-        .select("name, image, username")
+        .select("name, image, username, step_goal")
         .eq("id", userId)
         .single();
 
+    if (userError) {
+        reportError('wallet:user', userError, { userId });
+        throw new Error('Failed to load wallet user');
+    }
     if (!user?.username) {
         redirect('/setup');
     }
 
-    // データを並列取得
-    const [balance, transactions, balanceHistory] = await Promise.all([
-        getCoinBalance(userId),
-        getRecentTransactions(userId, 60),
-        getDailyBalanceHistory(userId, 30),
-    ]);
+    const today = getJSTDateString();
 
-    // 今日の獲得コインを計算
-    const now = new Date();
-    const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const today = jstDate.toISOString().split('T')[0];
-    const todayEarned = transactions
-        .filter(tx => tx.date === today)
-        .reduce((sum, tx) => sum + tx.amount, 0);
+    // データを並列取得し、各パネルの障害を相互に隔離
+    const [
+        balanceState,
+        transactionsState,
+        balanceHistoryState,
+        todayTransactionsResult,
+        todayStepsResult,
+    ] = await Promise.all([
+        captureWalletDependency('wallet:balance', userId, getCoinBalance(userId)),
+        captureWalletDependency('wallet:transactions', userId, getRecentTransactions(userId, 60)),
+        captureWalletDependency('wallet:balance-history', userId, getDailyBalanceHistory(userId, 30)),
+        supabaseAdmin
+            .from('coin_transactions')
+            .select('date, amount')
+            .eq('user_id', userId)
+            .eq('date', today),
+        supabaseAdmin
+            .from('daily_steps')
+            .select('steps')
+            .eq('user_id', userId)
+            .eq('date', today)
+            .maybeSingle(),
+    ]);
+    if (todayStepsResult.error) {
+        reportError('wallet:today-steps', todayStepsResult.error, { userId, today });
+    }
+    if (todayTransactionsResult.error) {
+        reportError('wallet:today-transactions', todayTransactionsResult.error, { userId, today });
+    }
+
+    const balance = balanceState.data;
+    const transactions = transactionsState.data ?? [];
+    const balanceHistory = balanceHistoryState.data ?? [];
+    const todaySummary = todayTransactionsResult.error
+        ? null
+        : summarizeWalletTransactions(todayTransactionsResult.data ?? [], today);
+    const todaySteps = typeof todayStepsResult.data?.steps === 'number'
+        ? todayStepsResult.data.steps
+        : null;
+    const stepGoal = isValidStepGoal(user.step_goal) ? user.step_goal : null;
+    const nextReward = todayStepsResult.error
+        ? null
+        : getNextWalletReward(todaySteps, stepGoal);
+    const nextRewardStatus = todayStepsResult.error
+        ? 'unavailable' as const
+        : todaySteps === null
+            ? 'steps-missing' as const
+            : stepGoal === null
+                ? 'goal-missing' as const
+                : 'ready' as const;
 
     return (
         <main className="flex-1 flex flex-col bg-[var(--theme-page-bg)]">
-            {/* ヘッダー */}
-            <header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-                <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity" style={{ fontFamily: 'var(--font-inter), sans-serif' }}>
-                                {dashboardT('title')}
-                            </h1>
-                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20 group-hover:bg-[var(--theme-primary)]/10 transition-colors">
-                                {dashboardT('beta')}
-                            </span>
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <RefreshButton />
-                        <NotificationBell />
-                        <UserMenu user={{
-                            ...session.user,
-                            name: user?.name || session.user.name,
-                            image: user?.image || session.user.image
-                        }} />
-                    </div>
-                </div>
-            </header>
+            <AuthenticatedPageHeader
+                appTitle={dashboardT('title')}
+                betaLabel={dashboardT('beta')}
+                contextLabel={t('title')}
+                user={{
+                    ...session.user,
+                    id: userId,
+                    username: user.username,
+                    name: user.name || session.user.name,
+                    image: user.image || session.user.image,
+                }}
+            />
 
-            <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
-                {/* パンくずリスト */}
-                <div className="mb-6">
-                    <Breadcrumbs items={[{ label: t('title') }]} />
-                </div>
-
-                {/* ページヘッダー */}
-                <div className="mb-8">
-                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
-                        <span>👛</span>
-                        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
-                            {t('title')}
-                        </span>
-                    </h2>
-                    <p className="mt-2.5 text-base text-gray-500">
-                        {t('headerDesc')} <UCHintBalloon />
-                    </p>
-                    <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
-                </div>
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                <PageIntro
+                    headingId="wallet-page-title"
+                    title={t('title')}
+                    description={<>{t('headerDesc')} <UCHintBalloon /></>}
+                    icon="wallet"
+                    tone="reward"
+                    breadcrumbs={[{ label: t('title') }]}
+                />
 
                 {/* コンテンツ */}
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
                     <div className="min-w-0 space-y-3">
                         {/* 残高カード + 統計 */}
-                        <CoinBalanceCard balance={balance} todayEarned={todayEarned} />
+                        <CoinBalanceCard
+                            balance={balance}
+                            todaySummary={todaySummary}
+                            nextReward={nextReward}
+                            nextRewardStatus={nextRewardStatus}
+                        />
 
                         {/* 資産推移チャート */}
-                        <CoinGrowthChart data={balanceHistory} />
+                        {balanceHistoryState.failed ? (
+                            <p role="status" className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
+                                {t('balanceHistoryUnavailable')}
+                            </p>
+                        ) : (
+                            <CoinGrowthChart data={balanceHistory} />
+                        )}
 
                         {/* コイン獲得分析 */}
-                        <EarningBreakdown transactions={transactions} />
+                        {transactionsState.failed ? (
+                            <p role="status" className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
+                                {t('transactionsUnavailable')}
+                            </p>
+                        ) : (
+                            <EarningBreakdown transactions={transactions} />
+                        )}
                     </div>
 
                     <div className="min-w-0 space-y-3">
@@ -152,9 +211,19 @@ export default async function BankPage() {
                             </div>
                         </Link>
 
-                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] xl:grid-cols-1">
-                            <InvestorRankPanel currentRank={balance.investor_rank} lifetimeEarnings={balance.total_earned + balance.total_bonus} />
-                            <TransactionHistory transactions={transactions} />
+                        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] xl:grid-cols-1">
+                            {balance && (
+                                <InvestorRankPanel currentRank={balance.investor_rank} lifetimeEarnings={balance.total_earned + balance.total_bonus} />
+                            )}
+                            <div className={!balance ? 'lg:col-span-2 xl:col-span-1' : undefined}>
+                                {transactionsState.failed ? (
+                                    <p role="status" className="rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text)]">
+                                        {t('transactionsUnavailable')}
+                                    </p>
+                                ) : (
+                                    <TransactionHistory transactions={transactions} />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

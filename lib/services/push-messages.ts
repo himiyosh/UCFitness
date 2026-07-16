@@ -7,7 +7,20 @@
  * ユーザーの `language` カラム（'ja' | 'en'）で言語を切り替える。
  */
 
+import enMessages from '@/messages/en.json';
+import jaMessages from '@/messages/ja.json';
+
 export type PushLocale = 'ja' | 'en';
+
+interface BadgeNameSummary {
+    label: string;
+    count: number;
+}
+
+const BADGE_NAMES: Record<PushLocale, Record<string, string>> = {
+    ja: jaMessages.Museum.badgeNames,
+    en: enMessages.Museum.badgeNames,
+};
 
 /** ユーザーの言語設定を安全に正規化する */
 export function normalizePushLocale(language: string | null | undefined): PushLocale {
@@ -16,15 +29,56 @@ export function normalizePushLocale(language: string | null | undefined): PushLo
 
 // ─── バッジ獲得通知 ───
 
-export function badgeUnlockedTitle(locale: PushLocale): string {
+export function formatLocalizedBadgeNames(
+    locale: PushLocale,
+    badgeCodes: string[],
+): BadgeNameSummary {
+    const uniqueCodes = Array.from(new Set(badgeCodes));
+    const visibleNames = uniqueCodes
+        .slice(0, 3)
+        .map((code) => BADGE_NAMES[locale][code] ?? code);
+    const hiddenCount = uniqueCodes.length - visibleNames.length;
+
+    if (locale === 'ja') {
+        const names = visibleNames.map((name) => `「${name}」`).join('、');
+        return {
+            label: hiddenCount > 0 ? `${names}ほか${hiddenCount}個` : names,
+            count: uniqueCodes.length,
+        };
+    }
+
+    const names = visibleNames.join(', ');
+    return {
+        label: hiddenCount > 0 ? `${names}, and ${hiddenCount} more` : names,
+        count: uniqueCodes.length,
+    };
+}
+
+export function badgeUnlockedTitle(locale: PushLocale, badgeCount = 1): string {
+    if (badgeCount > 1) {
+        return locale === 'ja'
+            ? `🎉 バッジを${badgeCount}個獲得！🏆`
+            : `🎉 ${badgeCount} New Badges! 🏆`;
+    }
+
     return locale === 'ja'
         ? '🎉 バッジ獲得！🏆'
         : '🎉 New Badge Unlocked! 🏆';
 }
 
-export function badgeUnlockedBody(locale: PushLocale, badgeNames: string): string {
+export function badgeUnlockedBody(
+    locale: PushLocale,
+    badgeNames: string,
+    badgeCount = 1,
+): string {
+    if (badgeCount > 1) {
+        return locale === 'ja'
+            ? `おめでとう！${badgeNames}をまとめて獲得しました ✨`
+            : `Congratulations! You earned ${badgeNames} ✨`;
+    }
+
     return locale === 'ja'
-        ? `おめでとう！「${badgeNames}」を獲得しました ✨`
+        ? `おめでとう！${badgeNames}を獲得しました ✨`
         : `Congratulations! You earned: ${badgeNames} ✨`;
 }
 
@@ -51,15 +105,16 @@ interface WeeklySummaryData {
 }
 
 export function formatWeeklySummaryBody(locale: PushLocale, summary: WeeklySummaryData): string {
-    const steps = summary.totalSteps.toLocaleString('en-US');
-    const coins = summary.totalCoins.toLocaleString('en-US');
+    const numberLocale = locale === 'ja' ? 'ja-JP' : 'en-US';
+    const steps = summary.totalSteps.toLocaleString(numberLocale);
+    const coins = summary.totalCoins.toLocaleString(numberLocale);
 
     if (locale === 'ja') {
         let body = `先週の歩数: ${steps} 歩 | +${coins} UC`;
         if (summary.bestDay) {
             const bestDate = new Date(`${summary.bestDay.date}T00:00:00Z`);
             const dayLabel = DAY_LABELS_JA[bestDate.getUTCDay()];
-            const bestSteps = summary.bestDay.steps.toLocaleString('en-US');
+            const bestSteps = summary.bestDay.steps.toLocaleString(numberLocale);
             body += ` | ベスト: ${dayLabel} (${bestSteps} 歩)`;
         }
         return body;
@@ -69,7 +124,7 @@ export function formatWeeklySummaryBody(locale: PushLocale, summary: WeeklySumma
     if (summary.bestDay) {
         const bestDate = new Date(`${summary.bestDay.date}T00:00:00Z`);
         const dayLabel = DAY_LABELS_EN[bestDate.getUTCDay()];
-        const bestSteps = summary.bestDay.steps.toLocaleString('en-US');
+        const bestSteps = summary.bestDay.steps.toLocaleString(numberLocale);
         body += ` | Best day: ${dayLabel} (${bestSteps} steps)`;
     }
     return body;
@@ -90,8 +145,21 @@ export function stepReminderBody(
     progressPercent: number,
     remaining: number,
 ): string {
-    const fmt = (n: number): string => n.toLocaleString('en-US');
+    const numberLocale = locale === 'ja' ? 'ja-JP' : 'en-US';
+    const fmt = (n: number): string => n.toLocaleString(numberLocale);
     return locale === 'ja'
         ? `今日の歩数: ${fmt(currentSteps)} / ${fmt(goal)} (${progressPercent}%) — あと ${fmt(remaining)} 歩！`
         : `Today: ${fmt(currentSteps)} / ${fmt(goal)} (${progressPercent}%) — ${fmt(remaining)} steps to go!`;
+}
+
+// ─── テスト通知 ───
+
+export function testNotificationTitle(locale: PushLocale): string {
+    return locale === 'ja' ? '🔔 通知テスト' : '🔔 Notification Test';
+}
+
+export function testNotificationBody(locale: PushLocale): string {
+    return locale === 'ja'
+        ? 'UCFitnessの通知を受信できました。'
+        : 'You can receive notifications from UCFitness.';
 }

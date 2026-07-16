@@ -1,7 +1,11 @@
 'use client';
 
+import { useCallback, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
 import { useTranslations } from 'next-intl';
-import { useState, useCallback, useEffect, useId, useRef } from 'react';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 // ============================================
 // チャレンジ作成モーダル コンポーネント
@@ -44,43 +48,13 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
     const rewardUCId = `${baseId}-reward-uc`;
     const errorId = `${baseId}-error`;
 
-    useEffect(() => {
-        if (!isOpen) return;
-
-        titleInputRef.current?.focus();
-
-        const handleKeyDown = (event: KeyboardEvent): void => {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                onClose();
-                return;
-            }
-
-            if (event.key !== 'Tab' || !dialogRef.current) return;
-
-            const focusableElements = Array.from(
-                dialogRef.current.querySelectorAll<HTMLElement>(
-                    'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-                ),
-            ).filter((element) => element.offsetParent !== null);
-
-            if (focusableElements.length === 0) return;
-
-            const firstElement = focusableElements[0];
-            const lastElement = focusableElements[focusableElements.length - 1];
-
-            if (event.shiftKey && document.activeElement === firstElement) {
-                event.preventDefault();
-                lastElement.focus();
-            } else if (!event.shiftKey && document.activeElement === lastElement) {
-                event.preventDefault();
-                firstElement.focus();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
+    useDialogFocus({
+        isOpen,
+        onClose,
+        dialogRef,
+        initialFocusRef: titleInputRef,
+        canClose: () => !submitting,
+    });
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -137,10 +111,10 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
         }
     }, [title, description, type, targetSteps, rewardUC, startDate, endDate, submitting, onCreated, onClose, t]);
 
-    if (!isOpen) return null;
+    if (!isOpen || typeof document === 'undefined') return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
             {/* オーバーレイ */}
             <div
                 aria-hidden="true"
@@ -326,6 +300,7 @@ export default function CreateChallengeModal({ isOpen, onClose, onCreated }: Cre
                     </button>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }

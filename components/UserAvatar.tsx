@@ -96,14 +96,15 @@ export default function UserAvatar({
     showTitle = false,
     className = '',
     onClick,
-    alt = '',
+    alt,
     borderClass = 'border-white',
 }: UserAvatarProps) {
     const [imgError, setImgError] = useState(false);
     const sizeConfig = SIZE_MAP[size];
     const initial = (name?.[0] || 'U').toUpperCase();
     const effectiveSrc = imgError ? null : src;
-    const resolvedAlt = alt || name || 'User avatar';
+    const resolvedAlt = alt !== undefined ? alt : (name ?? '');
+    const interactiveLabel = name?.trim() || alt?.trim() || 'User avatar';
 
     // src変更時に画像エラー状態をリセット
     useEffect(() => { setImgError(false); }, [src]);
@@ -139,7 +140,7 @@ export default function UserAvatar({
         role: 'button' as const,
         tabIndex: 0,
         onKeyDown: handleKeyDown,
-        'aria-label': resolvedAlt,
+        'aria-label': interactiveLabel,
     } : {};
 
     return (

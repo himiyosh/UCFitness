@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
+
 import { useTheme, type Theme } from '@/components/ThemeProvider';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { Link } from '@/navigation';
 
 // 所持テーマアイテムの型定義
@@ -154,6 +156,16 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
     const locale = useLocale();
     const { theme, setTheme } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const handleClose = useCallback(() => setIsOpen(false), []);
+
+    useDialogFocus({
+        isOpen,
+        onClose: handleClose,
+        dialogRef,
+        initialFocusRef: closeButtonRef,
+    });
 
     // 所持テーマの item_code セット（高速ルックアップ用）
     const ownedCodes = new Set(ownedThemes.map(item => item.itemCode));
@@ -166,7 +178,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
     const handleSelect = (meta: ThemeMeta) => {
         if (!isOwned(meta)) return;
         setTheme(meta.name);
-        setIsOpen(false);
+        handleClose();
     };
 
     // 現在アクティブなテーマのメタデータ
@@ -221,7 +233,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
             <button
                 type="button"
                 onClick={() => setIsOpen(true)}
-                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-gray-200 hover:border-[var(--theme-primary)]/30 hover:bg-[var(--theme-primary-light)] text-sm font-medium text-gray-600 hover:text-[var(--theme-primary)] transition-all cursor-pointer"
+                className="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-[var(--theme-primary)]/30 hover:bg-[var(--theme-primary-light)] hover:text-[var(--theme-primary)]"
             >
                 <span>🎨</span>
                 <span>{t('changeTheme')}</span>
@@ -231,27 +243,32 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
             {isOpen && createPortal(
                 <div
                     className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
-                    onClick={() => setIsOpen(false)}
                 >
                     {/* 背景オーバーレイ */}
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} aria-hidden="true" />
 
                     {/* モーダル本体 — テーマの !important override を回避するためインラインスタイルを使用 */}
                     {/* モーダル本体 — bg-white で Midnight テーマのフロストガラスを活かす。文字色のみインラインで可読性確保 */}
                     <div
+                        ref={dialogRef}
                         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="theme-selector-title"
+                        tabIndex={-1}
                     >
                         {/* ヘッダー */}
                         <div className="px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
+                                <h3 id="theme-selector-title" className="text-lg font-bold flex items-center gap-2 text-gray-900">
                                     <span>🎨</span> {t('changeTheme')}
                                 </h3>
                                 <button
+                                    ref={closeButtonRef}
                                     type="button"
-                                    onClick={() => setIsOpen(false)}
+                                    onClick={handleClose}
                                     className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer min-h-[44px] min-w-[44px] text-gray-500"
+                                    aria-label={t('closeThemeDialog')}
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -274,6 +291,7 @@ export default function ThemeSelector({ ownedThemes = [] }: ThemeSelectorProps) 
                                             type="button"
                                             onClick={() => owned && handleSelect(meta)}
                                             disabled={!owned}
+                                            aria-pressed={isActive}
                                             className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all min-h-[44px] ${
                                                 owned ? 'cursor-pointer' : 'cursor-not-allowed opacity-55'
                                             } ${

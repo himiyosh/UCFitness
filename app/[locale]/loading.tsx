@@ -5,7 +5,7 @@
  */
 export default function Loading() {
     return (
-        <div className="flex min-h-[calc(100dvh-7rem)] items-center justify-center p-4 lg:min-h-[calc(100dvh-3rem)]" role="status" aria-label="Loading">
+        <div className="flex min-h-[calc(100dvh-7rem)] items-center justify-center p-4 lg:min-h-[calc(100dvh-3rem)]" role="status">
             <div className="w-full max-w-xl rounded-3xl border border-white/40 bg-white/80 p-4 shadow-lg">
                 <div className="flex items-center gap-3">
                     <div className="relative h-10 w-10 shrink-0">
@@ -17,7 +17,7 @@ export default function Loading() {
                         <div className="mt-2 h-2 w-full rounded-full bg-gray-100" />
                     </div>
                 </div>
-                <span className="sr-only">Loading</span>
+                <span className="sr-only"><span lang="ja">読み込み中</span> / <span lang="en">Loading</span></span>
             </div>
         </div>
     );

@@ -1,8 +1,12 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
+
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { getChallengePriorityMetrics } from '@/lib/services/challenge-utils';
 
 const ChallengeDetailModal = dynamic(() => import('@/components/challenge/ChallengeDetailModal'));
 
@@ -41,14 +45,14 @@ interface Challenge {
 
 interface ChallengeCardProps {
     challenge: Challenge;
-    progress?: number;
+    progress?: number | null;
     currentUserId?: string;
     onJoin?: (challengeId: string) => Promise<void>;
     onLeave?: (challengeId: string) => Promise<void>;
     onEdit?: (challenge: Challenge) => void;
 }
 
-export default function ChallengeCard({ challenge, progress = 0, currentUserId, onJoin, onLeave, onEdit }: ChallengeCardProps) {
+export default function ChallengeCard({ challenge, progress, currentUserId, onJoin, onLeave, onEdit }: ChallengeCardProps) {
     const t = useTranslations('Challenge');
     const [joining, setJoining] = useState(false);
     const [leaving, setLeaving] = useState(false);
@@ -56,30 +60,53 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
     const [showDetail, setShowDetail] = useState(false);
     const [joinCelebrating, setJoinCelebrating] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+    const leaveDialogRef = useRef<HTMLDivElement>(null);
+    const leaveCancelRef = useRef<HTMLButtonElement>(null);
+    const closeLeaveDialog = useCallback(() => setShowLeaveConfirm(false), []);
+
+    useDialogFocus({
+        isOpen: showLeaveConfirm,
+        onClose: closeLeaveDialog,
+        dialogRef: leaveDialogRef,
+        initialFocusRef: leaveCancelRef,
+    });
+    const progressUnavailable = isJoined
+        && (progress === null || progress === undefined || !Number.isFinite(progress));
+    const progressValue = typeof progress === 'number' && Number.isFinite(progress)
+        ? progress
+        : 0;
 
     const progressPercent = useMemo(
-        () => Math.min(100, Math.round((progress / challenge.target_steps) * 100)),
-        [progress, challenge.target_steps]
+        () => progressValue >= challenge.target_steps
+            ? 100
+            : Math.min(
+                99,
+                Math.floor((progressValue / challenge.target_steps) * 100),
+            ),
+        [progressValue, challenge.target_steps]
     );
-
-    // 残り日数計算
-    const daysLeft = useMemo(() => {
-        const endDate = new Date(challenge.end_date + 'T23:59:59');
-        return Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-    }, [challenge.end_date]);
-
-    const isExpired = useMemo(() => {
-        return daysLeft === 0 && new Date() > new Date(challenge.end_date + 'T23:59:59');
-    }, [daysLeft, challenge.end_date]);
+    const priorityMetrics = useMemo(
+        () => getChallengePriorityMetrics(
+            { ...challenge, is_joined: isJoined },
+            progress,
+        ),
+        [challenge, isJoined, progress],
+    );
+    const remainingSteps = priorityMetrics.remainingSteps ?? challenge.target_steps;
+    const daysLeft = priorityMetrics.daysLeft;
+    const isExpired = priorityMetrics.isExpired;
 
     const isCreator = currentUserId && challenge.created_by === currentUserId;
     const isCompleted = progressPercent >= 100 && isJoined;
+    const isUrgent = !isExpired && daysLeft <= 3;
     const avatars = challenge.participant_avatars || [];
 
     const handleJoin = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (joining || isJoined || !onJoin) return;
         setJoining(true);
+        setActionError(null);
         try {
             await onJoin(challenge.id);
             setIsJoined(true);
@@ -87,25 +114,26 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
             setJoinCelebrating(true);
             setTimeout(() => setJoinCelebrating(false), 1500);
         } catch {
-            // エラーは親コンポーネントで処理
+            setActionError(t('joinFailed'));
         } finally {
             setJoining(false);
         }
-    }, [joining, isJoined, onJoin, challenge.id]);
+    }, [joining, isJoined, onJoin, challenge.id, t]);
 
     const handleLeave = useCallback(async () => {
         if (leaving || !onLeave) return;
         setLeaving(true);
+        setActionError(null);
         try {
             await onLeave(challenge.id);
             setIsJoined(false);
             setShowLeaveConfirm(false);
         } catch {
-            // エラーは親コンポーネントで処理
+            setActionError(t('leaveFailed'));
         } finally {
             setLeaving(false);
         }
-    }, [leaving, onLeave, challenge.id]);
+    }, [leaving, onLeave, challenge.id, t]);
 
     const handleEditClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
@@ -118,8 +146,14 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                 onClick={() => setShowDetail(true)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowDetail(true); }}
-                className={`bg-white midnight-solid-panel rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 p-5 relative overflow-hidden cursor-pointer group ${
+                onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setShowDetail(true);
+                    }
+                }}
+                className={`midnight-solid-panel group relative cursor-pointer overflow-hidden rounded-2xl border bg-white p-3 shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)] md:p-5 ${
                     isCompleted
                         ? 'border-green-200 bg-gradient-to-br from-white to-green-50/30'
                         : 'border-gray-100 hover:border-[var(--theme-primary)]/20'
@@ -129,16 +163,16 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                 {/* 達成時のキラキラ装飾 */}
                 {isCompleted && (
                     <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none">
-                        <div className="absolute top-2 right-2 text-2xl animate-bounce">🏆</div>
-                        <div className="absolute top-1 right-10 text-xs animate-pulse" style={{ animationDelay: '0.3s' }}>✨</div>
-                        <div className="absolute top-8 right-1 text-xs animate-pulse" style={{ animationDelay: '0.7s' }}>✨</div>
+                        <div className="absolute right-2 top-2 animate-[cardEnter_0.45s_var(--spring)_both] text-2xl">🏆</div>
+                        <div className="absolute right-10 top-1 text-xs">✨</div>
+                        <div className="absolute right-1 top-8 text-xs">✨</div>
                     </div>
                 )}
 
                 {/* 参加お祝いアニメーション */}
                 {joinCelebrating && (
                     <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                        <div className="text-4xl animate-bounce">🎉</div>
+                        <div className="animate-[cardEnter_0.45s_var(--spring)_both] text-4xl">🎉</div>
                     </div>
                 )}
 
@@ -154,12 +188,17 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                     </span>
 
                     {!isExpired ? (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            daysLeft <= 2
-                                ? 'bg-red-50 text-red-500'
-                                : 'bg-gray-50 text-[var(--foreground-muted)]'
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                            isUrgent
+                                ? 'bg-[var(--color-reward-soft)] text-[var(--color-reward-strong)]'
+                                : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
                         }`}>
-                            🕐 {t('daysLeft', { count: daysLeft })}
+                            {isUrgent
+                                ? t('urgentReward', {
+                                    days: daysLeft,
+                                    reward: challenge.reward_uc.toLocaleString(),
+                                })
+                                : `🕐 ${t('daysLeft', { count: daysLeft })}`}
                         </span>
                     ) : (
                         <span className="text-xs font-semibold text-red-500 px-2 py-0.5 rounded-full bg-red-50">
@@ -182,45 +221,65 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                         <span className="text-[var(--foreground-muted)]">🎯</span>
                         <span className="font-bold text-gray-800">{challenge.target_steps.toLocaleString()}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <span className="text-amber-500">🪙</span>
-                        <span className="font-bold text-amber-600">{challenge.reward_uc} UC</span>
-                    </div>
+                    {!isUrgent && (
+                        <div className="flex items-center gap-1">
+                            <span className="text-[var(--color-reward)]">🪙</span>
+                            <span className="font-bold text-[var(--color-reward-strong)]">{challenge.reward_uc} UC</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* 進捗バー（参加済みの場合のみ） — より楽しいデザイン */}
-                {isJoined && (
+                {isJoined && progressUnavailable && (
+                    <p className="mb-3 rounded-lg bg-[var(--color-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-muted)]" role="status">
+                        {t('progressUnavailable')}
+                    </p>
+                )}
+                {isJoined && !progressUnavailable && (
                     <div className="mb-3">
                         <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold text-[var(--foreground-muted)]">{t('progress')}</span>
+                            <span className="text-xs font-semibold text-[var(--foreground-muted)]">
+                                {isCompleted
+                                    ? t('detailCompleted')
+                                    : t('priorityRemaining', {
+                                        steps: remainingSteps.toLocaleString(),
+                                    })}
+                            </span>
                             <span className={`text-xs font-bold ${
                                 isCompleted ? 'text-green-600' : 'text-gray-800'
                             }`}>
                                 {isCompleted ? '🎉 ' : ''}{progressPercent}%
                             </span>
                         </div>
-                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100"
+                            role="progressbar"
+                            aria-label={t('progress')}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={progressPercent}
+                        >
                             <div
-                                className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                className={`h-full rounded-full transition-[width] duration-700 ease-out ${
                                     isCompleted
-                                        ? 'bg-gradient-to-r from-green-400 to-emerald-500'
-                                        : 'bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)]'
+                                        ? 'bg-[var(--color-success)]'
+                                        : 'bg-[var(--color-competition-solid)]'
                                 }`}
                                 style={{ width: `${progressPercent}%` }}
                             />
                         </div>
                         <div className="text-xs text-[var(--foreground-muted)] mt-1">
-                            {progress.toLocaleString()} / {challenge.target_steps.toLocaleString()} {t('stepsUnit')}
+                            {progressValue.toLocaleString()} / {challenge.target_steps.toLocaleString()} {t('stepsUnit')}
                         </div>
                     </div>
                 )}
 
                 {/* フッター: 参加者アバター & ボタン */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
                     {/* 参加者アバタースタック */}
                     <button
                         onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
-                        className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                        className="flex min-h-[44px] items-center gap-2 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-competition)]"
                         aria-label={t('detailViewParticipants')}
                     >
                         {avatars.length > 0 ? (
@@ -262,7 +321,7 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                         {isCreator && onEdit && (
                             <button
                                 onClick={handleEditClick}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors min-h-[32px]"
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-200"
                                 aria-label={t('edit')}
                             >
                                 ✏️ {t('edit')}
@@ -282,7 +341,7 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                                 {!isCreator && onLeave && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowLeaveConfirm(true); }}
-                                        className="inline-flex items-center px-2 py-1.5 rounded-full text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors min-h-[32px]"
+                                        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full px-2 py-2 text-xs text-red-700 transition-colors hover:bg-red-50 hover:text-red-800"
                                         aria-label={t('leave')}
                                         title={t('leave')}
                                     >
@@ -296,7 +355,7 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                             <button
                                 onClick={handleJoin}
                                 disabled={joining}
-                                className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-bold bg-[var(--theme-primary)] text-white hover:opacity-90 hover:scale-105 transition-all disabled:opacity-50 min-h-[32px]"
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
                             >
                                 {joining ? (
                                     <>
@@ -312,10 +371,15 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                             </button>
                         ) : null}
                     </div>
+                    {actionError && (
+                        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700" role="alert">
+                            {actionError}
+                        </p>
+                    )}
                 </div>
 
                 {/* 詳細を見るヒント */}
-                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs text-gray-300 opacity-0 transition-opacity group-hover:opacity-100">
                     {t('detailTapToView')}
                 </div>
             </div>
@@ -330,18 +394,31 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
             )}
 
             {/* 離脱確認ダイアログ */}
-            {showLeaveConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setShowLeaveConfirm(false)} />
-                    <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-[modalSlideUp_0.2s_ease-out]">
+            {showLeaveConfirm && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40" onClick={closeLeaveDialog} aria-hidden="true" />
+                    <div
+                        ref={leaveDialogRef}
+                        className="relative w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl animate-[modalSlideUp_0.2s_ease-out] sm:p-6"
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby={`leave-challenge-${challenge.id}`}
+                        tabIndex={-1}
+                    >
                         <div className="text-center mb-4">
                             <div className="text-3xl mb-2">🚪</div>
-                            <h3 className="text-base font-bold text-gray-900 mb-1">{t('leaveTitle')}</h3>
+                            <h3 id={`leave-challenge-${challenge.id}`} className="text-base font-bold text-gray-900 mb-1">{t('leaveTitle')}</h3>
                             <p className="text-sm text-gray-500">{t('leaveConfirm')}</p>
+                            {actionError && (
+                                <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">
+                                    {actionError}
+                                </p>
+                            )}
                         </div>
                         <div className="flex gap-3">
                             <button
-                                onClick={() => setShowLeaveConfirm(false)}
+                                ref={leaveCancelRef}
+                                onClick={closeLeaveDialog}
                                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
                             >
                                 {t('cancelEdit')}
@@ -361,7 +438,8 @@ export default function ChallengeCard({ challenge, progress = 0, currentUserId, 
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
         </>
     );

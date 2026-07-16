@@ -40,8 +40,7 @@ export async function GET() {
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (session.user as any).id;
+    const userId = session.user.id;
 
     const today = getJSTDateString();
     const todayDate = new Date(`${today}T00:00:00Z`);

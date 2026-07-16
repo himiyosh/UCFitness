@@ -40,6 +40,9 @@ UCFitness は Fitbit 連携の歩数トラッキング・フィットネス競�
 - **CSS 方針**: 既存の Tailwind + CSS カスタムプロパティを維持しつつ、状態表現は不要な JS state より `:has()` / `:where()` / `:not()` 等のブラウザ標準セレクタを優先する。ただしセレクタは狭く保ち、`body:has(...)` のような広域監視は避ける
 - **レイアウト方針**: 固定幅・固定高さより intrinsic sizing、`aspect-ratio`、`minmax()`、container query units、`min-width: 0` を優先し、横スクロールと CLS を防ぐ
 - **パフォーマンス方針**: Above-the-fold の LCP 画像は lazy load しない。必要な `width` / `height` / `sizes` / `fetchpriority` を明示する。長いクライアント処理は 50ms を目安に分割し、重い処理は `scheduler.yield()` フォールバックまたは Web Worker を検討する
+- **公開面はServer-first**: 未認証LPの静的本文・翻訳はServer Componentで描画し、言語切替、ブラウザ保存値、局所スクロールなどにClient islandを限定する。ページ全体を`'use client'`へ戻さない
+- **日本語Webフォントを無測定でグローバル配信しない**: `next/font`で日本語フォントを複数weight指定すると、unicode-range CSSとフォント転送がLCPを支配し得る。本文はHiragino Sans / Yu Gothic / Meiryoのシステムスタックを既定とし、Webフォント採用時は生成CSSサイズ、転送量、Fast 3G相当のLCPを実測する。リファレンス: `app/[locale]/layout.tsx`, `app/globals.css`
+- **テキストLCP候補を初期モーションで遅延させない**: ファーストビューの主要見出し・説明へ初期`opacity`や`transform`アニメーションを適用せず、LighthouseのLCP要素とelement render delayを確認する。リファレンス: `components/LandingPage.tsx`
 - **content-visibility 方針**: 長いリストや下部の重いセクションに限定して `content-visibility: auto` + `contain-intrinsic-size` を検討する。ファーストビューや検索・アクセシビリティ上 discoverable であるべき内容には安易に使わない
 
 #### Import 整理ルール
@@ -170,8 +173,15 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 - **モバイルで root スクロールを殺さない**: `html/body` に `overflow: hidden` を適用する場合は、モバイルでスクロール不能・パネル見切れが発生しないかを必ず検証する。全画面スケーリング（`transform: scale(...)` など）は `lg:` 以上に限定し、モバイルでは通常スクロールを優先すること。
 - **スクロール制御の原則**: ビューポート高さ (`100vh`, `100dvh`) や固定高さ (`h-[Npx]`) + `overflow-hidden` でコンテンツを固定範囲に閉じ込めるパターンは、ブラウザクロム・ツールバー・デバイスにより実際の表示領域が変動するため、見切れの原因になる。原則としてページ全体は `html/body` の自然スクロールに任せ、`overflow-hidden` + 固定高さはモーダルやドロップダウンなど「意図的に領域を限定する」コンポーネントのみに使用する。**デスクトップの root 0.9x transform スケーリングは禁止**。縮小表示で密度を作るのではなく、カード内余白・グリッド・情報設計で密度を調整すること
 - **サイドパネルの `sticky` はデスクトップ限定**: 右カラムや補助パネルの `sticky top-*` は `lg:sticky` のようにブレイクポイント限定で適用する。モバイルで常時 `sticky` にすると、下部パネルや CTA が見切れ・操作不能になることがある。リファレンス: `app/[locale]/groups/page.tsx`
-- **最小タッチターゲット**: ボタン・リンクは最低 **44×44px** のタップ領域を確保する（`min-h-[44px] min-w-[44px]`）
-- **横スクロール禁止**: `overflow-x-hidden` を意識し、`w-screen` や固定幅（`w-[500px]` 等）を使わない
+- **最小タッチターゲット**: ボタン・リンク・入力・select・summary・カルーセルドット等、すべての可視操作要素は最低 **44×44px** のタップ領域を確保する。小さなドットやアイコンは44pxボタン内のvisualとして描画する。通常状態だけでなく編集・エラー・空・disabled・カルーセル移動後の条件付き状態も実測する
+- **固定ボトムナビのsafe-area予約を本文側にも反映する**: `padding-bottom: env(safe-area-inset-bottom)` を固定ナビへ付ける場合、本文・App Shellの下余白はナビ本体高に同じsafe-area値を加えた `calc()` で予約する。`pb-16`のような固定値だけではiPhoneのホームインジケータ領域で最下部CTAが隠れる。リファレンス: `app/[locale]/layout.tsx`, `components/layout/BottomNavBar.tsx`
+- **モバイルアプリ出荷時はtop/bottom両方のsafe-areaを契約化する**: `viewportFit: "cover"` を指定し、固定ヘッダーへ `env(safe-area-inset-top)`、固定ボトムナビと本文へ `env(safe-area-inset-bottom)` を対称に適用する。375pxのブラウザ表示だけでなく、standalone PWA相当で最初・最後の操作要素が到達可能か確認する。リファレンス: `app/[locale]/layout.tsx`, `app/[locale]/page.tsx`
+- **ヘッダー操作群のvisualは44pxターゲット内へ収める**: ヘッダー高44〜48pxでは、アバター・ベル等の見た目は最大32pxを基準とし、通知バッジを負の`top/right`でヘッダー外へ出さない。`headerRect`に対してavatar/badgeの`top >= header.top`かつ`bottom <= header.bottom`を375px/1280pxで実測する。タップ領域44pxとvisual 32pxを混同しない。リファレンス: `components/layout/UserMenu.tsx`, `components/layout/NotificationBell.tsx`
+- **横スクロール禁止**: `w-screen` や固定幅（`w-[500px]` 等）を使わず、はみ出しの原因を解消する。sticky要素の祖先では `overflow-x-hidden` + `overflow-y-auto` が新しいスクロールコンテナを作ってstickyを無効化しうるため、ページ内の切り抜きには `overflow-x-clip` を使用する。ただし1ページのsticky修正を理由にグローバルな `html/body` のスクロール契約を変更してはならない。固定ヘッダーへ切り替える場合は同じページ内でヘッダー高のpaddingを確保し、アンカー移動・モーダルのスクロールロック・認証済みApp Shellを回帰確認する。リファレンス: `components/LandingPage.tsx`
+- **ブレイクポイント境界の密度を実測する**: `sm` / `md` 等で内容を展開する場合は、ブレイクポイントの1px手前と境界値（例: 639px / 640px、767px / 768px）で `body.scrollHeight` と対象section高を比較する。説明文の表示開始と複数カラム化を別ブレイクポイントにして、1カラムのまま全内容だけを展開しない。開示UIから常時表示へ切り替える境界は、内容を横へ分散できるレイアウト境界と揃える。リファレンス: `components/LandingPage.tsx`
+- **Sidebar出現と複雑な多列化を同じ`lg`境界で行わない**: 1024pxでは192px Sidebarを差し引いた実コンテンツ幅で判定する。Homeの3列、Groupsのmain+aside、Settingsの2列、Shopの4列、LPの詳細展開は`xl`またはcontainer queryへ遅らせ、1023/1024・1279/1280で対象カード幅と見出し行数を実測する
+- **ページ本文を内部縦スクロールへ閉じ込めない**: Shop/Settings等の通常ページに`max-h-[calc(100dvh-...)]` + `overflow-y-auto`を適用せず、documentの自然スクロールへ統一する。内部縦スクロールはDialog、dropdown、明示的な仮想リストだけに限定する
+- **法務Footerは全認証幅で到達可能にする**: 320pxからFooterを表示し、BottomNavのsafe-area予約後にTerms/Privacy/Contactを44px操作領域で提供する。モバイルだからFooterを`display:none`にしない
 - **カードリストのレスポンシブ設計（必須）**: カード一覧（グループ・チャレンジ等）をモバイルとデスクトップで同じ形状にしない。モバイルは**横型コンパクトカード**（アイコン左 + テキスト右、バナーなし `hidden md:block`）、デスクトップ(md+)は**縦型リッチカード**（バナー上 + テキスト下）。`flex items-center gap-2.5 px-2.5 py-2 md:block md:px-4 md:pb-4 md:pt-10` でレイアウト方向を切替。プログレスバー等の補助情報はデスクトップのみ (`hidden md:block`)。**ブレイクポイントは `sm`(640px) ではなく `md`(768px) を使用**—タブレットや大型スマホでバナーが表示されるのを防止。モバイルで縦型バナーカードを並べると1枚 ~180px × N枚で「ぐちゃっとした印象」になる。モバイルカードの高さは ~56px 以下を目標とする。リファレンス: `GroupList.tsx`
 - **モバイルカードの高さ制約**: モバイルではカード 1 枚の高さを **60px 以下** に拑えること。アイコン (`w-10 h-10`=40px)、パディング (`py-2`=8px+8px)、ギャップ (`gap-1.5`=6px)。バナー画像・プログレスバー・SVGアイコンなどの補助要素は `hidden md:block` / `hidden md:inline` でデスクトップのみ表示。リストグリッドのギャップは `gap-1.5 md:gap-3`
 - **ハイライト・タグリストの横スクロール化**: 複数のタグ・ハイライト項目が `flex-wrap` で折り返すと、モバイルで複数行の密集テキストブロックになる。`overflow-x-auto` + `whitespace-nowrap shrink-0` のピルバッジ化で横スクロール対応にすること。リファレンス: `app/[locale]/groups/page.tsx` のハイライトバナー
@@ -227,6 +237,18 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 11. **デスクトップのフッター下にデッドスペースを残さない** — コンテンツ量が少ないページでは、デスクトップ側の最上位ラッパーを `sm:flex sm:flex-col sm:flex-1` にし、フッターを `mt-auto` で最下部へ押し出すこと。フッターの下に背景だけの空白帯が残る構成は禁止。リファレンス: `app/[locale]/page.tsx`, `components/Footer.tsx`
 12. **グリッド子要素に `h-full` を付けて親の `items-start` を無効化しない** — CSS Grid で `items-start`（トップ揃え）を指定している場合、子要素に `h-full` を付けるとグリッドセルの全高まで引き延ばされ `items-start` が無効化される。さらに `justify-center` を併用すると、引き延ばされた高さの中でコンテンツが垂直中央配置され、上下に巨大な空白が発生する。**グリッド子要素は自然な高さに任せ、レイアウトの整列は親の `items-*` プロパティに委任すること。** `h-full` が必要な場合は、親を `items-stretch` に変更し、子の `justify-center` を削除する。リファレンス: `GroupRankingPanel.tsx`（左カラムから `h-full justify-center` を削除して修正）
 13. **ブラウザ倍率 100% での密度検証を必須化** — root 全体を `zoom` / `transform: scale()` で縮小して密度を作るのは禁止。UI が大きすぎる場合は、コンポーネント単位で `font-size`、`line-height`、`gap`、`padding`、カード高さ、補助ビジュアルの表示条件を調整する。LP/ホームなど主要画面では 375px / 1280px / 1920px の 100% 表示で `body.scrollHeight`、ヒーロー高さ、ファーストビュー内の情報量を測定し、余白で画面を消費していないか確認する
+14. **Footerは短いページでもviewport下端へ置く** — 認証後ホームは`min-h-dvh flex flex-col`を基準にし、Footer wrapperへ`mt-auto`を付ける。1280px/1920pxで`body.scrollHeight <= innerHeight`の場合、`footer.getBoundingClientRect().bottom`が`innerHeight`と一致することを実測する。Footerが画面中央に出た状態を「コンテンツ後だから正しい」と扱わない
+15. **PC密度は横幅と配置再構成で改善する** — 1280px/1920pxのファーストビューに、今日の進捗・競争・報酬・次の行動の4要素が認識可能であること。単純なカード引き伸ばしやroot縮小ではなく、ホーム専用の上限幅、2段bento、compact action rowでデッドスペースを減らす
+16. **リッチ化は実データを増やして行う** — 空白をカードの拡大・装飾・並べ替えだけで埋めない。認証後ホームでは、今日の値に加えて少なくとも1つの時系列可視化（例: 月曜起算の今週）と1つの蓄積状態（例: UC残高・ストリーク）を表示し、欠測・取得失敗を0へ偽装しない
+17. **ホームは個人・競争・社会性を同時に見せる** — 個人トレンドだけで「リッチ」と判定しない。固定仕様に従う5行のランキングプレビュー/自分の順位と、フォロー中ユーザーの活動または次の発見CTAを常時表示する。既存ranking cache / following APIを再利用し、同じデータのために追加N+1を作らない
+18. **ホームの社会データを成功形へ偽装しない** — followingのプロフィール・歩数取得失敗、歩数未記録、実際の0歩を分離する。friend activityは他者最大値との相対順位にせず、固定目標への進捗等の非ランキング表現にする。ホーム用APIはサーバー側limitで必要件数だけ取得し、5件未満では仲間発見CTAを表示する。詳細なranking/friend activityは次行動の後に置く。プロフィール行は可視の名前・歩数を`aria-label`で上書きせず、操作説明を`sr-only`で追加する
+19. **「全ページ見直し」はルート台帳で管理する** — ホームや共通Shellの改善を全ページ完了の代理にしない。`app/[locale]/**/page.tsx`から対象ルートを列挙し、共通Shell / 競争 / アカウント / 商取引の監査群ごとに、表示・障害状態・認可・i18n・Dialog・チャート代替・320pxリフローを確認する。未認証で確認できない画面は、実配信ルート応答とソース/fixture監査を区別して記録する
+20. **全モーダルは共通Dialog stackへ載せる** — Portal表示するDialogは`useDialogFocus`でEscape、Tab循環、背景`inert`、body scroll lock、トリガーへの焦点復帰を統一する。保存中でも永久トラップを作らず、同じ書き込みを再送しない状態を維持したままDialogから退出可能にする
+21. **視覚チャートには数値へ到達できる代替を付ける** — `role="img"`の件数要約だけで完了しない。表示中の期間・系列・値を`caption` / `th`付きの`sr-only`表または同等のリストで提供し、画像生成専用の0×0カードは`aria-hidden="true"`にする。インタラクティブ凡例はnative button、選択状態、明示フォーカスを持つ
+22. **`sr-only`はsemantic table本体ではなくwrapperへ適用する** — `<table className="sr-only">`はtableのintrinsic layoutがページ高へ残る実装差を起こし得る。`<div className="sr-only"><table>...</table></div>`とし、wrapperがabsolute 1×1pxで、Footer後にデッドスペースを作らないことを実測する
+23. **テーマは明示ローカル選択を優先し、装備テーマは初期フォールバックにする** — 既存端末の`localStorage`選択を優先し、未保存端末だけDB装備テーマを初期値にする。装備フォールバックをローカルへ永続化して後日の装備変更を遮断しない。item code変換は`lib/theme.ts`へ集約する
+24. **歩数分析は0・欠測・比較期間を混同しない** — 記録済み0歩は記録日平均の分母へ含め、活動日・ベストデーからは除外する。月途中は前月同日までのMTDと比較し、前月0歩では率を表示しない。低活動時のミッションと次行動は直近活動量に応じた100〜500歩の達成可能な入口を含める
+25. **ホームの楽しさはカード追加ではなく実データの物語で作る** — ファーストビューは`進捗→競争→歩いた価値→次の一歩`を1つのQuest面で連続表示する。同じ導線をQuest・QuickActions・詳細パネルへ重複させず、Quick DockはBottomNav/Sidebarにない補助導線へ限定する。モーションは目標・順位・UC・完了の状態変化だけに650ms以内で適用し、無限装飾や全カード一斉浮遊を使わない。低活動時は0の反復ではなく「次の100歩」「まず500歩」等の未来志向を優先する
 
 ### UI 美学ルール（Design Aesthetics — 必須遵守）
 
@@ -248,6 +270,12 @@ UCFitness は PWA であり、**モバイル端末での利用が主要ユース
 6. **殺風景化禁止** — 素人感を削るために装飾を減らしても、ファーストビューが白背景 + テキスト + 白カードだけになってはいけない。UCFitness の主要画面では、歩数リング・進捗バー・ランキング差分・報酬カード・ブランド色面のうち最低 2 つをファーストビューに入れ、歩く/競う/報われる体験が 3 秒で伝わるようにする
 7. **左サイドバーは認証済みアプリシェルの共通ナビゲーション** — デスクトップ (`lg:` 以上) ではホームだけでなく主要認証済みページ全体で `DashboardSidebar` を表示する。ページ単位で個別にサイドバーを追加・削除せず、`app/[locale]/layout.tsx` の共通 App Shell で管理する。新規ページ作成時に独自の左ナビを作らない
 8. **色の熱量を最低限担保する** — 主要導線・クイックアクション・ランキング差分・チャレンジ・報酬には、青/エメラルド/アンバー/バイオレット等の意味色を少なくとも 2 系統使う。モノクロ（白/黒/グレー）だけで主要 UI を構成しない
+9. **アプリロゴは色付きmark + solid wordmarkを使う** — 認証後App Shellのロゴを黒/白だけの記号へ戻さない。mark内で青=前進、緑=達成、アンバー=報酬のうち最低2役を使い、文字は可読性の高いsolid色とする。グラデーション文字だけでブランド感を代用しない。リファレンス: `app/[locale]/page.tsx`, `components/dashboard/DashboardSidebar.tsx`
+10. **クリック可能パネルは静的カードと明確に区別する** — link/cardには`cursor-pointer`、hover、focus、active、chevronまたは動詞ラベルを揃える。静的status panelへ同じ影移動・矢印を付けない。色だけで押下可否を表現せず、キーボードfocusと44px操作領域を必須とする。リファレンス: `components/dashboard/QuickActions.tsx`, `components/dashboard/DashboardChallenges.tsx`
+11. **公開ランディングページは Full Palette のブランド面として扱う** — 認証済みアプリ画面の抑制的な配色をそのまま公開 LP へ適用しない。公開 LP では、目標・主 CTA=青、達成・同期=緑、競争・順位=紫、UC・報酬=アンバーの 4 役を意味に沿って使う。`min-h-screen` + `flex-1` で空白を引き伸ばす暗色ヒーロー、青紫のぼかしだけで構成する SaaS 風表現、グラデーション文字は禁止。375px でも実際の歩数進捗・順位差・報酬・チャレンジのプロダクト UI を隠さず表示し、主要 CTA と最低 2 指標を最初のビューポートで認識できること。リファレンス: `components/LandingPage.tsx`, `docs/PRODUCT.md`
+10. **公開ランディングページのアクセシビリティ構造を視覚設計と同時に固定する** — `header` / `main` / `footer` は兄弟ランドマークにし、グローバルスキップリンクは外側ラッパーではなく実際の `main` をフォーカス・スクロール対象にする。横スクロールが必要なピル列は、コンテナを `w-full min-w-0 overflow-x-auto`、子要素を `shrink-0` とし、コンテナ自身へ `min-w-max` を付けない。横スクロールを使う場合は320pxでも次カードを約40px見せ、見えている内容が装飾点にしか見えない場合は方向矢印も添えて、視覚利用者にも続きがあることを伝える。複数行の報酬・実績カードは、モバイルでは無名の横スクロール領域よりコンパクトな縦リストを優先し、320pxでも指標名・具体的な獲得閾値・数値を省略しない。狭幅で補助情報を段階表示する場合も `hidden sm:block` で内容ごと削除せず、ネイティブ `<details>` 等の名前付き・キーボード操作可能な開示で1操作以内に到達可能にする。リファレンス: `components/LandingPage.tsx`, `app/[locale]/layout.tsx`
+11. **公開ランディングページを保存済みテーマでも検証する** — `ThemeProvider` は未認証時も `localStorage` のテーマを適用するため、公開 LP が常に Classic テーマとは仮定しない。Full Palette の `strong` / `soft` トークンを追加する場合は Midnight でも対になる値を上書きし、375px / 1280pxで文字コントラストと意味色の識別を確認する。淡色面の前景色と白文字付き塗り面は同じトークンを兼用せず、`strong` と `solid` に分離する。リファレンス: `app/globals.css`, `components/LandingPage.tsx`
+12. **公開LPは一画面一メッセージと意味のあるモーションで構成する** — 色や機能を単純に削るのではなく、モバイルのヒーローは主CTA＋現在歩数＋残り歩数へ集中し、順位・UCは直後のプルーフ領域へ送る。デスクトップでも順位・UCは同じ進捗面の副指標として扱う。重複するハイライト・実績・説明カードを同一ビューポートへ並べず、今日の進捗→追いつける差→習慣ループ→報酬の順に段階表示する。全セクションへ同じfade-upを付けず、歩数リング=前進、順位バー=成長、報酬=到達、スクロール線=ページ進捗のように役割を対応させる。モバイルでは装飾用の無限オービットやカード浮遊を進捗モーションと同時再生しない。読めるテキストを含む要素はモーション中も `opacity: 1` を維持し、変形・SVG描画・独立装飾で表現して全フレームのコントラストを保つ。Scroll-driven Animations は `@supports` 内のProgressive Enhancementとし、低減モーションでは完成状態を即時表示する。リファレンス: `components/LandingPage.tsx`, `app/globals.css`, `docs/PRODUCT.md`
 
 #### 視覚的階層（Visual Hierarchy）
 
@@ -362,6 +390,14 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 13. **Portal ↔ トリガー間のホバーギャップは既知制限** — Portal は DOM ツリー上でトリガーの子孫ではないため、カード `mouseleave` → Portal `mouseenter` 間にギャップが発生しピッカーが閉じうる。`isHoveringPickerRef` による部分緩和のみ。**現在の実装（fb07776）がユーザー承認済みの安定状態であり、この動作を変更する場合は必ずユーザーに確認すること**
 14. **この仕様を変更する場合は必ずユーザーに確認すること**
 
+### グループ順位・部分障害の契約
+
+- **正歩数だけを順位化する** — グループ内ユーザー順位とグループ対抗順位は `steps > 0` / `totalSteps > 0` の対象だけを並べ、除外後に連続した順位を再付与する。記録済み0歩・未記録・取得失敗を順位、メダル、参加人数へ含めない
+- **人数ラベルを正直にする** — ランキング配列長を表示する場合は「メンバー数」ではなく「ランキング参加人数」と明記する。実メンバー数のDB取得失敗は0人へ変換せず、取得不能表示にする
+- **必須認可と補助データを分離する** — グループ本体、閲覧ユーザー、membership認可は必須境界とし、private group非メンバーは404を維持する。メンバー一覧・人数、グループ内順位、比較チャート、期間別グループ競争の失敗は個別にログと警告を出し、イベント、チャット、ギア、週間レポート等の利用可能な機能を停止しない
+- **障害を空状態へ偽装しない** — 取得失敗時に空ランキング・空メンバーを正常状態として表示しない。メンバー管理Dialog内も明示的な取得不能状態にし、部分的に取得できた不正形状は警告して有効行だけを表示する
+- **未所属の次行動を明示する** — グループ未所属空状態は、44px以上のCTAで同一ページの参加パネルへ移動できること。リファレンス: `app/[locale]/groups/page.tsx`, `app/[locale]/groups/[groupId]/page.tsx`, `lib/services/ranking-service.ts`, `lib/services/group-ranking-service.ts`
+
 ### ユーザー項目のプロフィール遷移（必須）
 
 **ユーザーのアバター・名前・行を表示するすべてのコンポーネントで、ユーザー行クリック時に `/user/{username}` プロフィールページへ遷移する機能を必ず実装すること。**
@@ -384,6 +420,9 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 - **色だけに依存しない** — ステータス表示はアイコン・テキストも併用する（色覚多様性対応）
 - **フォーカスインジケーターを消さない** — `outline-none` を使う場合は `focus-visible:ring-2` 等で代替スタイルを提供
 - **インタラクティブ要素のロール** — クリック可能な `<div>` には `role="button"` + `tabIndex={0}` + `onKeyDown` (Enter/Space) を実装するか、`<button>` を使う
+- **固定ヘッダー下のフォーカス見切れを防ぐ** — スキップリンクとページ内アンカーの対象へヘッダー高以上の `scroll-margin-top` を設定し、移動後に `target.getBoundingClientRect().top >= header.getBoundingClientRect().bottom` を320px / 375px / 1280pxで実測する
+- **局所横スクロールは必要な幅だけフォーカス可能にする** — 狭幅で実際に横スクロールする領域へ `tabIndex={0}`、操作説明、3:1以上の `focus-visible` リングを付与する。デスクトップで全内容が収まる版はタブ停止させず、必要なら `hidden sm:grid` / `sm:hidden` でセマンティクスもレスポンシブに分離する
+- **アンカー先セクションへ簡潔な名前を付ける** — `tabIndex={-1}` でフォーカスする `<section>` は見出しIDを `aria-labelledby` で参照し、節内全文がアクセシブル名として読み上げられないようにする
 
 ### コードレビューチェックリスト（Red Flags）
 
@@ -440,6 +479,11 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
   ```
 - `npm run dev` は自動的にポート 3000 を使用する。ポート競合で 3001 等にフォールバックした場合、認証（ログイン・セッション）が機能しないため、必ずキル→再起動すること
 - Playwright テストも `localhost:3000` を対象とする
+- **ユーザーへローカル表示を案内する前に、閲覧タブを通常のデスクトップ表示へ戻す** — モバイルエミュレーションや途中スクロールを残さず、1280×800・スクロール先頭で対象URLを再読み込みし、タブを前面化する
+- **Chrome DevTools / MCP の自動検証タブをユーザー向け閲覧タブとして扱わない** — `Unshared browser tab` はユーザー画面に表示されない。ローカル確認を依頼された場合は、検証後に macOS の `open 'http://localhost:3000/'` で通常ブラウザを明示的に開く
+- **「見られる状態」はサーバー応答や自動検証タブだけで判定しない** — LISTEN、HTTP 200、自動検証側の描画確認に加え、通常ブラウザが前面化したことを確認し、最終的にはユーザーの閲覧確認を完了条件とする
+- **開発CSPへ `upgrade-insecure-requests` を含めない** — Safariは `http://localhost:3000/_next/...` のCSSをHTTPSへ変換し、開発サーバーがTLS未対応のため未装飾画面になる。本番CSPでは同ディレクティブを維持する
+- **ローカル表示確認はCSS適用まで検証する** — ルートHTMLのHTTP 200だけで通過せず、HTMLが参照する `layout.css` のHTTP 200と、通常ブラウザでスキップリンクやSVGが未装飾のまま露出していないことを確認する
 
 ### デプロイ制限
 
@@ -447,11 +491,23 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 
 ### プッシュ通知ルール
 
-- **i18n 必須**: プッシュ通知メッセージは必ずユーザーの `language` カラム（`users` テーブル）を参照し、`lib/push-messages.ts` のローカライズ関数で生成すること。ハードコードされた文字列は禁止
-- **通知集約（バッチ通知）必須**: 同一ユーザーに複数の通知（バッジ獲得等）が発生する場合、**1 通にまとめて送信**すること。バッジごとに個別通知を送信してはならない
-- **新規通知追加時**: `lib/push-messages.ts` にメッセージテンプレートを追加し、ja/en 両方を定義すること
+- **i18n は端末表示まで検証必須**: プッシュ通知メッセージは必ずユーザーの `language` カラム（`users` テーブル）を参照し、`lib/services/push-messages.ts` のローカライズ関数で生成する。生成関数の単体テストだけで完了せず、RFC 8291 `aes128gcm` payloadを復号して `title` / `body` / `locale` がService Workerへ届くことを検証する。ユーザー向け通知をpayloadなしのtickle送信へ戻さない
+- **通知集約（バッチ通知）必須**: 同一ユーザーに複数の通知（バッジ獲得等）が発生する場合、**カテゴリ内だけでなく最上位の実行単位で1通にまとめる**。個人・グローバル・グループを各1通にする実装は禁止。Service Workerの`tag`とWeb Pushの`Topic`も同じ種別で揃え、`renotify: false`で同種通知を置換する
+- **購読fan-outの重複防止**: `push_subscriptions`は再購読でendpointが増えるため、配信時は同一`user_agent`とlegacy行を最新1件へ集約する。再購読時は現在endpoint以外の同一UA・legacy行を整理し、Push Serviceが404/410を返したendpointは削除する。異なるUAの端末は維持する
+- **暗号化body上限**: `aes128gcm`はsalt/record/key-idを含む86-byte headerとdelimiter/tagを含めたHTTP body全体を4096 bytes以内にする。JSON payloadは最大3993 bytesとし、3993成功・3994拒否の境界テストを維持する
+- **再購読競合で0件にしない**: upsert後の旧endpoint整理は、作成時刻とIDで「現在行より古い行だけ」を削除する一方向winner、またはDB RPCの原子的処理にする。並行する2要求が互いを削除できるread-then-deleteは禁止
+- **全ユーザー無制限並列送信禁止**: Cronのユーザー単位通知は最大20件程度の固定バッチへ分割する。各ユーザー内の端末送信だけを並列化し、全購読者を裸の`Promise.all`へ渡さない
+- **DB障害を既定言語・0値へ変換しない**: `users.language`、週次歩数、UC集計の取得失敗時は通知を送らず明示的に失敗として記録する。DB照会失敗を日本語既定や0歩サマリーへ変換してはならない
+- **任意の通知嗜好カラム障害でFeedを停止しない**: `notification_reactions` / `notification_gear_reactions` は`feed_last_read_at`と別クエリにし、嗜好カラム未適用時もバッジ・リアクションFeedと未読集計を既定表示で継続する。APIは`notificationPreferencesAvailable: false`を返し、ActivityFeed/NotificationBellは「既定Feedを表示中」と明示する。通知設定GET/PUTは成功や既定ONへ偽装せず503 `NOTIFICATION_SETTINGS_UNAVAILABLE`を返す
+- **通知ベルも同じ集約単位に揃える**: 同日・同一ユーザーの複数バッジや短時間の同種リアクションは1行へまとめ、未読バッジ数も生イベント件数ではなく表示する集約通知件数と一致させる。バッジ名は`Museum.badgeNames`のja/en資産を再利用する
+- **通知時刻はイベント固有値を使う**: `daily_steps.updated_at`や`coin_balances.updated_at`のように別処理でも変わる汎用更新時刻を通知発生時刻に使わない。安定した`created_at`または専用イベント時刻がない派生状態は通知ソースから外し、既読後の再同期・報酬処理で偽未読を再発させない
+- **集約Feedのページング**: raw eventへlimitを適用してから集約したり、集約項目の最新/最古時刻だけをcursorにしてはならない。直近7日のsnapshot時刻を固定したopaque offset cursorで、全ソース集約後の論理通知をページ分割し、クライアントはAPIの`nextCursor`を保持する
+- **通知popoverの操作契約**: 非モーダル通知popoverはフォーカスが外へ移動したら閉じ、Escape/閉じるでトリガーへ戻す。ベルのaccessible nameとlive statusへ未読件数を含め、状態変更の「すべて既読」は可視ラベルと失敗表示を持つ。初回未読GETと既読POSTは世代IDで競合を隔離し、POST成功後に古いGETが件数を復活させない。画像URLを文字列表示せず、プロフィール導線は無名の小リンクを作らず56px以上の名前付き行リンクへ統合する
+- **新規通知追加時**: `lib/services/push-messages.ts` にメッセージテンプレートを追加し、ja/en 両方を定義すること
 - リファレンス実装:
-  - バッジ統合通知: `badge-awards.ts` の `sendConsolidatedBadgeNotification()`
+  - バッジ統合通知: `badge-allocator.ts` の `sendConsolidatedBadgeNotification()`
+  - Edge payload暗号化・購読集約: `lib/api/web-push.ts`
+  - 端末表示・同種置換: `public/sw.js`
   - ステップリマインダー: `cron/step-reminder/route.ts`
   - ウィークリーサマリー: `cron/weekly-summary/route.ts`
 
@@ -520,11 +576,8 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase"; // ※ supabase ではなく supabaseAdmin
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { Link } from "@/navigation";
-import UserMenu from "@/components/UserMenu";
-import RefreshButton from "@/components/RefreshButton";
-import NotificationBell from "@/components/NotificationBell";
-import Breadcrumbs from "@/components/Breadcrumbs";
+import AuthenticatedPageHeader from "@/components/layout/AuthenticatedPageHeader";
+import PageIntro from "@/components/layout/PageIntro";
 ```
 
 #### ③ 認証チェック → userId 取得 → DB ユーザー情報取得
@@ -538,15 +591,18 @@ if (!session?.user) {
   redirect("/");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const userId = (session.user as any).id;
+const userId = String(session.user.id);
 
 // 必ず supabaseAdmin で DB からユーザー情報を取得する
-const { data: dbUser } = await supabaseAdmin
+const { data: dbUser, error: userError } = await supabaseAdmin
   .from("users")
   .select("name, image, username") // ← 最低限この3つ。ページ固有のカラムは追加OK
   .eq("id", userId)
   .single();
+
+if (userError) {
+  throw new Error(`Failed to load page user: ${userError.message}`);
+}
 
 if (!dbUser?.username) {
   redirect("/setup");
@@ -558,6 +614,7 @@ if (!dbUser?.username) {
 - `session.user.image` / `session.user.name` を表示用に直接使用してはいけない（Fitbit OAuth の値のため）
 - `supabase`（非 admin）をサーバーコンポーネントで使用してはいけない（`supabaseAdmin` を使う）
 - username チェック・`/setup` リダイレクトを省略してはいけない
+- Home / GroupsのようにDB障害を専用エラーパネルで明示するページでは、JWT内のusernameへfallbackしない。DBからcanonical usernameを確認できない間はUserMenuのプロフィールリンクを静的要約へ変え、障害表示を維持したまま`/profile`・`/user/`・`/user/undefined`を生成しない
 
 #### ④ ルート要素
 
@@ -568,70 +625,102 @@ if (!dbUser?.username) {
 #### ⑤ ヘッダー（アプリブランディング）
 
 ```tsx
-<header className="bg-white backdrop-blur-md border-b border-[var(--theme-primary)]/10 sticky top-0 z-50">
-  <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between">
-    <div className="flex items-center gap-2">
-      <Link href="/" className="flex items-center gap-2 group">
-        <h1
-          className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] group-hover:opacity-80 transition-opacity"
-          style={{ fontFamily: "var(--font-inter), sans-serif" }}
-        >
-          {dashboardT("title")}
-        </h1>
-        <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[var(--theme-primary-light)] text-[var(--theme-primary)] text-[10px] font-bold tracking-wide uppercase border border-[var(--theme-primary)]/20">
-          {dashboardT("beta")}
-        </span>
-      </Link>
-    </div>
-    <div className="flex items-center gap-1">
-      <RefreshButton />
-      <NotificationBell />
-      <UserMenu
-        user={{
-          id: userId,
-          name: dbUser?.name || session.user.name,
-          email: session.user.email,
-          image: dbUser?.image || session.user.image,
-        }}
-      />
-    </div>
-  </div>
-</header>
+<AuthenticatedPageHeader
+  appTitle={dashboardT("title")}
+  betaLabel={dashboardT("beta")}
+  contextLabel={t("title")}
+  user={{
+    id: userId,
+    name: dbUser.name ?? session.user.name,
+    email: session.user.email,
+    image: dbUser.image ?? session.user.image,
+    username: dbUser.username,
+  }}
+/>
 ```
 
 - `BackButton` はヘッダーに置かない（パンくずリストで代替）
-- ヘッダー左側は常にアプリロゴ（`UCFitness` グラデーション + beta バッジ）
-- **ヘッダー右側は必ず `RefreshButton` → `NotificationBell` → `UserMenu` の 3 要素を配置**（1 つでも欠けると統一性が崩れる）
+- モバイルは多色 `AppBrandMark` + solid wordmark、デスクトップはSidebarと重複しないcontext labelを表示する
+- アプリ名は見出しにしない。ページ唯一の`h1`は後述の`PageIntro`が持つ
+- **ヘッダー右側は `AuthenticatedPageHeader` 内の `RefreshButton` → `NotificationBell` → `UserMenu` の 3 要素を維持する**
 - `dashboardT = await getTranslations('Dashboard')` で取得
 
 #### ⑥ コンテンツ領域
 
 ```tsx
-<div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
-  {/* パンくずリスト */}
-  <div className="mb-6">
-    <Breadcrumbs items={[{ label: t("title") }]} />
-  </div>
-
-  {/* ページタイトル */}
-  <div className="mb-8">
-    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2.5">
-      <span>{emoji}</span>
-      <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
-        {t("title")}
-      </span>
-    </h2>
-    <p className="mt-2.5 text-base text-gray-500">{t("headerDesc")}</p>
-    <div className="mt-4 h-1 w-32 rounded-full bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] opacity-60" />
-  </div>
+<div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+  <PageIntro
+    headingId="page-title"
+    title={t("title")}
+    description={t("headerDesc")}
+    icon="analytics"
+    tone="primary"
+    breadcrumbs={[{ label: t("title") }]}
+  />
 
   {/* メインコンテンツ */}
 </div>
 ```
 
-- `Breadcrumbs` は Home アイコンを自動付与するため、`🏠` を手動追加しない
-- ページタイトルはグラデーション + 絵文字 + 説明文 + 装飾線
+- `PageIntro` がパンくず、ページ唯一の`h1`、説明、意味色アイコン、単色アクセントをまとめる
+- タイトルへグラデーション文字やページ固有の巨大サイズを再導入しない
+- ホーム、初回セットアップ、固有カバーを持つグループ詳細は例外構造でもよいが、認証ヘッダーは`AuthenticatedPageHeader`へ統一する
+- `globals.css`で`[data-auth-header] h1`やページ見出しを広域上書きしない。共通コンポーネント自身でサイズ・余白を管理する
 - 翻訳キーに `headerDesc` を必ず含める（ja/en 両方）
+
+#### プロフィール遷移・ローディング・日付水和の契約
+
+- App Shellのプロフィール導線は`/profile`を経由せず、`/user/${encodeURIComponent(username)}`へ直接遷移する
+- 全画面の独自グローバルローダーでナビゲーションを覆わない。Next.jsのroute `loading.tsx`と対象画面形状のスケルトンを使い、URL不変・redirect・error時にも本文を永久に隠さない
+- Server/Client双方の初期描画で日付配列を作る場合、Server Componentで確定した`YYYY-MM-DD`をpropで渡し、UTC演算で同じDOMを生成する。可視初期値に裸の`new Date()`や端末タイムゾーン依存の`toLocaleString()`を使わない
+- インタラクティブ要素へ`div`等の非phrasing contentを不正にネストしない。水和警告は白画面候補としてconsoleとDOM構造の両方を確認する
+- 他ユーザープロフィールで閲覧者プロフィールと比較歩数を並列取得する場合、両方の`.error`を`reportError`後にthrowまたは明示エラーUIへ分岐する。比較歩数のDB失敗を「比較データなし」の正常状態へ変換しない
+
+#### 初回セットアップのActivation契約
+
+- Setupは「プロフィール/歩数ソース」「日次目標」「グループ/チャレンジ」の3画面に分け、現在位置をテキストとprogressbarで示す。モバイルでは必須入力を任意写真より先に置く。各画面は任意項目を後回しにできる44px以上のスキップ導線を持ち、「後で設定して次へ」のように遷移結果を明示する。スキップをOAuth再認可・自動参加・取得失敗の正常化へ変換しない
+- 初回セットアップをプロフィール保存だけで終えない。DB正本の歩数ソース、500〜100,000歩の整数目標、保存後の「最初の500歩」CTAまでを一続きで提示する
+- 歩数目標はプロフィールと同一のサーバー更新で保存し、クライアントとAPIの両方で範囲・整数を検証する。取得不能を既定の5,000歩や未接続へ偽装しない
+- `/api/user/status`はDB正本の`provider`と`step_goal`を返し、DB障害時は`isSetup: false`の正常形ではなく5xxを返す
+- Status APIの404（ユーザー行不在）は再試行可能な5xxと分け、Setupでは無限再試行ではなく再ログイン導線を出す
+- 既にセットアップ済みのユーザーは目標値のオンボーディング範囲検証より先にホームへ戻す。Settings等の既存範囲で保存された値を理由に`/setup`へ閉じ込めない
+- Statusの初回取得と再試行は`AbortController`または世代IDで旧応答を無効化し、再試行中のボタンをdisabledにする。遅い旧失敗が新しい成功を上書きしてフォームを再ロックできないこと
+- 保存成功後はNextAuth sessionを更新してから永続的な完了面を表示し、即時redirectで達成・次行動のフィードバックを消さない
+- Setupの全入力とCTAは44px以上にし、HTML `pattern`の文字クラス内でハイフンを使う場合は`v`フラグ互換になるよう `\-` と明示エスケープする。実ブラウザconsoleで正規表現エラーが0件であることを確認する
+- Setup入力のフォーカスリングは`--color-primary`で統一し、`transition-shadow`等で初期フレームを透明にせず即時表示する
+- 接続確認は既存の認証プロバイダを表示するだけとし、セットアップ改善を理由にOAuth再認可・接続切替・本番DB migrationを行わない
+- セットアップの意味色は青=目標/最初のクエスト、緑=接続/完了とし、実際のUC報酬を示す場合だけアンバーを使う。全面グラデーションやモノクロmarkへ戻さない。リファレンス: `app/[locale]/setup/page.tsx`, `app/api/user/setup/route.ts`, `app/api/user/status/route.ts`
+
+#### Settingsの健康行動優先契約
+
+- SettingsのDOM順は歩数ソース→日次歩数目標→プロフィール→言語/テーマ/統計/通知とし、健康行動を称号・フレーム・ショップ等の装飾より先に提示する
+- 日次目標は`lib/step-goal.ts`をClient/API/Setupで共有し、500〜100,000の整数だけを保存する。Settings APIだけ0歩や100万歩を受理する範囲差を作らない
+- 歩数目標の編集入力はモバイル16px、全操作44px以上、エラー時は入力へfocus、保存中は二重送信を防ぎ、成功/失敗を永続的なstatus/alertで通知する
+- 日次目標カードと入力は装備テーマ色ではなく意味色`--color-primary*`（青=目標）を使う。Pop/Sakura等でも青を固定し、Midnightだけコントラスト用の明色へ変える。プロフィール装飾の`--theme-primary`と同色化せず、健康行動とカスタマイズの役割差を維持する
+- Midnightの`.bg-white`は`border-left`まで`!important`で上書きするため、日次目標の4pxアクセントは`.settings-goal-card`のMidnight局所ルールで復元する。Classic/Midnight/Pop/Sakuraで左4px・他辺1pxをcomputed style実測する
+- `users`、テーマ所有権、所持アイテムのDB障害を未設定・未所有へ偽装せず、ページエラーへ分岐する。任意のアクティビティ通知カラム取得失敗は通知トグルだけを非表示にして明示エラーを出し、プロフィール・目標等の独立設定は利用可能に保つ
+- 表示していないSmart Goal用の`daily_steps`やUC残高を取得しない。Settingsの初期表示で使うデータだけを並列取得する
+- モバイルパネルは`p-3 sm:p-5`を基本とし、2列統計の全幅行は`col-span-2 sm:col-span-3`、3件目は`col-span-2 sm:col-span-1`として320pxで暗黙3列を作らない。リファレンス: `app/[locale]/settings/page.tsx`, `components/SettingsForm.tsx`, `components/StepGoalForm.tsx`, `app/api/user/step-goal/route.ts`
+
+#### Profileの0歩・欠測・部分障害契約
+
+- 日次・週次・月次は`number | null`で扱い、記録済み0歩は`0`、未記録は`null`、取得失敗は別の`unavailable`状態として表示する。`|| 0`で3状態を統合しない
+- 期間平均は同じ期間の合計を記録日数で割り、記録済み0歩を分母へ含める。活動日数は正歩数の日だけを数え、累計歩数を直近期間の活動日数で割らない
+- Profileの必須ユーザー行だけを致命的な取得境界とする。歩数履歴、累計RPC、比較歩数、公開グループ、装備、バッジ、コイン、ランキング、おすすめの障害は各セクションへ明示し、他のプロフィール情報を表示し続ける
+- 閲覧者の比較歩数取得失敗や記録0件で対象プロフィールを停止しない。失敗・未記録を別コピーで示し、比較できる期間だけ数値差を表示する
+- ActivityGraphは主系列・比較系列とも`Map.has(date)`で記録済み0歩と欠測を分ける。視覚バーだけでなく`sr-only`表でも欠測を「未記録」と読み上げ、目標未設定時は10,000歩へ偽装せず目標線・達成色を出さない
+- PersonalRecordsは歩数系・コイン系を独立nullableにし、1ソース障害でカード全体を消さない。プロフィールの可視補助文字は12px以上を維持する。リファレンス: `app/[locale]/user/[username]/page.tsx`, `lib/profile-steps.ts`, `components/ActivityGraph.tsx`, `components/profile/PersonalRecords.tsx`
+
+#### Walletの獲得・支出・次報酬契約
+
+- 今日の獲得は正額取引だけ、支出は負額の絶対値、純増減は獲得−支出として別表示する。購入後の負値を「今日の入金」として表示しない
+- 今日の内訳は直近N件の履歴sliceから計算せず、JST当日の全取引を専用クエリで集計する。取引履歴の件数上限が日次サマリーを欠落させないこと
+- 次報酬は今日の記録歩数と有効な目標から、次の最大100歩または目標到達までの基本UCを計算する。目標到達時だけ目標ボーナスを追加し、歩数未記録・目標未設定・DB失敗を別コピーにする
+- 残高、取引履歴、資産推移、今日取引、今日歩数の障害をパネル単位へ分離し、1クエリ失敗でWallet全体を停止したり0へ偽装しない
+- 取引履歴は見出し直後に正額/負額/取引後残高の説明を置く。通常ページ内の固定高`overflow-y-auto`へ閉じ込めずdocumentスクロールを使い、12px補助文字は`--color-text-muted`で4.5:1以上を維持する
+- 取引履歴は初期10件を表示し、44pxの「さらに表示」で10件ずつ開示する。残高/ランクが欠落した2列gridでは履歴を`lg:col-span-2`へ広げ、空いた狭い列へ押し込まない
+- ランクと履歴を並べる`lg` gridは`items-start`にし、子カードから`h-full`を外す。件数の多い履歴が短いランクカードをstretchしてカード内空白を作らない
+- 資産推移の棒は「日次獲得」でなく購入を含む「日次純増減」と呼び、`sr-only` wrapper内のcaption/th付き表で日付・純増減・残高へ到達できるようにする。リファレンス: `app/[locale]/wallet/page.tsx`, `lib/wallet-summary.ts`, `components/CoinBalanceCard.tsx`, `components/TransactionHistory.tsx`, `components/CoinGrowthChart.tsx`
 
 #### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
 
@@ -843,6 +932,25 @@ export const runtime = "edge";
   - `.env.example` をコミットし、プレースホルダー値を記載
 - **サーバーサイドのみ**: `supabaseAdmin` (サービスロールキー使用) はサーバーコンポーネント・API ルートのみで使用。クライアントに露出させない
 - **Fitbit API トークン**: OAuth リフレッシュトークンは DB に保存し、アクセストークンはメモリ内で短命管理
+- **OAuthログインIDの照合**: 自動アカウントリンクは `provider + provider_account_id` の完全一致だけで行う。同一メールを理由に別プロバイダIDや別アカウントへリンクしてはならず、DB照会失敗時も新規ユーザー作成へ進まず認証を拒否する。`lib/auth.ts` のメール一致クエリは `check:rules` で禁止する
+- **OAuthログイン結果の表示**: Auth.jsの既定エラーページや生の`error`値をユーザーへ表示しない。`pages.error`と`pages.signIn`で公開LPへ戻し、`lib/auth-flow.ts`のallowlist分類からja/enの`role="alert"`と再試行CTAを表示する。`pages.signIn`を省くと`OAuthAccountNotLinked`等の`SignInError`がLPへ到達しない。`signIn` callbackの`false`/通常例外はAuth.jsで`AccessDenied`へ統合されるため、DB照会・保存障害は`CallbackRouteError`として投げ、ユーザー拒否と区別する。保護画面の安全な戻り先は認証失敗後もsessionStorageへ保持し、エラー画面内の全ログインCTAで初期描画から再利用する。言語切替時は`next`のlocale prefixも表示言語へ揃える。認証後はユーザーDB取得成功かつusername未設定の場合だけ`/setup`へ送り、DB障害を未設定へ偽装しない。新規ユーザーはsetup完了後に保存済み戻り先を優先しつつ、最初の500歩Activation CTAも副導線として残す。リファレンス: `lib/auth.ts`, `lib/auth-flow.ts`, `components/LandingPage.tsx`, `app/[locale]/setup/page.tsx`
+- **OAuth stateの開始ユーザー拘束**: OAuth stateはランダムnonceと有効期限だけでなく、開始時のUCFitnessユーザーIDをHMAC署名へ含める。コールバックではstate Cookieとの定数時間比較と署名・期限を検証し、現在のセッションユーザーが開始ユーザーと異なる場合はトークン交換前に拒否する。リファレンス: `lib/google-health-oauth.ts`
+- **OAuth 再認可時の更新トークン保持**: OAuth プロバイダは再認可時に更新トークンを返さない場合がある。既存接続の更新トークンを `null` で上書きせず保持し、初回接続で更新トークンが得られない場合は接続を成立させない。リファレンス: `lib/services/fitness-connection-service.ts`
+- **健康データ接続保存の原子性**: 外部ID継続性の確認、既存更新トークンの保持、資格情報upsertをアプリ側のread-then-writeへ分離しない。ユーザー行をロックする単一DB関数で直列化し、並行OAuthコールバックによるIDすり替えや更新トークン消失を防ぐ。リファレンス: `save_google_health_connection`
+- **健康データソース状態の区別**: `active` 行が取得できないことを「未接続」と同一視しない。`reauthorization_required` / `error` は別ソースへの暗黙切替を禁止し、`disconnected` のみ明示解除として旧ソース利用を許可する
+- **機能フラグ停止時の既存接続保護**: Google Healthの機能フラグは新規接続・再接続だけを停止する。既存接続の状態取得・同期・解除は継続し、フラグ停止を未接続と誤認してFitbitへ切り替えない
+- **OAuth 解除時の原子的停止**: DB関数内で対象接続をロックし、`disconnected` への遷移・同期リース無効化・資格情報消去を同一トランザクションで先に完了する。その関数が返した暗号化トークンをサーバー側で復号してからプロバイダ失効を試行し、失効失敗でも接続や資格情報を復活させない。失効要求にはURLクエリではなくPOST本文を使い、トークンや応答本文をログへ含めない。リファレンス: `disconnect_google_health`
+- **暗号文のコンテキスト拘束**: AES-GCMのAADにはユーザーID・プロバイダ・トークン用途を含め、別ユーザーやaccess/refresh列へ暗号文を移しても復号できないようにする
+- **OAuth更新失敗の分類**: `invalid_grant`、更新後も継続する401、必須スコープ欠落などプロバイダが確認した恒久的な資格情報失効だけを再認証必須にする。5xx・ネットワーク・DB保存失敗・暗号鍵設定不備・暗号文復号失敗は接続状態を変更せず、同期結果を`error`または利用不能として隔離する
+- **健康データソース切替時の履歴置換**: 新ソースが欠測日を返さなくても旧ソース値を残さない。欠測を0歩へ変換せず、初回移行では当日を除く全APIチャンクを取得し終えてから、対象期間の削除と取得済み行の挿入を一度のDBトランザクションで原子的に実行する。破壊的な履歴置換は初回移行完了までに限定し、通常同期では繰り返さない。リファレンス: `replace_daily_steps_range`, `history_synced_at`
+- **進行中歩数の単調性**: 当日の健康データは再集計や同期遅延で一時的に欠測・減少し得る。Google Health／Fitbitのどちらでも空応答で保存済み行を削除せず、既存値と取得値の最大値をDB内で原子的に保存し、コイン再計算にも永続化後の値を使う。リファレンス: `upsert_daily_steps_max`, `upsert_fitbit_daily_steps_max`
+- **一括資格情報処理の障害分離**: 複数ユーザーの暗号文復号・外部API準備を裸の `Promise.all` でまとめない。1件の破損や鍵不一致は対象ユーザーの同期選択だけを`error`として隔離し、DB接続状態は書き換えず、他ユーザーの同期を継続する
+- **不正接続行の安全側処理**: 一括接続取得で解析できない行を結果から脱落させない。ユーザーIDを復元できる場合は `error` 選択として返して旧ソースへの暗黙切替を遮断し、復元できない場合は一括同期を停止して調査する
+- **健康データ同期の所有権**: Cron・手動同期・初回履歴移行はユーザー単位の所有者UUID付きDBリースで直列化する。トークン更新、再認証状態、同期完了時刻、履歴置換、当日upsert、移行完了記録を含む同期由来の全書き込みは、同じリースIDをDB関数内で必須検証する。所有権を省略できる分岐を設けず、解除後・期限切れ・所有権喪失後の書き込みを拒否する。全ユーザー同期は固定サイズの並列バッチに制限する
+- **旧データソース履歴の競合防止**: Fitbit履歴取得の開始前チェックだけを信頼しない。外部API取得後の保存時にユーザー行とGoogle Health接続行をDB関数内でロックし、Google Healthが選択中または移行済みならFitbit履歴書き込みを拒否する。リファレンス: `upsert_fitbit_daily_steps_batch`
+- **健康データ移行時のID照合**: Google Health の `legacyUserId` と既存 Fitbit の `provider_account_id` が両方存在する場合は一致を検証し、不一致の健康データ接続を拒否する。再接続時も保存済みGoogle Health IDとの一致を必須とし、メールアドレス一致による暗黙統合は禁止する
+- **獲得済み報酬の非減額**: 健康データソース切替による過去履歴の置換では、獲得済みUCを再計算・減額しない。当日UCの再計算には単調増加で永続化した歩数だけを使う
+- **同期結果の正直な通知**: 歩数同期APIは更新、データなし、再認証待ち、同期競合、利用不能を構造化して返す。`steps: null` やDB保存失敗を成功レスポンス・成功トーストへ変換しない
 - **`console.log` でのシークレット出力禁止**: デバッグ時もトークン・キーをログに含めない
 
 ### 社内コンプライアンスポリシー (CSS Data Policy)
@@ -874,6 +982,7 @@ export const runtime = "edge";
 
 - **FK 参照先は `public.users` を使用**: UCFitness は NextAuth を使い、ユーザーを `public.users` テーブルに保存する。Supabase Auth の `auth.users` は使用していない。マイグレーション SQL で `REFERENCES auth.users(id)` と書くと FK 制約違反でデータ挿入が失敗する。**必ず `REFERENCES public.users(id)` を使用すること**
 - **新規テーブル作成時**: `created_by` / `user_id` 等のカラムが `auth.users` を参照していないことを確認する
+- **派生接続テーブルの継続同期**: 一回限りのバックフィルだけに依存しない。`users` の認証プロバイダ情報を別テーブルへ複製する場合は、同一トランザクションのDBトリガーまたは全書き込み経路でupsertし、移行後の新規・再リンクユーザーも必ず同期する
 - **Supabase count の抽出**: `challenge_participants(count)` 等の埋め込みカウントは、Supabase バージョンにより `[{count: N}]`（配列）または `{count: N}`（オブジェクト）を返す。**両方の形式をハンドルすること**
 - **CRUD API の完全性チェック**: 新規テーブル/リソースの API を作成するときは、GET（一覧・詳細）/ POST（作成）/ PUT（編集）/ DELETE（削除）の 4 操作すべてが必要かを確認し、必要な操作を最初から実装する。「編集 API なし」で出荷しない
 
@@ -1020,3 +1129,347 @@ export const runtime = "edge";
 - **根本原因**: `page.goto(..., waitUntil: "commit")` 直後の短時間スクリーンショットを本体表示と混同した。さらに分析データを Client Component 内の `/api/user/analytics` fetch に依存していたため、本体表示までの待ち時間がページごとにぶれた。
 - **対策**: 分析集計を `lib/services/analytics-service.ts` に切り出し、Server Component 側で先読みして `PersonalAnalytics` に渡すようにした。検証では 0.3 秒 / 1.8 秒 / 6 秒など複数時点の `document.body.innerText` と `body.scrollHeight` を確認し、ローディング状態と本体状態を分けて評価する。
 - **教訓**: UI密度や「一目で見えるか」の判定は、対象ページ固有の見出し・主要指標が DOM に出ていることを確認してから行う。短時間ローダーは許容されても、白い全画面ローダーだけが長く見える構成は避け、可能な限り Server Component で初期データを先読みする。
+
+### LL-009: OAuth再認可と接続状態の扱いで資格情報・データソースが不整合になる可能性があった
+
+- **事象**: Google Health の再認可レスポンスに更新トークンがないと既存値を消失し、再認証待ち接続は「未接続」と誤認されFitbitへ暗黙切替する可能性があった。解除時のGoogle側失効と、暗号文のユーザー・用途拘束も不足していた。
+- **根本原因**: 初回接続・再認可・再認証待ち・明示解除を同じ欠落値で表し、OAuthトークンと健康データソースのライフサイクルを状態機械として扱っていなかった。
+- **対策**: 既存更新トークン保持、初回更新トークン必須化、全接続状態を返す同期選択、再認証待ちのFitbit切替抑止、Google失効要求、ユーザーID・プロバイダ・用途をAADへ含むAES-GCM v2を実装した。
+- **教訓**: OAuth連携では欠落値を削除指示と解釈せず、`active` 行がないことを未接続と同一視しない。初回接続・再認可・失効・再認証待ち・明示解除を個別にテストする。
+
+### LL-010: データソース移行を一回限りのバックフィルと部分upsertで扱うと履歴が混在する
+
+- **事象**: マイグレーション後のFitbit新規ユーザーが本人照合テーブルへ追加されず、Google Healthが返さない日には既存Fitbit歩数が残る可能性があった。一時的なOAuth更新障害も恒久的な再認証待ちとして記録していた。
+- **根本原因**: 認証IDの複製を初回バックフィルだけに依存し、データソース切替を「取得行だけのupsert」として実装した。OAuthエラーも再試行可能性で分類していなかった。
+- **対策**: `users`更新を追従するFitbit接続トリガー、90日以内を削除＋挿入する原子的DB関数、`invalid_grant`／必須スコープ欠落だけを再認証扱いにする分類を追加した。
+- **教訓**: 移行用テーブルは継続同期し、ソース切替は対象範囲を原子的に置換する。欠測と実測0歩を区別し、一時障害でユーザー操作が必要な状態へ遷移させない。
+
+### LL-011: 1件の暗号文復号失敗が全ユーザー同期を停止する可能性があった
+
+- **事象**: 全Google Health接続を `Promise.all` で復号していたため、鍵ローテーションや1行の暗号文破損で一括処理全体がrejectし、Fitbitを含む全ユーザーのCron同期が停止し得た。
+- **根本原因**: バルク取得とユーザー単位の資格情報復号を同じ失敗境界に置き、部分失敗を隔離していなかった。
+- **対策**: 行の解析・復号をユーザー単位で捕捉し、対象ユーザーの同期選択だけを `error` として返して他ユーザーの処理を継続した。暗号鍵設定不備と個別暗号文破損を安全に識別できないため、DB接続状態は変更しない。
+- **教訓**: バルク同期ではDB取得全体の失敗と個別レコードの失敗を分ける。復号失敗をプロバイダ資格情報の失効と推測せず、不可逆な状態遷移は確認済みのエラー分類だけで行う。
+
+### LL-012: 履歴置換を通常同期へ流用すると歩数とコインが巻き戻る可能性があった
+
+- **事象**: Google Healthの日次応答が一時的に空または前回より小さい場合、当日行を削除・再挿入する実装により、保存済み歩数と再計算されるUCコインが減少し得た。手動同期のたびに過去1年の破壊的置換も繰り返していた。
+- **根本原因**: 初回のデータソース移行に必要な「欠測日を含む権威的な期間置換」と、進行中の当日値を更新する「単調な増分同期」を同じDB関数で扱った。
+- **対策**: `history_synced_at` で初回履歴移行を一度に限定し、当日は `upsert_daily_steps_max` で既存値と取得値の最大値を原子的に保存する。空応答では行を変更せず、コイン処理へ永続化後の歩数を渡す。
+- **教訓**: 健康データ履歴のソース切替と当日ポーリングは異なる整合性モデルで扱う。破壊的置換を定常経路へ流用せず、ユーザー資産へ波及する派生処理には必ず確定済み永続値を使う。
+
+### LL-013: 複数要求の履歴移行と並行同期で部分置換・所有権競合が起こり得た
+
+- **事象**: 初回履歴をAPIチャンクごとにDBへ置換すると、途中のAPI失敗で履歴が部分更新になる。さらにCronと手動同期が重なると、解除後の古い処理が書き戻したり、別Google Health利用者の再接続データを混在させる可能性があった。
+- **根本原因**: 外部APIの複数要求を一つのスナップショットとして扱わず、ユーザー単位の同期所有権とプロバイダID継続性をDB書き込み境界で検証していなかった。
+- **対策**: 当日を除く365日分の全APIチャンク取得成功後に一度だけDBトランザクションで置換する。所有者UUID付き30分リースを導入し、履歴置換・当日upsert・完了記録で同じリースIDを検証する。再接続時は保存済みGoogle Health IDとの一致を必須にし、全ユーザー同期は固定並列バッチへ制限する。
+- **教訓**: 複数要求にまたがる健康データ移行では、API取得完了前に権威データを変更しない。同期所有権・接続ID・DB書き込みを同じ整合性境界で検証し、派生報酬を含む処理全体をユーザー単位で直列化する。
+
+### LL-014: OAuth解除と進行中同期の競合で接続が復活し得た
+
+- **事象**: Google Health解除中に既存の同期処理がトークン更新や同期完了状態を書き戻すと、解除済み接続が再び `active` になり、消去した資格情報が復活し得た。Fitbit認証IDのミラートリガーも既存の切断・エラー状態を上書きする可能性があった。
+- **根本原因**: 履歴置換と当日歩数だけを同期リースへ拘束し、トークン更新・再認証状態・同期完了時刻を同じ所有権境界に含めていなかった。解除も外部失効とローカル停止を別々に行い、その間に古い同期が書き込める設計だった。
+- **対策**: 同期由来の全状態更新をリースID必須のDB関数へ移し、解除は対象行をロックして接続停止・リース無効化・資格情報消去を一つのトランザクションで先に確定する。Google側失効はその後に試行し、失敗してもローカル停止を巻き戻さない。Fitbitミラートリガーは既存状態を保持する。
+- **教訓**: OAuth解除は外部API成功をローカル安全性の前提にしない。資格情報を扱う同期の全書き込みを同じDB所有権境界へ含め、解除トランザクションが古い所有者を失効させた後は一切の書き戻しを許可しない。
+
+### LL-015: 不明な接続状態を未接続として扱うと暗黙フォールバックが再発する
+
+- **事象**: Google Health機能フラグ停止時や一括取得した不正接続行の解析失敗時に接続選択が欠落し、Fitbitへ暗黙切替し得た。設定画面も状態取得失敗を「未接続」と表示していた。
+- **根本原因**: 「接続なし」と「接続状態を確認できない」を同じ `null` で表し、フラグを新規接続制御ではなく既存接続の読取・同期にも適用していた。
+- **対策**: 既存接続はフラグ停止中も取得・同期・解除し、不正行は `error` 選択として残す。設定UIに不明状態と再取得導線を追加した。
+- **教訓**: 認証・健康データの不明状態は不在へ変換せず、安全側で旧ソース利用を遮断する。機能フラグの停止範囲を新規操作と既存資産管理で分ける。
+
+### LL-016: メール一致によるOAuthアカウント統合は本人性を保証しない
+
+- **事象**: Fitbitログイン時にプロバイダIDが見つからないと、同一メールの既存ユーザーへ自動リンクしてトークンを更新していた。セッション復旧にもメール照合が残っていた。
+- **根本原因**: メールを連絡先ではなく外部認証の不変な本人識別子として扱い、プロバイダ間・アカウント変更時の衝突を考慮していなかった。
+- **対策**: ログインとセッション復旧を `provider + provider_account_id` の一致に限定し、DB照会失敗時はdeny-by-defaultとした。`check:rules`で`lib/auth.ts`のメール一致クエリを禁止した。
+- **教訓**: OAuthアカウントの自動リンクにメールを使わない。明示的な再認証・本人確認を伴う統合フローがない限り、識別子不一致は別アカウントとして扱う。
+
+### LL-017: 取得値と同期成功を同一視すると歩数・通知・報酬が不整合になる
+
+- **事象**: Fitbitの低い再取得値が保存済み歩数を上書きし、`steps: null`でも同期APIとトーストが成功を通知していた。Google Health解除後の履歴バックフィルも移行済み履歴を部分的に上書きし得た。
+- **根本原因**: 外部APIの取得値、DB永続化後の確定値、同期処理の結果状態を分離していなかった。
+- **対策**: Fitbit当日値もDBで単調増加させ、報酬へ永続化後の値を渡す。移行済みGoogle履歴は解除後のFitbit部分upsertから保護し、同期APIを5種類の結果コードへ分けた。
+- **教訓**: UIへ返す成功は外部取得ではなく永続化完了を基準にする。データなし・再認証・競合・障害は成功と分け、派生報酬にはDBで確定した値だけを渡す。
+
+### LL-018: OAuth・接続保存・旧ソース履歴の事前確認だけでは並行処理を防げない
+
+- **事象**: OAuth stateがブラウザCookieとだけ結び付いていたため開始後のアカウント切替を検出できず、Google ID確認と保存の間、Fitbit履歴取得と保存の間にも接続状態が変わる競合窓があった。恒久的なGoogle資格情報失効も同期結果では利用不能へ丸められていた。
+- **根本原因**: セキュリティ判断を開始時やアプリ側read-then-writeのスナップショットへ依存し、最終的な本人・ID・データソース権威をトークン交換前またはDB書き込みトランザクション内で再検証していなかった。
+- **対策**: OAuth stateを開始ユーザーへHMAC拘束し、接続保存をユーザー行ロック付きRPCへ統合した。Fitbit履歴保存もDB内でGoogle Health権威を再確認し、恒久的なGoogle認証失敗は `reauthorization_required` として返す。
+- **教訓**: 外部APIを挟む処理では事前チェックと書き込みの間に状態が変わる。本人性は副作用前、ID継続性とデータソース選択はDB書き込みと同じ原子的境界で検証し、確認済みの恒久エラーだけを再認証導線へ結び付ける。
+
+### LL-019: 公開LPを暗色SaaS表現へ寄せ、フィットネスゲームの熱量を失った
+
+- **事象**: 公開ランディングページが暗紺の全面ヒーロー、青紫のぼかし、半透明カード、大きな空白で構成され、ユーザーから「デザイン面が全く良くない」「無駄な余白が多い」「クールすぎてカラフルさがない」と指摘された。モバイルでは実際のプロダクトプレビューも非表示だった。
+- **根本原因**: 認証済みプロダクト画面向けの「抑制・信頼感」を、ブランドを伝える公開 LP にも同じ強度で適用した。さらに `min-h-screen`、`flex-1`、大きい上余白で画面を埋めることを優先し、歩く・競う・報われる体験を意味色と実 UI で見せていなかった。
+- **対策**: `components/LandingPage.tsx` を自然高さの明るい構成へ再設計し、青=目標、緑=達成、紫=競争、アンバー=報酬の意味色を追加した。375pxでも歩数リング、順位、UC、チャレンジを表示し、暗色全面ヒーロー、グラデーション文字、装飾目的の全面ガラス表現を除去した。`docs/PRODUCT.md` とデザイントークン仕様にも公開 LP の Full Palette 例外を固定した。
+- **教訓**: 「プロ品質」は無彩色・暗色・余白の多さではない。公開ブランド面では、対象サービス固有の行動・競争・報酬を 3 秒で理解できる色とプロダクト UI が必要。認証済みアプリの Product register と公開 LP の Brand register を分けて評価する。
+
+### LL-020: 公開LPの見た目改善だけではランドマーク・狭幅リフロー・報酬理解を保証できなかった
+
+- **事象**: カラフルなLPへ再設計した後のペルソナ監査で、`header` / `footer` が `main` 内に入りランドマークとして認識されない、スキップリンクが実コンテンツを迂回しない、横スクロール列が320pxでクリップされる、`+22 UC` の獲得条件が分からない問題を検出した。
+- **根本原因**: 視覚的な密度と配色を先に整え、アクセシビリティツリー、フォーカス移動、スクロールコンテナの intrinsic sizing、報酬ラベルの意味まで同じ設計契約として固定していなかった。特に横スクロールコンテナ自身の `min-w-max` が内容幅への拡張を招き、親側でクリップされていた。
+- **対策**: `header` / `main` / `footer` を兄弟化し、スキップリンクを公開LPの実 `main` へ接続した。スクロールコンテナを `w-full min-w-0 overflow-x-auto` に変更し、複数行報酬カードはモバイルで縦リスト化した。基本報酬と追加報酬を分け、`+22 UC` と同じカードに「10,000歩達成で」と具体的な獲得閾値を明記した。コンパクトなプルーフ表示でも報酬条件を維持し、チップと数値の色を配列順ではなく競争・報酬の意味から決定する。局所横スクロールは320pxでも次カードを約40px見せ、見えている内容が装飾点にしか見えない場合は方向矢印も添える。
+- **教訓**: 公開LPの品質はスクリーンショットだけで判定しない。AXランドマーク、最初のTabからのスキップ移動、320pxリフロー、横スクロールの到達性、指標の具体的な獲得閾値までを同時に検証し、数値だけで意味が伝わらない表示を出荷しない。情報を圧縮しても獲得条件と意味色は削らず、意味色を配列indexへ結び付けない。読み上げ説明だけに頼らず、視覚利用者にも次項目の存在を示す。
+
+### LL-021: 保存済みMidnightテーマで公開LPの意味色コントラストが低下した
+
+- **事象**: Classicテーマで公開LPの配色とアクセシビリティを確認した後、保存済みMidnightテーマでは達成・競争・報酬の `strong` 色が暗い `surface` 上で約2:1台となり、文字とアイコンが読みにくいことを最終自己批判で検出した。
+- **根本原因**: 未認証の公開LPは常にデフォルトテーマで表示されると暗黙に仮定し、新設した `strong` / `soft` 意味色をMidnightテーマ側で上書きしていなかった。さらに `primary-solid` と `competition` を、淡い面上の前景色と白文字付き塗り面の両方へ流用していた。`ThemeProvider` はログイン状態に関係なく保存テーマを復元する。
+- **対策**: Midnightテーマへ達成・競争・報酬・楽しさの明色 `strong` と低濃度 `soft` を対で定義し、主色と競争色には前景用 `strong` と塗り面用 `solid` を分離した。装飾のハードコード色も報酬トークンへ置換し、公開LPの検証対象にClassicとMidnightの375px / 1280pxを追加した。
+- **教訓**: 新しいセマンティックトークンはデフォルト値だけでは完了しない。永続化される全テーマへの継承を確認し、暗色テーマでは文字色と背景色を一組で設計・実測する。1つの色トークンを前景と塗り面へ兼用しない。
+
+### LL-022: サーバー正常でも検証用ブラウザ状態がユーザーのローカル閲覧を妨げた
+
+- **事象**: ポート3000のLISTEN、HTTP 200、Chrome DevTools側のDOM描画を確認して「ローカルで見られる」と案内したが、ユーザー画面にはターミナルと計画パネルしかなく、検証タブは `Unshared browser tab` だった。サーバーを再起動しても見えず、macOSの通常ブラウザでURLを開いた後にユーザーが閲覧できた。
+- **根本原因**: MCPの自動検証ブラウザとユーザーが操作する通常ブラウザを同一視した。自動検証タブの前面化・スクリーンショットは検証環境内だけで完結し、ユーザー画面への共有を保証しない。
+- **対策**: LISTENとHTTP 200を確認した後、`open 'http://localhost:3000/'` で通常ブラウザを明示的に起動する。`osascript`で前面アプリを確認し、ユーザーの閲覧確認が得られるまで「見られる状態」と報告しない。自動検証タブの1280×800復元はブラウザ監査の後片付けとして別途維持する。
+- **教訓**: 「サーバーが動く」「自動検証タブにDOMがある」「ユーザーが実際に見られる」は3つの異なる完了条件。ローカル閲覧の提供には、通常ブラウザを開いてユーザーへ渡す操作まで含める。
+
+### LL-023: カラフル化後の公開LPで同時情報量が増え、動きとの優先順位が曖昧になった
+
+- **事象**: 公開LPの明るい方向性は承認された一方、ヒーローに説明、CTA、再開導線、3ハイライト、歩数・順位・UC・チャレンジ、信頼項目を集め、直後に4指標を並べたため「表示領域に対する情報量が多すぎる」「もっとサイトに動きが欲しい」と指摘された。
+- **根本原因**: 前回の「空白を減らしプロダクト情報を見せる」という要件を、同時表示数の増加として解釈した。色、カード、数値を増やした一方、何を先に理解させるかと、どの状態変化を動きで伝えるかを設計契約にしていなかった。
+- **対策**: ヒーローをCTAと今日の歩数・残り歩数の1つの進捗面へ集中し、順位差・UCは直後のプルーフ領域へ分離した。重複する3ハイライトと4指標を2つの副指標へ整理し、後続情報をスクロール順へ再配置した。歩数リング、進捗、順位バー、報酬、スクロール進捗へ役割別のCSSモーションを追加し、`@supports`と`prefers-reduced-motion`で安全に段階適用した。
+- **教訓**: 「余白を減らす」と「一度に多く見せる」は同義ではない。公開LPは一画面一メッセージを守り、具体的プロダクト情報は残したまま、重複を統合して表示タイミングを分ける。動きは装飾ではなく状態変化の意味へ結び付ける。
+
+### LL-024: 横方向の切り抜き用overflowがstickyヘッダーを無効化した
+
+- **事象**: 公開LPのヘッダーへ `sticky top-0` を指定していたが、375pxのスクロール区間スクリーンショットではヘッダーが上端に残らなかった。
+- **根本原因**: `body` の `overflow-x: hidden; overflow-y: auto` が内容高さを持つ非スクロール祖先を作った一方、実際のスクロール要素は `html` だった。stickyヘッダーはbodyを参照するためviewportへ追従しなかった。公開LPラッパーの横切り抜きも同じリスクを持っていた。
+- **対策**: 公開LPラッパーだけを `overflow-x-clip` とし、ヘッダーはページ内で `fixed` に切り替えて同じラッパーへヘッダー高のpaddingを確保した。App Shell全体の `html/body` overflowは変更せず、スクロール後のヘッダー座標と本文先頭の重なりを実測する。
+- **教訓**: 横はみ出し対策として `overflow-x-hidden` をsticky祖先へ機械的に付けない。同時に、1ページのsticky修正をグローバルroot scroll変更で解決しない。ページ内の切り抜き、ヘッダー位置、本文offsetを同じコンポーネントへ局所化する。
+
+### LL-025: テキストの入場opacityが途中フレームのコントラストを低下させた
+
+- **事象**: 公開LPの最終配色はAA基準を満たしていたが、Lighthouseでスクロール表示中の説明文と報酬ラベルが4.28:1、4.1:1となり、アクセシビリティスコアが96に低下した。
+- **根本原因**: テキストを含む親要素へ `opacity: 0.88`〜`0.9` の入場アニメーションを適用し、前景色が背景と合成されて中間フレームだけコントラスト不足になった。
+- **対策**: ヒーロー、スクロール表示、報酬到達のキーフレームからopacity変更を削除し、transform・SVG描画・独立した装飾レイヤーだけで動きを表現した。
+- **教訓**: コントラストは完成状態だけでなくアニメーション全フレームの契約である。読めるテキストを含む要素のopacityを1未満へ下げず、Lighthouse等は動作途中も対象にして再実行する。
+
+### LL-026: 単一カードへ副指標を統合してもモバイルの次アクションがfold下へ逃げた
+
+- **事象**: ヒーローを1つの進捗カードへ統合した後も、375pxでは順位とUCを残り歩数より先に表示したため、「あと何歩」がファーストビュー下端へ見切れた。装飾オービットとカード浮遊も歩数リング・進捗と同時に動き、行動判断より装飾が先行した。
+- **根本原因**: カード数だけを密度指標にし、カード内部の情報順序と同時モーション数を測っていなかった。「副指標を小さく残す」を、モバイルのfold内に残す必要があると誤解した。
+- **対策**: モバイルのヒーローは現在歩数→残り歩数→進捗へ並べ、順位とUCは直後のプルーフ領域へ移した。補足コピーと信頼項目は `sm` 以上へ送り、モバイルの無限オービットとカード浮遊を停止した。横スキャン領域には読み上げ用の名前と操作説明を追加した。
+- **教訓**: 一画面一メッセージはカード数ではなく、fold内で同時に判断させる内容と動きの数で検証する。375pxでは「次に何をするか」を最初に完結させ、副指標は消さずに次のスクロール区間へ送る。
+
+### LL-027: モバイルの密度削減で補助情報を内容ごと非表示にした
+
+- **事象**: 公開LPの情報密度を下げる際、信頼項目と「続ける理由」セクションを `hidden sm:block` でモバイルから除外し、320〜375pxでは視覚・アクセシビリティツリーの両方から情報が消えた。
+- **根本原因**: 「一画面に同時表示しない」を「狭幅では内容を提供しない」と取り違え、段階的提示とコンテンツ削除を区別していなかった。
+- **対策**: モバイルでは補助情報を名前付きのネイティブ `<details>` にまとめ、閉じた状態は44pxの要約、開けば3つの利点と信頼項目すべてを読める構造にした。デスクトップの常時表示は維持した。
+- **教訓**: 情報密度は削除ではなく優先順位と開示タイミングで調整する。WCAG 1.4.10の狭幅監査では、デスクトップだけに存在する情報がないかAXツリーと可視状態の両方で確認する。
+
+### LL-028: LPのsticky修正でグローバルroot scroll契約を変更しかけた
+
+- **事象**: 公開LPのstickyヘッダーを成立させるため `body` を `overflow-x: clip; overflow-y: visible` へ変更したところ、既存モーダルが使う `document.body.style.overflow = "hidden"` だけではroot scrollerの `html` を停止できないことを最終監査で検出した。
+- **根本原因**: 1ページの表示問題を、認証済み画面を含む全ルートのスクロール契約変更で解決した。LPのsticky確認は通ったが、モーダルの背景スクロールロックまで影響範囲へ含めていなかった。
+- **対策**: グローバルbody overflow変更を撤回し、公開LPのヘッダーを `fixed` + ページラッパーのヘッダー高paddingへ局所化した。指標重複と汎用入場モーションも同じ最終ゲートで除去した。
+- **教訓**: `html/body` のoverflowはApp Shell・fixed UI・モーダルロックが共有する基盤である。ページ固有のsticky問題では変更せず、変更が不可避な場合はbodyとhtmlの両方を扱う共通スクロールロックへ全利用箇所を移行してから実施する。
+
+### LL-029: 固定ヘッダー導入後のフォーカス移動と局所スクロール契約が不足した
+
+- **事象**: 公開LPの最終キーボード監査で、スキップリンク移動後に固定ヘッダーがヒーロー先頭を覆い、モバイルの横スクロール指標はブラウザ暗黙フォーカスへ依存してMidnightの既定リングが3:1未満だった。ページ内アンカー先の一部は節内全文がアクセシブル名になった。
+- **根本原因**: 通常スクロール時のヘッダー位置だけを確認し、フォーカス移動が発生させるスクロール位置、実際にスクロールする幅だけのタブ停止、フォーカス時の非テキストコントラスト、アンカー先regionの名前を同じ契約で検証していなかった。
+- **対策**: `main` へヘッダー高と一致する `scroll-margin-top` を付与した。横スクロール指標はモバイル版だけを `tabIndex={0}` + 明示リング付きにし、デスクトップ版は非フォーカスの別表示へ分離した。アンカー先sectionは見出しを `aria-labelledby` で参照する。
+- **教訓**: 固定ヘッダーの完了条件には、スキップ・アンカー移動後の対象上端がヘッダー下端以上である実測を含める。局所スクロール領域は「操作可能な幅だけフォーカス可能」「全テーマで3:1以上のフォーカス」「簡潔な名前」を同時に満たす。リファレンス: `components/LandingPage.tsx`
+
+### LL-030: 640px境界で詳細だけが展開され、LPの情報密度が急増した
+
+- **事象**: 最終自己批判で、公開LPの幅を639pxから640pxへ広げると、ページ高が約1,000px増えた。特に利点セクションはコンパクトな開示から、1カラムの詳細3件へ切り替わり大幅に縦長化した。
+- **根本原因**: 詳細表示を `sm` から開始した一方、3カラム化は `md` からだった。表示情報量の切替と、その情報を横へ分散するレイアウト切替を別のブレイクポイントにしたため、640〜767pxだけ密度が悪化した。
+- **対策**: 利点セクションの開示版と常時表示版の切替を、当初は`lg`へ揃えた。Sidebar後の実コンテンツ幅を再監査した2026-07-13以降は`xl`を正本とし、1280pxで主要2カラム構成と3カラム化を同時に表示する。プルーフ項目は狭幅で確実に局所overflowするintrinsic幅と折り返し可能なラベルを使い、不要なJS状態を追加せずフォーカス契約を維持する。
+- **教訓**: レスポンシブ変更は代表幅だけでなく、各ブレイクポイントの1px手前と境界値を比較する。説明文の可視化、カード形状、カラム数を一体で設計し、1カラムのまま情報量だけを増やさない。リファレンス: `components/LandingPage.tsx`
+
+### LL-031: 開発CSPがSafariのlocalhost CSSをHTTPSへ変換した
+
+- **事象**: `localhost:3000` はHTTP 200を返していたが、Safariではスキップリンクと巨大なSVGだけが表示され、Tailwindを含むCSSが一切適用されなかった。
+- **根本原因**: `next.config.ts` が開発環境にも `upgrade-insecure-requests` を送信していた。Safariは相対URLの `/_next/static/css/...` もHTTPSへ変換するため、HTTPだけを提供するNext.js開発サーバーへのCSS取得がTLSエラーになった。
+- **対策**: `upgrade-insecure-requests` を本番環境だけのCSPディレクティブに変更した。開発環境ではCSSをHTTPで配信し、本番のHTTPS強制は維持する。サーバー再起動後に開発CSP、CSSのHTTP 200、Safariの実表示を確認する。
+- **教訓**: セキュリティヘッダーは本番とローカル開発の通信条件を分離する。ルートHTMLの200だけでは描画成功を保証しないため、通常ブラウザのCSS適用と主要アセット取得までをローカル表示の完了条件にする。リファレンス: `next.config.ts`
+
+### LL-032: unlayeredなFooter非表示規則がホームのデスクトップFooterを覆い隠した
+
+- **事象**: 認証済み共通シェルの`.uc-auth-content :where(footer) { display: none; }`がTailwindの`hidden md:block`より優先され、ホームで意図したデスクトップFooterも常に非表示になった。
+- **根本原因**: グローバルCSSのunlayered規則がTailwind utility layerより高いカスケード優先度を持つことを、例外として追加したFooterまで含めて確認していなかった。
+- **対策**: 当初は全認証ページ向け非表示を維持し、ホームだけを768px以上でopt-in表示した。2026-07-13の法務導線監査でこの契約を失効し、現在は全認証ページで320pxからFooterを表示する。BottomNavのsafe-area予約後に法務リンクへ到達できることを実測する。
+- **教訓**: unlayeredグローバルCSSがTailwind utilityを覆う領域へ例外を追加する場合はcomputed `display`を全幅で実測する。法務Footerはモバイルで非表示にせず、BottomNavと共存させる。
+
+### LL-033: 固定ボトムナビのsafe-area分を本文余白へ加算していなかった
+
+- **事象**: モバイル共通App Shellの下余白が`pb-16`固定だった一方、固定ボトムナビは64px本体に`safe-area-inset-bottom`を加えていたため、ホームインジケータのある端末で最下部コンテンツがナビ背面へ隠れる可能性があった。
+- **根本原因**: 固定ナビ自身のsafe-area対応だけを確認し、スクロール本文が予約する高さとの対称性を検証していなかった。
+- **対策**: 認証済みApp Shellのモバイル下余白を`calc(4rem + env(safe-area-inset-bottom, 0px))`へ変更し、`sm`以上では既存どおり解除した。
+- **教訓**: 固定下部UIの高さ契約は「本体高 + safe-area」をオーバーレイ側と本文側で共有する。実機値が0のデスクトップ検証だけで完了せず、CSS計算値と最下部CTAの到達性を確認する。リファレンス: `app/[locale]/layout.tsx`, `components/layout/BottomNavBar.tsx`
+
+### LL-034: 認証後UIの品質ルールが個別に存在しても、画面全体の出荷判定へ統合されていなかった
+
+- **事象**: Footer下端、PC密度、ヘッダー内アバター/通知バッジ、ロゴの色、パネルの押下可否、mobile app safe-areaについて既存ルールは部分的に存在したが、実画面ではFooter下184pxの空白、44pxヘッダーから48pxアバターと通知バッジがはみ出す状態、モノクロmark、静的カードとlink cardの判別不足が残った。
+- **根本原因**: 「44px」「意味色」「Footerに`mt-auto`」を個別classの有無だけで確認し、親子のbounding rect、viewport内Footer位置、first viewportの情報量、hover/focus/active/chevronの組を同じ完了ゲートで測っていなかった。
+- **対策**: 認証後ホームを`min-h-dvh` + Footer wrapper `mt-auto`へ整理し、header visual 32px、badge内包、多色brand mark、interactive panel契約、PWA top/bottom safe-area、1440px home canvas + 2段action rowを実装した。通知バッジは白文字付き塗り面専用の`--color-danger-solid`へ分離し、Classic/Midnightの両方で4.5:1以上を実測する。UCFitnessAgentとself-critique-gateへ同じ実測項目を追加した。
+- **教訓**: UI品質はルール数ではなく、最終画面の幾何・意味・操作状態を同時に測るゲートで担保する。暗色テーマの明るいdanger前景色を白文字付き背景へ流用しない。リファレンス: `app/[locale]/page.tsx`, `app/globals.css`, `components/layout/UserMenu.tsx`, `components/layout/NotificationBell.tsx`
+
+### LL-035: 認証後ホームのDB取得失敗を0歩・未集計・未設定へ変換していた
+
+- **事象**: `users` / `daily_steps` / rankingの取得失敗時にエラーを確認せず、0歩・同期待ち・順位未集計・`/setup`リダイレクトとして表示し得た。低活動ユーザーには自分の失敗のように見え、既知DBブロッカーも隠れた。
+- **根本原因**: データなしと取得失敗を同じnull/空配列へ正規化し、ranking serviceも失敗時に空mapを返していた。
+- **対策**: ホームの各結果で`.error`を確認し、ranking serviceは失敗をthrowして呼び出し側へ伝播する。いずれかが失敗した場合は歩数・順位カードを描画せず、明示エラーと再試行だけを表示する。
+- **教訓**: 健康データUIでは「0」と「取得不能」は別状態。エラーを成功形の既定値へ変換せず、ユーザーを責めない明示状態として表示する。リファレンス: `app/[locale]/page.tsx`, `lib/services/ranking-service.ts`
+
+### LL-036: rootの`overflow-y:auto`がsticky headerを追従不能にした
+
+- **事象**: headerに`sticky top-0`があっても、375pxで500pxスクロール後のheader topが-500pxとなり追従しなかった。
+- **根本原因**: `body { overflow-y:auto }`がstickyのスクロール祖先になった一方、実際のscrollTopは`documentElement`へ付いており、参照するスクロール座標が分離した。
+- **対策**: `html/body`の横切り抜きを`overflow-x:clip`、縦を`overflow-y:visible`へ変更し、viewport自然スクロールへ戻した。修正後は同条件でheader top=0を確認した。
+- **教訓**: rootの横overflow対策でscroll containerを作らない。sticky確認はclassの存在ではなく、実スクロール後の`getBoundingClientRect().top`で判定する。リファレンス: `app/globals.css`
+
+### LL-037: 余白を再配置しただけで、ダッシュボードの情報量を増やしていなかった
+
+- **事象**: Footer・header・bento配置は改善したが、表示している実データの種類は変わらず、ユーザーから「スカスカで全然リッチではない」と再指摘された。
+- **根本原因**: リッチさをカード配置・幅・色・アフォーダンスの問題として扱い、時系列や蓄積値などダッシュボード固有の情報価値を追加していなかった。
+- **対策**: `daily_steps`をランキングと同じ月曜起算の今週で取得し、欠測・0歩・未来日を区別したbar visualizationを追加した。`coin_balances`からUC残高・活動ストリークも独立状態として追加し、失敗時は数値を隠して明示エラーとする。
+- **教訓**: Product dashboardのリッチさは装飾量ではなく、意思決定に使える実データの密度で作る。リファレンス: `app/[locale]/page.tsx`
+
+### LL-038: 個人トレンドだけでは競争・社会性のあるホームにならなかった
+
+- **事象**: 今週歩数とUC残高を追加しても、ユーザーからランキングの一部・フレンド活動・より凝った動的パネルが必要と指摘された。
+- **根本原因**: UCFitnessの価値を個人の進捗と報酬に限定し、競争の現在地と仲間の動きを別ページへ追い出していた。
+- **対策**: 既取得ranking mapから固定5行と自分の順位を描画し、既存following APIから仲間の今日歩数・固定目標bar・プロフィール導線を追加した。API障害・歩数未記録・実際の0歩を分離し、0件でもパネルを消さず発見CTAを表示する。低活動ユーザーの比較圧を抑えるため、次行動を詳細なランキング・仲間パネルより前に置き、仲間パネルは順位番号や他者最大値との相対barではなく活動パルスとして表現する。
+- **教訓**: Fitness gameの社会性は比較量を増やすことではない。「自分」「競争」「報酬」「次行動」を先に理解できた後で「仲間」を任意に探索できる循環にする。リファレンス: `app/[locale]/page.tsx`, `components/dashboard/DashboardFollowing.tsx`
+
+### LL-039: ホーム中心の監査を全ページ改善と誤認した
+
+- **事象**: 共通App Shellとホームを繰り返し改善した一方、ユーザーから「ホームだけでなく他ページも見直したか」「徹底的に全ページを見直して」と指摘された。個別ページには、障害を空状態へ変換する処理、未統一Dialog、低コントラスト、英語固定文言、チャート代替不足、GROUPランキング認可漏れが残っていた。
+- **根本原因**: 共通Shellが反映されたことを個別ページ品質の代理指標にし、ページ台帳と機能群別の完了判定を持っていなかった。スクリーンショット中心で、DB/API障害、0歩/欠測、非メンバー、保存中、Forced Colors等の状態を横断していなかった。
+- **対策**: 17ルートを共通Shell・競争・アカウント・商取引へ分け、静的監査、実ブラウザ、5ペルソナ、独立コードレビューを反復した。共通Dialog stack、SSR有効なskip target、共有URL allowlist、GROUP membership認可、0歩/MTD分析、装備テーマ初期値、チャート数値表を実装した。
+- **教訓**: 「全ページ」はページ数ではなく、各ルートの正常・空・エラー・権限・狭幅・キーボード状態を埋めたcoverage matrixで判定する。ホームが良くても他ページの未監査を完了扱いしない。
+
+### LL-040: 共通Shellの存在だけではページタイトルが統一されなかった
+
+- **事象**: 全ページ監査後も、認証ページごとにブランド見出し、ページ見出し、パンくず、装飾線、文字サイズが別実装のまま残り、ユーザーから不統一を再指摘された。
+- **根本原因**: ヘッダー右側の操作群だけを共通契約にし、ブランドとページ導入部を再利用コンポーネントへ集約していなかった。広域CSSで見た目を近づけたため、見出し階層も実装差も残った。
+- **対策**: `AppBrandMark`、`AuthenticatedPageHeader`、`PageIntro`へ集約し、標準認証ページを移行した。ブランドは見出しから外し、`PageIntro`をページ唯一の`h1`とした。
+- **教訓**: ページ統一はCSSの類似ではなく、同じ構造コンポーネントと見出し契約で判定する。リファレンス: `components/layout/AuthenticatedPageHeader.tsx`, `components/layout/PageIntro.tsx`
+
+### LL-041: 二段リダイレクトと全画面ローダーがプロフィールを覆い続けた
+
+- **事象**: App Shellのプロフィール導線が`/profile`から`/user/{username}`へ再リダイレクトし、独自`GlobalLoader`が遷移完了を検出できない場合に全画面オーバーレイが残り、プロフィールが何も表示されないように見えた。
+- **根本原因**: canonical URLへ直接リンクせず、pathname変化を成功条件とするグローバルローダーを全ルートへ重ねていた。
+- **対策**: BottomNav/Sidebarをcanonicalプロフィールへ直接接続し、layoutの`GlobalLoader`を撤去した。プロフィールroute固有の`loading.tsx`で形状を保つスケルトンを表示する。
+- **教訓**: リダイレクト経路をナビゲーションの通常導線にしない。ローディングUIはroute境界へ局所化し、エラーやURL不変で本文を永久に覆わない。
+
+### LL-042: Serverとブラウザの現在日差でプロフィールが水和不一致になり得た
+
+- **事象**: `ActivityGraph`が初期描画で`new Date()`を使い、Edge側UTCとブラウザ側JSTで曜日・今日判定・月ラベルが異なる時刻帯にプロフィールDOMが不一致になり得た。バッジbutton内の不正DOMも水和警告候補だった。
+- **根本原因**: 同じ健康データでも「今日」を各実行環境で再計算し、日付を描画入力として固定していなかった。
+- **対策**: Server Componentで確定したJSTの`YYYY-MM-DD`を`ActivityGraph`へ渡し、UTC固定演算で表示配列を生成した。不正なbutton入れ子も有効なoverlay button構造へ修正した。
+- **教訓**: Server/Client共通の可視日付は文字列入力へ固定し、裸の現在時刻から初期DOMを作らない。水和問題はデータ取得成功だけでは否定できない。
+
+### LL-043: Sidebar出現と多列化を同じ1024px境界に置くと本文が過圧縮された
+
+- **事象**: 1023pxから1024pxへ広げるとSidebarと3〜4列レイアウトが同時に出現し、HomeHeroが975pxから204px、Groupsカードが482pxから202pxへ縮小した。公開LPもh1が2行から4行へ悪化した。
+- **根本原因**: viewport幅だけで`lg`を判断し、Sidebarを差し引いた実コンテンツ幅を設計入力にしていなかった。情報開示・Sidebar・多列化を同じ境界へ集中させた。
+- **対策**: Sidebarは`lg`で維持し、複雑な多列化とLP詳細展開を`xl`へ遅らせた。1024pxではHome/Groups/Settingsを単列または2列、Shopを3列にし、1280pxで詳細構成へ移行した。
+- **教訓**: レスポンシブ設計はviewportではなく利用可能なcontainer幅で判断する。1023/1024と1279/1280を対で測り、広げた瞬間にカード幅・見出し行数・ページ高が悪化する境界を出荷しない。
+
+### LL-044: `sr-only`をtable本体へ付けると不可視表がページ高へ残った
+
+- **事象**: Profileの年間歩数代替表が不可視にもかかわらず約4,704pxのtable boxを持ち、Footer後に約3,000pxの空白を作った。
+- **根本原因**: semantic table本体へ`sr-only`を直接付け、table固有のintrinsic layoutが1×1px制約を超えて残るブラウザ挙動を考慮していなかった。
+- **対策**: tableをabsolute 1×1pxの`sr-only` wrapperで包み、表構造・caption・thを維持したまま文書フローから確実に除外した。
+- **教訓**: アクセシブル代替はAX treeだけでなくlayout geometryも監査する。不可視要素の`getBoundingClientRect()`とFooter後の残余高を320/1024pxで確認する。
+- **追加教訓**: 通常状態の44px検査だけでは編集ボタン・Retry・画面外カルーセルfocusを見逃す。編集・エラー状態を開き、画面外リンクはfocus時に表示領域へ移動させる。
+
+### LL-045: 実データを増やしても同じカード文法ではホームが面白くならなかった
+
+- **事象**: 週間歩数、UC残高、固定5行ランキング、仲間アクティビティを追加しても、ユーザーから「ホーム画面がシンプルすぎて面白みがない」と再指摘された。
+- **根本原因**: 実データは増えたが、白い角丸カード・薄い枠・小アイコンを同じ強さで反復し、進捗・競争・報酬・次行動の因果が分断されていた。0歩や空き順位も同じ見た目で反復し、低活動時に空虚さを強めた。
+- **対策**: `HomeHero`をQuest面へ再構成し、進捗→ライバル→歩いた価値→次の一歩を連結した。Mission→Weekly→Reward→Challengeの後を任意探索章（Utility→Friend→Ranking）として明示し、Utility Dockの重複排除、未来志向の0歩表現、未記録・記録済み0歩・参加済みで異なる固定5行コピー、状態別650ms以下のCSS反応を追加した。Sidebar後の1280pxでは4列を使わず、1536px以上だけ4列化する。Mission GETを参照専用化し、再試行中はloadingへ戻して準備POSTとの競合を防ぐ。POSTの報酬書き込み失敗は非成功応答、成功時はlive通知・見出しfocus・永続報酬表示とした。補助ストリーク障害は`null`+明示フラグへ分離し、Challenge進捗取得失敗も0%へ変換しない。
+- **教訓**: Product dashboardのDelightは装飾量ではなく、実データの変化が感情的な手応えへつながる順序と反応で作る。カードを増やす前に因果・重複・状態変化を設計し、レスポンシブ列数とコピーを実コンテナ幅・ユーザー状態で検証する。時間制限motionだけに成功情報を委ねず、状態遷移後のfocusとlive通知も同じ契約にする。リファレンス: `components/dashboard/HomeHero.tsx`, `components/dashboard/DailyMissions.tsx`, `components/dashboard/DashboardChallenges.tsx`, `app/[locale]/page.tsx`, `app/api/user/missions/route.ts`
+
+### LL-046: 同一行パネルの下端が揃わず、グラフがパネル内で小さく見えた
+
+- **事象**: Homeの4モジュールが1920pxで最大126pxの高さ差を持ち、Home週間グラフはパネル高の約39%、プロフィール活動グラフは約51〜57%しか占有していなかった。
+- **根本原因**: Home gridへ`items-start`を指定して行内stretchを無効化し、グラフ高をviewport breakpointの固定値だけで決めていた。Weeklyだけモバイルの角丸・paddingも他パネルと異なっていた。
+- **対策**: 複数列時だけ同一grid行を等高化し、Home 4モジュールの`rounded-2xl`/`p-3`を統一した。Home/ProfileグラフへBaseline 2023のcontainer queryを適用し、パネル自身の幅に応じてプロット領域を拡大した。プロフィールグラフは値ラベルの上端余白と端clamp、視覚層の`aria-hidden`、非表示スクロール領域のTab除外、Forced Colors境界も同時に修正した。
+- **教訓**: パネル統一は全画面固定高ではなく「同一行・同一役割」の幾何で判断する。等高化で増えた高さはグラフや実データへ配分し、空白スペーサーで埋めない。グラフ拡大時はplot寸法だけでなく、ラベルclip・代替表との二重読み上げ・非テキストコントラストを再監査する。リファレンス: `app/[locale]/page.tsx`, `components/ActivityGraph.tsx`, `app/globals.css`
+
+### LL-047: 複合カラムと隣接ランキングの下端差を意図的差として見逃した
+
+- **事象**: Home任意探索の左カラム（QuickActions+Following）と右の週間ランキングに26〜32pxの下端差があり、ユーザーからデザイン性不足を再指摘された。
+- **根本原因**: 左右が異なる内部構造であることを理由に`items-start`を意図的と判断し、同じ視覚行としての下端整列を完了条件に含めなかった。
+- **対策**: `xl`以上で社会gridをstretchし、左stackを右パネル高へ合わせた。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分した。長名行へ`min-w-0`/`w-full`を明示し、リンク内アバターは装飾扱いにした。8主要routeの同一行候補をgeometry走査し、実利用中Leaderboardは既存stretchを維持した。
+- **教訓**: 内部構造が異なっても、同じ視覚行に置かれた主要パネルはユーザーが同格として比較する。ユーザーが下端整列を求めた場合は、独立カラムという実装都合より外形の下端差1px以内を優先する。ただし少数データ時に1行へ余剰を集中させず、意味ある発見行で一定行数を保つ。リファレンス: `app/[locale]/page.tsx`, `components/dashboard/DashboardFollowing.tsx`
+
+### LL-048: 下端を揃えても社会パネルと詳細ランキングが平板に見えた
+
+- **事象**: Home任意探索の下端整列・固定5行・実データ追加後も、ユーザーからFollowing等が「のっぺり」、詳細ランキングは「サイズ感がおかしく面白みがない」と再指摘された。
+- **根本原因**: QuickActionsをFollowingの上へ積んだことで固定ショートカットが動的社会データより先に見え、FollowingとRankingを直接比較できなかった。Followingは全行が白面・同じ重さで、実目標や活動集計を使っていなかった。詳細ランキングはSidebar出現と外側5:7分割を`lg`で同時適用し、さらにGroup内を5:7分割して1024/1280pxで過密化した。順位差も相手名・総参加者数・トップ差を欠いた。
+- **対策**: QuickActionsを独立Dockへ移し、Followingと週間Rankingをxlで直接同一行にした。Followingは個別目標、正歩数の活動人数、合計歩数、達成人数でPulse化し、0歩を活動人数から除外する。詳細Rankingは外側多列化を`2xl`へ遅らせ、固定行外のCompetition Missionへ現在順位・正歩数参加者数・次ライバル名・必要歩数・トップ差を集約する。各scopeは`Promise.allSettled`で障害分離し、非トップの実進捗は99%以下、最低視覚幅と`aria-valuenow`を分ける。
+- **教訓**: 外形整列だけではDelightにならない。固定ショートカットより変化する実データを先に読み取れる構造にし、同じ5行でも達成・進行・未記録の意味差を面と色で示す。Sidebar後に二重多列化するコンポーネントはviewportではなく最深部の実列幅で判断し、競争UIは順位数字だけでなく「誰へ・あと何歩・何人中」を3秒で理解できる行外ミッションを持つ。リファレンス: `app/[locale]/page.tsx`, `DashboardFollowing.tsx`, `DynamicLeaderboard.tsx`, `GroupRankingPanel.tsx`
+
+### LL-049: チャレンジ作成が継続行動より先に見え、期限と高目標が復帰を圧迫した
+
+- **事象**: Challengesページで作成ボタンが一覧より先にあり、参加中・期限・残り歩数・報酬がAPI順のカードへ分散していた。低活動復帰ユーザーは高い残り総量と🔥報酬を先に見て、達成可能な次行動を判断できなかった。
+- **根本原因**: チャレンジを作成/閲覧リソースとして並べ、継続ユーザーの主ジョブ「参加中の未達成を少し進める」を優先度計算へ入れていなかった。進捗`undefined`を0へ変換し、一覧/カード/参加APIでUTC・端末ローカル・JSTが混在した。タブ変更中の旧参加操作も古いtabを再取得できた。
+- **対策**: 参加中・active・開始済み・未終了・未達成・進捗取得済みだけを優先帯候補にし、残り歩数→期限→報酬で並べる。主表示は残り総量ではなく最大500歩の次アクション、🔥は残り3日以内だけに限定する。作成ボタンは一覧後の補助導線へ移す。期限計算と一覧/参加APIをJSTへ統一し、null/undefinedは取得不能として0へ落とさない。list/progress取得はAbortController+request generation、参加/離脱後はmounted refと最新tab refで再取得する。
+- **教訓**: リテンション面では「作れるもの」より「今続けているもの」を先にする。期限・報酬は圧力ではなく補足であり、低活動時の主CTAは100〜500歩の達成可能な入口にする。状態を跨ぐ非同期操作は開始時tabのclosureではなく最新refへ戻し、期限の同一判定関数を表示・ソート・最終API認可まで共有する。リファレンス: `challenge-utils.ts`, `ChallengeList.tsx`, `ChallengeCard.tsx`, `ChallengesPageClient.tsx`
+
+### LL-050: 初回セットアップがプロフィール保存で終わり、歩き始める理由を作れていなかった
+
+- **事象**: 新規ユーザーは表示名とユーザーIDを保存すると即ホームへ移動し、歩数ソース、日次目標、最初に達成する行動を確認できなかった。
+- **根本原因**: セットアップをアカウント必須項目の補完として設計し、UCFitnessの価値ループ「歩く→競う→報われる」へ接続するActivation面として扱っていなかった。Status APIもDB障害を未設定へ見せ、目標と接続元を返していなかった。入力は42pxで、usernameのHTML `pattern`も現行ブラウザの`v`フラグでは未エスケープのハイフンにより無効だった。初回取得と再試行に世代分離がなく、Settingsの広い旧目標範囲を先に検証するとセットアップ済みユーザーも閉じ込められた。
+- **対策**: DB正本の接続元と目標を読み込み、500〜100,000歩の整数目標をプロフィールと同時保存する。保存後は即redirectせず、プロフィール・接続・目標の完了と最初の500歩Questを表示する。Status API障害は5xxとして分離し、全入力を44px化、`pattern`をUnicode Sets互換へ修正する。Status取得はAbortControllerで旧応答を破棄し、セットアップ済み判定をオンボーディング用目標検証より先に行う。
+- **教訓**: オンボーディングの完了条件は「必要情報を保存した」ではなく「次に何をすれば価値を体験できるか分かる」。初回目標は低活動でも達成可能な入口を持ち、保存成功の手応えを永続表示してからホームへ渡す。リファレンス: `app/[locale]/setup/page.tsx`, `app/api/user/setup/route.ts`, `app/api/user/status/route.ts`
+
+### LL-051: Settingsで装飾が健康目標より先に並び、歩数目標の範囲も分裂していた
+
+- **事象**: モバイルSettingsではプロフィール画像・称号・フレーム・ショップ・言語・テーマの後に日次目標があり、行動設定へ到達する前に装飾が続いた。Setupは500〜100,000歩、Settings UIは100〜1,000,000歩、APIは0〜1,000,000歩を受理していた。統計の`col-span-3`は2列モバイルgridに暗黙列を作った。
+- **根本原因**: Settingsを機能追加順で左右カラムへ積み、DOMのモバイル読み順を設計していなかった。歩数目標のClient/API制約を別々にハードコードし、未表示のSmart Goal用DB取得も残っていた。DBエラーは通知ON・アイテム未所有へ既定化されていた。Midnightの`.bg-white` global `!important`が新しい4px左アクセントも1pxへ戻した。
+- **対策**: 歩数ソースと日次目標をSettingsFormより前へ移し、`lib/step-goal.ts`で500〜100,000歩の整数契約を共有する。目標入力を16px/44px・focus付きエラー・成功statusへ修正し、未使用クエリを除去する。ユーザー/所有権データ失敗はページエラー、未適用環境があり得る通知カラム失敗は通知トグルだけの明示エラーへ分離し、統計spanを2列/3列で明示する。`.settings-goal-card`でMidnightだけ左4pxを局所復元する。
+- **教訓**: Settingsも情報アーキテクチャであり、利用頻度とサービス価値の高い健康行動を装飾より先に置く。Client制約とAPI認可は同じ純粋関数を使い、レスポンシブgridは各ブレイクポイントの列数を超えるspanを持たせない。リファレンス: `app/[locale]/settings/page.tsx`, `components/SettingsForm.tsx`, `components/StepGoalForm.tsx`, `lib/step-goal.ts`
+
+### LL-052: 未適用の通知嗜好カラムがFeed全体と未読数を停止していた
+
+- **事象**: 読み取り専用の実DB確認で`notification_reactions`がPostgreSQL 42703となり、SettingsだけでなくActivity Feed APIと未読数APIも500、通知ベルは失敗を無言で無視していた。
+- **根本原因**: 必須の`feed_last_read_at`と任意の通知嗜好カラムを同じSELECTへ結合し、嗜好取得失敗をFeed全体の障害境界に置いた。DBマイグレーションの適用状態と機能可用性を分離していなかった。
+- **対策**: 既読時刻と通知嗜好を別クエリにし、嗜好取得失敗時も既定Feed・未読数を継続して`notificationPreferencesAvailable: false`を返す。ActivityFeed/NotificationBellは警告を表示し、通知設定APIは503利用不能を返す。Settingsは通知トグルだけを隠して他設定を維持する。
+- **教訓**: 任意機能のスキーマ不足をページ/Feed全体の障害へ拡大しない。ただし既定値へ無言変換せず、APIの可用性フラグとUI警告で部分障害を正直に伝える。リファレンス: `app/api/user/feed/route.ts`, `app/api/user/feed/unread-count/route.ts`, `components/ActivityFeed.tsx`, `components/layout/NotificationBell.tsx`
+
+### LL-053: Profileが欠測・0歩・補助障害を同じ0または全面エラーへ変換していた
+
+- **事象**: 今日の記録なしと記録済み0歩を`|| 0`で同一表示し、公開グループ・おすすめ・履歴・累計のどれか1件のDBエラーでプロフィール全体をthrowしていた。比較系列の欠測も0と読み上げ、累計歩数を直近活動日数で割る平均値が表示された。
+- **根本原因**: 可視数値を常に`number`へ正規化し、必須プロフィールと補助セクションを同じPromise障害境界へ置いた。平均の期間・分母契約と、比較チャートの`hasRecord`契約が主系列だけに存在した。
+- **対策**: `lib/profile-steps.ts`で日/週/月/平均を`number | null`として純粋集計し、記録済み0歩を記録日分母へ含める。必須ユーザー以外を個別結果へ分離し、セクション別エラーを表示する。ActivityGraph比較系列も`Map.has`で0/欠測を分け、PersonalRecordsを項目単位nullableにする。
+- **教訓**: 健康データでは0は有効な測定値であり、欠測や取得失敗のfallbackではない。ページの可用性は最小必須データで決め、補助機能の失敗を他の実データへ伝播させない。リファレンス: `app/[locale]/user/[username]/page.tsx`, `lib/profile-steps.ts`, `components/ActivityGraph.tsx`
+
+### LL-054: Walletの「今日の入金」が購入支出で負になり得た
+
+- **事象**: Walletは当日の全取引amountを合算して「今日の入金」と表示したため、ショップ購入後に入金が負数になった。日次チャートも購入を含む値を「日次獲得」と呼び、履歴の増減・残高説明は表より後まで分からなかった。
+- **根本原因**: 獲得・支出・純増減を1つのsigned amountで表現し、直近60件の履歴sliceを日次正本として再利用した。次に得られる歩数UCもWalletに接続していなかった。
+- **対策**: `lib/wallet-summary.ts`で正額獲得・負額支出・純増減を純粋集計し、JST当日の全取引を専用取得する。現在歩数/目標から次100歩または目標到達の基本UCを計算し、ストリーク等は同期時加算と明記する。残高本体・今日内訳・次報酬を独立表示し、履歴説明を前置、10件ずつ段階開示、残高欠落時はgrid全幅化、`items-start`、チャートを日次純増減へ改称する。
+- **教訓**: 金融的なUIでは符号付き合計を「入金」「獲得」と呼ばない。獲得と消費を別々に見せ、ユーザーが残高変化の理由と次に得られる価値を同時に理解できるようにする。リファレンス: `app/[locale]/wallet/page.tsx`, `lib/wallet-summary.ts`, `components/CoinBalanceCard.tsx`
+
+### LL-055: Groupsが0歩を順位化し、補助データ障害で詳細全体を停止していた
+
+- **事象**: Groups一覧のバッチ順位がグローバル順位にいないユーザーを0歩で再注入し、グループ対抗順位にも合計0歩のグループが残った。Group detailはメンバー件数、順位、比較、期間別競争、メンバー一覧のどれかが失敗するとページ全体を停止し、人数取得失敗を0人として表示し得た。
+- **根本原因**: 「グループ所属」と「ランキング参加」を同じ集合として扱い、必須のgroup/membership認可と補助分析データを同じ障害境界へ置いた。Supabase relationの配列/オブジェクト差も型アサーションで隠していた。
+- **対策**: ユーザー順位とグループ対抗順位を正歩数だけに限定し、除外後に順位を再付与する。人数ラベルをランキング参加人数へ変更し、未所属空状態から参加CTAを接続する。Group detailは補助取得を個別に捕捉し、メンバーrelationを型ガードで正規化、ページと管理Dialogに取得不能を表示して他機能を継続する。
+- **教訓**: 0歩は所属の証拠でもランキング参加の証拠でもない。認可に必要なデータだけをページ必須境界とし、補助データの失敗を0・空・未所属へ変換せず、利用可能なグループ機能を維持する。リファレンス: `app/[locale]/groups/[groupId]/page.tsx`, `lib/services/ranking-service.ts`, `lib/services/group-ranking-service.ts`
+
+### LL-056: 非公開グループで非表示の対抗順位を取得し、不要な障害警告を出した
+
+- **事象**: private groupでも全期間のグループ対抗順位を取得し、取得失敗時は画面に表示しない機能の障害警告を出していた。
+- **根本原因**: 描画条件の`isPublic`だけを確認し、データ取得と可用性判定を同じ公開範囲へ揃えていなかった。
+- **対策**: グループ対抗順位の取得・障害判定はpublic groupだけで実行する。private groupは空の正常スキップ状態とし、競争障害を表示しない。
+- **教訓**: 非表示機能の取得失敗をユーザー向け障害へ昇格させない。認可・公開範囲・取得・描画の条件を一貫させる。リファレンス: `app/[locale]/groups/[groupId]/page.tsx`
+
+### LL-057: `vmForks`のモック漏洩がCIの実行順でだけ顕在化した
+
+- **事象**: ローカル検証では296件がPASSしていたが、PRのGitHub ActionsではSupabaseをファイル単位でモックする4テストファイルが相互干渉し、11件失敗した。単一workerで再現すると、別ファイルの`vi.mock()`とモジュールキャッシュが残り、`.in()`欠落や誤った認可結果が発生した。
+- **根本原因**: `vitest.config.ts`で高速化目的の`vmForks` poolを使い、ファイルローカルのモジュールモックがworker再利用時も確実に分離されると仮定した。通常の並列ローカル実行だけを証拠にし、CI相当の少数worker・異なるファイル順を検証していなかった。
+- **対策**: Vitestを標準の`forks` pool + `isolate: true`へ変更した。モックを多用するテスト群は、通常の全テストに加えて`--maxWorkers=1`でも実行し、テスト期待値を緩めずにファイル分離を確認する。
+- **教訓**: テストpoolの高速化は、モジュールモックの独立性より優先しない。CIでのみ失敗した場合は、実装や期待値を変更する前にworker数・pool・isolate・実行順を再現し、モック漏洩を切り分ける。リファレンス: `vitest.config.ts`, `lib/__tests__/ranking-service*.test.ts`, `lib/__tests__/*group-security.test.ts`

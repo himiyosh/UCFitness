@@ -1,39 +1,58 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
+
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
+import { isValidStepGoal } from '@/lib/step-goal';
 import { supabaseAdmin } from "@/lib/supabase";
 
-export async function POST(request: Request) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
     const session = await auth();
 
-    if (!session || !session.user || !session.user.email) {
+    if (!session?.user?.id || !session.user.email) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 🛡️ セキュリティ: IDベースのユーザー特定（メール衝突によるIDOR防止）
-    const userId = (session.user as any).id as string | undefined;
+    const userId = session.user.id;
 
     try {
-        const body = await request.json();
-        const { username, email, name } = body;
+        const body: unknown = await request.json();
+        if (!isRecord(body)) {
+            return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+        }
+        const { username, email, name, step_goal: stepGoal } = body;
+        const trimmedUsername = typeof username === 'string' ? username.trim() : '';
+        const trimmedName = typeof name === 'string' ? name.trim() : '';
+        const trimmedEmail = typeof email === 'string' ? email.trim() : '';
 
         // Validation
-        if (!username || username.length < 3) {
+        if (trimmedUsername.length < 3) {
             return NextResponse.json({ error: "Username must be at least 3 characters" }, { status: 400 });
         }
 
-        const usernameRegex = /^[a-zA-Z0-9_]+$/;
-        if (!usernameRegex.test(username)) {
-            return NextResponse.json({ error: "Username can only contain letters, numbers, and underscores" }, { status: 400 });
+        const usernameRegex = /^[a-zA-Z0-9_.-]+$/;
+        if (!usernameRegex.test(trimmedUsername)) {
+            return NextResponse.json({ error: "Username can only contain letters, numbers, underscores, hyphens, and dots" }, { status: 400 });
         }
 
-        if (username.length > 30) {
+        if (trimmedUsername.length > 30) {
             return NextResponse.json({ error: "Username must be 30 characters or less" }, { status: 400 });
+        }
+        if (!trimmedName || trimmedName.length > 50) {
+            return NextResponse.json({ error: "Display name is required and must be 50 characters or less" }, { status: 400 });
+        }
+        if (!isValidStepGoal(stepGoal)) {
+            return NextResponse.json({ error: "Invalid step goal" }, { status: 400 });
         }
 
         // 🛡️ Sentinel: Reject reserved usernames
         const RESERVED_USERNAMES = ['admin', 'system', 'support', 'help', 'api', 'root', 'null', 'undefined', 'moderator', 'mod', 'official', 'ucfitness', 'undoucoin'];
-        if (RESERVED_USERNAMES.includes(username.toLowerCase())) {
+        if (RESERVED_USERNAMES.includes(trimmedUsername.toLowerCase())) {
             return NextResponse.json({ error: "This username is reserved" }, { status: 400 });
         }
 
@@ -41,26 +60,33 @@ export async function POST(request: Request) {
         // If the user already has a valid email, they might not send it, or send same.
         // But logic says we ask for email if it's pending.
 
-        const updates: { username: string; name: string; updated_at: string; email?: string } = {
-            username: username,
-            name: name,
+        const updates: { username: string; name: string; step_goal: number; updated_at: string; email?: string } = {
+            username: trimmedUsername,
+            name: trimmedName,
+            step_goal: stepGoal,
             updated_at: new Date().toISOString()
         };
 
-        if (email) {
+        const isPendingSetup = session.user.email.endsWith('@pending.setup');
+        if (isPendingSetup && !trimmedEmail) {
+            return NextResponse.json({ error: "Email is required to complete setup" }, { status: 400 });
+        }
+        if (trimmedEmail) {
+            if (trimmedEmail.toLowerCase().endsWith('@pending.setup')) {
+                return NextResponse.json({ error: "Enter a permanent email address" }, { status: 400 });
+            }
             // 🛡️ Sentinel: Security Check
             // Only allow email updates if the current email is a temporary setup email.
             // This prevents account takeover attempts via email change on already set up accounts.
-            const isPendingSetup = session.user.email.endsWith('@pending.setup');
-            if (!isPendingSetup && email !== session.user.email) {
+            if (!isPendingSetup && trimmedEmail !== session.user.email) {
                 return NextResponse.json({ error: "Email change not allowed for fully registered users" }, { status: 403 });
             }
 
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
+            if (!emailRegex.test(trimmedEmail)) {
                 return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
             }
-            updates.email = email;
+            updates.email = trimmedEmail;
         }
 
         // 🚀 パフォーマンス: メール・ユーザー名の一意性チェックを並列実行
@@ -71,15 +97,15 @@ export async function POST(request: Request) {
                 ? supabaseAdmin
                     .from('users')
                     .select('id')
-                    .eq('email', updates.email!)
-                    .neq(userId ? 'id' : 'email', userId || session.user.email)
+                    .eq('email', updates.email ?? '')
+                    .neq('id', userId)
                     .single()
                 : Promise.resolve({ data: null }),
             supabaseAdmin
                 .from('users')
                 .select('id')
-                .eq('username', username)
-                .neq(userId ? 'id' : 'email', userId || session.user.email) // Ignore self
+                .eq('username', trimmedUsername)
+                .neq('id', userId)
                 .single(),
         ]);
 
@@ -103,7 +129,7 @@ export async function POST(request: Request) {
         const { error: updateError } = await supabaseAdmin
             .from('users')
             .update(updates)
-            .eq(userId ? 'id' : 'email', userId || session.user.email);
+            .eq('id', userId);
 
         if (updateError) {
             reportError("user-setup", updateError);
@@ -117,5 +143,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
-
-export const runtime = 'edge';

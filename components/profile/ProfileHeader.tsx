@@ -100,7 +100,7 @@ export default function ProfileHeader({ user, badges = [], readonly = false, fra
                                 {titleName}
                             </p>
                         )}
-                        <h1 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h1>
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h2>
                         <p className="text-xs sm:text-sm text-gray-500">@{user.username || 'user'}</p>
 
                         {/* カード内追加コンテンツ（シェアボタン等） */}

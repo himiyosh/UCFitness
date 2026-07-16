@@ -111,7 +111,7 @@ export default function PushNotificationManager() {
                 <button
                     onClick={subscribeToPush}
                     disabled={loading}
-                    className="w-full min-h-[44px] px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-primary-solid)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
                 >
                     {loading ? (
                         <>

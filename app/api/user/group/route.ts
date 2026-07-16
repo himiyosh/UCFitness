@@ -6,6 +6,19 @@ import { reportError } from "@/lib/errors";
 // UUID形式バリデーション（IDOR攻撃防止）
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** `group_members.select('groups(keyword)')` の埋め込み結果。関係性の解決状況により配列・単一オブジェクトいずれの形でも返りうる */
+type MembershipKeywordRow = {
+    groups: { keyword: string } | { keyword: string }[] | null;
+};
+
+/** レガシー `users.group_keyword` 配列同期用に、メンバーシップ行から group keyword を取り出す */
+function extractGroupKeyword(groups: MembershipKeywordRow['groups']): string | undefined {
+    if (Array.isArray(groups)) {
+        return groups[0]?.keyword;
+    }
+    return groups?.keyword;
+}
+
 export async function POST(request: Request) {
   const session = await auth();
 
@@ -30,6 +43,7 @@ export async function POST(request: Request) {
 
     const target = keyword ? keyword.trim() : '';
     if (action !== 'reorder' && !target) return NextResponse.json({ error: "Invalid keyword" }, { status: 400 });
+    let affectedGroupId: string | null = null;
 
     // 1. Handle New Schema (groups, group_members)
     if (action === 'add') {
@@ -88,6 +102,7 @@ export async function POST(request: Request) {
         reportError('user/group:add', addError, { groupId, userId });
         return NextResponse.json({ error: 'Failed to join group' }, { status: 500 });
       }
+      affectedGroupId = groupId;
 
     } else if (action === 'remove') {
       // Find group
@@ -154,20 +169,25 @@ export async function POST(request: Request) {
       }
 
       // Remove Member
-      await supabaseAdmin
+      const { error: removeError } = await supabaseAdmin
         .from('group_members')
         .delete()
         .eq('group_id', group.id)
         .eq('user_id', targetUserId);
 
+      if (removeError) {
+        reportError('user/group:kick', removeError, { groupId: group.id, targetUserId });
+        return NextResponse.json({ error: "Failed to remove member" }, { status: 500 });
+      }
+
       // Sync Legacy Array for Target User
       const { data: memberships } = await supabaseAdmin
         .from('group_members')
         .select('groups(keyword)')
-        .eq('user_id', targetUserId);
+        .eq('user_id', targetUserId)
+        .returns<MembershipKeywordRow[]>();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+      const newKeywords = memberships?.map((m) => extractGroupKeyword(m.groups)).filter(Boolean) || [];
 
       await supabaseAdmin
         .from('users')
@@ -438,10 +458,10 @@ export async function POST(request: Request) {
       const { data: memberships } = await supabaseAdmin
         .from('group_members')
         .select('groups(keyword)')
-        .eq('user_id', targetUserId);
+        .eq('user_id', targetUserId)
+        .returns<MembershipKeywordRow[]>();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+      const newKeywords = memberships?.map((m) => extractGroupKeyword(m.groups)).filter(Boolean) || [];
 
       await supabaseAdmin
         .from('users')
@@ -462,13 +482,10 @@ export async function POST(request: Request) {
       const { data: memberships } = await supabaseAdmin
         .from('group_members')
         .select('groups(keyword)')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .returns<MembershipKeywordRow[]>();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentKeywords = memberships?.map((m: any) => {
-        const groupData = Array.isArray(m.groups) ? m.groups[0] : m.groups;
-        return groupData?.keyword;
-      }).filter(Boolean) || [];
+      const currentKeywords = memberships?.map((m) => extractGroupKeyword(m.groups)).filter(Boolean) || [];
 
       // Ensure new list has same items (length and content)
       if (groupKeywords.length !== currentKeywords.length) {
@@ -542,10 +559,10 @@ export async function POST(request: Request) {
         const { data: memberships } = await supabaseAdmin
           .from('group_members')
           .select('groups(keyword)')
-          .eq('user_id', memberId);
+          .eq('user_id', memberId)
+          .returns<MembershipKeywordRow[]>();
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+        const newKeywords = memberships?.map((m) => extractGroupKeyword(m.groups)).filter(Boolean) || [];
 
         await supabaseAdmin
           .from('users')
@@ -579,17 +596,17 @@ export async function POST(request: Request) {
     const { data: memberships } = await supabaseAdmin
       .from('group_members')
       .select('groups(keyword)')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .returns<MembershipKeywordRow[]>();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newKeywords = memberships?.map((m: any) => m.groups?.keyword).filter(Boolean) || [];
+    const newKeywords = memberships?.map((m) => extractGroupKeyword(m.groups)).filter(Boolean) || [];
 
     await supabaseAdmin
       .from('users')
       .update({ group_keyword: newKeywords })
       .eq('id', userId);
 
-    return NextResponse.json({ success: true, keywords: newKeywords });
+    return NextResponse.json({ success: true, keywords: newKeywords, groupId: affectedGroupId });
 
   } catch (error: unknown) {
     reportError('user/group', error, { userId: session.user.id });

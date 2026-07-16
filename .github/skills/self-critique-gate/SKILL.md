@@ -71,8 +71,28 @@ description: "Use when: finishing any UCFitness task, applying fixes, changing U
 | 翻訳変更 | `npm run check:i18n` |
 | UI 変更 | 375px / 1280px の実ブラウザ確認、必要に応じて 1920px |
 | 100% 表示の密度変更 | 375px / 1280px / 1920px で `body.scrollHeight`、ヒーロー高さ、横スクロール、ファーストビュー内の情報量を測定 |
-| App Shell / ナビ / スクロール変更 | root scroll、横スクロール、ヘッダー幅、主要ページ表示を確認 |
+| App Shell / ナビ / スクロール変更 | root scroll、横スクロール、ヘッダー幅、Footer下端、header/avatar/badgeのbounding rect、主要ページ表示を確認。白文字付き通知badgeは塗り面専用danger tokenを使い、Classic/Midnightとも4.5:1以上 |
+| mobile app / PWA変更 | `viewport-fit=cover`、top/bottom safe-area、44px、hover非依存、standalone相当の最初/最後の操作到達性 |
+| 狭幅・ブレイクポイント変更 | 320/375/639/640/767/768/1023/1024/1279/1280でcontainer/card幅、h1行数、`body.scrollHeight`を比較。Sidebar出現後に多列化で狭くなっていないこと |
+| 操作領域変更 | 各幅で全可視`button, a[href], input, select, summary`を列挙し、編集・エラー・空・disabled状態を含め幅・高さ44px未満が0件であること。画面外カルーセルリンクはfocus時に表示範囲へ移動する |
+| a11y代替表変更 | `sr-only` wrapperがabsolute 1×1pxで、不可視tableが文書高やFooter後の残余高へ寄与しないこと |
+| Home delight変更 | Questの進捗→競争→歩いた価値→次行動が3秒で理解でき、Mission→Weekly→Reward→Challengeの後を任意探索（Utility→Friend→Ranking）として判別できること。QuickActionsは独立補助Dockで、Following/週間Rankingより優先するstackへ戻っていないこと。Followingと週間Rankingはxlで直接同一行・下端差1px以内、実ユーザー＋発見行5行、個別目標progress、正歩数の活動人数/合計/達成人数、次ライバル名/必要歩数を持つこと。0歩を活動人数へ含めない。詳細Rankingは固定5行・72px・padding・reactionを維持したまま、外側多列化が2xl、1024/1280は単列で、Competition Missionへ現在順位・正歩数参加者数・次ライバル名・必要歩数・トップ差・期間を集約する。非トップの実進捗は99%以下で最低視覚幅とaria値を分離し、scope障害をallSettled等で分離する。1280pxで4列過圧縮がなく、複合カラムは少数データ時の1行を巨大化せず末尾空白帯8px以内、長名・長数値・focus ringがパネル内に収まること。Home/Profileグラフがパネル幅に応じて十分な高さを持ち、値/端ラベルclip、代替表との二重読み上げ、`aria-hidden`内Tab停止、Forced Colors境界を再監査する。固定行コピーは未記録・記録済み0歩・参加済みに一致し、非loading motionは650ms以下、reduced motionは0秒。Mission GET再試行中に準備POSTを露出せず、報酬失敗は非成功、成功はfocus/live/永続表示、補助ストリーク障害を0、Challenge進捗失敗を0%へ変換しないこと |
+| Challenge優先度変更 | 参加中・active・開始済み・未終了・未達成・進捗取得済みだけが優先帯候補で、残り歩数→期限→報酬の順になっていること。主表示は残り総量でなく最大500歩、🔥報酬は残り3日以内だけ、作成CTAは一覧後の補助導線であること。進捗null/undefined/非数値を0へ変換せず、一覧・カード・参加APIの期限をJSTで統一する。タブ連打と参加/離脱完了のraceをAbortController、request generation、mounted ref、最新tab refで隔離し、開始前/終了/達成/無効チャレンジを優先表示しないこと。未達progressは99%以下、progressbar名/値、44px、320px、低減motionを確認する |
+| Setup / Onboarding変更 | DB正本のproviderとstep_goalを読み、障害を未設定や5,000歩へ偽装しないこと。Status 404は再ログイン、5xxは再試行へ分けること。目標は500〜100,000の整数でClient/API双方が検証し、プロフィールと同一更新で保存すること。セットアップ済み判定は目標範囲検証より先、Status初回取得/再試行はAbortControllerまたは世代IDで旧応答を破棄し、再試行中はdisabledにすること。保存成功はsession更新後にプロフィール・接続・目標の完了面と最初の500歩CTAを永続表示し、即時redirectで消さないこと。320/375pxで入力・CTAが44px以上、HTML patternが`v`フラグで有効かつconsoleエラー0、全入力の主色focus ringがtransitionで透明化されず即時表示、青=目標/Quest・緑=接続/完了・アンバー=実報酬、ja/en、keyboard、エラーfocusを確認し、OAuth再認可や接続切替を発生させないこと |
+| Settings変更 | DOM順が歩数ソース→日次目標→プロフィール→言語/テーマ/統計/通知で、健康行動が装飾より先か確認する。目標は共有関数で500〜100,000整数をClient/API両方が検証し、モバイル入力16px、全操作44px、エラーfocus、保存中disabled、成功statusを持つこと。日次目標は装備テーマでなく意味色`--color-primary*`（青=目標）か確認し、`.settings-goal-card`左辺がClassic/Midnight/Pop/Sakuraで4px・他辺1pxかcomputed style実測する。user/テーマ所有/所持品DB障害を未設定・未所有へ偽装せず、任意通知カラム失敗は通知トグルだけを非表示にして明示エラー、他設定は利用可能か確認する。未表示データを取得せず、320/375pxの2列統計に素の`col-span-3`がなく、3件目`col-span-2 sm:col-span-1`、全幅行`col-span-2 sm:col-span-3`で横overflow 0か確認する |
+| Profile変更 | 日/週/月が`number|null`で、記録済み0・未記録・取得失敗を別表示すること。平均は同期間の記録日数を分母にし0歩を含め、活動日は正歩数だけを数えること。必須ユーザー以外の歩数履歴/累計/比較/公開グループ/装備/バッジ/コイン/ランキング/おすすめ障害が他セクションを消さないこと。比較取得失敗と記録0件を別コピーで示し、ActivityGraph主/比較の`Map.has`とsr-only表が0/欠測を分離、目標nullで目標線なし、PersonalRecords項目nullable、可視文字12px以上、320px比較gridを確認する |
+| Wallet変更 | 今日の獲得=正額、支出=負額絶対値、純増減=獲得−支出をJST当日全取引で別表示し、購入で「入金」が負にならないこと。次報酬は今日歩数/有効目標から最大100歩または目標到達までの基本UCと目標ボーナスを計算し、ストリーク等は同期時加算と明記、未記録/目標なし/障害を分けること。残高本体/今日内訳/次報酬/履歴/推移が独立し、残高欠落時も内訳/報酬を表示、履歴gridは`lg:col-span-2`、rank/history gridは`items-start`かつ子rootに`h-full`なしを確認する。履歴説明が表前、内部縦スクロールなし、初期10件+44px段階開示、12px muted contrast、日次純増減chartとsr-only wrapper表、320px符号・長文を確認する |
+| Groups変更 | グループ内ユーザー順位とグループ対抗順位が正歩数だけを対象にし、除外後に連続順位を付けること。ランキング配列長を総メンバー数と呼ばず、実メンバー件数の取得失敗を0人へ変換しないこと。group/user/membership認可だけが必須境界で、private group非メンバー404を維持すること。グループ対抗順位の取得・障害表示をpublic groupだけに限定し、private groupで非表示機能の警告を出さないこと。メンバー一覧/件数、順位、比較、各期間競争の失敗を個別警告にし、管理Dialogでも空一覧へ偽装せず、イベント/チャット/ギア/週間レポートを継続すること。未所属空状態とメンバーのプロフィールリンクは幅・高さ44px以上、relationは配列/オブジェクト型ガード、固定5行/72px/Portal契約は不変であること |
+| 健康データ / ranking表示 | 0件・0歩・未集計とDB/API取得失敗が別状態で、失敗を成功形の既定値へ変換していないこと |
+| Web Push / 通知ベル変更 | ユーザーの`language`で生成したtitle/body/locale/tagをRFC 8291 payloadの復号テストで確認し、header込み4096 bytes以内（JSON 3993成功・3994拒否）を境界検証する。payloadなしtickle、英語固定fallback、カテゴリ別バッジ送信を残さない。同一UA/legacy購読は最新1件、異なるUAは維持、404/410は削除し、並行再購読が相互削除できない一方向winnerを確認する。全ユーザー送信は固定バッチ、Push `Topic`とNotification `tag`は同種で揃え`renotify:false`にする。通知Feedは専用イベント時刻のない歩数/ストリーク派生通知を除外し、7日snapshot内の全sourceを最大10,000件までページ取得、超過は5xx、timestamp+IDで安定順序化して集約後にopaque offset cursorで分割する。ClientはAPI cursorを保持し、未読も同じ範囲・集約関数・実数を使う。任意通知嗜好カラムは`feed_last_read_at`と別取得し、未適用時もFeed/未読を継続、`notificationPreferencesAvailable:false`とActivityFeed/NotificationBell警告を確認する。通知ベルはja/enバッジ名、未読件数を含むaccessible name/live status、focusout/Escape/閉じる、可視既読ラベル+失敗表示、GET/POST世代隔離、56px名前付き行リンクを確認する |
 | 主要導線 / ナビ / ホーム / ランキング / ショップ変更 | UCFitnessAgent の Persona Journey Review を使い、最低 2 ペルソナで Playwright 回遊監査 |
+| 全ページ監査 | `app/[locale]/**/page.tsx`のルート台帳を作り、共通Shell / 競争 / アカウント / 商取引の各群で正常・空・障害・権限・320px・キーボード状態を確認。ホームだけのPASSで代替しない |
+| 認証ページタイトル | 標準ページが`AuthenticatedPageHeader` + `PageIntro`を共有し、ブランド名がheadingではなく、ページ名だけが唯一の`h1`か確認。パンくず・説明・意味色アクセント・左右基準を375/1280pxで比較する |
+| redirect / loading | 通常ナビがcanonical URLへ直接遷移し、全画面グローバルoverlayを使わずroute `loading.tsx`が完了・error・URL不変時に本文を覆い続けないことを確認する |
+| 日付水和 | Server確定の`YYYY-MM-DD`をClientへ渡し、UTC固定演算で同一初期DOMを生成しているか確認。consoleのhydration警告と不正HTMLネストを0件にする |
+| Dialog / Portal変更 | `useDialogFocus`によるTab循環、Escape、背景inert、scroll lock、焦点復帰、多重Dialog、保存中の退出可否と二重送信防止を確認 |
+| チャート変更 | 視覚要約だけでなく、表示期間・系列・値へ到達できる`caption` / `th`付き表または同等リストがあり、画像生成専用DOMが`aria-hidden`であること |
+| Server/Client共通入力 | URL allowlist等が共有モジュールにあり、サーバー側でも再検証され、UI判定と最終処理が一致すること |
 | カスタマイズファイル変更 | YAML frontmatter、description の発見性、README 同期 |
 
 既存 warning がある場合は、今回の変更で新規発生していないかを区別する。
@@ -83,11 +103,11 @@ UI に触れた場合、`self-critique.agent.md` の 6 軸で必ず批判する�
 
 | 軸 | 見ること |
 |---|---|
-| デザイン一貫性 | 他ページと同じアプリに見えるか、ナビ幅・カード・色・CTA が揃っているか |
-| 余白・密度 | 間延び、巨大な空白、100% 表示で大きすぎるフォント/カード、無意味な `flex-1` / `min-h-*` がないか |
-| レスポンシブ | 375px で見切れ・横スクロール・潰れがないか |
-| テキスト・翻訳 | ja/en キー、長文、aria-label、数値・日付が破綻しないか |
-| インタラクション | ローディング、disabled、エラー、空状態、フォーカスが適切か |
+| デザイン一貫性 | 他ページと同じアプリに見えるか、app logoが多色brand mark + solid wordmarkか、標準認証ページのheader / PageIntro / 唯一のh1 / 意味色・CTAが揃い、ホームだけはQuest storyでゲームらしい手応えを持つか |
+| 余白・密度 | 間延び、巨大な空白、Footer中央浮き、進捗/競争/報酬/次行動に加え、時系列・蓄積・固定5行のranking preview・friend activityの実データがあり装飾だけで埋めていないか。詳細な社会比較は次行動より後で、friend activityが他者最大値基準の重複ランキングになっていないか |
+| レスポンシブ | 320/375pxで見切れ・横スクロール・潰れがなく、1024pxのSidebar差引後もカードが過圧縮されず、header visual/badgeがheader rect内に収まるか |
+| テキスト・翻訳 | ja/en キー、長文、数値・日付が破綻しないか。行リンクの`aria-label`が可視の名前・順位・歩数を上書きしていないか。曜日・歩数単位・Dialog名・操作名に英語固定が残っていないか |
+| インタラクション | ローディング、disabled、エラー、空状態、フォーカスに加え、link panelがchevron/動詞とhover/focus/activeを持ち静的panelと区別できるか。API失敗・未記録・実際の0が別状態か。Dialogが保存中に永久トラップを作らず、同じ書き込みを再送しないか |
 | コード品質 | Hooks 順序、Server/Client 境界、型安全、未使用 import、デバッグコード |
 
 ### 4.5. ペルソナ回遊監査

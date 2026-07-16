@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+
 import { useToast } from '@/components/ui/Toast';
 import Spinner from '@/components/ui/Spinner';
+import { isOfficialAmazonUrl } from '@/lib/amazon-url';
 
 // ============================================
 // Amazon アフィリエイトリンク生成ツール
@@ -56,7 +58,7 @@ function detectInputType(input: string): { type: AffiliateLinkType; label: strin
     }
     try {
         const url = new URL(input);
-        if (url.hostname.includes('amazon')) {
+        if (isOfficialAmazonUrl(url)) {
             return { type: 'tagged-url', label: 'Amazon URL', icon: '🔗' };
         }
     } catch { /* not a URL */ }
@@ -94,8 +96,14 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const [isSavingRecommended, setIsSavingRecommended] = useState(false);
     const [savedAsins, setSavedAsins] = useState<Set<string>>(new Set());
     const [commentDraft, setCommentDraft] = useState('');
+    const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
     const inputRef = useRef<HTMLInputElement>(null);
+    const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    }, []);
 
     // --- 入力タイプのリアルタイム検知 ---
     const inputInfo = useMemo(() => detectInputType(input), [input]);
@@ -166,6 +174,20 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const selectedCandidate = useMemo(() => candidates.length > 0 ? candidates[candidateIndex] : null, [candidates, candidateIndex]);
     // 候補がある場合は選択中の候補のリンクを優先表示
     const displayLink = useMemo(() => selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || '', [selectedCandidate, latestResult?.affiliateLink]);
+    const copyDisplayLink = useCallback(async () => {
+        if (!displayLink) return;
+        try {
+            await navigator.clipboard.writeText(displayLink);
+            setCopiedLink(displayLink);
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+            copyTimerRef.current = setTimeout(() => {
+                setCopiedLink(null);
+                copyTimerRef.current = null;
+            }, 2000);
+        } catch {
+            toastError(t('copyError'));
+        }
+    }, [displayLink, t, toastError]);
 
     // --- 候補ナビゲーション ---
     const goNextCandidate = useCallback(() => {
@@ -248,7 +270,8 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                 <button
                     onClick={handleGenerate}
                     disabled={isGenerating || !input.trim()}
-                    className="px-5 py-3 bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] text-white font-bold rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-w-[60px] flex items-center justify-center"
+                    aria-label={t('generateButton')}
+                    className="flex min-h-[44px] min-w-[60px] items-center justify-center whitespace-nowrap rounded-xl bg-[var(--color-primary-solid)] px-5 py-3 font-bold text-white shadow-sm transition-colors hover:bg-[var(--color-primary-strong)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {isGenerating ? <Spinner /> : (
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -261,6 +284,17 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
             {/* ========== 生成結果 ========== */}
             {latestResult && (
                 <div className="space-y-4">
+                    {displayLink && (
+                        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                            <label htmlFor="generated-affiliate-link" className="text-xs font-semibold text-[var(--color-text-muted)]">{t('generatedLink')}</label>
+                            <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                                <input id="generated-affiliate-link" value={displayLink} readOnly className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-sm text-[var(--color-text)]" />
+                                <button type="button" onClick={copyDisplayLink} className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-4 text-sm font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)]">
+                                    {copiedLink === displayLink ? t('copied') : t('copyLink')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {/* 商品プレビュー（ASIN直接指定の場合） */}
                     {latestResult.type !== 'search' && latestResult.imageUrl && (
                         <a
@@ -293,7 +327,8 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 <button
                                     onClick={goPrevCandidate}
                                     disabled={candidateIndex === 0}
-                                    className="flex-shrink-0 w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-300 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-20"
+                                    aria-label={t('previousProduct')}
                                     title={locale === 'ja' ? '前の商品' : 'Previous'}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -331,7 +366,8 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 <button
                                     onClick={goNextCandidate}
                                     disabled={candidateIndex >= candidates.length - 1}
-                                    className="flex-shrink-0 w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-300 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-20"
+                                    aria-label={t('nextProduct')}
                                     title={locale === 'ja' ? '次の商品' : 'Next'}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -346,13 +382,11 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                     <button
                                         key={i}
                                         onClick={() => setCandidateIndex(i)}
-                                        className={`h-1.5 rounded-full transition-all ${
-                                            i === candidateIndex
-                                                ? 'w-4 bg-[var(--theme-primary)]'
-                                                : 'w-1.5 bg-gray-200 hover:bg-gray-300'
-                                        }`}
-                                        aria-label={`Product ${i + 1}`}
-                                    />
+                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full"
+                                        aria-label={t('productNumber', { number: i + 1 })}
+                                    >
+                                        <span className={`h-1.5 rounded-full transition-[width,background-color] ${i === candidateIndex ? 'w-4 bg-[var(--color-primary-solid)]' : 'w-1.5 bg-gray-300'}`} />
+                                    </button>
                                 ))}
                             </div>
                         </div>
@@ -510,5 +544,3 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
         </div>
     );
 }
-
-

@@ -22,12 +22,24 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 | `--color-text-muted` | 補助テキスト | `#5B6472` |
 | `--color-border` | 境界線 | `#DDE3EA` |
 | `--color-primary` | 主 CTA・選択状態 | `#2563EB` |
+| `--color-primary-strong` | 主色の淡い面上に置く文字・アイコン | `#1D4ED8` |
 | `--color-primary-soft` | 主 CTA の淡い背景 | `#DBEAFE` |
 | `--color-primary-solid` | 白文字を載せるプライマリ塗り面 | `#1D4ED8` |
 | `--color-success` | 達成・同期成功 | `#16A34A` |
+| `--color-success-strong` | 達成面上の文字・アイコン | `#166534` |
+| `--color-success-soft` | 達成・同期成功の淡い面 | `#DCFCE7` |
 | `--color-warning` | 注意・期限間近 | `#D97706` |
 | `--color-danger` | エラー・破壊的操作 | `#DC2626` |
 | `--color-reward` | UC・報酬・バッジ | `#B7791F` |
+| `--color-reward-strong` | 報酬面上の文字・アイコン | `#92400E` |
+| `--color-reward-soft` | UC・報酬の淡い面 | `#FEF3C7` |
+| `--color-reward-solid` | 白文字を載せる報酬塗り面 | `#92400E` |
+| `--color-competition` | 順位・対戦・グループ競争 | `#7C3AED` |
+| `--color-competition-strong` | 競争面上の文字・アイコン | `#5B21B6` |
+| `--color-competition-soft` | 競争・順位の淡い面 | `#EDE9FE` |
+| `--color-competition-solid` | 白文字を載せる競争色の塗り面 | `#6D28D9` |
+| `--color-play` | 公開 LP の楽しさ・最終導線 | `#E11D48` |
+| `--color-play-soft` | 楽しさ・最終導線の淡い面 | `#FFE4E6` |
 | `--color-inverse-surface` | 濃色ヒーロー・黒系CTA・プロダクトモック背景 | `#0F172A` |
 | `--color-inverse-text` | 濃色面の文字 | `#FFFFFF` |
 
@@ -35,11 +47,19 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 
 - 通常画面は `--color-bg` と `--color-surface` を基本にし、装飾目的の全面グラデーションを避ける。
 - `--color-primary` はアクセント文字、選択状態、重要な進捗だけに使う。
+- 淡い主色面の文字には `--color-primary-strong`、白文字を載せる塗り面には `--color-primary-solid` を使い分ける。
 - 白文字を載せる塗り CTA には `--color-primary` ではなく `--color-primary-solid` を使う。
 - 報酬表現は `--color-reward` に限定し、健康データより前面に出しすぎない。
+- 白文字付きの報酬ボタン・アイコンには `--color-reward-solid` を使用し、境界用の `--color-reward` を背景へ流用しない。
+- 競争表現は `--color-competition`、達成表現は `--color-success` に分け、色だけでなくラベルやアイコンも併用する。
+- 競争色を白文字付きの塗り面に使う場合は `--color-competition-solid` を使用し、文字・境界用の `--color-competition` と兼用しない。
+- 公開 LP は Full Palette の例外とし、青=目標、緑=達成、紫=競争、アンバー=報酬を同一画面で使える。ただし各色の意味を混在させない。
+- 保存済みテーマは公開 LP にも適用されるため、暗色テーマでは `strong` / `soft` の組を同時に上書きし、各 `strong` 色を対応する `soft` 面と基本 `surface` 面の両方で検証する。
+- 公開 LP でもグラデーション文字、暗色全面ヒーロー、青紫ぼかし中心の SaaS 表現は使わない。
 - 濃色面や黒系 CTA には `--color-text` を背景として使わず、必ず `--color-inverse-surface` と `--color-inverse-text` を使う。
 - 半透明テキストや低コントラストの淡色文字は避ける。
 - 旧 `--accent-*` は Pop テーマや限定演出用とし、通常 UI では新規使用しない。
+- 初回セットアップは青の目標・最初のQuest面と、緑の接続・完了面を順に使う。アンバーは実際のUC報酬を示す場合だけ使い、全面グラデーションで段階差を曖昧にせず、色だけでなくラベルとアイコンを併用する。
 
 ### テーマカラー (CSS カスタムプロパティ)
 
@@ -62,7 +82,7 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 
 | テーマ名 | `data-theme` | Primary | 種別 |
 |----------|-------------|---------|------|
-| Classic | (なし) | `#4F46E5` | ライト・無料 |
+| Classic | (なし) | `#2563EB` | ライト・無料 |
 | Pop & Fun | `pop` | `#FF6B6B` | ライト・無料 |
 | Midnight | `midnight` | `#6366f1` | ダーク・有料 |
 | Sakura | `sakura` | `#EC4899` | ライト・有料 |
@@ -117,6 +137,15 @@ Material Design 3 (M3) と Apple HIG のハイブリッド設計言語に基づ�
 | `--motion-standard` | `--motion-standard-duration: 300ms` | `cubic-bezier(0.2, 0, 0, 1)` | カード、ボタン等 |
 | `--motion-deemphasized` | `--motion-deemphasized-duration: 200ms` | `cubic-bezier(0.3, 0, 0.8, 0.15)` | 微細なフィードバック |
 | `--spring` | — | `cubic-bezier(0.22, 1, 0.36, 1)` | Apple 風スプリング |
+
+### 公開LPのモーション契約
+
+- 初回表示はヒーロー本文とプロダクトプレビューの短い導入に限定し、コンテンツを `opacity: 0` のまま待機させない。
+- 歩数リングと進捗バーは前進、順位グラフは成長、報酬は一度だけの到達として動きを割り当てる。
+- 読めるテキストを含む要素はアニメーション中も `opacity: 1` を維持し、変形・SVG描画・独立した装飾レイヤーで動きを表現する。
+- Scroll-driven Animations は `@supports (animation-timeline: ...)` 内だけで使用し、未対応ブラウザでは完成状態をそのまま表示する。
+- `prefers-reduced-motion: reduce` ではスクロール進捗を非表示にし、変形・反復・描画アニメーションを停止する。
+- 複数の `animation` shorthand を同一要素へ重ねず、導入と常時の微細な動きは親子要素へ分離する。
 
 ---
 
@@ -192,6 +221,49 @@ body {
 | `text-xl` (20px) | `sm:text-2xl` (24px) | セクション見出し |
 | `text-2xl` (24px) | `sm:text-3xl` (30px) | ページタイトル |
 
+### 認証ページ導入部
+
+- 標準認証ページは`AuthenticatedPageHeader` + `PageIntro`を使用する。
+- ヘッダーのブランドは多色`AppBrandMark` + solid wordmarkとし、見出し階層へ含めない。
+- `PageIntro`がパンくず、ページ唯一の`h1`、説明、意味色アイコン、単色アクセントを持つ。
+- ページタイトルへグラデーション文字や広域CSSによるサイズ上書きを適用しない。
+- 基準幅は`max-w-7xl`、左右余白は`px-4 sm:px-6 lg:px-8`、導入部の縦余白は`py-4 sm:py-6`とする。
+
+### 狭幅・Sidebar境界
+
+- 320〜767px: 1列、BottomNav、全幅Footer、全操作44×44px以上。
+- 768〜1023px: 1〜2列。カード幅を優先し、詳細な3列化を行わない。
+- 1024〜1279px: Sidebarは表示するが、本文の実効幅は約768px。Home/Groups/Settingsは単列または2列、Shopは3列を上限とする。
+- 1280px以上: main+asideと2〜3列を許可する。Sidebar後のHome 4モジュールは2列を維持し、4列化は1536px以上に限定する。
+- 通常ページはdocumentの自然スクロールを使用し、`max-height` + `overflow-y-auto`で本文を固定しない。
+- `sr-only` tableはwrapperをabsolute 1×1pxにし、Footer後の残余高を作らない。
+
+### Home Quest / Delight
+
+- Quest面: `--color-primary-*`で今日の進捗を主役化し、同じ面内で競争=`--color-competition-*`、歩いた価値=`--color-reward-*`、達成=`--color-success-*`へ接続する。
+- 緊急期限は`--color-danger-strong`を使用し、competition soft面でも通常文字4.5:1以上を維持する。
+- 通知バッジ等の白文字付き危険色面は`--color-danger-solid`を使用する。Midnightの前景用`--color-danger`を塗り面へ流用しない。
+- 情報順: 進捗 → ライバル → 歩いた価値 → 次の一歩。後続はMission → Weekly → Reward → Challenge → Utility → Ranking。
+- Utility Dockは全認証幅で独立した補助行として表示し、BottomNav・Sidebar・Reward panelと重ならないAnalytics / Link Builder / Group Create / Settingsだけを表示する。Challenge後は「仲間と競争を動かす」探索章へ切り替え、Friend Pulseと週間RankingをUtilityより動的な実データ面として直接並べる。
+- 低活動時は`0`を反復せず、「ここから」「次の100歩」「まず500歩」等の未来志向を使用する。
+- Motionはscale/translate/進捗描画のみ、120〜650ms、状態変化1回。`prefers-reduced-motion`ではanimation/transitionともcomputed `0s`にする。
+- 同一カード文法を繰り返さず、Quest・Mission・Weekly・Reward・Challengeで面・区切り・アイコンの役割を変える。
+- 0歩コピーは未記録・記録済み0歩・ランキング参加済みを分離する。ミッションの短い祝福motionは補助とし、状態通知と獲得報酬を時間制限なしでも確認できるようにする。
+
+### パネル寸法とグラフ占有率
+
+- 同一dashboard grid行のパネルは、複数列へ切り替わる`md`以上で下端を揃える。モバイル単列は自然高さを維持する。
+- 等高化は親gridの`items-stretch`と子パネルの`block-size: 100%`で行い、`items-start`と`h-full`を競合させない。
+- Home 4モジュールの角丸は`rounded-2xl`、paddingは`p-3`へ統一する。
+- グラフはviewportではなくパネルのcontent-box幅を基準にする。Baseline 2024内のcontainer queryを使い、Home週間グラフは320px以上のcontent-boxで144px、それ未満で128px、プロフィール活動グラフは288〜384pxを基準とする。
+- 等高化で生じた高さはグラフや実データへ配分し、空白帯を`mt-auto`や固定スペーサーで作らない。
+- QuickActionsは独立Dockとし、Followingと週間ランキングを`xl`以上で直接同一行・下端差1px以内にする。friend activityは実ユーザー＋発見行を常に5行にし、余剰高を`auto-rows-fr`で均等配分する。`xl`では行間12px・各行上限72pxとし、1〜2人時に実ユーザー行だけを拡大せず、パネル末尾へ連続した空白帯も残さない。Friend Pulseの要約は個別目標を使い、正歩数の活動人数・合計歩数・目標達成人数を表示し、0歩を活動扱いしない。
+- 詳細Rankingは固定5行・`min-h-[4.5rem]`・padding・22pxリアクション領域を維持し、行外のCompetition Missionへ現在順位、正歩数参加者数、次ライバル名、必要歩数、トップ差、期間を集約する。外側のGlobal/Group多列化は`2xl`まで遅らせ、1024/1280pxは単列とする。非トップの実進捗は99%以下で、6%の最低視覚幅と`aria-valuenow`を分離する。loading/error/unrankedでは確定progressbarを表示しない。
+- Challenge一覧は参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。焦点帯の主文は最大500歩の次アクション、期限/報酬は補助pill、🔥は残り3日以内だけにする。作成CTAは一覧後へ置き、カードの期限・一覧filter・参加APIはJST日付契約を共有する。null/undefined進捗を0へ変換せず、未達barは99%以下、motionは一度だけの`cardEnter`とwidth transitionに限定する。
+- Groupsの未所属空状態はcompetition solid面の44px CTAで参加パネルへ接続する。グループ内ユーザー/グループ対抗順位は正歩数だけを対象にし、ランキング配列長は「ランキング参加人数」と表示する。補助取得失敗はwarning境界+可読テキストで示し、0人・空順位・未所属の通常面へ偽装しない。部分障害でも利用可能なイベント、チャット、ギア、週間レポートのパネルは自然高で維持する。
+- プロフィール活動グラフは上端24pxを値ラベル用に予約し、先頭・末尾ラベルをプロット端へclampする。数値代替表がある場合、視覚軸・棒・曜日ラベルは`aria-hidden`にする。
+- Forced ColorsではHome/Profileの棒を`Highlight`、境界を`CanvasText`、比較棒を`GrayText`で描画し、色面が無効化されても形状を残す。
+
 ---
 
 ## アクセシビリティトークン
@@ -226,8 +298,8 @@ Forced Colors モードでは `backdrop-filter`, `box-shadow`, グラデーシ�
   アクション
 </button>
 
-// グラデーションテキスト
-<h1 className="bg-gradient-to-r from-[var(--theme-gradient-from)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+// 意味色を使った見出し
+<h1 className="text-[var(--color-primary-strong)]">
   タイトル
 </h1>
 
@@ -240,7 +312,10 @@ Forced Colors モードでは `backdrop-filter`, `box-shadow`, グラデーシ�
 ### テーマの変更
 
 テーマは `ThemeProvider` (`components/ThemeProvider.tsx`) で管理。
-`localStorage` に保存され、`document.documentElement` の `data-theme` 属性で切替。
+明示的な端末内選択は `localStorage` に保存され、`document.documentElement` の `data-theme` 属性で切替。
+保存値がない端末では、DBの装備テーマを初期フォールバックとして使う。フォールバック自体は
+`localStorage` へ固定せず、別端末で装備を変更した際に古い値が優先され続けないようにする。
+item codeとアプリテーマの変換は `lib/theme.ts` を単一の正本とする。
 
 ```tsx
 import { useTheme } from '@/components/ThemeProvider';

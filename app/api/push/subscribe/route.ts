@@ -1,77 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
+import {
+    findSupersededSubscriptionIds,
+    isAllowedPushEndpoint,
+    isValidPushKey,
+} from '@/lib/api/web-push';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'edge';
 
-const PUSH_ENDPOINT_HOSTS = [
-    'fcm.googleapis.com',
-    'updates.push.services.mozilla.com',
-    'web.push.apple.com',
-    'notify.windows.com',
-];
-
-const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
-
-function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
-    if (typeof endpoint !== 'string' || endpoint.length > 2048) return false;
-
-    try {
-        const url = new URL(endpoint);
-        if (url.protocol !== 'https:') return false;
-        return PUSH_ENDPOINT_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
-    } catch {
-        return false;
-    }
+interface PushSubscriptionRequest {
+    endpoint: string;
+    keys: {
+        p256dh: string;
+        auth: string;
+    };
 }
 
-function isValidPushKey(value: unknown, maxLength: number): value is string {
-    return typeof value === 'string'
-        && value.length > 0
-        && value.length <= maxLength
-        && BASE64URL_PATTERN.test(value);
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
 }
 
-export async function POST(request: NextRequest) {
+function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionRequest {
+    if (!isRecord(value) || !isRecord(value.keys)) return false;
+    return isAllowedPushEndpoint(value.endpoint)
+        && isValidPushKey(value.keys.p256dh, 256)
+        && isValidPushKey(value.keys.auth, 128);
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
     const session = await auth();
-    const user = session?.user;
 
-    if (!user || !(user as any).id) {
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-        const subscription = await request.json();
-
-        // 🛡️ セキュリティ: サブスクリプションオブジェクトとキーの検証
-        if (!subscription || !subscription.endpoint || !subscription.keys
-            || !subscription.keys.p256dh || !subscription.keys.auth) {
+        const subscription: unknown = await request.json();
+        if (!isPushSubscriptionRequest(subscription)) {
             return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
         }
 
-        if (!isAllowedPushEndpoint(subscription.endpoint)
-            || !isValidPushKey(subscription.keys.p256dh, 256)
-            || !isValidPushKey(subscription.keys.auth, 128)) {
-            return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
-        }
-
-        const { error } = await supabaseAdmin
+        const userId = session.user.id;
+        const userAgent = request.headers.get('user-agent');
+        const { data: currentSubscription, error: upsertError } = await supabaseAdmin
             .from('push_subscriptions')
             .upsert({
-                user_id: (user as any).id,
+                user_id: userId,
                 endpoint: subscription.endpoint,
                 p256dh: subscription.keys.p256dh,
                 auth: subscription.keys.auth,
-                user_agent: request.headers.get('user-agent'),
-            }, { onConflict: 'user_id, endpoint' });
+                user_agent: userAgent,
+                created_at: new Date().toISOString(),
+            }, { onConflict: 'user_id, endpoint' })
+            .select('id, endpoint, p256dh, auth, user_agent, created_at')
+            .single();
 
-        if (error) {
-            reportError('push/subscribe:save', error);
+        if (upsertError || !currentSubscription) {
+            reportError('push/subscribe:save', upsertError, { userId });
             return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });
         }
 
-        return NextResponse.json({ success: true });
+        const { data: existingSubscriptions, error: listError } = await supabaseAdmin
+            .from('push_subscriptions')
+            .select('id, endpoint, p256dh, auth, user_agent, created_at')
+            .eq('user_id', userId);
+        if (listError) {
+            reportError('push/subscribe:listExisting', listError, { userId });
+            return NextResponse.json({ success: true, pruned: 0 });
+        }
+
+        const staleIds = findSupersededSubscriptionIds(
+            existingSubscriptions ?? [],
+            currentSubscription,
+            userAgent,
+        );
+        if (staleIds.length > 0) {
+            const { error: pruneError } = await supabaseAdmin
+                .from('push_subscriptions')
+                .delete()
+                .eq('user_id', userId)
+                .in('id', staleIds);
+            if (pruneError) {
+                reportError('push/subscribe:pruneSuperseded', pruneError, {
+                    userId,
+                    count: staleIds.length,
+                });
+                return NextResponse.json({ success: true, pruned: 0 });
+            }
+        }
+
+        return NextResponse.json({ success: true, pruned: staleIds.length });
     } catch (err: unknown) {
         reportError('push/subscribe', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -79,16 +100,16 @@ export async function POST(request: NextRequest) {
 }
 
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const session = await auth();
-    const user = session?.user;
 
-    if (!user || !(user as any).id) {
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-        const { endpoint } = await request.json();
+        const body: unknown = await request.json();
+        const endpoint = isRecord(body) ? body.endpoint : undefined;
 
         if (!isAllowedPushEndpoint(endpoint)) {
             return NextResponse.json({ error: 'Endpoint required' }, { status: 400 });
@@ -97,10 +118,10 @@ export async function DELETE(request: NextRequest) {
         const { error } = await supabaseAdmin
             .from('push_subscriptions')
             .delete()
-            .match({ user_id: (user as any).id, endpoint });
+            .match({ user_id: session.user.id, endpoint });
 
         if (error) {
-            reportError('push/subscribe:delete', error);
+            reportError('push/subscribe:delete', error, { userId: session.user.id });
             return NextResponse.json({ error: 'Failed to delete subscription' }, { status: 500 });
         }
 

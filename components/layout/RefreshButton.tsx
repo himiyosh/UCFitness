@@ -1,11 +1,22 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
+
+import { useTranslations } from 'next-intl';
+
 import { useToast } from '@/components/ui/Toast';
 
-export default function RefreshButton() {
+interface StepSyncResponse {
+    code?: unknown;
+    success?: unknown;
+}
+
+function isStepSyncResponse(value: unknown): value is StepSyncResponse {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export default function RefreshButton(): React.ReactNode {
     const [loading, setLoading] = useState(false);
     const t = useTranslations('Dashboard');
     const router = useRouter();
@@ -16,15 +27,34 @@ export default function RefreshButton() {
         setLoading(true);
         try {
             const res = await fetch('/api/steps/sync', { method: 'POST' });
-            if (!res.ok) {
-                toast.error(t('refreshFailed') ?? 'Failed to refresh steps');
-            } else {
+            const payload: unknown = await res.json();
+            if (
+                res.ok
+                && isStepSyncResponse(payload)
+                && payload.success === true
+                && payload.code === 'updated'
+            ) {
                 toast.success(t('refreshSteps') + ' ✓');
+            } else if (isStepSyncResponse(payload)) {
+                switch (payload.code) {
+                    case 'no_data':
+                        toast.toast(t('refreshNoData'), 'info');
+                        break;
+                    case 'reauthorization_required':
+                        toast.error(t('refreshReauthorizationRequired'));
+                        break;
+                    case 'sync_in_progress':
+                        toast.toast(t('refreshInProgress'), 'info');
+                        break;
+                    default:
+                        toast.error(t('refreshFailed'));
+                }
+            } else {
+                toast.error(t('refreshFailed'));
             }
             router.refresh();
-        } catch (error: unknown) {
-            void error;
-            toast.error(t('refreshFailed') ?? 'Failed to refresh steps');
+        } catch {
+            toast.error(t('refreshFailed'));
         } finally {
             setLoading(false);
         }
@@ -36,7 +66,7 @@ export default function RefreshButton() {
             disabled={loading}
             aria-label={loading ? t('refreshing') : t('refreshSteps')}
             title={loading ? t('refreshing') : t('refreshSteps')}
-            className="refresh-sync-btn cursor-pointer inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] disabled:opacity-50 transition-all active:scale-90"
+            className="refresh-sync-btn inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full text-[var(--color-primary-strong)] transition-colors hover:bg-[var(--color-primary-soft)] active:bg-[var(--color-primary-soft)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

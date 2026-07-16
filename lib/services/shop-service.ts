@@ -73,7 +73,7 @@ export async function getShopItems(category?: ShopCategory): Promise<ShopItem[]>
     const { data, error } = await query;
     if (error) {
         reportError('getShopItems', error);
-        return [];
+        throw error;
     }
     return data as ShopItem[];
 }
@@ -89,8 +89,9 @@ export async function getShopItem(itemId: string): Promise<ShopItem | null> {
         .single();
 
     if (error) {
+        if (error.code === 'PGRST116') return null;
         reportError('getShopItem', error, { itemId });
-        return null;
+        throw error;
     }
     return data as ShopItem;
 }
@@ -110,7 +111,7 @@ export async function getUserItems(userId: string): Promise<UserItem[]> {
 
     if (error) {
         reportError('getUserItems', error, { userId });
-        return [];
+        throw error;
     }
     return data as UserItem[];
 }
@@ -143,7 +144,7 @@ export async function getEquippedItems(userId: string): Promise<EquippedItems> {
 
     if (error) {
         reportError('getEquippedItems', error, { userId });
-        return { ICON_FRAME: null, TITLE: null, THEME_COLOR: null, CONSUMABLE: null };
+        throw error;
     }
 
     const equipped: EquippedItems = { ICON_FRAME: null, TITLE: null, THEME_COLOR: null, CONSUMABLE: null };

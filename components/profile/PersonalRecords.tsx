@@ -4,15 +4,16 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
 interface PersonalRecordsProps {
-  totalSteps: number;
-  bestDaySteps: number;
-  bestDayDate: string;
-  bestStreak: number;
-  currentStreak: number;
-  activeDays: number;
-  totalDays: number;
-  investorRank: string;
-  totalEarned: number;
+  totalSteps: number | null;
+  bestDaySteps: number | null;
+  bestDayDate: string | null;
+  bestStreak: number | null;
+  currentStreak: number | null;
+  averageSteps: number | null;
+  activeDays: number | null;
+  recordedDays: number | null;
+  investorRank: string | null;
+  totalEarned: number | null;
 }
 
 interface RecordItem {
@@ -29,70 +30,86 @@ export default function PersonalRecords({
   bestDayDate,
   bestStreak,
   currentStreak,
+  averageSteps,
   activeDays,
-  totalDays,
+  recordedDays,
   investorRank,
   totalEarned,
 }: PersonalRecordsProps) {
   const t = useTranslations('RecordBoard');
 
   const records = useMemo((): RecordItem[] => {
-    const avg = activeDays > 0 ? Math.round(totalSteps / activeDays) : 0;
-    const consistency = totalDays > 0 ? Math.round((activeDays / totalDays) * 100) : 0;
+    const consistency = (
+      activeDays !== null
+      && recordedDays !== null
+      && recordedDays > 0
+    )
+      ? Math.round((activeDays / recordedDays) * 100)
+      : null;
+    const formatNumber = (value: number | null): string => (
+      value === null ? t('unavailable') : value.toLocaleString()
+    );
+    const formatDays = (value: number | null): string => (
+      value === null ? t('unavailable') : `${value} ${t('days')}`
+    );
     return [
       {
         emoji: '👟',
         labelKey: 'totalSteps',
-        value: totalSteps.toLocaleString(),
-        highlight: totalSteps >= 1_000_000,
+        value: formatNumber(totalSteps),
+        highlight: totalSteps !== null && totalSteps >= 1_000_000,
       },
       {
         emoji: '🏆',
         labelKey: 'bestDay',
-        value: bestDaySteps.toLocaleString(),
-        subValue: bestDayDate !== '-' ? bestDayDate : undefined,
+        value: formatNumber(bestDaySteps),
+        subValue: bestDayDate ?? undefined,
       },
       {
         emoji: '🔥',
         labelKey: 'bestStreak',
-        value: `${bestStreak} ${t('days')}`,
-        highlight: bestStreak >= 30,
+        value: formatDays(bestStreak),
+        highlight: bestStreak !== null && bestStreak >= 30,
       },
       {
         emoji: '⚡',
         labelKey: 'currentStreak',
-        value: `${currentStreak} ${t('days')}`,
-        highlight: currentStreak >= 7,
+        value: formatDays(currentStreak),
+        highlight: currentStreak !== null && currentStreak >= 7,
       },
       {
         emoji: '📊',
         labelKey: 'averageSteps',
-        value: avg.toLocaleString(),
+        value: formatNumber(averageSteps),
       },
       {
         emoji: '📅',
         labelKey: 'activeDays',
-        value: `${activeDays}`,
-        subValue: `${consistency}%`,
+        value: formatNumber(activeDays),
+        subValue: consistency === null ? undefined : `${consistency}%`,
       },
       {
         emoji: '💰',
         labelKey: 'totalEarned',
-        value: `${totalEarned.toLocaleString()} UC`,
+        value: totalEarned === null
+          ? t('unavailable')
+          : `${totalEarned.toLocaleString()} UC`,
       },
       {
-        emoji: rankIcon(investorRank),
+        emoji: investorRank === null ? '📊' : rankIcon(investorRank),
         labelKey: 'investorRank',
-        value: t(investorRank as 'TYCOON' | 'DIAMOND' | 'FUND_MANAGER' | 'BUSINESS' | 'BEGINNER'),
+        value: investorRank === null
+          ? t('unavailable')
+          : t(investorRank as 'TYCOON' | 'DIAMOND' | 'FUND_MANAGER' | 'BUSINESS' | 'BEGINNER'),
       },
     ];
-  }, [totalSteps, bestDaySteps, bestDayDate, bestStreak, currentStreak, activeDays, totalDays, investorRank, totalEarned, t]);
+  }, [totalSteps, bestDaySteps, bestDayDate, bestStreak, currentStreak, averageSteps, activeDays, recordedDays, investorRank, totalEarned, t]);
 
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/40 shadow-lg p-4 sm:p-5">
       <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
         <span>🏅</span>
-        <span className="bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)] bg-clip-text text-transparent">
+        <span className="text-[var(--color-reward-strong)]">
           {t('title')}
         </span>
       </h3>
@@ -113,7 +130,7 @@ export default function PersonalRecords({
               {rec.value}
             </div>
             {rec.subValue && (
-              <div className="text-[10px] text-gray-400 mt-0.5">{rec.subValue}</div>
+              <div className="mt-0.5 text-xs text-gray-400">{rec.subValue}</div>
             )}
           </div>
         ))}

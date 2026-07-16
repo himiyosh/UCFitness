@@ -1,16 +1,18 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
+
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendWebPushNotification } from '@/lib/api/web-push';
+import { sendWebPushNotifications } from '@/lib/api/web-push';
 import { reportError } from '@/lib/errors';
-import { getJSTDateString, getJSTHour } from '@/lib/date-utils';
+import { getJSTDateString } from '@/lib/date-utils';
 import {
     normalizePushLocale,
     stepReminderTitle,
     stepReminderBody,
 } from '@/lib/services/push-messages';
 
+import type { StoredPushSubscriptionData } from '@/lib/api/web-push';
 import type { PushLocale } from '@/lib/services/push-messages';
 
 export const dynamic = 'force-dynamic';
@@ -37,12 +39,11 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     try {
         const today = getJSTDateString();
-        const currentHour = getJSTHour();
 
         // プッシュ通知を購読しているユーザー一覧を取得
         const { data: subscriptionRows, error: subError } = await supabaseAdmin
             .from('push_subscriptions')
-            .select('user_id, endpoint, p256dh, auth');
+            .select('id, user_id, endpoint, p256dh, auth, user_agent, created_at');
 
         if (subError) {
             throw new Error(`サブスクリプション取得失敗: ${subError.message}`);
@@ -58,10 +59,17 @@ export async function GET(request: Request): Promise<NextResponse> {
         }
 
         // ユーザーごとにサブスクリプションをグループ化
-        const userSubscriptions = new Map<string, typeof subscriptionRows>();
+        const userSubscriptions = new Map<string, StoredPushSubscriptionData[]>();
         for (const row of subscriptionRows) {
             const existing = userSubscriptions.get(row.user_id) || [];
-            existing.push(row);
+            existing.push({
+                id: row.id,
+                endpoint: row.endpoint,
+                p256dh: row.p256dh,
+                auth: row.auth,
+                user_agent: row.user_agent,
+                created_at: row.created_at,
+            });
             userSubscriptions.set(row.user_id, existing);
         }
 
@@ -70,18 +78,17 @@ export async function GET(request: Request): Promise<NextResponse> {
         // ユーザーの step_goal と言語設定を取得
         const { data: usersData, error: usersError } = await supabaseAdmin
             .from('users')
-            .select('id, step_goal, name, language')
+            .select('id, step_goal, language')
             .in('id', userIds);
 
         if (usersError) {
             throw new Error(`ユーザー情報取得失敗: ${usersError.message}`);
         }
 
-        const userGoalMap = new Map<string, { stepGoal: number; name: string | null; locale: PushLocale }>();
+        const userGoalMap = new Map<string, { stepGoal: number; locale: PushLocale }>();
         for (const u of usersData || []) {
             userGoalMap.set(u.id, {
                 stepGoal: u.step_goal || 10000,
-                name: u.name,
                 locale: normalizePushLocale(u.language),
             });
         }
@@ -124,6 +131,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         let totalSent = 0;
         let totalFailed = 0;
+        let totalDeduplicated = 0;
 
         // バッチ処理: リマインダー通知を送信
         for (let i = 0; i < underGoalUserIds.length; i += BATCH_SIZE) {
@@ -141,35 +149,23 @@ export async function GET(request: Request): Promise<NextResponse> {
 
                     const body = stepReminderBody(locale, currentSteps, goal, progressPercent, remaining);
 
-                    // 全デバイスに通知を送信
-                    const sendResults = await Promise.allSettled(
-                        subs.map((sub) =>
-                            sendWebPushNotification(
-                                {
-                                    endpoint: sub.endpoint,
-                                    keys: { p256dh: sub.p256dh, auth: sub.auth },
-                                },
-                                {
-                                    title: stepReminderTitle(locale),
-                                    body,
-                                    url: '/',
-                                }
-                            )
-                        )
-                    );
+                    const delivery = await sendWebPushNotifications(userId, subs, {
+                        title: stepReminderTitle(locale),
+                        body,
+                        url: '/',
+                        locale,
+                        tag: 'step-reminder',
+                    });
 
-                    const successCount = sendResults.filter(
-                        (r) => r.status === 'fulfilled' && r.value.success
-                    ).length;
-
-                    return { userId, successCount, totalDevices: subs.length };
+                    return { userId, delivery };
                 })
             );
 
             for (const result of results) {
                 if (result.status === 'fulfilled') {
-                    totalSent += result.value.successCount;
-                    totalFailed += result.value.totalDevices - result.value.successCount;
+                    totalSent += result.value.delivery.sent;
+                    totalFailed += result.value.delivery.failed;
+                    totalDeduplicated += result.value.delivery.skippedDuplicates;
                 } else {
                     totalFailed++;
                     reportError('cron/step-reminder:batch', result.reason);
@@ -184,6 +180,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             underGoal: underGoalUserIds.length,
             sent: totalSent,
             failed: totalFailed,
+            deduplicated: totalDeduplicated,
             timestamp: new Date().toISOString(),
         });
     } catch (error: unknown) {

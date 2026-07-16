@@ -3,6 +3,7 @@ import { reportError } from '@/lib/errors';
 
 // This file contains READ-ONLY badge functions that are safe for Edge Runtime.
 
+/** DB障害時はthrowするため、呼び出し側でセクション単位の失敗境界を設ける。 */
 export const getUserBadges = async (userId: string) => {
     if (!userId) return [];
 
@@ -24,7 +25,7 @@ export const getUserBadges = async (userId: string) => {
 
     if (error) {
         reportError('getUserBadges', error, { userId });
-        return [];
+        throw error;
     }
 
     return data;

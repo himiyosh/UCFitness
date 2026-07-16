@@ -5,11 +5,11 @@ import { useTranslations } from 'next-intl';
 
 // coin-service.ts の INVESTOR_RANKS と同期（降順: 最高ランクが先）
 const RANKS = [
-    { minBalance: 5_000_000, rank: 'TYCOON', icon: '👑', color: 'from-yellow-400 to-amber-500', border: 'border-amber-400', bg: 'bg-amber-50', text: 'text-amber-700', glow: 'shadow-amber-200' },
-    { minBalance: 1_000_000, rank: 'DIAMOND', icon: '💎', color: 'from-cyan-400 to-blue-500', border: 'border-blue-400', bg: 'bg-blue-50', text: 'text-blue-700', glow: 'shadow-blue-200' },
-    { minBalance: 500_000, rank: 'FUND_MANAGER', icon: '📊', color: 'from-violet-400 to-purple-500', border: 'border-purple-400', bg: 'bg-purple-50', text: 'text-purple-700', glow: 'shadow-purple-200' },
-    { minBalance: 100_000, rank: 'BUSINESS', icon: '💼', color: 'from-emerald-400 to-green-500', border: 'border-green-400', bg: 'bg-green-50', text: 'text-green-700', glow: 'shadow-green-200' },
-    { minBalance: 0, rank: 'BEGINNER', icon: '🌱', color: 'from-gray-300 to-gray-400', border: 'border-gray-300', bg: 'bg-gray-50', text: 'text-gray-600', glow: 'shadow-gray-200' },
+    { minBalance: 5_000_000, rank: 'TYCOON', icon: '👑', solid: 'bg-amber-500', border: 'border-amber-400', bg: 'bg-amber-50', text: 'text-amber-700', glow: 'shadow-amber-200' },
+    { minBalance: 1_000_000, rank: 'DIAMOND', icon: '💎', solid: 'bg-blue-500', border: 'border-blue-400', bg: 'bg-blue-50', text: 'text-blue-700', glow: 'shadow-blue-200' },
+    { minBalance: 500_000, rank: 'FUND_MANAGER', icon: '📊', solid: 'bg-[var(--color-competition-solid)]', border: 'border-purple-400', bg: 'bg-purple-50', text: 'text-purple-700', glow: 'shadow-purple-200' },
+    { minBalance: 100_000, rank: 'BUSINESS', icon: '💼', solid: 'bg-emerald-500', border: 'border-green-400', bg: 'bg-green-50', text: 'text-green-700', glow: 'shadow-green-200' },
+    { minBalance: 0, rank: 'BEGINNER', icon: '🌱', solid: 'bg-gray-400', border: 'border-gray-300', bg: 'bg-gray-50', text: 'text-gray-600', glow: 'shadow-gray-200' },
 ] as const;
 
 // 降順 → 昇順の静的配列（毎レンダーで再生成しない）
@@ -57,7 +57,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
 
     return (
         <div
-            className="investor-rank-panel rounded-xl p-4 shadow-sm border h-full hover:shadow-lg transition-shadow"
+            className="investor-rank-panel rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-lg"
             style={{
                 backgroundColor: 'var(--theme-secondary)',
                 borderColor: 'var(--foreground-muted, rgba(0,0,0,0.1))',
@@ -97,7 +97,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
                                 className={`
                                      flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-base
                                     ${isAchieved || isCurrentRank
-                                        ? `bg-gradient-to-br ${rank.color} shadow-sm`
+                                        ? `${rank.solid} shadow-sm`
                                         : 'bg-gray-200'
                                     }
                                 `}
@@ -137,7 +137,7 @@ export default function InvestorRankPanel({ currentRank, lifetimeEarnings }: Inv
                                             aria-label={`${t(`ranks.${rank.rank}`)} ${Math.round(progressPercent)}%`}
                                         >
                                             <div
-                                                className={`h-full rounded-full bg-gradient-to-r ${rank.color} transition-all duration-1000 ease-out`}
+                                                className={`h-full rounded-full ${rank.solid} transition-[width] duration-700 ease-out`}
                                                 style={{ width: `${progressPercent}%` }}
                                             />
                                         </div>
