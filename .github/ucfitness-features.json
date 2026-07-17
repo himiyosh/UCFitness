@@ -228,7 +228,7 @@
         "conversion_focus": "CTA が明確 + 価格表示 + 配送情報が視認できる",
         "compliance": "'Amazon.co.jp への誘導' 等の必要な開示が表示されている"
       },
-      "status": "not-started",
+      "status": "passing",
       "lastAttempt": null,
       "lastError": null
     },

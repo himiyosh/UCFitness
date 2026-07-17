@@ -4,6 +4,8 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 
+import AffiliateDisclosure from '@/components/affiliate/AffiliateDisclosure';
+import AffiliateLink from '@/components/affiliate/AffiliateLink';
 import { useToast } from '@/components/ui/Toast';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 
@@ -253,11 +255,11 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
             {/* セクションラベル */}
             <div className="flex items-center justify-between mb-2 px-1">
                 <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                         {locale === 'ja' ? '愛用アイテム' : 'My Picks'}
                     </p>
                     {isOwner && items.length > 0 && (
-                        <span className="text-[10px] text-gray-300">{items.length}/6</span>
+                        <span className="text-xs text-[var(--color-text-muted)]">{items.length}/6</span>
                     )}
                 </div>
                 {isOwner && items.length > 0 && (
@@ -266,7 +268,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-all ${
                             isEditing
                                 ? 'bg-[var(--theme-primary)] text-white shadow-sm scale-105'
-                                : 'text-gray-300 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'
+                                : 'text-gray-600 hover:text-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)]'
                         }`}
                         aria-label={isEditing ? (locale === 'ja' ? '完了' : 'Done') : (locale === 'ja' ? '編集' : 'Edit')}
                     >
@@ -283,6 +285,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     </button>
                 )}
             </div>
+            <AffiliateDisclosure className="mb-2 px-1" />
 
             {/* Embla風カルーセル */}
             <div className="relative">
@@ -310,36 +313,34 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                         className="relative w-[155px] flex-shrink-0 group"
                         onFocusCapture={() => setSlideIndex(Math.min(index, maxSlide))}
                     >
-                    <a
+                    <AffiliateLink
                         href={item.affiliate_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="recommended-card block rounded-xl border border-black/[0.06] bg-white overflow-hidden relative hover:shadow-md hover:-translate-y-0.5 transition-all"
+                        surface="profile"
+                        targetType="product"
+                        targetId={item.asin}
+                        className="recommended-card min-h-[300px] rounded-xl border border-black/[0.06] bg-white overflow-hidden relative hover:shadow-md hover:-translate-y-0.5 transition-all"
                     >
                         {/* 商品画像 */}
                         <div className="w-[155px] h-[130px] bg-gray-50 flex items-center justify-center overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={item.image_url}
-                                alt={item.title || item.asin}
+                                alt=""
                                 className="w-full h-full object-contain"
-                                loading="lazy"
+                                loading={index === 0 ? 'eager' : 'lazy'}
                                 onError={(e) => {
                                     (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${item.asin}&Format=_SL160_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=studio344-22`;
                                 }}
                             />
                         </div>
 
-                        {/* タイトル＋リンクラベル */}
+                        {/* タイトル */}
                         <div className="px-3 py-2.5">
                             <p className="text-xs font-medium text-gray-800 leading-[1.4] line-clamp-2 min-h-[34px]">
                                 {cleanTitle(item.title)}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                                Amazon.co.jp →
-                            </p>
                         </div>
-                    </a>
+                    </AffiliateLink>
 
                     {/* オーナー: 削除ボタン（編集モード時のみ表示） */}
                     {isOwner && isEditing && (
@@ -362,7 +363,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 e.stopPropagation();
                                 startEditComment(item, e);
                             }}
-                            className="absolute left-1 top-1 z-10 flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full border border-dashed border-gray-300 bg-white/80 text-gray-400 shadow-sm backdrop-blur-sm transition-all hover:scale-110 hover:border-[var(--theme-primary)] hover:text-[var(--theme-primary)]"
+                            className="absolute left-1 top-1 z-10 flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-full border border-dashed border-gray-400 bg-white/80 text-gray-600 shadow-sm backdrop-blur-sm transition-all hover:scale-110 hover:border-[var(--theme-primary)] hover:text-[var(--theme-primary)]"
                             aria-label={locale === 'ja' ? 'コメントを追加' : 'Add comment'}
                             title={locale === 'ja' ? 'コメントを追加' : 'Add comment'}
                         >
@@ -389,14 +390,14 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                     <button
                         onClick={() => setShowModal(true)}
                         onFocus={() => setSlideIndex(maxSlide)}
-                        className="flex-shrink-0 w-[155px] h-[195px] rounded-xl border-2 border-dashed border-gray-200 hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] flex flex-col items-center justify-center gap-2 transition-all group"
+                        className="flex h-[300px] w-[155px] flex-shrink-0 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 transition-all hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary-light)] group"
                     >
                         <div className="w-10 h-10 rounded-full bg-gray-100 group-hover:bg-[var(--theme-primary)]/10 flex items-center justify-center transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-gray-400 group-hover:text-[var(--theme-primary)] transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-gray-600 group-hover:text-[var(--theme-primary)] transition-colors">
                                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                             </svg>
                         </div>
-                        <span className="text-xs text-gray-400 group-hover:text-[var(--theme-primary)] transition-colors font-medium">
+                        <span className="text-xs text-gray-600 group-hover:text-[var(--theme-primary)] transition-colors font-medium">
                             {locale === 'ja' ? '追加' : 'Add'}
                         </span>
                     </button>
@@ -439,6 +440,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 onClick={() => setSlideIndex(i)}
                                 className="group flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full"
                                 aria-label={locale === 'ja' ? `スライド ${i + 1}` : `Slide ${i + 1}`}
+                                aria-current={i === slideIndex ? 'true' : undefined}
                             >
                                 <span
                                     className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -508,7 +510,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 >
                                     {locale === 'ja' ? '取消' : 'Cancel'}
                                 </button>
-                                <span className="text-xs text-gray-300 ml-auto">{commentDraft.length}/100</span>
+                                <span className="text-xs text-[var(--color-text-muted)] ml-auto">{commentDraft.length}/100</span>
                             </div>
                         </div>
                         {/* 吹き出し三角（下向き） */}
@@ -613,6 +615,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                                 </svg>
                             </button>
                         </div>
+                        <AffiliateDisclosure className="px-5 pt-3" />
 
                         {/* モーダルコンテンツ（スクロール可能） */}
                         <div className="flex-1 overflow-y-auto p-5">

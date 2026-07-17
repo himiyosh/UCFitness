@@ -6,6 +6,15 @@
     "contact": "Contact",
     "allRightsReserved": "All rights reserved."
   },
+  "AffiliateExperiment": {
+    "disclosure": "Contains promotional Amazon Associate links. We may earn from qualifying purchases.",
+    "priceUnknown": "Price: Check on Amazon.co.jp",
+    "deliveryUnknown": "Delivery: Check on Amazon.co.jp",
+    "ctaDetails": "View details on Amazon.co.jp",
+    "ctaCheck": "Check this item on Amazon.co.jp",
+    "invalidLink": "A safe Amazon.co.jp link could not be verified",
+    "opensNewTab": "Opens in a new tab"
+  },
   "Common": {
     "breadcrumbLabel": "Breadcrumb",
     "pageErrorTitle": "This page could not be loaded",
@@ -1057,7 +1066,8 @@
     "personalizedDesc": "Perfect items for your {steps} daily average steps",
     "rankRecommend": "Based on your rank",
     "stepsRecommend": "Based on your steps",
-    "viewShop": "View in Shop"
+    "viewShop": "View in Shop",
+    "recommendationsUnavailable": "Amazon recommendations are unavailable. Please try again later."
   },
   "TrendingGear": {
     "title": "Trending Fitness Gear",

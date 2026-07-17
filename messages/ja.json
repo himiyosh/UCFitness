@@ -6,6 +6,15 @@
     "contact": "お問い合わせ",
     "allRightsReserved": "All rights reserved."
   },
+  "AffiliateExperiment": {
+    "disclosure": "PR・Amazonアソシエイトリンクを含みます。適格販売により収入を得る場合があります。",
+    "priceUnknown": "価格: Amazon.co.jpで確認",
+    "deliveryUnknown": "配送: Amazon.co.jpで確認",
+    "ctaDetails": "Amazon.co.jpで詳しく見る",
+    "ctaCheck": "Amazon.co.jpで商品を確認",
+    "invalidLink": "安全なAmazon.co.jpリンクを確認できませんでした",
+    "opensNewTab": "新しいタブで開きます"
+  },
   "Common": {
     "breadcrumbLabel": "パンくずリスト",
     "pageErrorTitle": "ページを読み込めませんでした",
@@ -1057,7 +1066,8 @@
     "personalizedDesc": "1日平均 {steps} 歩のあなたにぴったりのアイテム",
     "rankRecommend": "ランク別おすすめ",
     "stepsRecommend": "歩数別おすすめ",
-    "viewShop": "ショップで見る"
+    "viewShop": "ショップで見る",
+    "recommendationsUnavailable": "Amazonおすすめを読み込めませんでした。時間をおいて再度お試しください。"
   },
   "TrendingGear": {
     "title": "みんなの愛用ギア",

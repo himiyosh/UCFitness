@@ -41,7 +41,7 @@ export async function GET() {
 
         if (error) {
             reportError('[API] トレンドアイテム取得エラー', error);
-            return NextResponse.json({ items: [] });
+            return NextResponse.json({ error: 'Trending gear unavailable' }, { status: 503 });
         }
 
         if (!data || data.length === 0) {
@@ -95,6 +95,6 @@ export async function GET() {
         });
     } catch (error: unknown) {
         reportError('[API] トレンドアイテム取得エラー', error);
-        return NextResponse.json({ items: [] });
+        return NextResponse.json({ error: 'Trending gear unavailable' }, { status: 503 });
     }
 }

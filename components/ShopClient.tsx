@@ -295,6 +295,7 @@ export default function ShopClient({ items, userItems, equipped, balance, userRa
                     <button
                         key={tab.key}
                         onClick={() => setViewMode(tab.key)}
+                        aria-pressed={viewMode === tab.key}
                         className={`flex min-h-[44px] flex-1 items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
                             viewMode === tab.key
                                 ? 'bg-[var(--theme-primary)] text-white shadow-md shadow-[var(--theme-primary)]/25'

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 
 import { useToast } from '@/components/ui/Toast';
 import Spinner from '@/components/ui/Spinner';
+import { isJapaneseAmazonUrl } from '@/lib/affiliate-experiment';
 import { isOfficialAmazonUrl } from '@/lib/amazon-url';
 
 // ============================================
@@ -173,7 +174,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const candidates = useMemo(() => latestResult?.candidates || [], [latestResult?.candidates]);
     const selectedCandidate = useMemo(() => candidates.length > 0 ? candidates[candidateIndex] : null, [candidates, candidateIndex]);
     // 候補がある場合は選択中の候補のリンクを優先表示
-    const displayLink = useMemo(() => selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || '', [selectedCandidate, latestResult?.affiliateLink]);
+    const displayLink = useMemo(() => { const link = selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || ''; return isJapaneseAmazonUrl(link) ? link : ''; }, [selectedCandidate, latestResult?.affiliateLink]);
     const copyDisplayLink = useCallback(async () => {
         if (!displayLink) return;
         try {
@@ -295,12 +296,13 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             </div>
                         </div>
                     )}
+                    {!displayLink && <p role="alert" className="text-sm text-red-700">{t('generateError')}</p>}
                     {/* 商品プレビュー（ASIN直接指定の場合） */}
                     {latestResult.type !== 'search' && latestResult.imageUrl && (
                         <a
-                            href={latestResult.affiliateLink}
+                            href={isJapaneseAmazonUrl(latestResult.affiliateLink) ? latestResult.affiliateLink : undefined}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="flex gap-4 items-center bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
                         >
                             <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
@@ -338,9 +340,9 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
 
                                 {/* 商品プレビュー */}
                                 <a
-                                    href={selectedCandidate.affiliateLink}
+                                    href={isJapaneseAmazonUrl(selectedCandidate.affiliateLink) ? selectedCandidate.affiliateLink : undefined}
                                     target="_blank"
-                                    rel="noopener noreferrer"
+                                    rel="sponsored noopener noreferrer"
                                     className="flex-1 flex flex-col items-center gap-2 bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
                                 >
                                     <div className="w-44 h-44 flex items-center justify-center">
@@ -395,9 +397,9 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                     {/* キーワード検索で候補なしの場合 */}
                     {latestResult.type === 'search' && !selectedCandidate && (
                         <a
-                            href={latestResult.affiliateLink}
+                            href={isJapaneseAmazonUrl(latestResult.affiliateLink) ? latestResult.affiliateLink : undefined}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
                         >
                             <span className="text-2xl">🔍</span>
@@ -528,9 +530,9 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                         ↩️
                                     </button>
                                     <a
-                                        href={item.affiliateLink}
+                                        href={isJapaneseAmazonUrl(item.affiliateLink) ? item.affiliateLink : undefined}
                                         target="_blank"
-                                        rel="noopener noreferrer"
+                                        rel="sponsored noopener noreferrer"
                                         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[var(--theme-primary)]/20 bg-[var(--theme-primary-light)] px-2.5 py-1.5 text-xs font-bold text-[var(--theme-primary)] transition-all hover:opacity-80"
                                         title={t('viewOnAmazon')}
                                         aria-label={`${item.input}: ${t('viewOnAmazon')}`}
