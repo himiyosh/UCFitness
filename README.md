@@ -298,7 +298,7 @@ npm run pages:build
 
 ### カスタムエージェント
 
-`UCFitnessAgent.agent.md` はセッション開始・ロール選択・完了契約に集中するオーケストレーターです。詳細ルールと Lessons Learned は `.github/copilot-instructions.md`、`.github/instructions/`、`.github/skills/`、`.agents/skills/` を正本とし、prompt 本文は GitHub の 30,000 文字上限未満（運用目標 20,000〜25,000 文字）を `npm run check:agents` で検証します。
+`UCFitnessAgent.agent.md` はセッション開始・ロール選択・完了契約に集中するオーケストレーターです。詳細ルールと Lessons Learned は `.github/copilot-instructions.md`、`.github/instructions/`、`.github/skills/`、`.agents/skills/` を正本とし、`npm run check:agents` で prompt の 30,000 Unicode 文字上限と、agent picker 用 profile 全体の 24,000 UTF-8 bytes 運用上限を検証します。
 
 #### エージェント組織階層図 (テキスト版)
 

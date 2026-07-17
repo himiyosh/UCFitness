@@ -5,8 +5,17 @@ const AGENT_PATH = fileURLToPath(
   new URL('../.github/agents/UCFitnessAgent.agent.md', import.meta.url),
 );
 const MAX_PROMPT_CHARACTERS = 30_000;
-const TARGET_MIN_CHARACTERS = 20_000;
-const TARGET_MAX_CHARACTERS = 25_000;
+const MAX_PROFILE_BYTES = 24_000;
+const REQUIRED_PROMPT_REFERENCES = [
+  '.github/copilot-instructions.md',
+  '.github/instructions/',
+  '.github/skills/',
+  '.agents/skills/',
+  '.github/ucfitness-progress.json',
+  '.github/skills/self-critique-gate/SKILL.md',
+  'npm run check:agents',
+  'npm run check:rules',
+];
 
 function fail(message) {
   console.error(`NG: ${message}`);
@@ -70,6 +79,7 @@ if (source) {
   try {
     const { frontmatter, prompt } = parseAgent(source);
     const promptCharacters = Array.from(prompt).length;
+    const promptBytes = Buffer.byteLength(prompt, 'utf8');
     const fileBytes = Buffer.byteLength(source, 'utf8');
 
     if (frontmatter.name !== 'UCFitnessAgent') {
@@ -93,18 +103,21 @@ if (source) {
       );
     }
 
-    if (
-      promptCharacters < TARGET_MIN_CHARACTERS ||
-      promptCharacters > TARGET_MAX_CHARACTERS
-    ) {
+    if (fileBytes >= MAX_PROFILE_BYTES) {
       fail(
-        `prompt has ${promptCharacters} Unicode characters; keep the orchestrator target between ${TARGET_MIN_CHARACTERS} and ${TARGET_MAX_CHARACTERS}`,
+        `profile has ${fileBytes} UTF-8 bytes; it must stay below the ${MAX_PROFILE_BYTES}-byte picker budget`,
       );
+    }
+
+    for (const reference of REQUIRED_PROMPT_REFERENCES) {
+      if (!prompt.includes(reference)) {
+        fail(`prompt must retain the SSoT reference "${reference}"`);
+      }
     }
 
     if (process.exitCode !== 1) {
       console.log(
-        `OK: UCFitnessAgent frontmatter is valid; prompt=${promptCharacters} Unicode characters; file=${fileBytes} bytes`,
+        `OK: UCFitnessAgent frontmatter is valid; prompt=${promptCharacters} Unicode characters/${promptBytes} UTF-8 bytes; profile=${fileBytes} UTF-8 bytes`,
       );
     }
   } catch (error) {
