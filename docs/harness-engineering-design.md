@@ -22,7 +22,7 @@
 
 ## ℹ️ Executive Summary
 
-Anthropic の "Effective Harnesses for Long-Running Agents" (2025-11) と "How we built our multi-agent research system" (2025-06) を起点にハーネスエンジニアリングをリサーチし、UCFitnessAgent への適用設計をまとめた。既存実装は **Session Bootstrap / Clean State Protocol / Progress File / Initializer Step** が部分実装済みだが、**Feature List の構造化**、**Orchestrator-Worker パターンによる並列探索**、**Verifier エージェントの分離**、**End-State Evaluation**、**Checkpoint/Resume 機構**、**Instinct 自動昇格**、**Token Budget 管理** が未整備。本設計書は **5 フェーズ (P0-P4)** で段階的に強化する道筋を示す。
+Anthropic の "Effective Harnesses for Long-Running Agents" (2025-11) と "How we built our multi-agent research system" (2025-06) を起点にハーネスエンジニアリングをリサーチし、UCFitnessAgent への適用設計をまとめた。UCFitnessAgent 本体は **Session Bootstrap / ロール選択 / 検証・完了契約** に集中するbyte-safeなオーケストレーターとし、詳細手順は instructions、skills、prompts、Progress Fileへ分離する。**Orchestrator-Worker パターンによる並列探索**、**Verifier エージェントの分離**、**End-State Evaluation**、**Checkpoint/Resume 機構**、**Instinct 自動昇格**、**Token Budget 管理**は、このprofile budgetを維持したまま段階的に強化する。
 
 ---
 
@@ -146,15 +146,15 @@ Subagent が大きな成果物 (コード・レポート・データ) を生成�
 
 | 要素 | 実装場所 | 状態 |
 |---|---|---|
-| **Session Bootstrap** (Step B-1〜B-7) | `UCFitnessAgent.agent.md` 冒頭 | ✅ 実装済み |
-| **Clean State Protocol** | 同上 | ✅ 実装済み |
+| **Session Bootstrap** | `UCFitnessAgent.agent.md`「Session Bootstrap」 | ✅ 実装済み |
+| **Clean State / Self-Critique** | `UCFitnessAgent.agent.md` + `self-critique-gate` skill | ✅ 実装済み |
 | **Progress File** (`ucfitness-progress.json`) | `.github/ucfitness-progress.json` | ✅ 実装済み (3 件のバックログのみ — 不足) |
-| **Initializer Step** (Improvement Loop Step 0) | `UCFitnessAgent.agent.md` Improvement Loop | ✅ 実装済み |
-| **Specialized Sub-Agents** | `agents/*.agent.md` (8 ロール) | ✅ 実装済み (orchestrator なし — 並列起動が手動) |
+| **Initial State Check** | `UCFitnessAgent.agent.md`「Session Bootstrap」 | ✅ 実装済み |
+| **Specialized Sub-Agents** | `agents/*.agent.md` (13 ロール) | ✅ UCFitnessAgent配下へ統合済み |
 | **Verification Loop** | `npx tsc --noEmit` + Playwright + Self-Critique | 🟡 部分的 (LLM judge なし) |
-| **Lessons Learned** | UCFitnessAgent.agent.md テーブル | ✅ 実装済み |
+| **Lessons Learned** | `.github/copilot-instructions.md` | ✅ 実装済み |
 | **Memory Persistence** | `/memories/session/`, `/memories/repo/` | ✅ 実装済み (使用頻度低) |
-| **Initializer Script** (`init.sh`) | なし | ❌ 未実装 |
+| **Initializer Script** (`init.sh`) | `.github/ucfitness-init.sh` | ✅ 実装済み |
 | **Feature List (JSON, 全機能)** | `featureBacklog` (3 件のみ) | ❌ 不十分 (Anthropic は 200+ を推奨) |
 | **End-state Evaluation** | なし | ❌ 未実装 |
 | **Token Budget 管理** | なし | ❌ 未実装 |
@@ -396,14 +396,14 @@ exit 1
 | P0-1 | `init.sh` 作成 | `.github/ucfitness-init.sh` |
 | P0-2 | `ucfitness-features.json` を作成し、現状の主要機能を 30+ 件登録 | `.github/ucfitness-features.json` |
 | P0-3 | `progress.json` の `featureBacklog` を `features.json` 参照に統合 | `progress.json` 修正 |
-| P0-4 | `Session Bootstrap` Step B-2 を `features.json` も読み込むよう更新 | `UCFitnessAgent.agent.md` 修正 |
+| P0-4 | `Session Bootstrap` から `features.json` を正本参照する | compact agentの参照契約を維持 |
 
 ### Phase 1: マルチエージェント並列化 (1-2 セッション)
 
 | # | タスク | 成果物 |
 |---|---|---|
-| P1-1 | Lead Agent の「委任プロンプト生成」テンプレートを定義 (目的・出力・ツール・境界の 4 要素) | `UCFitnessAgent.agent.md` に Delegation Template 追加 |
-| P1-2 | Improvement Loop の Step 2 を「3 並列 subagent」に変更 (Build + UI + Performance を同時起動) | `UCFitnessAgent.agent.md` 修正 |
+| P1-1 | Lead Agent の「委任プロンプト生成」テンプレートを定義 (目的・出力・ツール・境界の 4 要素) | `.github/prompts/` にテンプレート追加 |
+| P1-2 | Improvement Loop を「3 並列 subagent」に変更 (Build + UI + Performance を同時起動) | skill / promptへ実行手順を追加 |
 | P1-3 | Subagent の Filesystem Artifact パターンを導入 (大きな結果はファイルに書き出し、Lead にはパスを返す) | `improvement-report.md` セクション分割 |
 
 ### Phase 2: 検証強化 (1 セッション)
@@ -412,14 +412,14 @@ exit 1
 |---|---|---|
 | P2-1 | 各 feature に `verificationSteps` + `judgeRubric` を必須化 | `features.json` スキーマ確定 |
 | P2-2 | LLM-as-Judge ロールを Self-Critique に追加 (rubric 採点 0.0-1.0 + pass/fail) | `self-critique.agent.md` 拡張 |
-| P2-3 | 完了マーキング前のゲート: 全 verificationSteps が PASS + judge が pass を返す | Clean State Protocol 修正 |
+| P2-3 | 完了マーキング前のゲート: 全 verificationSteps が PASS + judge が pass を返す | `self-critique-gate` skill修正 |
 
 ### Phase 3: Checkpoint/Resume (1-2 セッション)
 
 | # | タスク | 成果物 |
 |---|---|---|
-| P3-1 | `/memories/session/checkpoint.json` のスキーマ定義 + Lead Agent の Token Budget Gate 実装 | `UCFitnessAgent.agent.md` に Token Budget セクション追加 |
-| P3-2 | Session Bootstrap Step B-7 を「checkpoint があれば優先復元」に変更 | 同上 |
+| P3-1 | `/memories/session/checkpoint.json` のスキーマ定義 + Lead Agent の Token Budget Gate 実装 | checkpoint skill / schema追加 |
+| P3-2 | Session Bootstrapでcheckpointを優先復元する | compact agentは参照契約のみ維持 |
 | P3-3 | 強制 Checkpoint 発動シナリオの dry-run テスト | `/memories/session/checkpoint-test.md` |
 
 ### Phase 4: Instinct 自動昇格 (継続改善)
@@ -427,8 +427,8 @@ exit 1
 | # | タスク | 成果物 |
 |---|---|---|
 | P4-1 | `instincts.json` のスキーマ定義 (`pattern`, `confidence`, `evidence`, `firstSeen`, `lastSeen`) | `/memories/repo/instincts.json` |
-| P4-2 | Lessons Learned 発見時に instincts に追記するルールを Lead Agent に組込 | `UCFitnessAgent.agent.md` 修正 |
-| P4-3 | confidence 0.8 超を検出したら copilot-instructions.md に昇格する半自動フロー | 昇格チェックリストを agent ファイルに追加 |
+| P4-2 | Lessons Learned 発見時に instincts に追記するルールを Lead Agent に組込 | skill / instructions修正 |
+| P4-3 | confidence 0.8 超を検出したら copilot-instructions.md に昇格する半自動フロー | 昇格チェックリストをskillへ追加 |
 
 ---
 
@@ -511,7 +511,7 @@ exit 1
 - Anthropic, ["How we built our multi-agent research system"](https://www.anthropic.com/engineering/multi-agent-research-system) (2025-06-13)
 - Anthropic, ["Claude 4 Best Practices: Multi-Context Window Workflows"](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices#multi-context-window-workflows)
 - [anthropics/claude-quickstarts (autonomous-coding)](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding)
-- 既存実装: `.github/agents/UCFitnessAgent.agent.md` (Session Bootstrap, Clean State Protocol, Improvement Loop)
+- 既存実装: `.github/agents/UCFitnessAgent.agent.md` (Session Bootstrap, ロール選択, 検証・完了契約)
 - 既存実装: `.github/ucfitness-progress.json` (Progress File)
 
 ---

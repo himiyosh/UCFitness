@@ -1485,11 +1485,18 @@ export const runtime = "edge";
 - **事象**: canonical projectのworkspace初期化に失敗した後、同じGitHub repositoryを指すことだけを根拠に、ユーザー画面上の別project「UCFitness-旧」へ子セッションを作成し、ユーザーから「違うところに作っていますね」と指摘された。
 - **根本原因**: repository URLの一致をprojectの同一性と誤認し、ユーザー画面上のproject名、project ID / 内部名、main path、対象cwdを子セッション作成前に照合しなかった。初期化失敗時の停止条件もなく、別projectを安全なfallbackとして扱った。
 - **対策**: セッション作成・委任前の同一性確認をproject名、ID / 内部名、main path、cwd、branchの組で必須化する。目的projectの初期化失敗時は別projectへfallbackせず、修復不能なら目的project内の現行セッションで専門agentを直接実行する。別project利用は対象名とmain pathを提示し、ユーザーの明示確認後に限る。
-- **教訓**: GitHub repositoryが同じでも、project、main path、worktree、ユーザーが見ている作業面は別物である。自動復旧は作業場所を変えずに行い、場所の変更は利便性よりユーザーの明示的な選択を優先する。リファレンス: `.github/agents/UCFitnessAgent.agent.md` Session Bootstrap Step B-1、`README.md`「注意事項 / 制約」
+- **教訓**: GitHub repositoryが同じでも、project、main path、worktree、ユーザーが見ている作業面は別物である。自動復旧は作業場所を変えずに行い、場所の変更は利便性よりユーザーの明示的な選択を優先する。リファレンス: `.github/agents/UCFitnessAgent.agent.md`「Session Bootstrap」、`README.md`「注意事項 / 制約」
 
 ### LL-059: stable order付きOFFSET paginationを並行変異下のsnapshotと誤認した
 
 - **事象**: グループ削除同期のN+1解消で、PostgREST既定1000行切り捨てを避けるstable order付きOFFSET paginationを導入した。しかしページ取得中にjoin / leave / kickが発生するとOFFSETが移動し、行の欠落・重複から有効な`users.group_keyword`を誤同期し得るため、実装を撤回して`app/api/user/group/route.ts`とテストを`origin/main`へ戻した。
 - **根本原因**: 一意な順序が各queryの決定性を保証することと、複数queryが同じMVCC snapshotを参照することを混同した。PostgRESTの各OFFSET要求は別トランザクションであり、可変なmembership集合の完全性を保証しない。削除前収集→削除→派生同期というmutation-sensitiveな処理を、DB transactionなしでアプリ側一括最適化した。
 - **対策**: 読み取り専用または取得中に不変と保証できる集合に限り、pagination + 一意なstable orderを使用する。並行更新されるmembership集合から不可逆操作や派生同期を行う場合は、収集・削除・同期を単一transactional RPCへ集約し、必要なrow lockまたは一貫したsnapshotをDB内で保証する。migration禁止の今回タスクでは安全な原子化を追加できないため、一括最適化を採用しない。
-- **教訓**: stable orderはsnapshotではない。PostgRESTの1000行切り捨て対策だけで、可変集合に対する複数OFFSET要求の完全性を保証したと判断してはならない。mutation-sensitiveな複合操作はDB transaction / RPC / row lockを前提に設計し、それがない間は性能改善候補を撤回する。リファレンス: `.github/agents/UCFitnessAgent.agent.md`「PostgREST全件取得契約」、`migrations/20260617_add_multi_provider_connections.sql`のtransactional RPC + `FOR UPDATE`パターン
+- **教訓**: stable orderはsnapshotではない。PostgRESTの1000行切り捨て対策だけで、可変集合に対する複数OFFSET要求の完全性を保証したと判断してはならない。mutation-sensitiveな複合操作はDB transaction / RPC / row lockを前提に設計し、それがない間は性能改善候補を撤回する。リファレンス: `migrations/20260617_add_multi_provider_connections.sql`のtransactional RPC + `FOR UPDATE`パターン
+
+### LL-060: Unicode文字数だけを検証し、UTF-8 byte超過でagent pickerから除外された
+
+- **事象**: `UCFitnessAgent.agent.md` を21,600 Unicode文字へ短縮して30,000文字未満のcheckを通し、PR #230をdefault branchへmergeしたが、localとcloudのagent pickerにUCFitnessAgentが表示されなかった。profile全体は40,731 UTF-8 bytesあり、cloud probeでも標準Copilot identityへfallbackして利用可能agent一覧に現れなかった。
+- **根本原因**: 公式の「30,000 characters」をUnicode code pointだけで解釈し、multibyte主体の日本語profileのUTF-8 byte数をgateにしなかった。parser、frontmatter、GitHub上の存在、文字数checkの成功を、runtimeでの発見性確認の代わりにしていた。
+- **対策**: agent promptを詳細ルールの正本参照型へ再圧縮し、profile全体を24,000 UTF-8 bytes未満に制限する。`scripts/check-custom-agents.mjs`でUnicode文字数、UTF-8 bytes、必須SSoT参照を同時検証し、修正branchの短いcloud sessionでactive identityと利用可能agent一覧を確認する。
+- **教訓**: customizationの構文検証とruntime発見性は別の品質ゲートである。CJK中心のprofileは文字数とbyte数を別々に測り、十分な余裕を持たせ、実際のpicker経路でロードされるまで表示修復を完了と呼ばない。リファレンス: `.github/agents/UCFitnessAgent.agent.md`, `scripts/check-custom-agents.mjs`, `README.md`「カスタムエージェント」
