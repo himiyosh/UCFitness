@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:agents": "node scripts/check-custom-agents.mjs",
     "check:rules": "bash scripts/check-ucfitness-rules.sh",
     "check:i18n": "node scripts/check-i18n-keys.mjs",
     "check:all": "npm run check:rules && npm run check:i18n && npx tsc --noEmit && npm run lint",

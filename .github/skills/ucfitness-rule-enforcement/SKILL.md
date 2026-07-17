@@ -6,7 +6,7 @@ description: UCFitness プロジェクト固有ルールの自動検出・強制
 
 ## 概要
 
-copilot-instructions.md / UCFitnessAgent の Lessons Learned に記録された「繰り返し違反されるルール」を、人間のレビューに頼らず機械的に検出・ブロックする仕組み。
+copilot-instructions.md / 関連 skills の Lessons Learned に記録された「繰り返し違反されるルール」を、人間のレビューに頼らず機械的に検出・ブロックする仕組み。
 
 ## 構成
 
@@ -75,4 +75,4 @@ grep で検出困難だが重要なルール:
 - `eslint.config.mjs` — dev-time ESLint ルール
 - `.github/hooks/session-auto-commit.sh` — コミットブロック連携
 - `package.json` — `check:rules` / `check:all` スクリプト
-- `UCFitnessAgent.agent.md` — Lessons Learned テーブル (ルール追加のソース)
+- `.github/copilot-instructions.md` / `.github/skills/**/SKILL.md` — Lessons Learned とルール追加の正本
