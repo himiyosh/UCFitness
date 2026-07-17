@@ -244,7 +244,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                 <h2 id="ranking-mission-title" className="text-sm font-black text-[var(--color-text)] sm:text-base">
                                     {t('rankingMissionTitle')}
                                 </h2>
-                                <p className="mt-0.5 break-words text-xs leading-5 text-[var(--color-text-muted)] [overflow-wrap:anywhere]">
+                                <p className="mt-0.5 min-h-10 break-words text-xs leading-5 text-[var(--color-text-muted)] [overflow-wrap:anywhere]">
                                     {missionMessage}
                                 </p>
                             </div>
@@ -268,6 +268,9 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                     style={{ width: `${rivalryProgress.visualWidth}%` }}
                                 />
                             </div>
+                        )}
+                        {isLoading && (
+                            <div className="mt-3 h-2 rounded-full bg-[var(--color-surface)]" aria-hidden="true" />
                         )}
                     </div>
                     <div className="flex flex-wrap gap-2 sm:max-w-[45%] sm:justify-end">
@@ -366,7 +369,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                 >
                                     <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden flex-shrink-0 ${
                                         isActive ? 'bg-white/20 ring-1 ring-white/30' : 'bg-black/5'
-                                    } text-[10px]`}>
+                                    } text-xs`}>
                                         {imageUrl ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={imageUrl} alt="" className="w-full h-full object-cover" />
@@ -538,7 +541,7 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                                                                     {entry.users?.name || commonT('anonymous')}
                                                                 </span>
                                                                 {isMe && (
-                                                                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] bg-[var(--theme-primary)] text-white font-bold leading-none shadow-sm shadow-[var(--theme-primary)]/30">
+                                                                    <span className="shrink-0 rounded-full bg-[var(--theme-primary)] px-2 py-0.5 text-xs font-bold leading-none text-white shadow-sm shadow-[var(--theme-primary)]/30">
                                                                         {commonT('you')}
                                                                     </span>
                                                                 )}
@@ -649,7 +652,24 @@ export default function DynamicLeaderboard({ userId, groupKeywords, groupInfo }:
                     </div>
                 )}
 
-                {!isLoading && groupFetchError && groupRankingsList.length === 0 ? (
+                {isLoading && groupKeywords.length > 0 ? (
+                    <div className={`min-h-[520px] overflow-hidden rounded-xl border ${
+                        isMidnight
+                            ? 'border-slate-600/30 bg-slate-800/40'
+                            : 'border-gray-100 bg-white/90'
+                    }`} aria-hidden="true">
+                        <div className="flex h-14 items-center gap-2 border-b border-gray-100/60 px-4 sm:px-6">
+                            <div className="h-5 w-5 rounded-full bg-gray-200" />
+                            <div className="h-4 w-32 rounded bg-gray-200" />
+                        </div>
+                        <div className="mx-4 my-3 h-20 rounded-xl bg-gray-100 sm:mx-6" />
+                        <div className="divide-y divide-gray-50">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                                <SkeletonRow key={index} index={index} />
+                            ))}
+                        </div>
+                    </div>
+                ) : !isLoading && groupFetchError && groupRankingsList.length === 0 ? (
                     <div
                         className={`flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-xl border text-center ${
                             isMidnight

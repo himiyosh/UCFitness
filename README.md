@@ -251,6 +251,7 @@ npm run dev
 | `npm run build` | プロダクションビルド |
 | `npm run pages:build` | Cloudflare Pages ビルド |
 | `npm run lint` | ESLint 実行 |
+| `npm run audit:responsive` | Playwright レスポンシブ監査 (375 / 768 / 1024 / 1920px、ja/en) |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -455,9 +456,16 @@ npm run test:watch
 
 # カバレッジ付き
 npm run test:coverage
+
+# 全主要画面のレスポンシブ監査
+RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNAME_JA=ja-user RESPONSIVE_AUDIT_GROUP_ID_JA=ja-group \
+RESPONSIVE_AUDIT_STORAGE_STATE_EN=/path/to/en-state.json RESPONSIVE_AUDIT_USERNAME_EN=en-user RESPONSIVE_AUDIT_GROUP_ID_EN=en-group \
+npm run audit:responsive
 ```
 
 - テストフレームワーク: **Vitest**
+- レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、横スクロール、375pxの44px操作領域、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
+- 未認証の公開LPだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用。全104ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
 - テストファイル: `lib/__tests__/` 配下
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)

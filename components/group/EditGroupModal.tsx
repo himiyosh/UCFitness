@@ -220,7 +220,7 @@ export default function EditGroupModal({ groupId, groupKeyword, currentName, cur
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 maxLength={MAX_NAME_LENGTH}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-[var(--theme-primary)] outline-none text-gray-900"
+                                className="min-h-[44px] w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 outline-none focus:border-[var(--theme-primary)] focus:ring-2 focus:ring-[var(--theme-primary)]"
                                 required
                                 aria-describedby="name-char-count"
                             />

@@ -64,7 +64,7 @@ export default function GroupCompetitionList({ initialRankings, currentGroupId }
                                             </span>
                                         </td>
                                         <td className="px-3 py-3">
-                                            <Link href={`/groups/${group.groupId}`} className="flex items-center gap-2 group">
+                                            <Link href={`/groups/${group.groupId}`} className="group flex min-h-[44px] items-center gap-2">
                                                 {group.imageUrl ? (
                                                     <img src={group.imageUrl} alt={group.groupName} loading="lazy" className="w-7 h-7 rounded-lg object-cover bg-gray-100 group-hover:ring-2 ring-[var(--theme-primary-light)] transition-all shrink-0" />
                                                 ) : (

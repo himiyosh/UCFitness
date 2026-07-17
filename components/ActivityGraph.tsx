@@ -660,7 +660,7 @@ export default function ActivityGraph({ data, todayDate, stepGoal, groupInfo, co
 
 
             {/* Hidden Share Card (1080x1920) */}
-            <div ref={shareCaptureRef} aria-hidden="true" style={{ width: 0, height: 0, overflow: 'hidden' }}>
+            <div ref={shareCaptureRef} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 h-0 w-0 overflow-hidden">
                 <div
                     ref={shareCardRef}
                     style={{

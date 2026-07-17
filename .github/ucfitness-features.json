@@ -300,7 +300,7 @@
         "touch_target_compliance": "全ボタンが 44×44px 以上",
         "layout_stability": "CLS < 0.1"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },

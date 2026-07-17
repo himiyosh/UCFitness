@@ -1039,6 +1039,7 @@
     "categoryElectronics": "家電",
     "categoryBooks": "書籍",
     "viewOnAmazon": "Amazonで開く",
+    "reuseHistoryItem": "この項目を再利用",
     "directDescription": "キーワード、Amazon URL、または ASIN コードを入力してください。",
     "directPlaceholder": "キーワード / URL / ASIN",
     "generateButton": "生成",
@@ -1060,7 +1061,9 @@
   },
   "TrendingGear": {
     "title": "みんなの愛用ギア",
-    "subtitle": "コミュニティで人気のフィットネスアイテム"
+    "subtitle": "コミュニティで人気のフィットネスアイテム",
+    "scrollLeft": "前のギアを表示",
+    "scrollRight": "次のギアを表示"
   },
   "GroupGear": {
     "title": "メンバーの愛用ギア",
@@ -1334,8 +1337,10 @@
     "targetStepsPositive": "目標歩数は1以上にしてください",
     "endDateAfterStart": "終了日は開始日より後にしてください",
     "createFailed": "チャレンジの作成に失敗しました",
+    "updateFailed": "チャレンジを更新できませんでした",
     "unknownError": "予期しないエラーが発生しました",
     "closeCreateDialog": "チャレンジ作成ダイアログを閉じる",
+    "closeEditDialog": "チャレンジ編集ダイアログを閉じる",
     "closeDetailDialog": "チャレンジ詳細を閉じる",
     "detailViewDetail": "詳細を見る",
     "detailViewParticipants": "参加者を見る",
@@ -1483,7 +1488,8 @@
     "titleRequired": "イベント名は必須です",
     "targetRequired": "目標歩数は0より大きい必要があります",
     "dateRequired": "開始日と終了日は必須です",
-    "dateInvalid": "終了日は開始日以降にしてください"
+    "dateInvalid": "終了日は開始日以降にしてください",
+    "createFailed": "イベントを作成できませんでした"
   },
   "Export": {
     "title": "📥 データエクスポート",
@@ -1642,6 +1648,7 @@
     "activeDays": "活動日数",
     "totalEarned": "総獲得UC",
     "investorRank": "投資家ランク",
+    "unavailable": "取得できません",
     "days": "日",
     "TYCOON": "ヘルスタイクーン",
     "DIAMOND": "ダイヤモンド投資家",

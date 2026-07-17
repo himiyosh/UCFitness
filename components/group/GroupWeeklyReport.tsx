@@ -126,14 +126,14 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
             </div>
 
             {/* メンバー別ランキング */}
-            <div className="px-5 pb-5 space-y-2 mt-2">
+            <div id="weekly-report-members" className="px-5 pb-5 space-y-2 mt-2">
                 {displayMembers.map((member, index) => {
                     const barWidth = (member.totalSteps / maxSteps) * 100;
                     return (
                         <div key={member.userId} className="flex items-center gap-3">
                             <span className="w-5 text-center text-xs font-bold text-gray-400 tabular-nums">{index + 1}</span>
                             {member.username ? (
-                                <a href={`/user/${member.username}`} className="flex-shrink-0" aria-label={member.name || member.username}>
+                                <a href={`/user/${member.username}`} className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center" aria-label={member.name || member.username}>
                                     <UserAvatar src={member.image} name={member.name} size="sm" />
                                 </a>
                             ) : (
@@ -142,8 +142,10 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-0.5">
                                     {member.username ? (
-                                        <a href={`/user/${member.username}`} className="text-xs font-semibold text-gray-700 truncate hover:text-[var(--theme-primary)] hover:underline">
-                                            {member.name}
+                                        <a href={`/user/${member.username}`} className="inline-flex min-h-[44px] max-w-full items-center hover:text-[var(--theme-primary)] hover:underline">
+                                            <span className="min-w-0 truncate text-xs font-semibold text-gray-700">
+                                                {member.name}
+                                            </span>
                                         </a>
                                     ) : (
                                         <p className="text-xs font-semibold text-gray-700 truncate">{member.name}</p>
@@ -171,7 +173,7 @@ export default function GroupWeeklyReport({ groupId }: { groupId: string }) {
                 {data.report.length > 5 && (
                     <button
                         onClick={() => setIsExpanded(!isExpanded)}
-                        className="w-full text-center text-xs font-semibold text-[var(--theme-primary)] py-2 hover:underline"
+                        className="min-h-[44px] w-full py-2 text-center text-xs font-semibold text-[var(--theme-primary)] hover:underline" aria-expanded={isExpanded} aria-controls="weekly-report-members"
                     >
                         {isExpanded ? t('showLess') : t('showAll', { count: data.report.length })}
                     </button>
