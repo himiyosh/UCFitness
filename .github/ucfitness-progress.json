@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-16T14:40:54+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + PostgreSQL/Supabase + QA + Self-Critique)",
-  "lastCommit": "6df4659d0ad2dc28901aac98be6ad71ba4511489",
-  "lastBranch": "himiyosh-integrate-auth-ui-canonical",
+  "lastUpdated": "2026-07-18T07:22:43+09:00",
+  "lastAgent": "UCFitnessAgent (Hallmark + Customization + Self-Critique)",
+  "lastCommit": "7e4bd42005bb04637f824c39eb3763a783709501",
+  "lastBranch": "himiyosh-add-hallmark-skill",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "独立再レビューでstable order付きOFFSET paginationが並行join/leave/kick下のsnapshotを保証しないと確認し、安全でないgroup削除同期最適化を撤回。routeとtestをorigin/mainへ完全復元し、CHANGELOG/READMEの未出荷成果を除去、LL-059とAgent契約をtransactional RPC + row lock/snapshot必須へ訂正した。関連4件、全50ファイル319件を通常・単一workerでPASS。check:allは0 error・既存warning 65件で増加なし、U+FFFD scan 0件。",
+  "summary": "Hallmark 1.1.0のSKILL.mdとreferences 106ファイルをcommit aeb42fb354ff4efa36ab475773a082315a3af2ceから無改変で導入し、MIT表記と更新手順を追加。UCFitnessAgentへdefault/audit/redesign/studyの薄いルーティング契約を追加し、READMEとcheck:agentsを同期した。正本diff 0、集約SHA-256一致、profile 14,109 bytes、check:agents/check:rules/typecheck/lint 0 errorsで確認。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-16T14:40:54+09:00"
+    "lastVerified": "2026-07-18T07:22:43+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -930,6 +930,19 @@
         ".github/ucfitness-progress.json",
         "README.md",
         "CHANGELOG.md"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Hallmark + Customization + Self-Critique)",
+      "action": "Hallmark 1.1.0をpinned commitから完全vendorし、UCFitnessAgentへ新規UI、読取専用audit、明示redesign、非複製studyのルーティングを追加。既存UCFitness契約、modern-web-guidance、web-design-reviewer、Persona、self-critiqueを優先する構造を維持し、READMEと機械検査を同期した。",
+      "commit": "7e4bd42005bb04637f824c39eb3763a783709501",
+      "filesChanged": [
+        ".github/skills/hallmark/",
+        ".github/agents/UCFitnessAgent.agent.md",
+        "scripts/check-custom-agents.mjs",
+        "README.md",
+        ".github/ucfitness-progress.json"
       ]
     }
   ],
