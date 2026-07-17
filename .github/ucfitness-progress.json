@@ -3,7 +3,7 @@
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
   "lastUpdated": "2026-07-18T04:10:00+09:00",
   "lastAgent": "UCFitnessAgent (PostgreSQL + Reward Integrity + QA + Self-Critique)",
-  "lastCommit": "pending",
+  "lastCommit": "c636db582739623205a7448ec4f815398051e4a4",
   "lastBranch": "himiyosh-continue-ucfitness-improvements",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "F003ストリーク段階報酬のコードとmigrationを実装。7/30/100/365日の限定バッジ・固定UC、全シールド利用履歴、Web Push/Teams集約、Wallet表示を追加し、歩数再集計・ミッション入出金・節目付与・購入を共通ロック順へ統一した。全51ファイル321件を通常・単一workerでPASS、check:all 0 error・既存warning 65件、Cloudflare Pages build PASS。production migration適用と実Cronは承認待ち。",
@@ -935,7 +935,7 @@
       "date": "2026-07-18",
       "agent": "UCFitnessAgent (PostgreSQL + Reward Integrity + QA + Self-Critique)",
       "action": "F003ストリーク段階報酬を実装。7/30/100/365日の限定バッジ・固定UC、全シールド利用履歴、専用台帳と一生涯キー、共通ユーザー/残高ロック、ミッション再試行、Web Push/Teams集約、Wallet表示を追加。全321テスト、check:all、Cloudflare Pages build、2ペルソナ、独立コードレビューをPASS。本番migration適用は未実施。",
-      "commit": "",
+      "commit": "c636db582739623205a7448ec4f815398051e4a4",
       "filesChanged": [
         "migrations/20260718_add_streak_milestone_rewards.sql",
         "lib/services/badge-awards.ts",
