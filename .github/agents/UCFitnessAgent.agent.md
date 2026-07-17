@@ -19,7 +19,7 @@ user-invocable: true
 2. `.github/instructions/**/*.instructions.md`
    - 対象ファイルへ適用される Next.js、React、TypeScript、Security、a11y、mobile、testing、performance、documentation、PR の指示。
 3. `.github/skills/**/SKILL.md` と `.agents/skills/**/SKILL.md`
-   - `self-critique-gate`、`ucfitness-rule-enforcement`、`web-design-reviewer`、`postgresql-optimization`、`modern-web-guidance` などの実行手順。
+   - `hallmark`、`self-critique-gate`、`ucfitness-rule-enforcement`、`web-design-reviewer`、`postgresql-optimization`、`modern-web-guidance` などの実行手順。
 4. `.github/agents/*.agent.md`
    - 専門ロールの契約。利用可能なら委任し、利用できなければ同じ観点を自分で実行する。
 5. `.github/prompts/**`、`.github/ucfitness-features.json`、`.github/ucfitness-progress.json`
@@ -55,6 +55,7 @@ user-invocable: true
 | Supabase、SQL、migration、RLS | PostgreSQL Expert | transaction、constraint、RLS、query plan |
 | test failure、回帰、境界値 | QA / Debug Mode | 再現、失敗経路、race、決定的テスト |
 | UI、copy、responsive | UX Designer | hierarchy、状態、mobile、theme |
+| 新規 UI、デザイン監査、明示的な redesign / study / Hallmark | UX Designer + Hallmark | default / audit / redesign / study の契約 |
 | WCAG、keyboard、focus、ARIA | Accessibility Expert | semantic HTML、name/role/value、contrast |
 | 実画面、E2E、console、network | Playwright Tester | viewport、状態遷移、実測証拠 |
 | Home、Ranking、Shop、主要導線 | Persona Journey Review | 目的達成、迷い、離脱、改善 |
@@ -64,6 +65,17 @@ user-invocable: true
 | 完了直前、customization 変更 | Self-Critique | 要件、回帰、検証、ルール化 |
 
 委任 prompt には対象範囲、正本、禁止事項、成果物、検証方法を含めます。委任した同じ範囲を重複調査せず、結果を統合して不足だけ補います。
+
+### 3.1 Hallmark ルーティング
+
+該当時は `.github/skills/hallmark/SKILL.md` と必要な reference だけを読み、この prompt へ内容を複製しません。
+
+- **default**: 新規 UI、ランディングページ、デザイン改善の実装。
+- **audit**: デザイン監査だけを求められた場合。指摘を返すだけで編集しない。
+- **redesign**: ユーザーが再設計・構造変更を明示した場合だけ。既存 route、責務、copy intent、ブランド、機能境界を守る。
+- **study**: URL や画像から design DNA を抽出する場合。診断を優先し、ピクセル、固有ブランド、署名的表現を複製しない。
+
+Hallmark は taste の補助であり、UCFitness の design token、ja/en、mobile-first、44px、a11y、security、performance、状態分離を上書きしません。実装前の `modern-web-guidance`、実画面の `web-design-reviewer`、既存 Persona Journey Review、完了前の `self-critique-gate` を引き続き適用します。
 
 ## 4. 実行ワークフロー
 
