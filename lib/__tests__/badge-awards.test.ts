@@ -52,13 +52,27 @@ describe('assignBadges Performance Test', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        mockRpc.mockResolvedValue({
-            data: Array.from({ length: 5 }, (_, index) => ({
-                user_id: `user-${index}`,
-                total_steps: 1_000_000,
-                total_days: 100,
-            })),
-            error: null,
+        mockRpc.mockImplementation((functionName: string) => {
+            if (functionName === 'award_streak_milestones') {
+                return Promise.resolve({
+                    data: Array.from({ length: 5 }, (_, index) => ({
+                        awarded_user_id: `user-${index}`,
+                        awarded_badge_code: 'STREAK_7',
+                        awarded_reward_amount: 700,
+                        error_code: null,
+                    })),
+                    error: null,
+                });
+            }
+
+            return Promise.resolve({
+                data: Array.from({ length: 5 }, (_, index) => ({
+                    user_id: `user-${index}`,
+                    total_steps: 1_000_000,
+                    total_days: 100,
+                })),
+                error: null,
+            });
         });
         mockSendWebPushNotifications.mockResolvedValue({
             sent: 1,
@@ -204,6 +218,8 @@ describe('assignBadges Performance Test', () => {
                 tag: 'ucfitness-badges',
             });
             expect(call[2].title).toContain('個獲得');
+            expect(call[2].body).toContain('ストリーク節目報酬として +700 UC');
         }
     });
+
 });

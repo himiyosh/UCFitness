@@ -107,7 +107,7 @@
         "idempotency": "同日複数回 cron が実行されても二重付与しない",
         "notification_quality": "プッシュ通知メッセージが ja/en でローカライズ済み"
       },
-      "status": "not-started",
+      "status": "blocked",
       "lastAttempt": null,
       "lastError": null
     },

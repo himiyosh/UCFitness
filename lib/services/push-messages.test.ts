@@ -55,6 +55,15 @@ describe('badge notification messages', () => {
         expect(badgeUnlockedBody('en', 'A, B, C', 3))
             .toBe('Congratulations! You earned A, B, C ✨');
     });
+
+    it('ストリーク節目報酬がある場合、同じ通知本文にUCを含める', () => {
+        expect(badgeUnlockedBody('ja', '「7日連続ストリーク」', 1, 700))
+            .toContain('ストリーク節目報酬として +700 UC');
+        expect(badgeUnlockedBody('en', '30-Day Streak', 1, 3000))
+            .toContain('Streak milestone reward: +3,000 UC');
+        expect(badgeUnlockedBody('ja', '「3日連続ストリーク」', 1, 0))
+            .not.toContain('+0 UC');
+    });
 });
 
 describe('localized utility notifications', () => {

@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-16T14:40:54+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + PostgreSQL/Supabase + QA + Self-Critique)",
-  "lastCommit": "6df4659d0ad2dc28901aac98be6ad71ba4511489",
-  "lastBranch": "himiyosh-integrate-auth-ui-canonical",
+  "lastUpdated": "2026-07-18T04:10:00+09:00",
+  "lastAgent": "UCFitnessAgent (PostgreSQL + Reward Integrity + QA + Self-Critique)",
+  "lastCommit": "pending",
+  "lastBranch": "himiyosh-continue-ucfitness-improvements",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "独立再レビューでstable order付きOFFSET paginationが並行join/leave/kick下のsnapshotを保証しないと確認し、安全でないgroup削除同期最適化を撤回。routeとtestをorigin/mainへ完全復元し、CHANGELOG/READMEの未出荷成果を除去、LL-059とAgent契約をtransactional RPC + row lock/snapshot必須へ訂正した。関連4件、全50ファイル319件を通常・単一workerでPASS。check:allは0 error・既存warning 65件で増加なし、U+FFFD scan 0件。",
+  "summary": "F003ストリーク段階報酬のコードとmigrationを実装。7/30/100/365日の限定バッジ・固定UC、全シールド利用履歴、Web Push/Teams集約、Wallet表示を追加し、歩数再集計・ミッション入出金・節目付与・購入を共通ロック順へ統一した。全51ファイル321件を通常・単一workerでPASS、check:all 0 error・既存warning 65件、Cloudflare Pages build PASS。production migration適用と実Cronは承認待ち。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-16T14:40:54+09:00"
+    "lastVerified": "2026-07-18T04:10:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -25,8 +25,7 @@
     "認証済みGroups/Group detailの実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋順位テスト、ソース監査、2ペルソナ、独立レビューで代替",
     "認証済みSetupの3画面実ブラウザ完走は実ユーザーPIIとDB書込みを避けて未実施。純粋遷移テスト、Mobile Beginner/Accessibility Keyboardの2ペルソナ、独立レビュー、未認証375/1280リダイレクトで代替",
     "Fitbit実OAuthの成功・拒否コールバックE2Eは外部認証と資格情報を伴うため未実施。Auth.js設定、19件の認証フロー純粋テスト、公開エラー画面、2ペルソナ、独立レビューで代替",
-    "coin_transactionsの既存DB制約がMISSION_REWARDを拒否する環境があり、デイリーミッション報酬の実付与確認はDB変更承認待ち",
-    "デイリーミッション完了・取引台帳・残高加算の単一DB RPCによる原子化はDB変更承認待ち",
+    "F003ストリーク節目報酬・全シールド履歴・共通残高ロックmigrationはコード検証済みだが、本番Supabase適用と実Cron確認はユーザー承認待ち",
     "本番Supabaseにnotification_reactions / notification_gear_reactions列が未適用（42703）。Feed/未読/Settingsは部分障害fallback済みだが、通知嗜好を編集可能にするDB migration適用はユーザー承認待ち",
     "認証済みProfileの375/1280実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋集計テスト、ソース監査、2ペルソナ、独立レビューで代替",
     "認証済みWalletの実ブラウザは実ユーザー取引PIIを避けて未実施。wallet-summary純粋テスト、1100px grid合成DOM、2ペルソナ、独立レビューで代替"
@@ -930,6 +929,23 @@
         ".github/ucfitness-progress.json",
         "README.md",
         "CHANGELOG.md"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (PostgreSQL + Reward Integrity + QA + Self-Critique)",
+      "action": "F003ストリーク段階報酬を実装。7/30/100/365日の限定バッジ・固定UC、全シールド利用履歴、専用台帳と一生涯キー、共通ユーザー/残高ロック、ミッション再試行、Web Push/Teams集約、Wallet表示を追加。全321テスト、check:all、Cloudflare Pages build、2ペルソナ、独立コードレビューをPASS。本番migration適用は未実施。",
+      "commit": "",
+      "filesChanged": [
+        "migrations/20260718_add_streak_milestone_rewards.sql",
+        "lib/services/badge-awards.ts",
+        "lib/services/coin-service.ts",
+        "app/api/shop/use-shield/route.ts",
+        "app/api/user/missions/route.ts",
+        "components/TransactionHistory.tsx",
+        "components/EarningBreakdown.tsx",
+        "messages/ja.json",
+        "messages/en.json"
       ]
     }
   ],

@@ -20,6 +20,11 @@ const TYPE_CONFIG: Record<string, { color: string; icon: string; key: string }> 
     STEPS: { color: 'text-green-700', icon: '🚶', key: 'steps' },
     GOAL_BONUS: { color: 'text-blue-700', icon: '🎯', key: 'goalBonus' },
     STREAK_BONUS: { color: 'text-orange-700', icon: '🔥', key: 'streakBonus' },
+    STREAK_MILESTONE: {
+        color: 'text-[var(--color-reward-strong)]',
+        icon: '🏅',
+        key: 'streakMilestone',
+    },
     RANK_BONUS: { color: 'text-purple-700', icon: '🏆', key: 'rankBonus' },
     PURCHASE: { color: 'text-red-600', icon: '🛍️', key: 'purchase' },
 };
@@ -121,6 +126,11 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                                     {tx.type === 'PURCHASE' && tx.description && (
                                         <span className="block truncate text-xs text-[var(--color-text-muted)]">
                                             {getPurchaseItemName(tx.description)}
+                                        </span>
+                                    )}
+                                    {tx.type === 'STREAK_MILESTONE' && (
+                                        <span className="block text-xs text-[var(--color-text-muted)]">
+                                            {t('streakMilestoneNote')}
                                         </span>
                                     )}
                                 </div>

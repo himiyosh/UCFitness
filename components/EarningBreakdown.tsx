@@ -25,6 +25,7 @@ const TYPE_CONFIG: Record<string, { emoji: string; labelKey: string; color: stri
   STEPS: { emoji: '👟', labelKey: 'stepsCoins', color: 'bg-blue-500' },
   GOAL_BONUS: { emoji: '🎯', labelKey: 'goalBonus', color: 'bg-green-500' },
   STREAK_BONUS: { emoji: '🔥', labelKey: 'streakBonus', color: 'bg-orange-500' },
+  STREAK_MILESTONE: { emoji: '🏅', labelKey: 'streakMilestone', color: 'bg-[var(--color-reward-strong)]' },
   LOGIN_BONUS: { emoji: '📅', labelKey: 'loginBonus', color: 'bg-purple-500' },
   RANK_BONUS: { emoji: '🏆', labelKey: 'rankBonus', color: 'bg-amber-500' },
   MISSION_REWARD: { emoji: '✅', labelKey: 'missionReward', color: 'bg-teal-500' },
@@ -113,7 +114,7 @@ export default function EarningBreakdown({ transactions }: EarningBreakdownProps
           return (
             <div key={cat.type} className="flex items-center gap-2">
               <span className="text-base flex-shrink-0 w-6 text-center">{cat.emoji}</span>
-              <span className="text-xs text-gray-600 w-20 flex-shrink-0 truncate">{t(cat.labelKey)}</span>
+              <span className="w-24 flex-shrink-0 text-xs leading-4 text-gray-600">{t(cat.labelKey)}</span>
               <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                 {!isNegative && (
                   <div

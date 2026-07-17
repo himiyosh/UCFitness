@@ -17,60 +17,36 @@ export async function POST() {
     const today = getJSTDateString();
 
     try {
-        // シールドの残数を確認
-        const { data: shield, error: fetchError } = await supabaseAdmin
-            .from('user_streak_shields')
-            .select('id, remaining_uses, last_used_date')
-            .eq('user_id', userId)
-            .single();
-
-        if (fetchError || !shield) {
-            return NextResponse.json(
-                { error: 'no_shields', message: 'No shields available' },
-                { status: 404 },
-            );
+        const { data, error } = await supabaseAdmin.rpc('use_streak_shield', {
+            p_user_id: userId,
+            p_date: today,
+        });
+        const result: unknown = data;
+        if (error || typeof result !== 'object' || result === null || !('success' in result)) {
+            throw error ?? new Error('Invalid shield RPC response');
         }
-
-        if (shield.remaining_uses <= 0) {
-            return NextResponse.json(
-                { error: 'no_shields', message: 'No shields remaining' },
-                { status: 400 },
-            );
+        if (result.success !== true) {
+            const code = 'error' in result ? result.error : null;
+            const status = code === 'not_found' ? 404 : code === 'no_remaining' ? 400 : 409;
+            return NextResponse.json({
+                error: code === 'already_used' ? 'already_used' : 'no_shields',
+                message: code === 'already_used'
+                    ? 'Shield already used today'
+                    : 'No shields available',
+            }, { status });
         }
-
-        if (shield.last_used_date === today) {
-            return NextResponse.json(
-                { error: 'already_used', message: 'Shield already used today' },
-                { status: 409 },
-            );
-        }
-
-        // シールドを使用: 残数を減らし、使用日を記録（アトミックガード付き）
-        const { data: updated, error: updateError } = await supabaseAdmin
-            .from('user_streak_shields')
-            .update({
-                remaining_uses: shield.remaining_uses - 1,
-                last_used_date: today,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', shield.id)
-            .eq('user_id', userId)
-            .gt('remaining_uses', 0)
-            .neq('last_used_date', today)
-            .select('remaining_uses')
-            .single();
-
-        if (updateError || !updated) {
-            // 競合状態で別リクエストに先越された場合
-            return NextResponse.json(
-                { error: 'shield_unavailable', message: 'Shield is no longer available' },
-                { status: 409 },
-            );
+        if (
+            !('remaining' in result)
+            || typeof result.remaining !== 'number'
+            || !Number.isSafeInteger(result.remaining)
+            || result.remaining < 0
+        ) {
+            throw new Error('Shield RPC returned an invalid remaining count');
         }
 
         return NextResponse.json({
             success: true,
-            remaining: updated.remaining_uses,
+            remaining: result.remaining,
             usedDate: today,
         });
     } catch (error: unknown) {

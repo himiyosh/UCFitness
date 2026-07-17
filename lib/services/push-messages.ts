@@ -70,16 +70,26 @@ export function badgeUnlockedBody(
     locale: PushLocale,
     badgeNames: string,
     badgeCount = 1,
+    bonusCoins = 0,
 ): string {
+    const numberLocale = locale === 'ja' ? 'ja-JP' : 'en-US';
+    const rewardSuffix = bonusCoins > 0
+        ? locale === 'ja'
+            ? ` ストリーク節目報酬として +${bonusCoins.toLocaleString(numberLocale)} UC！`
+            : ` Streak milestone reward: +${bonusCoins.toLocaleString(numberLocale)} UC!`
+        : '';
+
     if (badgeCount > 1) {
-        return locale === 'ja'
+        const body = locale === 'ja'
             ? `おめでとう！${badgeNames}をまとめて獲得しました ✨`
             : `Congratulations! You earned ${badgeNames} ✨`;
+        return `${body}${rewardSuffix}`;
     }
 
-    return locale === 'ja'
+    const body = locale === 'ja'
         ? `おめでとう！${badgeNames}を獲得しました ✨`
         : `Congratulations! You earned: ${badgeNames} ✨`;
+    return `${body}${rewardSuffix}`;
 }
 
 // ─── ウィークリーサマリー ───

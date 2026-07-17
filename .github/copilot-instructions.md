@@ -722,6 +722,15 @@ if (!dbUser?.username) {
 - ランクと履歴を並べる`lg` gridは`items-start`にし、子カードから`h-full`を外す。件数の多い履歴が短いランクカードをstretchしてカード内空白を作らない
 - 資産推移の棒は「日次獲得」でなく購入を含む「日次純増減」と呼び、`sr-only` wrapper内のcaption/th付き表で日付・純増減・残高へ到達できるようにする。リファレンス: `app/[locale]/wallet/page.tsx`, `lib/wallet-summary.ts`, `components/CoinBalanceCard.tsx`, `components/TransactionHistory.tsx`, `components/CoinGrowthChart.tsx`
 
+#### ストリーク節目報酬の原子性・冪等性契約
+- 7/30/100/365日のストリークバッジとUC報酬は、完了済みJST日を対象にDB正本の`daily_steps`・`users.step_goal`・全シールド利用履歴で再検証する
+- 節目報酬は日次再計算される`STREAK_BONUS`へ混在させず、専用`STREAK_MILESTONE`種別と`streak_milestone:{userId}:{badgeCode}`の一生涯キーを使う。日付付きキーや日次削除対象へ入れない
+- バッジ、`coin_transactions`、`coin_balances`はユーザー行`FOR UPDATE`下の単一RPCで原子的に更新する。既存バッジへUCを遡及付与せず、新規節目だけを一回付与する
+- ミッション完了報酬・全達成ボーナスも同じユーザー行ロック付き入金RPCへ統一する。並行CronはユーザーID順にロックし、ユーザー単位の失敗を隔離しつつ、処理可能な通知後にCronを非成功へする
+- 歩数同期の台帳再集計も同じユーザー行ロック付きRPCで行い、途中で確定した節目・ミッション報酬を古い絶対残高で上書きしない
+- 節目バッジとUCは個人・グローバル・グループの既存バッジ通知へユーザー単位で集約し、ja/en本文に実際の追加UCを含める。報酬0の3日バッジで`+0 UC`を表示しない
+- Walletの履歴と獲得分析は`STREAK_MILESTONE`を専用ラベルで表示し、未知種別を歩数入金へ偽装しない。リファレンス: `migrations/20260718_add_streak_milestone_rewards.sql`, `lib/services/badge-awards.ts`
+
 #### ⑦ 翻訳キー要件（messages/ja.json, messages/en.json）
 
 新規ページには最低限以下の翻訳キーを定義すること:
@@ -1500,3 +1509,9 @@ export const runtime = "edge";
 - **根本原因**: 公式の「30,000 characters」をUnicode code pointだけで解釈し、multibyte主体の日本語profileのUTF-8 byte数をgateにしなかった。parser、frontmatter、GitHub上の存在、文字数checkの成功を、runtimeでの発見性確認の代わりにしていた。
 - **対策**: agent promptを詳細ルールの正本参照型へ再圧縮し、profile全体を24,000 UTF-8 bytes未満に制限する。`scripts/check-custom-agents.mjs`でUnicode文字数、UTF-8 bytes、必須SSoT参照を同時検証し、修正branchの短いcloud sessionでactive identityと利用可能agent一覧を確認する。
 - **教訓**: customizationの構文検証とruntime発見性は別の品質ゲートである。CJK中心のprofileは文字数とbyte数を別々に測り、十分な余裕を持たせ、実際のpicker経路でロードされるまで表示修復を完了と呼ばない。リファレンス: `.github/agents/UCFitnessAgent.agent.md`, `scripts/check-custom-agents.mjs`, `README.md`「カスタムエージェント」
+
+### LL-061: 日次再計算ボーナスと一回限り節目報酬を同じ台帳種別へ混在させると報酬が消える
+- **事象**: ストリーク節目UCを既存`STREAK_BONUS`で記録する初期案では、同日の歩数再同期が`processCoins()`のdelete→再計算対象として節目取引まで削除し得た。日付付き冪等キーでは別日の再実行による二重付与も防げない。
+- **根本原因**: 当日歩数に応じて何度でも再計算される倍率ボーナスと、生涯一回だけ確定する達成報酬を同じライフサイクル・種別・日付キーで扱った。
+- **対策**: `STREAK_MILESTONE`を日次削除対象から分離し、`streak_milestone:{userId}:{badgeCode}`を一生涯キーとした。DBで連続日を再検証し、ユーザー行ロック下でバッジ・台帳・残高を単一トランザクションへ統合した。
+- **教訓**: 台帳種別と冪等キーは表示分類ではなく、再計算・取消・一回限り・遡及可否のライフサイクル境界で設計する。定常再計算のdelete/upsert集合へ不可逆な達成報酬を混ぜない。リファレンス: `lib/services/coin-service.ts`, `migrations/20260718_add_streak_milestone_rewards.sql`

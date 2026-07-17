@@ -2,15 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
     auth: vi.fn(),
-    balanceSingle: vi.fn(),
-    balanceUpdateEq: vi.fn(),
+    creditBalance: vi.fn(),
     dailyMissionsOrder: vi.fn(),
     from: vi.fn(),
-    missionUpdateEq: vi.fn(),
+    missionUpdateResult: vi.fn(),
     reportError: vi.fn(),
     stepSingle: vi.fn(),
     streakOrder: vi.fn(),
-    transactionInsert: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -19,6 +17,10 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/errors', () => ({
     reportError: mocks.reportError,
+}));
+
+vi.mock('@/lib/services/coin-service', () => ({
+    creditBalance: mocks.creditBalance,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -49,13 +51,11 @@ describe('/api/user/missions', () => {
             data: null,
             error: { code: 'XX000', message: 'database unavailable' },
         });
-        mocks.balanceSingle.mockResolvedValue({
-            data: { total_balance: 0, total_bonus: 0 },
-            error: null,
+        mocks.creditBalance.mockResolvedValue({
+            success: true,
+            already_processed: false,
         });
-        mocks.balanceUpdateEq.mockResolvedValue({ error: null });
-        mocks.missionUpdateEq.mockResolvedValue({ error: null });
-        mocks.transactionInsert.mockResolvedValue({ error: null });
+        mocks.missionUpdateResult.mockResolvedValue({ error: null });
         mocks.streakOrder.mockResolvedValue({
             data: [],
             error: null,
@@ -76,7 +76,11 @@ describe('/api/user/missions', () => {
                         }),
                     }),
                     update: () => ({
-                        eq: mocks.missionUpdateEq,
+                        eq: () => ({
+                            eq: () => ({
+                                eq: mocks.missionUpdateResult,
+                            }),
+                        }),
                     }),
                 };
             }
@@ -88,23 +92,6 @@ describe('/api/user/missions', () => {
                                 single: mocks.stepSingle,
                             }),
                         }),
-                    }),
-                };
-            }
-            if (table === 'coin_transactions') {
-                return {
-                    insert: mocks.transactionInsert,
-                };
-            }
-            if (table === 'coin_balances') {
-                return {
-                    select: () => ({
-                        eq: () => ({
-                            single: mocks.balanceSingle,
-                        }),
-                    }),
-                    update: () => ({
-                        eq: mocks.balanceUpdateEq,
                     }),
                 };
             }
@@ -154,8 +141,9 @@ describe('/api/user/missions', () => {
             data: { steps: 500 },
             error: null,
         });
-        mocks.transactionInsert.mockResolvedValue({
-            error: { code: '23514', message: 'MISSION_REWARD is not allowed' },
+        mocks.creditBalance.mockResolvedValue({
+            success: false,
+            error: 'invalid_credit_type',
         });
 
         const response = await POST(new Request('http://localhost/api/user/missions', {
@@ -168,7 +156,8 @@ describe('/api/user/missions', () => {
         expect(response.status).toBe(503);
         expect(body.code).toBe('MISSION_REWARD_DATABASE_ERROR');
         expect(body.success).toBeUndefined();
-        expect(mocks.missionUpdateEq).not.toHaveBeenCalled();
+        expect(mocks.creditBalance).toHaveBeenCalledTimes(1);
+        expect(mocks.missionUpdateResult).not.toHaveBeenCalled();
         expect(mocks.reportError).toHaveBeenCalled();
     });
 
@@ -189,10 +178,26 @@ describe('/api/user/missions', () => {
         expect(body.success).toBe(true);
         expect(body.newlyCompleted).toBe(1);
         expect(body.bonusAwarded).toBe(true);
-        expect(mocks.transactionInsert).toHaveBeenCalledTimes(2);
-        expect(mocks.balanceUpdateEq).toHaveBeenCalledTimes(2);
-        expect(mocks.missionUpdateEq).toHaveBeenCalledTimes(1);
-        expect(mocks.transactionInsert.mock.invocationCallOrder[0])
-            .toBeLessThan(mocks.missionUpdateEq.mock.invocationCallOrder[0]);
+        expect(mocks.creditBalance).toHaveBeenNthCalledWith(
+            1,
+            'user-1',
+            10,
+            'MISSION_REWARD',
+            'デイリーミッション報酬',
+            'mission:mission-1',
+            expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        );
+        expect(mocks.creditBalance).toHaveBeenNthCalledWith(
+            2,
+            'user-1',
+            100,
+            'MISSION_REWARD',
+            'デイリーミッション全達成ボーナス',
+            expect.stringMatching(/^mission-bonus:user-1:\d{4}-\d{2}-\d{2}$/),
+            expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        );
+        expect(mocks.missionUpdateResult).toHaveBeenCalledTimes(1);
+        expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
+        expect(mocks.from).not.toHaveBeenCalledWith('coin_balances');
     });
 });
