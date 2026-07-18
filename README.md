@@ -256,6 +256,7 @@ npm run dev
 ### 公開LPのCore Web Vitals基準
 
 - 公開LPはServer Componentを正本とし、言語切替・横スクロール案内・認証callback復元など、ブラウザ状態が必要な部分だけをClient islandにする
+- モバイルのファーストビューでは、歩数カードに「次は300歩」の再開行動を表示し、ログインCTAの連携説明を隠さない
 - 日本語本文はHiragino Sans / Yu Gothic / Meiryoのシステムフォントを使用する。複数weightの日本語Webフォントをグローバル配信する場合は、生成CSS・転送量とLCPを実測してから採用する
 - Lighthouse Mobile（Fast 3G相当・CPU 4倍）でLCP 2.5秒未満、CLS 0.1未満を出荷基準とする
 - 2026-07-16のF019基準値: LCP 2,349ms、CLS 0、操作Event Timing最大48ms。LCP要素はヒーロー説明文
