@@ -477,6 +477,7 @@
       "goal": "目標 10,000 歩",
       "percent": "78%",
       "remaining": "あと 2,180 歩",
+      "nextAction": "次は300歩だけ歩く",
       "rankLabel": "今週の順位",
       "rankValue": "#12",
       "rewardLabel": "次の報酬",
@@ -558,17 +559,17 @@
     },
     "benefits": {
       "habit": {
-        "metric": "Habit",
+        "metric": "習慣",
         "title": "今日やることがすぐ分かる",
         "desc": "歩数、残り歩数、達成率をファーストビューに集約し、あと少し歩くかをすぐ判断できます。"
       },
       "compete": {
-        "metric": "Compete",
+        "metric": "競争",
         "title": "仲間と競う理由が見える",
         "desc": "ランキングやグループの動きを、順位表ではなく「追いつけそう」な差分として見せます。"
       },
       "reward": {
-        "metric": "Reward",
+        "metric": "報酬",
         "title": "歩いた成果が積み上がる",
         "desc": "UC やバッジを努力の証として見える化し、次の報酬までの距離を明確にします。"
       }
@@ -609,32 +610,32 @@
         "label": "アクティブグループ"
       }
     },
-    "journeyLabel": "Habit loop",
+    "journeyLabel": "歩く・競う・報われる",
     "journeyTitle": "歩数を見た瞬間、次の一歩が決まる。",
     "journeyDesc": "同期、目標、競争、報酬を順番につなぎ、迷いを減らします。",
     "journey": {
       "sync": {
-        "label": "Sync",
+        "label": "同期",
         "title": "歩数を自動で取り込む",
         "desc": "Fitbit の同期状態を明示し、データが反映されているかを不安にさせません。"
       },
       "move": {
-        "label": "Move",
+        "label": "次の一歩",
         "title": "残り歩数を行動に変える",
         "desc": "あと何歩か、どれくらい歩けばよいかをファーストビューで判断できます。"
       },
       "compete": {
-        "label": "Compete",
+        "label": "競争",
         "title": "追いつける差分を見せる",
         "desc": "順位表ではなく、次の相手までの差を見せて競争を具体的にします。"
       },
       "reward": {
-        "label": "Reward",
+        "label": "報酬",
         "title": "努力を積み上がる成果にする",
         "desc": "UC、バッジ、チャレンジ達成を、続けたくなる達成感として見せます。"
       }
     },
-    "showcaseLabel": "Live product",
+    "showcaseLabel": "実データで変わる画面",
     "showcaseTitle": "歩くたび、画面の手応えが変わる。",
     "showcaseDesc": "進捗は伸び、順位差は縮まり、UC は積み上がる。数字の変化を次の行動に変えます。",
     "showcase": {
@@ -648,23 +649,23 @@
       }
     },
     "rewardPreview": {
-      "label": "Reward loop",
+      "label": "300歩からの再開",
       "title": "少ない日も、歩いた分が残る。",
       "desc": "短い散歩も、UC とプロフィールの成長につながります。",
       "restart": {
-        "label": "Restart",
+        "label": "再開",
         "title": "まずは小さく再開",
         "desc": "300歩や3分の散歩からでも、今日の流れを作れます。",
         "value": "300歩"
       },
       "earn": {
-        "label": "Earn",
+        "label": "獲得",
         "title": "歩数がUCになる",
         "desc": "例: 7,820歩なら7,820UC。目標達成でボーナスも狙えます。",
         "value": "1歩=1UC"
       },
       "spend": {
-        "label": "Spend",
+        "label": "活用",
         "title": "プロフィールを育てる",
         "desc": "称号・フレーム・テーマで、続けた成果を見える形にできます。",
         "value": "称号/フレーム"

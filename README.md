@@ -159,7 +159,7 @@ UCFitness/
 |   +-- instructions/            # 補助 Instructions (26 ファイル)
 |   |   +-- awesome-copilot/     # awesome-copilot から導入 (8 ファイル)
 │   +-- agents/                  # Copilot カスタムエージェント (14 ファイル)
-|   +-- skills/                  # Copilot スキル (5 スキル)
+|   +-- skills/                  # Copilot スキル (6 スキル)
 |   +-- prompts/                 # Copilot カスタムプロンプト
 +-- .agents/
 |   +-- skills/
@@ -262,6 +262,7 @@ npm run dev
 ### 公開LPのCore Web Vitals基準
 
 - 公開LPはServer Componentを正本とし、言語切替・横スクロール案内・認証callback復元など、ブラウザ状態が必要な部分だけをClient islandにする
+- モバイルのファーストビューでは、歩数カードに「次は300歩」の再開行動を表示し、ログインCTAの連携説明を隠さない
 - 日本語本文はHiragino Sans / Yu Gothic / Meiryoのシステムフォントを使用する。複数weightの日本語Webフォントをグローバル配信する場合は、生成CSS・転送量とLCPを実測してから採用する
 - Lighthouse Mobile（Fast 3G相当・CPU 4倍）でLCP 2.5秒未満、CLS 0.1未満を出荷基準とする
 - 2026-07-16のF019基準値: LCP 2,349ms、CLS 0、操作Event Timing最大48ms。LCP要素はヒーロー説明文
@@ -338,6 +339,7 @@ npm run pages:build
 │   │
 │   ├── 📁 デザイン・アクセシビリティ
 │   │   ├── 🟧 UX Designer                 UI/UX / モバイルファースト / ゲーミフィケーション
+│   │   │   ├── 🔧 [hallmark skill]
 │   │   │   └── 🔧 [web-design-reviewer skill]
 │   │   └── 🟫 Accessibility Expert        WCAG 2.1/2.2 / ARIA / キーボードナビ
 │   │
@@ -392,6 +394,7 @@ npm run pages:build
 │
 └── 🔧 Skills (再利用可能なドメイン知識)
     ├── modern-web-guidance                Chrome Modern Web Guidance / Baseline 2024 / Web 標準ベストプラクティス
+    ├── hallmark                           新規UI・監査・再設計・design DNA抽出のデザイン規律
     ├── self-critique-gate                 完了前の自己批判・Setup/Settings/Profile/Wallet/Groups状態分離・狭幅境界・44px・App Shell / PageIntro・水和・回帰防止ゲート
     ├── web-design-reviewer                UI/UX ビジュアルチェック・レスポンシブ検証
     ├── ucfitness-rule-enforcement         UCFitness 固有ルールの静的検出・強制
@@ -430,6 +433,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | テスト、テストケース、バグ、品質、エッジケース | 🟨 **QA** |
 | エラー、バグ修正、クラッシュ、動かない、原因調査 | 🟪 **Debug Mode** |
 | UI、UX、ユーザー体験、レイアウト、デザイン | 🟧 **UX Designer** |
+| Hallmark、新規UI設計、デザイン監査、redesign、study、デザインDNA | 🟧 **UX Designer** + **hallmark** (`default` / `audit` / `redesign` / `study`) |
 | アクセシビリティ、WCAG、a11y、スクリーンリーダー | 🟫 **Accessibility Expert** |
 | E2E テスト、ブラウザテスト、Playwright、表示確認 | 🎭 **Playwright Tester** |
 | ペルソナ、実ユーザー、回遊、行動パターン、ユーザージャーニー、迷い、離脱、改善点 | 🧭 **Persona Journey Review** |
@@ -441,6 +445,8 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 
 > **自動起動**: 他ロールの作業完了後・Improvement Loop 各 Cycle 完了後・PR 作成直前に Self-Critique が自動起動し、全 6 軸 PASS するまで完了報告しない。
 
+Hallmark は UCFitness のデザイン規律を補完する。新規 UI・通常のデザイン改善は `default`、監査のみは編集しない `audit`、明示された構造再設計だけを `redesign`、URL・画像から模倣せず design DNA を抽出する場合を `study` とする。既存のテーマトークン、ja/en、モバイルファースト、44px、アクセシビリティ、セキュリティ、性能、状態網羅、Persona Journey Review、`modern-web-guidance`、`web-design-reviewer`、`self-critique-gate` が常に優先される。
+
 ### Skills
 
 詳細はツリー図の「Skills」セクションを参照。
@@ -448,6 +454,7 @@ UCFitnessAgent はリクエストのキーワード・文脈から以下のル�
 | スキル | 用途 |
 |---|---|
 | [modern-web-guidance](.agents/skills/modern-web-guidance/SKILL.md) | Chrome Modern Web Guidance。HTML / CSS / クライアントサイド JS / React UI / フォーム / Web Vitals 改善時に guide を検索・取得して適用する |
+| [hallmark](.github/skills/hallmark/SKILL.md) | Hallmark 1.1.0。新規 UI の設計、読取専用デザイン監査、明示的な再設計、URL・画像からの design DNA 抽出を UCFitness 固有契約の下で実行する |
 | [self-critique-gate](.github/skills/self-critique-gate/SKILL.md) | 完了前の自己批判ゲート。Setup/Settings/Profile/Wallet健康データ・狭幅境界・全操作44px・不可視table geometry・route coverage・App Shell / PageIntro・日付水和・固定ランキング・回帰証拠を確認する |
 | [web-design-reviewer](.github/skills/web-design-reviewer/SKILL.md) | UI/UX デザインレビュー・ビジュアルチェックリスト |
 | [ucfitness-rule-enforcement](.github/skills/ucfitness-rule-enforcement/SKILL.md) | UCFitness 固有ルール違反の静的検出・強制メカニズム |
