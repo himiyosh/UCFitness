@@ -4,6 +4,7 @@ import {
     getAuthErrorMessageKey,
     getSafeAuthCallbackPath,
 } from '@/lib/auth-flow';
+import { Link } from '@/navigation';
 
 import AuthButtons from '@/components/auth/AuthButtons';
 import {
@@ -296,8 +297,8 @@ export default async function LandingPage({ locale, searchParams }: LandingPageP
                         {t('title')}
                     </div>
                     <nav className="flex flex-wrap items-center gap-x-4 gap-y-1" aria-label={footerT('legalLinks')}>
-                        <a className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="https://studio344.net/terms" target="_blank" rel="noopener noreferrer">{footerT('terms')}</a>
-                        <a className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="https://studio344.net/privacy" target="_blank" rel="noopener noreferrer">{footerT('privacy')}</a>
+                        <Link className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="/legal/terms">{footerT('terms')}</Link>
+                        <Link className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="/legal/privacy">{footerT('privacy')}</Link>
                         <a className="inline-flex min-h-[44px] items-center rounded-lg hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]" href="https://studio344.net/contact" target="_blank" rel="noopener noreferrer">{footerT('contact')}</a>
                     </nav>
                     <p>&copy; {new Date().getFullYear()} {t('copyright')}</p>

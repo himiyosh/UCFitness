@@ -276,7 +276,7 @@
         "content_quality": "AdSense ガイドラインに準拠している",
         "a11y_compliance": "見出し階層が h1 → h2 → h3 で正しい"
       },
-      "status": "not-started",
+      "status": "passing",
       "lastAttempt": null,
       "lastError": null
     },
@@ -462,7 +462,7 @@
         "abuse_resistance": "連続攻撃が緩和される",
         "edge_runtime_compat": "Node.js API を使わない"
       },
-      "status": "not-started",
+      "status": "blocked",
       "lastAttempt": null,
       "lastError": null
     },
