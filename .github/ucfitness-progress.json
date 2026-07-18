@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T09:10:11+09:00",
-  "lastAgent": "UCFitnessAgent (Integration Audit + Security + Accessibility + QA + Self-Critique)",
-  "lastCommit": "92363117a88e40747db2cda3d2bb243d8811db5e",
-  "lastBranch": "himiyosh-f008-integration-audit",
+  "lastUpdated": "2026-07-18T09:45:00+09:00",
+  "lastAgent": "UCFitnessAgent (Security + Accessibility + QA + Self-Critique)",
+  "lastCommit": "90c3377acbb615a331f1becd0b85f658cf17bed5",
+  "lastBranch": "himiyosh-f018-rate-limit-api",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F008並行実装を統合監査し、canonical設計を維持したままShopおすすめの常時表示、focus/reduced-motion/新規タブ通知、認証済みtrending応答のprivate cache化、URL・認証・same-origin・rate-limit・body上限・PII境界テストを追加した。全53ファイル340件、check:all、2ペルソナ、セキュリティ/収益化/独立レビュー、自己批判をPASS。F011認証fixture、F003本番実行、分散rate-limitはblocked継続。",
+  "summary": "Cycle 4でF018を評価し、既存のmodule-level limiterではEdge isolateを跨ぐ原子性を保証できず、Upstash/Cloudflare bindingの外部作成が必要なため成功形fallbackを作らずblockedとした。次の安全なF010としてja/enのアプリ内利用規約・プライバシーポリシー、公開LP/共通Footerのローカル導線、semantic heading、44px操作領域を追加した。全53ファイル340件、check:all、Cloudflare Pages build、375/1280実ブラウザ、Lighthouse各100、2ペルソナ、独立レビュー、自己批判をPASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T09:10:11+09:00"
+    "lastVerified": "2026-07-18T09:45:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -30,7 +30,7 @@
     "認証済みProfileの375/1280実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋集計テスト、ソース監査、2ペルソナ、独立レビューで代替",
     "認証済みWalletの実ブラウザは実ユーザー取引PIIを避けて未実施。wallet-summary純粋テスト、1100px grid合成DOM、2ペルソナ、独立レビューで代替",
     "F008のPIIなしaffiliate eventはCloudflare structured logへ出力するが、variant別CTRの永続集計・A/A検証・14日判定は運用基盤で別途実施が必要",
-    "F008 affiliate analyticsのmodule-level rate-limitはCloudflare Edge isolate単位であり、グローバル制限には分散ストア等の追加基盤が必要"
+    "F018レート制限APIはblocked。現行module-level MapはEdge isolate単位で、Workers KVは原子的incrementを保証しない。厳密なcross-isolate制限にはUpstash Redis、Cloudflare Rate Limiting binding、Durable Objects等の外部resource/binding作成とcredential設定が必要"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -980,6 +980,23 @@
         "components/TrendingGear.tsx",
         "components/affiliate/AffiliateLink.tsx",
         "lib/affiliate-experiment.test.ts"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Security + Accessibility + QA + Self-Critique)",
+      "action": "Cycle 4でF018を安全性評価し、atomicなcross-isolate backend不在と外部resource要件を理由にblockedを維持した。次候補F010としてアプリ内の利用規約・プライバシーポリシーをja/enで追加し、公開LPと共通Footerをローカル導線へ統一。500文字超、320/375/1280 reflow、44px、Lighthouse各100、全340テスト、check:all、Pages build、2ペルソナ、独立レビュー、自己批判をPASS。",
+      "commit": "90c3377acbb615a331f1becd0b85f658cf17bed5",
+      "filesChanged": [
+        ".github/ucfitness-features.json",
+        "README.md",
+        "app/[locale]/legal/privacy/page.tsx",
+        "app/[locale]/legal/terms/page.tsx",
+        "components/LandingPage.tsx",
+        "components/layout/Footer.tsx",
+        "components/layout/PublicLegalPage.tsx",
+        "messages/en.json",
+        "messages/ja.json"
       ]
     }
   ],
