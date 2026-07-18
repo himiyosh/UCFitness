@@ -238,7 +238,7 @@ export default async function LandingPage({ locale, searchParams }: LandingPageP
                                 {!authErrorContext && (
                                     <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                                         <AuthButtons callbackUrl={authContext?.callbackUrl} />
-                                        <p className="sr-only sm:not-sr-only sm:max-w-56 sm:text-sm sm:font-medium sm:leading-5 sm:text-[var(--color-text-muted)]">
+                                        <p className="max-w-sm text-sm font-medium leading-5 text-[var(--color-text-muted)] sm:max-w-56">
                                             {t('connectFitbit')}
                                         </p>
                                     </div>
@@ -712,6 +712,9 @@ function ProductPreview({ t }: { t: LandingTranslations }) {
                         <p className="text-xs font-semibold text-[var(--color-text-muted)]">{t('preview.goal')}</p>
                         <p className="mt-1 text-base font-black leading-6 text-[var(--color-primary-strong)]">
                             {t('preview.remaining')}
+                        </p>
+                        <p className="mt-1.5 text-xs font-bold leading-5 text-[var(--color-success-strong)]">
+                            {t('preview.nextAction')}
                         </p>
                         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--color-surface)]">
                             <div className="landing-dashboard-progress h-full w-[78%] rounded-full bg-[var(--color-primary)]" />

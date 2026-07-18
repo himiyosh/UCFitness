@@ -398,6 +398,7 @@
       "goal": "Goal 10,000 steps",
       "percent": "78%",
       "remaining": "2,180 steps left",
+      "nextAction": "Next: walk just 300 steps",
       "rankLabel": "Weekly rank",
       "rankValue": "#12",
       "rewardLabel": "Next reward",
