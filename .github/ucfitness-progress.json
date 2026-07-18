@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T12:09:21+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + Performance + Accessibility + QA + Self-Critique)",
-  "lastCommit": "3f55e31cce92b3e9e505f1af18234ee8dd51b095",
-  "lastBranch": "himiyosh-himiyosh-f020-bundle-reduction",
+  "lastUpdated": "2026-07-18T12:44:00+09:00",
+  "lastAgent": "UCFitnessAgent (PostgreSQL + Security + QA + Self-Critique)",
+  "lastCommit": "fed733633305880dc8a2a2fbd0584496be880aca",
+  "lastBranch": "himiyosh-f021-query-optimization",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "Cycle 6でF020を完了。walletのRechartsとgroup detail下部のchat/gearをClient境界内のviewport遅延へ移し、JS無効時の資産推移表・空状態・aria-busy・低減motionを維持した。ranking-utilsのserver-only shop/Supabase依存を実行時importへ分離し、First Load JSをwallet 260→141KB、group detail 207→152KB、leaderboard 198→146KBへ削減。全page 200KB未満、全345テスト、check:all、Pages build、未認証ja/en productionブラウザ、2ペルソナ、a11y、独立レビュー、自己批判をPASS。",
+  "summary": "Cycle 7でF021を完了。GROUP rankingを6→4 queries/6→4 waves、Feedを10→8/6→4へ削減し、いずれもmodeled p95を33.3%改善。認可、通知嗜好の部分障害、0歩・tie・paginationを維持し、ranking serviceの未確認DB errorも明示伝播へ修正。全347テスト、check:all、Pages build、security/独立レビュー、自己批判PASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T12:09:21+09:00"
+    "lastVerified": "2026-07-18T12:44:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1044,7 +1044,8 @@
         "messages/en.json",
         "messages/ja.json"
       ]
-    }
+    },
+    {"date":"2026-07-18","agent":"UCFitnessAgent (PostgreSQL + Security + QA + Self-Critique)","action":"F021でGROUP rankingを6→4 queries/6→4 waves、Feedを10→8/6→4へ削減し、modeled p95を各33.3%改善。group membershipを1 queryでdeny-by-default認可し、Feed sender profileを一括化。ranking serviceのDB errorを空ランキングへ偽装せず伝播するよう修正。全347テスト、check:all、Pages build、security/独立レビュー、自己批判PASS。DB書込み、migration、push/mergeなし。","commit":"fed733633305880dc8a2a2fbd0584496be880aca","filesChanged":["app/api/rankings/route.ts","app/api/user/feed/route.ts","lib/services/ranking-service.ts","関連tests","README.md",".github/ucfitness-features.json"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
