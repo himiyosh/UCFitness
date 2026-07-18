@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T09:45:00+09:00",
+  "lastUpdated": "2026-07-18T10:14:34+09:00",
   "lastAgent": "UCFitnessAgent (Security + Accessibility + QA + Self-Critique)",
-  "lastCommit": "90c3377acbb615a331f1becd0b85f658cf17bed5",
+  "lastCommit": "a54cfff656bddba50272a4bf97ca6a635c944e69",
   "lastBranch": "himiyosh-f018-rate-limit-api",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "Cycle 4でF018を評価し、既存のmodule-level limiterではEdge isolateを跨ぐ原子性を保証できず、Upstash/Cloudflare bindingの外部作成が必要なため成功形fallbackを作らずblockedとした。次の安全なF010としてja/enのアプリ内利用規約・プライバシーポリシー、公開LP/共通Footerのローカル導線、semantic heading、44px操作領域を追加した。全53ファイル340件、check:all、Cloudflare Pages build、375/1280実ブラウザ、Lighthouse各100、2ペルソナ、独立レビュー、自己批判をPASS。",
+  "summary": "Cycle 5でF017 Strict CSPを実装。Edge middlewareがrequestごとにbase64 nonceを生成し、productionのscript-srcをnonce + strict-dynamicへ移行した。next-intlのlocale request overrideを保持してnonce/CSP request headerをmergeし、developmentだけunsafe-evalとDev Overlay styleを許可する。全55ファイル345件、check:all、Cloudflare Pages build、ja/en dev・production実ブラウザ、security/独立レビュー、自己批判をPASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T09:45:00+09:00"
+    "lastVerified": "2026-07-18T10:14:34+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -997,6 +997,20 @@
         "components/layout/PublicLegalPage.tsx",
         "messages/en.json",
         "messages/ja.json"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Security + Next.js + QA + Self-Critique)",
+      "action": "Cycle 5でF017 Strict CSPを実装。Edge middlewareでper-request nonceを生成し、production script-srcからunsafe-inline/unsafe-evalを除去してstrict-dynamicとscript-src-attr noneを適用。next-intlのx-next-intl-locale overrideを保持しつつnonce/CSPをrequestへ伝播するmerge回帰テストを追加した。ja/en dev・productionでNext scriptsの同一nonce、console/network障害0、inline event handler遮断を実測。全345テスト、check:all、Pages build、security/独立レビュー、自己批判をPASS。",
+      "commit": "a54cfff656bddba50272a4bf97ca6a635c944e69",
+      "filesChanged": [
+        ".github/ucfitness-features.json",
+        "README.md",
+        "lib/__tests__/csp.test.ts",
+        "lib/__tests__/middleware-csp.test.ts",
+        "lib/csp.ts",
+        "middleware.ts"
       ]
     }
   ],
