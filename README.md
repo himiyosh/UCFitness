@@ -266,6 +266,13 @@ npm run dev
 - Lighthouse Mobile（Fast 3G相当・CPU 4倍）でLCP 2.5秒未満、CLS 0.1未満を出荷基準とする
 - 2026-07-16のF019基準値: LCP 2,349ms、CLS 0、操作Event Timing最大48ms。LCP要素はヒーロー説明文
 
+### Client bundle budget
+
+- `npm run build` のroute表で、全ページのFirst Load JSを200KB未満に保つ
+- Client Componentと共有するmoduleからSupabase等のserver-only依存を静的importしない
+- Recharts、下部チャット、ギア等の非critical UIはClient境界内の`next/dynamic`とviewport判定で遅延し、loading名、`aria-busy`、低減モーション、JS無効時の主要情報を維持する
+- 2026-07-18のF020実測: wallet 260→141KB、group detail 207→152KB、leaderboard 198→146KB。遅延chunkの存在と初期route manifestからの分離も同じproduction buildで確認した
+
 ### Cloudflare Pages デプロイ
 
 ```shell

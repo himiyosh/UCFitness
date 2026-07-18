@@ -25,7 +25,7 @@ interface ChatMessage {
     users: ChatUser;
 }
 
-interface GroupChatProps {
+export interface GroupChatProps {
     groupId: string;
     currentUserId: string;
 }
@@ -49,7 +49,8 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const fetchMessages = useCallback(async () => {
+    const fetchMessages = useCallback(async (announceLoading = false) => {
+        if (announceLoading) setIsLoading(true);
         try {
             const res = await fetch(`/api/group/${groupId}/messages`);
             if (!res.ok) throw new Error('fetch failed');
@@ -65,7 +66,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
 
     // 初回ロード
     useEffect(() => {
-        fetchMessages();
+        fetchMessages(true);
     }, [fetchMessages]);
 
     // ポーリング（常時）
@@ -215,18 +216,23 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
                 </h3>
             </div>
 
+            {isLoading && (
+                <p className="sr-only" role="status">{t('loading')}</p>
+            )}
+
             {/* チャットエリア（常時表示） */}
             <div id="group-chat-messages" className="flex-1 flex flex-col">
                     {/* メッセージ一覧 */}
                     <div
                         ref={chatContainerRef}
                         className="max-h-[300px] overflow-y-auto px-4 py-2 space-y-2 flex-1"
+                        aria-busy={isLoading}
                         role="log"
                         aria-live="polite"
                     >
                         {isLoading && (
-                            <div className="flex justify-center py-8">
-                                <div className="w-5 h-5 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin" />
+                            <div className="flex justify-center py-8" aria-hidden="true">
+                                <div className="w-5 h-5 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
                             </div>
                         )}
 
@@ -234,7 +240,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
                             <div className="text-center py-4">
                                 <p className="text-sm text-red-500">{t('loadError')}</p>
                                 <button
-                                    onClick={fetchMessages}
+                                    onClick={() => fetchMessages(true)}
                                     className="mt-1 text-xs text-[var(--theme-primary)] font-semibold hover:underline min-h-[44px] px-2"
                                 >
                                     🔄 {t('retry')}
@@ -344,7 +350,7 @@ export default function GroupChat({ groupId, currentUserId }: GroupChatProps) {
                             aria-label={t('send')}
                         >
                             {isSending ? (
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
                             ) : (
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />

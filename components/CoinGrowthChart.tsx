@@ -14,14 +14,15 @@ import {
     ReferenceLine,
 } from 'recharts';
 
-interface BalanceHistoryEntry {
+export interface BalanceHistoryEntry {
     date: string;
     dailyCoins: number;
     balance: number;
 }
 
-interface CoinGrowthChartProps {
+export interface CoinGrowthChartProps {
     data: BalanceHistoryEntry[];
+    showAccessibleTable?: boolean;
 }
 
 /** 日付フォーマット（コンポーネント外に定数化） */
@@ -49,7 +50,10 @@ interface CustomTooltipProps {
     label?: string | number;
 }
 
-export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
+export default function CoinGrowthChart({
+    data,
+    showAccessibleTable = true,
+}: CoinGrowthChartProps) {
     const t = useTranslations('Bank');
     const chartHostRef = useRef<HTMLDivElement>(null);
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -238,7 +242,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                     </ComposedChart>
                 )}
             </div>
-            <div className="sr-only">
+            {showAccessibleTable && <div className="sr-only">
                 <table>
                     <caption>{t('assetGrowth')}</caption>
                     <thead>
@@ -258,7 +262,7 @@ export default function CoinGrowthChart({ data }: CoinGrowthChartProps) {
                         ))}
                     </tbody>
                 </table>
-            </div>
+            </div>}
         </div>
     );
 }

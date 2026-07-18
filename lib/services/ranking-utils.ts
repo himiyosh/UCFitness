@@ -1,5 +1,3 @@
-import { getEquippedItemsForUsers } from './shop-service';
-
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 export type RankingEntry = {
@@ -244,7 +242,8 @@ export async function enrichRankingsWithEquip<T extends { users: RankingEntry['u
     const userIds = Array.from(userIdSet);
     if (userIds.length === 0) return rankings;
 
-    // バルク取得
+    // Client Component も使う純粋ヘルパーから server-only の Supabase 依存を分離する。
+    const { getEquippedItemsForUsers } = await import('./shop-service');
     const equipMap = await getEquippedItemsForUsers(userIds);
 
     // 注入
@@ -365,6 +364,7 @@ export async function enrichAllGroupRankingsWithEquip<T extends { neighbors: Rec
     const userIds = Array.from(userIdSet);
     if (userIds.length === 0) return groupRankings;
 
+    const { getEquippedItemsForUsers } = await import('./shop-service');
     const equipMap = await getEquippedItemsForUsers(userIds);
 
     for (const group of groupRankings) {
@@ -462,7 +462,7 @@ export async function enrichCombinedRankings<T extends { neighbors: Record<strin
     const userIds = Array.from(userIdSet);
     if (userIds.length === 0) return;
 
-    // Bulk fetch equipment
+    const { getEquippedItemsForUsers } = await import('./shop-service');
     const equipMap = await getEquippedItemsForUsers(userIds);
 
     // Apply to Global Rankings

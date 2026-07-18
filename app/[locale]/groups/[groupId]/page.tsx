@@ -23,12 +23,15 @@ import {
 } from "@/lib/services/ranking-utils";
 import { getGroupCompetitionRankings } from "@/lib/services/group-ranking-service";
 import JoinGroupPreview from "@/components/group/JoinGroupPreview";
-import nextDynamic from 'next/dynamic';
 import { getAllGroupComparisonData } from "@/lib/services/group-comparison-service";
 import { getLocale, getTranslations } from 'next-intl/server';
 import Footer from '@/components/layout/Footer';
 import GroupEventList from "@/components/group/GroupEventList";
 import GroupWeeklyReport from "@/components/group/GroupWeeklyReport";
+import DeferredGroupChat, {
+    DeferredGroupGear,
+} from '@/components/group/DeferredGroupSections';
+import GroupAnalytics from '@/components/group/GroupAnalytics';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 import type { ChartData } from '@/lib/services/group-comparison-service';
@@ -37,11 +40,6 @@ import type {
     RankingEntry,
     ViewerRankingActivities,
 } from '@/lib/services/ranking-utils';
-
-// ⚡ パフォーマンス: 重いクライアントコンポーネントを遅延読み込み
-const GroupAnalytics = nextDynamic(() => import('@/components/group/GroupAnalytics'));
-const GroupGear = nextDynamic(() => import('@/components/group/GroupGear'));
-const GroupChat = nextDynamic(() => import('@/components/group/GroupChat'));
 
 export const dynamic = 'force-dynamic';
 
@@ -513,7 +511,7 @@ export default async function GroupDetailPage(props: GroupDetailPageProps): Prom
                         </div>
                     </section>
                     <section className="flex">
-                        <GroupChat groupId={groupId} currentUserId={userId} />
+                        <DeferredGroupChat groupId={groupId} currentUserId={userId} />
                     </section>
                 </div>
 
@@ -525,7 +523,7 @@ export default async function GroupDetailPage(props: GroupDetailPageProps): Prom
                     className="scroll-mt-24 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)] focus-visible:ring-offset-2"
                 >
                     <h2 id="group-gear-title" className="sr-only">{gearT('title')}</h2>
-                    <GroupGear groupId={groupId} userId={userId} />
+                    <DeferredGroupGear groupId={groupId} userId={userId} />
                 </section>
 
                 {/* ウィークリーレポート */}

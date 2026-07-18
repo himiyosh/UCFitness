@@ -509,7 +509,7 @@
         "bundle_size_target": "全ページ < 200KB",
         "progressive_enhancement": "JS 無効でも主要情報が読める"
       },
-      "status": "not-started",
+      "status": "passing",
       "lastAttempt": null,
       "lastError": null
     },

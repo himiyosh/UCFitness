@@ -1148,6 +1148,7 @@
   "GroupGear": {
     "title": "Members' Gear",
     "subtitle": "Popular items in this group",
+    "loading": "Loading members' gear",
     "empty": "Members' favorite gear will appear here once it is registered",
     "error": "We couldn't load members' gear",
     "retry": "Retry",
@@ -1646,6 +1647,7 @@
   },
   "GroupChat": {
     "title": "Group Chat",
+    "loading": "Loading group chat",
     "loadError": "Failed to load messages",
     "retry": "Retry",
     "empty": "No messages yet",
