@@ -64,6 +64,7 @@ export type DailyStepDefaultRow = { user_id: string; steps: number; date: string
  *
  * date + user_id でページ順を固定するが、各ページは独立したHTTPリクエストのため
  * 同期処理と並行した場合のトランザクション的なスナップショット一貫性は保証しない。
+ * 複数ページが常態化する場合は、複合keysetまたはtransactional RPCへ移行する。
  */
 export async function fetchDailyStepsPaginated<T = DailyStepDefaultRow>(options: {
     startDate: string;
