@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T08:36:00+09:00",
-  "lastAgent": "UCFitnessAgent (Monetization + React + Accessibility + QA + Self-Critique)",
-  "lastCommit": "538b16b2b35c8d5c7a5cd108fbfc80d7a0b14ad2",
-  "lastBranch": "himiyosh-f011-responsive-audit-recovery",
+  "lastUpdated": "2026-07-18T09:10:11+09:00",
+  "lastAgent": "UCFitnessAgent (Integration Audit + Security + Accessibility + QA + Self-Critique)",
+  "lastCommit": "92363117a88e40747db2cda3d2bb243d8811db5e",
+  "lastBranch": "himiyosh-f008-integration-audit",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F008 Amazon CTA実験を実装。プロフィール・ホーム・Shopへセッション内で安定する配置/文言2×2実験、50%・連続1秒のimpression/click計測、Amazon.co.jp URL制限、PR開示、価格・配送の正直な案内を追加した。全52ファイル329件、check:all、build、375/1280 ja/en A/B、Reward Shop/Accessibility Keyboard、独立レビューをPASS。F011 full監査とF003本番実行はblocked継続。",
+  "summary": "F008並行実装を統合監査し、canonical設計を維持したままShopおすすめの常時表示、focus/reduced-motion/新規タブ通知、認証済みtrending応答のprivate cache化、URL・認証・same-origin・rate-limit・body上限・PII境界テストを追加した。全53ファイル340件、check:all、2ペルソナ、セキュリティ/収益化/独立レビュー、自己批判をPASS。F011認証fixture、F003本番実行、分散rate-limitはblocked継続。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T08:36:00+09:00"
+    "lastVerified": "2026-07-18T09:10:11+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -29,7 +29,8 @@
     "本番Supabaseにnotification_reactions / notification_gear_reactions列が未適用（42703）。Feed/未読/Settingsは部分障害fallback済みだが、通知嗜好を編集可能にするDB migration適用はユーザー承認待ち",
     "認証済みProfileの375/1280実ブラウザは実ユーザーPIIと状態変更を避けて未実施。純粋集計テスト、ソース監査、2ペルソナ、独立レビューで代替",
     "認証済みWalletの実ブラウザは実ユーザー取引PIIを避けて未実施。wallet-summary純粋テスト、1100px grid合成DOM、2ペルソナ、独立レビューで代替",
-    "F008のPIIなしaffiliate eventはCloudflare structured logへ出力するが、variant別CTRの永続集計・A/A検証・14日判定は運用基盤で別途実施が必要"
+    "F008のPIIなしaffiliate eventはCloudflare structured logへ出力するが、variant別CTRの永続集計・A/A検証・14日判定は運用基盤で別途実施が必要",
+    "F008 affiliate analyticsのmodule-level rate-limitはCloudflare Edge isolate単位であり、グローバル制限には分散ストア等の追加基盤が必要"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -963,6 +964,22 @@
         "components/ShopRecommendations.tsx",
         "messages/ja.json",
         "messages/en.json"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Integration Audit + Security + Accessibility + QA + Self-Critique)",
+      "action": "F008のcanonical 2560265とalternate e3bcb65を共通base 44458f6から小分け比較し、canonicalの安全な計測契約を維持した。Shopおすすめ常時表示、focus/reduced-motion/新規タブ通知、private cache、明示エラーを最小移植し、affiliate routeの認証・same-origin・rate-limit・1KiB body・PII拒否とAmazon.co.jp URL境界をテスト化。340テスト、check:all、2ペルソナ、セキュリティ/収益化/独立レビュー、自己批判をPASS。F011認証fixture、F003本番適用、分散rate-limitはblocked継続。",
+      "commit": "92363117a88e40747db2cda3d2bb243d8811db5e",
+      "filesChanged": [
+        "app/api/amazon/trending/route.ts",
+        "app/api/analytics/affiliate/route.test.ts",
+        "components/AmazonProductSearch.tsx",
+        "components/RecommendedItems.tsx",
+        "components/ShopRecommendations.tsx",
+        "components/TrendingGear.tsx",
+        "components/affiliate/AffiliateLink.tsx",
+        "lib/affiliate-experiment.test.ts"
       ]
     }
   ],
