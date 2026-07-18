@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T13:45:00+09:00",
+  "lastUpdated": "2026-07-18T13:49:00+09:00",
   "lastAgent": "UCFitnessAgent (Integration + PostgreSQL + Hallmark + QA + Self-Critique)",
-  "lastCommit": "4a82304a5b0930ca6bd169e87e1b3f06d7fcb6bc",
+  "lastCommit": "0f5931fc0e68f0aece8511d1dc9409b59b71967b",
   "lastBranch": "himiyosh-f021-integration-audit",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "最新mainを履歴保持で統合し、Hallmark 1.1.0とPR #233の300歩再開導線を保持。F021はGROUP 4 queries/4 waves、Feed 8/4を維持し、daily_steps page順と同順位をIDで決定化した。固定20ms RTTモデルは33.3%改善だがproduction p95とOFFSETページ間snapshotは未検証のためin-progress。全355テスト、check:all、Pages build、4幅ja/en browser、独立reviewをPASS。",
@@ -13,7 +13,7 @@
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T13:45:00+09:00"
+    "lastVerified": "2026-07-18T13:49:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1086,6 +1086,20 @@
         "messages/ja.json",
         "messages/en.json",
         "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Integration + PostgreSQL + Hallmark + QA + Self-Critique)",
+      "action": "ユーザー判断に従いPR #233を先行mergeし、main 77bbf84をF021正本へ履歴保持で統合。progress競合はF003〜F021、Hallmark、300歩再開導線の全履歴を保持して解消した。F021はdaily_stepsをdate+user_id順、同歩数・同平均をID順へ決定化し、query/waveを維持。全355テスト、check:all、Pages build、375/1280 ja/en実ブラウザ、独立code/data review、2ペルソナをPASS。production p95、実Supabaseログ、OFFSETページ間snapshotは未検証でin-progressを維持。F003 migration適用、deploy、A/B変更なし。",
+      "commit": "0f5931fc0e68f0aece8511d1dc9409b59b71967b",
+      "filesChanged": [
+        "README.md",
+        "lib/supabase-utils.ts",
+        "lib/supabase-utils.test.ts",
+        "lib/services/ranking-utils.ts",
+        "lib/__tests__/ranking-utils.test.ts",
         ".github/ucfitness-progress.json"
       ]
     }
