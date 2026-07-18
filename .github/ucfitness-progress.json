@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T13:49:00+09:00",
-  "lastAgent": "UCFitnessAgent (Integration + PostgreSQL + Hallmark + QA + Self-Critique)",
-  "lastCommit": "0f5931fc0e68f0aece8511d1dc9409b59b71967b",
-  "lastBranch": "himiyosh-f021-integration-audit",
+  "lastUpdated": "2026-07-18T18:43:31+09:00",
+  "lastAgent": "UCFitnessAgent (Integration + Accessibility + QA + Self-Critique)",
+  "lastCommit": "b3e28f5028beff9f6dd1a41823770283f550ff71",
+  "lastBranch": "himiyosh-integrate-ucfitness-improvements",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "最新mainを履歴保持で統合し、Hallmark 1.1.0とPR #233の300歩再開導線を保持。F021はGROUP 4 queries/4 waves、Feed 8/4を維持し、daily_steps page順と同順位をIDで決定化した。固定20ms RTTモデルは33.3%改善だがproduction p95とOFFSETページ間snapshotは未検証のためin-progress。全355テスト、check:all、Pages build、4幅ja/en browser、独立reviewをPASS。",
+  "summary": "PR #234系のF003〜F021改善を現行セッションへfast-forward統合し、F012公開アクセシビリティ監査を8→30ケースへ拡張。ja/enのLP・利用規約・プライバシーを320/375/768/1024/1920pxで検査し、AX名、フォームラベル、見出し順、重複ID、aria-hidden focus、スキップリンク、44px、reduced-motionを自動化した。公開6ページのLighthouse a11y 100、全355テスト、check:all、Pages build、独立review、自己批判をPASS。認証済み120ケースと実スクリーンリーダーは未検証のためF012はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T13:49:00+09:00"
+    "lastVerified": "2026-07-18T18:43:31+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -31,7 +31,8 @@
     "認証済みWalletの実ブラウザは実ユーザー取引PIIを避けて未実施。wallet-summary純粋テスト、1100px grid合成DOM、2ペルソナ、独立レビューで代替",
     "F008のPIIなしaffiliate eventはCloudflare structured logへ出力するが、variant別CTRの永続集計・A/A検証・14日判定は運用基盤で別途実施が必要",
     "F018レート制限APIはblocked。現行module-level MapはEdge isolate単位で、Workers KVは原子的incrementを保証しない。厳密なcross-isolate制限にはUpstash Redis、Cloudflare Rate Limiting binding、Durable Objects等の外部resource/binding作成とcredential設定が必要",
-    "F021はin-progress。GROUP rankingは6→4 queries/6→4 waves、Feedは10→8/6→4、20ms固定RTTモデルは33.3%改善したが、実Supabaseログとproduction p95、更新中daily_steps/FeedのOFFSETページ間snapshot整合性は未検証"
+    "F021はin-progress。GROUP rankingは6→4 queries/6→4 waves、Feedは10→8/6→4、20ms固定RTTモデルは33.3%改善したが、実Supabaseログとproduction p95、更新中daily_steps/FeedのOFFSETページ間snapshot整合性は未検証",
+    "F012はin-progress。公開LP・利用規約・プライバシーのja/en×5幅は30/30、公開6ページのLighthouse a11yは100だが、認証済み120ケース、安全な認証fixture、axe、VoiceOver/NVDAの主要フローは未検証"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -1101,6 +1102,17 @@
         "lib/services/ranking-utils.ts",
         "lib/__tests__/ranking-utils.test.ts",
         ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Integration + Accessibility + QA + Self-Critique)",
+      "action": "旧F021統合セッションのPR #234系履歴を現行branchへfast-forwardし、F012を開始。公開監査を8→30ケースへ拡張し、ja/enのLP・利用規約・プライバシーを320/375/768/1024/1920pxで検証した。CDP AX treeの計算済みaccessible name、フォームラベル、見出し順、重複ID、aria-hidden内focusable、スキップリンクの可視focus/main移動/固定header回避/非遮蔽、44px、横overflow、CLS、初期reduced-motionのCSS/WAAPIを自動検査。公開6ページLighthouse a11y 100、30/30監査、全355テスト、check:all、Pages build、Accessibility Expert、自己批判をPASS。認証済み120ケースと実スクリーンリーダーは未検証のためF012 in-progressを維持。",
+      "commit": "b3e28f5028beff9f6dd1a41823770283f550ff71",
+      "filesChanged": [
+        ".github/ucfitness-features.json",
+        "README.md",
+        "scripts/audit-responsive.mjs"
       ]
     }
   ],
