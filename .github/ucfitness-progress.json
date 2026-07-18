@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T10:14:34+09:00",
+  "lastUpdated": "2026-07-18T11:11:39+09:00",
   "lastAgent": "UCFitnessAgent (Security + Accessibility + QA + Self-Critique)",
-  "lastCommit": "a54cfff656bddba50272a4bf97ca6a635c944e69",
-  "lastBranch": "himiyosh-f018-rate-limit-api",
+  "lastCommit": "ed267a2e3455789fd198e495cbfa1614401fc008",
+  "lastBranch": "himiyosh-f017-csp-integration-audit",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "Cycle 5でF017 Strict CSPを実装。Edge middlewareがrequestごとにbase64 nonceを生成し、productionのscript-srcをnonce + strict-dynamicへ移行した。next-intlのlocale request overrideを保持してnonce/CSP request headerをmergeし、developmentだけunsafe-evalとDev Overlay styleを許可する。全55ファイル345件、check:all、Cloudflare Pages build、ja/en dev・production実ブラウザ、security/独立レビュー、自己批判をPASS。",
+  "summary": "F017並行実装を共通baseから統合監査し、production script policyを実際にenforceするAをcanonicalとして維持した。Bの段階移行からbase-uri noneとsame-origin workerだけを最小移植し、送信先のないReport-Only、script-src-elem unsafe-inline、未使用wss許可は不採用。全55ファイル345件、check:all、Cloudflare Pages build、ja/en dev・production実ブラウザ、security/独立レビュー、自己批判をPASS。F017はpassing、F018/F011/F003/F008の既存blockerは不変。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T10:14:34+09:00"
+    "lastVerified": "2026-07-18T11:11:39+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1011,6 +1011,17 @@
         "lib/__tests__/middleware-csp.test.ts",
         "lib/csp.ts",
         "middleware.ts"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Security + Next.js + QA + Self-Critique)",
+      "action": "F017のA/Bを共通base cb2df8cから小分け比較し、Aのnonce + strict-dynamic enforce、next-intl header merge、API/static CSPを維持した。Bからbase-uri noneとworker-src selfだけを最小移植し、Report-Onlyはreporting endpointと観測がなく、enforce側script-src-elem unsafe-inlineは保護を弱めるため不採用。production ja/en×375/1280で全script/link nonce一致、通常console error 0、parser挿入script/style遮断、Auth 200、PWA登録を実測し、development HMR WebSocketとlocale切替も確認。全345テスト、check:all、Pages build、security/独立レビュー、自己批判をPASS。F017 passingとF018/F011/F003/F008 blockerを維持。",
+      "commit": "ed267a2e3455789fd198e495cbfa1614401fc008",
+      "filesChanged": [
+        "README.md",
+        "lib/__tests__/csp.test.ts",
+        "lib/csp.ts"
       ]
     }
   ],
