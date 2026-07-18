@@ -324,7 +324,7 @@
         "keyboard_navigability": "キーボードのみで主要フロー完遂可",
         "screen_reader_friendly": "NVDA / VoiceOver で主要コンテンツが読み上げ可能"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
