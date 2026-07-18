@@ -4,9 +4,9 @@ const mocks = vi.hoisted(() => ({
     auth: vi.fn(),
     enrichRankingsWithEquip: vi.fn(),
     from: vi.fn(),
+    getGroupRankings: vi.fn(),
     getRankings: vi.fn(),
     groupMaybeSingle: vi.fn(),
-    membershipMaybeSingle: vi.fn(),
     reportError: vi.fn(),
 }));
 
@@ -19,6 +19,7 @@ vi.mock('@/lib/errors', () => ({
 }));
 
 vi.mock('@/lib/services/ranking-service', () => ({
+    getGroupRankings: mocks.getGroupRankings,
     getRankings: mocks.getRankings,
 }));
 
@@ -42,14 +43,15 @@ describe('GET /api/rankings', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.auth.mockResolvedValue({ user: { id: 'user-1' } });
+        mocks.getGroupRankings.mockResolvedValue([]);
         mocks.getRankings.mockResolvedValue([]);
         mocks.enrichRankingsWithEquip.mockResolvedValue({ WEEKLY: [] });
         mocks.groupMaybeSingle.mockResolvedValue({
-            data: { id: 'group-1', is_public: true },
-            error: null,
-        });
-        mocks.membershipMaybeSingle.mockResolvedValue({
-            data: { id: 'membership-1' },
+            data: {
+                id: 'group-1',
+                is_public: true,
+                group_members: [{ user_id: 'user-1' }],
+            },
             error: null,
         });
         mocks.from.mockImplementation((table: string) => {
@@ -57,17 +59,8 @@ describe('GET /api/rankings', () => {
                 return {
                     select: () => ({
                         eq: () => ({
-                            maybeSingle: mocks.groupMaybeSingle,
-                        }),
-                    }),
-                };
-            }
-            if (table === 'group_members') {
-                return {
-                    select: () => ({
-                        eq: () => ({
                             eq: () => ({
-                                maybeSingle: mocks.membershipMaybeSingle,
+                                maybeSingle: mocks.groupMaybeSingle,
                             }),
                         }),
                     }),
@@ -89,8 +82,8 @@ describe('GET /api/rankings', () => {
     });
 
     it('GROUPスコープで非メンバーの場合、403を返してランキングを取得しない', async () => {
-        mocks.membershipMaybeSingle.mockResolvedValue({
-            data: null,
+        mocks.groupMaybeSingle.mockResolvedValue({
+            data: { id: 'group-1', is_public: true, group_members: [] },
             error: null,
         });
 
@@ -99,16 +92,14 @@ describe('GET /api/rankings', () => {
         );
 
         expect(response.status).toBe(403);
+        expect(mocks.from).toHaveBeenCalledTimes(1);
+        expect(mocks.getGroupRankings).not.toHaveBeenCalled();
         expect(mocks.getRankings).not.toHaveBeenCalled();
     });
 
     it('GROUPスコープで私有グループの非メンバーの場合、404を返す', async () => {
         mocks.groupMaybeSingle.mockResolvedValue({
-            data: { id: 'group-1', is_public: false },
-            error: null,
-        });
-        mocks.membershipMaybeSingle.mockResolvedValue({
-            data: null,
+            data: { id: 'group-1', is_public: false, group_members: [] },
             error: null,
         });
 
@@ -117,6 +108,8 @@ describe('GET /api/rankings', () => {
         );
 
         expect(response.status).toBe(404);
+        expect(mocks.from).toHaveBeenCalledTimes(1);
+        expect(mocks.getGroupRankings).not.toHaveBeenCalled();
         expect(mocks.getRankings).not.toHaveBeenCalled();
     });
 
@@ -127,10 +120,11 @@ describe('GET /api/rankings', () => {
 
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toEqual([]);
-        expect(mocks.getRankings).toHaveBeenCalledWith(
-            'GROUP',
+        expect(mocks.from).toHaveBeenCalledTimes(1);
+        expect(mocks.getGroupRankings).toHaveBeenCalledWith(
+            'group-1',
             'WEEKLY',
-            'walking-club',
         );
+        expect(mocks.getRankings).not.toHaveBeenCalled();
     });
 });

@@ -532,7 +532,7 @@
         "query_count_reduction": "ページロードあたりクエリ数 < 10",
         "latency_improvement": "p95 改善率 30%+"
       },
-      "status": "not-started",
+      "status": "passing",
       "lastAttempt": null,
       "lastError": null
     },

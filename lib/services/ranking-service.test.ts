@@ -26,7 +26,7 @@ vi.mock('@/lib/supabase-utils', () => ({
     fetchDailyStepsPaginated: mocks.fetchDailyStepsPaginated,
 }));
 
-import { getAllGroupRankings, getRankings } from './ranking-service';
+import { getAllGroupRankings, getAllRankings, getGroupRankings, getRankings } from './ranking-service';
 
 describe('getRankings', () => {
     beforeEach(() => {
@@ -87,6 +87,35 @@ describe('getRankings', () => {
             steps: 500,
             users: { id: 'user-active' },
         });
+    });
+
+    it('グループ順位はメンバープロフィールを埋め込み取得して2クエリで返す', async () => {
+        mocks.from.mockReturnValue({
+            select: () => ({
+                eq: vi.fn().mockReturnValue(mockQueryResult([{
+                    user_id: 'user-active',
+                    users: { id: 'user-active', name: 'Active', image: null, username: 'active' },
+                }])),
+            }),
+        });
+        mocks.fetchDailyStepsPaginated.mockResolvedValue({
+            data: [{ user_id: 'user-active', steps: 500 }], error: null,
+        });
+
+        await expect(getGroupRankings('group-1', 'DAILY')).resolves.toHaveLength(1);
+        expect(mocks.from).toHaveBeenCalledTimes(1);
+        expect(mocks.fetchDailyStepsPaginated).toHaveBeenCalledTimes(1);
+    });
+
+    it('全期間グループ順位でDB取得が失敗した場合、空ランキングへ偽装しない', async () => {
+        mocks.from.mockReturnValue({
+            select: () => ({ eq: () => ({ single: vi.fn().mockResolvedValue({
+                data: null, error: { code: 'XX000', message: 'database unavailable' },
+            }) }) }),
+        });
+
+        await expect(getAllRankings('GROUP', 'walking-club'))
+            .rejects.toThrow('Failed to load ranking group');
     });
 });
 

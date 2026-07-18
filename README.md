@@ -272,6 +272,7 @@ npm run dev
 - Client Componentと共有するmoduleからSupabase等のserver-only依存を静的importしない
 - Recharts、下部チャット、ギア等の非critical UIはClient境界内の`next/dynamic`とviewport判定で遅延し、loading名、`aria-busy`、低減モーション、JS無効時の主要情報を維持する
 - 2026-07-18のF020実測: wallet 260→141KB、group detail 207→152KB、leaderboard 198→146KB。遅延chunkの存在と初期route manifestからの分離も同じproduction buildで確認した
+- ランキング/Feedの1ページロードは10クエリ未満を維持し、独立queryを並列化して依存waveを減らす。2026-07-18のF021実測モデルではGROUP ranking 6→4クエリ、Feed 10→8クエリ、依存waveはいずれも6→4
 
 ### Cloudflare Pages デプロイ
 

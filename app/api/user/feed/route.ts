@@ -61,36 +61,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
         const feedWindow = getNotificationFeedWindow(cursor.snapshot);
 
-        // 1. フォロー中ユーザーの ID リストを取得
-        const { data: followingData, error: followError } = await supabaseAdmin
-            .from('user_follows')
-            .select('following_id')
-            .eq('follower_id', userId);
-
-        if (followError) {
-            reportError('user/feed:follows', followError, { userId });
-            return NextResponse.json({ error: 'Failed to fetch following' }, { status: 500 });
-        }
-
-        // 自分自身も含める（自分のアクティビティも表示）
-        const followingIds = (followingData || []).map((f) => f.following_id);
-        const targetIds = [userId, ...followingIds];
-
-        if (targetIds.length === 0) {
-            return NextResponse.json({ feed: [], hasMore: false });
-        }
-
-        // 2. ユーザー情報・既読時刻・任意の通知設定を並列取得（N+1防止）
-        const [usersResult, readStateResult, preferenceResult] = await Promise.all([
+        const [followingResult, preferenceResult] = await Promise.all([
             supabaseAdmin
-                .from('users')
-                .select('id, name, image, username')
-                .in('id', targetIds),
-            supabaseAdmin
-                .from('users')
-                .select('feed_last_read_at')
-                .eq('id', userId)
-                .single(),
+                .from('user_follows')
+                .select('following_id')
+                .eq('follower_id', userId),
             supabaseAdmin
                 .from('users')
                 .select('notification_reactions, notification_gear_reactions')
@@ -98,60 +73,44 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                 .single(),
         ]);
 
-        const usersData = usersResult.data;
-        const readStateData = readStateResult.data;
-        const preferenceData = preferenceResult.data;
-        if (usersResult.error || readStateResult.error) {
-            reportError(
-                'user/feed:userContext',
-                usersResult.error ?? readStateResult.error,
-                { userId },
-            );
-            return NextResponse.json({ error: 'Failed to fetch user context' }, { status: 500 });
+        if (followingResult.error) {
+            reportError('user/feed:follows', followingResult.error, { userId });
+            return NextResponse.json({ error: 'Failed to fetch following' }, { status: 500 });
         }
         const notificationPreferencesAvailable = preferenceResult.error === null;
         if (preferenceResult.error) {
             reportError('user/feed:notificationPreferences', preferenceResult.error, { userId });
         }
 
-        const feedLastReadAt = typeof readStateData?.feed_last_read_at === 'string'
-            ? readStateData.feed_last_read_at
-            : null;
-
-        const userMap = new Map<string, { name: string | null; image: string | null; username: string | null; notification_reactions: boolean | null; notification_gear_reactions: boolean | null }>();
-        (usersData || []).forEach((u) => {
-            const isCurrentUser = u.id === userId;
-            userMap.set(u.id, {
-                name: u.name, image: u.image, username: u.username,
-                notification_reactions: isCurrentUser ? (preferenceData?.notification_reactions ?? null) : null,
-                notification_gear_reactions: isCurrentUser ? (preferenceData?.notification_gear_reactions ?? null) : null,
-            });
-        });
-        const currentUserSettings = userMap.get(userId);
-        const reactionNotifyEnabled = currentUserSettings?.notification_reactions !== false;
-        const gearReactionNotifyEnabled = currentUserSettings?.notification_gear_reactions !== false;
-        const gearItemsResult = gearReactionNotifyEnabled
-            ? await fetchAllWithPagination(
-                (from, to) => supabaseAdmin
-                    .from('recommended_items')
-                    .select('id, asin')
-                    .eq('user_id', userId)
-                    .order('id', { ascending: false })
-                    .range(from, to),
-                900,
-                MAX_NOTIFICATION_EVENTS,
-            )
-            : { data: [], error: null };
-        if (gearItemsResult.error) {
-            reportError('user/feed:gearItems', gearItemsResult.error, { userId });
-            return NextResponse.json(
-                { error: 'Failed to fetch gear items' },
-                { status: 500 },
-            );
-        }
-        const myAsins = (gearItemsResult.data ?? []).map((item) => item.asin);
-
-        const [badgesResult, reactionsResult, gearReactionsResult] = await Promise.all([
+        const targetIds = Array.from(new Set([
+            userId,
+            ...(followingResult.data ?? []).map((follow) => follow.following_id),
+        ]));
+        const reactionNotifyEnabled = preferenceResult.data?.notification_reactions !== false;
+        const gearReactionNotifyEnabled =
+            preferenceResult.data?.notification_gear_reactions !== false;
+        const [
+            usersResult,
+            gearItemsResult,
+            badgesResult,
+            reactionsResult,
+        ] = await Promise.all([
+            supabaseAdmin
+                .from('users')
+                .select('id, name, image, username, feed_last_read_at')
+                .in('id', targetIds),
+            gearReactionNotifyEnabled
+                ? fetchAllWithPagination(
+                    (from, to) => supabaseAdmin
+                        .from('recommended_items')
+                        .select('id, asin')
+                        .eq('user_id', userId)
+                        .order('id', { ascending: false })
+                        .range(from, to),
+                    900,
+                    MAX_NOTIFICATION_EVENTS,
+                )
+                : Promise.resolve({ data: [], error: null }),
             fetchAllWithPagination(
                 (from, to) => supabaseAdmin
                     .from('user_badges')
@@ -182,31 +141,86 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                     MAX_NOTIFICATION_EVENTS,
                 )
                 : Promise.resolve({ data: [], error: null }),
-            gearReactionNotifyEnabled && myAsins.length > 0
-                ? fetchAllWithPagination(
-                    (from, to) => supabaseAdmin
-                        .from('group_reactions')
-                        .select('id, from_user_id, to_user_id, emoji, period, group_id, created_at')
-                        .eq('period', 'GEAR')
-                        .neq('from_user_id', userId)
-                        .in('to_user_id', myAsins)
-                        .gte('created_at', feedWindow.sinceIso)
-                        .lt('created_at', cursor.snapshot)
-                        .order('created_at', { ascending: false })
-                        .order('id', { ascending: false })
-                        .range(from, to),
-                    900,
-                    MAX_NOTIFICATION_EVENTS,
-                )
-                : Promise.resolve({ data: [], error: null }),
         ]);
 
-        const sourceError = badgesResult.error
-            ?? reactionsResult.error
-            ?? gearReactionsResult.error;
+        if (usersResult.error) {
+            reportError('user/feed:userContext', usersResult.error, { userId });
+            return NextResponse.json({ error: 'Failed to fetch user context' }, { status: 500 });
+        }
+        const currentUser = usersResult.data?.find((user) => user.id === userId);
+        if (!currentUser) {
+            reportError('user/feed:userContext', new Error('Current feed user not found'), {
+                userId,
+            });
+            return NextResponse.json({ error: 'Failed to fetch user context' }, { status: 500 });
+        }
+        if (gearItemsResult.error) {
+            reportError('user/feed:gearItems', gearItemsResult.error, { userId });
+            return NextResponse.json(
+                { error: 'Failed to fetch gear items' },
+                { status: 500 },
+            );
+        }
+        const sourceError = badgesResult.error ?? reactionsResult.error;
         if (sourceError) {
             reportError('user/feed:sources', sourceError, { userId });
             return NextResponse.json({ error: 'Failed to fetch activity sources' }, { status: 500 });
+        }
+        const feedLastReadAt = typeof currentUser.feed_last_read_at === 'string'
+            ? currentUser.feed_last_read_at
+            : null;
+
+        const userMap = new Map<string, { name: string | null; image: string | null; username: string | null }>();
+        (usersResult.data ?? []).forEach((u) => {
+            userMap.set(u.id, {
+                name: u.name, image: u.image, username: u.username,
+            });
+        });
+        const myAsins = (gearItemsResult.data ?? []).map((item) => item.asin);
+        const gearReactionsResult = gearReactionNotifyEnabled && myAsins.length > 0
+            ? await fetchAllWithPagination(
+                (from, to) => supabaseAdmin
+                    .from('group_reactions')
+                    .select('id, from_user_id, to_user_id, emoji, period, group_id, created_at')
+                    .eq('period', 'GEAR')
+                    .neq('from_user_id', userId)
+                    .in('to_user_id', myAsins)
+                    .gte('created_at', feedWindow.sinceIso)
+                    .lt('created_at', cursor.snapshot)
+                    .order('created_at', { ascending: false })
+                    .order('id', { ascending: false })
+                    .range(from, to),
+                900,
+                MAX_NOTIFICATION_EVENTS,
+            )
+            : { data: [], error: null };
+        if (gearReactionsResult.error) {
+            reportError('user/feed:sources', gearReactionsResult.error, { userId });
+            return NextResponse.json({ error: 'Failed to fetch activity sources' }, { status: 500 });
+        }
+
+        const senderIds = new Set<string>();
+        for (const reaction of reactionsResult.data ?? []) {
+            if (!userMap.has(reaction.from_user_id)) senderIds.add(reaction.from_user_id);
+        }
+        for (const reaction of gearReactionsResult.data ?? []) {
+            if (!userMap.has(reaction.from_user_id)) senderIds.add(reaction.from_user_id);
+        }
+        if (senderIds.size > 0) {
+            const { data: senderData, error: senderError } = await supabaseAdmin
+                .from('users')
+                .select('id, name, image, username')
+                .in('id', Array.from(senderIds));
+            if (senderError) {
+                reportError('user/feed:reactionSenders', senderError, { userId });
+                return NextResponse.json(
+                    { error: 'Failed to fetch reaction senders' },
+                    { status: 500 },
+                );
+            }
+            (senderData ?? []).forEach((u) => {
+                userMap.set(u.id, { name: u.name, image: u.image, username: u.username });
+            });
         }
 
         // 4. フィードアイテムを構築
@@ -250,26 +264,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
         // ユーザーリアクション受信イベント（通知設定がONの場合のみ）
         if (reactionNotifyEnabled && reactionsResult.data) {
-            // リアクション送信者のユーザー情報を取得
-            const reactionSenderIds = [...new Set(reactionsResult.data.map((r) => r.from_user_id))];
-            const missingSenderIds = reactionSenderIds.filter((id) => !userMap.has(id));
-            if (missingSenderIds.length > 0) {
-                const { data: senderData, error: senderError } = await supabaseAdmin
-                    .from('users')
-                    .select('id, name, image, username')
-                    .in('id', missingSenderIds);
-                if (senderError) {
-                    reportError('user/feed:reactionSenders', senderError, { userId });
-                    return NextResponse.json(
-                        { error: 'Failed to fetch reaction senders' },
-                        { status: 500 },
-                    );
-                }
-                (senderData || []).forEach((u) => {
-                    userMap.set(u.id, { name: u.name, image: u.image, username: u.username, notification_reactions: null, notification_gear_reactions: null });
-                });
-            }
-
             for (const reaction of reactionsResult.data) {
                 const sender = userMap.get(reaction.from_user_id);
                 feedItems.push({
@@ -296,25 +290,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             const myGearReactions = gearReactionsResult.data;
 
             if (myGearReactions.length > 0) {
-                const gearSenderIds = [...new Set(myGearReactions.map((r) => r.from_user_id))];
-                const missingGearSenderIds = gearSenderIds.filter((id) => !userMap.has(id));
-                if (missingGearSenderIds.length > 0) {
-                    const { data: senderData, error: senderError } = await supabaseAdmin
-                        .from('users')
-                        .select('id, name, image, username')
-                        .in('id', missingGearSenderIds);
-                    if (senderError) {
-                        reportError('user/feed:gearReactionSenders', senderError, { userId });
-                        return NextResponse.json(
-                            { error: 'Failed to fetch gear reaction senders' },
-                            { status: 500 },
-                        );
-                    }
-                    (senderData || []).forEach((u) => {
-                        userMap.set(u.id, { name: u.name, image: u.image, username: u.username, notification_reactions: null, notification_gear_reactions: null });
-                    });
-                }
-
                 for (const reaction of myGearReactions) {
                     const sender = userMap.get(reaction.from_user_id);
                     feedItems.push({

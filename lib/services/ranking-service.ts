@@ -404,20 +404,30 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
 
     if (scope === 'GROUP' && groupKeyword) {
         // 🐛 Fix: group_members テーブルを使用（レガシー group_keyword 配列に依存しない）
-        const { data: groupData } = await supabase
+        const { data: groupData, error: groupError } = await supabase
             .from('groups')
             .select('id')
             .eq('keyword', groupKeyword)
             .single();
 
+        if (groupError && groupError.code !== 'PGRST116') {
+            reportError('ranking-service:getAllRankings:group', groupError, { groupKeyword });
+            throw new Error('Failed to load ranking group');
+        }
         if (!groupData) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
-        const { data: members } = await supabase
+        const { data: members, error: membersError } = await supabase
             .from('group_members')
             .select('user_id, users(id, name, image, username)')
             .eq('group_id', groupData.id)
             .returns<GroupMemberWithUser[]>();
 
+        if (membersError) {
+            reportError('ranking-service:getAllRankings:members', membersError, {
+                groupId: groupData.id,
+            });
+            throw new Error('Failed to load ranking members');
+        }
         if (!members || members.length === 0) return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
 
         userIds = members.map(m => m.user_id);
@@ -431,8 +441,8 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
     });
 
     if (error) {
-        console.error(`Error fetching ${scope} all rankings`);
-        return { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] };
+        reportError('ranking-service:getAllRankings:steps', error, { scope });
+        throw new Error(`Failed to load ${scope.toLowerCase()} ranking steps`);
     }
 
     // GROUP scope: userIds が null の場合（安全策フォールバック）
@@ -580,43 +590,35 @@ export const getGroupRankings = async (groupId: string, period: Period) => {
         startDate = `${y}-01-01`;
     }
 
-    // Join group_members -> users -> daily_steps
+    // メンバーとプロフィールを1回で取得し、ユーザーごとの追加queryを避ける。
     const { data: groupMembers, error: memberError } = await supabase
         .from('group_members')
-        .select('user_id')
-        .eq('group_id', groupId);
+        .select('user_id, users(id, name, image, username)')
+        .eq('group_id', groupId)
+        .returns<GroupMemberWithUser[]>();
 
-    if (memberError || !groupMembers) {
-        console.error('Error fetching group members');
-        return [];
+    if (memberError) {
+        reportError('ranking-service:getGroupRankings:members', memberError, { groupId });
+        throw new Error('Failed to load group ranking members');
     }
 
-    const userIds = groupMembers.map(m => m.user_id);
+    if (!groupMembers || groupMembers.length === 0) return [];
 
-    if (userIds.length === 0) return [];
+    const userIds = groupMembers.map((member) => member.user_id);
+    const usersLookup = new Map<string, RankingUserSummary>();
+    for (const member of groupMembers) {
+        if (member.users) usersLookup.set(member.users.id, member.users);
+    }
 
-    // ⭐ Performance: JOIN を分割して並列取得 + PostgREST 1000行制限回避
-    const [stepsResult, usersResult] = await Promise.all([
-        fetchDailyStepsPaginated<DailyStepRecord>({
-            startDate,
-            userIds,
-        }),
-        supabase
-            .from('users')
-            .select('id, name, image, username')
-            .in('id', userIds)
-            .returns<RankingUserSummary[]>(),
-    ]);
-
-    const { data: rawSteps, error } = stepsResult;
-    const users = usersResult.data;
+    const { data: rawSteps, error } = await fetchDailyStepsPaginated<DailyStepRecord>({
+        startDate,
+        userIds,
+    });
 
     if (error) {
-        console.error('Error fetching group rankings');
-        return [];
+        reportError('ranking-service:getGroupRankings:steps', error, { groupId, period });
+        throw new Error('Failed to load group ranking steps');
     }
-
-    const usersLookup = new Map(users?.map(u => [u.id, u]));
 
     // Aggregate
     const userMap = new Map<string, RankingAccumulatorEntry>();
@@ -845,11 +847,15 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     const queryStartStr = lastMonthStartStr < yearlyStartStr ? lastMonthStartStr : yearlyStartStr;
 
     // 1. Fetch Members for ALL groups
-    const { data: groupMembers } = await supabase
+    const { data: groupMembers, error: groupMembersError } = await supabase
         .from('group_members')
         .select('group_id, user_id')
         .in('group_id', groupIds);
 
+    if (groupMembersError) {
+        reportError('ranking-service:getBatchGroupRankings:members', groupMembersError);
+        throw new Error('Failed to load batch group ranking members');
+    }
     if (!groupMembers || groupMembers.length === 0) return {};
 
     // 2. Get unique User IDs
@@ -872,8 +878,12 @@ export const getBatchGroupRankings = async (groupIds: string[]) => {
     const users = usersResult.data;
 
     if (error) {
-        console.error('Error fetching batch group rankings');
-        return {};
+        reportError('ranking-service:getBatchGroupRankings:steps', error);
+        throw new Error('Failed to load batch group ranking steps');
+    }
+    if (usersResult.error) {
+        reportError('ranking-service:getBatchGroupRankings:users', usersResult.error);
+        throw new Error('Failed to load batch group ranking users');
     }
 
     // 4. Aggregate Steps per User

@@ -45,6 +45,14 @@ function singleQuery(result: unknown): object {
     };
 }
 
+function listQuery(method: 'eq' | 'in', result: unknown): object {
+    return {
+        select: vi.fn(() => ({
+            [method]: vi.fn().mockResolvedValue(result),
+        })),
+    };
+}
+
 describe('notification preference fallback', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -61,29 +69,18 @@ describe('notification preference fallback', () => {
 
     it('嗜好カラム未適用でもFeedを継続する', async () => {
         mocks.from
-            .mockReturnValueOnce({
-                select: vi.fn(() => ({
-                    eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-                })),
-            })
-            .mockReturnValueOnce({
-                select: vi.fn(() => ({
-                    in: vi.fn().mockResolvedValue({
-                        data: [{
-                            id: 'user-id',
-                            name: 'User',
-                            image: null,
-                            username: 'user',
-                        }],
-                        error: null,
-                    }),
-                })),
-            })
-            .mockReturnValueOnce(singleQuery({
-                data: { feed_last_read_at: null },
+            .mockReturnValueOnce(listQuery('eq', { data: [], error: null }))
+            .mockReturnValueOnce(singleQuery(missingPreferenceResult))
+            .mockReturnValueOnce(listQuery('in', {
+                data: [{
+                    id: 'user-id',
+                    name: 'User',
+                    image: null,
+                    username: 'user',
+                    feed_last_read_at: null,
+                }],
                 error: null,
-            }))
-            .mockReturnValueOnce(singleQuery(missingPreferenceResult));
+            }));
 
         const response = await getFeed(new NextRequest(
             'http://localhost/api/user/feed?limit=15',
@@ -96,6 +93,8 @@ describe('notification preference fallback', () => {
             unreadCount: 0,
             notificationPreferencesAvailable: false,
         }));
+        expect(mocks.from.mock.calls.length + mocks.fetchAllWithPagination.mock.calls.length)
+            .toBe(6);
         expect(mocks.reportError).toHaveBeenCalledWith(
             'user/feed:notificationPreferences',
             expect.objectContaining({ code: '42703' }),
@@ -110,11 +109,7 @@ describe('notification preference fallback', () => {
                 error: null,
             }))
             .mockReturnValueOnce(singleQuery(missingPreferenceResult))
-            .mockReturnValueOnce({
-                select: vi.fn(() => ({
-                    eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-                })),
-            });
+            .mockReturnValueOnce(listQuery('eq', { data: [], error: null }));
 
         const response = await getUnreadCount();
 
@@ -129,4 +124,5 @@ describe('notification preference fallback', () => {
             { userId: 'user-id' },
         );
     });
+
 });

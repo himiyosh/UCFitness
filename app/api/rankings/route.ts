@@ -2,11 +2,20 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
-import { getRankings } from '@/lib/services/ranking-service';
+import { getGroupRankings, getRankings } from '@/lib/services/ranking-service';
 import { enrichRankingsWithEquip } from '@/lib/services/ranking-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
+
+function hasMembership(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || !('group_members' in value)) {
+        return false;
+    }
+
+    const memberships = value.group_members;
+    return Array.isArray(memberships) && memberships.length > 0;
+}
 
 export async function GET(request: Request) {
     // 🛡️ セキュリティ: 認証チェック（ランキングデータは認証ユーザーのみアクセス可能）
@@ -35,11 +44,13 @@ export async function GET(request: Request) {
     }
 
     try {
+        let authorizedGroupId: string | null = null;
         if (scope === 'GROUP') {
             const { data: group, error: groupError } = await supabaseAdmin
                 .from('groups')
-                .select('id, is_public')
+                .select('id, is_public, group_members!left(user_id)')
                 .eq('keyword', keyword)
+                .eq('group_members.user_id', session.user.id)
                 .maybeSingle();
 
             if (groupError) throw groupError;
@@ -47,22 +58,17 @@ export async function GET(request: Request) {
                 return NextResponse.json({ error: 'Group not found' }, { status: 404 });
             }
 
-            const { data: membership, error: membershipError } = await supabaseAdmin
-                .from('group_members')
-                .select('id')
-                .eq('group_id', group.id)
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-
-            if (membershipError) throw membershipError;
-            if (!membership) {
+            if (!hasMembership(group)) {
                 const status = group.is_public ? 403 : 404;
                 const error = group.is_public ? 'Forbidden' : 'Group not found';
                 return NextResponse.json({ error }, { status });
             }
+            authorizedGroupId = group.id;
         }
 
-        const rankings = await getRankings(scope as 'GLOBAL' | 'GROUP', period as Period, keyword);
+        const rankings = authorizedGroupId
+            ? await getGroupRankings(authorizedGroupId, period as Period)
+            : await getRankings('GLOBAL', period as Period);
 
         // enrichRankingsWithEquip は Record<string, RankingEntry[]> を期待するため
         // 単一期間の配列をラップして渡し、結果をアンラップする
