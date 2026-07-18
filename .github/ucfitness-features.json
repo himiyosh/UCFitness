@@ -439,7 +439,7 @@
         "xss_protection": "securityheaders.com で A 以上",
         "zero_regression": "全画像 / スクリプトが正常読込"
       },
-      "status": "not-started",
+      "status": "passing",
       "lastAttempt": null,
       "lastError": null
     },
