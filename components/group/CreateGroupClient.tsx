@@ -181,9 +181,9 @@ export default function CreateGroupClient() {
 
   // ── ステップインジケーター（useMemoで安定化し不要なDOM再生成を防止） ──
   const stepIndicator = useMemo(() => (
-    <div className="flex items-center justify-center gap-0">
+    <div className="flex items-center justify-center gap-0" role="list">
       {/* ステップ1 */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" role="listitem" aria-current={step === 1 ? 'step' : undefined}>
         <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
           step >= 1
             ? 'bg-gradient-to-br from-[var(--theme-primary)] to-[var(--theme-gradient-to)] text-white shadow-md'
@@ -191,16 +191,16 @@ export default function CreateGroupClient() {
         }`}>
           {step > 1 ? '✓' : '1'}
         </div>
-        <span className={`text-xs font-bold hidden sm:inline transition-colors ${step >= 1 ? 'text-gray-900' : 'text-gray-400'}`}>
+        <span className={`sr-only text-xs font-bold transition-colors sm:not-sr-only ${step >= 1 ? 'text-gray-900' : 'text-gray-400'}`}>
           {t('stepBasicInfo')}
         </span>
       </div>
       {/* コネクター */}
-      <div className={`w-12 sm:w-20 h-0.5 mx-2 rounded-full transition-all duration-500 ${
+      <div aria-hidden="true" className={`w-12 sm:w-20 h-0.5 mx-2 rounded-full transition-all duration-500 ${
         step >= 2 ? 'bg-gradient-to-r from-[var(--theme-primary)] to-[var(--theme-gradient-to)]' : 'bg-gray-200'
       }`} />
       {/* ステップ2 */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" role="listitem" aria-current={step === 2 ? 'step' : undefined}>
         <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
           step >= 2
             ? 'bg-gradient-to-br from-[var(--theme-primary)] to-[var(--theme-gradient-to)] text-white shadow-md'
@@ -208,7 +208,7 @@ export default function CreateGroupClient() {
         }`}>
           2
         </div>
-        <span className={`text-xs font-bold hidden sm:inline transition-colors ${step >= 2 ? 'text-gray-900' : 'text-gray-400'}`}>
+        <span className={`sr-only text-xs font-bold transition-colors sm:not-sr-only ${step >= 2 ? 'text-gray-900' : 'text-gray-400'}`}>
           {t('stepInviteMembers')}
         </span>
       </div>
@@ -253,7 +253,7 @@ export default function CreateGroupClient() {
                   <span className="w-5 h-5 rounded bg-[var(--theme-primary)]/10 flex items-center justify-center text-xs">🔑</span>
                   {t('groupIdLabel')} <span className="text-red-500">*</span>
                 </label>
-                <p className="text-xs text-gray-400 mb-2 ml-7">{t('groupIdHelp')}</p>
+                <p id="group-id-help" className="text-xs text-gray-400 mb-2 ml-7">{t('groupIdHelp')}</p>
                 <div className="relative">
                   <input
                     id="group-id"
@@ -269,7 +269,8 @@ export default function CreateGroupClient() {
                     }`}
                     maxLength={50}
                     disabled={isCreating}
-                    autoFocus
+                    aria-invalid={idTouched && !idValid}
+                    aria-describedby={idTouched && !idValid ? 'group-id-help group-id-error' : 'group-id-help'}
                   />
                   {idTouched && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">
@@ -278,7 +279,7 @@ export default function CreateGroupClient() {
                   )}
                 </div>
                 {idTouched && !idValid && (
-                  <p className="text-xs text-red-400 mt-1 ml-1">{t('groupIdInvalid')}</p>
+                  <p id="group-id-error" role="alert" className="text-xs text-red-400 mt-1 ml-1">{t('groupIdInvalid')}</p>
                 )}
               </div>
 
@@ -321,7 +322,7 @@ export default function CreateGroupClient() {
 
               {/* エラー表示 */}
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm animate-in fade-in duration-200">
+                <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm animate-in fade-in duration-200">
                   <span className="text-base">⚠️</span>
                   {error}
                 </div>
@@ -394,12 +395,16 @@ export default function CreateGroupClient() {
 
               {/* 検索バー */}
               <div className="relative">
+                <label htmlFor="invite-search" className="sr-only">
+                  {t('searchPlaceholder')}
+                </label>
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
                 <input
+                  id="invite-search"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -455,7 +460,7 @@ export default function CreateGroupClient() {
 
               {/* 招待エラー */}
               {inviteError && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm animate-in fade-in duration-200">
+                <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm animate-in fade-in duration-200">
                   <span>⚠️</span> {inviteError}
                 </div>
               )}
@@ -485,7 +490,7 @@ export default function CreateGroupClient() {
                           disabled={removingInvitedId === user.id}
                           className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xs text-green-700 transition-colors hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                           title={t('removeInvite')}
-                          aria-label={t('removeInvite')}
+                          aria-label={`${t('removeInvite')}: ${user.name ?? user.username}`}
                         >
                           {removingInvitedId === user.id ? <Spinner size="sm" /> : '✕'}
                         </button>

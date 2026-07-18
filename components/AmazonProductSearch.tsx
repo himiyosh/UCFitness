@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 
 import { useToast } from '@/components/ui/Toast';
 import Spinner from '@/components/ui/Spinner';
+import { isJapaneseAmazonUrl } from '@/lib/affiliate-experiment';
 import { isOfficialAmazonUrl } from '@/lib/amazon-url';
 
 // ============================================
@@ -86,6 +87,7 @@ function linkTypeIcon(type: AffiliateLinkType): string {
 
 export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProductSearchProps) {
     const t = useTranslations('Recommendations');
+    const affiliateT = useTranslations('AffiliateExperiment');
     const { success: toastSuccess, error: toastError } = useToast();
 
     const [input, setInput] = useState('');
@@ -173,7 +175,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
     const candidates = useMemo(() => latestResult?.candidates || [], [latestResult?.candidates]);
     const selectedCandidate = useMemo(() => candidates.length > 0 ? candidates[candidateIndex] : null, [candidates, candidateIndex]);
     // 候補がある場合は選択中の候補のリンクを優先表示
-    const displayLink = useMemo(() => selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || '', [selectedCandidate, latestResult?.affiliateLink]);
+    const displayLink = useMemo(() => { const link = selectedCandidate ? selectedCandidate.affiliateLink : latestResult?.affiliateLink || ''; return isJapaneseAmazonUrl(link) ? link : ''; }, [selectedCandidate, latestResult?.affiliateLink]);
     const copyDisplayLink = useCallback(async () => {
         if (!displayLink) return;
         try {
@@ -295,12 +297,13 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             </div>
                         </div>
                     )}
+                    {!displayLink && <p role="alert" className="text-sm text-red-700">{t('generateError')}</p>}
                     {/* 商品プレビュー（ASIN直接指定の場合） */}
                     {latestResult.type !== 'search' && latestResult.imageUrl && (
                         <a
-                            href={latestResult.affiliateLink}
+                            href={isJapaneseAmazonUrl(latestResult.affiliateLink) ? latestResult.affiliateLink : undefined}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="flex gap-4 items-center bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
                         >
                             <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
@@ -315,12 +318,13 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             <p className="text-xs text-gray-400">
                                 {locale === 'ja' ? 'タップで Amazon で確認 →' : 'Tap to view on Amazon →'}
                             </p>
+                            <span className="sr-only">{affiliateT('opensNewTab')}</span>
                         </a>
                     )}
 
                     {/* キーワード検索の場合: 商品候補カルーセル */}
                     {latestResult.type === 'search' && selectedCandidate && (
-                        <div className="space-y-3">
+                        <div className="space-y-3" aria-live="polite">
                             {/* 商品画像 + ナビゲーション */}
                             <div className="flex items-center gap-2">
                                 {/* ← 前へ */}
@@ -338,9 +342,9 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
 
                                 {/* 商品プレビュー */}
                                 <a
-                                    href={selectedCandidate.affiliateLink}
+                                    href={isJapaneseAmazonUrl(selectedCandidate.affiliateLink) ? selectedCandidate.affiliateLink : undefined}
                                     target="_blank"
-                                    rel="noopener noreferrer"
+                                    rel="sponsored noopener noreferrer"
                                     className="flex-1 flex flex-col items-center gap-2 bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
                                 >
                                     <div className="w-44 h-44 flex items-center justify-center">
@@ -360,6 +364,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                             {selectedCandidate.title}
                                         </p>
                                     )}
+                                    <span className="sr-only">{affiliateT('opensNewTab')}</span>
                                 </a>
 
                                 {/* → 次へ */}
@@ -382,7 +387,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                     <button
                                         key={i}
                                         onClick={() => setCandidateIndex(i)}
-                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full"
+                                        className="inline-flex h-11 w-11 items-center justify-center rounded-full" aria-current={i === candidateIndex ? 'true' : undefined}
                                         aria-label={t('productNumber', { number: i + 1 })}
                                     >
                                         <span className={`h-1.5 rounded-full transition-[width,background-color] ${i === candidateIndex ? 'w-4 bg-[var(--color-primary-solid)]' : 'w-1.5 bg-gray-300'}`} />
@@ -395,9 +400,9 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                     {/* キーワード検索で候補なしの場合 */}
                     {latestResult.type === 'search' && !selectedCandidate && (
                         <a
-                            href={latestResult.affiliateLink}
+                            href={isJapaneseAmazonUrl(latestResult.affiliateLink) ? latestResult.affiliateLink : undefined}
                             target="_blank"
-                            rel="noopener noreferrer"
+                            rel="sponsored noopener noreferrer"
                             className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow"
                         >
                             <span className="text-2xl">🔍</span>
@@ -409,6 +414,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                     {locale === 'ja' ? 'Amazon で検索結果を見る →' : 'View on Amazon →'}
                                 </p>
                             </div>
+                            <span className="sr-only">{affiliateT('opensNewTab')}</span>
                         </a>
                     )}
 
@@ -418,7 +424,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             type="text"
                             value={commentDraft}
                             onChange={e => setCommentDraft(e.target.value)}
-                            maxLength={100}
+                            maxLength={100} aria-label={locale === 'ja' ? 'コメント（任意）' : 'Comment (optional)'}
                             placeholder={locale === 'ja' ? '💬 コメント（任意）例: 毎日愛用してます！' : '💬 Comment (optional) e.g. My daily essential!'}
                             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent focus:bg-white transition-colors"
                         />
@@ -521,17 +527,19 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                 <div className="flex gap-1.5 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
                                     <button
                                         onClick={() => reuseHistoryItem(item)}
-                                        className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 transition-all"
-                                        title={locale === 'ja' ? '再利用' : 'Reuse'}
+                                        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-600 transition-all hover:bg-gray-200"
+                                        title={t('reuseHistoryItem')}
+                                        aria-label={`${item.input}: ${t('reuseHistoryItem')}`}
                                     >
                                         ↩️
                                     </button>
                                     <a
-                                        href={item.affiliateLink}
+                                        href={isJapaneseAmazonUrl(item.affiliateLink) ? item.affiliateLink : undefined}
                                         target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-[var(--theme-primary-light)] text-[var(--theme-primary)] border border-[var(--theme-primary)]/20 hover:opacity-80 transition-all"
+                                        rel="sponsored noopener noreferrer"
+                                        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[var(--theme-primary)]/20 bg-[var(--theme-primary-light)] px-2.5 py-1.5 text-xs font-bold text-[var(--theme-primary)] transition-all hover:opacity-80"
                                         title={t('viewOnAmazon')}
+                                        aria-label={`${item.input}: ${t('viewOnAmazon')}. ${affiliateT('opensNewTab')}`}
                                     >
                                         🛒
                                     </a>

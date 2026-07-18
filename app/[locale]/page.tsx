@@ -28,6 +28,7 @@ const UserMenu = nextDynamic(() => import('@/components/layout/UserMenu'));
 const UserAvatar = nextDynamic(() => import('@/components/UserAvatar'));
 const LoginBonusToast = nextDynamic(() => import('@/components/auth/LoginBonusToast'));
 const NotificationBell = nextDynamic(() => import('@/components/layout/NotificationBell'));
+const TrendingGear = nextDynamic(() => import('@/components/TrendingGear'));
 
 const LEADERBOARD_PREVIEW_MIN_ROWS = 5;
 
@@ -405,6 +406,7 @@ export default async function Home({ searchParams }: HomePageProps): Promise<Rea
                 />
               )}
             </div>
+            <div className="mt-3"><TrendingGear userId={userId} /></div>
           </section>
             </>
           )}

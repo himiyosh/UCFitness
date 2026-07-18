@@ -41,7 +41,7 @@ export async function GET() {
 
         if (error) {
             reportError('[API] トレンドアイテム取得エラー', error);
-            return NextResponse.json({ items: [] });
+            return NextResponse.json({ error: 'Trending gear unavailable' }, { status: 503 });
         }
 
         if (!data || data.length === 0) {
@@ -89,12 +89,12 @@ export async function GET() {
             items: trending,
         }, {
             headers: {
-                // 5分間キャッシュ
-                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+                // 認証済みプロフィール情報を共有キャッシュへ保存しない。
+                'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
             },
         });
     } catch (error: unknown) {
         reportError('[API] トレンドアイテム取得エラー', error);
-        return NextResponse.json({ items: [] });
+        return NextResponse.json({ error: 'Trending gear unavailable' }, { status: 503 });
     }
 }

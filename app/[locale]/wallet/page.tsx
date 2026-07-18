@@ -16,19 +16,13 @@ import UCHintBalloon from "@/components/ui/UCHintBalloon";
 import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader';
 import PageIntro from '@/components/layout/PageIntro';
 import CoinBalanceCard from "@/components/CoinBalanceCard";
-import nextDynamic from 'next/dynamic';
+import DeferredCoinGrowthChart from '@/components/DeferredCoinGrowthChart';
+import EarningBreakdown from '@/components/EarningBreakdown';
+import InvestorRankPanel from '@/components/InvestorRankPanel';
+import TransactionHistory from '@/components/TransactionHistory';
 import { getCoinBalance, getRecentTransactions, getDailyBalanceHistory } from "@/lib/services/coin-service";
 import { getLocale, getTranslations } from "next-intl/server";
 import Footer from '@/components/layout/Footer';
-
-// ⚡ パフォーマンス: Recharts系の重いチャートコンポーネントを遅延読み込み
-// ※ Server Component では ssr: false は使用不可 — Client Component 内でのみ使用可能
-const CoinGrowthChart = nextDynamic(() => import('@/components/CoinGrowthChart'), {
-    loading: () => <div className="w-full h-64 rounded-xl bg-gray-100 animate-pulse" />,
-});
-const TransactionHistory = nextDynamic(() => import('@/components/TransactionHistory'));
-const InvestorRankPanel = nextDynamic(() => import('@/components/InvestorRankPanel'));
-const EarningBreakdown = nextDynamic(() => import('@/components/EarningBreakdown'));
 
 export const dynamic = 'force-dynamic';
 
@@ -176,7 +170,7 @@ export default async function BankPage(): Promise<React.ReactNode> {
                                 {t('balanceHistoryUnavailable')}
                             </p>
                         ) : (
-                            <CoinGrowthChart data={balanceHistory} />
+                            <DeferredCoinGrowthChart data={balanceHistory} />
                         )}
 
                         {/* コイン獲得分析 */}

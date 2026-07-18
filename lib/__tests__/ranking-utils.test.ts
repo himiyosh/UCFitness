@@ -211,6 +211,15 @@ describe('enrichCombinedRankings', () => {
             expect(result.map((entry) => entry.groupId)).toEqual(['first', 'second']);
         });
 
+        it('平均歩数が同じグループをID順で安定して並べる', () => {
+            const result = sortActiveGroupRankings([
+                { groupId: 'group-b', totalSteps: 500, averageSteps: 250 },
+                { groupId: 'group-a', totalSteps: 500, averageSteps: 250 },
+            ]);
+
+            expect(result.map((entry) => entry.groupId)).toEqual(['group-a', 'group-b']);
+        });
+
         it('直上グループへ届くために必要な平均歩数差を返す', () => {
             const insight = getGroupRankGapInsight([
                 { groupId: 'first', groupName: 'First', averageSteps: 1_000 },
@@ -243,6 +252,15 @@ describe('enrichCombinedRankings', () => {
             ]);
 
             expect(result.map((entry) => entry.userId)).toEqual(['first', 'second']);
+        });
+
+        it('歩数が同じユーザーをID順で安定して並べる', () => {
+            const result = sortPositiveStepRankings([
+                { userId: 'user-b', steps: 500 },
+                { userId: 'user-a', steps: 500 },
+            ]);
+
+            expect(result.map((entry) => entry.userId)).toEqual(['user-a', 'user-b']);
         });
 
         it('中下位ユーザーと直上順位を残しながら5行以内に収める', () => {

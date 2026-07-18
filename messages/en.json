@@ -6,6 +6,85 @@
     "contact": "Contact",
     "allRightsReserved": "All rights reserved."
   },
+  "Legal": {
+    "common": {
+      "home": "Back to home",
+      "updated": "Last updated: July 18, 2026"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "description": "This policy explains how UCFitness handles personal information, health and activity data, and device information.",
+      "sections": {
+        "collection": {
+          "heading": "1. Information we collect",
+          "body": "UCFitness collects account identifiers, display names, usernames, profile images, and settings such as language and theme. When you connect a supported service, we receive step counts, synchronization timestamps, connection status, and other health or activity data needed to provide the service from Fitbit or Google Health. We may also record access times, action categories, and general device or browser information for secure operation, abuse prevention, and incident investigation. We do not expose passwords or external-service authentication tokens in public logs or user-facing screens."
+        },
+        "purpose": {
+          "heading": "2. How we use information",
+          "body": "We use information to provide step synchronization, goals, rankings, groups, challenges, badges, UC balances, and notifications. We also use it for identity verification, account protection, duplicate-processing prevention, abuse detection, customer support, incident recovery, and service-quality improvements. When we perform analytics, we limit the data fields to what is necessary for the stated purpose and avoid collecting direct identifiers when aggregated information is sufficient."
+        },
+        "sharing": {
+          "heading": "3. Sharing and visibility",
+          "body": "Rankings, groups, and public profiles may display the name, image, steps, rank, badges, or other information you chose to make part of your UCFitness experience. We do not sell or disclose personal information for unrelated purposes unless required by law, necessary to protect life or property, or authorized by you. If a service provider processes information on our behalf, we limit the information to what is necessary and require appropriate safeguards."
+        },
+        "retention": {
+          "heading": "4. Retention and security",
+          "body": "We retain information only as long as reasonably necessary to provide the service, comply with law, resolve disputes, and prevent abuse. Information that is no longer required is deleted or de-identified within a technically and operationally reasonable period. We use encrypted transport, access controls, credential encryption, operational logging, and input validation. No internet transmission or storage system can be guaranteed to be completely secure."
+        },
+        "external": {
+          "heading": "5. External services, cookies, and advertising",
+          "body": "UCFitness may use Fitbit, Google, Supabase, Cloudflare, Amazon, and other providers for authentication, health-data connections, storage, notifications, or product links. Their terms and privacy policies apply to their handling of information. We use cookies or browser storage to maintain sign-in state and preferences such as language or theme. Advertising and affiliate links are identified, and UCFitness does not guarantee prices, delivery terms, or other purchase conditions shown by an external merchant."
+        },
+        "rights": {
+          "heading": "6. Your choices and contact",
+          "body": "You can change profile, notification, language, and theme settings in the application. Disconnecting a health-data source stops future synchronization, but previously finalized rankings, rewards, or records that must be retained by law may not be removed immediately. To request access, correction, deletion, or restriction of information, use the Contact link in the Footer. We will verify the requester and scope before responding as permitted by law and operational requirements."
+        }
+      }
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "description": "These terms set the conditions for using UCFitness safely and fairly.",
+      "sections": {
+        "agreement": {
+          "heading": "1. Agreement to these terms",
+          "body": "These terms apply to UCFitness features including step tracking, rankings, groups, challenges, badges, UC, notifications, and product links. By using the service, you agree to these Terms and the Privacy Policy. If you do not agree, do not begin using the service, or disconnect and stop using it if you already have an account. Minors must obtain a parent or guardian's consent when required by applicable law."
+        },
+        "account": {
+          "heading": "2. Accounts and connected services",
+          "body": "You must use a Fitbit or supported health-data account that you are authorized to access and keep your registration information accurate. Sharing credentials, using another person's account, or creating duplicate accounts to obtain rewards is prohibited. If a device is lost or you notice suspicious access or an incorrect connection, disconnect the service or contact us promptly. Some features may become unavailable if an external provider changes or suspends its service."
+        },
+        "health": {
+          "heading": "3. Health information notice",
+          "body": "Steps, goals, rankings, analysis, and messages are provided for everyday activity and entertainment. They are not medical advice, diagnosis, treatment, or an exercise prescription. Prioritize your health, medical history, surroundings, and personal limits instead of a score or competition. Stop activity and seek appropriate professional advice if you experience pain, dizziness, shortness of breath, or other concerning symptoms. External devices and APIs may report delayed, incomplete, or inaccurate values."
+        },
+        "prohibited": {
+          "heading": "4. Prohibited conduct",
+          "body": "You may not fabricate steps, alter device or time data, manipulate rewards or ranks, harass others, impersonate another person, access data without permission, exploit vulnerabilities, automate excessive requests, or interfere with service operation. Do not submit unlawful content, content that violates another person's rights, or confidential information. Security researchers should avoid affecting live data and use the Contact channel to report a potential vulnerability."
+        },
+        "rewards": {
+          "heading": "5. Rankings, badges, and UC",
+          "body": "Ranks, badges, titles, and UC are service features designed to make activity more engaging. UC is not cash, cryptocurrency, or a prepaid payment instrument and cannot be exchanged, transferred, refunded, or redeemed for money. We may correct displays or awards when synchronization delays, duplicate records, abuse, or system incidents are confirmed. We will not treat steps or balances as zero merely because a data source is unavailable. Campaign conditions and award amounts follow the rules displayed when they apply."
+        },
+        "external": {
+          "heading": "6. External links and product promotions",
+          "body": "The service may contain advertising or affiliate links to Amazon and other external sites. Product prices, availability, quality, shipping, returns, and contract terms are determined by the external merchant, and UCFitness is not a party to the purchase. We do not estimate or guarantee changing commercial details; you must confirm current terms on the destination site. Use of an external site is also governed by that provider's terms and policies."
+        },
+        "changes": {
+          "heading": "7. Service changes, suspension, and responsibility",
+          "body": "We may temporarily suspend features without advance notice for maintenance, incidents, security, legal compliance, or external-provider changes. We may investigate and restrict or suspend accounts involved in material violations, abuse, or harm to others. Material changes to these terms will be announced through a reasonably prominent service notice. UCFitness uses reasonable safeguards and recovery practices, but to the extent permitted by law does not guarantee indirect losses or a particular rank, reward, or outcome."
+        }
+      }
+    }
+  },
+  "AffiliateExperiment": {
+    "disclosure": "Contains promotional Amazon Associate links. We may earn from qualifying purchases.",
+    "priceUnknown": "Price: Check on Amazon.co.jp",
+    "deliveryUnknown": "Delivery: Check on Amazon.co.jp",
+    "ctaDetails": "View details on Amazon.co.jp",
+    "ctaCheck": "Check this item on Amazon.co.jp",
+    "invalidLink": "A safe Amazon.co.jp link could not be verified",
+    "opensNewTab": "Opens in a new tab"
+  },
   "Common": {
     "breadcrumbLabel": "Breadcrumb",
     "pageErrorTitle": "This page could not be loaded",
@@ -927,7 +1006,7 @@
     "currentStreak": "Current Streak",
     "bestStreak": "Best Streak",
     "days": "days",
-    "streakMultiplier": "Streak Rate",
+    "streakMultiplier": "Streak Multiplier",
     "investorRank": "Investor Rank",
     "unavailable": "Unavailable",
     "currentLabel": "YOU",
@@ -956,6 +1035,8 @@
     "steps": "Steps Deposit",
     "goalBonus": "Goal Bonus",
     "streakBonus": "Streak Bonus",
+    "streakMilestone": "Streak Milestone Reward",
+    "streakMilestoneNote": "One-time streak achievement reward",
     "rankBonus": "Ranking Bonus",
     "purchase": "Shop Purchase",
     "last30days": "Last 30 Days",
@@ -994,7 +1075,7 @@
     "confirmPurchase": "Purchase this item?",
     "confirmPurchaseDesc": "Buy {item} for {price} UC?",
     "cancel": "Cancel",
-    "confirm": "Confirm",
+    "confirm": "Purchase",
     "purchaseSuccess": "Purchase complete!",
     "purchaseSuccessDesc": "You got {item}!",
     "equipSuccess": "Item set!",
@@ -1038,6 +1119,7 @@
     "categoryElectronics": "Electronics",
     "categoryBooks": "Books",
     "viewOnAmazon": "Open on Amazon",
+    "reuseHistoryItem": "Reuse this item",
     "directDescription": "Enter a keyword, Amazon URL, or ASIN code.",
     "directPlaceholder": "Keyword / URL / ASIN",
     "generateButton": "Generate",
@@ -1055,15 +1137,19 @@
     "personalizedDesc": "Perfect items for your {steps} daily average steps",
     "rankRecommend": "Based on your rank",
     "stepsRecommend": "Based on your steps",
-    "viewShop": "View in Shop"
+    "viewShop": "View in Shop",
+    "recommendationsUnavailable": "Amazon recommendations are unavailable. Please try again later."
   },
   "TrendingGear": {
     "title": "Trending Fitness Gear",
-    "subtitle": "Popular picks from the community"
+    "subtitle": "Popular picks from the community",
+    "scrollLeft": "Show previous gear",
+    "scrollRight": "Show next gear"
   },
   "GroupGear": {
     "title": "Members' Gear",
     "subtitle": "Popular items in this group",
+    "loading": "Loading members' gear",
     "empty": "Members' favorite gear will appear here once it is registered",
     "error": "We couldn't load members' gear",
     "retry": "Retry",
@@ -1333,8 +1419,10 @@
     "targetStepsPositive": "Target steps must be greater than 0",
     "endDateAfterStart": "End date must be after start date",
     "createFailed": "Failed to create challenge",
+    "updateFailed": "Failed to update challenge",
     "unknownError": "An unexpected error occurred",
     "closeCreateDialog": "Close create challenge dialog",
+    "closeEditDialog": "Close edit challenge dialog",
     "closeDetailDialog": "Close challenge details",
     "detailViewDetail": "View details",
     "detailViewParticipants": "View participants",
@@ -1482,7 +1570,8 @@
     "titleRequired": "Title is required",
     "targetRequired": "Target steps must be greater than 0",
     "dateRequired": "Start date and end date are required",
-    "dateInvalid": "End date must be on or after start date"
+    "dateInvalid": "End date must be on or after start date",
+    "createFailed": "Failed to create the event"
   },
   "Export": {
     "title": "📥 Data Export",
@@ -1559,6 +1648,7 @@
   },
   "GroupChat": {
     "title": "Group Chat",
+    "loading": "Loading group chat",
     "loadError": "Failed to load messages",
     "retry": "Retry",
     "empty": "No messages yet",
@@ -1641,6 +1731,7 @@
     "activeDays": "Active Days",
     "totalEarned": "Total Earned",
     "investorRank": "Investor Rank",
+    "unavailable": "Unavailable",
     "days": "days",
     "TYCOON": "Health Tycoon",
     "DIAMOND": "Diamond Investor",
@@ -1687,6 +1778,8 @@
       "STREAK_3": "3-Day Streak",
       "STREAK_7": "7-Day Streak",
       "STREAK_30": "30-Day Streak",
+      "STREAK_100": "100-Day Streak",
+      "STREAK_365": "365-Day Streak",
       "MILESTONE_100K": "100K Steps Milestone",
       "MILESTONE_500K": "500K Steps Milestone",
       "MILESTONE_1M": "1M Steps Milestone",
@@ -1725,6 +1818,8 @@
       "STREAK_3": "Reached step goal for 3 consecutive days",
       "STREAK_7": "Reached step goal for 7 consecutive days",
       "STREAK_30": "Reached step goal for 30 consecutive days",
+      "STREAK_100": "Reached step goal for 100 consecutive days",
+      "STREAK_365": "Reached step goal for 365 consecutive days",
       "MILESTONE_100K": "Reached 100,000 total lifetime steps",
       "MILESTONE_500K": "Reached 500,000 total lifetime steps",
       "MILESTONE_1M": "Reached 1,000,000 total lifetime steps",
@@ -1751,6 +1846,7 @@
     "stepsCoins": "Steps",
     "goalBonus": "Goal Bonus",
     "streakBonus": "Streak Bonus",
+    "streakMilestone": "Milestone Reward",
     "loginBonus": "Login Bonus",
     "rankBonus": "Rank Bonus",
     "missionReward": "Mission",

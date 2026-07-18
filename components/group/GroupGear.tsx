@@ -20,7 +20,7 @@ interface GearItem {
     users: { username: string; image: string | null; comment?: string | null }[];
 }
 
-interface GroupGearProps {
+export interface GroupGearProps {
     groupId: string;
     userId?: string | null;
 }
@@ -127,17 +127,22 @@ export default function GroupGear({ groupId, userId }: GroupGearProps) {
     // ローディングスケルトン
     if (loading) {
         return (
-            <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col">
+            <div
+                aria-busy="true"
+                className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col"
+                role="status"
+            >
+                <span className="sr-only">{t('loading')}</span>
                 <div className="px-4 pt-3 pb-2 flex items-center gap-2.5">
-                    <div className="w-7 h-7 bg-gray-200 rounded-lg animate-pulse" />
-                    <div className="space-y-1">
-                        <div className="h-3 bg-gray-200 rounded w-24 animate-pulse" />
-                        <div className="h-2.5 bg-gray-100 rounded w-32 animate-pulse" />
+                    <div className="w-7 h-7 bg-gray-200 rounded-lg animate-pulse motion-reduce:animate-none" />
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-900">{t('title')}</h3>
+                        <p className="text-xs font-medium text-gray-400">{t('subtitle')}</p>
                     </div>
                 </div>
                 <div className="flex gap-2 px-4 pb-3">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="flex-shrink-0 w-36 rounded-xl border border-gray-100 p-2 animate-pulse">
+                        <div key={i} className="flex-shrink-0 w-36 rounded-xl border border-gray-100 p-2 animate-pulse motion-reduce:animate-none">
                             <div className="w-full aspect-square bg-gray-100 rounded-lg mb-1.5" />
                             <div className="h-2.5 bg-gray-200 rounded w-full mb-1" />
                             <div className="h-2.5 bg-gray-100 rounded w-2/3" />

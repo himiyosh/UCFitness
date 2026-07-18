@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
+import { creditBalance } from '@/lib/services/coin-service';
 import { evaluateMission, generateDailyMissions } from '@/lib/services/mission-utils';
 
 export const dynamic = 'force-dynamic';
@@ -158,10 +159,15 @@ export async function POST(request: Request) {
 
         const achieved = evaluateMission(mission.mission_type, todaySteps);
         if (achieved) {
-            await completeMissionAndReward(userId, mission.id, mission.reward_uc, today);
+            const newlyCompletedNow = await completeMissionAndReward(
+                userId,
+                mission.id,
+                mission.reward_uc,
+                today,
+            );
             mission.is_completed = true;
             mission.completed_at = new Date().toISOString();
-            newlyCompleted++;
+            if (newlyCompletedNow) newlyCompleted++;
         }
     }
 
@@ -169,9 +175,8 @@ export async function POST(request: Request) {
 
     // 全達成ボーナス
     let bonusAwarded = false;
-    if (allCompleted && newlyCompleted > 0) {
-        await awardAllCompletedBonus(userId, today);
-        bonusAwarded = true;
+    if (allCompleted) {
+        bonusAwarded = await awardAllCompletedBonus(userId, today);
     }
 
     const streak = await calculateMissionStreak(userId, today);
@@ -204,117 +209,64 @@ async function completeMissionAndReward(
     missionId: string,
     rewardUc: number,
     date: string,
-): Promise<void> {
-    // 報酬UCを付与（冪等性キーで重複防止）
-    const { error: txError } = await supabaseAdmin
-        .from('coin_transactions')
-        .insert({
-            user_id: userId,
-            date,
-            type: 'MISSION_REWARD',
-            amount: rewardUc,
-            description: 'デイリーミッション報酬',
-            idempotency_key: `mission:${missionId}`,
-        });
-
-    if (txError) {
-        reportError('user/missions:completeMission:transaction', txError, { missionId, rewardUc });
+): Promise<boolean> {
+    const credit = await creditBalance(
+        userId,
+        rewardUc,
+        'MISSION_REWARD',
+        'デイリーミッション報酬',
+        `mission:${missionId}`,
+        date,
+    );
+    if (!credit.success) {
+        reportError(
+            'user/missions:completeMission:credit',
+            new Error(credit.error ?? 'Mission reward credit failed'),
+            { missionId, rewardUc },
+        );
         throw new MissionRewardWriteError();
     }
 
-    const { data: balanceData, error: balanceError } = await supabaseAdmin
-        .from('coin_balances')
-        .select('total_balance, total_bonus')
-        .eq('user_id', userId)
-        .single();
-
-    if (balanceError) {
-        reportError('user/missions:completeMission:balance', balanceError, { userId });
-        throw new MissionRewardWriteError();
-    }
-
-    if (!balanceData) {
-        reportError('user/missions:completeMission:balanceMissing', new Error('Coin balance not found'), { userId });
-        throw new MissionRewardWriteError();
-    }
-
-    const { error: balanceUpdateError } = await supabaseAdmin
-        .from('coin_balances')
-        .update({
-            total_balance: balanceData.total_balance + rewardUc,
-            total_bonus: balanceData.total_bonus + rewardUc,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId);
-
-    if (balanceUpdateError) {
-        reportError('user/missions:completeMission:balanceUpdate', balanceUpdateError, { userId, rewardUc });
-        throw new MissionRewardWriteError();
-    }
-
-    // 台帳と残高が反映された後にだけミッションを完了扱いにする。
-    const { error: updateError } = await supabaseAdmin
+    const { error } = await supabaseAdmin
         .from('daily_missions')
         .update({
             is_completed: true,
             completed_at: new Date().toISOString(),
         })
-        .eq('id', missionId);
-
-    if (updateError) {
-        reportError('user/missions:completeMission:update', updateError, { missionId });
+        .eq('id', missionId)
+        .eq('user_id', userId)
+        .eq('date', date);
+    if (error) {
+        reportError('user/missions:completeMission:update', error, { missionId });
         throw new MissionRewardWriteError();
     }
+
+    return true;
 }
 
 /** 全達成ボーナス付与 */
-async function awardAllCompletedBonus(userId: string, date: string): Promise<void> {
-    const bonusKey = `mission-bonus:${userId}:${date}`;
-    const { error: bonusError } = await supabaseAdmin
-        .from('coin_transactions')
-        .insert({
-            user_id: userId,
-            date,
-            type: 'MISSION_REWARD',
-            amount: 100,
-            description: 'デイリーミッション全達成ボーナス',
-            idempotency_key: bonusKey,
-        });
-
-    if (bonusError) {
-        reportError('user/missions:allCompletedBonus:insert', bonusError, { userId, date });
+async function awardAllCompletedBonus(
+    userId: string,
+    date: string,
+): Promise<boolean> {
+    const credit = await creditBalance(
+        userId,
+        100,
+        'MISSION_REWARD',
+        'デイリーミッション全達成ボーナス',
+        `mission-bonus:${userId}:${date}`,
+        date,
+    );
+    if (!credit.success) {
+        reportError(
+            'user/missions:allCompletedBonus:credit',
+            new Error(credit.error ?? 'Mission bonus credit failed'),
+            { userId, date },
+        );
         throw new MissionRewardWriteError();
     }
 
-    const { data: bd, error: balanceFetchError } = await supabaseAdmin
-        .from('coin_balances')
-        .select('total_balance, total_bonus')
-        .eq('user_id', userId)
-        .single();
-
-    if (balanceFetchError) {
-        reportError('user/missions:allCompletedBonus:balance', balanceFetchError, { userId });
-        throw new MissionRewardWriteError();
-    }
-
-    if (!bd) {
-        reportError('user/missions:allCompletedBonus:balanceMissing', new Error('Coin balance not found'), { userId });
-        throw new MissionRewardWriteError();
-    }
-
-    const { error: balUpdateError } = await supabaseAdmin
-        .from('coin_balances')
-        .update({
-            total_balance: bd.total_balance + 100,
-            total_bonus: bd.total_bonus + 100,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId);
-
-    if (balUpdateError) {
-        reportError('user/missions:allCompletedBonus:update', balUpdateError, { userId });
-        throw new MissionRewardWriteError();
-    }
+    return !credit.already_processed;
 }
 
 function shiftDate(date: string, days: number): string {

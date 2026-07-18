@@ -60,15 +60,17 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
         if (submitting) return;
 
         if (!title.trim()) {
-            setError(t('titleRequired') || 'Title is required');
+            setError(t('titleRequired'));
+            titleInputRef.current?.focus();
             return;
         }
         if (targetSteps <= 0) {
-            setError('Target steps must be positive');
+            setError(t('targetStepsPositive'));
             return;
         }
         if (new Date(endDate) <= new Date(startDate)) {
-            setError('End date must be after start date');
+            setError(t('endDateAfterStart'));
+            document.getElementById('edit-challenge-end')?.focus();
             return;
         }
 
@@ -93,13 +95,13 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to update challenge');
+                throw new Error(data.error || t('updateFailed'));
             }
 
             onUpdated?.();
             onClose();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Unknown error');
+            setError(err instanceof Error ? err.message : t('unknownError'));
         } finally {
             setSubmitting(false);
         }
@@ -123,7 +125,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                         onClick={handleClose}
                         disabled={submitting}
                         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                        aria-label={t('closeCreateDialog')}
+                        aria-label={t('closeEditDialog')}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -143,7 +145,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             maxLength={100}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                            className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]" aria-invalid={error === t('titleRequired')} aria-describedby={error === t('titleRequired') ? 'edit-challenge-error' : undefined}
                             required
                         />
                     </div>
@@ -156,7 +158,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             rows={2}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent resize-none"
+                            className="min-h-[72px] w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
                         />
                     </div>
 
@@ -170,7 +172,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             onChange={e => setTargetSteps(Number(e.target.value))}
                             min={1000}
                             step={1000}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                            className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
                             required
                         />
                     </div>
@@ -184,7 +186,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                 type="date"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                                className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
                                 required
                             />
                         </div>
@@ -195,7 +197,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                 type="date"
                                 value={endDate}
                                 onChange={e => setEndDate(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                                className="min-h-[44px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]" aria-invalid={error === t('endDateAfterStart')} aria-describedby={error === t('endDateAfterStart') ? 'edit-challenge-error' : undefined}
                                 required
                             />
                         </div>
@@ -212,7 +214,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                 onChange={e => setRewardUC(Number(e.target.value))}
                                 min={100}
                                 max={10000}
-                                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
+                                className="min-h-[44px] flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
                             />
                             <span className="text-sm font-semibold text-amber-600 whitespace-nowrap">🪙 UC</span>
                         </div>
@@ -220,13 +222,13 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
 
                     {/* アクティブ切替 */}
                     <div className="flex items-center gap-3">
-                        <label htmlFor="edit-challenge-active" className="relative inline-flex items-center cursor-pointer">
+                        <label htmlFor="edit-challenge-active" className="relative inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center">
                             <input
                                 id="edit-challenge-active"
                                 type="checkbox"
                                 checked={isActive}
                                 onChange={e => setIsActive(e.target.checked)}
-                                className="sr-only peer"
+                                className="sr-only peer" aria-label={t('activeToggle')}
                             />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--theme-primary)]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--theme-primary)]" />
                         </label>
@@ -235,7 +237,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
 
                     {/* エラー */}
                     {error && (
-                        <div className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
+                        <div id="edit-challenge-error" role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
                             {error}
                         </div>
                     )}
@@ -248,7 +250,7 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                             disabled={submitting}
                             className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors min-h-[44px]"
                         >
-                            {t('cancelEdit') || 'キャンセル'}
+                            {t('cancelEdit')}
                         </button>
                         <button
                             type="submit"
@@ -261,9 +263,9 @@ export default function EditChallengeModal({ isOpen, challenge, onClose, onUpdat
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                     </svg>
-                                    {t('saving') || '保存中...'}
+                                    {t('saving')}
                                 </>
-                            ) : (t('save') || '保存')}
+                            ) : t('save')}
                         </button>
                     </div>
                 </form>

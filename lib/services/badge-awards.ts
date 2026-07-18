@@ -46,6 +46,56 @@ function mergeUserBadgeAwards(...awardMaps: UserBadgeAwards[]): UserBadgeAwards 
     return merged;
 }
 
+interface StreakAward {
+    userId: string;
+    badgeCode: string;
+    rewardAmount: number;
+}
+
+async function awardStreakMilestones(dateStr: string): Promise<{
+    awards: StreakAward[];
+    failedUsers: number;
+}> {
+    const { data, error } = await supabaseAdmin.rpc('award_streak_milestones', {
+        p_target_date: dateStr,
+    });
+    if (error || !Array.isArray(data)) {
+        reportError(
+            'awardStreakMilestones',
+            error ?? new Error('Invalid streak milestone response'),
+            { dateStr },
+        );
+        throw new Error('Failed to award streak milestones');
+    }
+
+    const awards: StreakAward[] = [];
+    let failedUsers = 0;
+    for (const row of data) {
+        if (typeof row !== 'object' || row === null) {
+            throw new Error('Invalid streak milestone row');
+        }
+        const userId = 'awarded_user_id' in row ? row.awarded_user_id : null;
+        const badgeCode = 'awarded_badge_code' in row ? row.awarded_badge_code : null;
+        const rewardAmount = 'awarded_reward_amount' in row ? row.awarded_reward_amount : null;
+        const errorCode = 'error_code' in row ? row.error_code : null;
+        if (typeof errorCode === 'string') {
+            failedUsers++;
+            reportError('awardStreakMilestones:user', new Error(errorCode), { userId });
+        } else if (
+            typeof userId === 'string'
+            && typeof badgeCode === 'string'
+            && typeof rewardAmount === 'number'
+            && Number.isSafeInteger(rewardAmount)
+            && rewardAmount >= 0
+        ) {
+            awards.push({ userId, badgeCode, rewardAmount });
+        } else {
+            throw new Error('Invalid streak milestone award');
+        }
+    }
+    return { awards, failedUsers };
+}
+
 /**
  * 日付範囲を計算するヘルパー
  */
@@ -73,148 +123,139 @@ export const assignBadges = async (period: Period, dateStr: string): Promise<voi
         return;
     }
 
-    const [globalAwards, groupAwards, personalAwards] = await Promise.all([
+    const [globalAwards, groupAwards, personalAwards, streakResult] = await Promise.all([
         assignGlobalBadges(period, dateStr),
         assignGroupBadges(period, dateStr),
         period === 'DAILY'
             ? assignPersonalBadges(dateStr)
             : Promise.resolve(new Map<string, string[]>()),
+        period === 'DAILY'
+            ? awardStreakMilestones(dateStr)
+            : Promise.resolve({ awards: [], failedUsers: 0 }),
     ]);
 
     const userAwards = mergeUserBadgeAwards(globalAwards, groupAwards, personalAwards);
+    const bonusCoinsByUser = new Map<string, number>();
+    for (const award of streakResult.awards) {
+        addUserBadgeAwards(userAwards, award.userId, [award.badgeCode]);
+        bonusCoinsByUser.set(
+            award.userId,
+            (bonusCoinsByUser.get(award.userId) ?? 0) + award.rewardAmount,
+        );
+    }
     const notificationEntries = Array.from(userAwards.entries());
     for (let index = 0; index < notificationEntries.length; index += NOTIFICATION_BATCH_SIZE) {
         const batch = notificationEntries.slice(index, index + NOTIFICATION_BATCH_SIZE);
         await Promise.all(
-            batch.map(([userId, badgeCodes]) =>
-                sendConsolidatedBadgeNotification(userId, badgeCodes)),
+            batch.map(async ([userId, badgeCodes]) => Promise.all([
+                sendConsolidatedBadgeNotification(
+                    userId,
+                    badgeCodes,
+                    bonusCoinsByUser.get(userId) ?? 0,
+                ),
+                sendBadgeTeamsNotification(userId, badgeCodes),
+            ])),
+        );
+    }
+
+    if (streakResult.failedUsers > 0) {
+        throw new Error(
+            `Streak milestone rewards failed for ${streakResult.failedUsers} users`,
         );
     }
 };
 
 const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> => {
     const userAwards = new Map<string, string[]>();
-    // Get all users who have steps on this date
-    const { data: activeUsers, error: activeUsersError } = await supabaseAdmin
+    const { data: activeUsers, error } = await supabaseAdmin
         .from('daily_steps')
         .select('user_id, steps')
         .eq('date', dateStr);
-
-    if (activeUsersError) {
-        reportError('assignPersonalBadges:activeUsers', activeUsersError, { dateStr });
+    if (error) {
+        reportError('assignPersonalBadges:activeUsers', error, { dateStr });
         return userAwards;
     }
     if (!activeUsers || activeUsers.length === 0) return userAwards;
 
-    // Process in batches of 10 to avoid N+1 queries
-    const BATCH_SIZE = 10;
-
-    for (let i = 0; i < activeUsers.length; i += BATCH_SIZE) {
-        const batch = activeUsers.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < activeUsers.length; i += 10) {
+        const batch = activeUsers.slice(i, i + 10);
         const userIds = batch.map(u => u.user_id);
 
-        // 1. Fetch step goals for batch
         const { data: usersData } = await supabaseAdmin
             .from('users')
             .select('id, step_goal')
             .in('id', userIds);
-
         const goalMap = new Map(usersData?.map(u => [u.id, u.step_goal]) || []);
-
-        // 2. PostgREST 1000行制限回避:
-        //    - 累計歩数/日数: RPC でDB側集計（マイルストーン/タイトルバッジ用）
-        //    - 直近30日履歴: 日付フィルタ付きクエリ（ストリークバッジ用）
         const thirtyDaysAgo = new Date(dateStr);
         thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
-        const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-        const [totalsResult, recentHistoryResult] = await Promise.all([
+        const [totalsResult, historyResult] = await Promise.all([
             supabaseAdmin.rpc('get_batch_user_step_totals', { p_user_ids: userIds }),
             supabaseAdmin
                 .from('daily_steps')
                 .select('user_id, date, steps')
                 .in('user_id', userIds)
-                .gte('date', thirtyDaysAgoStr),
+                .gte('date', thirtyDaysAgo.toISOString().split('T')[0]),
         ]);
-
-        // 累計マップ: userId -> { total_steps, total_days }
         const totalsMap = new Map<string, { total_steps: number; total_days: number }>();
-        const totalsRows = (totalsResult.data as BatchUserStepTotalsRpcRow[] | null) || [];
+        const totalsRows = (totalsResult.data as BatchUserStepTotalsRpcRow[] | null) ?? [];
         totalsRows.forEach((row) => {
             totalsMap.set(row.user_id, { total_steps: Number(row.total_steps), total_days: Number(row.total_days) });
         });
-
-        // 直近履歴マップ: userId -> { date, steps }[]
-        const historyMap = new Map<string, { date: string, steps: number }[]>();
-        recentHistoryResult.data?.forEach(row => {
-            if (!historyMap.has(row.user_id)) {
-                historyMap.set(row.user_id, []);
-            }
-            historyMap.get(row.user_id)?.push(row);
+        const historyMap = new Map<string, { date: string; steps: number }[]>();
+        historyResult.data?.forEach((row) => {
+            const history = historyMap.get(row.user_id) ?? [];
+            history.push(row);
+            historyMap.set(row.user_id, history);
         });
 
         const batchAwards = await Promise.all(batch.map(async (user) => {
-            if (user.steps < 1000) {
-                return { userId: user.user_id, badgeCodes: [] as string[] };
-            }
-
-            const history = historyMap.get(user.user_id) || [];
-            const goal = goalMap.get(user.user_id) || 10000;
-            const userTotals = totalsMap.get(user.user_id) || { total_steps: 0, total_days: 0 };
-
+            const userTotals = totalsMap.get(user.user_id) ?? { total_steps: 0, total_days: 0 };
             const results = await Promise.all([
-                assignStreakBadges(user.user_id, dateStr, history, goal),
+                assignStreakBadges(
+                    user.user_id,
+                    dateStr,
+                    historyMap.get(user.user_id) ?? [],
+                    goalMap.get(user.user_id) || 10000,
+                ),
                 assignMilestoneBadges(user.user_id, userTotals.total_steps),
                 assignTitleBadges(user.user_id, dateStr, userTotals.total_steps, userTotals.total_days),
                 assignLifestyleBadges(user.user_id, dateStr, user.steps),
             ]);
-
-            const newBadgeCodes = results.flat().filter(Boolean) as string[];
-            return { userId: user.user_id, badgeCodes: newBadgeCodes };
+            return { userId: user.user_id, badgeCodes: results.flat().filter(Boolean) as string[] };
         }));
 
         for (const { userId, badgeCodes } of batchAwards) {
             addUserBadgeAwards(userAwards, userId, badgeCodes);
         }
     }
-
     return userAwards;
 }
 
-const assignStreakBadges = async (userId: string, dateStr: string, history: { date: string, steps: number }[], goal: number): Promise<(string | null)[]> => {
-    // Check 30 days back
-    // Filter and sort in memory instead of DB query
+const assignStreakBadges = async (
+    userId: string,
+    dateStr: string,
+    history: { date: string; steps: number }[],
+    goal: number,
+): Promise<(string | null)[]> => {
     const steps = history
         .filter(h => h.date <= dateStr)
-        .sort((a, b) => b.date.localeCompare(a.date)) // Descending date
-        .slice(0, 30);
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 3);
+    if (steps.length < 3) return [];
 
-    if (!steps || steps.length < 3) return [];
-
-    let streak = 0;
     const today = new Date(dateStr);
-
-    for (let i = 0; i < steps.length; i++) {
-        const d = new Date(steps[i].date);
-        const expectedDate = new Date(today);
-        expectedDate.setUTCDate(today.getUTCDate() - i);
-
-        if (d.toISOString().split('T')[0] !== expectedDate.toISOString().split('T')[0]) {
-            break;
-        }
-
-        if (steps[i].steps >= goal) {
-            streak++;
-        } else {
-            break;
+    for (let i = 0; i < 3; i++) {
+        const expected = new Date(today);
+        expected.setUTCDate(today.getUTCDate() - i);
+        if (
+            steps[i].date !== expected.toISOString().split('T')[0]
+            || steps[i].steps < goal
+        ) {
+            return [];
         }
     }
-
-    const badgePromises: Promise<string | null>[] = [];
-    if (streak >= 30) badgePromises.push(awardBadge(userId, 'STREAK_30', dateStr, null));
-    if (streak >= 7) badgePromises.push(awardBadge(userId, 'STREAK_7', dateStr, null));
-    if (streak >= 3) badgePromises.push(awardBadge(userId, 'STREAK_3', dateStr, null));
-    return Promise.all(badgePromises);
+    return [await awardBadge(userId, 'STREAK_3', dateStr, null)];
 }
 
 const assignMilestoneBadges = async (userId: string, totalSteps: number): Promise<(string | null)[]> => {
@@ -281,9 +322,7 @@ const assignGlobalBadges = async (
         if (entry.steps <= 0) return;
         const result = await awardBadge(entry.userId, badgeCodes[i], dateStr, null);
         if (result) {
-            const existing = userBadgeMap.get(entry.userId) || [];
-            existing.push(result);
-            userBadgeMap.set(entry.userId, existing);
+            addUserBadgeAwards(userBadgeMap, entry.userId, [result]);
         }
     }));
 
@@ -398,9 +437,7 @@ const assignGroupBadges = async (
             if (entry.steps <= 0) return;
             const result = await awardBadge(entry.userId, badgeCodes[i], dateStr, group.id);
             if (result) {
-                const existing = allUserBadgeMap.get(entry.userId) || [];
-                existing.push(result);
-                allUserBadgeMap.set(entry.userId, existing);
+                addUserBadgeAwards(allUserBadgeMap, entry.userId, [result]);
             }
         }));
     }));
@@ -432,35 +469,29 @@ const awardBadge = async (userId: string, badgeCode: string, periodDate: string,
             return null;
         }
 
-        // Teams 通知のみここで送信（バッジごとに個別投稿するのが適切）
-        const [badgeResult, userResult] = await Promise.all([
-            supabaseAdmin
-                .from('badges')
-                .select('name, image_url, description')
-                .eq('code', badgeCode)
-                .single(),
-            supabaseAdmin
-                .from('users')
-                .select('username')
-                .eq('id', userId)
-                .single(),
-        ]);
-
-        const badgeData = badgeResult.data;
-        const userData = userResult.data;
-
-        if (badgeData && userData) {
-            await sendBadgeNotification(
-                userData.username || "A user",
-                badgeData.name,
-                badgeData.image_url,
-                badgeData.description
-            );
-        }
-
         return badgeCode;
     } catch (error: unknown) {
         reportError('awardBadge', error, { badgeCode });
         return null;
+    }
+};
+
+const sendBadgeTeamsNotification = async (
+    userId: string,
+    badgeCodes: string[],
+): Promise<void> => {
+    const [userResult, badgeResults] = await Promise.all([
+        supabaseAdmin.from('users').select('username').eq('id', userId).single(),
+        Promise.all(badgeCodes.map((badgeCode) => supabaseAdmin.from('badges')
+            .select('name, image_url, description').eq('code', badgeCode).single())),
+    ]);
+    const badges = badgeResults.flatMap((result) => result.data ? [result.data] : []);
+    if (badges.length > 0 && userResult.data) {
+        await sendBadgeNotification(
+            userResult.data.username || 'A user',
+            badges.map((badge) => badge.name).join(' / '),
+            badges.find((badge) => badge.image_url)?.image_url ?? null,
+            badges.map((badge) => badge.description).filter(Boolean).join(' / '),
+        );
     }
 };

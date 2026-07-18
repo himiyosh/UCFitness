@@ -116,7 +116,7 @@ export default function PersonalAnalytics({ initialData = null }: PersonalAnalyt
                 <p className="text-gray-500 text-sm font-medium">{t('noData')}</p>
                 <button
                     onClick={fetchData}
-                    className="mt-5 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 hover:shadow-lg active:scale-95"
+                    className="mt-5 inline-flex min-h-[44px] items-center justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 hover:shadow-lg active:scale-95"
                     style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
                 >
                     ↻ {t('retry')}

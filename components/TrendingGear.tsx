@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+
 import { Link } from '@/navigation';
+import AffiliateDisclosure from '@/components/affiliate/AffiliateDisclosure';
+import AffiliateLink from '@/components/affiliate/AffiliateLink';
 import GearLikeButton from '@/components/GearLikeButton';
 import { useGlobalGearReactions } from '@/hooks/useGlobalGearReactions';
 
@@ -27,6 +30,7 @@ interface TrendingGearProps {
 export default function TrendingGear({ userId }: TrendingGearProps) {
     const t = useTranslations('TrendingGear');
     const recT = useTranslations('Recommendations');
+    const commonT = useTranslations('Common');
     const [items, setItems] = useState<TrendingItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -42,7 +46,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
 
         // トレンディングアイテムを取得
         fetch('/api/amazon/trending')
-            .then(res => res.json())
+            .then(res => { if (!res.ok) throw new Error('fetch failed'); return res.json(); })
             .then(data => {
                 if (!cancelled && data.items?.length > 0) {
                     setItems(data.items);
@@ -77,7 +81,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
     const scroll = useCallback((direction: 'left' | 'right') => {
         const el = scrollRef.current;
         if (!el) return;
-        el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+        el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     }, []);
 
     /** タイトルから【】内の装飾テキストを除去して整形 */
@@ -88,17 +92,18 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
     if (loading) return null;
     if (error) {
         return (
-            <div className="glass-card rounded-2xl p-6 text-center flex flex-col items-center justify-center">
+            <div role="alert" className="glass-card rounded-2xl p-6 text-center flex flex-col items-center justify-center">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-amber-50 flex items-center justify-center">
                     <span className="text-2xl">⚠️</span>
                 </div>
-                <p className="text-sm text-gray-500 font-medium mb-3">{t('title')}</p>
+                <p className="text-sm text-gray-700 font-medium">{t('title')}</p>
+                <p className="mb-3 mt-1 text-xs text-[var(--color-text-muted)]">{recT('recommendationsUnavailable')}</p>
                 <button
                     onClick={() => { setError(false); setLoading(true); window.location.reload(); }}
-                    className="px-4 py-2 rounded-lg text-sm font-bold text-white hover:scale-105 active:scale-95 transition-all min-h-[36px]"
+                    className="min-h-[44px] rounded-lg px-4 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"
                     style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
                 >
-                    ↻ Retry
+                    ↻ {commonT('retry')}
                 </button>
             </div>
         );
@@ -119,7 +124,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                         <h3 className="text-sm font-bold text-gray-900 tracking-tight">
                             {t('title')}
                         </h3>
-                        <p className="text-xs text-gray-400 font-medium">
+                        <p className="text-xs text-[var(--color-text-muted)] font-medium">
                             {t('subtitle')}
                         </p>
                     </div>
@@ -130,8 +135,8 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                     <button
                         onClick={() => scroll('left')}
                         disabled={!canScrollLeft}
-                        className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
-                        aria-label="Scroll left"
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-[var(--theme-primary)] disabled:cursor-default disabled:opacity-30"
+                        aria-label={t('scrollLeft')}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -140,8 +145,8 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                     <button
                         onClick={() => scroll('right')}
                         disabled={!canScrollRight}
-                        className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
-                        aria-label="Scroll right"
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-[var(--theme-primary)] disabled:cursor-default disabled:opacity-30"
+                        aria-label={t('scrollRight')}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -150,6 +155,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                 </div>
                 )}
             </div>
+            <AffiliateDisclosure className="px-4 pb-2" />
 
             {/* 横カルーセル */}
             <div
@@ -157,7 +163,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                 className="flex-1 overflow-x-auto px-4 pb-4 pt-1 scrollbar-hide"
             >
               <div className="flex gap-2.5" style={{ minWidth: 'min-content' }}>
-                {items.map(item => (
+                {items.map((item, index) => (
                     <div
                         key={item.asin}
                         data-reaction-card
@@ -181,20 +187,21 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                             </div>
                         ) : null;
                     })()}
-                    <a
+                    <AffiliateLink
                         href={item.affiliate_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 hover:shadow-lg hover:border-[var(--theme-primary)]/20 hover:scale-[1.03] p-2 transition-all duration-200 group"
+                        surface="dashboard"
+                        targetType="product"
+                        targetId={item.asin}
+                        className="w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 p-2 transition-all duration-200 hover:scale-[1.03] hover:border-[var(--theme-primary)]/20 hover:shadow-lg group"
                     >
                         {/* 商品画像 — コンパクト */}
                         <div className="w-full h-[90px] rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-1.5">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={item.image_url}
-                                alt={item.title || item.asin}
+                                alt=""
                                 className="max-w-[85%] max-h-[85%] object-contain"
-                                loading="lazy"
+                                loading={index === 0 ? 'eager' : 'lazy'}
                                 onError={(e) => {
                                     (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${item.asin}&Format=_SL160_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=studio344-22`;
                                 }}
@@ -207,7 +214,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                         </p>
 
                         {/* 愛用者アバター */}
-                        <div className="flex items-center -space-x-1.5 mb-1">
+                        <div className="flex items-center -space-x-1.5 mb-1" aria-hidden="true">
                             {item.users.slice(0, 3).map((u, i) => (
                                 <div
                                     key={i}
@@ -228,7 +235,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                                 <span className="text-[8px] text-gray-400 font-medium ml-1">+{item.count - 3}</span>
                             )}
                         </div>
-                    </a>
+                    </AffiliateLink>
                     {/* ギア Like ボタン — Instagram 風のハートボタン */}
                     {userId && (
                         <div
@@ -250,7 +257,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
 
             {/* ショップリンク */}
             <div className="text-center py-2 border-t border-gray-100 flex-shrink-0">
-                <Link href="/shop?view=gear" className="text-xs font-semibold text-[var(--theme-primary)] hover:underline">
+                <Link href="/shop?view=gear" className="inline-flex min-h-[44px] items-center px-3 text-xs font-semibold text-[var(--theme-primary)] hover:underline">
                     🛍️ {recT('viewShop')}
                 </Link>
             </div>

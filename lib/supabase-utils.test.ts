@@ -2,11 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
     fetchAllWithPagination,
+    fetchDailyStepsPaginated,
     PaginationLimitError,
 } from '@/lib/supabase-utils';
 
+const mocks = vi.hoisted(() => ({
+    from: vi.fn(),
+}));
+
 vi.mock('@/lib/supabase', () => ({
-    supabaseAdmin: {},
+    supabaseAdmin: {
+        from: mocks.from,
+    },
 }));
 
 describe('fetchAllWithPagination', () => {
@@ -21,6 +28,31 @@ describe('fetchAllWithPagination', () => {
 
         expect(result).toEqual({ data: rows, error: null });
         expect(query).toHaveBeenCalledTimes(3);
+    });
+
+    describe('fetchDailyStepsPaginated', () => {
+        it('dateとuser_idの安定順序でページを取得する', async () => {
+            const range = vi.fn(() => ({
+                returns: () => Promise.resolve({ data: [], error: null }),
+            }));
+            const userOrder = vi.fn(() => ({ range }));
+            const dateOrder = vi.fn(() => ({ order: userOrder }));
+            mocks.from.mockReturnValue({
+                select: () => ({
+                    gte: () => ({
+                        order: dateOrder,
+                    }),
+                }),
+            });
+
+            await expect(fetchDailyStepsPaginated({
+                startDate: '2026-07-01',
+            })).resolves.toEqual({ data: [], error: null });
+
+            expect(dateOrder).toHaveBeenCalledWith('date', { ascending: true });
+            expect(userOrder).toHaveBeenCalledWith('user_id', { ascending: true });
+            expect(range).toHaveBeenCalledWith(0, 899);
+        });
     });
 
     it('最大行を超える1件が存在する場合、部分成功にせず明示エラーを返す', async () => {

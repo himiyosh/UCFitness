@@ -61,6 +61,10 @@ export type DailyStepDefaultRow = { user_id: string; steps: number; date: string
  *
  * `selectFields` を渡す場合は呼び出し側で対応する行型を型引数 `T` として明示すること。
  * 省略時は既定の `user_id, steps, date` 列に対応する `DailyStepDefaultRow` が使われる。
+ *
+ * date + user_id でページ順を固定するが、各ページは独立したHTTPリクエストのため
+ * 同期処理と並行した場合のトランザクション的なスナップショット一貫性は保証しない。
+ * 複数ページが常態化する場合は、複合keysetまたはtransactional RPCへ移行する。
  */
 export async function fetchDailyStepsPaginated<T = DailyStepDefaultRow>(options: {
     startDate: string;
@@ -80,7 +84,11 @@ export async function fetchDailyStepsPaginated<T = DailyStepDefaultRow>(options:
                 q = q.in('user_id', options.userIds);
             }
 
-            return q.range(from, to).returns<T[]>();
+            return q
+                .order('date', { ascending: true })
+                .order('user_id', { ascending: true })
+                .range(from, to)
+                .returns<T[]>();
         }
     );
 }

@@ -1,5 +1,3 @@
-import { getEquippedItemsForUsers } from './shop-service';
-
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
 
 export type RankingEntry = {
@@ -115,18 +113,44 @@ export function getViewerRankingStatus(
     return 'not-reflected';
 }
 
-export function sortPositiveStepRankings<T extends { steps: number }>(rankings: T[]): T[] {
-    return rankings
-        .filter((entry) => entry.steps > 0)
-        .sort((a, b) => b.steps - a.steps);
+interface StableUserRanking {
+    steps: number;
+    userId?: string;
+    users?: { id: string };
 }
 
-export function sortActiveGroupRankings<T extends { totalSteps: number; averageSteps: number }>(
+function getUserRankingTieKey(entry: StableUserRanking): string {
+    return entry.users?.id ?? entry.userId ?? '';
+}
+
+function compareStableIdentifiers(left: string, right: string): number {
+    if (left === right) return 0;
+    return left < right ? -1 : 1;
+}
+
+export function sortPositiveStepRankings<T extends StableUserRanking>(rankings: T[]): T[] {
+    return rankings
+        .filter((entry) => entry.steps > 0)
+        .sort((a, b) => (
+            b.steps - a.steps
+            || compareStableIdentifiers(
+                getUserRankingTieKey(a),
+                getUserRankingTieKey(b),
+            )
+        ));
+}
+
+export function sortActiveGroupRankings<
+    T extends { groupId: string; totalSteps: number; averageSteps: number },
+>(
     rankings: T[],
 ): T[] {
     return rankings
         .filter((entry) => entry.totalSteps > 0 && entry.averageSteps > 0)
-        .sort((a, b) => b.averageSteps - a.averageSteps);
+        .sort((a, b) => (
+            b.averageSteps - a.averageSteps
+            || compareStableIdentifiers(a.groupId, b.groupId)
+        ));
 }
 
 export function getGroupRankGapInsight<
@@ -244,7 +268,8 @@ export async function enrichRankingsWithEquip<T extends { users: RankingEntry['u
     const userIds = Array.from(userIdSet);
     if (userIds.length === 0) return rankings;
 
-    // バルク取得
+    // Client Component も使う純粋ヘルパーから server-only の Supabase 依存を分離する。
+    const { getEquippedItemsForUsers } = await import('./shop-service');
     const equipMap = await getEquippedItemsForUsers(userIds);
 
     // 注入
@@ -365,6 +390,7 @@ export async function enrichAllGroupRankingsWithEquip<T extends { neighbors: Rec
     const userIds = Array.from(userIdSet);
     if (userIds.length === 0) return groupRankings;
 
+    const { getEquippedItemsForUsers } = await import('./shop-service');
     const equipMap = await getEquippedItemsForUsers(userIds);
 
     for (const group of groupRankings) {
@@ -462,7 +488,7 @@ export async function enrichCombinedRankings<T extends { neighbors: Record<strin
     const userIds = Array.from(userIdSet);
     if (userIds.length === 0) return;
 
-    // Bulk fetch equipment
+    const { getEquippedItemsForUsers } = await import('./shop-service');
     const equipMap = await getEquippedItemsForUsers(userIds);
 
     // Apply to Global Rankings

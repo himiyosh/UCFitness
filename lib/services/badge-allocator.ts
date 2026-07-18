@@ -133,6 +133,7 @@ export async function checkAndAwardBadges(userId: string): Promise<void> {
 export async function sendConsolidatedBadgeNotification(
     userId: string,
     badgeCodes: string[],
+    bonusCoins = 0,
 ): Promise<void> {
     try {
         const [userResult, subscriptionsResult] = await Promise.all([
@@ -166,7 +167,12 @@ export async function sendConsolidatedBadgeNotification(
         const username = userResult.data?.username;
         await sendWebPushNotifications(userId, subscriptionsResult.data, {
             title: badgeUnlockedTitle(locale, badgeNames.count),
-            body: badgeUnlockedBody(locale, badgeNames.label, badgeNames.count),
+            body: badgeUnlockedBody(
+                locale,
+                badgeNames.label,
+                badgeNames.count,
+                bonusCoins,
+            ),
             url: username ? `/user/${encodeURIComponent(username)}` : '/',
             locale,
             tag: 'ucfitness-badges',

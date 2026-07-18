@@ -26,11 +26,12 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **グループ対抗** | 未所属からの参加導線、正歩数だけのメンバー/グループ順位、部分障害でも継続するイベント・チャット・ギア・週間レポート |
 | **リーダーボード** | 個人・グループ順位に加え、参加人数・次ライバル名・必要歩数・トップ差をCompetition Missionで可視化 |
 | **チャレンジ** | 参加中の残り歩数を優先し、次の最大500歩・期限・UC報酬を示す期間限定チャレンジ |
-| **バッジ & 称号** | 達成に応じたバッジ獲得・称号付与システム |
-| **コイン経済** | 歩数でコインを獲得、ショップでギアを購入 |
+| **バッジ & 称号** | 連続達成や累計歩数・順位に応じたバッジ獲得・称号付与システム |
+| **コイン経済** | 歩数でコインを獲得し、7/30/100/365日のストリーク節目で一回限りの追加UCを受け取り、ショップでギアを購入 |
 | **ギア & リアクション** | プロフィールギア装着、メンバーへのリアクション |
 | **プッシュ通知** | 言語設定対応のWeb Push、バッジ横断集約、歩数リマインダー、ウィークリーサマリー、端末重複制御、通知嗜好が利用不能でも警告付きFeedを継続 |
 | **i18n** | 日本語・英語の 2 言語対応 |
+| **法務情報** | アプリ内の `/legal/terms` と `/legal/privacy` で利用条件・健康情報の注意・データ取扱いを ja/en で明示 |
 | **PWA** | ホーム画面追加、オフライン対応 |
 
 ## 技術スタック
@@ -65,6 +66,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 
 - **Server Component 優先**: ページはサーバーサイドでレンダリングし、インタラクティブ部分のみ `'use client'`
 - **Edge Runtime 必須**: すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` を宣言
+- **Strict CSP**: HTML応答はEdge middlewareでrequestごとのnonceを生成し、Next.js scriptsへ自動付与する。productionのscript policyは`strict-dynamic` + nonceでnonceなしinline scriptと全inline handlerを拒否し、`base-uri 'none'`とsame-origin workerに制限する。HMR用`unsafe-eval`とDev Overlay用inline style elementは開発時だけ許可し、Reactの動的style属性はproductionでも`style-src-attr 'unsafe-inline'`を維持する
 - **supabaseAdmin**: サーバーサイドの DB アクセスはサービスロールキーを使用
 - **型安全性契約**: 外部データは具体型または `unknown` + 型ガードで扱い、Supabaseの選択列・RPC応答は`types/database.ts`のDatabase型から射影する。明示的な`any`と`no-explicit-any`抑制は使用しない
 - **Dual-Library Strategy**: Google Health を明示的に接続したユーザーは同APIを優先し、未接続または明示解除したユーザーはFitbitを継続利用。再認証待ち・エラー時はデータ混在を避けるため暗黙切替しない
@@ -75,6 +77,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
+- **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
 - **公開プロフィールAPIの入力契約**: Achievement進捗と年間歩数カレンダーは認証を要求しつつ、UUID検証済みの公開target `userId`をそのまま照会する。フォロー状態と公開リアクションもtarget UUID・emoji・periodをDB操作前に検証する。プロフィール/バナー画像の保存拡張子は元ファイル名ではなく検証済みMIMEから決定し、`contentType`と一致させる
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
@@ -83,6 +86,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結する。Mission→Weekly→Reward→Challengeの後はQuickActionsを独立補助Dockとし、Friend Pulseと週間Rankingをxlで直接同一行にする。Friend Pulseは個別目標と正歩数の活動人数/合計/達成人数、Rankingは次ライバル名/必要歩数を表示する。詳細Rankingは固定5行を維持し、Competition Missionへ現在順位・参加者数・次ライバル・トップ差を集約、外側多列化は2xlへ遅らせる
 - **Challenge継続契約**: Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。主表示は最大500歩、期限/報酬は補足、作成は一覧後へ置く。期限は一覧・カード・参加APIでJST統一し、進捗不明を0へ変換しない
 - **競争差の導線継続**: Homeで示す「あと何歩」を、歩数が記録されたユーザーのグローバルランキング・選択グループ・グループ詳細の自分順位サマリーでも表示する。0歩・不在時は順位・メダル・成功形の対象にせず、空行でランキング5行・72px固定仕様を維持する。取得失敗は未所属表示へ変換せず、Global/Group双方でエラーと再試行を明示する。計算は`getRankGapInsight()`へ集約する
+- **Amazon CTA実験契約**: プロフィール・ホーム・ShopのAmazon導線はセッション内で安定した配置/文言2×2実験を行い、50%以上を1秒表示したimpressionとclickだけをPIIなしの構造化platform logへ送る。価格・配送はAPI値を推測せずAmazon.co.jp確認と明記し、PR開示と`sponsored` linkを必須にする
 - **Groups状態分離契約**: グループ内ユーザー順位とグループ対抗順位は正歩数だけを対象にし、ランキング配列長は「ランキング参加人数」と表示する。group/user/membership認可だけを詳細ページの必須境界とし、private group非メンバー404を維持する。メンバー一覧/件数、順位、比較、期間別競争の失敗は個別警告として、取得不能を0人・空順位・未所属へ変換せず、利用可能なイベント・チャット・ギア・週間レポートを継続する
 - **ランキング期間コンテキスト**: 期間filterはURLの`period`を唯一の状態として共有し、既存クエリを保持したまま置換する。主要ナビと仲間発見導線は週次へ統一し、グループ詳細もHero直後の分析を週次で開始する。Global・Group・Group detailの表示、再読込、共有URL、リアクション取得を同じ期間へ揃え、旧期間のリアクション応答は中断する。filterは固定semantic色・チェック・高contrast境界を使い、短い期間名とチャート説明を分離する。下部の愛用ギアへは初期viewportの44px導線を残す
 - **テーマ優先順位**: 明示的な端末内テーマを優先し、保存値がない端末だけDB装備テーマを初期値として使用する。item code変換は`lib/theme.ts`へ集約
@@ -131,6 +135,7 @@ UCFitness/
 |   +-- fitbit.ts            # Fitbit API 連携
 |   +-- services/
 |   |   +-- analytics-service.ts # 個人分析集計ロジック
+|   |   +-- badge-awards.ts     # ランキング・個人・ストリーク節目バッジ付与
 |   +-- coin-service.ts      # コイン経済ロジック
 |   +-- badge-service.ts     # バッジ判定・付与
 |   +-- push-messages.ts     # プッシュ通知メッセージ (i18n)
@@ -249,6 +254,7 @@ npm run dev
 | `npm run build` | プロダクションビルド |
 | `npm run pages:build` | Cloudflare Pages ビルド |
 | `npm run lint` | ESLint 実行 |
+| `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -260,6 +266,18 @@ npm run dev
 - 日本語本文はHiragino Sans / Yu Gothic / Meiryoのシステムフォントを使用する。複数weightの日本語Webフォントをグローバル配信する場合は、生成CSS・転送量とLCPを実測してから採用する
 - Lighthouse Mobile（Fast 3G相当・CPU 4倍）でLCP 2.5秒未満、CLS 0.1未満を出荷基準とする
 - 2026-07-16のF019基準値: LCP 2,349ms、CLS 0、操作Event Timing最大48ms。LCP要素はヒーロー説明文
+
+### Client bundle budget
+
+- `npm run build` のroute表で、全ページのFirst Load JSを200KB未満に保つ
+- Client Componentと共有するmoduleからSupabase等のserver-only依存を静的importしない
+- Recharts、下部チャット、ギア等の非critical UIはClient境界内の`next/dynamic`とviewport判定で遅延し、loading名、`aria-busy`、低減モーション、JS無効時の主要情報を維持する
+- 2026-07-18のF020実測: wallet 260→141KB、group detail 207→152KB、leaderboard 198→146KB。遅延chunkの存在と初期route manifestからの分離も同じproduction buildで確認した
+- ランキング/Feedの1ページロードは10クエリ未満を維持し、独立queryを並列化して依存waveを減らす。daily_stepsはdate+user ID、同歩数・同平均はIDで決定順を保つ。2026-07-18のF021固定RTTモデルではGROUP ranking 6→4クエリ、Feed 10→8クエリ、依存waveはいずれも6→4で、待ち時間は33.3%改善。実Supabaseログ、production p95、本番index/EXPLAIN、更新中データの複数ページsnapshot整合性は未検証のためF021はin-progress
+
+### i18n quality
+
+- 英語の購入確認CTAは具体的な動詞`Purchase`を使い、`×`値のストリーク表示は英語`Streak Multiplier`・日本語`ストリーク倍率`へ統一する
 
 ### Cloudflare Pages デプロイ
 
@@ -460,9 +478,17 @@ npm run test:watch
 
 # カバレッジ付き
 npm run test:coverage
+
+# 全主要画面のレスポンシブ監査
+RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNAME_JA=ja-user RESPONSIVE_AUDIT_GROUP_ID_JA=ja-group \
+RESPONSIVE_AUDIT_STORAGE_STATE_EN=/path/to/en-state.json RESPONSIVE_AUDIT_USERNAME_EN=en-user RESPONSIVE_AUDIT_GROUP_ID_EN=en-group \
+npm run audit:responsive
 ```
 
 - テストフレームワーク: **Vitest**
+- レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
+- 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
+- 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
 - テストファイル: `lib/__tests__/` 配下
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)

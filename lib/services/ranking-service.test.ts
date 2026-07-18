@@ -26,7 +26,13 @@ vi.mock('@/lib/supabase-utils', () => ({
     fetchDailyStepsPaginated: mocks.fetchDailyStepsPaginated,
 }));
 
-import { getAllGroupRankings, getRankings } from './ranking-service';
+import {
+    deriveBatchGroupRankings,
+    getAllGroupRankings,
+    getAllRankings,
+    getGroupRankings,
+    getRankings,
+} from './ranking-service';
 
 describe('getRankings', () => {
     beforeEach(() => {
@@ -63,6 +69,24 @@ describe('getRankings', () => {
         expect(mocks.fetchDailyStepsPaginated).not.toHaveBeenCalled();
     });
 
+    it('グループが存在しない場合、PGRST116を空ランキングとして扱う', async () => {
+        mocks.from.mockReturnValue({
+            select: () => ({
+                eq: () => ({
+                    single: vi.fn().mockResolvedValue({
+                        data: null,
+                        error: { code: 'PGRST116', message: 'no rows' },
+                    }),
+                }),
+            }),
+        });
+
+        await expect(
+            getRankings('GROUP', 'WEEKLY', 'missing-club'),
+        ).resolves.toEqual([]);
+        expect(mocks.fetchDailyStepsPaginated).not.toHaveBeenCalled();
+    });
+
     it('記録済み0歩のユーザーを全体順位から除外する', async () => {
         mocks.fetchDailyStepsPaginated.mockResolvedValue({
             data: [
@@ -87,6 +111,54 @@ describe('getRankings', () => {
             steps: 500,
             users: { id: 'user-active' },
         });
+    });
+
+    it('グループ順位はメンバープロフィールを埋め込み取得して2クエリで返す', async () => {
+        mocks.from.mockReturnValue({
+            select: () => ({
+                eq: vi.fn().mockReturnValue(mockQueryResult([{
+                    user_id: 'user-active',
+                    users: { id: 'user-active', name: 'Active', image: null, username: 'active' },
+                }])),
+            }),
+        });
+        mocks.fetchDailyStepsPaginated.mockResolvedValue({
+            data: [{ user_id: 'user-active', steps: 500 }], error: null,
+        });
+
+        await expect(getGroupRankings('group-1', 'DAILY')).resolves.toHaveLength(1);
+        expect(mocks.from).toHaveBeenCalledTimes(1);
+        expect(mocks.fetchDailyStepsPaginated).toHaveBeenCalledTimes(1);
+    });
+
+    it('全期間グループ順位でDB取得が失敗した場合、空ランキングへ偽装しない', async () => {
+        mocks.from.mockReturnValue({
+            select: () => ({ eq: () => ({ single: vi.fn().mockResolvedValue({
+                data: null, error: { code: 'XX000', message: 'database unavailable' },
+            }) }) }),
+        });
+
+        await expect(getAllRankings('GROUP', 'walking-club'))
+            .rejects.toThrow('Failed to load ranking group');
+    });
+
+    it('ランキングユーザー取得が失敗した場合、空ランキングへ偽装しない', async () => {
+        mocks.fetchDailyStepsPaginated.mockResolvedValue({
+            data: [{ user_id: 'user-1', date: '2026-07-18', steps: 500 }],
+            error: null,
+        });
+        mocks.from.mockReturnValue({
+            select: () => ({
+                in: vi.fn().mockReturnValue(mockQueryResult(
+                    null,
+                    { message: 'database unavailable' },
+                )),
+            }),
+        });
+
+        await expect(getAllRankings('GROUP'))
+            .rejects.toThrow('Failed to load ranking users');
+        expect(mocks.reportError).toHaveBeenCalled();
     });
 });
 
@@ -146,5 +218,37 @@ describe('getAllGroupRankings', () => {
             { id: 'user-1', steps: 100, originalRank: 2 },
         ]);
         expect(result.DAILY.some(entry => entry.users.id === 'user-3')).toBe(false);
+    });
+});
+
+describe('deriveBatchGroupRankings', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('不足プロフィール取得が失敗した場合、空ランキングへ偽装しない', async () => {
+        mocks.from
+            .mockReturnValueOnce({
+                select: () => ({
+                    in: vi.fn().mockResolvedValue({
+                        data: [{ group_id: 'group-1', user_id: 'user-1' }],
+                        error: null,
+                    }),
+                }),
+            })
+            .mockReturnValueOnce({
+                select: () => ({
+                    in: vi.fn().mockReturnValue(mockQueryResult(
+                        null,
+                        { message: 'database unavailable' },
+                    )),
+                }),
+            });
+
+        await expect(deriveBatchGroupRankings(
+            ['group-1'],
+            { DAILY: [], WEEKLY: [], MONTHLY: [], YEARLY: [] },
+        )).rejects.toThrow('GROUP_RANKING_USERS_DATABASE_ERROR');
+        expect(mocks.reportError).toHaveBeenCalled();
     });
 });

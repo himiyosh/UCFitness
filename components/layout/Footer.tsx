@@ -1,5 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 
+import { Link } from '@/navigation';
+
 export default async function Footer() {
   const t = await getTranslations('Footer');
   const year = new Date().getFullYear();
@@ -10,7 +12,10 @@ export default async function Footer() {
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-sm sm:px-6 sm:py-4">
           <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
           {/* リンク */}
-          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)] sm:gap-x-6 sm:text-sm">
+          <nav
+            aria-label={t('legalLinks')}
+            className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)] sm:gap-x-6 sm:text-sm"
+          >
             <a
               href="https://studio344.net"
               target="_blank"
@@ -19,22 +24,18 @@ export default async function Footer() {
             >
               Studio344
             </a>
-            <a
-              href="https://studio344.net/terms"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/legal/terms"
               className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               {t('terms')}
-            </a>
-            <a
-              href="https://studio344.net/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
+            </Link>
+            <Link
+              href="/legal/privacy"
               className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               {t('privacy')}
-            </a>
+            </Link>
             <a
               href="https://studio344.net/contact"
               target="_blank"

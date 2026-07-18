@@ -120,14 +120,38 @@ export async function processCoins(userId: string, steps: number, date: string) 
 // ストリーク計算
 // ============================================
 
+export function calculateStreakDays(
+    history: ReadonlyArray<{ date: string; steps: number }>,
+    shieldDates: ReadonlySet<string>,
+    currentDate: string,
+    stepGoal: number,
+): number {
+    const stepsMap = new Map(history.map((day) => [day.date, day.steps]));
+    const checkDate = new Date(`${currentDate}T00:00:00Z`);
+    let streak = 0;
+
+    while (streak < 365) {
+        const dateStr = checkDate.toISOString().split('T')[0];
+        const steps = stepsMap.get(dateStr);
+        if ((steps !== undefined && steps >= stepGoal) || shieldDates.has(dateStr)) {
+            streak++;
+            checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+        } else {
+            break;
+        }
+    }
+    return streak;
+}
+
 /**
  * 現在の連続目標達成日数を計算
  * ストリークシールドが使用された日は「パス」として扱う
  */
 async function calculateCurrentStreak(userId: string, currentDate: string, stepGoal: number): Promise<number> {
-    // 過去60日分のデータを取得（十分な範囲）
-    const sixtyDaysAgo = new Date(new Date(currentDate).getTime() - 60 * 24 * 60 * 60 * 1000);
-    const startDate = sixtyDaysAgo.toISOString().split('T')[0];
+    const oldestStreakDate = new Date(
+        new Date(currentDate).getTime() - 364 * 24 * 60 * 60 * 1000,
+    );
+    const startDate = oldestStreakDate.toISOString().split('T')[0];
 
     // ⚡ 歩数データとシールド使用日を並列取得
     const [historyResult, shieldResult] = await Promise.all([
@@ -139,43 +163,21 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
             .lte('date', currentDate)
             .order('date', { ascending: false }),
         supabaseAdmin
-            .from('user_streak_shields')
-            .select('last_used_date')
+            .from('user_streak_shield_uses')
+            .select('used_date')
             .eq('user_id', userId)
-            .single(),
+            .gte('used_date', startDate)
+            .lte('used_date', currentDate),
     ]);
 
-    const history = historyResult.data;
-    if (!history || history.length === 0) return 0;
+    if (historyResult.error) throw historyResult.error;
+    if (shieldResult.error) throw shieldResult.error;
+    const history = historyResult.data ?? [];
+    const shieldUsedDates = new Set(
+        shieldResult.data?.map((shield) => shield.used_date) ?? [],
+    );
 
-    // シールド使用日
-    const shieldUsedDate = shieldResult.data?.last_used_date || null;
-
-    // 日付でMapに変換
-    const stepsMap = new Map(history.map(h => [h.date, h.steps]));
-
-    let streak = 0;
-    const checkDate = new Date(`${currentDate}T00:00:00Z`);
-
-    // 今日から遡って連続でgoalを達成しているか確認
-    while (true) {
-        const dateStr = checkDate.toISOString().split('T')[0];
-        const daySteps = stepsMap.get(dateStr);
-
-        if (daySteps !== undefined && daySteps >= stepGoal) {
-            // 目標達成: ストリーク継続
-            streak++;
-            checkDate.setUTCDate(checkDate.getUTCDate() - 1);
-        } else if (shieldUsedDate === dateStr) {
-            // シールドが使用された日: パスとして扱い、ストリーク継続
-            streak++;
-            checkDate.setUTCDate(checkDate.getUTCDate() - 1);
-        } else {
-            break;
-        }
-    }
-
-    return streak;
+    return calculateStreakDays(history, shieldUsedDates, currentDate, stepGoal);
 }
 
 // ============================================
@@ -186,60 +188,13 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
  * コイン残高を再集計して更新
  */
 async function updateCoinBalance(userId: string, currentStreak: number) {
-    // ⚡ 独立した2クエリを並列実行
-    const [totalsResult, existingResult] = await Promise.all([
-        supabaseAdmin
-            .from('coin_transactions')
-            .select('type, amount')
-            .eq('user_id', userId),
-        supabaseAdmin
-            .from('coin_balances')
-            .select('best_streak')
-            .eq('user_id', userId)
-            .single(),
-    ]);
-
-    const totals = totalsResult.data;
-    if (!totals) return;
-
-    let totalEarned = 0;
-    let totalBonus = 0;
-    let totalDeductions = 0;
-
-    for (const tx of totals) {
-        if (tx.type === 'STEPS') {
-            totalEarned += tx.amount;
-        } else if (tx.amount < 0) {
-            // PURCHASE, GIFT_SEND などマイナス取引
-            totalDeductions += tx.amount;
-        } else {
-            totalBonus += tx.amount;
-        }
-    }
-
-    const totalBalance = totalEarned + totalBonus + totalDeductions;
-    const lifetimeEarnings = totalEarned + totalBonus;
-    const investorRank = getInvestorRank(lifetimeEarnings);
-
-    const existing = existingResult.data;
-
-    const bestStreak = Math.max(currentStreak, existing?.best_streak || 0);
-
-    const { error } = await supabaseAdmin
-        .from('coin_balances')
-        .upsert({
-            user_id: userId,
-            total_balance: totalBalance,
-            total_earned: totalEarned,
-            total_bonus: totalBonus,
-            current_streak: currentStreak,
-            best_streak: bestStreak,
-            investor_rank: investorRank.rank,
-            updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+    const { error } = await supabaseAdmin.rpc('recalculate_coin_balance', {
+        p_user_id: userId,
+        p_streak: currentStreak,
+    });
 
     if (error) {
-        reportError('updateCoinBalance:upsert', error, { userId });
+        reportError('updateCoinBalance:rpc', error, { userId });
     }
 }
 
@@ -586,7 +541,7 @@ export interface CreditResult {
     already_processed?: boolean;
     transaction_id?: string;
     new_balance?: number;
-    error?: 'amount_must_be_positive' | 'invalid_credit_type';
+    error?: 'amount_must_be_positive' | 'invalid_credit_type' | 'user_not_found';
 }
 
 /**
@@ -596,9 +551,10 @@ export interface CreditResult {
 export async function creditBalance(
     userId: string,
     amount: number,
-    type: 'GIFT_RECEIVE' | 'RANK_BONUS',
+    type: 'GIFT_RECEIVE' | 'RANK_BONUS' | 'MISSION_REWARD',
     description: string,
     idempotencyKey?: string,
+    date?: string,
 ): Promise<CreditResult> {
     // Server-side input validation
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -611,6 +567,7 @@ export async function creditBalance(
         p_type: type,
         p_description: description,
         p_idempotency_key: idempotencyKey || null,
+        p_date: date ?? null,
     });
 
     if (error) {

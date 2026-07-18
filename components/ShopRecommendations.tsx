@@ -3,6 +3,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 
+import AffiliateDisclosure from '@/components/affiliate/AffiliateDisclosure';
+import AffiliateLink from '@/components/affiliate/AffiliateLink';
+
 // ============================================
 // ShopRecommendations — ショップページ用レコメンドセクション
 // パーソナライズドおすすめ + コミュニティ愛用ギア
@@ -32,6 +35,7 @@ export default function ShopRecommendations() {
     const [personalData, setPersonalData] = useState<PersonalizedData | null>(null);
     const [trendingItems, setTrendingItems] = useState<TrendingItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
@@ -44,9 +48,10 @@ export default function ShopRecommendations() {
                 if (!res.ok) throw new Error('fetch failed');
                 return res.json();
             }),
-            fetch('/api/amazon/trending').then(res => res.json()),
+            fetch('/api/amazon/trending').then(res => { if (!res.ok) throw new Error('fetch failed'); return res.json(); }),
         ]).then(([personalResult, trendResult]) => {
             if (cancelled) return;
+            setLoadError(personalResult.status === 'rejected' && trendResult.status === 'rejected');
             if (personalResult.status === 'fulfilled') {
                 setPersonalData(personalResult.value);
             }
@@ -79,7 +84,7 @@ export default function ShopRecommendations() {
     const scroll = useCallback((direction: 'left' | 'right') => {
         const el = scrollRef.current;
         if (!el) return;
-        el.scrollBy({ left: direction === 'left' ? -240 : 240, behavior: 'smooth' });
+        el.scrollBy({ left: direction === 'left' ? -240 : 240, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     }, []);
 
     /** タイトルから【】内の装飾テキストを除去 */
@@ -87,6 +92,7 @@ export default function ShopRecommendations() {
         title.replace(/【.*?】/g, '').trim() || 'Item', []);
 
     if (loading) return null;
+    if (loadError) return <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{t('recommendationsUnavailable')}</p>;
     if (!personalData && trendingItems.length === 0) return null;
 
     const associateTag = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG || 'ucfitness-22';
@@ -94,27 +100,30 @@ export default function ShopRecommendations() {
         `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}&tag=${associateTag}`;
 
     return (
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 flex flex-col gap-4">
+            <AffiliateDisclosure />
             {/* あなたへのおすすめ */}
             {personalData && (
                 <div className="rounded-2xl bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-gradient-to)]/5 p-4">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                            🎁 {t('personalizedTitle')}
+                            <span aria-hidden="true">🎁</span> {t('personalizedTitle')}
                         </h3>
-                        <span className="text-xs font-medium text-gray-400">
+                        <span className="text-xs font-medium text-[var(--color-text-muted)]">
                             {personalData.rankIcon} {personalData.rankLabel}
                         </span>
                     </div>
-                    <p className="text-xs text-gray-400 mb-3">
+                    <p className="mt-1 mb-3 text-xs text-[var(--color-text-muted)]">
                         {t('personalizedDesc', { steps: personalData.avgSteps.toLocaleString() })}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <a
+                        <AffiliateLink
                             href={makeSearchUrl(personalData.primaryKeyword)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-[0_4px_20px_-4px_var(--theme-glow-primary,rgba(79,70,229,0.12))] transition-all group"
+                            surface="shop"
+                            targetType="search"
+                            targetId="rank-search"
+                            className="rounded-xl bg-white/80 p-3 backdrop-blur-sm transition-all hover:bg-white hover:shadow-[0_4px_20px_-4px_var(--theme-glow-primary,rgba(79,70,229,0.12))] group"
+                            contentClassName="flex items-center gap-3"
                         >
                             <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ background: 'var(--theme-primary-light)' }}>
                                 🏃
@@ -123,17 +132,19 @@ export default function ShopRecommendations() {
                                 <p className="text-sm font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors truncate">
                                     {personalData.primaryKeyword}
                                 </p>
-                                <p className="text-xs text-gray-400">{t('rankRecommend')}</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">{t('rankRecommend')}</p>
                             </div>
-                            <svg className="w-4 h-4 text-gray-300 group-hover:text-[var(--theme-primary)] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-gray-600 group-hover:text-[var(--theme-primary)] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
-                        </a>
-                        <a
+                        </AffiliateLink>
+                        <AffiliateLink
                             href={makeSearchUrl(personalData.secondaryKeyword)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-[var(--theme-primary)]/30 hover:shadow-md transition-all group"
+                            surface="shop"
+                            targetType="search"
+                            targetId="steps-search"
+                            className="rounded-xl border border-gray-100 bg-white p-3 transition-all hover:border-[var(--theme-primary)]/30 hover:shadow-md group"
+                            contentClassName="flex items-center gap-3"
                         >
                             <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ background: 'var(--theme-primary-light)' }}>
                                 👟
@@ -142,12 +153,12 @@ export default function ShopRecommendations() {
                                 <p className="text-sm font-semibold text-gray-800 group-hover:text-[var(--theme-primary)] transition-colors truncate">
                                     {personalData.secondaryKeyword}
                                 </p>
-                                <p className="text-xs text-gray-400">{t('stepsRecommend')}</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">{t('stepsRecommend')}</p>
                             </div>
-                            <svg className="w-4 h-4 text-gray-300 group-hover:text-[var(--theme-primary)] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-gray-600 group-hover:text-[var(--theme-primary)] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
-                        </a>
+                        </AffiliateLink>
                     </div>
                 </div>
             )}
@@ -164,7 +175,7 @@ export default function ShopRecommendations() {
                             </div>
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 tracking-tight">{tGear('title')}</h3>
-                                <p className="text-xs text-gray-400">{tGear('subtitle')}</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">{tGear('subtitle')}</p>
                             </div>
                         </div>
                         {trendingItems.length > 3 && (
@@ -172,8 +183,8 @@ export default function ShopRecommendations() {
                                 <button
                                     onClick={() => scroll('left')}
                                     disabled={!canScrollLeft}
-                                    className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
-                                    aria-label="Scroll left"
+                                    className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
+                                    aria-label={tGear('scrollLeft')}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -182,8 +193,8 @@ export default function ShopRecommendations() {
                                 <button
                                     onClick={() => scroll('right')}
                                     disabled={!canScrollRight}
-                                    className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
-                                    aria-label="Scroll right"
+                                    className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 hover:text-[var(--theme-primary)] disabled:opacity-30 disabled:cursor-default transition-colors"
+                                    aria-label={tGear('scrollRight')}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -199,22 +210,23 @@ export default function ShopRecommendations() {
                         className="overflow-x-auto overflow-y-hidden px-4 pb-4 scrollbar-hide"
                     >
                         <div className="flex gap-3" style={{ minWidth: 'min-content' }}>
-                            {trendingItems.map(item => (
-                                <a
+                            {trendingItems.map((item, index) => (
+                                <AffiliateLink
                                     key={item.asin}
                                     href={item.affiliate_link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-shrink-0 w-[160px] rounded-xl bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-[0_8px_30px_-4px_var(--theme-glow-primary,rgba(79,70,229,0.12))] hover:scale-[1.02] p-2.5 transition-all duration-200 group"
+                                    surface="shop"
+                                    targetType="product"
+                                    targetId={item.asin}
+                                    className="w-[160px] flex-shrink-0 rounded-xl bg-white/80 p-2.5 backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:bg-white hover:shadow-[0_8px_30px_-4px_var(--theme-glow-primary,rgba(79,70,229,0.12))] group"
                                 >
                                     {/* 商品画像 */}
                                     <div className="w-full h-[100px] rounded-lg bg-gray-50/80 flex items-center justify-center overflow-hidden mb-2">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={item.image_url}
-                                            alt={item.title || item.asin}
+                                            alt=""
                                             className="max-w-[85%] max-h-[85%] object-contain"
-                                            loading="lazy"
+                                            loading={index === 0 ? 'eager' : 'lazy'}
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${item.asin}&Format=_SL160_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=studio344-22`;
                                             }}
@@ -227,7 +239,7 @@ export default function ShopRecommendations() {
                                     </p>
 
                                     {/* 愛用者アバター */}
-                                    <div className="flex items-center">
+                                    <div className="flex items-center" aria-hidden="true">
                                         <div className="flex items-center -space-x-1.5">
                                             {item.users.slice(0, 3).map((u, i) => (
                                                 <div
@@ -250,7 +262,7 @@ export default function ShopRecommendations() {
                                             <span className="text-xs text-gray-400 font-medium ml-1">+{item.count - 3}</span>
                                         )}
                                     </div>
-                                </a>
+                                </AffiliateLink>
                             ))}
                         </div>
                     </div>
