@@ -113,18 +113,44 @@ export function getViewerRankingStatus(
     return 'not-reflected';
 }
 
-export function sortPositiveStepRankings<T extends { steps: number }>(rankings: T[]): T[] {
-    return rankings
-        .filter((entry) => entry.steps > 0)
-        .sort((a, b) => b.steps - a.steps);
+interface StableUserRanking {
+    steps: number;
+    userId?: string;
+    users?: { id: string };
 }
 
-export function sortActiveGroupRankings<T extends { totalSteps: number; averageSteps: number }>(
+function getUserRankingTieKey(entry: StableUserRanking): string {
+    return entry.users?.id ?? entry.userId ?? '';
+}
+
+function compareStableIdentifiers(left: string, right: string): number {
+    if (left === right) return 0;
+    return left < right ? -1 : 1;
+}
+
+export function sortPositiveStepRankings<T extends StableUserRanking>(rankings: T[]): T[] {
+    return rankings
+        .filter((entry) => entry.steps > 0)
+        .sort((a, b) => (
+            b.steps - a.steps
+            || compareStableIdentifiers(
+                getUserRankingTieKey(a),
+                getUserRankingTieKey(b),
+            )
+        ));
+}
+
+export function sortActiveGroupRankings<
+    T extends { groupId: string; totalSteps: number; averageSteps: number },
+>(
     rankings: T[],
 ): T[] {
     return rankings
         .filter((entry) => entry.totalSteps > 0 && entry.averageSteps > 0)
-        .sort((a, b) => b.averageSteps - a.averageSteps);
+        .sort((a, b) => (
+            b.averageSteps - a.averageSteps
+            || compareStableIdentifiers(a.groupId, b.groupId)
+        ));
 }
 
 export function getGroupRankGapInsight<
