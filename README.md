@@ -66,7 +66,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 
 - **Server Component 優先**: ページはサーバーサイドでレンダリングし、インタラクティブ部分のみ `'use client'`
 - **Edge Runtime 必須**: すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` を宣言
-- **Strict CSP**: HTML応答はEdge middlewareでrequestごとのnonceを生成し、Next.js scriptsへ自動付与する。productionの`script-src`は`strict-dynamic` + nonceでinline handlerを拒否し、開発時だけHMR用`unsafe-eval`とDev Overlay用inline styleを許可する
+- **Strict CSP**: HTML応答はEdge middlewareでrequestごとのnonceを生成し、Next.js scriptsへ自動付与する。productionのscript policyは`strict-dynamic` + nonceでnonceなしinline scriptと全inline handlerを拒否し、`base-uri 'none'`とsame-origin workerに制限する。HMR用`unsafe-eval`とDev Overlay用inline style elementは開発時だけ許可し、Reactの動的style属性はproductionでも`style-src-attr 'unsafe-inline'`を維持する
 - **supabaseAdmin**: サーバーサイドの DB アクセスはサービスロールキーを使用
 - **型安全性契約**: 外部データは具体型または `unknown` + 型ガードで扱い、Supabaseの選択列・RPC応答は`types/database.ts`のDatabase型から射影する。明示的な`any`と`no-explicit-any`抑制は使用しない
 - **Dual-Library Strategy**: Google Health を明示的に接続したユーザーは同APIを優先し、未接続または明示解除したユーザーはFitbitを継続利用。再認証待ち・エラー時はデータ混在を避けるため暗黙切替しない

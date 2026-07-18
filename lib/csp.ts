@@ -27,7 +27,7 @@ export function createContentSecurityPolicy(
 
     return [
         "default-src 'self'",
-        "base-uri 'self'",
+        "base-uri 'none'",
         "object-src 'none'",
         "frame-ancestors 'none'",
         "form-action 'self'",
@@ -42,7 +42,7 @@ export function createContentSecurityPolicy(
         "font-src 'self' data:",
         "media-src 'self' blob:",
         "manifest-src 'self'",
-        "worker-src 'self' blob:",
+        "worker-src 'self'",
         "connect-src 'self' https://*.supabase.co https://api.fitbit.com https://www.fitbit.com https://www.amazon.co.jp https://*.amazoncognito.com https://creatorsapi.amazon https://*.amazon.com https://*.amazon.co.jp",
         "frame-src 'self' https://www.fitbit.com https://accounts.fitbit.com https://pagead2.googlesyndication.com",
         options.development ? null : 'upgrade-insecure-requests',
