@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T11:11:39+09:00",
-  "lastAgent": "UCFitnessAgent (Security + Accessibility + QA + Self-Critique)",
-  "lastCommit": "ed267a2e3455789fd198e495cbfa1614401fc008",
-  "lastBranch": "himiyosh-f017-csp-integration-audit",
+  "lastUpdated": "2026-07-18T12:09:21+09:00",
+  "lastAgent": "UCFitnessAgent (Next.js + Performance + Accessibility + QA + Self-Critique)",
+  "lastCommit": "3f55e31cce92b3e9e505f1af18234ee8dd51b095",
+  "lastBranch": "himiyosh-himiyosh-f020-bundle-reduction",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F017並行実装を共通baseから統合監査し、production script policyを実際にenforceするAをcanonicalとして維持した。Bの段階移行からbase-uri noneとsame-origin workerだけを最小移植し、送信先のないReport-Only、script-src-elem unsafe-inline、未使用wss許可は不採用。全55ファイル345件、check:all、Cloudflare Pages build、ja/en dev・production実ブラウザ、security/独立レビュー、自己批判をPASS。F017はpassing、F018/F011/F003/F008の既存blockerは不変。",
+  "summary": "Cycle 6でF020を完了。walletのRechartsとgroup detail下部のchat/gearをClient境界内のviewport遅延へ移し、JS無効時の資産推移表・空状態・aria-busy・低減motionを維持した。ranking-utilsのserver-only shop/Supabase依存を実行時importへ分離し、First Load JSをwallet 260→141KB、group detail 207→152KB、leaderboard 198→146KBへ削減。全page 200KB未満、全345テスト、check:all、Pages build、未認証ja/en productionブラウザ、2ペルソナ、a11y、独立レビュー、自己批判をPASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T11:11:39+09:00"
+    "lastVerified": "2026-07-18T12:09:21+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1022,6 +1022,27 @@
         "README.md",
         "lib/__tests__/csp.test.ts",
         "lib/csp.ts"
+      ]
+    },
+    {
+      "date": "2026-07-18",
+      "agent": "UCFitnessAgent (Next.js + Performance + Accessibility + QA + Self-Critique)",
+      "action": "Cycle 6でF020を完了。wallet Rechartsとgroup detailのchat/gearをviewport進入時まで遅延し、ranking-utilsからserver-only shop/Supabase静的依存を除去。First Load JSはwallet 260→141KB、group detail 207→152KB、leaderboard 198→146KBとなり全page 200KB未満。JS無効時の表・空状態、loading名、aria-busy、低減motionを維持し、全345テスト、check:all、Pages build、未認証ja/en productionブラウザ、Mobile Beginner/Reward Shop Explorer、a11y、独立レビュー、自己批判をPASS。",
+      "commit": "3f55e31cce92b3e9e505f1af18234ee8dd51b095",
+      "filesChanged": [
+        ".github/ucfitness-features.json",
+        "README.md",
+        "app/[locale]/groups/[groupId]/page.tsx",
+        "app/[locale]/wallet/page.tsx",
+        "components/CoinGrowthChart.tsx",
+        "components/DeferredCoinGrowthChart.tsx",
+        "components/group/DeferredGroupSections.tsx",
+        "components/group/GroupChat.tsx",
+        "components/group/GroupGear.tsx",
+        "hooks/useNearViewport.ts",
+        "lib/services/ranking-utils.ts",
+        "messages/en.json",
+        "messages/ja.json"
       ]
     }
   ],
