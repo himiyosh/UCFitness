@@ -199,30 +199,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ error: 'Failed to fetch activity sources' }, { status: 500 });
         }
 
-        const senderIds = new Set<string>();
-        for (const reaction of reactionsResult.data ?? []) {
-            if (!userMap.has(reaction.from_user_id)) senderIds.add(reaction.from_user_id);
-        }
-        for (const reaction of gearReactionsResult.data ?? []) {
-            if (!userMap.has(reaction.from_user_id)) senderIds.add(reaction.from_user_id);
-        }
-        if (senderIds.size > 0) {
-            const { data: senderData, error: senderError } = await supabaseAdmin
-                .from('users')
-                .select('id, name, image, username')
-                .in('id', Array.from(senderIds));
-            if (senderError) {
-                reportError('user/feed:reactionSenders', senderError, { userId });
-                return NextResponse.json(
-                    { error: 'Failed to fetch reaction senders' },
-                    { status: 500 },
-                );
-            }
-            (senderData ?? []).forEach((u) => {
-                userMap.set(u.id, { name: u.name, image: u.image, username: u.username });
-            });
-        }
-
         // 4. フィードアイテムを構築
         const feedItems: FeedItem[] = [];
 
@@ -315,6 +291,49 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const aggregatedFeed = aggregateNotificationFeed(feedItems);
         const unreadCount = countUnreadNotificationFeed(aggregatedFeed, feedLastReadAt);
         const limitedFeed = aggregatedFeed.slice(cursor.offset, cursor.offset + limit);
+        const missingSenderIds = Array.from(new Set(
+            limitedFeed
+                .filter((item) => (
+                    item.type === 'REACTION_RECEIVED'
+                    || item.type === 'GEAR_REACTION_RECEIVED'
+                ))
+                .map((item) => item.userId),
+        )).filter((id) => !userMap.has(id));
+        if (missingSenderIds.length > 0) {
+            const { data: senderData, error: senderError } = await supabaseAdmin
+                .from('users')
+                .select('id, name, image, username')
+                .in('id', missingSenderIds);
+            if (senderError) {
+                reportError('user/feed:reactionSenders', senderError, { userId });
+                return NextResponse.json(
+                    { error: 'Failed to fetch reaction senders' },
+                    { status: 500 },
+                );
+            }
+            (senderData ?? []).forEach((user) => {
+                userMap.set(user.id, {
+                    name: user.name,
+                    image: user.image,
+                    username: user.username,
+                });
+            });
+        }
+        const hydratedFeed = limitedFeed.map((item) => {
+            if (
+                item.type !== 'REACTION_RECEIVED'
+                && item.type !== 'GEAR_REACTION_RECEIVED'
+            ) {
+                return item;
+            }
+            const sender = userMap.get(item.userId);
+            return {
+                ...item,
+                userName: sender?.name ?? null,
+                userImage: sender?.image ?? null,
+                username: sender?.username ?? null,
+            };
+        });
         const nextOffset = cursor.offset + limitedFeed.length;
         const hasMore = nextOffset < aggregatedFeed.length;
         const nextCursor = hasMore
@@ -325,7 +344,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             : null;
 
         return NextResponse.json({
-            feed: limitedFeed,
+            feed: hydratedFeed,
             hasMore,
             unreadCount,
             nextCursor,

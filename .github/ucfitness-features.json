@@ -532,7 +532,7 @@
         "query_count_reduction": "ページロードあたりクエリ数 < 10",
         "latency_improvement": "p95 改善率 30%+"
       },
-      "status": "passing",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
@@ -785,7 +785,7 @@
         "naturalness": "ネイティブが違和感を持たない",
         "consistency": "用語が全体で統一"
       },
-      "status": "not-started",
+      "status": "passing",
       "lastAttempt": null,
       "lastError": null
     },

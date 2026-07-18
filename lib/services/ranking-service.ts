@@ -450,12 +450,18 @@ export const getAllRankings = async (scope: 'GLOBAL' | 'GROUP', groupKeyword?: s
         const uniqueUserIds = Array.from(new Set(rawSteps?.map((r) => r.user_id)));
 
         if (uniqueUserIds.length > 0) {
-            const { data: users } = await supabase
+            const { data: users, error: usersError } = await supabase
                 .from('users')
                 .select('id, name, image, username, group_keyword')
                 .in('id', uniqueUserIds)
                 .returns<RankingUserWithGroupKeyword[]>();
 
+            if (usersError) {
+                reportError('ranking-service:getAllRankings:users', usersError, {
+                    userCount: uniqueUserIds.length,
+                });
+                throw new Error('Failed to load ranking users');
+            }
             users?.forEach((u) => usersMap.set(u.id, u));
         }
     }
@@ -1065,12 +1071,18 @@ export const deriveBatchGroupRankings = async (
 
     // 4. Fetch Missing Users Profile Data
     if (missingUserIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users, error: usersError } = await supabase
             .from('users')
             .select('id, name, image, username')
             .in('id', missingUserIds)
             .returns<RankingUserSummary[]>();
 
+        if (usersError) {
+            reportError('ranking-service:deriveBatchGroupRankings:users', usersError, {
+                userCount: missingUserIds.length,
+            });
+            throw new Error('GROUP_RANKING_USERS_DATABASE_ERROR');
+        }
         users?.forEach(u => {
             userStats.set(u.id, {
                 users: u,
