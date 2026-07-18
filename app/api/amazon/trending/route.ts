@@ -89,8 +89,8 @@ export async function GET() {
             items: trending,
         }, {
             headers: {
-                // 5分間キャッシュ
-                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+                // 認証済みプロフィール情報を共有キャッシュへ保存しない。
+                'Cache-Control': 'private, max-age=300, stale-while-revalidate=600',
             },
         });
     } catch (error: unknown) {

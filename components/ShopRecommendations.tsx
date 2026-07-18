@@ -104,16 +104,16 @@ export default function ShopRecommendations() {
             <AffiliateDisclosure />
             {/* あなたへのおすすめ */}
             {personalData && (
-                <details className="rounded-2xl bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-gradient-to)]/5 p-4">
-                    <summary className="flex min-h-[44px] cursor-pointer items-center justify-between">
-                        <span className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                            🎁 {t('personalizedTitle')}
-                        </span>
+                <div className="rounded-2xl bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-gradient-to)]/5 p-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                            <span aria-hidden="true">🎁</span> {t('personalizedTitle')}
+                        </h3>
                         <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                            {personalData.rankIcon} {personalData.rankLabel} <span aria-hidden="true">⌄</span>
+                            {personalData.rankIcon} {personalData.rankLabel}
                         </span>
-                    </summary>
-                    <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                    </div>
+                    <p className="mt-1 mb-3 text-xs text-[var(--color-text-muted)]">
                         {t('personalizedDesc', { steps: personalData.avgSteps.toLocaleString() })}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -160,7 +160,7 @@ export default function ShopRecommendations() {
                             </svg>
                         </AffiliateLink>
                     </div>
-                </details>
+                </div>
             )}
 
             {/* みんなの愛用ギア */}

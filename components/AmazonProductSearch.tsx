@@ -87,6 +87,7 @@ function linkTypeIcon(type: AffiliateLinkType): string {
 
 export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProductSearchProps) {
     const t = useTranslations('Recommendations');
+    const affiliateT = useTranslations('AffiliateExperiment');
     const { success: toastSuccess, error: toastError } = useToast();
 
     const [input, setInput] = useState('');
@@ -317,6 +318,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                             <p className="text-xs text-gray-400">
                                 {locale === 'ja' ? 'タップで Amazon で確認 →' : 'Tap to view on Amazon →'}
                             </p>
+                            <span className="sr-only">{affiliateT('opensNewTab')}</span>
                         </a>
                     )}
 
@@ -362,6 +364,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                             {selectedCandidate.title}
                                         </p>
                                     )}
+                                    <span className="sr-only">{affiliateT('opensNewTab')}</span>
                                 </a>
 
                                 {/* → 次へ */}
@@ -411,6 +414,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                     {locale === 'ja' ? 'Amazon で検索結果を見る →' : 'View on Amazon →'}
                                 </p>
                             </div>
+                            <span className="sr-only">{affiliateT('opensNewTab')}</span>
                         </a>
                     )}
 
@@ -535,7 +539,7 @@ export default function AmazonProductSearch({ locale, onItemAdded }: AmazonProdu
                                         rel="sponsored noopener noreferrer"
                                         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[var(--theme-primary)]/20 bg-[var(--theme-primary-light)] px-2.5 py-1.5 text-xs font-bold text-[var(--theme-primary)] transition-all hover:opacity-80"
                                         title={t('viewOnAmazon')}
-                                        aria-label={`${item.input}: ${t('viewOnAmazon')}`}
+                                        aria-label={`${item.input}: ${t('viewOnAmazon')}. ${affiliateT('opensNewTab')}`}
                                     >
                                         🛒
                                     </a>

@@ -92,11 +92,12 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
     if (loading) return null;
     if (error) {
         return (
-            <div className="glass-card rounded-2xl p-6 text-center flex flex-col items-center justify-center">
+            <div role="alert" className="glass-card rounded-2xl p-6 text-center flex flex-col items-center justify-center">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-amber-50 flex items-center justify-center">
                     <span className="text-2xl">⚠️</span>
                 </div>
-                <p className="text-sm text-gray-500 font-medium mb-3">{t('title')}</p>
+                <p className="text-sm text-gray-700 font-medium">{t('title')}</p>
+                <p className="mb-3 mt-1 text-xs text-[var(--color-text-muted)]">{recT('recommendationsUnavailable')}</p>
                 <button
                     onClick={() => { setError(false); setLoading(true); window.location.reload(); }}
                     className="min-h-[44px] rounded-lg px-4 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"

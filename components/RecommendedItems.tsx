@@ -301,7 +301,7 @@ export default function RecommendedItems({ items: initialItems, isOwner, locale 
                 >
                     <div
                         ref={trackRef}
-                        className={`flex gap-3 pb-1 ${items.some(i => i.comment) ? 'pt-20' : 'pt-1'}`}
+                        className={`flex gap-3 pb-1 motion-reduce:!transition-none ${items.some(i => i.comment) ? 'pt-20' : 'pt-1'}`}
                         style={{
                             transform: `translateX(-${translateX}px)`,
                             transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',

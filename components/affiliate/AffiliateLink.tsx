@@ -90,7 +90,7 @@ export default function AffiliateLink({
     <a
       ref={linkRef} href={href} target="_blank" rel="sponsored noopener noreferrer"
       onClick={() => sendEvent('click')}
-      className={`flex flex-col ${assignment ? 'visible' : 'invisible'} ${className}`}
+      className={`flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-solid)] focus-visible:ring-offset-2 ${assignment ? 'visible' : 'invisible'} ${className}`}
       data-affiliate-position={positionVariant}
       data-affiliate-copy={copyVariant}
     >

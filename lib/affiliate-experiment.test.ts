@@ -24,9 +24,15 @@ describe('isJapaneseAmazonUrl', () => {
   it('HTTPSのAmazon.co.jpの場合、許可する', () => {
     expect(isJapaneseAmazonUrl('https://www.amazon.co.jp/dp/B012345678')).toBe(true);
   });
-  it('偽装hostまたはHTTPの場合、拒否する', () => {
-    expect(isJapaneseAmazonUrl('https://amazon.co.jp.example.com/item')).toBe(false);
-    expect(isJapaneseAmazonUrl('http://amazon.co.jp/item')).toBe(false);
+  it.each([
+    'https://amazon.co.jp.example.com/item',
+    'http://amazon.co.jp/item',
+    'https://amazon.com/item',
+    'https://user@amazon.co.jp/item',
+    'https://amazon.co.jp:8443/item',
+    'not-a-url',
+  ])('Amazon.co.jpの安全なURLでない場合、拒否する: %s', (href) => {
+    expect(isJapaneseAmazonUrl(href)).toBe(false);
   });
 });
 describe('parseAffiliateEvent', () => {
