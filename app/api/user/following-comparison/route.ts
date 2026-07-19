@@ -9,6 +9,58 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+export interface FollowingComparisonDailyStep {
+    date: string;
+    steps: number;
+    hasRecord: boolean;
+}
+
+export interface FollowingComparisonUser {
+    userId: string;
+    name: string | null;
+    image: string | null;
+    username: string | null;
+    isMe: boolean;
+    totalSteps: number;
+    dailySteps: FollowingComparisonDailyStep[];
+}
+
+export interface FollowingComparisonResponse {
+    comparison: FollowingComparisonUser[];
+    period: string;
+    days: number;
+    dates?: string[];
+}
+
+interface ComparisonStepRow {
+    user_id: string;
+    date: string;
+    steps: number;
+}
+
+function isValidComparisonStepRow(
+    row: unknown,
+    expectedUserIds: Set<string>,
+    expectedDates: Set<string>,
+): row is ComparisonStepRow {
+    if (typeof row !== 'object' || row === null) {
+        return false;
+    }
+
+    return (
+        'user_id' in row
+        && typeof row.user_id === 'string'
+        && expectedUserIds.has(row.user_id)
+        && 'date' in row
+        && typeof row.date === 'string'
+        && expectedDates.has(row.date)
+        && 'steps' in row
+        && typeof row.steps === 'number'
+        && Number.isSafeInteger(row.steps)
+        && row.steps >= 0
+    );
+}
+
 /**
  * GET /api/user/following-comparison?period=WEEKLY
  * フォロー中ユーザーと自分の歩数を期間別に比較するデータを返す
@@ -144,16 +196,6 @@ export async function GET(request: Request): Promise<NextResponse> {
         return user ? [user] : [];
     });
 
-    // ユーザーごとの日別データを構築
-    const userStepsMap = new Map<string, Map<string, number>>();
-    for (const row of stepsResult.data) {
-        if (!userStepsMap.has(row.user_id)) {
-            userStepsMap.set(row.user_id, new Map());
-        }
-        userStepsMap.get(row.user_id)!.set(row.date, row.steps);
-    }
-
-    // 日付リストを生成
     const dates: string[] = [];
     const cursor = new Date(`${startDate}T00:00:00Z`);
     const endCursor = new Date(`${today}T00:00:00Z`);
@@ -161,15 +203,53 @@ export async function GET(request: Request): Promise<NextResponse> {
         dates.push(cursor.toISOString().split('T')[0]);
         cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
+    const expectedDates = new Set(dates);
 
-    // レスポンスデータを構築
-    const comparison = comparisonUsers.map(user => {
-        const stepsMap = userStepsMap.get(user.id) || new Map();
+    const userStepsMap = new Map<string, Map<string, number>>();
+    const userTotals = new Map<string, number>();
+    for (const row of stepsResult.data) {
+        if (!isValidComparisonStepRow(row, expectedUserIds, expectedDates)) {
+            reportError(
+                'user/following-comparison:steps',
+                new Error('Comparison steps lookup returned invalid rows'),
+            );
+            return NextResponse.json({ error: 'Failed to fetch comparison steps' }, { status: 500 });
+        }
+
+        let stepsByDate = userStepsMap.get(row.user_id);
+        if (!stepsByDate) {
+            stepsByDate = new Map();
+            userStepsMap.set(row.user_id, stepsByDate);
+        }
+        if (stepsByDate.has(row.date)) {
+            reportError(
+                'user/following-comparison:steps',
+                new Error('Comparison steps lookup returned duplicate user-date rows'),
+            );
+            return NextResponse.json({ error: 'Failed to fetch comparison steps' }, { status: 500 });
+        }
+
+        const nextTotal = (userTotals.get(row.user_id) ?? 0) + row.steps;
+        if (!Number.isSafeInteger(nextTotal)) {
+            reportError(
+                'user/following-comparison:steps',
+                new Error('Comparison steps total is not a safe integer'),
+            );
+            return NextResponse.json({ error: 'Failed to fetch comparison steps' }, { status: 500 });
+        }
+
+        stepsByDate.set(row.date, row.steps);
+        userTotals.set(row.user_id, nextTotal);
+    }
+
+    const comparison: FollowingComparisonUser[] = comparisonUsers.map(user => {
+        const stepsMap = userStepsMap.get(user.id) ?? new Map<string, number>();
         const dailySteps = dates.map(date => ({
             date,
-            steps: stepsMap.get(date) || 0,
+            steps: stepsMap.get(date) ?? 0,
+            hasRecord: stepsMap.has(date),
         }));
-        const totalSteps = dailySteps.reduce((sum, d) => sum + d.steps, 0);
+        const totalSteps = userTotals.get(user.id) ?? 0;
 
         return {
             userId: user.id,
@@ -185,5 +265,6 @@ export async function GET(request: Request): Promise<NextResponse> {
     // 合計歩数で降順ソート
     comparison.sort((a, b) => b.totalSteps - a.totalSteps);
 
-    return NextResponse.json({ comparison, period, days, dates });
+    const response: FollowingComparisonResponse = { comparison, period, days, dates };
+    return NextResponse.json(response);
 }

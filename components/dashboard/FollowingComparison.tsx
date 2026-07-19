@@ -15,7 +15,7 @@ interface ComparisonUser {
   username: string | null;
   isMe: boolean;
   totalSteps: number;
-  dailySteps: { date: string; steps: number }[];
+  dailySteps: { date: string; steps: number; hasRecord: boolean }[];
 }
 
 // ユーザーごとの色パレット

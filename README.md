@@ -342,7 +342,7 @@ RLS変更とは分離すべき高確度のerror fallbackも監査した。
 | `GET /api/user/following-comparison` | follows/users/steps照会error・不正null・プロフィール欠落を報告し、空比較・`Unknown`・0歩へ変換せず500 | 修正済み |
 | group invite anti-abuse | `PGRST116`だけを403とし、その他のDB障害と`null/null`は招待・legacy同期前に報告して500 | 修正済み |
 
-社会データのDB障害は空配列・`Unknown`・0歩へ偽装しない。歩数照会が成功した場合に限り、日付ごとの合法的な未記録は既存API互換として0歩で返す。
+社会データのDB障害は空配列・`Unknown`・0歩へ偽装しない。歩数照会が成功した場合に限り、日付ごとの合法的な未記録は既存API互換として0歩で返し、`dailySteps.hasRecord`で記録済み0歩と区別する。
 
 migration設計前に、DB管理者が承認したread-only接続で次を保存する。結果に未知の列、
 制約、policy、grantee、owner、BYPASSRLS、sequenceがあれば設計を中止して個別に確認する。
