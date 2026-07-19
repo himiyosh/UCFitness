@@ -47,6 +47,7 @@ interface ChallengeListRow {
     is_active: boolean;
     created_by: string;
     group_id: string | null;
+    group: { is_public: boolean } | null;
     created_at: string;
     /** Supabase バージョンにより配列・単一オブジェクトいずれの形でも返る (extractParticipantCount で吸収) */
     challenge_participants: { count: number }[] | { count: number } | null;
@@ -55,6 +56,22 @@ interface ChallengeListRow {
         joined_at: string;
     }[];
     creator: { username: string | null; name: string | null; image: string | null } | null;
+}
+
+interface ChallengeAccessRow {
+    id: string;
+    type: 'INDIVIDUAL' | 'GROUP';
+    group_id: string | null;
+    group: { is_public: boolean } | null;
+}
+
+function isVisibleChallenge(
+    challenge: ChallengeAccessRow,
+    memberGroupIds: ReadonlySet<string>,
+): boolean {
+    return challenge.type === 'INDIVIDUAL'
+        || Boolean(challenge.group_id
+            && (challenge.group?.is_public || memberGroupIds.has(challenge.group_id)));
 }
 
 /** GET: アクティブなチャレンジ一覧を取得 */
@@ -71,18 +88,53 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         }
         const userId = session.user.id;
 
+        if (type !== null && type !== 'INDIVIDUAL' && type !== 'GROUP') {
+            return NextResponse.json({ error: 'Invalid challenge type' }, { status: 400 });
+        }
+        if (status !== 'active' && status !== 'completed' && status !== 'my') {
+            return NextResponse.json({ error: 'Invalid challenge status' }, { status: 400 });
+        }
+        if (groupId !== null && !isValidUUID(groupId)) {
+            return NextResponse.json({ error: 'Invalid group ID' }, { status: 400 });
+        }
+        if (type === 'INDIVIDUAL' && groupId !== null) {
+            return NextResponse.json({ error: 'Individual challenges cannot have a group ID' }, { status: 400 });
+        }
+
+        const [participationsResult, membershipsResult] = await Promise.all([
+            supabaseAdmin
+                .from('challenge_participants')
+                .select('challenge_id', { count: 'exact' })
+                .eq('user_id', userId),
+            supabaseAdmin
+                .from('group_members')
+                .select('group_id', { count: 'exact' })
+                .eq('user_id', userId),
+        ]);
+        if (participationsResult.error || membershipsResult.error) {
+            const error = participationsResult.error ?? membershipsResult.error;
+            reportError('challenge:list:access-scope', error, { userId });
+            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+        }
+        if ((participationsResult.count ?? 0) > 1000 || (membershipsResult.count ?? 0) > 1000) {
+            reportError(
+                'challenge:list:access-scope',
+                new Error('Challenge access scope exceeded 1000 rows'),
+                { userId },
+            );
+            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+        }
+
         const today = getJSTDateString();
+        const participatedIds = participationsResult.data?.map((row) => row.challenge_id) ?? [];
+        const memberGroupIds = new Set(membershipsResult.data?.map((row) => row.group_id) ?? []);
 
         let query = supabaseAdmin
             .from('challenges')
             .select(`
-                id, title, description, type, target_steps,
-                start_date, end_date, reward_uc, is_active,
-                created_by, group_id, created_at,
-                challenge_participants(count),
-                recent_participants:challenge_participants(user:user_id(username, name, image), joined_at),
-                creator:created_by(username, name, image)
-            `)
+                id, type, group_id,
+                group:group_id(is_public)
+            `, { count: 'exact' })
             .order('created_at', { ascending: false });
 
         // ステータスフィルタ
@@ -90,20 +142,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             query = query.eq('is_active', true).gte('end_date', today);
         } else if (status === 'completed') {
             query = query.lt('end_date', today);
-        } else if (status === 'my' && userId) {
-            // ユーザーが作成 or 参加しているチャレンジ
-            const { data: participations } = await supabaseAdmin
-                .from('challenge_participants')
-                .select('challenge_id')
-                .eq('user_id', userId);
-
-            const challengeIds = participations?.map(p => p.challenge_id) || [];
-
-            if (challengeIds.length > 0) {
-                query = query.or(`created_by.eq.${userId},id.in.(${challengeIds.join(',')})`);
+        } else if (status === 'my') {
+            if (participatedIds.length > 0) {
+                query = query.or(`created_by.eq.${userId},id.in.(${participatedIds.join(',')})`);
             } else {
                 query = query.eq('created_by', userId);
-            }        }
+            }
+        }
 
         // タイプフィルタ
         if (type) {
@@ -115,27 +160,48 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             query = query.eq('group_id', groupId);
         }
 
-        // メインクエリと参加状況を並列取得
-        const [queryResult, participationsResult] = await Promise.all([
-            query.limit(50).returns<ChallengeListRow[]>(),
-            userId
-                ? supabaseAdmin
-                    .from('challenge_participants')
-                    .select('challenge_id')
-                    .eq('user_id', userId)
-                : Promise.resolve({ data: [] as { challenge_id: string }[] }),
-        ]);
-
-        const { data, error } = queryResult;
-
+        const { data, error, count } = await query.limit(1000).returns<ChallengeAccessRow[]>();
         if (error) {
             reportError('challenge:list', error);
             return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
         }
+        if ((count ?? 0) > 1000) {
+            reportError('challenge:list', new Error('Challenge visibility scan exceeded 1000 rows'));
+            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+        }
 
-        const participatedIds = participationsResult.data?.map(p => p.challenge_id) || [];
+        const visibleIds = (data ?? [])
+            .filter((challenge) => isVisibleChallenge(challenge, memberGroupIds))
+            .slice(0, 50)
+            .map((challenge) => challenge.id);
+        if (visibleIds.length === 0) {
+            return NextResponse.json({ challenges: [] });
+        }
 
-        const challenges = (data || []).map(challenge => {
+        const { data: detailRows, error: detailError } = await supabaseAdmin
+            .from('challenges')
+            .select(`
+                id, title, description, type, target_steps,
+                start_date, end_date, reward_uc, is_active,
+                created_by, group_id, created_at,
+                group:group_id(is_public),
+                challenge_participants(count),
+                recent_participants:challenge_participants(user:user_id(username, name, image), joined_at),
+                creator:created_by(username, name, image)
+            `)
+            .in('id', visibleIds)
+            .returns<ChallengeListRow[]>();
+        if (detailError) {
+            reportError('challenge:list:details', detailError);
+            return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
+        }
+
+        const detailsById = new Map((detailRows ?? []).map((challenge) => [challenge.id, challenge]));
+        const challenges = visibleIds
+            .map((id) => detailsById.get(id))
+            .filter((challenge): challenge is ChallengeListRow => Boolean(challenge))
+            .filter((challenge) => isVisibleChallenge(challenge, memberGroupIds))
+            .map(challenge => {
             // challenge_participants(count) はSupabaseバージョンにより
             // [{count: N}] (配列) または {count: N} (オブジェクト) を返す
             const participantCount = extractParticipantCount(challenge.challenge_participants);
@@ -156,12 +222,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
             return {
                 ...challenge,
+                group: undefined,
                 recent_participants: undefined,
                 participant_count: participantCount,
                 participant_avatars: participantAvatars,
                 is_joined: participatedIds.includes(challenge.id),
             };
-        });
+            });
 
         return NextResponse.json({ challenges });
     } catch (err) {

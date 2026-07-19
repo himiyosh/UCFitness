@@ -1,9 +1,12 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { authorizeGroupView } from '@/lib/services/challenge-access';
+import { supabaseAdmin } from '@/lib/supabase';
+import { isValidUUID } from '@/lib/validation';
 
 // ============================================
 // チャレンジ詳細取得・編集 API
@@ -22,8 +25,7 @@ export async function GET(
 
         const { challengeId } = await params;
 
-        // UUID形式バリデーション
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(challengeId)) {
+        if (!isValidUUID(challengeId)) {
             return NextResponse.json({ error: 'Invalid challenge ID' }, { status: 400 });
         }
 
@@ -44,27 +46,89 @@ export async function GET(
                 )
             `)
             .eq('id', challengeId)
-            .single();
+            .maybeSingle();
 
-        if (error || !challenge) {
+        if (error) {
+            reportError('challenge:detail', error, { userId: session.user.id, challengeId });
+            return NextResponse.json({ error: 'Failed to fetch challenge' }, { status: 500 });
+        }
+        if (!challenge) {
             return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
         }
 
+        if (challenge.type === 'GROUP') {
+            if (!isValidUUID(challenge.group_id)) {
+                reportError('challenge:detail:group', new Error('GROUP challenge has no valid group_id'), {
+                    challengeId,
+                });
+                return NextResponse.json({ error: 'Failed to fetch challenge' }, { status: 500 });
+            }
+            const access = await authorizeGroupView(
+                challenge.group_id,
+                session.user.id,
+                'challenge:detail',
+            );
+            if (!access.allowed) {
+                return NextResponse.json({
+                    error: access.status === 500
+                        ? 'Failed to authorize group challenge access'
+                        : 'Challenge not found',
+                }, { status: access.status });
+            }
+        }
+
+        const { count: participantCount, error: participantCountError } = await supabaseAdmin
+            .from('challenge_participants')
+            .select('id', { count: 'exact', head: true })
+            .eq('challenge_id', challengeId);
+        if (participantCountError || (participantCount ?? 0) > 1000) {
+            reportError(
+                'challenge:detail:participants',
+                participantCountError ?? new Error('Challenge participant aggregation exceeded 1000 rows'),
+                { challengeId },
+            );
+            return NextResponse.json({ error: 'Failed to fetch challenge participants' }, { status: 500 });
+        }
+
         // 各参加者の実際の歩数を daily_steps からリアルタイム計算
-        const participants = challenge.challenge_participants || [];
+        let participants = challenge.challenge_participants || [];
+        if (challenge.type === 'GROUP' && challenge.group_id && participants.length > 0) {
+            const participantIds = participants.map((participant) => participant.user_id);
+            const { data: members, error: membersError } = await supabaseAdmin
+                .from('group_members')
+                .select('user_id')
+                .eq('group_id', challenge.group_id)
+                .in('user_id', participantIds);
+            if (membersError) {
+                reportError('challenge:detail:members', membersError, { challengeId });
+                return NextResponse.json({ error: 'Failed to fetch challenge' }, { status: 500 });
+            }
+            const memberIds = new Set((members ?? []).map((member) => member.user_id));
+            participants = participants.filter((participant) => memberIds.has(participant.user_id));
+            challenge.challenge_participants = participants;
+        }
         if (participants.length > 0) {
             const userIds = participants.map((p: { user_id: string }) => p.user_id);
-            const { data: stepsData } = await supabaseAdmin
+            const { data: stepsData, error: stepsError, count: stepsCount } = await supabaseAdmin
                 .from('daily_steps')
-                .select('user_id, steps')
+                .select('user_id, steps', { count: 'exact' })
                 .in('user_id', userIds)
                 .gte('date', challenge.start_date)
                 .lte('date', challenge.end_date);
+            if (stepsError || (stepsCount ?? 0) > 1000) {
+                reportError(
+                    'challenge:detail:steps',
+                    stepsError ?? new Error('Challenge step aggregation exceeded 1000 rows'),
+                    { challengeId },
+                );
+                return NextResponse.json({ error: 'Failed to fetch challenge steps' }, { status: 500 });
+            }
 
             // ユーザーごとの歩数合計を集計
             const stepsMap: Record<string, number> = {};
             for (const row of stepsData || []) {
-                stepsMap[row.user_id] = (stepsMap[row.user_id] || 0) + (row.steps || 0);
+                const positiveSteps = typeof row.steps === 'number' && row.steps > 0 ? row.steps : 0;
+                stepsMap[row.user_id] = (stepsMap[row.user_id] || 0) + positiveSteps;
             }
 
             // GROUP: グループ合計で達成判定 / INDIVIDUAL: 個人歩数で達成判定
