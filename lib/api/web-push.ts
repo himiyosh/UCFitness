@@ -437,7 +437,6 @@ export async function sendWebPushNotifications(
             .in('endpoint', expiredEndpoints);
         if (error) {
             reportError('sendWebPush:pruneExpired', error, {
-                userId,
                 count: expiredEndpoints.length,
             });
         }

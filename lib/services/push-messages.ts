@@ -12,6 +12,11 @@ import jaMessages from '@/messages/ja.json';
 
 export type PushLocale = 'ja' | 'en';
 
+export interface PushMessage {
+    title: string;
+    body: string;
+}
+
 interface BadgeNameSummary {
     label: string;
     count: number;
@@ -51,6 +56,34 @@ export function formatLocalizedBadgeNames(
     return {
         label: hiddenCount > 0 ? `${names}, and ${hiddenCount} more` : names,
         count: uniqueCodes.length,
+    };
+}
+
+export function getGroupChallengeRewardPushMessage(
+    locale: PushLocale,
+    challengeCount: number,
+    totalReward: number,
+): PushMessage {
+    if (!Number.isSafeInteger(challengeCount) || challengeCount <= 0
+        || !Number.isSafeInteger(totalReward) || totalReward <= 0) {
+        throw new RangeError('Group challenge reward metrics must be positive safe integers');
+    }
+    const reward = totalReward.toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US');
+
+    if (locale === 'ja') {
+        return {
+            title: 'グループチャレンジ報酬',
+            body: challengeCount === 1
+                ? `グループチャレンジ達成報酬 ${reward} UC を獲得しました。`
+                : `${challengeCount}件のグループチャレンジ達成報酬として ${reward} UC を獲得しました。`,
+        };
+    }
+
+    return {
+        title: 'Group challenge reward',
+        body: challengeCount === 1
+            ? `You earned ${reward} UC for completing a group challenge.`
+            : `You earned ${reward} UC for completing ${challengeCount} group challenges.`,
     };
 }
 
