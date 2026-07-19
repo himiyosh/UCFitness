@@ -145,6 +145,19 @@ export interface Database {
                     is_completed: boolean | null;
                 }[];
             };
+            settle_group_challenge: {
+                Args: {
+                    p_challenge_id: string;
+                };
+                Returns: {
+                    status: 'settled' | 'already_settled' | 'not_found' | 'invalid_type' | 'not_ended';
+                    is_completed: boolean | null;
+                    total_steps: number | null;
+                    member_count: number | null;
+                    rewarded_count: number | null;
+                    settled_at: string | null;
+                }[];
+            };
         };
     };
 }
@@ -163,6 +176,8 @@ export type GroupChallengeCreationRpcArgs = Database['public']['Functions']['cre
 export type GroupChallengeCreationRpcRow = Database['public']['Functions']['create_group_challenge']['Returns'][number];
 export type GroupChallengeProgressRpcArgs = Database['public']['Functions']['get_group_challenge_progress']['Args'];
 export type GroupChallengeProgressRpcRow = Database['public']['Functions']['get_group_challenge_progress']['Returns'][number];
+export type GroupChallengeSettlementRpcArgs = Database['public']['Functions']['settle_group_challenge']['Args'];
+export type GroupChallengeSettlementRpcRow = Database['public']['Functions']['settle_group_challenge']['Returns'][number];
 
 /** ランキング・フォロー等で頻出する公開プロフィール射影 (PII 除外) */
 export type PublicUserSummary = Pick<UserRow, 'id' | 'name' | 'image' | 'username'>;
