@@ -132,6 +132,19 @@ export interface Database {
                     challenge: Database['public']['Tables']['challenges']['Row'] | null;
                 }[];
             };
+            get_group_challenge_progress: {
+                Args: {
+                    p_challenge_id: string;
+                    p_viewer_id: string;
+                };
+                Returns: {
+                    status: 'ok' | 'not_found' | 'forbidden' | 'not_participating';
+                    total_steps: number | null;
+                    participant_count: number | null;
+                    target_steps: number | null;
+                    is_completed: boolean | null;
+                }[];
+            };
         };
     };
 }
@@ -148,6 +161,8 @@ export type UserStepStatsRpcRow = Database['public']['Functions']['get_user_step
 export type BatchUserStepTotalsRpcRow = Database['public']['Functions']['get_batch_user_step_totals']['Returns'][number];
 export type GroupChallengeCreationRpcArgs = Database['public']['Functions']['create_group_challenge']['Args'];
 export type GroupChallengeCreationRpcRow = Database['public']['Functions']['create_group_challenge']['Returns'][number];
+export type GroupChallengeProgressRpcArgs = Database['public']['Functions']['get_group_challenge_progress']['Args'];
+export type GroupChallengeProgressRpcRow = Database['public']['Functions']['get_group_challenge_progress']['Returns'][number];
 
 /** ランキング・フォロー等で頻出する公開プロフィール射影 (PII 除外) */
 export type PublicUserSummary = Pick<UserRow, 'id' | 'name' | 'image' | 'username'>;

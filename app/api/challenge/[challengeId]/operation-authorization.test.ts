@@ -2,10 +2,12 @@ import { NextRequest } from 'next/server';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), from: vi.fn(), reportError: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+    auth: vi.fn(), from: vi.fn(), reportError: vi.fn(), rpc: vi.fn(),
+}));
 vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
 vi.mock('@/lib/errors', () => ({ reportError: mocks.reportError }));
-vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from } }));
+vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from, rpc: mocks.rpc } }));
 import { PUT } from './route';
 import { POST } from './join/route';
 import { DELETE } from './leave/route';
@@ -45,6 +47,13 @@ function authorize(isPublic: boolean, member: unknown): void {
 beforeEach(() => {
     vi.clearAllMocks(); mocks.auth.mockResolvedValue({ user: { id: UID } });
     results = {}; inCalls = []; updates = [];
+    mocks.rpc.mockResolvedValue({
+        data: [{
+            status: 'ok', total_steps: 1000, participant_count: 2,
+            target_steps: 1000, is_completed: true,
+        }],
+        error: null,
+    });
     mocks.from.mockImplementation((table: string) => {
         const result = results[table]?.shift();
         if (!result) throw new Error(`Unexpected query: ${table}`);
@@ -109,31 +118,109 @@ describe('GROUP challenge操作認可', () => {
         results.challenges = [{ data: challenge(), error: null }, { data: challenge({ title: 'Updated' }), error: null }];
         authorize(false, { role: 'OWNER' }); expect((await PUT(request('PUT'), context)).status).toBe(200);
     });
-    it('progressは現member参加者の正歩数だけを合計する', async () => {
+    it('progressはGROUP集計RPCを1回だけ呼び、アプリ側配列やin filterを使わない', async () => {
         results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });
         results.challenge_participants = [
             { data: { id: 'p1', is_completed: false, completed_at: null }, error: null },
-            { data: [{ user_id: UID }, { user_id: 'member' }, { user_id: 'former' }], error: null, count: 3 },
             { error: null },
         ];
-        results.group_members.push({ data: [{ user_id: UID }, { user_id: 'member' }], error: null });
-        results.daily_steps = [{ data: [{ steps: 1000 }, { steps: 0 }, { steps: -50 }, { steps: null }], error: null, count: 4 }];
         const response = await GET(request(), context);
         expect(response.status).toBe(200); expect((await response.json()).progress.total_steps).toBe(1000);
-        expect(inCalls).toContainEqual(['user_id', [UID, 'member']]);
+        expect(mocks.rpc).toHaveBeenCalledWith('get_group_challenge_progress', {
+            p_challenge_id: CID, p_viewer_id: UID,
+        });
+        expect(mocks.rpc).toHaveBeenCalledOnce(); expect(inCalls).toEqual([]);
         expect(updates[0]).toMatchObject({ progress_steps: 1000, is_completed: true });
     });
-    it.each([
-        ['participant error', { error: new Error('participants') }, { error: null }, { error: null }],
-        ['participants 1001', { data: [{ user_id: UID }], error: null, count: 1001 }, { error: null }, { error: null }],
-        ['steps error', { data: [{ user_id: UID }], error: null, count: 1 }, { error: new Error('steps') }, { error: null }],
-        ['steps 1001', { data: [{ user_id: UID }], error: null, count: 1 }, { data: [], error: null, count: 1001 }, { error: null }],
-        ['update error', { data: [{ user_id: UID }], error: null, count: 1 }, { data: [{ steps: 1 }], error: null, count: 1 }, { error: new Error('update') }],
-    ])('progressは%sを500でfail-closedにする', async (_name, participants, steps, update) => {
+
+    it('1000件超相当のRPC集計値を切り捨てず返す', async () => {
         results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });
-        results.challenge_participants = [{ data: { id: 'p1', is_completed: false }, error: null }, participants, update];
-        results.group_members.push({ data: [{ user_id: UID }], error: null }); results.daily_steps = [steps];
+        results.challenge_participants = [
+            { data: { id: 'p1', is_completed: false, completed_at: null }, error: null },
+            { error: null },
+        ];
+        mocks.rpc.mockResolvedValue({
+            data: [{
+                status: 'ok', total_steps: 4_500_000, participant_count: 1501,
+                target_steps: 1000, is_completed: true,
+            }],
+            error: null,
+        });
+        const response = await GET(request(), context);
+        expect(response.status).toBe(200);
+        expect((await response.json()).progress.total_steps).toBe(4_500_000);
+        expect(inCalls).toEqual([]);
+    });
+
+    it.each([
+        ['null', null],
+        ['empty', []],
+        ['multiple', [
+            { status: 'ok', total_steps: 1, participant_count: 1, target_steps: 1000, is_completed: false },
+            { status: 'ok', total_steps: 1, participant_count: 1, target_steps: 1000, is_completed: false },
+        ]],
+        ['non-number', [{ status: 'ok', total_steps: '1000', participant_count: 1, target_steps: 1000, is_completed: true }]],
+        ['NaN', [{ status: 'ok', total_steps: Number.NaN, participant_count: 1, target_steps: 1000, is_completed: false }]],
+        ['negative', [{ status: 'ok', total_steps: -1, participant_count: 1, target_steps: 1000, is_completed: false }]],
+        ['unsafe', [{ status: 'ok', total_steps: Number.MAX_SAFE_INTEGER + 1, participant_count: 1, target_steps: 1000, is_completed: true }]],
+        ['zero participants', [{ status: 'ok', total_steps: 0, participant_count: 0, target_steps: 1000, is_completed: false }]],
+        ['target mismatch', [{ status: 'ok', total_steps: 1000, participant_count: 1, target_steps: 2000, is_completed: false }]],
+        ['inconsistent completion', [{ status: 'ok', total_steps: 1000, participant_count: 1, target_steps: 1000, is_completed: false }]],
+    ])('progressはRPCのinvalid shape (%s)を500にする', async (_name, data) => {
+        results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });
+        results.challenge_participants = [{ data: { id: 'p1', is_completed: false }, error: null }];
+        mocks.rpc.mockResolvedValue({ data, error: null });
         expect((await GET(request(), context)).status).toBe(500);
+    });
+
+    it('progressはRPC DB errorを成功へ偽装しない', async () => {
+        const rpcError = new Error('function get_group_challenge_progress does not exist');
+        results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });
+        results.challenge_participants = [{ data: { id: 'p1', is_completed: false }, error: null }];
+        mocks.rpc.mockResolvedValue({ data: null, error: rpcError });
+        expect((await GET(request(), context)).status).toBe(500);
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'challenge:progress:group-rpc', rpcError, { userId: UID, challengeId: CID },
+        );
+    });
+
+    it.each([['not_found', 404], ['forbidden', 403], ['not_participating', 403]])(
+        'progressはRPC再認可の%sを%iへ写像する',
+        async (status, expectedStatus) => {
+            results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });
+            results.challenge_participants = [{ data: { id: 'p1', is_completed: false }, error: null }];
+            mocks.rpc.mockResolvedValue({
+                data: [{
+                    status, total_steps: null, participant_count: null,
+                    target_steps: null, is_completed: null,
+                }],
+                error: null,
+            });
+            expect((await GET(request(), context)).status).toBe(expectedStatus);
+        },
+    );
+
+    it('INDIVIDUAL progressは既存の個人歩数集計を維持する', async () => {
+        results.challenges = [{ data: challenge({ type: 'INDIVIDUAL', group_id: null }), error: null }];
+        results.challenge_participants = [
+            { data: { id: 'p1', is_completed: false, completed_at: null }, error: null },
+            { error: null },
+        ];
+        results.daily_steps = [{ data: [{ steps: 800 }, { steps: 200 }, { steps: 0 }], error: null, count: 3 }];
+        const response = await GET(request(), context);
+        expect(response.status).toBe(200);
+        expect((await response.json()).progress.total_steps).toBe(1000);
+        expect(mocks.rpc).not.toHaveBeenCalled();
+    });
+
+    it('progress更新DB障害を成功へ偽装しない', async () => {
+        results.challenges = [{ data: challenge(), error: null }]; authorize(false, { user_id: UID });
+        results.challenge_participants = [
+            { data: { id: 'p1', is_completed: false, completed_at: null }, error: null },
+            { error: new Error('update') },
+        ];
+        expect((await GET(request(), context)).status).toBe(500);
+        expect(mocks.reportError).toHaveBeenCalled();
     });
     it.each(allOperations)('%s challenge DB障害を404に偽装しない', async (_name, invoke) => {
         results.challenges = [{ error: new Error('database unavailable') }];
