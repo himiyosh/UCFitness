@@ -217,6 +217,34 @@ cp .env.local.example .env.local
 
 [migrations/](migrations/) 配下の SQL を Supabase Dashboard または `scripts/run_migration_pg.ts` で適用する。
 
+#### F016 Supabase RLS 強化
+
+Phase 1 は `migrations/20260720_harden_api_keys_rls.sql` で、外部ランキング認証に使う
+`api_keys` を保護する。UCFitness は NextAuth と `public.users` を正本とし、
+Supabase Auth の `auth.uid()` / `auth.users` は使用しない。アプリのDB呼び出しは
+サーバー専用の `supabaseAdmin`（`service_role`）経由であり、anon clientの直接利用はない。
+
+`origin/main` のコードから参照される25テーブルはすべてservice-role-onlyに分類した。
+browser/anon必須テーブルは0件。追跡済みmigrationに完全なschema一覧がないため、
+実DBだけに存在するテーブルは未分類であり、F016は全テーブル完了までin-progressとする。
+`avatars` / `group-assets` はSupabase Storage bucketのため、この表分類には含めない。
+
+Phase 1 migrationはpolicyを作らず、通常roleをdefault denyにする。`PUBLIC` / `anon` /
+`authenticated`と既存の`service_role`権限を剥奪後、稼働中の経路に必要な
+8列の`SELECT`と`last_used_at`列の`UPDATE`だけを`service_role`へ再付与する。
+テーブル、列、`public.users(id)` FK、所有者、既存policy、`service_role BYPASSRLS`が
+期待と異なる場合は同一トランザクションを中止する。`FORCE ROW LEVEL SECURITY`は使わない。
+APIキーの平文`key`列とlegacy照合の廃止はPhase 1対象外で、後続Phaseで扱う。
+
+適用前に読み取り専用で `pg_class` / `pg_roles` / `pg_policy` /
+`information_schema.role_table_grants` / `information_schema.column_privileges` を確認し、
+現在のowner・`service_role.rolbypassrls`・policy・ACLを保存する。production /
+nonproductionへの適用は明示承認後のみ実施する。
+
+ロールバックは、最初に`service_role`の最小GRANTを前方修正し、それで復旧しない場合のみ
+`ALTER TABLE public.api_keys DISABLE ROW LEVEL SECURITY`を実行する。anon/authenticatedへの
+再GRANTは保存した適用前ACLに基づく明示的なセキュリティ承認がある場合だけ行う。
+
 Google Healthを有効化する前に
 `migrations/20260617_add_multi_provider_connections.sql` を適用し、
 `fitness_connections.user_id` の参照先が `public.users(id)` であることを確認する。
