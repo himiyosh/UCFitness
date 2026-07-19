@@ -3,10 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 const root = resolve(process.cwd());
-const migrationPath = resolve(
-  root,
-  "migrations/20260720_harden_user_badges_rls.sql",
-);
+const migrationPath = resolve(root, "migrations/20260720_harden_user_badges_rls.sql");
 const migration = readFileSync(migrationPath, "utf8");
 const protectedMigrations = {
   "migrations/20260720_harden_api_keys_rls.sql": "5138a2695ed34f0fe8f17112e586a82ee089bc7b0f202d6770af990475391636",
@@ -55,9 +52,7 @@ describe("user_badges RLS hardening migration", () => {
     ];
     expect(migration).toMatch(/^BEGIN;/);
     schemaEvidence.forEach((evidence) => expect(migration).toContain(evidence));
-    expect(migration).not.toMatch(
-      /\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?user_badges\b/i,
-    );
+    expect(migration).not.toMatch(/\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?user_badges\b/i);
   });
   it("matches every direct service-role CRUD path including PostgREST upsert", () => {
     const references = userBadgeReferences();
@@ -75,18 +70,13 @@ describe("user_badges RLS hardening migration", () => {
     expect(upserts).toHaveLength(1);
     expect(mutations).toHaveLength(0);
     expect(upserts[0]?.file).toBe("scripts/award_test_badges.ts");
-    expect(upserts[0]?.segment).toMatch(
-      /onConflict:\s*["']user_id,\s*badge_code,\s*period_date["']/,
-    );
+    expect(upserts[0]?.segment).toMatch(/onConflict:\s*["']user_id,\s*badge_code,\s*period_date["']/);
     expect(migration).toMatch(
       /GRANT SELECT \(id, user_id, badge_code, awarded_at, period_date, group_id,\s+created_at\)/,
     );
-    expect(migration).toContain(
-      "GRANT INSERT (user_id, badge_code, awarded_at, period_date, group_id)",
-    );
-    expect(migration).toContain(
-      "GRANT UPDATE (user_id, badge_code, period_date)",
-    );
+    ["GRANT INSERT (user_id, badge_code, awarded_at, period_date, group_id)",
+      "GRANT UPDATE (user_id, badge_code, period_date)"]
+      .forEach((grant) => expect(migration).toContain(grant));
     expect(migration).not.toContain("GRANT DELETE");
     expect(migration).not.toContain("GRANT ALL");
   });
@@ -110,8 +100,13 @@ describe("user_badges RLS hardening migration", () => {
       "'service_role', proc.oid, 'EXECUTE'",
       "'authenticated', proc.oid, 'EXECUTE'",
     ].forEach((evidence) => expect(migration).toContain(evidence));
-    expect(migration).not.toMatch(
-      /ALTER\s+FUNCTION\s+public\.award_streak_milestones/i,
-    );
+    expect(migration).not.toMatch(/ALTER\s+FUNCTION\s+public\.award_streak_milestones/i);
+  });
+  it("anchors Phase 5 progress without changing F001 or F016 status", () => {
+    const features = JSON.parse(readFileSync(resolve(root, ".github/ucfitness-features.json"), "utf8")) as { features: Array<{ id: string; status: string }> };
+    expect(features.features.filter(({ id }) => ["F001", "F016"].includes(id)).map(({ id, status }) => [id, status])).toEqual([["F001", "not-started"], ["F016", "in-progress"]]);
+    const progress = JSON.parse(readFileSync(resolve(root, ".github/ucfitness-progress.json"), "utf8")) as { sessionLog: Array<{ date: string; action: string; commit: string }> };
+    const phase = progress.sessionLog.find(({ date, action }) => date === "2026-07-20" && action.includes("Phase 5") && action.includes("user_badges"));
+    expect(phase?.commit).toBe("83b6ae4ae038b248a2549b3966048aba8dfc2fac");
   });
 });

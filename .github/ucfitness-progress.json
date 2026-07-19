@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-20T03:16:37+09:00",
+  "lastUpdated": "2026-07-20T05:21:00+09:00",
   "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
-  "lastCommit": "6fe4cb275fcf2c9e11b5b131107d82a8944c3e72",
-  "lastBranch": "himiyosh-harden-coin-balances-rls",
+  "lastCommit": "83b6ae4ae038b248a2549b3966048aba8dfc2fac",
+  "lastBranch": "himiyosh-harden-user-badges-rls",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016 Supabase RLS強化Phase 4としてcoin_balancesの直接8 SELECT経路とatomic writer RPCを監査し、policyなしRLS、許可外ACL拒否、service_roleへの7列SELECTだけを許可するfail-closed migrationと静的契約6件を追加した。4 writerは安全条件を検証後にowner実行へ変更する。全381テストとcheck:allをPASS。実DB catalogとmigration適用は未実施でF016はin-progress。",
+  "summary": "F016 Supabase RLS強化Phase 5としてuser_badgesの直接5 SELECT・2 INSERT・手動upsertとatomic writer RPCを監査し、policyなしRLS、許可外ACL拒否、service_roleへの最小列権限だけを許可するfail-closed migrationと静的契約6件を追加した。全387テストとcheck:allをPASS。実DB catalogとmigration適用は未実施でF016はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-20T03:16:37+09:00"
+    "lastVerified": "2026-07-20T05:21:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1154,6 +1154,13 @@
       "action": "F016 Supabase RLS強化Phase 4でcoin_balancesの直接8 SELECT経路とatomic writer RPCを監査し、既知schema・FK・PK・default・非負check・owner・関数境界をfail-closed検証する最小権限migrationを追加。全381テストとcheck:all、Security/PostgreSQL/code reviewをPASS。実catalog接続・DB適用は未実施。",
       "commit": "6fe4cb275fcf2c9e11b5b131107d82a8944c3e72",
       "filesChanged": ["migrations/20260720_harden_coin_balances_rls.sql", "lib/__tests__/coin-balances-rls-migration.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 5でuser_badgesの全direct CRUD・手動upsert・atomic writer RPCを監査し、既知schema・FK・PK/unique・default・owner・関数境界をfail-closed検証する最小権限migrationを追加。全387テストとcheck:all、Security/PostgreSQL/code reviewをPASS。実catalog接続・DB適用は未実施。",
+      "commit": "83b6ae4ae038b248a2549b3966048aba8dfc2fac",
+      "filesChanged": ["migrations/20260720_harden_user_badges_rls.sql", "lib/__tests__/user-badges-rls-migration.test.ts", "README.md", ".github/ucfitness-progress.json"]
     }
   ],
   "instincts": {
