@@ -303,6 +303,44 @@ unique/check、owner、RLS/policy、ACL、owned sequenceを安全に確定でき
 これらをコードから推測したfail-closed migrationは作成せず、production /
 nonproduction DBへの接続・適用・read/writeも実施していない。
 
+Phase 8 はソーシャルグラフ`user_follows`を候補として監査したが、Phase 7と同様に
+migrationを作らないaudit-onlyとした。現行コードには8つのserver routeから9件の
+`.from('user_follows')`があり、7 `SELECT`、1 `INSERT`、1 `DELETE`をすべて
+`supabaseAdmin`で実行する。直接`UPDATE` / upsertは存在しない。browser componentは
+`/api/user/follow`、`/api/user/follow/status`、`/api/user/following`、
+`/api/user/following-comparison`、`/api/user/feed`等のsame-origin APIだけを呼び、
+Supabase clientへ直接接続しない。
+
+使用する読取列は`id` / `follower_id` / `following_id` / `created_at`、作成列は
+`follower_id` / `following_id`である。解除は認証ユーザーを`follower_id`に固定し、
+対象の`following_id`と組み合わせて削除する。schema確定後の`service_role`へのgrant候補は4列のcolumn `SELECT`、
+`follower_id` / `following_id`のcolumn `INSERT`、table `DELETE`、実在するowned
+sequenceだけの`USAGE`である。`PUBLIC` / `anon` / `authenticated`には権限を残さず、
+policy、`auth.uid()`、`FORCE ROW LEVEL SECURITY`、`GRANT ALL`は追加しない。
+
+`types/database.ts`の`UserFollowRow`は4列を非nullableなTypeScript値として表し、
+`INSERT`が`id` / `created_at`を省略するため両列にDB defaultが必要なことは確認できる。
+一方、現行treeにもGit履歴にも`user_follows`の追跡DDLはなく、型はPostgreSQLの
+`uuid`と`text`、`timestamp with time zone`と`timestamp without time zone`、
+default式の違いを証明しない。2つの`public.users(id)` FKと削除動作、PK、
+`(follower_id, following_id)` unique、self-follow check、owner、既存RLS/policy、
+table/column ACL、owned sequenceも実catalogなしでは確定できない。アプリのUUID検証、
+重複時`23505`処理、自分自身の拒否はschema制約の証拠として扱わない。
+
+このためfail-closed差異判定の期待値を推測せず、Phase 8もproduction / nonproduction
+DBへの接続・適用・read/writeを行っていない。保護済み件数は9/25のまま、F016は
+in-progressを維持する。migration設計前にはPhase 7のread-only catalog queryで
+対象名だけを`public.user_follows`へ置き換え、全結果をDB管理者と確認する。
+
+RLS変更とは分離すべき高確度のerror fallbackも監査した。
+
+| 経路 | 現行のDB障害時挙動 | 別Fix候補 |
+|---|---|---|
+| `POST /api/user/follow`の対象ユーザー確認 | `users`照会errorを取得せず404へ変換 | DB errorを報告して5xx |
+| `GET /api/user/followers`のプロフィール取得 | `users`照会errorを取得せず欠落行または空の200へ変換 | 取得不能を空状態から分離 |
+| `GET /api/user/following-comparison` | `user_follows`照会errorを空比較へ、users/steps errorを`Unknown`/0歩へ変換 | 各errorを報告して非成功応答 |
+| group invite anti-abuse | `user_follows`照会errorを「フォローなし」の403へ変換 | 権限拒否とDB障害を分離 |
+
 migration設計前に、DB管理者が承認したread-only接続で次を保存する。結果に未知の列、
 制約、policy、grantee、owner、BYPASSRLS、sequenceがあれば設計を中止して個別に確認する。
 
