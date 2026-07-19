@@ -4,8 +4,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { getJSTDateString } from '@/lib/date-utils';
-import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { authorizeGroupManagement } from '@/lib/services/challenge-access';
+import { supabaseAdmin } from '@/lib/supabase';
+import { isRecord, isValidISODate, isValidUUID } from '@/lib/validation';
 
 // ============================================
 // チャレンジ一覧取得 & 新規作成 API
@@ -169,34 +171,37 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 /** POST: 新しいチャレンジを作成 */
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse> {
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-        const body = await req.json();
+        let body: unknown;
+        try {
+            body = await req.json();
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        }
+        if (!isRecord(body)) {
+            return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+        }
         const { title, description, type, target_steps, start_date, end_date, reward_uc, group_id } = body;
 
-        // バリデーション
-        if (!title || !type || !target_steps || !start_date || !end_date) {
+        if (
+            typeof title !== 'string'
+            || title.trim().length === 0
+            || (type !== 'INDIVIDUAL' && type !== 'GROUP')
+            || typeof target_steps !== 'number'
+            || !isValidISODate(start_date)
+            || !isValidISODate(end_date)
+        ) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        if (!['INDIVIDUAL', 'GROUP'].includes(type)) {
-            return NextResponse.json({ error: 'Invalid challenge type' }, { status: 400 });
-        }
-
-        // 型安全性: target_steps の数値バリデーション
-        if (typeof target_steps !== 'number' || !Number.isFinite(target_steps) || target_steps <= 0) {
-            return NextResponse.json({ error: 'Target steps must be a positive number' }, { status: 400 });
-        }
-
-        // 日付フォーマットバリデーション（YYYY-MM-DD）
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
-            return NextResponse.json({ error: 'Invalid date format (expected YYYY-MM-DD)' }, { status: 400 });
+        if (!Number.isInteger(target_steps) || target_steps <= 0) {
+            return NextResponse.json({ error: 'Target steps must be a positive integer' }, { status: 400 });
         }
 
         if (new Date(end_date) <= new Date(start_date)) {
@@ -207,13 +212,44 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Title too long (max 100 chars)' }, { status: 400 });
         }
 
-        // description の長さ制限（DB への任意大テキスト保存防止）
-        if (description && typeof description === 'string' && description.length > 1000) {
+        if (description !== undefined && description !== null && typeof description !== 'string') {
+            return NextResponse.json({ error: 'Description must be a string' }, { status: 400 });
+        }
+        if (typeof description === 'string' && description.length > 1000) {
             return NextResponse.json({ error: 'Description too long (max 1000 chars)' }, { status: 400 });
+        }
+        if (
+            reward_uc !== undefined
+            && (
+                typeof reward_uc !== 'number'
+                || !Number.isInteger(reward_uc)
+                || !Number.isFinite(reward_uc)
+            )
+        ) {
+            return NextResponse.json({ error: 'Reward must be an integer' }, { status: 400 });
+        }
+        if (type === 'INDIVIDUAL' && group_id !== undefined && group_id !== null) {
+            return NextResponse.json({ error: 'Individual challenges cannot have a group ID' }, { status: 400 });
+        }
+        if (type === 'GROUP') {
+            if (!isValidUUID(group_id)) {
+                return NextResponse.json({ error: 'A valid group ID is required' }, { status: 400 });
+            }
+            const authorization = await authorizeGroupManagement(
+                group_id,
+                session.user.id,
+                'challenge:create',
+            );
+            if (!authorization.allowed) {
+                const error = authorization.status === 500
+                    ? 'Failed to authorize group challenge creation'
+                    : authorization.status === 404 ? 'Group not found' : 'Forbidden';
+                return NextResponse.json({ error }, { status: authorization.status });
+            }
         }
 
         const rewardAmount = Math.min(Math.max(
-            typeof reward_uc === 'number' && Number.isFinite(reward_uc) ? reward_uc : 500,
+            typeof reward_uc === 'number' ? reward_uc : 500,
             100
         ), 10000);
 
@@ -238,13 +274,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
         }
 
-        // 作成者は自動参加
-        await supabaseAdmin
+        const { error: participantError } = await supabaseAdmin
             .from('challenge_participants')
             .insert({
                 challenge_id: data.id,
                 user_id: session.user.id,
             });
+        if (participantError) {
+            reportError('challenge:create:participant', participantError, {
+                userId: session.user.id,
+                challengeId: data.id,
+            });
+            return NextResponse.json({ error: 'Failed to join created challenge' }, { status: 500 });
+        }
 
         return NextResponse.json({ challenge: data }, { status: 201 });
     } catch (err) {
