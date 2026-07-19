@@ -66,6 +66,10 @@ type GoogleHealthLeaseResult<T> =
     | { status: 'sync_in_progress' }
     | { status: 'unavailable' };
 
+function isFitbitRetryExhausted(error: unknown): error is AppError {
+    return error instanceof AppError && error.code === 'FITBIT_API_RETRY_EXHAUSTED';
+}
+
 async function replaceGoogleHealthStepRange(
     userId: string,
     startDate: string,
@@ -616,6 +620,8 @@ export async function backfillUserSteps(userId: string): Promise<void> {
                     } else {
                         break;
                     }
+                } else if (isFitbitRetryExhausted(e)) {
+                    throw e;
                 } else {
                     // 404 等はこの期間にデータなし → ループ終了
                     break;
@@ -651,8 +657,11 @@ export async function backfillUserSteps(userId: string): Promise<void> {
             }
         }
 
-    } catch (error) {
+    } catch (error: unknown) {
         reportError('backfillUserSteps', error, { userId: user.id });
+        if (isFitbitRetryExhausted(error)) {
+            throw error;
+        }
     }
 }
 
