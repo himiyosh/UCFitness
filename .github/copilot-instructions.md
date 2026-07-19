@@ -1515,3 +1515,9 @@ export const runtime = "edge";
 - **根本原因**: 当日歩数に応じて何度でも再計算される倍率ボーナスと、生涯一回だけ確定する達成報酬を同じライフサイクル・種別・日付キーで扱った。
 - **対策**: `STREAK_MILESTONE`を日次削除対象から分離し、`streak_milestone:{userId}:{badgeCode}`を一生涯キーとした。DBで連続日を再検証し、ユーザー行ロック下でバッジ・台帳・残高を単一トランザクションへ統合した。
 - **教訓**: 台帳種別と冪等キーは表示分類ではなく、再計算・取消・一回限り・遡及可否のライフサイクル境界で設計する。定常再計算のdelete/upsert集合へ不可逆な達成報酬を混ぜない。リファレンス: `lib/services/coin-service.ts`, `migrations/20260718_add_streak_milestone_rewards.sql`
+
+### LL-062: Feature台帳のstatusをID照合せず先頭項目へ誤適用した
+- **事象**: F016を`in-progress`へ更新する際、`.github/ucfitness-features.json`の先頭statusを置換し、F001を誤更新したままPRを作成した。
+- **根本原因**: status値だけを検索・置換し、対象`id`と同じobject内にあることを編集前後のdiffで確認しなかった。
+- **対策**: Feature台帳のstatus変更は対象`id`のobject範囲を先に読み、変更後に対象ID・status・他featureの差分を同時検証する。
+- **教訓**: 同名キーが反復する構造化台帳は値だけで編集しない。識別子をanchorにし、PR差分で変更対象が1 featureだけであることを確認する。

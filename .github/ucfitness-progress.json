@@ -3,7 +3,7 @@
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
   "lastUpdated": "2026-07-20T01:07:15+09:00",
   "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
-  "lastCommit": "",
+  "lastCommit": "550ac15da5ac2288758dfd7b5ca76b0d859a4d9c",
   "lastBranch": "himiyosh-fix-supabase-rls-phase1",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "F016 Supabase RLS強化Phase 1として全Supabase client経路と25テーブルを監査し、browser/anon直接DB利用がないことを確認。高機密なapi_keysへpolicyなしRLS、PUBLIC/anon/authenticated権限剥奪、service_roleの8列SELECT＋last_used_at更新だけを付与するfail-closed migrationと静的契約6件を追加した。全361テストとcheck:allをPASS。実DB catalogとmigration適用は未実施でF016はin-progress。",
@@ -53,7 +53,7 @@
       "date": "2026-05-23",
       "agent": "UCFitnessAgent",
       "action": "監査結果対応 — FrameSelector Hooks 違反修正、CreateChallengeModal の a11y/i18n 改善、Push subscribe API 統一、URL allowlist/CSP/rate-limit/log redaction/API key hash migration/画像署名検証/CI/hooks 安全化/README・Skill・Agent 整合性修正を実施。",
-      "commit": "",
+      "commit": "550ac15da5ac2288758dfd7b5ca76b0d859a4d9c",
       "filesChanged": [
         "components/FrameSelector.tsx",
         "components/challenge/CreateChallengeModal.tsx",
