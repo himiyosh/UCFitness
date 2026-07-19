@@ -4,10 +4,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const readRepositoryFile = (path: string): string =>
-    readFileSync(join(process.cwd(), path), 'utf8');
-const sha256 = (value: string): string =>
-    createHash('sha256').update(value).digest('hex');
+const readRepositoryFile = (path: string): string => readFileSync(join(process.cwd(), path), 'utf8');
+const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 
 const migration = readRepositoryFile(
     'migrations/20260720_harden_coin_transactions_rls.sql',
@@ -128,14 +126,20 @@ describe('F016 coin_transactions RLS migration', () => {
         expect(migration).not.toMatch(/GRANT (SELECT|UPDATE|ALL).*ON SEQUENCE/i);
     });
 
-    it('F001を変更せずF016をin-progressに維持する', () => {
+    it('F001/F016とID・日付anchor付き進捗を構造検証する', () => {
         const features = JSON.parse(
             readRepositoryFile('.github/ucfitness-features.json'),
         ) as { features: Array<{ id: string; status: string }> };
+        const progress = JSON.parse(readRepositoryFile('.github/ucfitness-progress.json')) as { lastCommit: string; sessionLog: Array<{ date: string; agent: string; action: string; commit: string; filesChanged: string[] }> };
         const statusFor = (id: string): string | undefined =>
             features.features.find((feature) => feature.id === id)?.status;
+        const phaseTwoLog = progress.sessionLog.find((log) => log.commit === '8211a42a099890ab0fd2b45d9c4a90f0a2b81ebd');
+        const phaseThreeLog = progress.sessionLog.find((log) => log.action.includes('Phase 3でcoin_transactions'));
 
         expect(statusFor('F001')).toBe('not-started');
         expect(statusFor('F016')).toBe('in-progress');
+        expect(progress.lastCommit).toBe('f0bdde158f66c6f01e10e90e8fdfb40bd488a2b1');
+        expect(phaseTwoLog).toEqual({ date: '2026-07-20', agent: 'UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)', action: 'F016 Supabase RLS強化Phase 2でpush_subscriptionsの全CRUD、配信、重複整理、404/410 cleanup、browser境界を監査。既知schema・FK・index・ownerをfail-closed検証し、policyなしRLSとservice_roleの最小CRUD・対象所有sequence USAGEだけを許可するmigrationを追加。全368テストとcheck:allをPASS。実catalog接続・DB適用は未実施。', commit: '8211a42a099890ab0fd2b45d9c4a90f0a2b81ebd', filesChanged: ['migrations/20260720_harden_push_subscriptions_rls.sql', 'lib/__tests__/push-subscriptions-rls-migration.test.ts', 'README.md', '.github/ucfitness-progress.json'] });
+        expect(phaseThreeLog).toMatchObject({ date: '2026-07-20', commit: 'f0bdde158f66c6f01e10e90e8fdfb40bd488a2b1' });
     });
 });

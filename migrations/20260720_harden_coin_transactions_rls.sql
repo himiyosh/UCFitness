@@ -29,13 +29,8 @@ BEGIN
     INTO mismatched_columns
     FROM (
         VALUES
-            ('id', 'uuid', true, true),
-            ('user_id', 'uuid', true, false),
-            ('date', 'date', true, false),
-            ('type', 'text', true, false),
-            ('amount', 'integer', true, false),
-            ('description', 'text', false, false),
-            ('idempotency_key', 'text', false, false),
+            ('id', 'uuid', true, true), ('user_id', 'uuid', true, false), ('date', 'date', true, false), ('type', 'text', true, false),
+            ('amount', 'integer', true, false), ('description', 'text', false, false), ('idempotency_key', 'text', false, false),
             ('created_at', 'timestamp with time zone', false, true)
     ) AS expected(column_name, data_type, not_null, has_default)
     LEFT JOIN pg_catalog.pg_attribute AS attribute
@@ -141,9 +136,7 @@ BEGIN
     INTO allowed_types
     FROM pg_catalog.regexp_matches(type_definition, '''([A-Z_]+)''', 'g') AS matches;
     IF allowed_types IS DISTINCT FROM ARRAY[
-        'GIFT_RECEIVE', 'GIFT_SEND', 'GOAL_BONUS', 'LOGIN_BONUS',
-        'MISSION_REWARD', 'PURCHASE', 'RANK_BONUS', 'STEPS',
-        'STREAK_BONUS', 'STREAK_MILESTONE'
+        'GIFT_RECEIVE', 'GIFT_SEND', 'GOAL_BONUS', 'LOGIN_BONUS', 'MISSION_REWARD', 'PURCHASE', 'RANK_BONUS', 'STEPS', 'STREAK_BONUS', 'STREAK_MILESTONE'
     ]::text[] THEN
         RAISE EXCEPTION 'F016: coin_transactions type constraint is incompatible';
     END IF;
@@ -210,15 +203,9 @@ BEGIN
 END;
 $revoke_privileges$;
 
-GRANT SELECT (
-    id, user_id, date, type, amount, description, idempotency_key, created_at
-) ON TABLE public.coin_transactions TO service_role;
-GRANT INSERT (
-    user_id, date, type, amount, description, idempotency_key
-) ON TABLE public.coin_transactions TO service_role;
-GRANT UPDATE (
-    user_id, date, type, amount, description, idempotency_key
-) ON TABLE public.coin_transactions TO service_role;
+GRANT SELECT (id, user_id, date, type, amount, description, idempotency_key, created_at) ON TABLE public.coin_transactions TO service_role;
+GRANT INSERT (user_id, date, type, amount, description, idempotency_key) ON TABLE public.coin_transactions TO service_role;
+GRANT UPDATE (user_id, date, type, amount, description, idempotency_key) ON TABLE public.coin_transactions TO service_role;
 GRANT DELETE ON TABLE public.coin_transactions TO service_role;
 
 DO $assertions$
