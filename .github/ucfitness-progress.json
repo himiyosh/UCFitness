@@ -3,7 +3,7 @@
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
   "lastUpdated": "2026-07-19T12:40:29+09:00",
   "lastAgent": "UCFitnessAgent (Profile + Accessibility + QA + Self-Critique)",
-  "lastCommit": "pending",
+  "lastCommit": "c09c7b46d90791ddcaf238107fe8c3b0e20575f0",
   "lastBranch": "himiyosh-f028-profile-challenge-history",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "F028でプロフィール所有者限定の成長タイムラインを追加。参加日時が新しい100件から終了・達成チャレンジを抽出し、獲得日時が確かなバッジと月別統合して10件ずつ開示する。部分障害・不正形状・日付不明を分離し、全359テストとcheck:all、3ペルソナ、独立code/data/a11y reviewを実施。履歴スナップショットDBと認証済み実画面は未検証のためin-progress。",
@@ -1116,7 +1116,7 @@
         "scripts/audit-responsive.mjs"
       ]
     },
-    {"date":"2026-07-19","agent":"UCFitnessAgent (Profile + Accessibility + QA + Self-Critique)","action":"F028で所有者限定の成長タイムラインを実装。参加日時の新しい100件から終了・達成済みchallengeを抽出し、awarded_atが確かなbadgeと月別統合して初期10件＋10件ずつ開示。DBフラグ以外で達成を推測せず、可変target/rewardを過去実績から除外し、部分障害・不正形状・日付不明、44px、focus維持、ja/enを整備。全359テスト、check:all、3ペルソナと独立reviewを実施し、履歴snapshotと認証済み実画面は未検証のためin-progress。","commit":"pending","filesChanged":["profile page","GrowthTimeline","profile timeline service/helper/test","ja/en","README","feature/progress"]}
+    {"date":"2026-07-19","agent":"UCFitnessAgent (Profile + Accessibility + QA + Self-Critique)","action":"F028で所有者限定の成長タイムラインを実装。参加日時の新しい100件から終了・達成済みchallengeを抽出し、awarded_atが確かなbadgeと月別統合して初期10件＋10件ずつ開示。DBフラグ以外で達成を推測せず、可変target/rewardを過去実績から除外し、部分障害・不正形状・日付不明、44px、focus維持、ja/enを整備。全359テスト、check:all、3ペルソナと独立reviewを実施し、履歴snapshotと認証済み実画面は未検証のためin-progress。","commit":"c09c7b46d90791ddcaf238107fe8c3b0e20575f0","filesChanged":["profile page","GrowthTimeline","profile timeline service/helper/test","ja/en","README","feature/progress"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
