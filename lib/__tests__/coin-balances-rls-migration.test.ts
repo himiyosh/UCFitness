@@ -10,7 +10,7 @@ const sha256 = (value: string): string => createHash('sha256').update(value).dig
 const migration = readRepositoryFile('migrations/20260720_harden_coin_balances_rls.sql');
 const atomicCoinMigration = readRepositoryFile('migrations/20260718_add_streak_milestone_rewards.sql');
 const progress = JSON.parse(readRepositoryFile('.github/ucfitness-progress.json')) as {
-    lastCommit: string; sessionLog: Array<{ action: string; commit: string }>;
+    sessionLog: Array<{ date: string; action: string; commit: string }>;
 };
 const sourceFiles = (path: string): string[] => readdirSync(path, {
     withFileTypes: true,
@@ -36,13 +36,15 @@ describe('F016 coin_balances RLS migration', () => {
             ['migrations/20260720_harden_coin_transactions_rls.sql', '32324ceae1333fefb67a0d8788facf23ea2fd435332e78c4ac103bbcabdf426f'],
             ['migrations/20260718_add_streak_milestone_rewards.sql', '32d33a968327ce45d19f47377e7c69c4c727069dba447d36deb47d8fba16bf3f'],
         ]);
+        const phaseFourLog = progress.sessionLog.find(
+            (log) => log.action.includes('Phase 4でcoin_balances'),
+        );
 
         for (const [path, hash] of expectedHashes) {
             expect(sha256(readRepositoryFile(path)), path).toBe(hash);
         }
-        expect(progress.lastCommit).toBe('6fe4cb275fcf2c9e11b5b131107d82a8944c3e72');
-        expect(progress.sessionLog.at(-1)).toMatchObject({
-            action: expect.stringContaining('Phase 4でcoin_balances'),
+        expect(phaseFourLog).toMatchObject({
+            date: '2026-07-20',
             commit: '6fe4cb275fcf2c9e11b5b131107d82a8944c3e72',
         });
     });
