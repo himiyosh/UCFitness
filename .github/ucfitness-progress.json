@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-19T11:29:33+09:00",
+  "lastUpdated": "2026-07-19T11:34:20+09:00",
   "lastAgent": "UCFitnessAgent (PostgreSQL + Security + QA)",
-  "lastCommit": "b3e28f5028beff9f6dd1a41823770283f550ff71",
+  "lastCommit": "d6747f0d7e2d79ac8c8e185ff9ad1ce247289593",
   "lastBranch": "himiyosh-feature-group-invite-links",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "F030をPRサイズ上限に従って分割し、Phase 1で管理者限定の7日招待発行、hash-only token保存、原子的な招待参加、Edge API、単体テストを実装。UI・ja/en・実ブラウザはstacked Phase 2へ継続するためF030はin-progress。本番DBへmigrationは未適用。",
@@ -53,7 +53,7 @@
       "date": "2026-05-23",
       "agent": "UCFitnessAgent",
       "action": "監査結果対応 — FrameSelector Hooks 違反修正、CreateChallengeModal の a11y/i18n 改善、Push subscribe API 統一、URL allowlist/CSP/rate-limit/log redaction/API key hash migration/画像署名検証/CI/hooks 安全化/README・Skill・Agent 整合性修正を実施。",
-      "commit": "",
+      "commit": "d6747f0d7e2d79ac8c8e185ff9ad1ce247289593",
       "filesChanged": [
         "components/FrameSelector.tsx",
         "components/challenge/CreateChallengeModal.tsx",
