@@ -739,7 +739,7 @@
         "expiration_handling": "失効リンクで 410 Gone を返す",
         "authorization": "管理者のみが発行可能"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
