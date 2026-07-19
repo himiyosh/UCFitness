@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-18T18:43:31+09:00",
-  "lastAgent": "UCFitnessAgent (Integration + Accessibility + QA + Self-Critique)",
-  "lastCommit": "b3e28f5028beff9f6dd1a41823770283f550ff71",
-  "lastBranch": "himiyosh-integrate-ucfitness-improvements",
+  "lastUpdated": "2026-07-19T09:45:23+09:00",
+  "lastAgent": "UCFitnessAgent (Recovery + Hallmark + Accessibility + QA + Self-Critique)",
+  "lastCommit": "65baa9375831843636c2215a7b4c7ebca6167d5c",
+  "lastBranch": "himiyosh-recover-ui-ux-work",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "PR #234系のF003〜F021改善を現行セッションへfast-forward統合し、F012公開アクセシビリティ監査を8→30ケースへ拡張。ja/enのLP・利用規約・プライバシーを320/375/768/1024/1920pxで検査し、AX名、フォームラベル、見出し順、重複ID、aria-hidden focus、スキップリンク、44px、reduced-motionを自動化した。公開6ページのLighthouse a11y 100、全355テスト、check:all、Pages build、独立review、自己批判をPASS。認証済み120ケースと実スクリーンリーダーは未検証のためF012はin-progress。",
+  "summary": "破損した旧UI/UX改善セッションの未コミット5ファイル差分をSHA-256一致で復元。公開LPの装飾用無限オービットを削除し、Journey/Showcaseの情報密度を改善、モバイルナビをviewport基準へ変更した。公開レスポンシブ監査へメニューの配置・44px・Escape焦点復帰を追加し、30/30監査、全355テスト、check:all、375/1280実画面、2ペルソナ、自己批判をPASS。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-18T18:43:31+09:00"
+    "lastVerified": "2026-07-19T09:45:23+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1113,6 +1113,20 @@
         ".github/ucfitness-features.json",
         "README.md",
         "scripts/audit-responsive.mjs"
+      ]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (Recovery + Hallmark + Accessibility + QA + Self-Critique)",
+      "action": "破損した旧UI/UX改善セッションの未コミット差分を現branchへSHA-256一致で復元。公開LPの装飾用無限オービットを削除し、Journey/Showcaseの重複ラベルとカード装飾を圧縮、モバイルナビをviewport基準の固定パネルへ変更した。公開監査へメニューの表示・viewport整列・44px・Escape閉鎖/焦点復帰を追加。30/30公開監査、全355テスト、check:all、375/1280実画面、Mobile Beginner/Accessibility Keyboard、独立自己批判をPASS。",
+      "commit": "65baa9375831843636c2215a7b4c7ebca6167d5c",
+      "filesChanged": [
+        "README.md",
+        "app/globals.css",
+        "components/LandingPage.tsx",
+        "components/landing/LandingInteractions.tsx",
+        "scripts/audit-responsive.mjs",
+        ".github/ucfitness-progress.json"
       ]
     }
   ],
