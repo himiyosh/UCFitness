@@ -85,6 +85,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する
 - **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結する。Mission→Weekly→Reward→Challengeの後はQuickActionsを独立補助Dockとし、Friend Pulseと週間Rankingをxlで直接同一行にする。Friend Pulseは個別目標と正歩数の活動人数/合計/達成人数、Rankingは次ライバル名/必要歩数を表示する。詳細Rankingは固定5行を維持し、Competition Missionへ現在順位・参加者数・次ライバル・トップ差を集約、外側多列化は2xlへ遅らせる
 - **Challenge継続契約**: Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。主表示は最大500歩、期限/報酬は補足、作成は一覧後へ置く。期限は一覧・カード・参加APIでJST統一し、進捗不明を0へ変換しない
+- **GROUP Challenge認可契約**: GROUP作成は有効な`group_id`とOWNER/ADMIN membershipをAPIで要求する。private groupのchallengeは非メンバーへ404、public groupは閲覧のみ非メンバーへ許可し、参加・進捗・離脱は現group memberに限定する。編集は作成者かつ現OWNER/ADMINだけに許可する
 - **競争差の導線継続**: Homeで示す「あと何歩」を、歩数が記録されたユーザーのグローバルランキング・選択グループ・グループ詳細の自分順位サマリーでも表示する。0歩・不在時は順位・メダル・成功形の対象にせず、空行でランキング5行・72px固定仕様を維持する。取得失敗は未所属表示へ変換せず、Global/Group双方でエラーと再試行を明示する。計算は`getRankGapInsight()`へ集約する
 - **Amazon CTA実験契約**: プロフィール・ホーム・ShopのAmazon導線はセッション内で安定した配置/文言2×2実験を行い、50%以上を1秒表示したimpressionとclickだけをPIIなしの構造化platform logへ送る。価格・配送はAPI値を推測せずAmazon.co.jp確認と明記し、PR開示と`sponsored` linkを必須にする
 - **Groups状態分離契約**: グループ内ユーザー順位とグループ対抗順位は正歩数だけを対象にし、ランキング配列長は「ランキング参加人数」と表示する。group/user/membership認可だけを詳細ページの必須境界とし、private group非メンバー404を維持する。メンバー一覧/件数、順位、比較、期間別競争の失敗は個別警告として、取得不能を0人・空順位・未所属へ変換せず、利用可能なイベント・チャット・ギア・週間レポートを継続する

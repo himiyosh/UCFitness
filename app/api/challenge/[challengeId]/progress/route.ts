@@ -1,9 +1,15 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import {
+    authorizeChallengeGroup,
+    getGroupChallengeDenial,
+} from '@/lib/services/challenge-access';
+import { supabaseAdmin } from '@/lib/supabase';
+import { isValidUUID } from '@/lib/validation';
 
 // ============================================
 // チャレンジ進捗取得 API
@@ -15,7 +21,7 @@ import { reportError } from '@/lib/errors';
 export async function GET(
     _req: NextRequest,
     { params }: { params: Promise<{ challengeId: string }> }
-) {
+): Promise<NextResponse> {
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,25 +30,44 @@ export async function GET(
     try {
         const { challengeId } = await params;
         const userId = session.user.id;
+        if (!isValidUUID(challengeId)) {
+            return NextResponse.json({ error: 'Invalid challenge ID' }, { status: 400 });
+        }
 
         // チャレンジ情報を取得（typeも必要）
         const { data: challenge, error: challengeError } = await supabaseAdmin
             .from('challenges')
-            .select('id, type, target_steps, start_date, end_date, reward_uc')
+            .select('id, type, group_id, target_steps, start_date, end_date, reward_uc')
             .eq('id', challengeId)
-            .single();
+            .maybeSingle();
 
-        if (challengeError || !challenge) {
+        if (challengeError) {
+            reportError('challenge:progress:fetch', challengeError, { userId, challengeId });
+            return NextResponse.json({ error: 'Failed to fetch challenge' }, { status: 500 });
+        }
+        if (!challenge) {
             return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
         }
 
+        const denial = getGroupChallengeDenial(
+            await authorizeChallengeGroup(challenge, userId, 'participate', 'challenge:progress'),
+            'Failed to authorize challenge progress',
+        );
+        if (denial) {
+            return NextResponse.json({ error: denial.error }, { status: denial.status });
+        }
+
         // 参加しているかチェック
-        const { data: participation } = await supabaseAdmin
+        const { data: participation, error: participationError } = await supabaseAdmin
             .from('challenge_participants')
             .select('id, is_completed, completed_at')
             .eq('challenge_id', challengeId)
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
+        if (participationError) {
+            reportError('challenge:progress:participation', participationError, { userId, challengeId });
+            return NextResponse.json({ error: 'Failed to fetch challenge participation' }, { status: 500 });
+        }
 
         if (!participation) {
             return NextResponse.json({ error: 'Not participating' }, { status: 403 });
@@ -52,59 +77,96 @@ export async function GET(
 
         if (challenge.type === 'GROUP') {
             // GROUP チャレンジ: 全参加者の歩数合計で目標達成を判定
-            const { data: participants } = await supabaseAdmin
+            const {
+                data: participants,
+                error: participantsError,
+                count: participantCount,
+            } = await supabaseAdmin
                 .from('challenge_participants')
-                .select('user_id')
+                .select('user_id', { count: 'exact' })
                 .eq('challenge_id', challengeId);
+            if (participantsError || (participantCount !== null && participantCount > 1000)) {
+                const cause = participantsError
+                    ?? new Error('Challenge participant aggregation exceeded 1000 rows');
+                reportError('challenge:progress:participants', cause, { userId, challengeId });
+                return NextResponse.json({ error: 'Failed to fetch challenge participants' }, { status: 500 });
+            }
 
-            const participantIds = (participants || []).map(p => p.user_id);
+            const participantIds = (participants ?? []).map((participant) => participant.user_id);
+            let eligibleParticipantIds: string[] = [];
+            if (participantIds.length > 0 && challenge.group_id) {
+                const { data: members, error: membersError } = await supabaseAdmin
+                    .from('group_members')
+                    .select('user_id')
+                    .eq('group_id', challenge.group_id)
+                    .in('user_id', participantIds);
+                if (membersError) {
+                    reportError('challenge:progress:members', membersError, { userId, challengeId });
+                    return NextResponse.json({ error: 'Failed to fetch group members' }, { status: 500 });
+                }
+                eligibleParticipantIds = (members ?? []).map((member) => member.user_id);
+            }
 
-            if (participantIds.length === 0) {
+            if (eligibleParticipantIds.length === 0) {
                 totalSteps = 0;
             } else {
-                const { data: stepsData, error: stepsError } = await supabaseAdmin
+                const { data: stepsData, error: stepsError, count: stepsCount } = await supabaseAdmin
                     .from('daily_steps')
-                    .select('steps')
-                    .in('user_id', participantIds)
+                    .select('steps', { count: 'exact' })
+                    .in('user_id', eligibleParticipantIds)
                     .gte('date', challenge.start_date)
                     .lte('date', challenge.end_date);
 
-                if (stepsError) {
-                    reportError('challenge:progress:group-steps', stepsError, { userId, challengeId });
+                if (stepsError || (stepsCount !== null && stepsCount > 1000)) {
+                    const cause = stepsError ?? new Error('Challenge step aggregation exceeded 1000 rows');
+                    reportError('challenge:progress:group-steps', cause, { userId, challengeId });
                     return NextResponse.json({ error: 'Failed to fetch steps' }, { status: 500 });
                 }
 
-                totalSteps = (stepsData || []).reduce((sum, row) => sum + (row.steps || 0), 0);
+                totalSteps = (stepsData ?? []).reduce(
+                    (sum, row) => sum + (typeof row.steps === 'number' && row.steps > 0 ? row.steps : 0),
+                    0,
+                );
             }
         } else {
             // INDIVIDUAL チャレンジ: 個人の歩数のみ
-            const { data: stepsData, error: stepsError } = await supabaseAdmin
+            const { data: stepsData, error: stepsError, count: stepsCount } = await supabaseAdmin
                 .from('daily_steps')
-                .select('steps')
+                .select('steps', { count: 'exact' })
                 .eq('user_id', userId)
                 .gte('date', challenge.start_date)
                 .lte('date', challenge.end_date);
 
-            if (stepsError) {
-                reportError('challenge:progress:steps', stepsError, { userId, challengeId });
+            if (stepsError || (stepsCount !== null && stepsCount > 1000)) {
+                const cause = stepsError ?? new Error('Challenge step aggregation exceeded 1000 rows');
+                reportError('challenge:progress:steps', cause, { userId, challengeId });
                 return NextResponse.json({ error: 'Failed to fetch steps' }, { status: 500 });
             }
 
-            totalSteps = (stepsData || []).reduce((sum, row) => sum + (row.steps || 0), 0);
+            totalSteps = (stepsData ?? []).reduce(
+                (sum, row) => sum + (typeof row.steps === 'number' && row.steps > 0 ? row.steps : 0),
+                0,
+            );
         }
 
         const isCompleted = totalSteps >= challenge.target_steps;
         const progressPercent = Math.min(100, Math.round((totalSteps / challenge.target_steps) * 100));
 
-        // 進捗を更新
-        await supabaseAdmin
+        const completedAt = isCompleted && !participation.is_completed
+            ? new Date().toISOString()
+            : participation.completed_at;
+        const { error: updateError } = await supabaseAdmin
             .from('challenge_participants')
             .update({
                 progress_steps: totalSteps,
                 is_completed: isCompleted,
-                completed_at: isCompleted && !participation.is_completed ? new Date().toISOString() : participation.completed_at,
+                completed_at: completedAt,
             })
             .eq('id', participation.id);
+        if (updateError) {
+            reportError('challenge:progress:update', updateError, { userId, challengeId });
+            return NextResponse.json({ error: 'Failed to update challenge progress' }, { status: 500 });
+        }
 
         return NextResponse.json({
             progress: {
@@ -112,7 +174,7 @@ export async function GET(
                 target_steps: challenge.target_steps,
                 progress_percent: progressPercent,
                 is_completed: isCompleted,
-                completed_at: participation.completed_at,
+                completed_at: completedAt,
                 reward_uc: challenge.reward_uc,
                 type: challenge.type,
             },

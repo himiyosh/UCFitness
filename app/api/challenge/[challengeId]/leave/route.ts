@@ -1,9 +1,15 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import {
+    authorizeChallengeGroup,
+    getGroupChallengeDenial,
+} from '@/lib/services/challenge-access';
+import { supabaseAdmin } from '@/lib/supabase';
+import { isValidUUID } from '@/lib/validation';
 
 // ============================================
 // チャレンジ離脱 API
@@ -13,7 +19,7 @@ import { reportError } from '@/lib/errors';
 export async function DELETE(
     _req: NextRequest,
     { params }: { params: Promise<{ challengeId: string }> }
-) {
+): Promise<NextResponse> {
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,20 +29,31 @@ export async function DELETE(
         const { challengeId } = await params;
         const userId = session.user.id;
 
-        // UUID形式バリデーション
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(challengeId)) {
+        if (!isValidUUID(challengeId)) {
             return NextResponse.json({ error: 'Invalid challenge ID' }, { status: 400 });
         }
 
         // チャレンジの存在確認
         const { data: challenge, error: challengeError } = await supabaseAdmin
             .from('challenges')
-            .select('id, created_by')
+            .select('id, type, group_id, created_by')
             .eq('id', challengeId)
-            .single();
+            .maybeSingle();
 
-        if (challengeError || !challenge) {
+        if (challengeError) {
+            reportError('challenge:leave:fetch', challengeError, { userId, challengeId });
+            return NextResponse.json({ error: 'Failed to fetch challenge' }, { status: 500 });
+        }
+        if (!challenge) {
             return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
+        }
+
+        const denial = getGroupChallengeDenial(
+            await authorizeChallengeGroup(challenge, userId, 'participate', 'challenge:leave'),
+            'Failed to authorize challenge leave',
+        );
+        if (denial) {
+            return NextResponse.json({ error: denial.error }, { status: denial.status });
         }
 
         // 作成者は離脱不可
@@ -45,12 +62,16 @@ export async function DELETE(
         }
 
         // 参加しているかチェック
-        const { data: existing } = await supabaseAdmin
+        const { data: existing, error: existingError } = await supabaseAdmin
             .from('challenge_participants')
             .select('id')
             .eq('challenge_id', challengeId)
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
+        if (existingError) {
+            reportError('challenge:leave:existing', existingError, { userId, challengeId });
+            return NextResponse.json({ error: 'Failed to check challenge participation' }, { status: 500 });
+        }
 
         if (!existing) {
             return NextResponse.json({ error: 'Not participating' }, { status: 404 });
