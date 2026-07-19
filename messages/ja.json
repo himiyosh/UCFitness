@@ -1253,6 +1253,25 @@
     "comparisonUnavailable": "歩数比較データを取得できませんでした。",
     "competitionUnavailable": "グループ競争データの一部を取得できませんでした。"
   },
+  "GroupInvite": {
+    "title": "グループ招待",
+    "headerDesc": "受け取った招待リンクを確認し、安全にグループへ参加します。",
+    "create": "招待リンクを発行",
+    "creating": "発行中",
+    "createSuccess": "招待リンクを発行しました。",
+    "linkLabel": "7日間有効な招待リンク",
+    "expiresAt": "{date}まで有効です。リンクを知っている人だけが参加できます。",
+    "copy": "リンクをコピー",
+    "copySuccess": "招待リンクをコピーしました。",
+    "copyFailed": "コピーできませんでした。選択済みのリンクを手動でコピーしてください。",
+    "share": "共有",
+    "shareText": "UCFitnessのグループ招待です。",
+    "shareFailed": "共有を開始できませんでした。リンクを手動で共有してください。",
+    "createForbidden": "招待リンクを発行する権限がありません。",
+    "createLimit": "有効な招待リンクが上限に達しました。",
+    "createUnavailable": "招待リンク機能は現在利用できません。時間をおいて再度お試しください。",
+    "createNetworkError": "通信に失敗しました。接続を確認して再度お試しください。"
+  },
   "GroupReactions": {
     "addReaction": "リアクションする",
     "removeReaction": "リアクションを取り消す",

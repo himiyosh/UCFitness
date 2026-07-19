@@ -1253,6 +1253,25 @@
     "comparisonUnavailable": "Step comparison data could not be loaded.",
     "competitionUnavailable": "Some group competition data could not be loaded."
   },
+  "GroupInvite": {
+    "title": "Group invitation",
+    "headerDesc": "Verify an invitation link and join the group securely.",
+    "create": "Create invite link",
+    "creating": "Creating",
+    "createSuccess": "Invite link created.",
+    "linkLabel": "Invite link valid for 7 days",
+    "expiresAt": "Valid until {date}. Only people with this link can join.",
+    "copy": "Copy link",
+    "copySuccess": "Invite link copied.",
+    "copyFailed": "The link could not be copied. Copy the selected link manually.",
+    "share": "Share",
+    "shareText": "You are invited to a UCFitness group.",
+    "shareFailed": "Sharing could not start. Share the link manually.",
+    "createForbidden": "You do not have permission to create invite links.",
+    "createLimit": "This group has reached its active invite-link limit.",
+    "createUnavailable": "Invite links are currently unavailable. Try again later.",
+    "createNetworkError": "The request failed. Check your connection and try again."
+  },
   "GroupReactions": {
     "addReaction": "React",
     "removeReaction": "Remove reaction",
