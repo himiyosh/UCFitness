@@ -47,6 +47,22 @@ export interface Database {
                     joined_at: string;
                 };
             };
+            challenges: {
+                Row: {
+                    id: string;
+                    title: string;
+                    description: string | null;
+                    type: 'INDIVIDUAL' | 'GROUP';
+                    target_steps: number;
+                    start_date: string;
+                    end_date: string;
+                    reward_uc: number;
+                    is_active: boolean;
+                    created_by: string;
+                    group_id: string | null;
+                    created_at: string;
+                };
+            };
             daily_steps: {
                 Row: {
                     user_id: string;
@@ -99,6 +115,23 @@ export interface Database {
             get_batch_user_step_totals: {
                 Returns: { user_id: string; total_steps: number; total_days: number }[];
             };
+            create_group_challenge: {
+                Args: {
+                    p_group_id: string;
+                    p_created_by: string;
+                    p_type: 'GROUP';
+                    p_title: string;
+                    p_description: string | null;
+                    p_target_steps: number;
+                    p_start_date: string;
+                    p_end_date: string;
+                    p_reward_uc: number;
+                };
+                Returns: {
+                    status: 'created' | 'not_found' | 'forbidden' | 'invalid';
+                    challenge: Database['public']['Tables']['challenges']['Row'] | null;
+                }[];
+            };
         };
     };
 }
@@ -106,12 +139,15 @@ export interface Database {
 export type UserRow = Database['public']['Tables']['users']['Row'];
 export type GroupRow = Database['public']['Tables']['groups']['Row'];
 export type GroupMemberRow = Database['public']['Tables']['group_members']['Row'];
+export type ChallengeRow = Database['public']['Tables']['challenges']['Row'];
 export type DailyStepRow = Database['public']['Tables']['daily_steps']['Row'];
 export type UserFollowRow = Database['public']['Tables']['user_follows']['Row'];
 export type CoinTransactionRow = Database['public']['Tables']['coin_transactions']['Row'];
 export type RecommendedItemRow = Database['public']['Tables']['recommended_items']['Row'];
 export type UserStepStatsRpcRow = Database['public']['Functions']['get_user_step_stats']['Returns'];
 export type BatchUserStepTotalsRpcRow = Database['public']['Functions']['get_batch_user_step_totals']['Returns'][number];
+export type GroupChallengeCreationRpcArgs = Database['public']['Functions']['create_group_challenge']['Args'];
+export type GroupChallengeCreationRpcRow = Database['public']['Functions']['create_group_challenge']['Returns'][number];
 
 /** ランキング・フォロー等で頻出する公開プロフィール射影 (PII 除外) */
 export type PublicUserSummary = Pick<UserRow, 'id' | 'name' | 'image' | 'username'>;
