@@ -53,7 +53,7 @@
       "date": "2026-05-23",
       "agent": "UCFitnessAgent",
       "action": "監査結果対応 — FrameSelector Hooks 違反修正、CreateChallengeModal の a11y/i18n 改善、Push subscribe API 統一、URL allowlist/CSP/rate-limit/log redaction/API key hash migration/画像署名検証/CI/hooks 安全化/README・Skill・Agent 整合性修正を実施。",
-      "commit": "550ac15da5ac2288758dfd7b5ca76b0d859a4d9c",
+      "commit": "",
       "filesChanged": [
         "components/FrameSelector.tsx",
         "components/challenge/CreateChallengeModal.tsx",
@@ -1120,7 +1120,7 @@
       "date": "2026-07-20",
       "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
       "action": "F016 Supabase RLS強化Phase 1をorigin/mainから開始。全Supabase client・from/rpc経路と25参照tableを監査し、browser/anon直接DB利用0件を確認した。api_keysへpolicyなしRLS、通常role・列・sequence権限剥奪、service_roleの現行8読取列＋last_used_at更新だけを再付与するfail-closed migrationと静的契約6件を追加。全361テストとcheck:allをPASS。実catalog適用は未実施のためin-progressを維持。",
-      "commit": "",
+      "commit": "550ac15da5ac2288758dfd7b5ca76b0d859a4d9c",
       "filesChanged": [
         "migrations/20260720_harden_api_keys_rls.sql",
         "lib/__tests__/api-keys-rls-migration.test.ts",
