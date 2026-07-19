@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { auth } from '@/lib/auth';
 import { createLoginRequiredRedirect } from '@/lib/auth-redirect';
 import { reportError } from '@/lib/errors';
+import { loadManagedChallengeGroups } from '@/lib/services/managed-challenge-groups';
 import { supabaseAdmin } from '@/lib/supabase';
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -33,11 +34,15 @@ export default async function ChallengesPage() {
 
     const userId = session.user.id;
 
-    const { data: dbUser, error: dbUserError } = await supabaseAdmin
-        .from('users')
-        .select('name, image, username')
-        .eq('id', userId)
-        .single();
+    const [dbUserResult, managedGroups] = await Promise.all([
+        supabaseAdmin
+            .from('users')
+            .select('name, image, username')
+            .eq('id', userId)
+            .single(),
+        loadManagedChallengeGroups(userId),
+    ]);
+    const { data: dbUser, error: dbUserError } = dbUserResult;
 
     if (dbUserError) {
         reportError('challenges:user', dbUserError, { userId });
@@ -74,7 +79,10 @@ export default async function ChallengesPage() {
                 />
 
                 {/* チャレンジコンテンツ */}
-                <ChallengesPageClient currentUserId={userId} />
+                <ChallengesPageClient
+                    currentUserId={userId}
+                    managedGroups={managedGroups}
+                />
             </div>
             <Footer />
         </main>
