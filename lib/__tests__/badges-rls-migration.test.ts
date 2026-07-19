@@ -132,4 +132,26 @@ describe("badges RLS migration", () => {
     );
     expect(migration.trimEnd()).toMatch(/COMMIT;$/);
   });
+
+  it("Phase 6進捗をactionとdateで固定しF001とF016のstatusを維持する", () => {
+    const features = JSON.parse(
+      readFileSync(path.join(root, ".github/ucfitness-features.json"), "utf8"),
+    ) as { features: Array<{ id: string; status: string }> };
+    expect(
+      features.features
+        .filter(({ id }) => ["F001", "F016"].includes(id))
+        .map(({ id, status }) => [id, status]),
+    ).toEqual([["F001", "not-started"], ["F016", "in-progress"]]);
+
+    const progress = JSON.parse(
+      readFileSync(path.join(root, ".github/ucfitness-progress.json"), "utf8"),
+    ) as { sessionLog: Array<{ date: string; action: string; commit: string }> };
+    const phase = progress.sessionLog.find(
+      ({ date, action }) =>
+        date === "2026-07-20" &&
+        action.includes("Phase 6") &&
+        action.includes("badges"),
+    );
+    expect(phase?.commit).toBe("fa261c044c6bced39d0e7ffd6fe97932b2799c84");
+  });
 });
