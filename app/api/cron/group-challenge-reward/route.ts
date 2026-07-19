@@ -12,7 +12,6 @@ import type { PushLocale } from '@/lib/services/push-messages';
 import type { GroupChallengeRewardClaimRpcRow } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
-
 const MAX_CLAIMED_USERS = 20;
 const MIN_LEASE_REMAINING_MS = 30_000;
 const MAX_PUSH_DURATION_MS = 15_000;
@@ -134,7 +133,6 @@ export async function GET(request: Request): Promise<NextResponse> {
     if (!cronSecret || request.headers.get('authorization') !== 'Bearer ' + cronSecret) {
         return new NextResponse('Unauthorized', { status: 401 });
     }
-
     let claimResult;
     try {
         claimResult = await supabaseAdmin.rpc('claim_group_challenge_reward_outbox');
@@ -197,7 +195,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                     AbortSignal.timeout(Math.min(
                         MAX_PUSH_DURATION_MS, leaseRemaining - MAX_PUSH_DURATION_MS)),
                 );
-                pushSucceeded = delivery.sent > 0 && delivery.failed === 0;
+                pushSucceeded = delivery.sent > 0 && delivery.failed === delivery.expired;
                 if (!pushSucceeded) reportStage('push', userIndex);
             } catch {
                 reportStage('push', userIndex);

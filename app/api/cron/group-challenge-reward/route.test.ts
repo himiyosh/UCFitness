@@ -28,8 +28,7 @@ function subscription(userIndex = 0): Record<string, unknown> {
     };
 }
 function request(secret = SECRET): Request {
-    return new Request('http://localhost/api/cron/group-challenge-reward',
-        { headers: { authorization: 'Bearer ' + secret } });
+    return new Request('http://localhost/api/cron/group-challenge-reward', { headers: { authorization: 'Bearer ' + secret } });
 }
 function mutation(countKey: 'delivered_count' | 'released_count', count = 1, reward = 50): Result {
     return { data: [{ [countKey]: count, total_reward: reward }], error: null };
@@ -70,9 +69,7 @@ beforeEach(() => {
         }),
     }));
 });
-afterAll(() => {
-    if (ORIGINAL_SECRET === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = ORIGINAL_SECRET;
-});
+afterAll(() => { if (ORIGINAL_SECRET === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = ORIGINAL_SECRET; });
 describe('GET /api/cron/group-challenge-reward', () => {
     it.each([
         ['CRON_SECRET未設定', undefined, SECRET],
@@ -164,12 +161,17 @@ describe('GET /api/cron/group-challenge-reward', () => {
         expect(mocks.sendPush).not.toHaveBeenCalled();
         expect(await response.json()).toMatchObject({ failedUsers: 1, releasedUsers: 1 });
     });
-    it('Pushが部分失敗の場合、completeせずreleaseする', async () => {
-        mocks.sendPush.mockResolvedValue({ sent: 1, failed: 1, expired: 0, skippedDuplicates: 0 });
+    it.each([
+        ['成功と恒久失効だけ', { sent: 1, failed: 1, expired: 1, skippedDuplicates: 0 }, 200, 'complete_group_challenge_reward_outbox'],
+        ['成功と一時失敗', { sent: 1, failed: 1, expired: 0, skippedDuplicates: 0 }, 500, 'release_group_challenge_reward_outbox'],
+        ['全endpoint恒久失効', { sent: 0, failed: 1, expired: 1, skippedDuplicates: 0 }, 500, 'release_group_challenge_reward_outbox'],
+    ])('Pushが%sの場合、%iを返して%sする', async (_name, delivery, status, rpcName) => {
+        mocks.sendPush.mockResolvedValue(delivery);
         const response = await GET(request());
-        expect(response.status).toBe(500);
-        expect(mocks.rpc).not.toHaveBeenCalledWith('complete_group_challenge_reward_outbox', expect.anything());
-        expect(await response.json()).toMatchObject({ failedUsers: 1, releasedUsers: 1 });
+        expect(response.status).toBe(status);
+        expect(mocks.rpc).toHaveBeenCalledWith(rpcName, { p_user_id: USER_IDS[0], p_lease_id: LEASE_ID });
+        expect(mocks.rpc).not.toHaveBeenCalledWith(status === 200 ? 'release_group_challenge_reward_outbox' : 'complete_group_challenge_reward_outbox', expect.anything());
+        expect(await response.json()).toMatchObject(status === 200 ? { deliveredUsers: 1, failedUsers: 0 } : { deliveredUsers: 0, failedUsers: 1, releasedUsers: 1 });
     });
     it('lease残存時間が不足する場合、Pushせずreleaseする', async () => {
         setClaims([{ ...claim(), lease_expires_at: new Date(Date.now() + 1000).toISOString() }]);
@@ -228,7 +230,7 @@ describe('GET /api/cron/group-challenge-reward', () => {
         expect(mocks.sendPush).toHaveBeenCalledTimes(2);
         expect(maxActive).toBe(1);
         const observable = JSON.stringify([body, mocks.reportError.mock.calls]);
-        for (const privateValue of [...USER_IDS, LEASE_ID, ENDPOINT])
+        for (const privateValue of [...USER_IDS, LEASE_ID, ENDPOINT, SECRET, 'グループチャレンジ報酬'])
             expect(observable).not.toContain(privateValue);
     });
 });
