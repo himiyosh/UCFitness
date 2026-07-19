@@ -219,7 +219,7 @@ describe("user_follows RLS audit", () => {
     );
   });
 
-  it("RLS変更と分離する高確度のDB error fallbackを記録する", () => {
+  it("RLS変更と分離したlookup障害契約を記録する", () => {
     const followRoute = readRepositoryFile("app/api/user/follow/route.ts");
     const followersRoute = readRepositoryFile(
       "app/api/user/followers/route.ts",
@@ -229,9 +229,10 @@ describe("user_follows RLS audit", () => {
     );
     const groupRoute = readRepositoryFile("app/api/user/group/route.ts");
 
-    expect(followRoute).toMatch(
-      /const \{ data: targetUser \} = await supabaseAdmin[\s\S]+?if \(!targetUser\) \{[\s\S]+?status: 404/,
-    );
+    expect(followRoute).toContain("error: targetLookupError");
+    expect(followRoute).toContain('targetLookupError?.code === "PGRST116"');
+    expect(followRoute).toContain('"user/follow:target_lookup"');
+    expect(followRoute).toContain('"Failed to load target user"');
     expect(followersRoute).toMatch(
       /const \{ data: users \} = await supabaseAdmin[\s\S]+?users\?\.forEach/,
     );
@@ -244,9 +245,10 @@ describe("user_follows RLS audit", () => {
     expect(comparisonRoute).toContain(
       "for (const row of stepsResult.data || [])",
     );
-    expect(groupRoute).toMatch(
-      /const \{ data: followRelationship \} = await supabaseAdmin[\s\S]+?if \(!followRelationship\) \{[\s\S]+?status: 403/,
-    );
+    expect(groupRoute).toContain("error: followLookupError");
+    expect(groupRoute).toContain("followLookupError?.code === 'PGRST116'");
+    expect(groupRoute).toContain("'user/group:invite_follow_lookup'");
+    expect(groupRoute).toContain('"Failed to verify follow relationship"');
   });
 
   it("F001を変更せずF016とPhase 7・8のaudit-only成果を維持する", () => {

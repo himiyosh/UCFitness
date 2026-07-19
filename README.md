@@ -337,10 +337,10 @@ RLS変更とは分離すべき高確度のerror fallbackも監査した。
 
 | 経路 | 現行のDB障害時挙動 | 別Fix候補 |
 |---|---|---|
-| `POST /api/user/follow`の対象ユーザー確認 | `users`照会errorを取得せず404へ変換 | DB errorを報告して5xx |
+| `POST /api/user/follow`の対象ユーザー確認 | `PGRST116`だけを404とし、その他のDB障害と`null/null`は登録前に報告して500 | 修正済み |
 | `GET /api/user/followers`のプロフィール取得 | `users`照会errorを取得せず欠落行または空の200へ変換 | 取得不能を空状態から分離 |
 | `GET /api/user/following-comparison` | `user_follows`照会errorを空比較へ、users/steps errorを`Unknown`/0歩へ変換 | 各errorを報告して非成功応答 |
-| group invite anti-abuse | `user_follows`照会errorを「フォローなし」の403へ変換 | 権限拒否とDB障害を分離 |
+| group invite anti-abuse | `PGRST116`だけを403とし、その他のDB障害と`null/null`は招待・legacy同期前に報告して500 | 修正済み |
 
 migration設計前に、DB管理者が承認したread-only接続で次を保存する。結果に未知の列、
 制約、policy、grantee、owner、BYPASSRLS、sequenceがあれば設計を中止して個別に確認する。
