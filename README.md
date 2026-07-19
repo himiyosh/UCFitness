@@ -280,9 +280,8 @@ audit-onlyとした。現行コードにはserver-sideの`.from('walking_routes'
 呼び、Supabase clientを直接利用しない。
 
 入力境界は、POSTでname/description/distance/duration/difficulty、PATCH/DELETEで
-route IDのUUIDを検証する現行実装を確認し、今回変更していない。一方、PATCHの所有者確認
-`SELECT`はSupabase errorを取得せず、DB障害を404へ偽装し得る。RLS監査とは分離し、
-所有者filterを維持したエラー処理修正を別PR候補とする。
+route IDのUUIDを検証する。PATCHの所有者確認`SELECT`は`PGRST116`だけを404とし、
+その他のDB障害や`data: null, error: null`の不正shapeは更新前に報告して500を返す。
 
 schema確定後に限るgrant候補は、`service_role`へ12列のcolumn `SELECT`、
 `user_id` / `name` / `description` / `distance_km` / `duration_minutes` /
