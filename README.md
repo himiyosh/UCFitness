@@ -249,6 +249,14 @@ Phase 2 migrationは既知7列の型・nullability、`public.users(id)`へのcas
 初期作成履歴には旧policyがあるため、実catalogに残存していればmigrationは自動削除せず
 中断し、適用前の個別確認と承認を要求する。
 
+Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
+`coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
+歩数再計算・ログインボーナス・backfillの`INSERT`/`UPDATE`/`DELETE`を使う。原子RPCも
+追跡済みSQLでは既定の`SECURITY INVOKER`であるため、`service_role`へ8列SELECT、
+書込み6列INSERT/UPDATE、table DELETE、対象所有sequenceのUSAGEだけを付与する。
+既知8列、UUID/時刻default、`public.users(id)` FK、主キー、type check、idempotency
+unique index、owner、policy、BYPASSRLSが一致しなければtransactionを中止する。
+
 適用前に読み取り専用で `pg_class` / `pg_roles` / `pg_policy` /
 `information_schema.role_table_grants` / `information_schema.column_privileges` を確認し、
 現在のowner・`service_role.rolbypassrls`・policy・ACLを保存する。production /
