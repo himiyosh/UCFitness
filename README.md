@@ -236,14 +236,27 @@ Phase 1 migrationはpolicyを作らず、通常roleをdefault denyにする。`P
 期待と異なる場合は同一トランザクションを中止する。`FORCE ROW LEVEL SECURITY`は使わない。
 APIキーの平文`key`列とlegacy照合の廃止はPhase 1対象外で、後続Phaseで扱う。
 
+Phase 2 は `migrations/20260720_harden_push_subscriptions_rls.sql` で、
+`push_subscriptions` を保護する。購読登録は`INSERT`/`UPDATE`、配信・再購読重複整理は
+`SELECT`、解除・404/410 cleanupは`DELETE`を使い、すべて`supabaseAdmin`経由である。
+browser clientは`/api/push/subscribe`だけを呼び、Supabaseへ直接接続しない。
+
+Phase 2 migrationは既知7列の型・nullability、`public.users(id)`へのcascade FK、
+主キー、`(user_id, endpoint)` unique制約、owner、policy、BYPASSRLSを検証する。
+全ACLを剥奪後、`service_role`へ7列SELECT、ID以外6列のINSERT/UPDATE、table DELETE、
+対象table所有sequenceだけのUSAGEを付与する。追跡済み履歴は完全なschema manifestでは
+ないため、未知の追加列・default・indexの完全性と実catalogは未検証である。
+初期作成履歴には旧policyがあるため、実catalogに残存していればmigrationは自動削除せず
+中断し、適用前の個別確認と承認を要求する。
+
 適用前に読み取り専用で `pg_class` / `pg_roles` / `pg_policy` /
 `information_schema.role_table_grants` / `information_schema.column_privileges` を確認し、
 現在のowner・`service_role.rolbypassrls`・policy・ACLを保存する。production /
 nonproductionへの適用は明示承認後のみ実施する。
 
 ロールバックは、最初に`service_role`の最小GRANTを前方修正し、それで復旧しない場合のみ
-`ALTER TABLE public.api_keys DISABLE ROW LEVEL SECURITY`を実行する。anon/authenticatedへの
-再GRANTは保存した適用前ACLに基づく明示的なセキュリティ承認がある場合だけ行う。
+対象tableのRLSを無効化する。anon/authenticatedへの再GRANTは保存した適用前ACLに基づく
+明示的なセキュリティ承認がある場合だけ行う。
 
 Google Healthを有効化する前に
 `migrations/20260617_add_multi_provider_connections.sql` を適用し、
