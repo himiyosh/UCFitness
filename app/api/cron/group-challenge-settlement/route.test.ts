@@ -128,20 +128,20 @@ describe('GET /api/cron/group-challenge-settlement', () => {
         expect(mocks.rpc).not.toHaveBeenCalled();
     });
 
-    it('候補取得が失敗した場合、空候補へ偽装せず500を返す', async () => {
-        queryResult = { data: null, error: { code: '42703', message: 'column missing' } };
+    it.each([
+        ['候補取得失敗', { data: null, error: { code: '42703', message: 'column missing' } }, '42703'],
+        ['候補dataがnull', { data: null, error: null }, undefined],
+    ])('%sの場合、空候補へ偽装せず500を返す', async (_caseName, result, errorCode) => {
+        queryResult = result;
 
         const response = await GET(request());
 
         expect(response.status).toBe(500);
-        expect(await response.json()).toEqual({
-            success: false,
-            error: 'Internal Server Error',
-        });
+        expect(await response.json()).toEqual({ success: false, error: 'Internal Server Error' });
         expect(mocks.reportError).toHaveBeenCalledWith(
             'cron/group-challenge-settlement:candidates',
             expect.any(Error),
-            { errorCode: '42703' },
+            { errorCode },
         );
         expect(mocks.rpc).not.toHaveBeenCalled();
     });
@@ -211,13 +211,13 @@ describe('GET /api/cron/group-challenge-settlement', () => {
         expect(JSON.stringify([body, mocks.reportError.mock.calls])).not.toContain(CHALLENGE_IDS[0]);
     });
 
-    it('invalid shapeとunknown statusを別々に分類して失敗を返す', async () => {
+    it('unsafe integer shapeとunknown statusを別々に分類して失敗を返す', async () => {
         queryResult = {
             data: CHALLENGE_IDS.slice(0, 2).map((id) => ({ id })),
             error: null,
         };
         mocks.rpc
-            .mockResolvedValueOnce({ data: [], error: null })
+            .mockResolvedValueOnce({ data: [{ ...rpcRow('settled'), total_steps: Number.MAX_SAFE_INTEGER + 1 }], error: null })
             .mockResolvedValueOnce({ data: [rpcRow('future_status')], error: null });
 
         const response = await GET(request());

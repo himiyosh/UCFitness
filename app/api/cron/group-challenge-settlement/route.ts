@@ -37,7 +37,7 @@ function isSettlementStatus(value: string): value is SettlementStatus {
 }
 
 function isNonNegativeInteger(value: unknown): value is number {
-    return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
 function parseSettlementResult(data: unknown): ParsedSettlementResult {
@@ -126,7 +126,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             .order('id', { ascending: true })
             .limit(CANDIDATE_LIMIT);
 
-        if (candidateError) {
+        if (candidateError || !Array.isArray(candidates)) {
             reportError(
                 'cron/group-challenge-settlement:candidates',
                 new Error('Settlement candidate query failed'),
@@ -138,7 +138,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         }
 
         const outcomes = createOutcomes();
-        const candidateRows = candidates ?? [];
+        const candidateRows = candidates;
 
         for (const [candidateIndex, candidate] of candidateRows.entries()) {
             let rpcResult;
