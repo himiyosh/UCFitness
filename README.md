@@ -272,6 +272,113 @@ Phase 6 は `migrations/20260720_harden_badges_rls.sql` で定義表`badges`を�
 直接2 SELECT・`user_badges` relation 2 SELECTに必要な8列だけをservice_roleへ許可し、直接DMLは許可しない。
 raw SQL seedはowner実行境界として分離し、既知schema・PK/unique・incoming FK・owner・policy・所有sequenceなしが不一致なら中止する。
 
+Phase 7 は個人データ`walking_routes`を候補として監査したが、migrationを作らない
+audit-onlyとした。現行コードにはserver-sideの`.from('walking_routes')`が6件あり、
+一覧`SELECT`、件数`SELECT`、`INSERT`＋returning `SELECT`、所有者確認`SELECT`、
+`UPDATE`＋returning `SELECT`、`DELETE`をすべて`supabaseAdmin`で実行する。
+各routeは`user_id = session.user.id`を維持し、browser componentは同一origin APIだけを
+呼び、Supabase clientを直接利用しない。
+
+コードから確認できる使用列は`id` / `user_id` / `name` / `description` /
+`distance_km` / `duration_minutes` / `difficulty` / `is_favorite` / `walk_count` /
+`last_walked_at` / `created_at` / `updated_at`である。しかし`origin/main`には
+`walking_routes`の追跡DDLも`types/database.ts`のDatabase型もなく、
+`docs/improvement-report.md`が参照する`migrations/023_walking_routes.sql`も
+Git履歴に存在しない。実catalog用の接続文字列、`.env.local`、`psql`、Supabase CLIも
+このworkspaceにないため、型、nullability、default、`public.users(id)` FK、PK、
+unique/check、owner、RLS/policy、ACL、owned sequenceを安全に確定できない。
+これらをコードから推測したfail-closed migrationは作成せず、production /
+nonproduction DBへの接続・適用・read/writeも実施していない。
+
+migration設計前に、DB管理者が承認したread-only接続で次を保存する。結果に未知の列、
+制約、policy、grantee、owner、BYPASSRLS、sequenceがあれば設計を中止して個別に確認する。
+
+```sql
+BEGIN TRANSACTION READ ONLY;
+
+SELECT c.relkind, c.relrowsecurity, c.relforcerowsecurity,
+       owner.rolname AS owner_name, owner.rolbypassrls AS owner_bypassrls
+FROM pg_catalog.pg_class AS c
+JOIN pg_catalog.pg_roles AS owner ON owner.oid = c.relowner
+WHERE c.oid = pg_catalog.to_regclass('public.walking_routes');
+
+SELECT a.attnum, a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod) AS type,
+       a.attnotnull, a.attgenerated,
+       pg_catalog.pg_get_expr(d.adbin, d.adrelid) AS default_expression
+FROM pg_catalog.pg_attribute AS a
+LEFT JOIN pg_catalog.pg_attrdef AS d
+  ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+WHERE a.attrelid = pg_catalog.to_regclass('public.walking_routes')
+  AND a.attnum > 0 AND NOT a.attisdropped
+ORDER BY a.attnum;
+
+SELECT conname, contype, convalidated, confrelid::regclass AS referenced_table,
+       confdeltype, pg_catalog.pg_get_constraintdef(oid, true) AS definition
+FROM pg_catalog.pg_constraint
+WHERE conrelid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY contype, conname;
+
+SELECT indexrelid::regclass AS index_name, indisprimary, indisunique,
+       pg_catalog.pg_get_indexdef(indexrelid) AS definition
+FROM pg_catalog.pg_index
+WHERE indrelid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY indexrelid::regclass::text;
+
+SELECT polname, polcmd, polpermissive, polroles, polqual, polwithcheck
+FROM pg_catalog.pg_policy
+WHERE polrelid = pg_catalog.to_regclass('public.walking_routes');
+
+SELECT COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+       privilege.privilege_type, privilege.is_grantable
+FROM pg_catalog.pg_class AS c
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  COALESCE(c.relacl, pg_catalog.acldefault('r', c.relowner))
+) AS privilege
+LEFT JOIN pg_catalog.pg_roles AS grantee ON grantee.oid = privilege.grantee
+WHERE c.oid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY grantee, privilege.privilege_type;
+
+SELECT a.attname AS column_name,
+       COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+       privilege.privilege_type, privilege.is_grantable
+FROM pg_catalog.pg_attribute AS a
+CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) AS privilege
+LEFT JOIN pg_catalog.pg_roles AS grantee ON grantee.oid = privilege.grantee
+WHERE a.attrelid = pg_catalog.to_regclass('public.walking_routes')
+  AND a.attnum > 0 AND NOT a.attisdropped AND a.attacl IS NOT NULL
+ORDER BY a.attnum, grantee, privilege.privilege_type;
+
+SELECT sequence.oid::regclass AS owned_sequence, dependency.deptype,
+       dependency.refobjsubid AS owning_column_number,
+       owner.rolname AS owner_name, sequence.relacl
+FROM pg_catalog.pg_class AS sequence
+JOIN pg_catalog.pg_depend AS dependency
+  ON dependency.objid = sequence.oid AND dependency.deptype IN ('a', 'i')
+JOIN pg_catalog.pg_roles AS owner ON owner.oid = sequence.relowner
+WHERE sequence.relkind = 'S'
+  AND dependency.refobjid = pg_catalog.to_regclass('public.walking_routes');
+
+SELECT sequence.oid::regclass AS owned_sequence,
+       COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+       privilege.privilege_type, privilege.is_grantable
+FROM pg_catalog.pg_class AS sequence
+JOIN pg_catalog.pg_depend AS dependency
+  ON dependency.objid = sequence.oid AND dependency.deptype IN ('a', 'i')
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  COALESCE(sequence.relacl, pg_catalog.acldefault('S', sequence.relowner))
+) AS privilege
+LEFT JOIN pg_catalog.pg_roles AS grantee ON grantee.oid = privilege.grantee
+WHERE sequence.relkind = 'S'
+  AND dependency.refobjid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY sequence.oid::regclass::text, grantee, privilege.privilege_type;
+
+SELECT rolname, rolbypassrls
+FROM pg_catalog.pg_roles
+WHERE rolname IN ('anon', 'authenticated', 'service_role');
+
+ROLLBACK;
+```
+
 適用前に読み取り専用で `pg_class` / `pg_roles` / `pg_policy` /
 `pg_proc` / `information_schema.role_table_grants` / `column_privileges` /
 `routine_privileges` を確認し、owner・BYPASSRLS・policy・ACL・関数属性を保存する。production /
