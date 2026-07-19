@@ -51,7 +51,6 @@ BEGIN
        OR pg_catalog.pg_get_expr(attribute_default.adbin, attribute_default.adrelid)
             IS DISTINCT FROM expected.default_expression
        OR attribute.attgenerated <> '';
-
     IF mismatched_columns IS NOT NULL OR (
         SELECT pg_catalog.count(*)
         FROM pg_catalog.pg_attribute
@@ -60,7 +59,6 @@ BEGIN
         RAISE EXCEPTION 'F016: public.coin_balances has incompatible columns: %',
             mismatched_columns;
     END IF;
-
     IF NOT EXISTS (
         SELECT 1
         FROM pg_catalog.pg_constraint
@@ -106,7 +104,6 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'F016: coin_balances non-negative balance check is incompatible';
     END IF;
-
     IF EXISTS (
         SELECT 1
         FROM pg_catalog.pg_class AS sequence_class
@@ -122,7 +119,6 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'F016: public.coin_balances must not own sequences';
     END IF;
-
     SELECT relowner, pg_catalog.pg_get_userbyid(relowner)
     INTO table_owner, table_owner_name
     FROM pg_catalog.pg_class
@@ -219,7 +215,6 @@ REVOKE ALL PRIVILEGES (
     user_id, total_balance, total_earned, total_bonus,
     current_streak, best_streak, investor_rank, updated_at
 ) ON TABLE public.coin_balances FROM PUBLIC, anon, authenticated, service_role;
-
 GRANT SELECT (
     user_id, total_balance, total_earned, total_bonus,
     current_streak, best_streak, investor_rank
@@ -241,13 +236,11 @@ BEGIN
     SELECT oid INTO service_role_oid
     FROM pg_catalog.pg_roles
     WHERE rolname = 'service_role';
-
     IF NOT (SELECT relrowsecurity FROM pg_catalog.pg_class WHERE oid = target_table)
        OR (SELECT relforcerowsecurity FROM pg_catalog.pg_class WHERE oid = target_table)
        OR EXISTS (SELECT 1 FROM pg_catalog.pg_policy WHERE polrelid = target_table) THEN
         RAISE EXCEPTION 'F016: public.coin_balances RLS state is incorrect';
     END IF;
-
     FOREACH role_name IN ARRAY ARRAY['anon'::name, 'authenticated'::name]
     LOOP
         IF pg_catalog.has_table_privilege(
@@ -260,7 +253,6 @@ BEGIN
                 role_name;
         END IF;
     END LOOP;
-
     IF pg_catalog.has_table_privilege(
         'service_role', target_table,
         'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'
@@ -278,7 +270,6 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'F016: service_role coin_balances privileges are incorrect';
     END IF;
-
     IF EXISTS (
         SELECT 1
         FROM pg_catalog.pg_class AS target
@@ -299,7 +290,6 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'F016: an unexpected role retains coin_balances privileges';
     END IF;
-
     FOREACH expected_function IN ARRAY ARRAY[
         'public.recalculate_coin_balance(uuid,integer)',
         'public.deduct_balance(uuid,integer,text,text,text)',
