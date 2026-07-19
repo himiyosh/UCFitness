@@ -319,7 +319,8 @@ sequenceだけの`USAGE`である。`PUBLIC` / `anon` / `authenticated`には権
 policy、`auth.uid()`、`FORCE ROW LEVEL SECURITY`、`GRANT ALL`は追加しない。
 
 `types/database.ts`の`UserFollowRow`は4列を非nullableなTypeScript値として表し、
-`INSERT`が`id` / `created_at`を省略するため両列にDB defaultが必要なことは確認できる。
+`INSERT`は`id` / `created_at`を省略するため両列の自動生成に依存する。ただし、
+DB default、generated列、trigger等のどの仕組みで補うかは追跡証拠から確定できない。
 一方、現行treeにもGit履歴にも`user_follows`の追跡DDLはなく、型はPostgreSQLの
 `uuid`と`text`、`timestamp with time zone`と`timestamp without time zone`、
 default式の違いを証明しない。2つの`public.users(id)` FKと削除動作、PK、
@@ -374,6 +375,12 @@ SELECT indexrelid::regclass AS index_name, indisprimary, indisunique,
 FROM pg_catalog.pg_index
 WHERE indrelid = pg_catalog.to_regclass('public.walking_routes')
 ORDER BY indexrelid::regclass::text;
+
+SELECT tgname, tgtype, tgenabled, pg_catalog.pg_get_triggerdef(oid, true) AS definition
+FROM pg_catalog.pg_trigger
+WHERE tgrelid = pg_catalog.to_regclass('public.walking_routes')
+  AND NOT tgisinternal
+ORDER BY tgname;
 
 SELECT polname, polcmd, polpermissive, polroles, polqual, polwithcheck
 FROM pg_catalog.pg_policy

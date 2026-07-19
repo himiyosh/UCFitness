@@ -51,6 +51,7 @@ const userFollowReferences = runtimeSources.flatMap((filePath) => {
   return [...source.matchAll(/\.from\(["']user_follows["']\)/g)].map(
     (match) => ({
       filePath,
+      clientPrefix: source.slice(Math.max(0, match.index - 120), match.index),
       segment: source.slice(match.index, match.index + 700),
     }),
   );
@@ -117,10 +118,8 @@ describe("user_follows RLS audit", () => {
       "app/api/user/group/route.ts": 1,
     });
     expect(userFollowReferences).toHaveLength(9);
-    for (const filePath of routePaths) {
-      const source = readRepositoryFile(filePath);
-      expect(source).toContain("supabaseAdmin");
-      expect(source).not.toMatch(/import\s+\{\s*supabase\s*\}/);
+    for (const { clientPrefix } of userFollowReferences) {
+      expect(clientPrefix).toMatch(/supabaseAdmin\s*$/);
     }
   });
 
@@ -132,7 +131,24 @@ describe("user_follows RLS audit", () => {
     const operations = userFollowReferences.map(({ segment }) =>
       operation(segment)
     );
+    const signatures = userFollowReferences.map(({ filePath, segment }) => {
+      const columns = segment.match(
+        /\.select\(\s*["']([^"']+)["']/,
+      )?.[1] ?? "";
+      return `${filePath}|${operation(segment)}|${columns}`;
+    }).sort();
 
+    expect(signatures).toEqual([
+      "app/api/user/feed/route.ts|select|following_id",
+      "app/api/user/feed/unread-count/route.ts|select|following_id",
+      "app/api/user/follow/route.ts|delete|",
+      "app/api/user/follow/route.ts|insert|",
+      "app/api/user/follow/status/route.ts|select|id",
+      "app/api/user/followers/route.ts|select|follower_id, created_at",
+      "app/api/user/following-comparison/route.ts|select|following_id",
+      "app/api/user/following/route.ts|select|following_id, created_at",
+      "app/api/user/group/route.ts|select|id",
+    ]);
     expect(operations.filter((value) => value === "select")).toHaveLength(7);
     expect(operations.filter((value) => value === "insert")).toHaveLength(1);
     expect(operations.filter((value) => value === "delete")).toHaveLength(1);
@@ -160,22 +176,22 @@ describe("user_follows RLS audit", () => {
   });
 
   it("browserをsame-origin APIに限定してSupabase直接接続を許可しない", () => {
-    const browserSources = runtimeSources
-      .filter((filePath) => filePath.endsWith(".tsx"))
-      .map((filePath) => ({
-        filePath,
-        source: readRepositoryFile(filePath),
-      }))
-      .filter(({ source }) =>
-        /fetch\([`"']\/api\/user\/(?:feed|follow)/.test(source)
-      );
+    const browserRequests = runtimeSources.flatMap((filePath) => {
+      const source = readRepositoryFile(filePath);
+      if (!/^\s*["']use client["'];/m.test(source)) {
+        return [];
+      }
+      return [
+        ...source.matchAll(
+          /fetch\(\s*([`"'])([^`"']*\/api\/user\/(?:feed|follow)[^`"']*)\1/g,
+        ),
+      ].map((match) => ({ filePath, source, url: match[2] }));
+    });
 
-    expect(browserSources.length).toBeGreaterThan(0);
-    for (const { source } of browserSources) {
+    expect(browserRequests.length).toBeGreaterThan(0);
+    for (const { source, url } of browserRequests) {
+      expect(url).toMatch(/^\/api\/user\/(?:feed|follow)/);
       expect(source).not.toContain("@/lib/supabase");
-      expect(source).not.toMatch(
-        /fetch\([`"']https?:\/\/[^`"']+\/api\/user\/(?:feed|follow)/,
-      );
     }
   });
 
@@ -198,6 +214,9 @@ describe("user_follows RLS audit", () => {
       /\.insert\(\{\s*follower_id: userId,\s*following_id: targetUserId,\s*\}\)/,
     );
     expect(followRoute).toContain("重複は UNIQUE 制約でエラーになる");
+    expect(readRepositoryFile("README.md")).toContain(
+      "FROM pg_catalog.pg_trigger",
+    );
   });
 
   it("RLS変更と分離する高確度のDB error fallbackを記録する", () => {
@@ -230,7 +249,7 @@ describe("user_follows RLS audit", () => {
     );
   });
 
-  it("F001を変更せずF016とPhase 7のaudit-only成果を維持する", () => {
+  it("F001を変更せずF016とPhase 7・8のaudit-only成果を維持する", () => {
     const features = JSON.parse(
       readRepositoryFile(".github/ucfitness-features.json"),
     ) as { features: Array<{ id: string; status: string }> };
@@ -241,6 +260,9 @@ describe("user_follows RLS audit", () => {
     };
     const phase7 = progress.sessionLog.find(
       ({ commit }) => commit === "b34076de8376076b5ff5b5eb524e0ebfe5d18265",
+    );
+    const phase8 = progress.sessionLog.find(
+      ({ commit }) => commit === "6e40ce547b78f04a1cb331e2e29a784459f3357d",
     );
 
     expect(
@@ -255,5 +277,10 @@ describe("user_follows RLS audit", () => {
     expect(phase7?.action).toContain(
       "完全schemaを確定できないためmigrationを推測せずaudit-only",
     );
+    expect(phase8?.date).toBe("2026-07-20");
+    expect(phase8?.action).toContain(
+      "7 SELECT・1 INSERT・1 DELETE",
+    );
+    expect(phase8?.action).toContain("保護済み件数は9/25据え置き");
   });
 });
