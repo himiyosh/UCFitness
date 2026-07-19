@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const migrationPath = path.join(
   root,
-  "migrations/20260721_harden_badges_rls.sql",
+  "migrations/20260720_harden_badges_rls.sql",
 );
 const migration = readFileSync(migrationPath, "utf8");
 

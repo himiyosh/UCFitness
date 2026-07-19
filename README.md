@@ -268,6 +268,10 @@ Phase 5 は `migrations/20260720_harden_user_badges_rls.sql` で`user_badges`を
 直接5 SELECT・2 INSERTと手動upsertに合わせ、service_roleへ7列SELECT、5列INSERT、競合3列UPDATEだけを許可する。
 既知schema・3 FK・PK/unique・default・owner・policy・所有sequenceなしと既存atomic RPC境界が不一致なら中止する。
 
+Phase 6 は `migrations/20260720_harden_badges_rls.sql` で定義表`badges`を保護する。
+直接2 SELECT・`user_badges` relation 2 SELECTに必要な8列だけをservice_roleへ許可し、直接DMLは許可しない。
+raw SQL seedはowner実行境界として分離し、既知schema・PK/unique・incoming FK・owner・policy・所有sequenceなしが不一致なら中止する。
+
 適用前に読み取り専用で `pg_class` / `pg_roles` / `pg_policy` /
 `pg_proc` / `information_schema.role_table_grants` / `column_privileges` /
 `routine_privileges` を確認し、owner・BYPASSRLS・policy・ACL・関数属性を保存する。production /
