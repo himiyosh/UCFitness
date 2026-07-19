@@ -61,6 +61,10 @@ export interface Database {
                     created_by: string;
                     group_id: string | null;
                     created_at: string;
+                    settled_at: string | null;
+                    settlement_completed: boolean | null;
+                    settled_total_steps: number | null;
+                    settled_member_count: number | null;
                 };
             };
             daily_steps: {
