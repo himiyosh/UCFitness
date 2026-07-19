@@ -1,9 +1,11 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString } from '@/lib/date-utils';
+import { reportError } from '@/lib/errors';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +13,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/user/following-comparison?period=WEEKLY
  * フォロー中ユーザーと自分の歩数を期間別に比較するデータを返す
  */
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,12 +43,28 @@ export async function GET(request: Request) {
     }
 
     // フォロー中ユーザーを取得
-    const { data: followingData } = await supabaseAdmin
+    const { data: followingData, error: followingError } = await supabaseAdmin
         .from('user_follows')
         .select('following_id')
         .eq('follower_id', userId);
 
-    if (!followingData || followingData.length === 0) {
+    if (followingError) {
+        reportError(
+            'user/following-comparison:follows',
+            new Error('Following lookup failed'),
+        );
+        return NextResponse.json({ error: 'Failed to fetch following users' }, { status: 500 });
+    }
+
+    if (!followingData) {
+        reportError(
+            'user/following-comparison:follows',
+            new Error('Following lookup returned no data without an error'),
+        );
+        return NextResponse.json({ error: 'Failed to fetch following users' }, { status: 500 });
+    }
+
+    if (followingData.length === 0) {
         return NextResponse.json({ comparison: [], period, days });
     }
 
@@ -69,13 +87,66 @@ export async function GET(request: Request) {
             .order('date', { ascending: true }),
     ]);
 
+    if (usersResult.error) {
+        reportError(
+            'user/following-comparison:profiles',
+            new Error('Comparison profile lookup failed'),
+        );
+        return NextResponse.json({ error: 'Failed to fetch comparison profiles' }, { status: 500 });
+    }
+
+    if (!usersResult.data) {
+        reportError(
+            'user/following-comparison:profiles',
+            new Error('Comparison profile lookup returned no data without an error'),
+        );
+        return NextResponse.json({ error: 'Failed to fetch comparison profiles' }, { status: 500 });
+    }
+
+    if (stepsResult.error) {
+        reportError(
+            'user/following-comparison:steps',
+            new Error('Comparison steps lookup failed'),
+        );
+        return NextResponse.json({ error: 'Failed to fetch comparison steps' }, { status: 500 });
+    }
+
+    if (!stepsResult.data) {
+        reportError(
+            'user/following-comparison:steps',
+            new Error('Comparison steps lookup returned no data without an error'),
+        );
+        return NextResponse.json({ error: 'Failed to fetch comparison steps' }, { status: 500 });
+    }
+
+    const expectedUserIds = new Set(allUserIds);
+    const returnedUserIds = new Set(usersResult.data.map((user) => user.id));
+    if (
+        usersResult.data.length !== expectedUserIds.size
+        || [...expectedUserIds].some((expectedUserId) => !returnedUserIds.has(expectedUserId))
+    ) {
+        reportError(
+            'user/following-comparison:profiles',
+            new Error('Comparison profile lookup did not return all requested profiles'),
+            {
+                expectedProfileCount: expectedUserIds.size,
+                returnedProfileCount: returnedUserIds.size,
+            },
+        );
+        return NextResponse.json({ error: 'Failed to fetch comparison profiles' }, { status: 500 });
+    }
+
     const usersMap = new Map(
-        (usersResult.data || []).map(u => [u.id, u])
+        usersResult.data.map(u => [u.id, u])
     );
+    const comparisonUsers = allUserIds.flatMap((uid) => {
+        const user = usersMap.get(uid);
+        return user ? [user] : [];
+    });
 
     // ユーザーごとの日別データを構築
     const userStepsMap = new Map<string, Map<string, number>>();
-    for (const row of stepsResult.data || []) {
+    for (const row of stepsResult.data) {
         if (!userStepsMap.has(row.user_id)) {
             userStepsMap.set(row.user_id, new Map());
         }
@@ -92,9 +163,8 @@ export async function GET(request: Request) {
     }
 
     // レスポンスデータを構築
-    const comparison = allUserIds.map(uid => {
-        const user = usersMap.get(uid);
-        const stepsMap = userStepsMap.get(uid) || new Map();
+    const comparison = comparisonUsers.map(user => {
+        const stepsMap = userStepsMap.get(user.id) || new Map();
         const dailySteps = dates.map(date => ({
             date,
             steps: stepsMap.get(date) || 0,
@@ -102,11 +172,11 @@ export async function GET(request: Request) {
         const totalSteps = dailySteps.reduce((sum, d) => sum + d.steps, 0);
 
         return {
-            userId: uid,
-            name: user?.name || 'Unknown',
-            image: user?.image || null,
-            username: user?.username || null,
-            isMe: uid === userId,
+            userId: user.id,
+            name: user.name,
+            image: user.image || null,
+            username: user.username || null,
+            isMe: user.id === userId,
             totalSteps,
             dailySteps,
         };

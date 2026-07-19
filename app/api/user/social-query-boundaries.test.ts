@@ -1,0 +1,220 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+    auth: vi.fn(),
+    from: vi.fn(),
+    reportError: vi.fn(),
+}));
+
+vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
+vi.mock('@/lib/date-utils', () => ({
+    getJSTDateString: vi.fn(() => '2026-07-15'),
+}));
+vi.mock('@/lib/errors', () => ({ reportError: mocks.reportError }));
+vi.mock('@/lib/supabase', () => ({
+    supabaseAdmin: { from: mocks.from },
+}));
+
+import { GET as getFollowers } from './followers/route';
+import { GET as getComparison } from './following-comparison/route';
+
+interface QueryResult {
+    data: unknown[] | null;
+    error: unknown;
+}
+
+interface QueryChain extends PromiseLike<QueryResult> {
+    select: ReturnType<typeof vi.fn>;
+    eq: ReturnType<typeof vi.fn>;
+    order: ReturnType<typeof vi.fn>;
+    returns: ReturnType<typeof vi.fn>;
+    in: ReturnType<typeof vi.fn>;
+    gte: ReturnType<typeof vi.fn>;
+    lte: ReturnType<typeof vi.fn>;
+}
+
+function createQueryChain(result: QueryResult): QueryChain {
+    const chain = {
+        select: vi.fn(),
+        eq: vi.fn(),
+        order: vi.fn(),
+        returns: vi.fn(),
+        in: vi.fn(),
+        gte: vi.fn(),
+        lte: vi.fn(),
+        then: <TResult1 = QueryResult, TResult2 = never>(
+            onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
+            onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+        ): Promise<TResult1 | TResult2> => Promise.resolve(result).then(onfulfilled, onrejected),
+    } as QueryChain;
+    chain.select.mockReturnValue(chain);
+    chain.eq.mockReturnValue(chain);
+    chain.order.mockReturnValue(chain);
+    chain.returns.mockReturnValue(chain);
+    chain.in.mockReturnValue(chain);
+    chain.gte.mockReturnValue(chain);
+    chain.lte.mockReturnValue(chain);
+    return chain;
+}
+
+const ok = (data: unknown[]): QueryResult => ({ data, error: null });
+const failed = (message: string): QueryResult => ({ data: null, error: { message } });
+
+function setupQueries(results: Record<string, QueryResult>): void {
+    mocks.from.mockImplementation((table: string) => createQueryChain(results[table] ?? ok([])));
+}
+
+describe('GET /api/user/followers', () => {
+    const followRows = [
+        { follower_id: 'follower-1', created_at: '2026-07-15T01:00:00Z' },
+        { follower_id: 'follower-2', created_at: '2026-07-14T01:00:00Z' },
+    ];
+    const profiles = [
+        { id: 'follower-1', name: 'One', image: null, username: 'one' },
+        { id: 'follower-2', name: 'Two', image: null, username: 'two' },
+    ];
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.auth.mockResolvedValue({ user: { id: 'viewer' } });
+    });
+
+    it('フォロワーが空の場合、プロフィールを照会せず空の200を返す', async () => {
+        setupQueries({ user_follows: ok([]) });
+
+        const response = await getFollowers();
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ followers: [], count: 0 });
+        expect(mocks.from).not.toHaveBeenCalledWith('users');
+    });
+
+    it('プロフィールが全件揃う場合、既存形状のフォロワーを返す', async () => {
+        setupQueries({ user_follows: ok(followRows), users: ok(profiles) });
+
+        const response = await getFollowers();
+
+        expect(response.status).toBe(200);
+        expect((await response.json()).count).toBe(2);
+        expect(mocks.reportError).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['DBエラー', failed('profiles unavailable'), 'Follower profile lookup failed'],
+        ['不正なnull', { data: null, error: null }, 'Follower profile lookup returned no data without an error'],
+        ['プロフィール欠落', ok(profiles.slice(0, 1)), 'Follower profile lookup did not return all requested profiles'],
+    ])('%sの場合、欠落を隠さず500を報告する', async (_label, usersResult, message) => {
+        setupQueries({ user_follows: ok(followRows), users: usersResult });
+
+        const response = await getFollowers();
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Failed to fetch follower profiles' });
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'user/followers:profiles',
+            expect.objectContaining({ message }),
+            expect.objectContaining({ expectedProfileCount: 2 }),
+        );
+    });
+});
+
+describe('GET /api/user/following-comparison', () => {
+    const following = [{ following_id: 'followed' }];
+    const profiles = [
+        { id: 'viewer', name: 'Viewer', image: null, username: 'viewer' },
+        { id: 'followed', name: 'Followed', image: null, username: 'followed' },
+    ];
+    const request = (): Request =>
+        new Request('http://localhost/api/user/following-comparison?period=WEEKLY');
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.auth.mockResolvedValue({ user: { id: 'viewer' } });
+    });
+
+    it.each([
+        ['DBエラー', failed('follows unavailable'), 'Following lookup failed'],
+        ['不正なnull', { data: null, error: null }, 'Following lookup returned no data without an error'],
+    ])('following照会が%sの場合、後続照会せず500を報告する', async (_label, result, message) => {
+        setupQueries({ user_follows: result });
+
+        const response = await getComparison(request());
+
+        expect(response.status).toBe(500);
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'user/following-comparison:follows',
+            expect.objectContaining({ message }),
+        );
+        expect(mocks.from).not.toHaveBeenCalledWith('users');
+        expect(mocks.from).not.toHaveBeenCalledWith('daily_steps');
+    });
+
+    it('following照会が正当な空配列の場合、既存の空比較200を返す', async () => {
+        setupQueries({ user_follows: ok([]) });
+
+        const response = await getComparison(request());
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ comparison: [], period: 'WEEKLY', days: 7 });
+        expect(mocks.from).not.toHaveBeenCalledWith('users');
+    });
+
+    it.each([
+        ['usersエラー', failed('users unavailable'), ok([]), 'profiles', 'Comparison profile lookup failed'],
+        ['users不正null', { data: null, error: null }, ok([]), 'profiles', 'Comparison profile lookup returned no data without an error'],
+        ['users欠落', ok(profiles.slice(0, 1)), ok([]), 'profiles', 'Comparison profile lookup did not return all requested profiles'],
+        ['stepsエラー', ok(profiles), failed('steps unavailable'), 'steps', 'Comparison steps lookup failed'],
+        ['steps不正null', ok(profiles), { data: null, error: null }, 'steps', 'Comparison steps lookup returned no data without an error'],
+    ])('%sの場合、成功レスポンスを構築せず500を報告する', async (
+        _label,
+        usersResult,
+        stepsResult,
+        operation,
+        message,
+    ) => {
+        setupQueries({
+            user_follows: ok(following),
+            users: usersResult,
+            daily_steps: stepsResult,
+        });
+
+        const response = await getComparison(request());
+
+        expect(response.status).toBe(500);
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            `user/following-comparison:${operation}`,
+            expect.objectContaining({ message }),
+            ...(message.includes('all requested') ? [expect.any(Object)] : []),
+        );
+        expect((await response.json()).comparison).toBeUndefined();
+    });
+
+    it('全照会成功時、既存の日付欠測0と合計歩数順を維持する', async () => {
+        setupQueries({
+            user_follows: ok(following),
+            users: ok(profiles),
+            daily_steps: ok([
+                { user_id: 'viewer', date: '2026-07-15', steps: 100 },
+                { user_id: 'followed', date: '2026-07-14', steps: 500 },
+            ]),
+        });
+
+        const response = await getComparison(request());
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(payload.period).toBe('WEEKLY');
+        expect(payload.days).toBe(7);
+        expect(payload.dates).toEqual([
+            '2026-07-09', '2026-07-10', '2026-07-11', '2026-07-12',
+            '2026-07-13', '2026-07-14', '2026-07-15',
+        ]);
+        expect(payload.comparison.map((item: { userId: string }) => item.userId))
+            .toEqual(['followed', 'viewer']);
+        expect(payload.comparison[0].dailySteps[0]).toEqual({
+            date: '2026-07-09',
+            steps: 0,
+        });
+        expect(mocks.reportError).not.toHaveBeenCalled();
+    });
+});

@@ -233,18 +233,14 @@ describe("user_follows RLS audit", () => {
     expect(followRoute).toContain('targetLookupError?.code === "PGRST116"');
     expect(followRoute).toContain('"user/follow:target_lookup"');
     expect(followRoute).toContain('"Failed to load target user"');
-    expect(followersRoute).toMatch(
-      /const \{ data: users \} = await supabaseAdmin[\s\S]+?users\?\.forEach/,
-    );
-    expect(comparisonRoute).toMatch(
-      /const \{ data: followingData \} = await supabaseAdmin[\s\S]+?comparison: \[\]/,
-    );
-    expect(comparisonRoute).toContain(
-      "(usersResult.data || []).map",
-    );
-    expect(comparisonRoute).toContain(
-      "for (const row of stepsResult.data || [])",
-    );
+    expect(followersRoute).toContain("error: profilesError");
+    expect(followersRoute).toContain('"user/followers:profiles"');
+    expect(followersRoute).toContain('"Failed to fetch follower profiles"');
+    expect(comparisonRoute).toContain("error: followingError");
+    expect(comparisonRoute).toContain("'user/following-comparison:follows'");
+    expect(comparisonRoute).toContain("'user/following-comparison:profiles'");
+    expect(comparisonRoute).toContain("'user/following-comparison:steps'");
+    expect(comparisonRoute).not.toContain("'Unknown'");
     expect(groupRoute).toContain("error: followLookupError");
     expect(groupRoute).toContain("followLookupError?.code === 'PGRST116'");
     expect(groupRoute).toContain("'user/group:invite_follow_lookup'");
