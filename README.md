@@ -279,6 +279,20 @@ audit-onlyとした。現行コードにはserver-sideの`.from('walking_routes'
 各routeは`user_id = session.user.id`を維持し、browser componentは同一origin APIだけを
 呼び、Supabase clientを直接利用しない。
 
+入力境界は、POSTでname/description/distance/duration/difficulty、PATCH/DELETEで
+route IDのUUIDを検証する現行実装を確認し、今回変更していない。一方、PATCHの所有者確認
+`SELECT`はSupabase errorを取得せず、DB障害を404へ偽装し得る。RLS監査とは分離し、
+所有者filterを維持したエラー処理修正を別PR候補とする。
+
+schema確定後に限るgrant候補は、`service_role`へ12列のcolumn `SELECT`、
+`user_id` / `name` / `description` / `distance_km` / `duration_minutes` /
+`difficulty`のcolumn `INSERT`、`updated_at` / `is_favorite` / `walk_count` /
+`last_walked_at` / `name` / `description`のcolumn `UPDATE`、table `DELETE`、
+実在するowned sequenceだけの`USAGE`である。`PUBLIC` / `anon` /
+`authenticated`には権限を残さず、policy、`auth.uid()`、`FORCE ROW LEVEL SECURITY`、
+`GRANT ALL`は追加しない。ただしこれは現行コードから得た必要権限候補であり、
+schema証拠ではないため、今回grantも実行していない。
+
 コードから確認できる使用列は`id` / `user_id` / `name` / `description` /
 `distance_km` / `duration_minutes` / `difficulty` / `is_favorite` / `walk_count` /
 `last_walked_at` / `created_at` / `updated_at`である。しかし`origin/main`には
@@ -375,6 +389,16 @@ ORDER BY sequence.oid::regclass::text, grantee, privilege.privilege_type;
 SELECT rolname, rolbypassrls
 FROM pg_catalog.pg_roles
 WHERE rolname IN ('anon', 'authenticated', 'service_role');
+
+SELECT member_role.rolname AS member_role,
+       granted_role.rolname AS granted_role,
+       membership.admin_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+WHERE member_role.rolname IN ('anon', 'authenticated', 'service_role')
+   OR granted_role.rolname IN ('anon', 'authenticated', 'service_role')
+ORDER BY member_role.rolname, granted_role.rolname;
 
 ROLLBACK;
 ```

@@ -7,6 +7,28 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const readRepositoryFile = (filePath: string): string =>
   readFileSync(path.join(root, filePath), "utf8");
+const collectRuntimeSourceFiles = (relativeDirectory: string): string[] => {
+  const absoluteDirectory = path.join(root, relativeDirectory);
+  if (!existsSync(absoluteDirectory)) {
+    return [];
+  }
+
+  return readdirSync(absoluteDirectory, { withFileTypes: true }).flatMap(
+    (entry) => {
+      const relativePath = path.join(relativeDirectory, entry.name);
+      if (entry.isDirectory()) {
+        return entry.name === "__tests__"
+          ? []
+          : collectRuntimeSourceFiles(relativePath);
+      }
+      return entry.isFile() &&
+        /\.[cm]?[jt]sx?$/.test(entry.name) &&
+        !/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry.name)
+        ? [relativePath]
+        : [];
+    },
+  );
+};
 const collectionRoute = readRepositoryFile(
   "app/api/user/walking-routes/route.ts",
 );
@@ -54,9 +76,20 @@ describe("walking_routes RLS audit", () => {
 
   it("6つのPostgREST経路をsupabaseAdminだけに限定する", () => {
     const routeSource = `${collectionRoute}\n${itemRoute}`;
-    expect(routeSource.match(/\.from\(["']walking_routes["']\)/g)).toHaveLength(
-      6,
-    );
+    const runtimeReferences = ["app", "components", "hooks", "lib"]
+      .flatMap(collectRuntimeSourceFiles)
+      .filter((filePath) =>
+        /\.from\(["']walking_routes["']\)/.test(readRepositoryFile(filePath)),
+      )
+      .sort();
+
+    expect(runtimeReferences).toEqual([
+      "app/api/user/walking-routes/[routeId]/route.ts",
+      "app/api/user/walking-routes/route.ts",
+    ]);
+    expect(
+      routeSource.match(/supabaseAdmin\s*\.from\(["']walking_routes["']\)/g),
+    ).toHaveLength(6);
     expect(collectionRoute).toContain(
       "import { supabaseAdmin } from '@/lib/supabase'",
     );
@@ -72,43 +105,48 @@ describe("walking_routes RLS audit", () => {
   });
 
   it("現行CRUDとuser_id所有者filterを固定する", () => {
-    expect(collectionRoute).toContain(
-      ".select('id, name, description, distance_km, duration_minutes, difficulty, is_favorite, walk_count, last_walked_at, created_at')",
-    );
-    expect(collectionRoute).toContain(
-      ".select('id', { count: 'exact', head: true })",
+    const routeColumns =
+      "id, name, description, distance_km, duration_minutes, difficulty, is_favorite, walk_count, last_walked_at, created_at";
+    expect(collectionRoute).toMatch(
+      new RegExp(
+        String.raw`supabaseAdmin\s*\.from\('walking_routes'\)\s*\.select\('${routeColumns}'\)\s*\.eq\('user_id', session\.user\.id\)\s*\.order\('is_favorite'`,
+      ),
     );
     expect(collectionRoute).toMatch(
-      /\.insert\(\{[\s\S]*user_id: session\.user\.id,[\s\S]*difficulty,[\s\S]*\}\)[\s\S]*\.select\(/,
+      /supabaseAdmin\s*\.from\('walking_routes'\)\s*\.select\('id', \{ count: 'exact', head: true \}\)\s*\.eq\('user_id', session\.user\.id\)/,
     );
-    expect(itemRoute).toContain(".select('id, walk_count')");
-    expect(itemRoute).toContain(".update(updates)");
-    expect(itemRoute).toContain(".delete()");
-    expect(
-      `${collectionRoute}\n${itemRoute}`.match(
-        /\.eq\('user_id', session\.user\.id\)/g,
+    expect(collectionRoute).toMatch(
+      new RegExp(
+        String.raw`supabaseAdmin\s*\.from\('walking_routes'\)\s*\.insert\(\{\s*user_id: session\.user\.id,\s*name,\s*description,\s*distance_km: distanceKm,\s*duration_minutes: durationMinutes,\s*difficulty,\s*\}\)\s*\.select\('${routeColumns}'\)\s*\.single\(\)`,
       ),
-    ).toHaveLength(5);
+    );
+    expect(itemRoute).toMatch(
+      /supabaseAdmin\s*\.from\('walking_routes'\)\s*\.select\('id, walk_count'\)\s*\.eq\('id', routeId\)\s*\.eq\('user_id', session\.user\.id\)\s*\.single\(\)/,
+    );
+    expect(itemRoute).toMatch(
+      new RegExp(
+        String.raw`supabaseAdmin\s*\.from\('walking_routes'\)\s*\.update\(updates\)\s*\.eq\('id', routeId\)\s*\.eq\('user_id', session\.user\.id\)\s*\.select\('${routeColumns}'\)\s*\.single\(\)`,
+      ),
+    );
+    expect(itemRoute).toMatch(
+      /supabaseAdmin\s*\.from\('walking_routes'\)\s*\.delete\(\)\s*\.eq\('id', routeId\)\s*\.eq\('user_id', session\.user\.id\)/,
+    );
   });
 
   it("追跡schema証拠がない間はwalking_routes migrationを作らない", () => {
-    const migrationSource = readdirSync(path.join(root, "migrations"))
+    const migrationReferences = readdirSync(path.join(root, "migrations"))
       .filter((fileName) => fileName.endsWith(".sql"))
-      .map((fileName) => readRepositoryFile(`migrations/${fileName}`))
-      .join("\n");
+      .filter((fileName) =>
+        /\bwalking_routes\b/i.test(
+          readRepositoryFile(`migrations/${fileName}`),
+        ),
+      );
     const databaseTypes = readRepositoryFile("types/database.ts");
 
     expect(databaseTypes).not.toContain("walking_routes");
-    expect(migrationSource).not.toMatch(
-      /CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+public\.walking_routes/i,
-    );
+    expect(migrationReferences).toEqual([]);
     expect(
       existsSync(path.join(root, "migrations/023_walking_routes.sql")),
-    ).toBe(false);
-    expect(
-      existsSync(
-        path.join(root, "migrations/20260720_harden_walking_routes_rls.sql"),
-      ),
     ).toBe(false);
   });
 
@@ -124,5 +162,28 @@ describe("walking_routes RLS audit", () => {
       ["F001", "not-started"],
       ["F016", "in-progress"],
     ]);
+  });
+
+  it("Phase 7のaudit-only進捗をdate・action・commitで固定する", () => {
+    const progress = JSON.parse(
+      readRepositoryFile(".github/ucfitness-progress.json"),
+    ) as {
+      lastCommit: string;
+      sessionLog: Array<{
+        date: string;
+        action: string;
+        commit: string;
+      }>;
+    };
+    const auditCommit = "b34076de8376076b5ff5b5eb524e0ebfe5d18265";
+    const phase = progress.sessionLog.find(
+      ({ commit }) => commit === auditCommit,
+    );
+
+    expect(progress.lastCommit).toBe(auditCommit);
+    expect(phase?.date).toBe("2026-07-20");
+    expect(phase?.action).toContain(
+      "追跡DDL・完全Database型・read-only実catalog接続がなく完全schemaを確定できないためmigrationを推測せずaudit-only",
+    );
   });
 });
