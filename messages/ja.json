@@ -846,7 +846,23 @@
       "lifestyle": "週末に2万歩以上を達成",
       "title": "1日平均 {val} 歩を維持"
     },
-    "onDate": "{date}"
+    "onDate": "{date}",
+    "growthTimelineTitle": "成長タイムライン",
+    "growthTimelineDescription": "過去のチャレンジ参加記録と獲得バッジを振り返れます。",
+    "growthTimelinePrivate": "このタイムラインはプロフィール所有者だけに表示されます。",
+    "growthTimelineEmpty": "終了したチャレンジや獲得バッジはまだありません。",
+    "challengeHistoryUnavailable": "チャレンジ履歴を取得できませんでした。バッジなど取得できた記録は引き続き表示しています。",
+    "timelineBadgesUnavailable": "バッジ履歴を取得できませんでした。チャレンジなど取得できた記録は引き続き表示しています。",
+    "timelinePartialData": "一部の履歴を読み取れなかったため、有効な記録だけを表示しています。",
+    "challengeHistoryLimited": "参加日時が新しい100件を対象に、終了・達成済み記録を表示しています（参加記録全{count}件）。",
+    "timelineDateUnknown": "日付不明",
+    "timelineBadgeEarned": "バッジ獲得",
+    "timelineChallengeCompleted": "達成記録あり",
+    "timelineChallengeEnded": "期間終了（達成記録未確認）",
+    "timelineProgressRecorded": "{progress}歩の記録",
+    "timelineProgressUnavailable": "進捗を取得できません",
+    "loadMoreTimeline": "さらに{count}件を表示",
+    "timelineAllShown": "すべての記録を表示しました"
   },
   "Groups": {
     "title": "マイグループ",

@@ -693,7 +693,7 @@
         "information_density": "モバイルでも読みやすい",
         "performance": "LCP < 2.5s"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
