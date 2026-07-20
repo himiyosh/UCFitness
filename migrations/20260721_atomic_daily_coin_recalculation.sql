@@ -220,7 +220,7 @@ BEGIN
     IF p_user_id IS NULL OR p_date IS NULL OR p_streak IS NULL OR p_streak < 0
        OR p_transactions IS NULL
        OR jsonb_typeof(p_transactions) <> 'array'
-       OR jsonb_array_length(p_transactions) NOT BETWEEN 1 AND 4 THEN
+       OR jsonb_array_length(p_transactions) NOT BETWEEN 1 AND 3 THEN
         RAISE EXCEPTION 'Invalid daily coin recalculation input';
     END IF;
     PERFORM 1 FROM public.users WHERE id = p_user_id FOR UPDATE;
@@ -238,7 +238,7 @@ BEGIN
     ) OR EXISTS (
         SELECT 1 FROM jsonb_to_recordset(p_transactions)
             AS input(type text, amount numeric, description text)
-        WHERE type <> ALL (ARRAY['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS'])
+        WHERE type <> ALL (ARRAY['STEPS', 'GOAL_BONUS', 'STREAK_BONUS'])
            OR amount < 0 OR amount <> trunc(amount) OR amount > 2147483647
            OR (type <> 'STEPS' AND amount = 0) OR description = ''
     ) OR EXISTS (
@@ -301,7 +301,7 @@ BEGIN
 
     DELETE FROM public.coin_transactions
     WHERE user_id = p_user_id AND date = p_date
-      AND type IN ('STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS');
+      AND type IN ('STEPS', 'GOAL_BONUS', 'STREAK_BONUS');
     WITH input AS (
         SELECT type, amount::integer AS amount, description
         FROM jsonb_to_recordset(p_transactions)

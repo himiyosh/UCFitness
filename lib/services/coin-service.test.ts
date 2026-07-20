@@ -459,7 +459,7 @@ describe('coin-service', () => {
             expect(mocks.rpc).not.toHaveBeenCalled();
         });
 
-        it('7日ストリークをbackfillする場合_既存descriptionと2,000 UCを維持して残高更新する', async () => {
+        it('7日ストリークをbackfillする場合_RANK_BONUSを削除・再生成せず2,000 UCを維持する', async () => {
             const history = Array.from({ length: 7 }, (_, offset) => {
                 const date = new Date('2026-07-14T00:00:00Z');
                 date.setUTCDate(date.getUTCDate() + offset);
@@ -471,8 +471,11 @@ describe('coin-service', () => {
 
             expect(mocks.coinDeleteIn).toHaveBeenCalledWith(
                 'type',
-                ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS'],
+                ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS'],
             );
+            expect(mocks.coinInsert).not.toHaveBeenCalledWith(expect.arrayContaining([
+                expect.objectContaining({ type: 'RANK_BONUS' }),
+            ]));
             expect(mocks.coinInsert).toHaveBeenCalledWith(expect.arrayContaining([
                 expect.objectContaining({
                     type: 'STREAK_BONUS',

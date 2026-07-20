@@ -649,7 +649,7 @@ export async function backfillCoinsForUser(userId: string): Promise<void> {
         .from('coin_transactions')
         .delete()
         .eq('user_id', userId)
-        .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
+        .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS']);
     if (deleteError !== null) {
         throw coinBackfillError('delete', userId);
     }
