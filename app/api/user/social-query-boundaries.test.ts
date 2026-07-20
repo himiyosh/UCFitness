@@ -124,8 +124,8 @@ describe('GET /api/user/following-comparison', () => {
         { id: 'viewer', name: 'Viewer', image: null, username: 'viewer' },
         { id: 'followed', name: 'Followed', image: null, username: 'followed' },
     ];
-    const request = (): Request =>
-        new Request('http://localhost/api/user/following-comparison?period=WEEKLY');
+    const request = (period = 'WEEKLY'): Request =>
+        new Request(`http://localhost/api/user/following-comparison?period=${period}`);
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -189,11 +189,16 @@ describe('GET /api/user/following-comparison', () => {
         expect((await response.json()).comparison).toBeUndefined();
     });
 
-    it('全照会成功時、既存の日付欠測0と合計歩数順を維持する', async () => {
+    it('週間比較で記録あり正数・記録あり0歩・未記録を区別し、合計歩数順を維持する', async () => {
+        const dates = [
+            '2026-07-09', '2026-07-10', '2026-07-11', '2026-07-12',
+            '2026-07-13', '2026-07-14', '2026-07-15',
+        ];
         setupQueries({
             user_follows: ok(following),
             users: ok(profiles),
             daily_steps: ok([
+                { user_id: 'viewer', date: '2026-07-14', steps: 0 },
                 { user_id: 'viewer', date: '2026-07-15', steps: 100 },
                 { user_id: 'followed', date: '2026-07-14', steps: 500 },
             ]),
@@ -203,18 +208,116 @@ describe('GET /api/user/following-comparison', () => {
         const payload = await response.json();
 
         expect(response.status).toBe(200);
-        expect(payload.period).toBe('WEEKLY');
-        expect(payload.days).toBe(7);
-        expect(payload.dates).toEqual([
-            '2026-07-09', '2026-07-10', '2026-07-11', '2026-07-12',
-            '2026-07-13', '2026-07-14', '2026-07-15',
-        ]);
-        expect(payload.comparison.map((item: { userId: string }) => item.userId))
-            .toEqual(['followed', 'viewer']);
-        expect(payload.comparison[0].dailySteps[0]).toEqual({
-            date: '2026-07-09',
-            steps: 0,
+        expect(payload).toStrictEqual({
+            comparison: [
+                {
+                    userId: 'followed',
+                    name: 'Followed',
+                    image: null,
+                    username: 'followed',
+                    isMe: false,
+                    totalSteps: 500,
+                    dailySteps: dates.map((date) => ({ date, steps: date === '2026-07-14' ? 500 : 0,
+                        hasRecord: date === '2026-07-14' })),
+                },
+                {
+                    userId: 'viewer',
+                    name: 'Viewer',
+                    image: null,
+                    username: 'viewer',
+                    isMe: true,
+                    totalSteps: 100,
+                    dailySteps: dates.map((date) => ({ date, steps: date === '2026-07-15' ? 100 : 0,
+                        hasRecord: date === '2026-07-14' || date === '2026-07-15' })),
+                },
+            ],
+            period: 'WEEKLY',
+            days: 7,
+            dates,
         });
         expect(mocks.reportError).not.toHaveBeenCalled();
+    });
+
+    it('月間比較でも記録あり0歩と未記録を区別し、記録行だけを合計する', async () => {
+        const dates = Array.from({ length: 30 }, (_, index) => {
+            const date = new Date('2026-06-16T00:00:00Z');
+            date.setUTCDate(date.getUTCDate() + index);
+            return date.toISOString().split('T')[0];
+        });
+        setupQueries({
+            user_follows: ok(following),
+            users: ok(profiles),
+            daily_steps: ok([
+                { user_id: 'viewer', date: '2026-06-16', steps: 0 },
+                { user_id: 'viewer', date: '2026-07-15', steps: 200 },
+                { user_id: 'followed', date: '2026-07-14', steps: 300 },
+            ]),
+        });
+
+        const response = await getComparison(request('MONTHLY'));
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(payload.period).toBe('MONTHLY');
+        expect(payload.days).toBe(30);
+        expect(payload.dates).toStrictEqual(dates);
+        expect(payload.comparison.map((item: { userId: string; totalSteps: number }) => ({
+            userId: item.userId,
+            totalSteps: item.totalSteps,
+        }))).toStrictEqual([
+            { userId: 'followed', totalSteps: 300 },
+            { userId: 'viewer', totalSteps: 200 },
+        ]);
+        expect(payload.comparison[1].dailySteps).toHaveLength(30);
+        expect(payload.comparison[1].dailySteps[0]).toStrictEqual({
+            date: '2026-06-16',
+            steps: 0,
+            hasRecord: true,
+        });
+        expect(payload.comparison[1].dailySteps[1]).toStrictEqual({
+            date: '2026-06-17',
+            steps: 0,
+            hasRecord: false,
+        });
+    });
+
+    it.each([
+        ['同一ユーザー・日付の重複', [
+            { user_id: 'viewer', date: '2026-07-15', steps: 100 },
+            { user_id: 'viewer', date: '2026-07-15', steps: 200 },
+        ], 'Comparison steps lookup returned duplicate user-date rows', 'WEEKLY'],
+        ['非safe integer',
+            [{ user_id: 'viewer', date: '2026-07-15', steps: Number.MAX_SAFE_INTEGER + 1 }],
+            'Comparison steps lookup returned invalid rows', 'WEEKLY'],
+        ['負値', [{ user_id: 'viewer', date: '2026-07-15', steps: -1 }],
+            'Comparison steps lookup returned invalid rows', 'WEEKLY'],
+        ['期間外日付', [{ user_id: 'viewer', date: '2026-07-08', steps: 100 }],
+            'Comparison steps lookup returned invalid rows', 'WEEKLY'],
+        ['実在しない期間内日付', [{ user_id: 'viewer', date: '2026-06-99', steps: 100 }],
+            'Comparison steps lookup returned invalid rows', 'MONTHLY'],
+        ['safe integerを超える合計', [
+            { user_id: 'viewer', date: '2026-07-14', steps: Number.MAX_SAFE_INTEGER },
+            { user_id: 'viewer', date: '2026-07-15', steps: 1 },
+        ], 'Comparison steps total is not a safe integer', 'WEEKLY'],
+    ])('stepsに%sがある場合、成功形へ変換せず500を返す', async (
+        _label,
+        dailySteps,
+        message,
+        period,
+    ) => {
+        setupQueries({
+            user_follows: ok(following),
+            users: ok(profiles),
+            daily_steps: ok(dailySteps),
+        });
+
+        const response = await getComparison(request(period));
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Failed to fetch comparison steps' });
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'user/following-comparison:steps',
+            expect.objectContaining({ message }),
+        );
     });
 });
