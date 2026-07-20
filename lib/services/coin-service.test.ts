@@ -146,9 +146,11 @@ describe('coin-service', () => {
     });
 
     it.each([
+        undefined,
         null,
         false,
         [],
+        {},
         { success: false },
         { success: true, written_count: 1 },
     ])('processCoins_日次再計算RPCが不正な応答を返した場合_固定AppErrorとして拒否する: %j', async (response) => {
