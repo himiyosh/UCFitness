@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-20T22:14:50Z",
+  "lastUpdated": "2026-07-20T22:21:14Z",
   "lastAgent": "UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)",
   "lastCommit": "67cea5b8a816008366f271d5e81f8a57cd1b02de",
   "lastBranch": "himiyosh-himiyosh-badge-awards-phase-b",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016 badge-awards failure mapping Phase Bで、global/group ranking・groups・group members・award insertを生Supabase error非露出の固定AppErrorへ分離した。ranking/group/membershipのshape・foreign・重複・非負safe integer・集計overflowを検証し、0歩・空集合・記録なしは正常、award insertは23505だけを既付与として維持した。依存失敗後のuser_badges insert・通知停止と成功通知を固定し、Phase A personal、10+/5+閾値、正歩数付与、batch、streakを維持した。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors。実装差分3ファイル・+416/-44・total 460。DB接続/read/write/applyは未実施でF016はin-progress。残るbadge-awards範囲はstreak milestoneとTeams enrichment。",
+  "summary": "F016 badge-awards failure mapping Phase Bで、global/group ranking・groups・group members・award insertを生Supabase error非露出の固定AppErrorへ分離した。ranking/group/membershipのshape・foreign・重複・非負safe integer・集計overflowを検証し、0歩・空集合・記録なしは正常、award insertは23505だけを既付与として維持した。依存失敗後のuser_badges insert・通知停止と成功通知を固定し、Phase A personal、10+/5+閾値、正歩数付与、batch、streakを維持した。保護済み件数は9/25据え置き。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors。実装差分3ファイル・+416/-44・total 460。DB接続/read/write/applyは未実施でF016はin-progress。残るbadge-awards範囲はstreak milestoneとTeams enrichment。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-20T22:14:50Z"
+    "lastVerified": "2026-07-20T22:21:14Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
