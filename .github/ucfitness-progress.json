@@ -3,7 +3,7 @@
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
   "lastUpdated": "2026-07-20T20:25:40Z",
   "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
-  "lastCommit": "cbdbb5b3532338b668994b80d03fe4c9d38a3939",
+  "lastCommit": "dba564474459460fdcb9484affa7bef181bff9dc",
   "lastBranch": "himiyosh-atomic-coin-backfill-phase-a",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "F016 coin backfill原子化Phase Aで、1〜50,000件の厳密入力、JST日付、既存台帳整合性、FULL JOIN stale guard、idempotency衝突を全書込み前に検証し、歩数由来3種の全履歴を単一DELETE・単一INSERTで置換して全台帳残高を同一transaction内で再集計するservice-role-only RPC migrationを追加した。users→coin_transactions NOWAIT table→coin_balancesのlock順、RANK_BONUS等の保持、既存migration hash、owner/RLS/ACL/search_pathを静的契約化した。保護済み件数は9/25据え置き。focused 33件、全608テスト（--maxWorkers=1）、check:all、PostgreSQL/Security/Code/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors。差分4ファイル・480行。実catalog未実行・DB未適用・Phase B app wiring未実施でF016はin-progress。",
@@ -1235,7 +1235,7 @@
       "commit": "cbdbb5b3532338b668994b80d03fe4c9d38a3939",
       "filesChanged": ["migrations/20260721_atomic_daily_coin_recalculation.sql", "lib/__tests__/atomic-daily-coin-recalculation-migration.test.ts", "lib/services/coin-service.ts", "lib/services/coin-service.test.ts", "README.md"]
     },
-    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)","action":"F016 coin backfill原子化Phase Aでservice-role-only RPC migrationと静的契約を追加。focused 33件、全608テスト（--maxWorkers=1）、check:all、PostgreSQL/Security/Code/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors、差分4ファイル・480行。実catalog未実行・DB未適用でPhase B app wiringは未実施。","commit":"","filesChanged":["migrations/20260721_atomic_historical_coin_backfill.sql","lib/__tests__/atomic-historical-coin-backfill-migration.test.ts","README.md",".github/ucfitness-progress.json"]}
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)","action":"F016 coin backfill原子化Phase Aでservice-role-only RPC migrationと静的契約を追加。focused 33件、全608テスト（--maxWorkers=1）、check:all、PostgreSQL/Security/Code/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors、差分4ファイル・480行。実catalog未実行・DB未適用でPhase B app wiringは未実施。","commit":"dba564474459460fdcb9484affa7bef181bff9dc","filesChanged":["migrations/20260721_atomic_historical_coin_backfill.sql","lib/__tests__/atomic-historical-coin-backfill-migration.test.ts","README.md",".github/ucfitness-progress.json"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
