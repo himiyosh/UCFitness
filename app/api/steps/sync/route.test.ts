@@ -100,4 +100,22 @@ describe('POST /api/steps/sync', () => {
             });
         },
     );
+
+    it('履歴同期の再試行枯渇時は当日同期へ進まず失敗を返す', async () => {
+        const retryError = new Error('Fitbit API retries exhausted');
+        mocks.backfillUserSteps.mockRejectedValueOnce(retryError);
+
+        const response = await POST();
+
+        expect(response.status).toBe(500);
+        await expect(response.json()).resolves.toEqual({
+            error: 'Internal Server Error',
+        });
+        expect(mocks.syncUserSteps).not.toHaveBeenCalled();
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'steps/sync',
+            retryError,
+            { userId: 'user-1' },
+        );
+    });
 });
