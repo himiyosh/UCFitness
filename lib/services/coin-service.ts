@@ -37,17 +37,15 @@ interface DailyCoinTransaction {
     description: string;
 }
 
-interface DailyCoinRecalculationResult {
+interface SuccessfulCoinMutationResult {
     success: true;
 }
 
 interface BackfillCoinTransaction extends DailyCoinTransaction {
-    user_id: string;
     date: string;
 }
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
-const BACKFILL_BATCH_SIZE = 1000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -65,9 +63,9 @@ function isValidIsoDate(value: unknown): value is string {
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-function isSuccessfulDailyCoinRecalculation(
+function isSuccessfulCoinMutation(
     value: unknown,
-): value is DailyCoinRecalculationResult {
+): value is SuccessfulCoinMutationResult {
     return isRecord(value)
         && value.success === true
         && Object.keys(value).length === 1;
@@ -91,8 +89,8 @@ const COIN_BACKFILL_ERRORS = {
     'user-data': ['Invalid coin backfill user data', 'COIN_BACKFILL_USER_INVALID_DATA', 'user'],
     'steps-query': ['Failed to load coin backfill steps', 'COIN_BACKFILL_STEPS_QUERY_FAILED', 'steps'],
     'steps-data': ['Invalid coin backfill steps data', 'COIN_BACKFILL_STEPS_INVALID_DATA', 'steps'],
-    delete: ['Failed to delete coin backfill transactions', 'COIN_BACKFILL_DELETE_FAILED', 'delete'],
-    insert: ['Failed to insert coin backfill transactions', 'COIN_BACKFILL_INSERT_FAILED', 'insert'],
+    'apply-backfill': ['Failed to apply coin backfill', 'COIN_BACKFILL_RPC_FAILED', 'apply-backfill'],
+    'apply-backfill-response': ['Coin backfill returned an invalid result', 'COIN_BACKFILL_INVALID_RESPONSE', 'apply-backfill-response'],
 } as const;
 
 function coinProcessingError(stage: keyof typeof COIN_ERRORS): AppError {
@@ -187,7 +185,6 @@ function parseBackfillSteps(value: unknown, userId: string, currentDate: string)
 }
 
 function buildBackfillTransactions(
-    userId: string,
     allSteps: StreakHistoryRow[],
     stepGoal: number,
 ): { transactions: BackfillCoinTransaction[]; currentStreak: number } {
@@ -212,7 +209,6 @@ function buildBackfillTransactions(
 
         const baseCoins = calculateSafeCoinAmount(steps * BASE_RATE, 'base-coins');
         transactions.push({
-            user_id: userId,
             date,
             type: 'STEPS',
             amount: baseCoins,
@@ -223,7 +219,6 @@ function buildBackfillTransactions(
             const goalBonus = calculateSafeCoinAmount(baseCoins * GOAL_BONUS_RATE, 'goal-bonus');
             if (goalBonus > 0) {
                 transactions.push({
-                    user_id: userId,
                     date,
                     type: 'GOAL_BONUS',
                     amount: goalBonus,
@@ -237,7 +232,6 @@ function buildBackfillTransactions(
             const streakBonus = calculateStreakBonus(baseCoins, multiplier);
             if (streakBonus > 0) {
                 transactions.push({
-                    user_id: userId,
                     date,
                     type: 'STREAK_BONUS',
                     amount: streakBonus,
@@ -345,7 +339,7 @@ export async function processCoins(userId: string, steps: number, date: string):
     if (error !== null) {
         throw coinProcessingError('apply-daily-recalculation');
     }
-    if (!isSuccessfulDailyCoinRecalculation(data)) {
+    if (!isSuccessfulCoinMutation(data)) {
         throw coinProcessingError('apply-daily-recalculation-response');
     }
 }
@@ -422,6 +416,8 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
 /**
  * コイン残高を再集計して更新
  */
+// Phase Bでは直接呼ばないが、既存helperを削除しない契約のため保持する。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function updateCoinBalance(userId: string, currentStreak: number): Promise<void> {
     const { error } = await supabaseAdmin.rpc('recalculate_coin_balance', {
         p_user_id: userId,
@@ -640,34 +636,21 @@ export async function backfillCoinsForUser(userId: string): Promise<void> {
         return;
     }
     const { transactions, currentStreak } = buildBackfillTransactions(
-        userId,
         allSteps,
         userResult.data.step_goal,
     );
 
-    const { error: deleteError } = await supabaseAdmin
-        .from('coin_transactions')
-        .delete()
-        .eq('user_id', userId)
-        .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
-    if (deleteError !== null) {
-        throw coinBackfillError('delete', userId);
+    const { data, error } = await supabaseAdmin.rpc('apply_coin_backfill', {
+        p_user_id: userId,
+        p_current_streak: currentStreak,
+        p_transactions: transactions,
+    });
+    if (error !== null) {
+        throw coinBackfillError('apply-backfill', userId);
     }
-
-    for (let offset = 0; offset < transactions.length; offset += BACKFILL_BATCH_SIZE) {
-        const batch = transactions.slice(offset, offset + BACKFILL_BATCH_SIZE);
-        const { error } = await supabaseAdmin
-            .from('coin_transactions')
-            .insert(batch);
-        if (error !== null) {
-            throw coinBackfillError('insert', userId, {
-                offset,
-                batchSize: batch.length,
-            });
-        }
+    if (!isSuccessfulCoinMutation(data)) {
+        throw coinBackfillError('apply-backfill-response', userId);
     }
-
-    await updateCoinBalance(userId, currentStreak);
 }
 
 // ============================================

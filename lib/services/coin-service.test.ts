@@ -70,9 +70,16 @@ async function expectBackfillError(
 }
 
 function expectNoBackfillWrites(): void {
+    expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
     expect(mocks.coinDeleteIn).not.toHaveBeenCalled();
     expect(mocks.coinInsert).not.toHaveBeenCalled();
     expect(mocks.rpc).not.toHaveBeenCalled();
+}
+
+function expectNoDirectBackfillWrites(): void {
+    expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
+    expect(mocks.coinDeleteIn).not.toHaveBeenCalled();
+    expect(mocks.coinInsert).not.toHaveBeenCalled();
 }
 
 function createStepHistory(count: number): Array<{ date: string; steps: number }> {
@@ -381,20 +388,21 @@ describe('coin-service', () => {
             expectNoBackfillWrites();
         });
 
-        it('daily_stepsに記録済み0歩がある場合_0 UCのSTEPSを保存する', async () => {
+        it('daily_stepsに記録済み0歩がある場合_exact payloadを原子RPCへ渡す', async () => {
             mocks.allStepsOrder.mockResolvedValueOnce(ok([{ date: TODAY, steps: 0 }]));
             await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
-            expect(mocks.coinInsert).toHaveBeenCalledWith([{
-                user_id: 'user-1',
-                date: TODAY,
-                type: 'STEPS',
-                amount: 0,
-                description: '0 steps × 1 UC',
-            }]);
-            expect(mocks.rpc).toHaveBeenCalledWith('recalculate_coin_balance', {
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expect(mocks.rpc).toHaveBeenCalledWith('apply_coin_backfill', {
                 p_user_id: 'user-1',
-                p_streak: 0,
+                p_current_streak: 0,
+                p_transactions: [{
+                    date: TODAY,
+                    type: 'STEPS',
+                    amount: 0,
+                    description: '0 steps × 1 UC',
+                }],
             });
+            expectNoDirectBackfillWrites();
         });
 
         it('計算結果がPostgreSQL integer範囲を超える場合_DELETE前に拒否する', async () => {
@@ -410,56 +418,62 @@ describe('coin-service', () => {
             expectNoBackfillWrites();
         });
 
-        it('DELETEに失敗した場合_INSERTと残高更新を開始しない', async () => {
+        it('原子RPCに失敗した場合_固定AppErrorでdirect writerへfallbackしない', async () => {
             mocks.allStepsOrder.mockResolvedValueOnce(ok([{ date: TODAY, steps: 0 }]));
-            mocks.coinDeleteIn.mockResolvedValueOnce({
+            mocks.rpc.mockResolvedValueOnce({
                 data: null,
                 error: { message: 'database-secret' },
             });
             await expectBackfillError(
                 backfillCoinsForUser('user-1'),
-                'COIN_BACKFILL_DELETE_FAILED',
-                'delete',
+                'COIN_BACKFILL_RPC_FAILED',
+                'apply-backfill',
             );
-            expect(mocks.coinInsert).not.toHaveBeenCalled();
-            expect(mocks.rpc).not.toHaveBeenCalled();
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expectNoDirectBackfillWrites();
         });
 
-        it('最初のINSERT batchに失敗した場合_後続batchと残高更新を開始しない', async () => {
+        it.each([
+            undefined,
+            null,
+            false,
+            [],
+            {},
+            { success: false },
+            { success: true, written_count: 1 },
+        ])('原子RPCが不正な応答を返した場合_固定AppErrorで拒否する: %j', async (response) => {
+            mocks.allStepsOrder.mockResolvedValueOnce(ok([{ date: TODAY, steps: 0 }]));
+            mocks.rpc.mockResolvedValueOnce(ok(response));
+            await expectBackfillError(
+                backfillCoinsForUser('user-1'),
+                'COIN_BACKFILL_INVALID_RESPONSE',
+                'apply-backfill-response',
+            );
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expectNoDirectBackfillWrites();
+        });
+
+        it('1000件を超えるpayloadの場合_分割せず原子RPCを1回だけ呼ぶ', async () => {
             mocks.allStepsOrder.mockResolvedValueOnce(ok(createStepHistory(2001)));
-            mocks.coinInsert.mockResolvedValueOnce({
-                data: null,
-                error: { message: 'database-secret' },
+            await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expect(mocks.rpc).toHaveBeenCalledWith('apply_coin_backfill', {
+                p_user_id: 'user-1',
+                p_current_streak: 0,
+                p_transactions: expect.arrayContaining([
+                    {
+                        date: '2020-01-01',
+                        type: 'STEPS',
+                        amount: 0,
+                        description: '0 steps × 1 UC',
+                    },
+                ]),
             });
-            await expectBackfillError(
-                backfillCoinsForUser('user-1'),
-                'COIN_BACKFILL_INSERT_FAILED',
-                'insert',
-                { offset: 0, batchSize: 1000 },
-            );
-            expect(mocks.coinInsert).toHaveBeenCalledTimes(1);
-            expect(mocks.rpc).not.toHaveBeenCalled();
+            expect(mocks.rpc.mock.calls[0]?.[1]?.p_transactions).toHaveLength(2001);
+            expectNoDirectBackfillWrites();
         });
 
-        it('後続INSERT batchに失敗した場合_残りのbatchと残高更新を開始しない', async () => {
-            mocks.allStepsOrder.mockResolvedValueOnce(ok(createStepHistory(2001)));
-            mocks.coinInsert
-                .mockResolvedValueOnce(ok(null))
-                .mockResolvedValueOnce({
-                    data: null,
-                    error: { message: 'database-secret' },
-                });
-            await expectBackfillError(
-                backfillCoinsForUser('user-1'),
-                'COIN_BACKFILL_INSERT_FAILED',
-                'insert',
-                { offset: 1000, batchSize: 1000 },
-            );
-            expect(mocks.coinInsert).toHaveBeenCalledTimes(2);
-            expect(mocks.rpc).not.toHaveBeenCalled();
-        });
-
-        it('7日ストリークをbackfillする場合_既存descriptionと2,000 UCを維持して残高更新する', async () => {
+        it('7日ストリークをbackfillする場合_exact 4 keysと2,000 UCを維持する', async () => {
             const history = Array.from({ length: 7 }, (_, offset) => {
                 const date = new Date('2026-07-14T00:00:00Z');
                 date.setUTCDate(date.getUTCDate() + offset);
@@ -469,21 +483,33 @@ describe('coin-service', () => {
 
             await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
 
-            expect(mocks.coinDeleteIn).toHaveBeenCalledWith(
-                'type',
-                ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS'],
-            );
-            expect(mocks.coinInsert).toHaveBeenCalledWith(expect.arrayContaining([
-                expect.objectContaining({
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expect(mocks.rpc).toHaveBeenCalledWith('apply_coin_backfill', {
+                p_user_id: 'user-1',
+                p_current_streak: 7,
+                p_transactions: expect.arrayContaining([{
+                    date: TODAY,
                     type: 'STREAK_BONUS',
                     amount: 2_000,
                     description: '7-day streak bonus (×1.2)',
-                }),
-            ]));
-            expect(mocks.rpc).toHaveBeenCalledWith('recalculate_coin_balance', {
-                p_user_id: 'user-1',
-                p_streak: 7,
+                }]),
             });
+            const transactions = mocks.rpc.mock.calls[0]?.[1]?.p_transactions;
+            if (!Array.isArray(transactions)) {
+                throw new Error('Expected backfill transaction payload');
+            }
+            for (const transaction of transactions) {
+                if (typeof transaction !== 'object' || transaction === null || Array.isArray(transaction)) {
+                    throw new Error('Expected backfill transaction object');
+                }
+                expect(Object.keys(transaction).sort()).toEqual([
+                    'amount', 'date', 'description', 'type',
+                ]);
+            }
+            expect(transactions).not.toEqual(expect.arrayContaining([
+                expect.objectContaining({ type: 'RANK_BONUS' }),
+            ]));
+            expectNoDirectBackfillWrites();
             expect(mocks.reportError).not.toHaveBeenCalled();
         });
     });
