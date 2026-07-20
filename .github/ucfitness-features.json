@@ -416,7 +416,7 @@
         "isolation": "cross-user データ漏洩がゼロ",
         "regression_free": "既存機能が全て動作する"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
