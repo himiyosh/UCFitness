@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-21T01:37:22+09:00",
+  "lastUpdated": "2026-07-21T01:52:37+09:00",
   "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
   "lastCommit": "ba6e40e4c9598791dd44928f7dece43d608247d5",
   "lastBranch": "himiyosh-coin-recalculation-wiring",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016の日次コイン再計算Phase Bで、Phase Aのapply_daily_coin_recalculation RPCへprocessCoinsを接続した。直接DELETE/upsert/残高再計算を撤去し、厳密payload・RPC失敗/不正応答のAppError・既存reward_processing_failed伝播を検証した。backfillとupdateCoinBalanceの直接経路は維持し、Phase A migrationのservice_role UPDATE revokeとRPC EXECUTEを静的検証した。STREAK_BONUSは倍率差を整数百分率へ丸めて計算し、10,000歩・7日ストリークを2,000 UCへ統一した。全557テスト、check:rules、型検査、lintをPASS。保護済み件数は9/25据え置き。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
+  "summary": "F016の日次コイン再計算Phase Bで、Phase Aのapply_daily_coin_recalculation RPCへprocessCoinsを接続した。直接DELETE/upsert/残高再計算を撤去し、厳密payload・RPC失敗/不正応答のAppError・既存reward_processing_failed伝播を検証した。backfillとupdateCoinBalanceの直接経路は維持し、Phase A migrationのservice_role UPDATE revokeとRPC EXECUTEを静的検証した。STREAK_BONUSは倍率差を整数百分率へ丸めて計算し、10,000歩・7日ストリークを2,000 UCへ統一した。全557テスト、check:rules、型検査、lint、GitHub Validate（1分12秒）をPASS。Cloudflare Pagesはpending。保護済み件数は9/25据え置き。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-21T01:37:22+09:00"
+    "lastVerified": "2026-07-21T01:52:37+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1205,7 +1205,7 @@
     {
       "date": "2026-07-21",
       "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
-      "action": "F016の日次コイン再計算Phase Bで、STREAK_BONUSの1.2倍率差を二進浮動小数点の差分でfloorせず、整数百分率へ丸めてから計算する共有ヘルパーへ修正した。processCoinsとbackfillを同じ計算式へ揃え、10,000歩・7日ストリークの追加分を2,000 UCとするテストを追加した。全557テスト、check:all、独立コードレビューをPASS。実catalog接続・DB適用・read/writeは未実施。",
+      "action": "F016の日次コイン再計算Phase Bで、STREAK_BONUSの1.2倍率差を二進浮動小数点の差分でfloorせず、整数百分率へ丸めてから計算する共有ヘルパーへ修正した。processCoinsとbackfillを同じ計算式へ揃え、10,000歩・7日ストリークの追加分を2,000 UCとするテストを追加した。全557テスト、check:all、独立コードレビュー、GitHub Validate（1分12秒）をPASS。Cloudflare Pagesはpending。実catalog接続・DB適用・read/writeは未実施。",
       "commit": "ba6e40e4c9598791dd44928f7dece43d608247d5",
       "filesChanged": [
         "lib/services/coin-service.ts",
