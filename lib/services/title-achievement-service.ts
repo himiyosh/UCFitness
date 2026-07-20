@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { getJSTDateString, getJSTHour } from '@/lib/date-utils';
-
-import type { UserStepStatsRpcRow } from '@/types/database';
+import { AppError } from '@/lib/errors';
+import { isValidStepGoal } from '@/lib/step-goal';
 
 /**
  * 称号達成チェック & 自動付与サービス
@@ -17,13 +17,89 @@ interface AchievementContext {
     userId: string;
     totalSteps: number;
     currentStreak: number;
-    stepsToday: number;
+    stepsToday: number | null;
     stepGoal: number;
-    ucBalance: number;
+    ucBalance: number | null;
     shopPurchaseCount: number;
     groupCount: number;
     hasCreatedGroup: boolean;
     syncHourJST: number;  // 0-23
+}
+
+interface StreakRecord {
+    date: string;
+    steps: number;
+}
+
+interface QueryResult { data: unknown; error: unknown; count?: unknown }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string { return typeof value === 'string' && value.length > 0; }
+
+function isNonnegativeSafeInteger(value: unknown): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0; }
+
+function isPostgrestNoRows(error: unknown): boolean { return isRecord(error) && error.code === 'PGRST116'; }
+
+function titleAchievementError(
+    message: string,
+    code: string,
+    stage: string,
+    cause?: unknown,
+): AppError {
+    return new AppError(message, code, { stage }, cause);
+}
+
+function parseSingleTotalSteps(value: unknown): number | null {
+    const row = Array.isArray(value)
+        ? value.length === 1 ? value[0] : null
+        : value;
+    return isRecord(row) && isNonnegativeSafeInteger(row.total_steps)
+        ? row.total_steps
+        : null;
+}
+
+function parseOwnedItemCode(value: unknown): string | null {
+    if (!isRecord(value)) return null;
+    const relation = value.shop_items;
+    const item = Array.isArray(relation)
+        ? relation.length === 1 ? relation[0] : null
+        : relation;
+    return isRecord(item) && isNonEmptyString(item.item_code)
+        ? item.item_code
+        : null;
+}
+
+function parseCount(result: QueryResult, subject: string, codePrefix: string, stage: string): number {
+    if (result.error !== null) {
+        throw titleAchievementError(`Failed to load ${subject}`, `${codePrefix}_QUERY_FAILED`, stage, result.error);
+    }
+    if (!isNonnegativeSafeInteger(result.count)) {
+        throw titleAchievementError(`Invalid ${subject} data`, `${codePrefix}_INVALID_DATA`, stage);
+    }
+    return result.count;
+}
+
+function parseStreakRecords(value: unknown, today: string): StreakRecord[] | null {
+    if (!Array.isArray(value)) return null;
+    const seenDates = new Set<string>();
+    const records: StreakRecord[] = [];
+    for (const row of value) {
+        if (!isRecord(row)
+            || !isNonEmptyString(row.date)
+            || !/^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/.test(row.date)
+            || new Date(`${row.date}T00:00:00Z`).toISOString().slice(0, 10) !== row.date
+            || row.date > today
+            || seenDates.has(row.date)
+            || !isNonnegativeSafeInteger(row.steps)) {
+            return null;
+        }
+        seenDates.add(row.date);
+        records.push({ date: row.date, steps: row.steps });
+    }
+    return records;
 }
 
 // ====== 称号判定ルール ======
@@ -45,10 +121,10 @@ const TITLE_RULES: TitleDefinition[] = [
     // ユニーク・おもしろ系
     { itemCode: 'title_night_owl', check: ctx => ctx.syncHourJST >= 0 && ctx.syncHourJST < 5 },
     { itemCode: 'title_early_bird', check: ctx => ctx.syncHourJST >= 5 && ctx.syncHourJST < 7 },
-    { itemCode: 'title_bullseye', check: ctx => ctx.stepsToday > 0 && ctx.stepsToday === ctx.stepGoal },
-    { itemCode: 'title_uc_millionaire', check: ctx => ctx.ucBalance >= 100_000 },
+    { itemCode: 'title_bullseye', check: ctx => ctx.stepsToday !== null && ctx.stepsToday > 0 && ctx.stepsToday === ctx.stepGoal },
+    { itemCode: 'title_uc_millionaire', check: ctx => ctx.ucBalance !== null && ctx.ucBalance >= 100_000 },
     { itemCode: 'title_shopaholic', check: ctx => ctx.shopPurchaseCount >= 5 },
-    { itemCode: 'title_just_in_time', check: ctx => ctx.syncHourJST >= 23 && ctx.stepsToday >= ctx.stepGoal },
+    { itemCode: 'title_just_in_time', check: ctx => ctx.syncHourJST >= 23 && ctx.stepsToday !== null && ctx.stepsToday >= ctx.stepGoal },
 
     // ソーシャル・グループ
     { itemCode: 'title_team_player', check: ctx => ctx.groupCount >= 3 },
@@ -67,45 +143,48 @@ export async function checkAndAwardTitleAchievements(userId: string): Promise<st
         return [];
     }
 
-    const awarded: string[] = [];
-
-    try {
-        // 既に所持している称号アイテムを取得
-        const { data: ownedItems } = await supabaseAdmin
-            .from('user_items')
-            .select('shop_items!inner(item_code)')
-            .eq('user_id', userId);
-
-        const ownedCodes = new Set<string>();
-        for (const ui of (ownedItems || [])) {
-            const code = (ui as { shop_items?: { item_code?: string } }).shop_items?.item_code;
-            if (code) ownedCodes.add(code);
+    const ownedItemsResult = await supabaseAdmin
+        .from('user_items')
+        .select('shop_items!inner(item_code)')
+        .eq('user_id', userId);
+    if (ownedItemsResult.error !== null) {
+        throw titleAchievementError(
+            'Failed to load owned titles',
+            'TITLE_OWNED_ITEMS_QUERY_FAILED',
+            'owned-titles',
+            ownedItemsResult.error,
+        );
+    }
+    if (!Array.isArray(ownedItemsResult.data)) {
+        throw titleAchievementError(
+            'Invalid owned titles data',
+            'TITLE_OWNED_ITEMS_INVALID_DATA',
+            'owned-titles',
+        );
+    }
+    const ownedCodes = new Set<string>();
+    for (const item of ownedItemsResult.data) {
+        const code = parseOwnedItemCode(item);
+        if (code === null) {
+            throw titleAchievementError(
+                'Invalid owned titles data',
+                'TITLE_OWNED_ITEMS_INVALID_DATA',
+                'owned-titles',
+            );
         }
-
-        // チェック対象のルール（未所持のもの）
-        const uncheckedRules = TITLE_RULES.filter(r => !ownedCodes.has(r.itemCode));
-        if (uncheckedRules.length === 0) return awarded;
-
-        // コンテキスト情報を並列取得
-        const ctx = await buildContext(userId);
-
-        // 各ルールをチェック
-        for (const rule of uncheckedRules) {
-            try {
-                if (rule.check(ctx)) {
-                    const success = await grantTitle(userId, rule.itemCode);
-                    if (success) {
-                        awarded.push(rule.itemCode);
-                    }
-                }
-            } catch (e: unknown) {
-                console.error(`称号チェックエラー [${rule.itemCode}]`);
-            }
-        }
-    } catch (e: unknown) {
-        console.error('称号達成チェック処理エラー');
+        ownedCodes.add(code);
     }
 
+    const awarded: string[] = [];
+    const uncheckedRules = TITLE_RULES.filter(r => !ownedCodes.has(r.itemCode));
+    if (uncheckedRules.length === 0) return awarded;
+
+    const ctx = await buildContext(userId);
+    for (const rule of uncheckedRules) {
+        if (rule.check(ctx) && await grantTitle(userId, rule.itemCode)) {
+            awarded.push(rule.itemCode);
+        }
+    }
     return awarded;
 }
 
@@ -172,18 +251,58 @@ async function buildContext(userId: string): Promise<AchievementContext> {
             .limit(400),
     ]);
 
-    const rawStats = statsResult.data as UserStepStatsRpcRow | UserStepStatsRpcRow[] | null;
-    const statsData = Array.isArray(rawStats) ? rawStats[0] : rawStats;
-    const totalSteps = statsData?.total_steps ?? 0;
-    const stepsToday = todayResult.data?.steps || 0;
-    const stepGoal = userResult.data?.step_goal || 10000;
-    const ucBalance = balanceResult.data?.total_balance || 0;
-    const shopPurchaseCount = purchaseResult.count || 0;
-    const groupCount = groupResult.count || 0;
-    const hasCreatedGroup = (createdGroupResult.count || 0) > 0;
+    if (statsResult.error !== null) {
+        throw titleAchievementError('Failed to load user step stats', 'TITLE_STEP_STATS_QUERY_FAILED', 'step-stats', statsResult.error);
+    }
+    const totalSteps = parseSingleTotalSteps(statsResult.data);
+    if (totalSteps === null) {
+        throw titleAchievementError('Invalid user step stats data', 'TITLE_STEP_STATS_INVALID_DATA', 'step-stats');
+    }
 
-    // ストリーク計算
-    const currentStreak = calculateStreak(streakResult.data || [], stepGoal, today);
+    if (todayResult.error !== null) {
+        throw titleAchievementError('Failed to load daily steps', 'TITLE_DAILY_STEPS_QUERY_FAILED', 'daily-steps', todayResult.error);
+    }
+    const stepsToday = todayResult.data === null
+        ? null
+        : isRecord(todayResult.data) && isNonnegativeSafeInteger(todayResult.data.steps)
+            ? todayResult.data.steps
+            : undefined;
+    if (stepsToday === undefined) {
+        throw titleAchievementError('Invalid daily steps data', 'TITLE_DAILY_STEPS_INVALID_DATA', 'daily-steps');
+    }
+
+    if (userResult.error !== null) {
+        throw titleAchievementError('Failed to load step goal', 'TITLE_STEP_GOAL_QUERY_FAILED', 'step-goal', userResult.error);
+    }
+    if (!isRecord(userResult.data) || !isValidStepGoal(userResult.data.step_goal)) {
+        throw titleAchievementError('Invalid step goal data', 'TITLE_STEP_GOAL_INVALID_DATA', 'step-goal');
+    }
+    const stepGoal = userResult.data.step_goal;
+
+    if (balanceResult.error !== null) {
+        throw titleAchievementError('Failed to load coin balance', 'TITLE_BALANCE_QUERY_FAILED', 'coin-balance', balanceResult.error);
+    }
+    const ucBalance = balanceResult.data === null
+        ? null
+        : isRecord(balanceResult.data) && isNonnegativeSafeInteger(balanceResult.data.total_balance)
+            ? balanceResult.data.total_balance
+            : undefined;
+    if (ucBalance === undefined) {
+        throw titleAchievementError('Invalid coin balance data', 'TITLE_BALANCE_INVALID_DATA', 'coin-balance');
+    }
+
+    const shopPurchaseCount = parseCount(purchaseResult, 'shop purchase count', 'TITLE_PURCHASE_COUNT', 'purchase-count');
+    const groupCount = parseCount(groupResult, 'group count', 'TITLE_GROUP_COUNT', 'group-count');
+    const createdGroupCount = parseCount(createdGroupResult, 'created group count', 'TITLE_CREATED_GROUP_COUNT', 'created-group-count');
+
+    if (streakResult.error !== null) {
+        throw titleAchievementError('Failed to load streak steps', 'TITLE_STREAK_QUERY_FAILED', 'streak-steps', streakResult.error);
+    }
+    const streakRecords = parseStreakRecords(streakResult.data, today);
+    if (streakRecords === null) {
+        throw titleAchievementError('Invalid streak steps data', 'TITLE_STREAK_INVALID_DATA', 'streak-steps');
+    }
+    const currentStreak = calculateStreak(streakRecords, stepGoal, today);
 
     return {
         userId,
@@ -194,7 +313,7 @@ async function buildContext(userId: string): Promise<AchievementContext> {
         ucBalance,
         shopPurchaseCount,
         groupCount,
-        hasCreatedGroup,
+        hasCreatedGroup: createdGroupCount > 0,
         syncHourJST,
     };
 }
@@ -203,7 +322,7 @@ async function buildContext(userId: string): Promise<AchievementContext> {
  * 連続達成日数を計算
  */
 function calculateStreak(
-    records: { date: string; steps: number }[],
+    records: StreakRecord[],
     stepGoal: number,
     today: string
 ): number {
@@ -241,30 +360,42 @@ async function grantTitle(userId: string, itemCode: string): Promise<boolean> {
     if (!userId || !itemCode) return false;
 
     // shop_items から item_id を取得
-    const { data: shopItem } = await supabaseAdmin
+    const shopItemResult = await supabaseAdmin
         .from('shop_items')
         .select('id')
         .eq('item_code', itemCode)
         .single();
 
-    if (!shopItem) {
-        console.error('称号アイテムが見つかりません');
-        return false;
+    if (shopItemResult.error !== null) {
+        if (isPostgrestNoRows(shopItemResult.error)) {
+            throw titleAchievementError('Title definition not found', 'TITLE_DEFINITION_NOT_FOUND', 'title-definition');
+        }
+        throw titleAchievementError(
+            'Failed to load title definition',
+            'TITLE_DEFINITION_QUERY_FAILED',
+            'title-definition',
+            shopItemResult.error,
+        );
+    }
+    if (shopItemResult.data === null) {
+        throw titleAchievementError('Title definition not found', 'TITLE_DEFINITION_NOT_FOUND', 'title-definition');
+    }
+    if (!isRecord(shopItemResult.data) || !isNonEmptyString(shopItemResult.data.id)) {
+        throw titleAchievementError('Invalid title definition data', 'TITLE_DEFINITION_INVALID_DATA', 'title-definition');
     }
 
     // user_items に挿入（重複は無視）
     const { error } = await supabaseAdmin
         .from('user_items')
         .upsert(
-            { user_id: userId, item_id: shopItem.id, is_equipped: false },
+            { user_id: userId, item_id: shopItemResult.data.id, is_equipped: false },
             { onConflict: 'user_id,item_id' }
         );
 
     if (error) {
         // 既に存在する場合はスキップ
-        if (error.code === '23505') return false;
-        console.error('称号付与に失敗しました:', error.code);
-        return false;
+        if (isRecord(error) && error.code === '23505') return false;
+        throw titleAchievementError('Failed to grant title', 'TITLE_GRANT_FAILED', 'title-grant', error);
     }
 
     return true;

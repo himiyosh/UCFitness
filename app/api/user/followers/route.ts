@@ -12,7 +12,7 @@ import type { PublicUserSummary, UserFollowRow } from "@/types/database";
 // GET: 自分をフォローしているユーザーの一覧を取得
 // ============================================
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
     try {
         const session = await auth();
         if (!session?.user || !session.user.id) {
@@ -37,17 +37,51 @@ export async function GET() {
             return NextResponse.json({ followers: [], count: 0 });
         }
 
-        const followerIds = followers.map((f) => f.follower_id);
+        const followerIds = [...new Set(followers.map((f) => f.follower_id))];
 
         // ユーザー情報を取得（PII除外）
-        const { data: users } = await supabaseAdmin
+        const { data: users, error: profilesError } = await supabaseAdmin
             .from("users")
             .select("id, name, image, username")
             .in("id", followerIds)
             .returns<PublicUserSummary[]>();
 
+        if (profilesError) {
+            reportError(
+                "user/followers:profiles",
+                new Error("Follower profile lookup failed"),
+                { expectedProfileCount: followerIds.length },
+            );
+            return NextResponse.json({ error: "Failed to fetch follower profiles" }, { status: 500 });
+        }
+
+        if (!users) {
+            reportError(
+                "user/followers:profiles",
+                new Error("Follower profile lookup returned no data without an error"),
+                { expectedProfileCount: followerIds.length },
+            );
+            return NextResponse.json({ error: "Failed to fetch follower profiles" }, { status: 500 });
+        }
+
+        const returnedProfileIds = new Set(users.map((user) => user.id));
+        if (
+            users.length !== followerIds.length
+            || followerIds.some((followerId) => !returnedProfileIds.has(followerId))
+        ) {
+            reportError(
+                "user/followers:profiles",
+                new Error("Follower profile lookup did not return all requested profiles"),
+                {
+                    expectedProfileCount: followerIds.length,
+                    returnedProfileCount: returnedProfileIds.size,
+                },
+            );
+            return NextResponse.json({ error: "Failed to fetch follower profiles" }, { status: 500 });
+        }
+
         const usersMap = new Map<string, PublicUserSummary>();
-        users?.forEach((u) => usersMap.set(u.id, u));
+        users.forEach((u) => usersMap.set(u.id, u));
 
         const result = followers
             .map((f) => {

@@ -2,12 +2,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/user/group/route';
 import { mockQueryResult } from '@/lib/__tests__/test-utils/supabase-query-mock';
 
-const { mockSupabase, mockFrom } = vi.hoisted(() => {
+const {
+    mockSupabase,
+    mockFrom,
+    mockReportError,
+    mockMemberInsert,
+    mockLegacySelect,
+    mockUserUpdate,
+} = vi.hoisted(() => {
     const mockFrom = vi.fn();
     const mockSupabase = {
         from: mockFrom,
     };
-    return { mockSupabase, mockFrom };
+    return {
+        mockSupabase,
+        mockFrom,
+        mockReportError: vi.fn(),
+        mockMemberInsert: vi.fn(),
+        mockLegacySelect: vi.fn(),
+        mockUserUpdate: vi.fn(),
+    };
 });
 
 vi.mock('@/lib/supabase', () => ({
@@ -16,6 +30,10 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/lib/auth', () => ({
     auth: vi.fn().mockResolvedValue({ user: { id: 'owner-id' } })
+}));
+
+vi.mock('@/lib/errors', () => ({
+    reportError: mockReportError,
 }));
 
 vi.mock('next/server', () => ({
@@ -45,7 +63,7 @@ describe('POST /api/user/group - Invite Security', () => {
         then: (resolve: (result: { data: Record<string, unknown>; error: null }) => unknown) => resolve({ data, error: null })
     });
 
-    const setupMocks = (isFollowing: boolean) => {
+    const setupMocks = (followResult: { data: Record<string, unknown> | null; error: unknown }) => {
         mockFrom.mockImplementation((table: string) => {
             if (table === 'groups') {
                 return {
@@ -59,6 +77,7 @@ describe('POST /api/user/group - Invite Security', () => {
                     select: (cols: string) => {
                         // Legacy sync query: .select('groups(keyword)').eq(...)
                         if (cols === 'groups(keyword)') {
+                            mockLegacySelect(cols);
                             return {
                                 eq: () => mockQueryResult([])
                             };
@@ -80,7 +99,7 @@ describe('POST /api/user/group - Invite Security', () => {
                             })
                         };
                     },
-                    insert: () => Promise.resolve({ error: null })
+                    insert: mockMemberInsert.mockResolvedValue({ error: null })
                 };
             }
             if (table === 'user_follows') {
@@ -88,55 +107,107 @@ describe('POST /api/user/group - Invite Security', () => {
                     select: () => ({
                         eq: () => ({
                             eq: () => ({
-                                single: () => Promise.resolve({ data: isFollowing ? { id: 'follow-id' } : null })
+                                single: () => Promise.resolve(followResult)
                             })
                         })
                     })
                 };
             }
             if (table === 'users') {
-                return { update: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+                return {
+                    update: mockUserUpdate.mockReturnValue({
+                        eq: () => Promise.resolve({ error: null }),
+                    }),
+                };
             }
 
             return createChain();
         });
     };
 
-    it('should REJECT invite if target user does NOT follow owner', async () => {
-        setupMocks(false);
+    const createInviteRequest = () => new Request('http://localhost/api/user/group', {
+        method: 'POST',
+        body: JSON.stringify({
+            action: 'invite',
+            keyword: 'my-group',
+            targetUserId: '550e8400-e29b-41d4-a716-446655440000'
+        })
+    });
 
-        const req = new Request('http://localhost/api/user/group', {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'invite',
-                keyword: 'my-group',
-                targetUserId: '550e8400-e29b-41d4-a716-446655440000'
-            })
+    it('follow照会がPGRST116の場合、招待せず403を返す', async () => {
+        setupMocks({
+            data: null,
+            error: { code: 'PGRST116', message: 'no rows' },
         });
 
-        const res = await POST(req);
+        const res = await POST(createInviteRequest());
         const data = await res.json();
 
         expect(res.status).toBe(403);
         expect(data.error).toMatch(/must follow/i);
+        expect(mockReportError).not.toHaveBeenCalled();
+        expect(mockMemberInsert).not.toHaveBeenCalled();
+        expect(mockLegacySelect).not.toHaveBeenCalled();
+        expect(mockUserUpdate).not.toHaveBeenCalled();
     });
 
-    it('should ALLOW invite if target user follows owner', async () => {
-        setupMocks(true);
-
-        const req = new Request('http://localhost/api/user/group', {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'invite',
-                keyword: 'my-group',
-                targetUserId: '550e8400-e29b-41d4-a716-446655440001'
-            })
+    it('follow照会がDBエラーの場合、招待せず500を報告する', async () => {
+        setupMocks({
+            data: null,
+            error: { code: '08006', message: 'database unavailable' },
         });
 
-        const res = await POST(req);
+        const res = await POST(createInviteRequest());
+
+        expect(res.status).toBe(500);
+        expect(await res.json()).toEqual({ error: 'Failed to verify follow relationship' });
+        expect(mockReportError).toHaveBeenCalledWith(
+            'user/group:invite_follow_lookup',
+            expect.objectContaining({ message: 'Invite follow relationship lookup failed' }),
+            expect.objectContaining({ userId: 'owner-id', groupId: 'group-id' }),
+        );
+        expect(mockMemberInsert).not.toHaveBeenCalled();
+        expect(mockLegacySelect).not.toHaveBeenCalled();
+        expect(mockUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it('follow照会がnull/nullの場合、招待せず500を報告する', async () => {
+        setupMocks({ data: null, error: null });
+
+        const res = await POST(createInviteRequest());
+
+        expect(res.status).toBe(500);
+        expect(await res.json()).toEqual({ error: 'Failed to verify follow relationship' });
+        expect(mockReportError).toHaveBeenCalledWith(
+            'user/group:invite_follow_lookup',
+            expect.objectContaining({
+                message: 'Invite follow relationship lookup returned no data without an error',
+            }),
+            expect.objectContaining({ userId: 'owner-id', groupId: 'group-id' }),
+        );
+        expect(mockMemberInsert).not.toHaveBeenCalled();
+        expect(mockLegacySelect).not.toHaveBeenCalled();
+        expect(mockUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it('follow照会成功後、メンバー追加とlegacy同期を実行する', async () => {
+        setupMocks({
+            data: { id: 'follow-id' },
+            error: null,
+        });
+
+        const res = await POST(createInviteRequest());
         const data = await res.json();
 
         expect(res.status).toBe(200);
         expect(data.success).toBe(true);
+        expect(mockReportError).not.toHaveBeenCalled();
+        expect(mockMemberInsert).toHaveBeenCalledWith({
+            group_id: 'group-id',
+            user_id: '550e8400-e29b-41d4-a716-446655440000',
+            role: 'MEMBER',
+        });
+        expect(mockLegacySelect).toHaveBeenCalledWith('groups(keyword)');
+        expect(mockUserUpdate).toHaveBeenCalledWith({ group_keyword: [] });
     });
 });

@@ -75,10 +75,12 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **接続UX**: 設定画面でGoogle同意画面への外部遷移、読み取り範囲、再認証中の同期停止、Fitbitへの暗黙切替を行わないこと、解除後の同期元または同期停止を接続状況に応じて明示する。セッション切れ時は再認証通知を保持し、FitbitログインがUCFitness本人確認であることを説明して設定画面へ戻す
 - **トークン保護**: Google HealthトークンはユーザーID・プロバイダ・用途をAADへ含めたAES-256-GCM v2で暗号化する。解除時はDB内で接続停止・同期リース無効化・資格情報消去を原子的に完了してからGoogle側の失効を試行し、失効失敗でも接続を復活させない
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
-- **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
+- **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、報酬処理失敗、利用不能を構造化コードで返す。バッジ・称号・コインのいずれかが失敗した場合は保存済み歩数を保持しつつ同期成功にしない
+- **コイン再計算の既知制約**: `processCoins` は削除・台帳upsert・残高再集計の各失敗を同期失敗へ伝播するが、3段階はまだ単一DBトランザクションではない。原子化には既存DDL確認後の専用migration/RPCが必要であり、アプリ側で推測実装しない
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
+- **フォロー歩数比較の表示契約**: 日別チャートは記録済み0歩を基準線上の点、未記録を線の切れ目として表示し、tooltipと読み上げ用数値表でも両者を区別する
 - **公開プロフィールAPIの入力契約**: Achievement進捗と年間歩数カレンダーは認証を要求しつつ、UUID検証済みの公開target `userId`をそのまま照会する。フォロー状態と公開リアクションもtarget UUID・emoji・periodをDB操作前に検証する。プロフィール/バナー画像の保存拡張子は元ファイル名ではなく検証済みMIMEから決定し、`contentType`と一致させる
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
@@ -236,14 +238,390 @@ Phase 1 migrationはpolicyを作らず、通常roleをdefault denyにする。`P
 期待と異なる場合は同一トランザクションを中止する。`FORCE ROW LEVEL SECURITY`は使わない。
 APIキーの平文`key`列とlegacy照合の廃止はPhase 1対象外で、後続Phaseで扱う。
 
+Phase 2 は `migrations/20260720_harden_push_subscriptions_rls.sql` で、
+`push_subscriptions` を保護する。購読登録は`INSERT`/`UPDATE`、配信・再購読重複整理は
+`SELECT`、解除・404/410 cleanupは`DELETE`を使い、すべて`supabaseAdmin`経由である。
+browser clientは`/api/push/subscribe`だけを呼び、Supabaseへ直接接続しない。
+
+Phase 2 migrationは既知7列の型・nullability、`public.users(id)`へのcascade FK、
+主キー、`(user_id, endpoint)` unique制約、owner、policy、BYPASSRLSを検証する。
+全ACLを剥奪後、`service_role`へ7列SELECT、ID以外6列のINSERT/UPDATE、table DELETE、
+対象table所有sequenceだけのUSAGEを付与する。追跡済み履歴は完全なschema manifestでは
+ないため、未知の追加列・default・indexの完全性と実catalogは未検証である。
+初期作成履歴には旧policyがあるため、実catalogに残存していればmigrationは自動削除せず
+中断し、適用前の個別確認と承認を要求する。
+
+Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
+`coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
+歩数再計算・ログインボーナス・backfillの`INSERT`/`UPDATE`/`DELETE`を使う。原子RPCも
+追跡済みSQLでは既定の`SECURITY INVOKER`であるため、`service_role`へ8列SELECT、
+書込み6列INSERT/UPDATE、table DELETE、対象所有sequenceのUSAGEだけを付与する。
+既知8列、UUID/時刻default、`public.users(id)` FK、主キー、type check、idempotency
+unique index、owner、policy、BYPASSRLSが一致しなければtransactionを中止する。
+
+Phase 4 は `migrations/20260720_harden_coin_balances_rls.sql` で`coin_balances`を保護する。
+直接8経路は7列の`SELECT`だけであり、service_roleへ直接DMLを許可しない。既存4 writer
+RPCはtable owner、BYPASSRLS、固定search_path、限定EXECUTEを検証後、関数を置換せず
+`SECURITY DEFINER`へ変更する。既知8列、default、`public.users(id)` FK、主キー、非負
+check、owner、policy、所有sequenceなしが不一致なら中止する。Group reward migrationは
+現stacked baseにないため、後続統合時は`credit_balance`のcatalog契約を再確認する。
+
+Phase 5 は `migrations/20260720_harden_user_badges_rls.sql` で`user_badges`を保護する。
+直接5 SELECT・2 INSERTと手動upsertに合わせ、service_roleへ7列SELECT、5列INSERT、競合3列UPDATEだけを許可する。
+既知schema・3 FK・PK/unique・default・owner・policy・所有sequenceなしと既存atomic RPC境界が不一致なら中止する。
+
+Phase 6 は `migrations/20260720_harden_badges_rls.sql` で定義表`badges`を保護する。
+直接2 SELECT・`user_badges` relation 2 SELECTに必要な8列だけをservice_roleへ許可し、直接DMLは許可しない。
+raw SQL seedはowner実行境界として分離し、既知schema・PK/unique・incoming FK・owner・policy・所有sequenceなしが不一致なら中止する。
+
+Phase 7 は個人データ`walking_routes`を候補として監査したが、migrationを作らない
+audit-onlyとした。現行コードにはserver-sideの`.from('walking_routes')`が6件あり、
+一覧`SELECT`、件数`SELECT`、`INSERT`＋returning `SELECT`、所有者確認`SELECT`、
+`UPDATE`＋returning `SELECT`、`DELETE`をすべて`supabaseAdmin`で実行する。
+各routeは`user_id = session.user.id`を維持し、browser componentは同一origin APIだけを
+呼び、Supabase clientを直接利用しない。
+
+入力境界は、POSTでname/description/distance/duration/difficulty、PATCH/DELETEで
+route IDのUUIDを検証する。PATCHの所有者確認`SELECT`は`PGRST116`だけを404とし、
+その他のDB障害や`data: null, error: null`の不正shapeは更新前に報告して500を返す。
+
+schema確定後に限るgrant候補は、`service_role`へ12列のcolumn `SELECT`、
+`user_id` / `name` / `description` / `distance_km` / `duration_minutes` /
+`difficulty`のcolumn `INSERT`、`updated_at` / `is_favorite` / `walk_count` /
+`last_walked_at` / `name` / `description`のcolumn `UPDATE`、table `DELETE`、
+実在するowned sequenceだけの`USAGE`である。`PUBLIC` / `anon` /
+`authenticated`には権限を残さず、policy、`auth.uid()`、`FORCE ROW LEVEL SECURITY`、
+`GRANT ALL`は追加しない。ただしこれは現行コードから得た必要権限候補であり、
+schema証拠ではないため、今回grantも実行していない。
+
+コードから確認できる使用列は`id` / `user_id` / `name` / `description` /
+`distance_km` / `duration_minutes` / `difficulty` / `is_favorite` / `walk_count` /
+`last_walked_at` / `created_at` / `updated_at`である。しかし`origin/main`には
+`walking_routes`の追跡DDLも`types/database.ts`のDatabase型もなく、
+`docs/improvement-report.md`が参照する`migrations/023_walking_routes.sql`も
+Git履歴に存在しない。実catalog用の接続文字列、`.env.local`、`psql`、Supabase CLIも
+このworkspaceにないため、型、nullability、default、`public.users(id)` FK、PK、
+unique/check、owner、RLS/policy、ACL、owned sequenceを安全に確定できない。
+これらをコードから推測したfail-closed migrationは作成せず、production /
+nonproduction DBへの接続・適用・read/writeも実施していない。
+
+Phase 8 はソーシャルグラフ`user_follows`を候補として監査したが、Phase 7と同様に
+migrationを作らないaudit-onlyとした。現行コードには8つのserver routeから9件の
+`.from('user_follows')`があり、7 `SELECT`、1 `INSERT`、1 `DELETE`をすべて
+`supabaseAdmin`で実行する。直接`UPDATE` / upsertは存在しない。browser componentは
+`/api/user/follow`、`/api/user/follow/status`、`/api/user/following`、
+`/api/user/following-comparison`、`/api/user/feed`等のsame-origin APIだけを呼び、
+Supabase clientへ直接接続しない。
+
+使用する読取列は`id` / `follower_id` / `following_id` / `created_at`、作成列は
+`follower_id` / `following_id`である。解除は認証ユーザーを`follower_id`に固定し、
+対象の`following_id`と組み合わせて削除する。schema確定後の`service_role`へのgrant候補は4列のcolumn `SELECT`、
+`follower_id` / `following_id`のcolumn `INSERT`、table `DELETE`、実在するowned
+sequenceだけの`USAGE`である。`PUBLIC` / `anon` / `authenticated`には権限を残さず、
+policy、`auth.uid()`、`FORCE ROW LEVEL SECURITY`、`GRANT ALL`は追加しない。
+
+`types/database.ts`の`UserFollowRow`は4列を非nullableなTypeScript値として表し、
+`INSERT`は`id` / `created_at`を省略するため両列の自動生成に依存する。ただし、
+DB default、generated列、trigger等のどの仕組みで補うかは追跡証拠から確定できない。
+一方、現行treeにもGit履歴にも`user_follows`の追跡DDLはなく、型はPostgreSQLの
+`uuid`と`text`、`timestamp with time zone`と`timestamp without time zone`、
+default式の違いを証明しない。2つの`public.users(id)` FKと削除動作、PK、
+`(follower_id, following_id)` unique、self-follow check、owner、既存RLS/policy、
+table/column ACL、owned sequenceも実catalogなしでは確定できない。アプリのUUID検証、
+重複時`23505`処理、自分自身の拒否はschema制約の証拠として扱わない。
+
+このためfail-closed差異判定の期待値を推測せず、Phase 8もproduction / nonproduction
+DBへの接続・適用・read/writeを行っていない。保護済み件数は9/25のまま、F016は
+in-progressを維持する。migration設計前にはPhase 7のread-only catalog queryで
+対象名だけを`public.user_follows`へ置き換え、全結果をDB管理者と確認する。
+
+#### Phase 9: `daily_steps` audit-only
+
+`daily_steps`は歩数履歴を保持する高感度健康データである。現行treeの追跡済み
+migrationには完全DDLがない。Git履歴の`46a3af7:supabase_schema.sql`
+（SHA-256 `261aa4b63d97ac3b924fc46a57109c2f4371a584c3ab63535f71157b5bedad31`）
+には旧完全DDLがあるが、nullableな`user_id`、checkなしの`steps`、公開SELECT
+policyを含む古いsnapshotであり現行catalogの証拠にはできない。
+`types/database.ts`も3列だけで`id` / timestampsを欠く。承認済みread-only
+実catalog接続がなく、現行default/nullability/PK/FK/unique/check/owner/ACL/
+RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に据え置く。
+
+コメントを除外した実行可能コードには32 ファイル、41 件のdirect PostgREST
+経路があり、すべてservice-roleの`SELECT`だった。direct `INSERT` / `UPDATE` /
+`DELETE` / upsertとbrowser clientからの直接接続はない。
+
+| 分類 | direct経路（件数） | 認可・エラー境界 |
+|---|---|---|
+| Home / profile / analytics | `app/[locale]/page.tsx` (1), `app/[locale]/user/[username]/page.tsx` (2), `app/[locale]/wallet/page.tsx` (1), `app/[locale]/debug/session/page.tsx` (1), `lib/services/analytics-service.ts` (1) | Server Component / service。profileとanalyticsは取得失敗をunavailable / throwへ分離 |
+| Group / challenge | `app/[locale]/groups/[groupId]/page.tsx` (1), `app/api/challenge/[challengeId]/progress/route.ts` (2), `app/api/challenge/[challengeId]/route.ts` (1), `app/api/group/[groupId]/events/[eventId]/route.ts` (1), `app/api/group/[groupId]/ranking/route.ts` (1), `app/api/group/[groupId]/weekly-report/route.ts` (1), `lib/services/group-comparison-service.ts` (1) | session / membership認可後の期間集計。一部の参加者・歩数結果は別Fix候補 |
+| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (2), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
+| Social / export | `app/api/user/following/route.ts` (1), `app/api/user/following-comparison/route.ts` (1), `app/api/user/export/route.ts` (1) | session userを固定。following-comparisonの部分障害境界は別Fix候補 |
+| Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証 |
+| Utility / script | `lib/supabase-utils.ts` (1), `scripts/check_group_info.ts` (1) | server helper / service-role運用script。JSDoc例は件数から除外 |
+
+関連RPC呼び出しは合計10件である。4 writerは
+`migrations/20260617_add_multi_provider_connections.sql`に追跡され、
+`search_path = ''`、lease/source conflict guard、service-role限定`EXECUTE`を持つ。
+追跡DDL上は`SECURITY DEFINER`指定がなく、既定invoker権限で`daily_steps`を更新する。
+
+| RPC | 呼び出し | read / write契約 |
+|---|---:|---|
+| `replace_daily_steps_range` | 1 | Google Health lease所有権を`FOR UPDATE`で検証し、期間`DELETE`後に取得済み行を`INSERT ... ON CONFLICT DO UPDATE`で置換 |
+| `upsert_daily_steps_max` | 1 | Google Health lease必須。当日値を`GREATEST`で単調upsertし、確定`steps`を返す |
+| `upsert_fitbit_daily_steps_max` | 1 | Fitbit userとGoogle Health状態をlockし、source conflict時は拒否。単調upsertして確定`steps`を返す |
+| `upsert_fitbit_daily_steps_batch` | 1 | 最大1000入力、履歴権威とsource conflictをlock下で検証し、単調batch upsert |
+| `get_user_step_stats` | 4 | 全期間集計read。型と呼び出しだけがあり、SQL定義、owner、security mode、`search_path`、`EXECUTE` ACLは未追跡 |
+| `get_batch_user_step_totals` | 1 | badge batch集計read。SQL定義、owner、security mode、`search_path`、`EXECUTE` ACLは未追跡 |
+| `award_streak_milestones` | 1 | `daily_steps`をreadし、Phase 4 migrationでowner固定・`SECURITY DEFINER`・service-role限定`EXECUTE`を検証済み |
+
+完全schema取得後もdirect操作と関数内部操作を分離する。direct grant候補は
+service-roleの`SELECT`だけで、直接DMLは現行経路にない。ただし`select('*')` /
+count経路が存在するため、列grantは全列catalogなしに確定できない。writerを
+definer化する場合だけ、実catalogでowner / BYPASSRLS / `prosecdef` / 固定
+`search_path` / 限定`EXECUTE`を検証し、lease ownership、monotonic upsert、
+history replacement、source conflict guardを保持した後にdirect DMLを除去する。
+`GRANT ALL`、`auth.uid()`、`auth.users`、broad policy、
+`FORCE ROW LEVEL SECURITY`は使用しない。
+
+PostgREST既定1000行上限について、global/group rankingの共通helperは900行
+OFFSET paginationと一意な`date,user_id`順序を使うが、stable orderは
+snapshotではない。同期中に別pageへ移ると集計時点は混在し得る。exportは
+最大365日、profileは直近400日で上限内だが、全ユーザーの当日badge候補、
+10ユーザー×30日履歴、GROUP challenge/rankingの参加者×期間は1000行を超え得る。
+ループ内のユーザー単位`daily_steps` N+1は検出していない。ランキングは集計後に
+正歩数だけを順位化する。recorded 0は行として分母に含め、missing rowと区別する。
+
+高確度のDB error fallbackはRLS変更へ混ぜず、別Fix候補とする。
+
+| 経路 | 現在の偽装 | 正しい障害境界 |
+|---|---|---|
+| `app/api/user/achievements/route.ts` | 修正前はcount / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | DB障害・未設定・不正shapeを0や10,000へ偽装せず、query別の固定5xxで判定停止 |
+| `lib/services/badge-allocator.ts` | 修正前は日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | DB障害・不正shapeを未達成へ偽装せず対象ユーザーの割当失敗として隔離し、insert成功後だけ通知 |
+| `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
+| `lib/services/title-achievement-service.ts` | 修正前は歩数・目標・残高・件数のerrorを0または既定値へ変換 | DB障害・未設定・不正shapeを未達成へ偽装せず、称号付与だけを失敗として隔離 |
+| `lib/services/coin-service.ts` | backfillのuser / steps errorを未記録・no dataとしてreturn | DB errorを失敗として返し、台帳処理を開始しない |
+| `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
+Phase 9で必要なtable catalogは、下記blockの対象
+`public.walking_routes`を`public.daily_steps`へ置換して同じread-only transactionで
+取得する。加えて、未追跡aggregation RPCを含む関数owner / security / config /
+ACL / dependencyを次のSQLで取得する。これは承認後のread-only接続専用であり、
+今回のPRではDBへ接続・実行していない。
+
+```sql
+BEGIN TRANSACTION READ ONLY;
+
+WITH expected(signature) AS (
+  VALUES
+    ('public.replace_daily_steps_range(uuid,date,date,jsonb,uuid)'::text),
+    ('public.upsert_daily_steps_max(uuid,date,integer,uuid)'::text),
+    ('public.upsert_fitbit_daily_steps_max(uuid,date,integer)'::text),
+    ('public.upsert_fitbit_daily_steps_batch(uuid,jsonb)'::text),
+    ('public.award_streak_milestones(date)'::text)
+)
+SELECT signature, to_regprocedure(signature) AS oid
+FROM expected
+ORDER BY signature;
+
+SELECT
+  procedure.oid::regprocedure AS routine,
+  owner.rolname AS owner,
+  owner.rolbypassrls AS owner_bypassrls,
+  language.lanname,
+  procedure.prosecdef,
+  procedure.proconfig,
+  procedure.proacl,
+  pg_get_function_identity_arguments(procedure.oid) AS identity_arguments,
+  pg_get_functiondef(procedure.oid) AS function_definition,
+  has_function_privilege('service_role', procedure.oid, 'EXECUTE') AS service_role_execute,
+  has_function_privilege('authenticated', procedure.oid, 'EXECUTE') AS authenticated_execute,
+  has_function_privilege('anon', procedure.oid, 'EXECUTE') AS anon_execute
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+JOIN pg_roles AS owner ON owner.oid = procedure.proowner
+JOIN pg_language AS language ON language.oid = procedure.prolang
+WHERE namespace.nspname = 'public'
+  AND procedure.proname = ANY (ARRAY[
+    'replace_daily_steps_range', 'upsert_daily_steps_max', 'upsert_fitbit_daily_steps_max',
+    'upsert_fitbit_daily_steps_batch', 'get_user_step_stats',
+    'get_batch_user_step_totals', 'award_streak_milestones'
+  ])
+ORDER BY procedure.oid::regprocedure::text;
+
+WITH target AS (
+  SELECT to_regclass('public.daily_steps') AS oid
+)
+SELECT
+  procedure.oid::regprocedure AS routine,
+  dependency.deptype,
+  referenced.oid::regclass AS referenced_relation
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+CROSS JOIN target
+LEFT JOIN pg_depend AS dependency
+  ON dependency.classid = 'pg_proc'::regclass
+ AND dependency.objid = procedure.oid
+ AND dependency.refclassid = 'pg_class'::regclass
+ AND dependency.refobjid = target.oid
+LEFT JOIN pg_class AS referenced ON referenced.oid = dependency.refobjid
+WHERE namespace.nspname = 'public'
+  AND procedure.proname = ANY (ARRAY[
+    'replace_daily_steps_range', 'upsert_daily_steps_max', 'upsert_fitbit_daily_steps_max',
+    'upsert_fitbit_daily_steps_batch', 'get_user_step_stats',
+    'get_batch_user_step_totals', 'award_streak_milestones'
+  ])
+ORDER BY procedure.oid::regprocedure::text, dependency.deptype;
+
+SELECT
+  procedure.oid::regprocedure AS routine,
+  grantor.rolname AS grantor,
+  CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE grantee.rolname END AS grantee,
+  acl.privilege_type,
+  acl.is_grantable
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+LEFT JOIN LATERAL aclexplode(
+  COALESCE(procedure.proacl, acldefault('f', procedure.proowner))
+) AS acl ON true
+LEFT JOIN pg_roles AS grantor ON grantor.oid = acl.grantor
+LEFT JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
+WHERE namespace.nspname = 'public'
+  AND procedure.proname = ANY (ARRAY[
+    'replace_daily_steps_range', 'upsert_daily_steps_max', 'upsert_fitbit_daily_steps_max',
+    'upsert_fitbit_daily_steps_batch', 'get_user_step_stats',
+    'get_batch_user_step_totals', 'award_streak_milestones'
+  ])
+ORDER BY procedure.oid::regprocedure::text, grantee.rolname;
+
+ROLLBACK;
+```
+
+`pg_depend`はclass/refclassを限定して補助証拠として取得するが、PL/pgSQL本文の
+table参照を完全には記録しない。必ず`pg_get_functiondef`の完全定義と照合する。
+
+RLS変更とは分離すべき高確度のerror fallbackも監査した。
+
+| 経路 | 現行のDB障害時挙動 | 別Fix候補 |
+|---|---|---|
+| `POST /api/user/follow`の対象ユーザー確認 | `PGRST116`だけを404とし、その他のDB障害と`null/null`は登録前に報告して500 | 修正済み |
+| `GET /api/user/followers`のプロフィール取得 | `users`照会error・不正null・プロフィール欠落を報告し、空状態へ変換せず500 | 修正済み |
+| `GET /api/user/following-comparison` | follows/users/steps照会error・不正null・プロフィール欠落を報告し、空比較・`Unknown`・0歩へ変換せず500 | 修正済み |
+| group invite anti-abuse | `PGRST116`だけを403とし、その他のDB障害と`null/null`は招待・legacy同期前に報告して500 | 修正済み |
+
+社会データのDB障害は空配列・`Unknown`・0歩へ偽装しない。歩数照会が成功した場合に限り、日付ごとの合法的な未記録は既存API互換として0歩で返し、`dailySteps.hasRecord`で記録済み0歩と区別する。
+
+migration設計前に、DB管理者が承認したread-only接続で次を保存する。結果に未知の列、
+制約、policy、grantee、owner、BYPASSRLS、sequenceがあれば設計を中止して個別に確認する。
+
+```sql
+BEGIN TRANSACTION READ ONLY;
+
+SELECT c.relkind, c.relrowsecurity, c.relforcerowsecurity,
+       owner.rolname AS owner_name, owner.rolbypassrls AS owner_bypassrls
+FROM pg_catalog.pg_class AS c
+JOIN pg_catalog.pg_roles AS owner ON owner.oid = c.relowner
+WHERE c.oid = pg_catalog.to_regclass('public.walking_routes');
+
+SELECT a.attnum, a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod) AS type,
+       a.attnotnull, a.attgenerated,
+       pg_catalog.pg_get_expr(d.adbin, d.adrelid) AS default_expression
+FROM pg_catalog.pg_attribute AS a
+LEFT JOIN pg_catalog.pg_attrdef AS d
+  ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+WHERE a.attrelid = pg_catalog.to_regclass('public.walking_routes')
+  AND a.attnum > 0 AND NOT a.attisdropped
+ORDER BY a.attnum;
+
+SELECT conname, contype, convalidated, confrelid::regclass AS referenced_table,
+       confdeltype, pg_catalog.pg_get_constraintdef(oid, true) AS definition
+FROM pg_catalog.pg_constraint
+WHERE conrelid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY contype, conname;
+
+SELECT indexrelid::regclass AS index_name, indisprimary, indisunique,
+       pg_catalog.pg_get_indexdef(indexrelid) AS definition
+FROM pg_catalog.pg_index
+WHERE indrelid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY indexrelid::regclass::text;
+
+SELECT tgname, tgtype, tgenabled, pg_catalog.pg_get_triggerdef(oid, true) AS definition
+FROM pg_catalog.pg_trigger
+WHERE tgrelid = pg_catalog.to_regclass('public.walking_routes')
+  AND NOT tgisinternal
+ORDER BY tgname;
+
+SELECT polname, polcmd, polpermissive, polroles, polqual, polwithcheck
+FROM pg_catalog.pg_policy
+WHERE polrelid = pg_catalog.to_regclass('public.walking_routes');
+
+SELECT COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+       privilege.privilege_type, privilege.is_grantable
+FROM pg_catalog.pg_class AS c
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  COALESCE(c.relacl, pg_catalog.acldefault('r', c.relowner))
+) AS privilege
+LEFT JOIN pg_catalog.pg_roles AS grantee ON grantee.oid = privilege.grantee
+WHERE c.oid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY grantee, privilege.privilege_type;
+
+SELECT a.attname AS column_name,
+       COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+       privilege.privilege_type, privilege.is_grantable
+FROM pg_catalog.pg_attribute AS a
+CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) AS privilege
+LEFT JOIN pg_catalog.pg_roles AS grantee ON grantee.oid = privilege.grantee
+WHERE a.attrelid = pg_catalog.to_regclass('public.walking_routes')
+  AND a.attnum > 0 AND NOT a.attisdropped AND a.attacl IS NOT NULL
+ORDER BY a.attnum, grantee, privilege.privilege_type;
+
+SELECT sequence.oid::regclass AS owned_sequence, dependency.deptype,
+       dependency.refobjsubid AS owning_column_number,
+       owner.rolname AS owner_name, sequence.relacl
+FROM pg_catalog.pg_class AS sequence
+JOIN pg_catalog.pg_depend AS dependency
+  ON dependency.objid = sequence.oid AND dependency.deptype IN ('a', 'i')
+JOIN pg_catalog.pg_roles AS owner ON owner.oid = sequence.relowner
+WHERE sequence.relkind = 'S'
+  AND dependency.refobjid = pg_catalog.to_regclass('public.walking_routes');
+
+SELECT sequence.oid::regclass AS owned_sequence,
+       COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+       privilege.privilege_type, privilege.is_grantable
+FROM pg_catalog.pg_class AS sequence
+JOIN pg_catalog.pg_depend AS dependency
+  ON dependency.objid = sequence.oid AND dependency.deptype IN ('a', 'i')
+CROSS JOIN LATERAL pg_catalog.aclexplode(
+  COALESCE(sequence.relacl, pg_catalog.acldefault('S', sequence.relowner))
+) AS privilege
+LEFT JOIN pg_catalog.pg_roles AS grantee ON grantee.oid = privilege.grantee
+WHERE sequence.relkind = 'S'
+  AND dependency.refobjid = pg_catalog.to_regclass('public.walking_routes')
+ORDER BY sequence.oid::regclass::text, grantee, privilege.privilege_type;
+
+SELECT rolname, rolbypassrls
+FROM pg_catalog.pg_roles
+WHERE rolname IN ('anon', 'authenticated', 'service_role');
+
+SELECT member_role.rolname AS member_role,
+       granted_role.rolname AS granted_role,
+       membership.admin_option
+FROM pg_catalog.pg_auth_members AS membership
+JOIN pg_catalog.pg_roles AS member_role ON member_role.oid = membership.member
+JOIN pg_catalog.pg_roles AS granted_role ON granted_role.oid = membership.roleid
+WHERE member_role.rolname IN ('anon', 'authenticated', 'service_role')
+   OR granted_role.rolname IN ('anon', 'authenticated', 'service_role')
+ORDER BY member_role.rolname, granted_role.rolname;
+
+ROLLBACK;
+```
+
 適用前に読み取り専用で `pg_class` / `pg_roles` / `pg_policy` /
-`information_schema.role_table_grants` / `information_schema.column_privileges` を確認し、
-現在のowner・`service_role.rolbypassrls`・policy・ACLを保存する。production /
+`pg_proc` / `information_schema.role_table_grants` / `column_privileges` /
+`routine_privileges` を確認し、owner・BYPASSRLS・policy・ACL・関数属性を保存する。production /
 nonproductionへの適用は明示承認後のみ実施する。
 
 ロールバックは、最初に`service_role`の最小GRANTを前方修正し、それで復旧しない場合のみ
-`ALTER TABLE public.api_keys DISABLE ROW LEVEL SECURITY`を実行する。anon/authenticatedへの
-再GRANTは保存した適用前ACLに基づく明示的なセキュリティ承認がある場合だけ行う。
+対象tableのRLSを無効化する。anon/authenticatedへの再GRANTは保存した適用前ACLに基づく
+明示的なセキュリティ承認がある場合だけ行う。
 
 Google Healthを有効化する前に
 `migrations/20260617_add_multi_provider_connections.sql` を適用し、
