@@ -1038,6 +1038,7 @@
     "streakMilestone": "ストリーク節目報酬",
     "streakMilestoneNote": "一回限りの連続達成報酬",
     "rankBonus": "ランキングボーナス",
+    "groupChallengeReward": "グループチャレンジ報酬",
     "purchase": "ショップ購入",
     "last30days": "直近30日間",
     "ranks": {
@@ -1857,6 +1858,7 @@
     "loginBonus": "ログインボーナス",
     "rankBonus": "ランクボーナス",
     "missionReward": "ミッション報酬",
+    "groupChallengeReward": "グループチャレンジ報酬",
     "giftReceived": "ギフト受取",
     "purchases": "ショップ購入",
     "giftSent": "ギフト送信"
