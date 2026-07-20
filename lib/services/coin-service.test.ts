@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+    allStepsOrder: vi.fn(), coinDeleteIn: vi.fn(), coinInsert: vi.fn(),
     from: vi.fn(), historyOrder: vi.fn(), reportError: vi.fn(), rpc: vi.fn(),
     shieldLte: vi.fn(), userSingle: vi.fn(),
 }));
@@ -14,7 +15,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 import { AppError } from '@/lib/errors';
-import { calculateStreakDays, processCoins } from '@/lib/services/coin-service';
+import { backfillCoinsForUser, calculateStreakDays, processCoins } from '@/lib/services/coin-service';
 
 const TODAY = '2026-07-20';
 const ok = (data: unknown) => ({ data, error: null });
@@ -28,7 +29,10 @@ describe('coin-service', () => {
         vi.clearAllMocks();
         mocks.userSingle.mockResolvedValue(ok({ step_goal: 10_000 }));
         mocks.historyOrder.mockResolvedValue(ok([{ date: TODAY, steps: 10_000 }]));
+        mocks.allStepsOrder.mockResolvedValue(ok([]));
         mocks.shieldLte.mockResolvedValue(ok([]));
+        mocks.coinDeleteIn.mockResolvedValue(ok(null));
+        mocks.coinInsert.mockResolvedValue(ok(null));
         mocks.rpc.mockResolvedValue(ok({ success: true }));
         mocks.from.mockImplementation((table: string) => {
             if (table === 'users') return {
@@ -40,6 +44,7 @@ describe('coin-service', () => {
                         gte: vi.fn(() => ({
                             lte: vi.fn(() => ({ order: mocks.historyOrder })),
                         })),
+                        order: mocks.allStepsOrder,
                     })),
                 })),
             };
@@ -47,6 +52,12 @@ describe('coin-service', () => {
                 select: vi.fn(() => ({
                     eq: vi.fn(() => ({ gte: vi.fn(() => ({ lte: mocks.shieldLte })) })),
                 })),
+            };
+            if (table === 'coin_transactions') return {
+                delete: vi.fn(() => ({
+                    eq: vi.fn(() => ({ in: mocks.coinDeleteIn })),
+                })),
+                insert: mocks.coinInsert,
             };
             throw new Error(`Unexpected table query: ${table}`);
         });
@@ -179,11 +190,30 @@ describe('coin-service', () => {
             p_transactions: [
                 { type: 'STEPS', amount: 10_000, description: '10000 steps × 1 UC' },
                 { type: 'GOAL_BONUS', amount: 2_000, description: 'Goal achieved bonus (+20%)' },
-                { type: 'STREAK_BONUS', amount: 1_999, description: '7-day streak bonus (×1.2)' },
+                { type: 'STREAK_BONUS', amount: 2_000, description: '7-day streak bonus (×1.2)' },
             ],
         });
         expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
         expect(mocks.reportError).not.toHaveBeenCalled();
+    });
+
+    it('backfillCoinsForUser_7日ストリークの追加分を整数百分率で計算する', async () => {
+        const history = Array.from({ length: 7 }, (_, offset) => {
+            const date = new Date('2026-07-14T00:00:00Z');
+            date.setUTCDate(date.getUTCDate() + offset);
+            return { date: date.toISOString().slice(0, 10), steps: 10_000 };
+        });
+        mocks.allStepsOrder.mockResolvedValueOnce(ok(history));
+
+        await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
+
+        expect(mocks.coinInsert).toHaveBeenCalledWith(expect.arrayContaining([
+            expect.objectContaining({
+                type: 'STREAK_BONUS',
+                amount: 2_000,
+                description: '7-day streak bonus (×1.2)',
+            }),
+        ]));
     });
 
     it('processCoins_基本コイン計算がDBまたはsafe integer範囲を超える場合_台帳処理前に拒否する', async () => {

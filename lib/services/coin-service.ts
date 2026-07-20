@@ -142,6 +142,13 @@ function calculateSafeCoinAmount(value: number, stage: string): number {
     return amount;
 }
 
+function calculateStreakBonus(baseCoins: number, multiplier: number): number {
+    const bonusPercentage = Math.round((multiplier - 1) * 100);
+    return bonusPercentage > 0
+        ? Math.floor((baseCoins * bonusPercentage) / 100)
+        : 0;
+}
+
 /**
  * 歩数からコインを計算して記録する
  * step-manager.ts の processUserSteps() から呼ばれる
@@ -170,7 +177,7 @@ export async function processCoins(userId: string, steps: number, date: string):
         : 0;
     const multiplier = getStreakMultiplier(currentStreak);
     const streakBonus = multiplier > 1.0
-        ? calculateSafeCoinAmount(baseCoins * (multiplier - 1.0), 'streak-bonus')
+        ? calculateSafeCoinAmount(calculateStreakBonus(baseCoins, multiplier), 'streak-bonus')
         : 0;
     const transactions: DailyCoinTransaction[] = [{
         type: 'STEPS',
@@ -549,7 +556,7 @@ export async function backfillCoinsForUser(userId: string) {
 
         const multiplier = getStreakMultiplier(streak);
         if (multiplier > 1.0) {
-            const streakBonus = Math.floor(baseCoins * (multiplier - 1.0));
+            const streakBonus = calculateStreakBonus(baseCoins, multiplier);
             if (streakBonus > 0) {
                 transactions.push({
                     user_id: userId,
