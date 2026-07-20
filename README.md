@@ -396,7 +396,7 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 |---|---|---|
 | `app/api/user/achievements/route.ts` | 修正前はcount / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | DB障害・未設定・不正shapeを0や10,000へ偽装せず、query別の固定5xxで判定停止 |
 | `lib/services/badge-allocator.ts` | 修正前は日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | DB障害・不正shapeを未達成へ偽装せず対象ユーザーの割当失敗として隔離し、insert成功後だけ通知 |
-| `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
+| `lib/services/badge-awards.ts` | Phase A/Bに続きPhase Cでstreak milestone RPCのexact row・報酬・SQLSTATE・重複を検証し、部分成功は成功通知後に固定AppErrorでCronへ伝播。Teams enrichmentはuser/badge全件の検証失敗を固定AppErrorだけで1回reportし、主バッジ付与を維持 | badge-awards coreの依存障害分離は完了。Teams webhook transport自体のbest-effort処理は`lib/api/teams.ts`の別境界で維持 |
 | `lib/services/title-achievement-service.ts` | 修正前は歩数・目標・残高・件数のerrorを0または既定値へ変換 | DB障害・未設定・不正shapeを未達成へ偽装せず、称号付与だけを失敗として隔離 |
 | `lib/services/coin-service.ts` | 修正前はbackfillのuser / steps errorを未記録・no dataとしてreturnし、DELETE / batch INSERT失敗後も処理を継続 | DB error・不正shape・未来日・重複/非昇順・計算overflowを原子RPC前に固定AppErrorで拒否する。全履歴のexact 4-key payloadを`apply_coin_backfill`へ1回だけ渡し、RPC失敗・不正応答を固定AppErrorとして伝播する。direct DELETE / batch INSERT / 残高再計算へfallbackせず、`RANK_BONUS`等の別経路報酬はPhase A RPC側で保持する |
 | `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
