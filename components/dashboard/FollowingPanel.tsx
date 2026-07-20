@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+
 import { useTranslations } from "next-intl";
-import UserAvatar from "@/components/UserAvatar";
+
 import { Link } from "@/navigation";
+
+import FollowingTrendChart, {
+  FOLLOWING_SERIES_COLORS,
+  parseFollowingComparisonPayload,
+} from "@/components/dashboard/FollowingTrendChart";
+import UserAvatar from "@/components/UserAvatar";
+
+import type { FollowingComparisonUser } from "@/components/dashboard/FollowingTrendChart";
 
 // ============================================
 // FollowingPanel — フォロー中ユーザーの統合パネル
@@ -19,31 +28,6 @@ interface FollowingUser {
   todaySteps: number;
 }
 
-interface ComparisonUser {
-  userId: string;
-  name: string;
-  image: string | null;
-  username: string | null;
-  isMe: boolean;
-  totalSteps: number;
-  dailySteps: { date: string; steps: number; hasRecord: boolean }[];
-}
-
-// ユーザーごとの色パレット
-const COLORS = [
-  "var(--theme-primary)",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-  "#f97316",
-  "#6366f1",
-  "#14b8a6",
-  "#e11d48",
-  "#84cc16",
-];
-
 type TabKey = "activity" | "comparison";
 
 export default function FollowingPanel() {
@@ -56,7 +40,7 @@ export default function FollowingPanel() {
   const [hasActivity, setHasActivity] = useState(false);
 
   // --- Comparison タブのデータ ---
-  const [compData, setCompData] = useState<ComparisonUser[]>([]);
+  const [compData, setCompData] = useState<FollowingComparisonUser[]>([]);
   const [dates, setDates] = useState<string[]>([]);
   const [period, setPeriod] = useState<"WEEKLY" | "MONTHLY">("WEEKLY");
   const [compLoading, setCompLoading] = useState(false);
@@ -90,9 +74,11 @@ export default function FollowingPanel() {
     try {
       const res = await fetch(`/api/user/following-comparison?period=${p}`);
       if (!res.ok) throw new Error("fetch failed");
-      const json = await res.json();
-      setCompData(json.comparison || []);
-      setDates(json.dates || []);
+      const json: unknown = await res.json();
+      const payload = parseFollowingComparisonPayload(json);
+      if (payload === null) throw new Error("invalid comparison response");
+      setCompData(payload.users);
+      setDates(payload.dates);
       setCompFetched(true);
     } catch {
       setCompError(true);
@@ -122,35 +108,6 @@ export default function FollowingPanel() {
     return Math.max(1, ...compData.map((u) => u.totalSteps));
   }, [compData]);
 
-  // O(1) Lookup maps for daily steps to avoid O(N^2) render bottleneck
-  const { stepsMap, dayMaxMap } = useMemo(() => {
-    const sMap = new Map<string, Map<string, number>>();
-    const dMaxMap = new Map<string, number>();
-
-    // Build the steps map for O(1) user+date lookup
-    compData.forEach((user) => {
-      const userSteps = new Map<string, number>();
-      user.dailySteps.forEach((ds) => {
-        userSteps.set(ds.date, ds.steps);
-      });
-      sMap.set(user.userId, userSteps);
-    });
-
-    // Calculate max steps for each date
-    dates.forEach((date) => {
-      let maxForDate = 0;
-      compData.forEach((user) => {
-        const steps = sMap.get(user.userId)?.get(date) || 0;
-        if (steps > maxForDate) {
-          maxForDate = steps;
-        }
-      });
-      dMaxMap.set(date, Math.max(1, maxForDate));
-    });
-
-    return { stepsMap: sMap, dayMaxMap: dMaxMap };
-  }, [compData, dates]);
-
   // ローディング中はスケルトン
   if (activityLoading) {
     return (
@@ -175,7 +132,7 @@ export default function FollowingPanel() {
   if (!hasActivity) return null;
 
   return (
-    <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+    <div className="bg-white midnight-solid-panel rounded-2xl shadow-sm border border-gray-200 overflow-visible hover:shadow-lg transition-shadow h-full flex flex-col">
       {/* ヘッダー + タブ */}
       <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-2 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
@@ -208,7 +165,8 @@ export default function FollowingPanel() {
         <div className="flex rounded-lg border border-gray-200 overflow-hidden">
           <button
             onClick={() => setTab("activity")}
-            className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
+            aria-pressed={tab === "activity"}
+            className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-text)] focus-visible:ring-inset ${
               tab === "activity"
                 ? "bg-[var(--theme-primary)] text-white"
                 : "bg-white text-gray-600 hover:bg-gray-50"
@@ -218,7 +176,8 @@ export default function FollowingPanel() {
           </button>
           <button
             onClick={() => setTab("comparison")}
-            className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-[36px] ${
+            aria-pressed={tab === "comparison"}
+            className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-text)] focus-visible:ring-inset ${
               tab === "comparison"
                 ? "bg-[var(--theme-primary)] text-white"
                 : "bg-white text-gray-600 hover:bg-gray-50"
@@ -230,7 +189,7 @@ export default function FollowingPanel() {
       </div>
 
       {/* タブコンテンツ */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-w-0 flex-1">
         {tab === "activity" ? (
           /* --- アクティビティ一覧 --- */
           <div className="px-3 pb-3">
@@ -268,7 +227,8 @@ export default function FollowingPanel() {
               <div className="flex rounded-lg border border-gray-200 overflow-hidden">
                 <button
                   onClick={() => handlePeriodChange("WEEKLY")}
-                  className={`px-3 py-1 text-xs font-semibold transition-colors min-h-[32px] ${
+                  aria-pressed={period === "WEEKLY"}
+                  className={`px-3 py-1 text-xs font-semibold transition-colors min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-text)] focus-visible:ring-inset ${
                     period === "WEEKLY"
                       ? "bg-[var(--theme-primary)] text-white"
                       : "bg-white text-gray-600 hover:bg-gray-50"
@@ -278,7 +238,8 @@ export default function FollowingPanel() {
                 </button>
                 <button
                   onClick={() => handlePeriodChange("MONTHLY")}
-                  className={`px-3 py-1 text-xs font-semibold transition-colors min-h-[32px] ${
+                  aria-pressed={period === "MONTHLY"}
+                  className={`px-3 py-1 text-xs font-semibold transition-colors min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-text)] focus-visible:ring-inset ${
                     period === "MONTHLY"
                       ? "bg-[var(--theme-primary)] text-white"
                       : "bg-white text-gray-600 hover:bg-gray-50"
@@ -302,14 +263,14 @@ export default function FollowingPanel() {
                 ))}
               </div>
             ) : compError ? (
-              <div className="flex flex-col items-center py-4 text-center">
+              <div className="flex flex-col items-center py-4 text-center" role="alert">
                 <span className="text-3xl mb-2">⚠️</span>
                 <p className="text-sm font-semibold text-gray-700">
                   {t("comparisonError")}
                 </p>
                 <button
                   onClick={() => fetchComparison(period)}
-                  className="mt-3 px-4 py-2 rounded-lg text-white text-xs font-medium hover:scale-105 transition-transform min-h-[36px]"
+                  className="mt-3 min-h-11 px-4 py-2 rounded-lg text-white text-xs font-medium hover:scale-105 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                   style={{ background: "var(--theme-primary)" }}
                 >
                   {t("retry")}
@@ -327,7 +288,10 @@ export default function FollowingPanel() {
                   {compData.map((user, index) => {
                     const barWidth =
                       maxSteps > 0 ? (user.totalSteps / maxSteps) * 100 : 0;
-                    const color = COLORS[index % COLORS.length];
+                    const color =
+                      FOLLOWING_SERIES_COLORS[
+                        index % FOLLOWING_SERIES_COLORS.length
+                      ];
                     return (
                       <div
                         key={user.userId}
@@ -341,7 +305,7 @@ export default function FollowingPanel() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <p
-                              className={`text-xs font-semibold truncate ${user.isMe ? "text-[var(--theme-primary)]" : "text-gray-700"}`}
+                              className={`text-xs font-semibold truncate ${user.isMe ? "text-[var(--color-primary-strong)]" : "text-gray-700"}`}
                             >
                               {user.isMe ? `⭐ ${user.name}` : user.name}
                             </p>
@@ -364,54 +328,7 @@ export default function FollowingPanel() {
                   })}
                 </div>
 
-                {/* 日別トレンド（コンパクト版） */}
-                {dates.length > 0 && dates.length <= 7 && (
-                  <div className="border-t border-gray-100 pt-3 mt-3">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                      {t("dailyTrend")}
-                    </p>
-                    <div className="flex gap-1 items-end h-16">
-                      {dates.map((date) => {
-                        const dayMax = dayMaxMap.get(date) || 1;
-                        const dayLabel = new Date(
-                          `${date}T00:00:00Z`,
-                        ).toLocaleDateString("ja-JP", { weekday: "short" });
-                        return (
-                          <div
-                            key={date}
-                            className="flex-1 flex flex-col items-center gap-0.5"
-                          >
-                            <div className="flex gap-px items-end h-12 w-full justify-center">
-                              {compData.slice(0, 5).map((user, ui) => {
-                                const steps =
-                                  stepsMap.get(user.userId)?.get(date) || 0;
-                                const h =
-                                  dayMax > 0 ? (steps / dayMax) * 100 : 0;
-                                return (
-                                  <div
-                                    key={user.userId}
-                                    className="rounded-t transition-all duration-500"
-                                    style={{
-                                      height: `${Math.max(h, 4)}%`,
-                                      width: `${100 / Math.min(compData.length, 5)}%`,
-                                      maxWidth: "10px",
-                                      background: COLORS[ui % COLORS.length],
-                                      opacity: 0.85,
-                                    }}
-                                    title={`${user.name}: ${steps.toLocaleString()}`}
-                                  />
-                                );
-                              })}
-                            </div>
-                            <span className="text-[8px] text-gray-400">
-                              {dayLabel}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <FollowingTrendChart users={compData} dates={dates} />
               </>
             )}
           </div>
