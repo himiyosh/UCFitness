@@ -253,11 +253,35 @@ BEGIN
         RAISE EXCEPTION 'Invalid daily coin transaction shape';
     END IF;
 
-    IF EXISTS (SELECT 1 FROM public.coin_transactions AS existing
-        LEFT JOIN jsonb_to_recordset(p_transactions) AS input(type text, amount numeric, description text)
-          ON input.type = existing.type
-        WHERE existing.user_id = p_user_id AND existing.date = p_date AND existing.type = 'STEPS'
-          AND existing.amount > COALESCE(input.amount, 0)) THEN
+    IF EXISTS (
+        WITH existing_totals AS (
+            SELECT
+                COALESCE(sum(amount::integer) FILTER (WHERE type = 'STEPS'), 0) AS steps,
+                COALESCE(sum(amount::integer) FILTER (WHERE type = 'GOAL_BONUS'), 0) AS goal_bonus,
+                COALESCE(sum(amount::integer) FILTER (WHERE type = 'STREAK_BONUS'), 0) AS streak_bonus
+            FROM public.coin_transactions
+            WHERE user_id = p_user_id AND date = p_date
+              AND type IN ('STEPS', 'GOAL_BONUS', 'STREAK_BONUS')
+        ), incoming_totals AS (
+            SELECT
+                COALESCE(sum(amount::integer) FILTER (WHERE type = 'STEPS'), 0) AS steps,
+                COALESCE(sum(amount::integer) FILTER (WHERE type = 'GOAL_BONUS'), 0) AS goal_bonus,
+                COALESCE(sum(amount::integer) FILTER (WHERE type = 'STREAK_BONUS'), 0) AS streak_bonus
+            FROM jsonb_to_recordset(p_transactions)
+                AS input(type text, amount numeric, description text)
+        )
+        SELECT 1
+        FROM existing_totals AS existing
+        CROSS JOIN incoming_totals AS incoming
+        WHERE incoming.steps < existing.steps
+           OR (
+                incoming.steps = existing.steps
+                AND (
+                    incoming.goal_bonus < existing.goal_bonus
+                    OR incoming.streak_bonus < existing.streak_bonus
+                )
+           )
+    ) THEN
         RAISE EXCEPTION 'Stale daily coin recalculation cannot reduce earned coins';
     END IF;
 

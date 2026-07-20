@@ -8,6 +8,11 @@ const readRepositoryFile = (path: string): string => readFileSync(join(process.c
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const migration = readRepositoryFile('migrations/20260721_atomic_daily_coin_recalculation.sql');
 const functionBody = migration.match(/CREATE FUNCTION public\.apply_daily_coin_recalculation[\s\S]+?AS \$function\$([\s\S]+?)\$function\$;/)?.[1] ?? '';
+const staleGuard = functionBody.match(
+    /IF EXISTS \(\s*WITH existing_totals AS[\s\S]+?Stale daily coin recalculation cannot reduce earned coins';\s*END IF;/,
+)?.[0] ?? '';
+const existingTotals = staleGuard.match(/WITH existing_totals AS \(([\s\S]+?)\), incoming_totals AS/)?.[1] ?? '';
+const normalizedStaleGuard = staleGuard.replace(/\s+/g, ' ');
 
 describe('atomic daily coin recalculation migration', () => {
     it('依存migration_変更されていない場合_hash契約を維持する', () => {
@@ -50,10 +55,7 @@ describe('atomic daily coin recalculation migration', () => {
             expect(migration).toContain(`public.${signature}`);
         }
         const lockIndex = functionBody.indexOf('PERFORM 1 FROM public.users WHERE id = p_user_id FOR UPDATE');
-        const monotonicIndex = functionBody.indexOf('existing.amount > COALESCE(input.amount, 0)');
         expect(lockIndex).toBeGreaterThan(-1);
-        expect(lockIndex).toBeLessThan(monotonicIndex);
-        expect(monotonicIndex).toBeLessThan(functionBody.indexOf('DELETE FROM public.coin_transactions'));
         expect(lockIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_transactions'));
         expect(lockIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_balances'));
     });
@@ -67,8 +69,56 @@ describe('atomic daily coin recalculation migration', () => {
             'amount < 0 OR amount <> trunc(amount) OR amount > 2147483647', 'total_balance > 9007199254740991',
             "type <> 'STEPS' AND amount = 0", "'coins:' || p_user_id::text", 'user does not exist',
             'existing.user_id <> p_user_id', 'existing.date <> p_date', 'existing.type <> input.type',
-            'written_count <> jsonb_array_length(p_transactions)', "WHERE type = 'STEPS'", "existing.type = 'STEPS'",
+            'written_count <> jsonb_array_length(p_transactions)', "WHERE type = 'STEPS'",
         ]) expect(functionBody).toContain(evidence);
+    });
+
+    it('stale guard SQL_目標5050で5099歩から5000歩へ戻りSTEPS額が同じ場合_GOAL欠落拒否条件を固定する', () => {
+        expect(staleGuard.match(
+            /COALESCE\(sum\(amount::integer\) FILTER \(WHERE type = 'GOAL_BONUS'\), 0\) AS goal_bonus/g,
+        )).toHaveLength(2);
+        expect(normalizedStaleGuard).toContain(
+            'incoming.steps = existing.steps AND ( incoming.goal_bonus < existing.goal_bonus',
+        );
+    });
+
+    it('stale guard SQL_同一STEPS額でSTREAK_BONUSが低下する場合_拒否条件を固定する', () => {
+        expect(staleGuard.match(
+            /COALESCE\(sum\(amount::integer\) FILTER \(WHERE type = 'STREAK_BONUS'\), 0\) AS streak_bonus/g,
+        )).toHaveLength(2);
+        expect(normalizedStaleGuard).toContain(
+            'OR incoming.streak_bonus < existing.streak_bonus',
+        );
+    });
+
+    it('stale guard SQL_STEPSが50から51へ増えてGOAL_BONUSが消える場合_許可条件を固定する', () => {
+        expect(normalizedStaleGuard).toContain(
+            'WHERE incoming.steps < existing.steps OR ( incoming.steps = existing.steps AND ( incoming.goal_bonus < existing.goal_bonus OR incoming.streak_bonus < existing.streak_bonus ) )',
+        );
+    });
+
+    it('stale guard SQL_RANK_BONUSだけが低下する場合_許可条件を固定する', () => {
+        expect(staleGuard).toContain('existing_totals');
+        expect(staleGuard).not.toContain("'RANK_BONUS'");
+    });
+
+    it('stale guard SQL_対象日の既存取引がなくSTEPSが0の場合_初回許可条件を固定する', () => {
+        expect(staleGuard.match(
+            /COALESCE\(sum\(amount::integer\) FILTER \(WHERE type = 'STEPS'\), 0\) AS steps/g,
+        )).toHaveLength(2);
+        expect(existingTotals).not.toContain('GROUP BY');
+        expect(functionBody).toContain("(type <> 'STEPS' AND amount = 0)");
+    });
+
+    it('stale guard_入力形状検証後_全台帳書き込みより前に評価する', () => {
+        const lockIndex = functionBody.indexOf('PERFORM 1 FROM public.users WHERE id = p_user_id FOR UPDATE');
+        const shapeValidationIndex = functionBody.indexOf("RAISE EXCEPTION 'Invalid daily coin transaction shape'");
+        const staleGuardIndex = functionBody.indexOf('WITH existing_totals AS');
+        expect(staleGuardIndex).toBeGreaterThan(shapeValidationIndex);
+        expect(staleGuardIndex).toBeGreaterThan(lockIndex);
+        expect(staleGuardIndex).toBeLessThan(functionBody.indexOf('DELETE FROM public.coin_transactions'));
+        expect(staleGuardIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_transactions'));
+        expect(staleGuardIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_balances'));
     });
 
     it('再計算_同一keyは冪等更新し対象日の4種だけを置換する場合_不可逆報酬を保持する', () => {
