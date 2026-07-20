@@ -240,7 +240,8 @@ describe('assignBadges Performance Test', () => {
 interface DependencyResult { data: unknown; error: unknown }
 
 const PERSONAL_DATE = '2026-07-20';
-const dependencyError = { code: 'XX000', message: 'raw dependency failure' };
+const RAW_DATABASE_SECRET = 'raw-supabase-secret-sentinel';
+const dependencyError = { code: 'XX000', message: RAW_DATABASE_SECRET, details: RAW_DATABASE_SECRET };
 
 describe('assignBadges personal dependency mapping', () => {
     let scenario: Record<'active' | 'users' | 'totals' | 'history', DependencyResult>;
@@ -309,11 +310,9 @@ describe('assignBadges personal dependency mapping', () => {
         };
         expect(caught).toMatchObject({ name: 'AppError', code, context, cause: undefined });
         expect(caught).not.toHaveProperty('message', dependencyError.message);
-        expect(mockReportError).toHaveBeenCalledWith(
-            `assignBadges:${stage}`,
-            expect.anything(),
-            context,
-        );
+        expect(String(caught)).not.toContain(RAW_DATABASE_SECRET);
+        expect(JSON.stringify(caught)).not.toContain(RAW_DATABASE_SECRET);
+        expect(mockReportError).not.toHaveBeenCalled();
         expect(mockInsert).not.toHaveBeenCalled();
         expect(mockSendBadgeNotification).not.toHaveBeenCalled();
         expect(mockSendWebPushNotifications).not.toHaveBeenCalled();
@@ -348,6 +347,7 @@ describe('assignBadges personal dependency mapping', () => {
             });
             expect(mockFrom).not.toHaveBeenCalled();
             expect(mockRpc).not.toHaveBeenCalled();
+            expect(mockReportError).not.toHaveBeenCalled();
         },
     );
 

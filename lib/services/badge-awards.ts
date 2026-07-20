@@ -65,11 +65,9 @@ function badgeAssignmentFailure(
     key: BadgeAssignmentErrorKey,
     dateStr: string,
     batchOffset?: number,
-    reportedError?: unknown,
 ): never {
     const [message, code, stage] = BADGE_ASSIGNMENT_ERRORS[key];
     const context = { stage, dateStr, ...(batchOffset === undefined ? {} : { batchOffset }) };
-    reportError(`assignBadges:${stage}`, reportedError ?? new Error(message), context);
     throw new AppError(message, code, context);
 }
 
@@ -288,7 +286,7 @@ const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> =
         .select('user_id, steps')
         .eq('date', dateStr);
     if (activeResult.error !== null) {
-        badgeAssignmentFailure('activeQuery', dateStr, undefined, activeResult.error);
+        badgeAssignmentFailure('activeQuery', dateStr);
     }
     const activeUsers = parseUniqueUserRows(
         activeResult.data,
@@ -309,7 +307,7 @@ const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> =
             .select('id, step_goal')
             .in('id', userIds);
         if (usersResult.error !== null) {
-            badgeAssignmentFailure('usersQuery', dateStr, batchOffset, usersResult.error);
+            badgeAssignmentFailure('usersQuery', dateStr, batchOffset);
         }
         const usersData = parseUniqueUserRows(
             usersResult.data,
@@ -335,7 +333,7 @@ const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> =
                 .lte('date', dateStr),
         ]);
         if (totalsResult.error !== null) {
-            badgeAssignmentFailure('totalsQuery', dateStr, batchOffset, totalsResult.error);
+            badgeAssignmentFailure('totalsQuery', dateStr, batchOffset);
         }
         const totalsRows = parseUniqueUserRows(
             totalsResult.data,
@@ -347,7 +345,7 @@ const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> =
             badgeAssignmentFailure('totalsData', dateStr, batchOffset);
         }
         if (historyResult.error !== null) {
-            badgeAssignmentFailure('historyQuery', dateStr, batchOffset, historyResult.error);
+            badgeAssignmentFailure('historyQuery', dateStr, batchOffset);
         }
         const historyRows = parseHistoryRows(
             historyResult.data,
