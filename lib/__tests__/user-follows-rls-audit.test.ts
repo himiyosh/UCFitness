@@ -86,7 +86,7 @@ describe("user_follows RLS audit", () => {
       ],
       [
         "lib/__tests__/walking-routes-rls-audit.test.ts",
-        "7a2240f6228a5c153ac17d21b3bd4d89d0988410288463089410772b05358d23",
+        "b9e3facb93417dd8a5ad0dfbd129e6006388c87d64e4f72c13bba26fa7d090e1",
       ],
     ]);
 

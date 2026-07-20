@@ -335,13 +335,14 @@ in-progressを維持する。migration設計前にはPhase 7のread-only catalog
 
 #### Phase 9: `daily_steps` audit-only
 
-`daily_steps`は歩数履歴を保持する高感度健康データである。追跡済みmigrationと
-Git履歴には`CREATE TABLE public.daily_steps`の完全DDLがなく、
-`types/database.ts`の`DailyStepRow`は`user_id` / `date` / `steps`の3列だけで、
-実経路が参照する`updated_at`も含まない。承認済みread-only実catalog接続も
-ないため、ID、default、nullability、PK/FK、unique/check、owner、ACL、
-RLS/policy、owned sequenceを確定できない。Phase 9はmigrationを作成しない
-audit-onlyとし、保護済み件数を9/25に据え置く。
+`daily_steps`は歩数履歴を保持する高感度健康データである。現行treeの追跡済み
+migrationには完全DDLがない。Git履歴の`46a3af7:supabase_schema.sql`
+（SHA-256 `261aa4b63d97ac3b924fc46a57109c2f4371a584c3ab63535f71157b5bedad31`）
+には旧完全DDLがあるが、nullableな`user_id`、checkなしの`steps`、公開SELECT
+policyを含む古いsnapshotであり現行catalogの証拠にはできない。
+`types/database.ts`も3列だけで`id` / timestampsを欠く。承認済みread-only
+実catalog接続がなく、現行default/nullability/PK/FK/unique/check/owner/ACL/
+RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に据え置く。
 
 コメントを除外した実行可能コードには32 ファイル、42 件のdirect PostgREST
 経路があり、すべてservice-roleの`SELECT`だった。direct `INSERT` / `UPDATE` /
@@ -410,21 +411,18 @@ BEGIN TRANSACTION READ ONLY;
 
 WITH expected(signature) AS (
   VALUES
-    ('public.replace_daily_steps_range(uuid,text,date,date,jsonb)'::text),
-    ('public.upsert_daily_steps_max(uuid,text,date,bigint)'::text),
-    ('public.upsert_fitbit_daily_steps_max(uuid,date,bigint)'::text),
+    ('public.replace_daily_steps_range(uuid,date,date,jsonb,uuid)'::text),
+    ('public.upsert_daily_steps_max(uuid,date,integer,uuid)'::text),
+    ('public.upsert_fitbit_daily_steps_max(uuid,date,integer)'::text),
     ('public.upsert_fitbit_daily_steps_batch(uuid,jsonb)'::text),
-    ('public.get_user_step_stats(uuid)'::text),
-    ('public.get_batch_user_step_totals(uuid[])'::text),
     ('public.award_streak_milestones(date)'::text)
-),
-routines AS (
-  SELECT expected.signature, to_regprocedure(expected.signature) AS oid
-  FROM expected
 )
+SELECT signature, to_regprocedure(signature) AS oid
+FROM expected
+ORDER BY signature;
+
 SELECT
-  routines.signature,
-  routines.oid,
+  procedure.oid::regprocedure AS routine,
   owner.rolname AS owner,
   owner.rolbypassrls AS owner_bypassrls,
   language.lanname,
@@ -432,64 +430,72 @@ SELECT
   procedure.proconfig,
   procedure.proacl,
   pg_get_function_identity_arguments(procedure.oid) AS identity_arguments,
+  pg_get_functiondef(procedure.oid) AS function_definition,
   has_function_privilege('service_role', procedure.oid, 'EXECUTE') AS service_role_execute,
   has_function_privilege('authenticated', procedure.oid, 'EXECUTE') AS authenticated_execute,
   has_function_privilege('anon', procedure.oid, 'EXECUTE') AS anon_execute
-FROM routines
-LEFT JOIN pg_proc AS procedure ON procedure.oid = routines.oid
-LEFT JOIN pg_roles AS owner ON owner.oid = procedure.proowner
-LEFT JOIN pg_language AS language ON language.oid = procedure.prolang
-ORDER BY routines.signature;
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+JOIN pg_roles AS owner ON owner.oid = procedure.proowner
+JOIN pg_language AS language ON language.oid = procedure.prolang
+WHERE namespace.nspname = 'public'
+  AND procedure.proname = ANY (ARRAY[
+    'replace_daily_steps_range', 'upsert_daily_steps_max', 'upsert_fitbit_daily_steps_max',
+    'upsert_fitbit_daily_steps_batch', 'get_user_step_stats',
+    'get_batch_user_step_totals', 'award_streak_milestones'
+  ])
+ORDER BY procedure.oid::regprocedure::text;
 
 WITH target AS (
   SELECT to_regclass('public.daily_steps') AS oid
-),
-expected(signature) AS (
-  VALUES
-    ('public.replace_daily_steps_range(uuid,text,date,date,jsonb)'::text),
-    ('public.upsert_daily_steps_max(uuid,text,date,bigint)'::text),
-    ('public.upsert_fitbit_daily_steps_max(uuid,date,bigint)'::text),
-    ('public.upsert_fitbit_daily_steps_batch(uuid,jsonb)'::text),
-    ('public.get_user_step_stats(uuid)'::text),
-    ('public.get_batch_user_step_totals(uuid[])'::text),
-    ('public.award_streak_milestones(date)'::text)
-),
-routines AS (
-  SELECT expected.signature, to_regprocedure(expected.signature) AS oid
-  FROM expected
 )
 SELECT
-  routines.signature,
+  procedure.oid::regprocedure AS routine,
   dependency.deptype,
   referenced.oid::regclass AS referenced_relation
-FROM routines
-LEFT JOIN pg_depend AS dependency ON dependency.objid = routines.oid
-LEFT JOIN pg_class AS referenced ON referenced.oid = dependency.refobjid
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
 CROSS JOIN target
-WHERE routines.oid IS NULL
-   OR dependency.refobjid = target.oid
-ORDER BY routines.signature, dependency.deptype;
+LEFT JOIN pg_depend AS dependency
+  ON dependency.classid = 'pg_proc'::regclass
+ AND dependency.objid = procedure.oid
+ AND dependency.refclassid = 'pg_class'::regclass
+ AND dependency.refobjid = target.oid
+LEFT JOIN pg_class AS referenced ON referenced.oid = dependency.refobjid
+WHERE namespace.nspname = 'public'
+  AND procedure.proname = ANY (ARRAY[
+    'replace_daily_steps_range', 'upsert_daily_steps_max', 'upsert_fitbit_daily_steps_max',
+    'upsert_fitbit_daily_steps_batch', 'get_user_step_stats',
+    'get_batch_user_step_totals', 'award_streak_milestones'
+  ])
+ORDER BY procedure.oid::regprocedure::text, dependency.deptype;
 
 SELECT
-  routine_name,
-  grantee,
-  privilege_type,
-  is_grantable
-FROM information_schema.routine_privileges
-WHERE specific_schema = 'public'
-  AND routine_name IN (
-    'replace_daily_steps_range',
-    'upsert_daily_steps_max',
-    'upsert_fitbit_daily_steps_max',
-    'upsert_fitbit_daily_steps_batch',
-    'get_user_step_stats',
-    'get_batch_user_step_totals',
-    'award_streak_milestones'
-  )
-ORDER BY routine_name, grantee, privilege_type;
+  procedure.oid::regprocedure AS routine,
+  grantor.rolname AS grantor,
+  CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE grantee.rolname END AS grantee,
+  acl.privilege_type,
+  acl.is_grantable
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+LEFT JOIN LATERAL aclexplode(
+  COALESCE(procedure.proacl, acldefault('f', procedure.proowner))
+) AS acl ON true
+LEFT JOIN pg_roles AS grantor ON grantor.oid = acl.grantor
+LEFT JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
+WHERE namespace.nspname = 'public'
+  AND procedure.proname = ANY (ARRAY[
+    'replace_daily_steps_range', 'upsert_daily_steps_max', 'upsert_fitbit_daily_steps_max',
+    'upsert_fitbit_daily_steps_batch', 'get_user_step_stats',
+    'get_batch_user_step_totals', 'award_streak_milestones'
+  ])
+ORDER BY procedure.oid::regprocedure::text, grantee.rolname;
 
 ROLLBACK;
 ```
+
+`pg_depend`はclass/refclassを限定して補助証拠として取得するが、PL/pgSQL本文の
+table参照を完全には記録しない。必ず`pg_get_functiondef`の完全定義と照合する。
 
 RLS変更とは分離すべき高確度のerror fallbackも監査した。
 
