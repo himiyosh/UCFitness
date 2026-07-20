@@ -33,7 +33,8 @@
     "F018レート制限APIはblocked。現行module-level MapはEdge isolate単位で、Workers KVは原子的incrementを保証しない。厳密なcross-isolate制限にはUpstash Redis、Cloudflare Rate Limiting binding、Durable Objects等の外部resource/binding作成とcredential設定が必要",
     "F021はin-progress。GROUP rankingは6→4 queries/6→4 waves、Feedは10→8/6→4、20ms固定RTTモデルは33.3%改善したが、実Supabaseログとproduction p95、更新中daily_steps/FeedのOFFSETページ間snapshot整合性は未検証",
     "F012はin-progress。公開LP・利用規約・プライバシーのja/en×5幅は30/30、公開6ページのLighthouse a11yは100だが、認証済み120ケース、安全な認証fixture、axe、VoiceOver/NVDAの主要フローは未検証",
-    "F016はin-progress。Phase 1〜6の6表を静的保護したが実catalog・migration適用は未検証。Phase 7 walking_routes、Phase 8 user_follows、Phase 9 daily_stepsは現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく、型・nullability・default・FK/PK/unique・check・owner・RLS/policy・ACL・owned sequenceを確定できないためaudit-onlyで停止。daily_stepsには旧schema snapshotがあるが現行証拠ではない。既存のwalking_routes/user_follows候補に加え、achievement・badge・title・coin backfill・following comparisonのDB error偽装は別Fix候補"
+    "F016はin-progress。Phase 1〜6の6表を静的保護したが実catalog・migration適用は未検証。Phase 7 walking_routes、Phase 8 user_follows、Phase 9 daily_stepsは現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく、型・nullability・default・FK/PK/unique・check・owner・RLS/policy・ACL・owned sequenceを確定できないためaudit-onlyで停止。daily_stepsには旧schema snapshotがあるが現行証拠ではない。既存のwalking_routes/user_follows候補に加え、achievement・badge・title・coin backfill・following comparisonのDB error偽装は別Fix候補",
+    "F015はin-progress。Fitbit歩数GETの429・5xx・通信障害再試行と認証/手動同期/Cron境界は実装・検証済みだが、sync_errorsテーブルと管理画面での失敗可視化は未実装"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -1114,6 +1115,38 @@
         ".github/ucfitness-features.json",
         "README.md",
         "scripts/audit-responsive.mjs"
+      ]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (Recovery + Hallmark + Accessibility + QA + Self-Critique)",
+      "action": "破損した旧UI/UX改善セッションの未コミット差分を現branchへSHA-256一致で復元。公開LPの装飾用無限オービットを削除し、Journey/Showcaseの重複ラベルとカード装飾を圧縮、モバイルナビをviewport基準の固定パネルへ変更した。公開監査へメニューの表示・viewport整列・44px・Escape閉鎖/焦点復帰を追加。30/30公開監査、全355テスト、check:all、375/1280実画面、Mobile Beginner/Accessibility Keyboard、独立自己批判をPASS。",
+      "commit": "65baa9375831843636c2215a7b4c7ebca6167d5c",
+      "filesChanged": [
+        "README.md",
+        "app/globals.css",
+        "components/LandingPage.tsx",
+        "components/landing/LandingInteractions.tsx",
+        "scripts/audit-responsive.mjs",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (Fitbit Resilience + Auth + QA + Self-Critique)",
+      "action": "F015の再試行コアを実装。Fitbitの冪等な歩数GETだけを429・5xx・通信障害で1秒、2秒、4秒後に最大3回再試行し、401とrefresh token POSTは即時失敗を維持した。枯渇をAppErrorのcode/contextで構造化し、手動履歴同期は500、新規サインインは補助backfill延期、全ユーザーCronは既存allSettledで次ユーザー継続とした。独立レビュー2件の回帰指摘を修正後、関連29テスト、全363テスト、check:all、最終レビュー、自己批判をPASS。sync_errors可視化未実装のためF015はin-progress。",
+      "commit": "d279120f4cb268b5d9a8906b08b70000c9aa738d",
+      "filesChanged": [
+        ".github/ucfitness-features.json",
+        "README.md",
+        "app/api/steps/sync/route.test.ts",
+        "lib/__tests__/step-manager-google-health.test.ts",
+        "lib/api/fitbit.ts",
+        "lib/api/fitbit.test.ts",
+        "lib/auth.ts",
+        "lib/auth.test.ts",
+        "lib/services/step-manager.ts",
+        ".github/ucfitness-progress.json"
       ]
     },
     {

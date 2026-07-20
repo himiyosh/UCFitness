@@ -393,7 +393,7 @@
         "resilience": "レート制限突破せず全ユーザー同期完了",
         "observability": "失敗理由が構造化ログで追跡可能"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },

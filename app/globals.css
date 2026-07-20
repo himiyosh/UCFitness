@@ -3144,36 +3144,6 @@ body::before {
   transform-origin: center bottom;
 }
 
-@keyframes landingOrbitPlay {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(18px, 10px, 0) scale(1.05);
-  }
-}
-
-@keyframes landingOrbitCompetition {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(-16px, 14px, 0) scale(1.04);
-  }
-}
-
-@keyframes landingOrbitSuccess {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(8px, -10px, 0);
-  }
-}
-
 @keyframes landingSyncPulse {
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 42%, transparent);
@@ -3239,20 +3209,6 @@ body::before {
   }
 }
 
-@media (min-width: 640px) and (prefers-reduced-motion: no-preference) {
-  .landing-orbit-play {
-    animation: landingOrbitPlay 12s ease-in-out infinite;
-  }
-
-  .landing-orbit-competition {
-    animation: landingOrbitCompetition 14s 500ms ease-in-out infinite;
-  }
-
-  .landing-orbit-success {
-    animation: landingOrbitSuccess 9s 250ms ease-in-out infinite;
-  }
-}
-
 @supports (animation-timeline: scroll()) {
   @media (prefers-reduced-motion: no-preference) {
     .landing-scroll-progress {
@@ -3286,7 +3242,6 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-orbit,
   .landing-sync-dot,
   .landing-step-ring,
   .landing-dashboard-progress,
