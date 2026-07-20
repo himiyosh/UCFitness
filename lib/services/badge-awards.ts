@@ -1,11 +1,11 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { fetchAllWithPagination } from '@/lib/supabase-utils';
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
+import { isValidStepGoal } from '@/lib/step-goal';
 import { sendBadgeNotification } from '@/lib/api/teams';
 import { sendConsolidatedBadgeNotification } from '@/lib/services/badge-allocator';
 
 import type { Period } from '@/components/dashboard/LeaderboardTabs';
-import type { BatchUserStepTotalsRpcRow } from '@/types/database';
 
 const BADGE_DEFINITIONS = {
     GLOBAL: {
@@ -20,10 +20,127 @@ const BADGE_DEFINITIONS = {
     }
 } as const;
 const NOTIFICATION_BATCH_SIZE = 20;
+const PERSONAL_BADGE_BATCH_SIZE = 10;
+const BADGE_ASSIGNMENT_ERRORS = {
+    input: ['Invalid badge assignment input', 'BADGE_ASSIGN_INPUT_INVALID', 'input'],
+    activeQuery: ['Failed to load active personal badge users', 'BADGE_PERSONAL_ACTIVE_USERS_QUERY_FAILED', 'active-users'],
+    activeData: ['Invalid active personal badge users data', 'BADGE_PERSONAL_ACTIVE_USERS_INVALID_DATA', 'active-users'],
+    usersQuery: ['Failed to load personal badge users', 'BADGE_PERSONAL_USERS_QUERY_FAILED', 'users'],
+    usersData: ['Invalid personal badge users data', 'BADGE_PERSONAL_USERS_INVALID_DATA', 'users'],
+    totalsQuery: ['Failed to load personal badge totals', 'BADGE_PERSONAL_TOTALS_QUERY_FAILED', 'totals'],
+    totalsData: ['Invalid personal badge totals data', 'BADGE_PERSONAL_TOTALS_INVALID_DATA', 'totals'],
+    historyQuery: ['Failed to load personal badge history', 'BADGE_PERSONAL_HISTORY_QUERY_FAILED', 'history'],
+    historyData: ['Invalid personal badge history data', 'BADGE_PERSONAL_HISTORY_INVALID_DATA', 'history'],
+} as const;
 
 /** バッジ定義へアクセスする際の安全なキー型 */
 type BadgePeriodKey = keyof typeof BADGE_DEFINITIONS.GLOBAL;
 type UserBadgeAwards = Map<string, string[]>;
+type BadgeAssignmentErrorKey = keyof typeof BADGE_ASSIGNMENT_ERRORS;
+
+interface ActiveUserRow { user_id: string; steps: number }
+interface UserGoalRow { id: string; step_goal: number }
+interface UserTotalsRow { user_id: string; total_steps: number; total_days: number }
+interface UserHistoryRow { user_id: string; date: string; steps: number }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isNonnegativeSafeInteger(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isIsoDate(value: unknown): value is string {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function badgeAssignmentFailure(
+    key: BadgeAssignmentErrorKey,
+    dateStr: string,
+    batchOffset?: number,
+    reportedError?: unknown,
+): never {
+    const [message, code, stage] = BADGE_ASSIGNMENT_ERRORS[key];
+    const context = { stage, dateStr, ...(batchOffset === undefined ? {} : { batchOffset }) };
+    reportError(`assignBadges:${stage}`, reportedError ?? new Error(message), context);
+    throw new AppError(message, code, context);
+}
+
+function parseUniqueUserRows<T>(
+    data: unknown,
+    guard: (value: unknown) => value is T,
+    getUserId: (row: T) => string,
+    expectedUserIds?: readonly string[],
+): T[] | null {
+    if (!Array.isArray(data)) return null;
+    const expected = expectedUserIds ? new Set(expectedUserIds) : null;
+    const seen = new Set<string>();
+    const rows: T[] = [];
+    for (const value of data) {
+        if (!guard(value)) return null;
+        const userId = getUserId(value);
+        if (seen.has(userId) || (expected && !expected.has(userId))) return null;
+        seen.add(userId);
+        rows.push(value);
+    }
+    return expected && seen.size !== expected.size ? null : rows;
+}
+
+function isActiveUserRow(value: unknown): value is ActiveUserRow {
+    return isRecord(value)
+        && isNonEmptyString(value.user_id)
+        && isNonnegativeSafeInteger(value.steps);
+}
+
+function isUserGoalRow(value: unknown): value is UserGoalRow {
+    return isRecord(value)
+        && isNonEmptyString(value.id)
+        && isValidStepGoal(value.step_goal);
+}
+
+function isUserTotalsRow(value: unknown): value is UserTotalsRow {
+    return isRecord(value)
+        && isNonEmptyString(value.user_id)
+        && isNonnegativeSafeInteger(value.total_steps)
+        && isNonnegativeSafeInteger(value.total_days);
+}
+
+function parseHistoryRows(
+    data: unknown,
+    userIds: readonly string[],
+    startDate: string,
+    endDate: string,
+): UserHistoryRow[] | null {
+    if (!Array.isArray(data)) return null;
+    const expectedUsers = new Set(userIds);
+    const seen = new Set<string>();
+    const rows: UserHistoryRow[] = [];
+    for (const value of data) {
+        if (
+            !isRecord(value)
+            || !isNonEmptyString(value.user_id)
+            || !expectedUsers.has(value.user_id)
+            || !isIsoDate(value.date)
+            || value.date < startDate
+            || value.date > endDate
+            || !isNonnegativeSafeInteger(value.steps)
+        ) {
+            return null;
+        }
+        const key = `${value.user_id}\u0000${value.date}`;
+        if (seen.has(key)) return null;
+        seen.add(key);
+        rows.push({ user_id: value.user_id, date: value.date, steps: value.steps });
+    }
+    return rows;
+}
 
 function addUserBadgeAwards(
     awards: UserBadgeAwards,
@@ -118,9 +235,8 @@ function computeDateRange(period: Period, dateStr: string): { startDate: string;
 }
 
 export const assignBadges = async (period: Period, dateStr: string): Promise<void> => {
-    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        reportError('assignBadges', new Error('Invalid dateStr format'));
-        return;
+    if (!isIsoDate(dateStr)) {
+        badgeAssignmentFailure('input', dateStr);
     }
 
     const [globalAwards, groupAwards, personalAwards, streakResult] = await Promise.all([
@@ -167,27 +283,47 @@ export const assignBadges = async (period: Period, dateStr: string): Promise<voi
 
 const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> => {
     const userAwards = new Map<string, string[]>();
-    const { data: activeUsers, error } = await supabaseAdmin
+    const activeResult = await supabaseAdmin
         .from('daily_steps')
         .select('user_id, steps')
         .eq('date', dateStr);
-    if (error) {
-        reportError('assignPersonalBadges:activeUsers', error, { dateStr });
-        return userAwards;
+    if (activeResult.error !== null) {
+        badgeAssignmentFailure('activeQuery', dateStr, undefined, activeResult.error);
     }
-    if (!activeUsers || activeUsers.length === 0) return userAwards;
+    const activeUsers = parseUniqueUserRows(
+        activeResult.data,
+        isActiveUserRow,
+        (row) => row.user_id,
+    );
+    if (activeUsers === null) {
+        badgeAssignmentFailure('activeData', dateStr);
+    }
+    if (activeUsers.length === 0) return userAwards;
 
-    for (let i = 0; i < activeUsers.length; i += 10) {
-        const batch = activeUsers.slice(i, i + 10);
-        const userIds = batch.map(u => u.user_id);
+    for (let batchOffset = 0; batchOffset < activeUsers.length; batchOffset += PERSONAL_BADGE_BATCH_SIZE) {
+        const batch = activeUsers.slice(batchOffset, batchOffset + PERSONAL_BADGE_BATCH_SIZE);
+        const userIds = batch.map((user) => user.user_id);
 
-        const { data: usersData } = await supabaseAdmin
+        const usersResult = await supabaseAdmin
             .from('users')
             .select('id, step_goal')
             .in('id', userIds);
-        const goalMap = new Map(usersData?.map(u => [u.id, u.step_goal]) || []);
+        if (usersResult.error !== null) {
+            badgeAssignmentFailure('usersQuery', dateStr, batchOffset, usersResult.error);
+        }
+        const usersData = parseUniqueUserRows(
+            usersResult.data,
+            isUserGoalRow,
+            (row) => row.id,
+            userIds,
+        );
+        if (usersData === null) {
+            badgeAssignmentFailure('usersData', dateStr, batchOffset);
+        }
+        const goalMap = new Map(usersData.map((user) => [user.id, user.step_goal]));
         const thirtyDaysAgo = new Date(dateStr);
         thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+        const historyStartDate = thirtyDaysAgo.toISOString().slice(0, 10);
 
         const [totalsResult, historyResult] = await Promise.all([
             supabaseAdmin.rpc('get_batch_user_step_totals', { p_user_ids: userIds }),
@@ -195,34 +331,69 @@ const assignPersonalBadges = async (dateStr: string): Promise<UserBadgeAwards> =
                 .from('daily_steps')
                 .select('user_id, date, steps')
                 .in('user_id', userIds)
-                .gte('date', thirtyDaysAgo.toISOString().split('T')[0]),
+                .gte('date', historyStartDate)
+                .lte('date', dateStr),
         ]);
-        const totalsMap = new Map<string, { total_steps: number; total_days: number }>();
-        const totalsRows = (totalsResult.data as BatchUserStepTotalsRpcRow[] | null) ?? [];
-        totalsRows.forEach((row) => {
-            totalsMap.set(row.user_id, { total_steps: Number(row.total_steps), total_days: Number(row.total_days) });
-        });
+        if (totalsResult.error !== null) {
+            badgeAssignmentFailure('totalsQuery', dateStr, batchOffset, totalsResult.error);
+        }
+        const totalsRows = parseUniqueUserRows(
+            totalsResult.data,
+            isUserTotalsRow,
+            (row) => row.user_id,
+            userIds,
+        );
+        if (totalsRows === null) {
+            badgeAssignmentFailure('totalsData', dateStr, batchOffset);
+        }
+        if (historyResult.error !== null) {
+            badgeAssignmentFailure('historyQuery', dateStr, batchOffset, historyResult.error);
+        }
+        const historyRows = parseHistoryRows(
+            historyResult.data,
+            userIds,
+            historyStartDate,
+            dateStr,
+        );
+        if (historyRows === null) {
+            badgeAssignmentFailure('historyData', dateStr, batchOffset);
+        }
+
+        const totalsMap = new Map(totalsRows.map((row) => [
+            row.user_id,
+            { total_steps: row.total_steps, total_days: row.total_days },
+        ]));
         const historyMap = new Map<string, { date: string; steps: number }[]>();
-        historyResult.data?.forEach((row) => {
+        historyRows.forEach((row) => {
             const history = historyMap.get(row.user_id) ?? [];
-            history.push(row);
+            history.push({ date: row.date, steps: row.steps });
             historyMap.set(row.user_id, history);
         });
 
         const batchAwards = await Promise.all(batch.map(async (user) => {
-            const userTotals = totalsMap.get(user.user_id) ?? { total_steps: 0, total_days: 0 };
+            const goal = goalMap.get(user.user_id);
+            if (goal === undefined) {
+                badgeAssignmentFailure('usersData', dateStr, batchOffset);
+            }
+            const userTotals = totalsMap.get(user.user_id);
+            if (userTotals === undefined) {
+                badgeAssignmentFailure('totalsData', dateStr, batchOffset);
+            }
             const results = await Promise.all([
                 assignStreakBadges(
                     user.user_id,
                     dateStr,
                     historyMap.get(user.user_id) ?? [],
-                    goalMap.get(user.user_id) || 10000,
+                    goal,
                 ),
                 assignMilestoneBadges(user.user_id, userTotals.total_steps),
                 assignTitleBadges(user.user_id, dateStr, userTotals.total_steps, userTotals.total_days),
                 assignLifestyleBadges(user.user_id, dateStr, user.steps),
             ]);
-            return { userId: user.user_id, badgeCodes: results.flat().filter(Boolean) as string[] };
+            return {
+                userId: user.user_id,
+                badgeCodes: results.flat().filter((badgeCode): badgeCode is string => badgeCode !== null),
+            };
         }));
 
         for (const { userId, badgeCodes } of batchAwards) {

@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { assignBadges } from '../services/badge-awards';
 
-const { mockFrom, mockRpc, mockSendWebPushNotifications } = vi.hoisted(() => ({
+const {
+    mockFrom,
+    mockRpc,
+    mockReportError,
+    mockSendBadgeNotification,
+    mockSendWebPushNotifications,
+} = vi.hoisted(() => ({
     mockFrom: vi.fn(),
     mockRpc: vi.fn(),
+    mockReportError: vi.fn(),
+    mockSendBadgeNotification: vi.fn(),
     mockSendWebPushNotifications: vi.fn(),
 }));
 
@@ -44,8 +52,13 @@ vi.mock('@/lib/api/web-push', () => ({
     sendWebPushNotifications: mockSendWebPushNotifications,
 }));
 
+vi.mock('@/lib/errors', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/lib/errors')>();
+    return { ...actual, reportError: mockReportError };
+});
+
 vi.mock('@/lib/api/teams', () => ({
-    sendBadgeNotification: vi.fn(),
+    sendBadgeNotification: mockSendBadgeNotification,
 }));
 
 describe('assignBadges Performance Test', () => {
@@ -131,7 +144,7 @@ describe('assignBadges Performance Test', () => {
             if (table === 'users') {
                 // Return dummy data for goal fetches
                 chain.then = (r) => r({
-                    data: Array.from({length: 10}, (_, i) => ({ id: `user-${i}`, step_goal: 10000 })),
+                    data: Array.from({length: 5}, (_, i) => ({ id: `user-${i}`, step_goal: 10000 })),
                     error: null
                 });
                 // For .single() calls (if any remain)
@@ -222,4 +235,205 @@ describe('assignBadges Performance Test', () => {
         }
     });
 
+});
+
+interface DependencyResult { data: unknown; error: unknown }
+
+const PERSONAL_DATE = '2026-07-20';
+const dependencyError = { code: 'XX000', message: 'raw dependency failure' };
+
+describe('assignBadges personal dependency mapping', () => {
+    let scenario: Record<'active' | 'users' | 'totals' | 'history', DependencyResult>;
+    let historyUpperBounds: unknown[];
+
+    function createChain(table: string): MockChain {
+        let dailyQuery: 'active' | 'history' | 'ranking' = 'active';
+        let upperBound: unknown;
+        const chain: MockChain = {
+            select: vi.fn(() => chain),
+            eq: vi.fn(() => {
+                if (table === 'daily_steps') dailyQuery = 'active';
+                return chain;
+            }),
+            lte: vi.fn((_column, value) => {
+                upperBound = value;
+                return chain;
+            }),
+            gte: vi.fn(() => {
+                if (table === 'daily_steps') dailyQuery = 'history';
+                return chain;
+            }),
+            order: vi.fn(() => chain),
+            limit: vi.fn(() => chain),
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
+            in: vi.fn(() => {
+                if (table === 'daily_steps') dailyQuery = 'history';
+                return chain;
+            }),
+            insert: mockInsert,
+            range: vi.fn(() => {
+                dailyQuery = 'ranking';
+                return chain;
+            }),
+            then: (resolve) => {
+                if (table === 'daily_steps') {
+                    if (dailyQuery === 'ranking') return resolve({ data: [], error: null });
+                    if (dailyQuery === 'history') {
+                        historyUpperBounds.push(upperBound);
+                        return resolve(scenario.history);
+                    }
+                    return resolve(scenario.active);
+                }
+                if (table === 'users') return resolve(scenario.users);
+                return resolve({ data: [], error: null });
+            },
+        };
+        return chain;
+    }
+
+    async function expectPersonalFailure(
+        code: string,
+        stage: string,
+        batchOffset?: number,
+    ): Promise<void> {
+        let caught: unknown;
+        try {
+            await assignBadges('DAILY', PERSONAL_DATE);
+        } catch (error: unknown) {
+            caught = error;
+        }
+        const context = {
+            stage,
+            dateStr: PERSONAL_DATE,
+            ...(batchOffset === undefined ? {} : { batchOffset }),
+        };
+        expect(caught).toMatchObject({ name: 'AppError', code, context, cause: undefined });
+        expect(caught).not.toHaveProperty('message', dependencyError.message);
+        expect(mockReportError).toHaveBeenCalledWith(
+            `assignBadges:${stage}`,
+            expect.anything(),
+            context,
+        );
+        expect(mockInsert).not.toHaveBeenCalled();
+        expect(mockSendBadgeNotification).not.toHaveBeenCalled();
+        expect(mockSendWebPushNotifications).not.toHaveBeenCalled();
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        scenario = {
+            active: { data: [{ user_id: 'user-1', steps: 0 }], error: null },
+            users: { data: [{ id: 'user-1', step_goal: 500 }], error: null },
+            totals: {
+                data: [{ user_id: 'user-1', total_steps: 0, total_days: 0 }],
+                error: null,
+            },
+            history: { data: [], error: null },
+        };
+        historyUpperBounds = [];
+        mockFrom.mockImplementation(createChain);
+        mockInsert.mockResolvedValue({ error: null });
+        mockRpc.mockImplementation((functionName: string) => functionName === 'award_streak_milestones'
+            ? Promise.resolve({ data: [], error: null })
+            : Promise.resolve(scenario.totals));
+    });
+
+    it.each(['', '2026-2-03', '2026-02-30', 'not-a-date'])(
+        'dateStrが%sの場合、固定AppErrorでDBアクセス前に拒否する',
+        async (dateStr) => {
+            await expect(assignBadges('DAILY', dateStr)).rejects.toMatchObject({
+                code: 'BADGE_ASSIGN_INPUT_INVALID',
+                context: { stage: 'input', dateStr },
+                cause: undefined,
+            });
+            expect(mockFrom).not.toHaveBeenCalled();
+            expect(mockRpc).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each([
+        ['active users', () => { scenario.active.error = dependencyError; },
+            'BADGE_PERSONAL_ACTIVE_USERS_QUERY_FAILED', 'active-users', undefined],
+        ['users', () => { scenario.users.error = dependencyError; },
+            'BADGE_PERSONAL_USERS_QUERY_FAILED', 'users', 0],
+        ['totals', () => { scenario.totals.error = dependencyError; },
+            'BADGE_PERSONAL_TOTALS_QUERY_FAILED', 'totals', 0],
+        ['history', () => { scenario.history.error = dependencyError; },
+            'BADGE_PERSONAL_HISTORY_QUERY_FAILED', 'history', 0],
+    ])('%s queryが失敗した場合、固定AppErrorで副作用を停止する',
+        async (_label, arrange, code, stage, batchOffset) => {
+            arrange();
+            await expectPersonalFailure(code, stage, batchOffset);
+        });
+
+    it.each([
+        ['null', null],
+        ['user_idが空', [{ user_id: '', steps: 0 }]],
+        ['stepsが非safe integer', [{ user_id: 'user-1', steps: Number.MAX_SAFE_INTEGER + 1 }]],
+        ['userが重複', [{ user_id: 'user-1', steps: 0 }, { user_id: 'user-1', steps: 1 }]],
+    ])('active usersが%sの場合、不正データとして拒否する', async (_label, data) => {
+        scenario.active.data = data;
+        await expectPersonalFailure(
+            'BADGE_PERSONAL_ACTIVE_USERS_INVALID_DATA',
+            'active-users',
+        );
+    });
+
+    it.each([
+        ['null', null],
+        ['active userが欠落', []],
+        ['userが重複', [{ id: 'user-1', step_goal: 500 }, { id: 'user-1', step_goal: 500 }]],
+        ['foreign user', [{ id: 'user-2', step_goal: 500 }]],
+        ['step_goalが無効', [{ id: 'user-1', step_goal: null }]],
+    ])('usersが%sの場合、不正データとして拒否する', async (_label, data) => {
+        scenario.users.data = data;
+        await expectPersonalFailure('BADGE_PERSONAL_USERS_INVALID_DATA', 'users', 0);
+    });
+
+    it.each([
+        ['null', null],
+        ['active userが欠落', []],
+        ['userが重複', [
+            { user_id: 'user-1', total_steps: 0, total_days: 0 },
+            { user_id: 'user-1', total_steps: 0, total_days: 0 },
+        ]],
+        ['foreign user', [{ user_id: 'user-2', total_steps: 0, total_days: 0 }]],
+        ['total_stepsが非safe integer', [
+            { user_id: 'user-1', total_steps: Number.MAX_SAFE_INTEGER + 1, total_days: 0 },
+        ]],
+        ['total_daysが負数', [{ user_id: 'user-1', total_steps: 0, total_days: -1 }]],
+    ])('totalsが%sの場合、不正データとして拒否する', async (_label, data) => {
+        scenario.totals.data = data;
+        await expectPersonalFailure('BADGE_PERSONAL_TOTALS_INVALID_DATA', 'totals', 0);
+    });
+
+    it.each([
+        ['null', null],
+        ['userとdateが重複', [
+            { user_id: 'user-1', date: PERSONAL_DATE, steps: 0 },
+            { user_id: 'user-1', date: PERSONAL_DATE, steps: 0 },
+        ]],
+        ['foreign user', [{ user_id: 'user-2', date: PERSONAL_DATE, steps: 0 }]],
+        ['dateが不正', [{ user_id: 'user-1', date: '2026-02-30', steps: 0 }]],
+        ['dateが開始日前', [{ user_id: 'user-1', date: '2026-06-19', steps: 0 }]],
+        ['dateが対象日後', [{ user_id: 'user-1', date: '2026-07-21', steps: 0 }]],
+        ['stepsが非safe integer', [
+            { user_id: 'user-1', date: PERSONAL_DATE, steps: Number.MAX_SAFE_INTEGER + 1 },
+        ]],
+    ])('historyが%sの場合、不正データとして拒否する', async (_label, data) => {
+        scenario.history.data = data;
+        await expectPersonalFailure('BADGE_PERSONAL_HISTORY_INVALID_DATA', 'history', 0);
+    });
+
+    it('0歩・0日・空historyの場合、有効値として付与せず正常終了する', async () => {
+        await expect(assignBadges('DAILY', PERSONAL_DATE)).resolves.toBeUndefined();
+        expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('historyの記録済み0歩を受理し、対象日を上限に取得する', async () => {
+        scenario.history.data = [{ user_id: 'user-1', date: PERSONAL_DATE, steps: 0 }];
+        await expect(assignBadges('DAILY', PERSONAL_DATE)).resolves.toBeUndefined();
+        expect(historyUpperBounds).toEqual([PERSONAL_DATE]);
+        expect(mockInsert).not.toHaveBeenCalled();
+    });
 });
