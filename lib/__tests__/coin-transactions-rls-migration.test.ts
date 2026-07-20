@@ -17,8 +17,7 @@ const phaseTwoMigration = readRepositoryFile(
     'migrations/20260720_harden_push_subscriptions_rls.sql',
 );
 const coinService = readRepositoryFile('lib/services/coin-service.ts');
-const directSources = [
-    'lib/services/coin-service.ts',
+const remainingDirectSources = [
     'app/api/user/login-bonus/route.ts',
     'app/api/user/export/route.ts',
     'app/api/cron/weekly-summary/route.ts',
@@ -27,6 +26,24 @@ const directSources = [
 const atomicCoinMigration = readRepositoryFile(
     'migrations/20260718_add_streak_milestone_rewards.sql',
 );
+const atomicDailyCoinMigration = readRepositoryFile(
+    'migrations/20260721_atomic_daily_coin_recalculation.sql',
+);
+const atomicBackfillMigration = readRepositoryFile(
+    'migrations/20260721_atomic_historical_coin_backfill.sql',
+);
+const processCoinsStart = coinService.indexOf('export async function processCoins');
+const processCoinsEnd = coinService.indexOf(
+    '\n// ============================================\n// ストリーク計算',
+    processCoinsStart,
+);
+const processCoins = coinService.slice(processCoinsStart, processCoinsEnd);
+const backfillStart = coinService.indexOf('export async function backfillCoinsForUser');
+const backfillEnd = coinService.indexOf(
+    '\n// ============================================\n// 安全な出金・入金',
+    backfillStart,
+);
+const backfill = coinService.slice(backfillStart, backfillEnd);
 
 describe('F016 coin_transactions RLS migration', () => {
     it('Phase 1とPhase 2を変更せずPhase 3だけを追加する', () => {
@@ -98,14 +115,37 @@ describe('F016 coin_transactions RLS migration', () => {
         expect(migration).not.toMatch(/GRANT (TRUNCATE|REFERENCES|TRIGGER|ALL)/i);
     });
 
-    it('upsertと直接CRUD及びSECURITY INVOKER RPCを権限計算に含める', () => {
-        expect(directSources.every((source) =>
+    it('既存の直接CRUDを維持しつつprocessCoinsとbackfillだけを原子RPCへ移す', () => {
+        expect(remainingDirectSources.every((source) =>
             source.includes("from('coin_transactions')")
             && source.includes('supabaseAdmin'))).toBe(true);
-        expect(coinService).toContain('.delete()');
-        expect(coinService).toContain('.insert(batch)');
-        expect(coinService).toContain(
-            ".upsert(transactions, { onConflict: 'idempotency_key', ignoreDuplicates: false })",
+        expect(processCoinsStart).toBeGreaterThan(-1);
+        expect(processCoinsEnd).toBeGreaterThan(processCoinsStart);
+        expect(processCoins).toContain("supabaseAdmin.rpc('apply_daily_coin_recalculation'");
+        expect(processCoins).toContain('p_transactions: transactions');
+        expect(processCoins).not.toContain("from('coin_transactions')");
+        expect(processCoins).not.toMatch(/\.(delete|insert|update|upsert)\(/);
+        expect(processCoins).not.toContain('recalculate_coin_balance');
+        expect(processCoins).not.toContain('updateCoinBalance');
+        expect(backfillStart).toBeGreaterThan(-1);
+        expect(backfillEnd).toBeGreaterThan(backfillStart);
+        expect(backfill).toContain("supabaseAdmin.rpc('apply_coin_backfill'");
+        expect(backfill).toContain('p_transactions: transactions');
+        expect(backfill).not.toContain("from('coin_transactions')");
+        expect(backfill).not.toMatch(/\.(delete|insert|update|upsert)\(/);
+        expect(backfill).not.toContain('recalculate_coin_balance');
+        expect(backfill).not.toContain('updateCoinBalance');
+        expect(atomicDailyCoinMigration).toContain(
+            'REVOKE UPDATE (user_id, date, type, amount, description, idempotency_key)',
+        );
+        expect(atomicDailyCoinMigration).toContain(
+            'GRANT EXECUTE ON FUNCTION public.apply_daily_coin_recalculation',
+        );
+        expect(atomicDailyCoinMigration).not.toMatch(
+            /GRANT UPDATE.*coin_transactions.*service_role/i,
+        );
+        expect(atomicBackfillMigration).toContain(
+            'GRANT EXECUTE ON FUNCTION public.apply_coin_backfill',
         );
         expect(atomicCoinMigration).not.toMatch(/SECURITY\s+DEFINER/i);
         expect(atomicCoinMigration).toContain('SELECT id INTO v_existing FROM public.coin_transactions');
