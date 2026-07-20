@@ -15,13 +15,32 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 import { AppError } from '@/lib/errors';
-import { backfillCoinsForUser, calculateStreakDays, processCoins } from '@/lib/services/coin-service';
+import {
+    backfillCoinsForUser,
+    calculateStreakBonus,
+    calculateStreakDays,
+    processCoins,
+} from '@/lib/services/coin-service';
 
 const TODAY = '2026-07-20';
 const ok = (data: unknown) => ({ data, error: null });
 
 function expectAppError(promise: Promise<unknown>, code: string, stage: string): Promise<void> {
     return expect(promise).rejects.toMatchObject({ name: 'AppError', code, context: { stage } });
+}
+
+function expectStreakBonusOverflow(action: () => void): void {
+    try {
+        action();
+    } catch (error: unknown) {
+        expect(error).toMatchObject({
+            name: 'AppError',
+            code: 'COIN_CALCULATION_OVERFLOW',
+            context: { stage: 'streak-bonus' },
+        });
+        return;
+    }
+    throw new Error('Expected streak bonus calculation to throw');
 }
 
 describe('coin-service', () => {
@@ -79,6 +98,52 @@ describe('coin-service', () => {
         expect(calculateStreakDays(history, shieldDates, '2026-07-17', 10_000)).toBe(365);
         shieldDates.delete(history[30].date);
         expect(calculateStreakDays(history, shieldDates, '2026-07-17', 10_000)).toBe(30);
+    });
+
+    it.each([
+        ['base 0', 0, 1.2, 0],
+        ['10,000 x 1.1', 10_000, 1.1, 1_000],
+        ['10,000 x 1.2', 10_000, 1.2, 2_000],
+        ['10,000 x 1.5', 10_000, 1.5, 5_000],
+        ['10,000 x 2.0', 10_000, 2, 10_000],
+        ['9,999 x 1.2', 9_999, 1.2, 1_999],
+    ])('calculateStreakBonus_%sの場合_整数百分率の追加分を返す', (
+        _label,
+        baseCoins,
+        multiplier,
+        expected,
+    ) => {
+        expect(calculateStreakBonus(baseCoins, multiplier)).toBe(expected);
+    });
+
+    it('calculateStreakBonus_PostgreSQL integer上限と同じ追加分の場合_上限値を返す', () => {
+        expect(calculateStreakBonus(2_147_483_647, 2)).toBe(2_147_483_647);
+    });
+
+    it('calculateStreakBonus_PostgreSQL integer上限を超える追加分の場合_固定AppErrorで拒否する', () => {
+        expectStreakBonusOverflow(() => calculateStreakBonus(2_147_483_647, 2.1));
+    });
+
+    it.each([
+        ['負の基本UC', -1, 1.2],
+        ['safe integerを超える基本UC', Number.MAX_SAFE_INTEGER + 1, 1.2],
+    ])('calculateStreakBonus_%sの場合_固定AppErrorで拒否する', (
+        _label,
+        baseCoins,
+        multiplier,
+    ) => {
+        expectStreakBonusOverflow(() => calculateStreakBonus(baseCoins, multiplier));
+    });
+
+    it.each([
+        ['NaN', Number.NaN],
+        ['無限大', Number.POSITIVE_INFINITY],
+        ['1未満', 0.99],
+    ])('calculateStreakBonus_不正な倍率%sの場合_固定AppErrorで拒否する', (
+        _label,
+        multiplier,
+    ) => {
+        expectStreakBonusOverflow(() => calculateStreakBonus(10_000, multiplier));
     });
 
     it('processCoins_入力が不正な場合_DB処理前に拒否する', async () => {

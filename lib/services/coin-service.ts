@@ -142,11 +142,26 @@ function calculateSafeCoinAmount(value: number, stage: string): number {
     return amount;
 }
 
-function calculateStreakBonus(baseCoins: number, multiplier: number): number {
+export function calculateStreakBonus(baseCoins: number, multiplier: number): number {
     const bonusPercentage = Math.round((multiplier - 1) * 100);
-    return bonusPercentage > 0
-        ? Math.floor((baseCoins * bonusPercentage) / 100)
-        : 0;
+    if (
+        !Number.isFinite(multiplier)
+        || multiplier < 1
+        || !isNonnegativeSafeInteger(baseCoins)
+        || baseCoins > POSTGRES_INTEGER_MAX
+        || !isNonnegativeSafeInteger(bonusPercentage)
+    ) {
+        throw new AppError(
+            'Coin calculation exceeded the supported integer range',
+            'COIN_CALCULATION_OVERFLOW',
+            { stage: 'streak-bonus' },
+        );
+    }
+
+    return calculateSafeCoinAmount(
+        (baseCoins * bonusPercentage) / 100,
+        'streak-bonus',
+    );
 }
 
 /**
