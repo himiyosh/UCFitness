@@ -31,10 +31,15 @@ const BADGE_ASSIGNMENT_ERRORS = {
     totalsData: ['Invalid personal badge totals data', 'BADGE_PERSONAL_TOTALS_INVALID_DATA', 'totals'],
     historyQuery: ['Failed to load personal badge history', 'BADGE_PERSONAL_HISTORY_QUERY_FAILED', 'history'],
     historyData: ['Invalid personal badge history data', 'BADGE_PERSONAL_HISTORY_INVALID_DATA', 'history'],
+    rankingQuery: ['Failed to load badge rankings', 'BADGE_RANKING_QUERY_FAILED', 'rankings'],
+    rankingData: ['Invalid badge rankings data', 'BADGE_RANKING_INVALID_DATA', 'rankings'],
+    groupsQuery: ['Failed to load badge groups', 'BADGE_GROUPS_QUERY_FAILED', 'groups'],
+    groupsData: ['Invalid badge groups data', 'BADGE_GROUPS_INVALID_DATA', 'groups'],
+    groupMembersQuery: ['Failed to load badge group members', 'BADGE_GROUP_MEMBERS_QUERY_FAILED', 'group-members'],
+    groupMembersData: ['Invalid badge group members data', 'BADGE_GROUP_MEMBERS_INVALID_DATA', 'group-members'],
+    awardInsert: ['Failed to insert badge award', 'BADGE_AWARD_INSERT_FAILED', 'award-insert'],
 } as const;
 
-/** バッジ定義へアクセスする際の安全なキー型 */
-type BadgePeriodKey = keyof typeof BADGE_DEFINITIONS.GLOBAL;
 type UserBadgeAwards = Map<string, string[]>;
 type BadgeAssignmentErrorKey = keyof typeof BADGE_ASSIGNMENT_ERRORS;
 
@@ -42,6 +47,9 @@ interface ActiveUserRow { user_id: string; steps: number }
 interface UserGoalRow { id: string; step_goal: number }
 interface UserTotalsRow { user_id: string; total_steps: number; total_days: number }
 interface UserHistoryRow { user_id: string; date: string; steps: number }
+interface RankingEntry { userId: string; steps: number }
+interface GroupRow { id: string }
+interface GroupMemberRow { user_id: string; group_id: string }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -66,9 +74,18 @@ function badgeAssignmentFailure(
     dateStr: string,
     batchOffset?: number,
 ): never {
+    throwBadgeAssignmentFailure(key, {
+        dateStr,
+        ...(batchOffset === undefined ? {} : { batchOffset }),
+    });
+}
+
+function throwBadgeAssignmentFailure(
+    key: BadgeAssignmentErrorKey,
+    context: Record<string, unknown>,
+): never {
     const [message, code, stage] = BADGE_ASSIGNMENT_ERRORS[key];
-    const context = { stage, dateStr, ...(batchOffset === undefined ? {} : { batchOffset }) };
-    throw new AppError(message, code, context);
+    throw new AppError(message, code, { stage, ...context });
 }
 
 function parseUniqueUserRows<T>(
@@ -138,6 +155,73 @@ function parseHistoryRows(
         rows.push({ user_id: value.user_id, date: value.date, steps: value.steps });
     }
     return rows;
+}
+
+function parseRankingRows(
+    data: unknown,
+    expectedUserIds?: readonly string[],
+): RankingEntry[] | null {
+    if (!Array.isArray(data)) return null;
+    const expectedUsers = expectedUserIds === undefined ? null : new Set(expectedUserIds);
+    const userSteps = new Map<string, number>();
+    for (const value of data) {
+        if (
+            !isRecord(value)
+            || !isNonEmptyString(value.user_id)
+            || !isNonnegativeSafeInteger(value.steps)
+            || (expectedUsers !== null && !expectedUsers.has(value.user_id))
+        ) {
+            return null;
+        }
+        const totalSteps = (userSteps.get(value.user_id) ?? 0) + value.steps;
+        if (!Number.isSafeInteger(totalSteps)) return null;
+        userSteps.set(value.user_id, totalSteps);
+    }
+    return Array.from(userSteps, ([userId, steps]) => ({ userId, steps }))
+        .sort((a, b) => (a.steps === b.steps ? 0 : b.steps > a.steps ? 1 : -1));
+}
+
+function parseGroupRows(data: unknown): GroupRow[] | null {
+    if (!Array.isArray(data)) return null;
+    const seen = new Set<string>();
+    const groups: GroupRow[] = [];
+    for (const value of data) {
+        if (!isRecord(value) || !isNonEmptyString(value.id) || seen.has(value.id)) {
+            return null;
+        }
+        seen.add(value.id);
+        groups.push({ id: value.id });
+    }
+    return groups;
+}
+
+function parseGroupMemberRows(
+    data: unknown,
+    groupIds: readonly string[],
+): GroupMemberRow[] | null {
+    if (!Array.isArray(data)) return null;
+    const expectedGroups = new Set(groupIds);
+    const seen = new Set<string>();
+    const members: GroupMemberRow[] = [];
+    for (const value of data) {
+        if (
+            !isRecord(value)
+            || !isNonEmptyString(value.user_id)
+            || !isNonEmptyString(value.group_id)
+            || !expectedGroups.has(value.group_id)
+        ) {
+            return null;
+        }
+        const membershipKey = `${value.group_id}\u0000${value.user_id}`;
+        if (seen.has(membershipKey)) return null;
+        seen.add(membershipKey);
+        members.push({ user_id: value.user_id, group_id: value.group_id });
+    }
+    return members;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+    return isRecord(error) && error.code === '23505';
 }
 
 function addUserBadgeAwards(
@@ -480,8 +564,7 @@ const assignGlobalBadges = async (
         return userBadgeMap;
     }
 
-    const periodKey = period as BadgePeriodKey;
-    const badgeCodes = BADGE_DEFINITIONS.GLOBAL[periodKey];
+    const badgeCodes = BADGE_DEFINITIONS.GLOBAL[period];
     if (!badgeCodes) return userBadgeMap;
 
     const top3 = rankings.slice(0, 3);
@@ -498,9 +581,13 @@ const assignGlobalBadges = async (
     return userBadgeMap;
 };
 
-const getRankingsForRange = async (startDate: string, endDate: string, userIds?: string[]) => {
+const getRankingsForRange = async (
+    startDate: string,
+    endDate: string,
+    userIds?: string[],
+): Promise<RankingEntry[]> => {
     // PostgREST 1000行制限回避: ページネーション付き取得
-    const { data, error } = await fetchAllWithPagination(
+    const result: { data: unknown; error: unknown } = await fetchAllWithPagination<unknown>(
         (from, to) => {
             let q = supabaseAdmin
                 .from('daily_steps')
@@ -515,21 +602,19 @@ const getRankingsForRange = async (startDate: string, endDate: string, userIds?:
             return q.range(from, to);
         }
     );
-    if (error) {
-        reportError('getRankingsForRange', error, { startDate, endDate });
-        return [];
+    const failureContext = {
+        dateStr: startDate,
+        startDate,
+        endDate,
+    };
+    if (result.error !== null) {
+        throwBadgeAssignmentFailure('rankingQuery', failureContext);
     }
-
-    // Aggregate
-    const userSteps = new Map<string, number>();
-    data?.forEach(row => {
-        const current = userSteps.get(row.user_id) || 0;
-        userSteps.set(row.user_id, current + row.steps);
-    });
-
-    return Array.from(userSteps.entries())
-        .map(([userId, steps]) => ({ userId, steps }))
-        .sort((a, b) => b.steps - a.steps); // Descending
+    const rankings = parseRankingRows(result.data, userIds);
+    if (rankings === null) {
+        throwBadgeAssignmentFailure('rankingData', failureContext);
+    }
+    return rankings;
 };
 
 const assignGroupBadges = async (
@@ -539,27 +624,37 @@ const assignGroupBadges = async (
     const allUserBadgeMap = new Map<string, string[]>();
     if (period === 'YEARLY') return allUserBadgeMap;
 
-    const periodKey = period as BadgePeriodKey;
-    const badgeCodes = BADGE_DEFINITIONS.GROUP[periodKey];
+    const badgeCodes = BADGE_DEFINITIONS.GROUP[period];
     if (!badgeCodes) return allUserBadgeMap;
 
     // 1. Get all groups
-    const { data: groups } = await supabaseAdmin
+    const groupsResult = await supabaseAdmin
         .from('groups')
         .select('id');
-
-    if (!groups || groups.length === 0) return allUserBadgeMap;
+    if (groupsResult.error !== null) {
+        badgeAssignmentFailure('groupsQuery', dateStr);
+    }
+    const groups = parseGroupRows(groupsResult.data);
+    if (groups === null) {
+        badgeAssignmentFailure('groupsData', dateStr);
+    }
+    if (groups.length === 0) return allUserBadgeMap;
 
     const { startDate, endDate } = computeDateRange(period, dateStr);
 
     // 2. Fetch ALL group members in one query (eliminates N+1)
     const groupIds = groups.map(g => g.id);
-    const { data: allMembers } = await supabaseAdmin
+    const membersResult = await supabaseAdmin
         .from('group_members')
         .select('user_id, group_id')
         .in('group_id', groupIds);
-
-    if (!allMembers) return allUserBadgeMap;
+    if (membersResult.error !== null) {
+        badgeAssignmentFailure('groupMembersQuery', dateStr);
+    }
+    const allMembers = parseGroupMemberRows(membersResult.data, groupIds);
+    if (allMembers === null) {
+        badgeAssignmentFailure('groupMembersData', dateStr);
+    }
 
     // Build a map: groupId → user_id[]
     const groupMembersMap = new Map<string, string[]>();
@@ -616,12 +711,20 @@ const assignGroupBadges = async (
 
 /**
  * バッジを DB に挿入する（通知は送信しない）。
- * 新規付与に成功した場合は badgeCode を返し、既に付与済みまたはエラーの場合は null を返す。
+ * 新規付与に成功した場合は badgeCode、既に付与済みの場合は null を返す。
+ * その他の挿入失敗は固定 AppError として呼び出し元へ伝播する。
  * 通知は呼び出し元で sendConsolidatedBadgeNotification にまとめて委譲する。
  */
 const awardBadge = async (userId: string, badgeCode: string, periodDate: string, groupId: string | null): Promise<string | null> => {
+    const failureContext = {
+        dateStr: periodDate,
+        badgeCode,
+        userId,
+        groupId,
+    };
+    let insertResult: { error: unknown };
     try {
-        const { error } = await supabaseAdmin
+        insertResult = await supabaseAdmin
             .from('user_badges')
             .insert({
                 user_id: userId,
@@ -629,20 +732,16 @@ const awardBadge = async (userId: string, badgeCode: string, periodDate: string,
                 period_date: periodDate,
                 group_id: groupId
             });
-
-        if (error) {
-            // 23505 = unique violation (badge already awarded) — ignore
-            if (error.code !== '23505') {
-                reportError('awardBadge:insert', error, { badgeCode });
-            }
+    } catch {
+        throwBadgeAssignmentFailure('awardInsert', failureContext);
+    }
+    if (insertResult.error !== null) {
+        if (isUniqueViolation(insertResult.error)) {
             return null;
         }
-
-        return badgeCode;
-    } catch (error: unknown) {
-        reportError('awardBadge', error, { badgeCode });
-        return null;
+        throwBadgeAssignmentFailure('awardInsert', failureContext);
     }
+    return badgeCode;
 };
 
 const sendBadgeTeamsNotification = async (

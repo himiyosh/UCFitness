@@ -3,12 +3,14 @@ import { assignBadges } from '../services/badge-awards';
 
 const {
     mockFrom,
+    mockFetchAllWithPagination,
     mockRpc,
     mockReportError,
     mockSendBadgeNotification,
     mockSendWebPushNotifications,
 } = vi.hoisted(() => ({
     mockFrom: vi.fn(),
+    mockFetchAllWithPagination: vi.fn(),
     mockRpc: vi.fn(),
     mockReportError: vi.fn(),
     mockSendBadgeNotification: vi.fn(),
@@ -47,6 +49,12 @@ vi.mock('@/lib/supabase', () => ({
         rpc: mockRpc,
     }
 }));
+
+vi.mock('@/lib/supabase-utils', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/lib/supabase-utils')>();
+    mockFetchAllWithPagination.mockImplementation(actual.fetchAllWithPagination);
+    return { ...actual, fetchAllWithPagination: mockFetchAllWithPagination };
+});
 
 vi.mock('@/lib/api/web-push', () => ({
     sendWebPushNotifications: mockSendWebPushNotifications,
@@ -435,5 +443,270 @@ describe('assignBadges personal dependency mapping', () => {
         await expect(assignBadges('DAILY', PERSONAL_DATE)).resolves.toBeUndefined();
         expect(historyUpperBounds).toEqual([PERSONAL_DATE]);
         expect(mockInsert).not.toHaveBeenCalled();
+    });
+});
+
+const PHASE_B_DATE = '2026-07-20';
+const PHASE_B_END_DATE = '2026-07-26';
+const PHASE_B_RANKING_CONTEXT = { startDate: PHASE_B_DATE, endDate: PHASE_B_END_DATE };
+const GLOBAL_AWARD_CONTEXT = { badgeCode: 'GLOBAL_WEEKLY_1', userId: 'user-1', groupId: null };
+
+describe('assignBadges global and group dependency mapping', () => {
+    let groupsResult: DependencyResult;
+    let membersResult: DependencyResult;
+    let rankingResults: DependencyResult[];
+
+    function createPhaseBChain(table: string): MockChain {
+        const chain: MockChain = {
+            select: vi.fn(() => chain),
+            eq: vi.fn(() => chain),
+            lte: vi.fn(() => chain),
+            gte: vi.fn(() => chain),
+            order: vi.fn(() => chain),
+            limit: vi.fn(() => chain),
+            single: vi.fn().mockResolvedValue({
+                data: table === 'badges'
+                    ? { name: 'Badge', image_url: 'url', description: 'description' }
+                    : { language: 'ja', username: 'test-user' },
+                error: null,
+            }),
+            in: vi.fn(() => chain),
+            insert: mockInsert,
+            range: vi.fn(() => chain),
+            then: (resolve) => {
+                if (table === 'groups') return resolve(groupsResult);
+                if (table === 'group_members') return resolve(membersResult);
+                if (table === 'push_subscriptions') {
+                    return resolve({
+                        data: [{
+                            id: 'subscription', endpoint: 'https://fcm.googleapis.com/test',
+                            p256dh: 'key', auth: 'auth', user_agent: 'test',
+                            created_at: '2026-01-01T00:00:00Z',
+                        }],
+                        error: null,
+                    });
+                }
+                return resolve({ data: [], error: null });
+            },
+        };
+        return chain;
+    }
+
+    function globalRankingRows(firstSteps = 100): unknown[] {
+        return Array.from({ length: 10 }, (_, index) => (
+            { user_id: `user-${index + 1}`, steps: index === 0 ? firstSteps : 0 }
+        ));
+    }
+
+    function qualifyingMembers(): unknown[] {
+        return Array.from({ length: 5 }, (_, index) => (
+            { user_id: `member-${index + 1}`, group_id: 'group-1' }
+        ));
+    }
+
+    function configureQualifyingGroup(): void {
+        groupsResult = { data: [{ id: 'group-1' }], error: null };
+        membersResult = { data: qualifyingMembers(), error: null };
+    }
+
+    async function expectPhaseBFailure(
+        code: string,
+        stage: string,
+        context: Record<string, unknown> = {},
+        expectedInsertCalls = 0,
+    ): Promise<void> {
+        let caught: unknown;
+        try {
+            await assignBadges('WEEKLY', PHASE_B_DATE);
+        } catch (error: unknown) {
+            caught = error;
+        }
+        expect(caught).toMatchObject({
+            name: 'AppError',
+            code,
+            context: { stage, dateStr: PHASE_B_DATE, ...context },
+            cause: undefined,
+        });
+        expect(String(caught)).not.toContain(RAW_DATABASE_SECRET);
+        expect(JSON.stringify(caught)).not.toContain(RAW_DATABASE_SECRET);
+        expect(mockReportError).not.toHaveBeenCalled();
+        expect(mockInsert).toHaveBeenCalledTimes(expectedInsertCalls);
+        expect(mockSendBadgeNotification).not.toHaveBeenCalled();
+        expect(mockSendWebPushNotifications).not.toHaveBeenCalled();
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        groupsResult = { data: [], error: null };
+        membersResult = { data: [], error: null };
+        rankingResults = [{ data: [], error: null }];
+        mockFrom.mockImplementation(createPhaseBChain);
+        mockFetchAllWithPagination.mockImplementation(
+            () => Promise.resolve(rankingResults.shift() ?? { data: [], error: null }),
+        );
+        mockInsert.mockResolvedValue({ error: null });
+        mockSendWebPushNotifications.mockResolvedValue(
+            { sent: 1, failed: 0, expired: 0, skippedDuplicates: 0 },
+        );
+    });
+
+    it('global ranking queryが失敗した場合、固定AppErrorで副作用を停止する', async () => {
+        rankingResults = [{ data: [], error: dependencyError }];
+        await expectPhaseBFailure(
+            'BADGE_RANKING_QUERY_FAILED',
+            'rankings',
+            PHASE_B_RANKING_CONTEXT,
+        );
+    });
+
+    it.each([
+        ['null', null],
+        ['非配列', { user_id: 'user-1', steps: 1 }],
+        ['不正row', [{ user_id: 'user-1' }]],
+        ['空user_id', [{ user_id: '', steps: 0 }]],
+        ['負歩数', [{ user_id: 'user-1', steps: -1 }]],
+        ['非safe integer', [{ user_id: 'user-1', steps: Number.MAX_SAFE_INTEGER + 1 }]],
+        ['集計overflow', [{ user_id: 'user-1', steps: Number.MAX_SAFE_INTEGER },
+            { user_id: 'user-1', steps: 1 }]],
+    ])('global ranking dataが%sの場合、不正データとして拒否する', async (_label, data) => {
+        rankingResults = [{ data, error: null }];
+        await expectPhaseBFailure(
+            'BADGE_RANKING_INVALID_DATA',
+            'rankings',
+            PHASE_B_RANKING_CONTEXT,
+        );
+    });
+
+    it.each([
+        ['空配列', []],
+        ['記録済み0歩', globalRankingRows(0)],
+    ])('global rankingが%sの場合、付与せず正常終了する', async (_label, data) => {
+        rankingResults = [{ data, error: null }];
+        await expect(assignBadges('WEEKLY', PHASE_B_DATE)).resolves.toBeUndefined();
+        expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('同一userの複数日rowを安全に合算して付与する', async () => {
+        rankingResults = [{
+            data: [...globalRankingRows(100), { user_id: 'user-1', steps: 50 }],
+            error: null,
+        }];
+        await expect(assignBadges('WEEKLY', PHASE_B_DATE)).resolves.toBeUndefined();
+        expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
+            user_id: 'user-1',
+            badge_code: 'GLOBAL_WEEKLY_1',
+        }));
+    });
+
+    it('groups queryが失敗した場合、固定AppErrorで副作用を停止する', async () => {
+        groupsResult = { data: [], error: dependencyError };
+        await expectPhaseBFailure('BADGE_GROUPS_QUERY_FAILED', 'groups');
+    });
+
+    it.each([
+        ['null', null],
+        ['空id', [{ id: '' }]],
+        ['重複id', [{ id: 'group-1' }, { id: 'group-1' }]],
+    ])('groups dataが%sの場合、不正データとして拒否する', async (_label, data) => {
+        groupsResult = { data, error: null };
+        await expectPhaseBFailure('BADGE_GROUPS_INVALID_DATA', 'groups');
+    });
+
+    it('groupsが空配列の場合、member取得と付与をせず正常終了する', async () => {
+        await expect(assignBadges('WEEKLY', PHASE_B_DATE)).resolves.toBeUndefined();
+        expect(mockFrom).not.toHaveBeenCalledWith('group_members');
+        expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('group members queryが失敗した場合、固定AppErrorで副作用を停止する', async () => {
+        groupsResult = { data: [{ id: 'group-1' }], error: null };
+        membersResult = { data: [], error: dependencyError };
+        await expectPhaseBFailure('BADGE_GROUP_MEMBERS_QUERY_FAILED', 'group-members');
+    });
+
+    it.each([
+        ['null', null],
+        ['空user_id', [{ user_id: '', group_id: 'group-1' }]],
+        ['foreign group', [{ user_id: 'user-1', group_id: 'group-2' }]],
+        ['重複membership', [{ user_id: 'user-1', group_id: 'group-1' },
+            { user_id: 'user-1', group_id: 'group-1' }]],
+    ])('group members dataが%sの場合、不正データとして拒否する', async (_label, data) => {
+        groupsResult = { data: [{ id: 'group-1' }], error: null };
+        membersResult = { data, error: null };
+        await expectPhaseBFailure('BADGE_GROUP_MEMBERS_INVALID_DATA', 'group-members');
+    });
+
+    it('group membersが空配列の場合、ランキング付与をせず正常終了する', async () => {
+        groupsResult = { data: [{ id: 'group-1' }], error: null };
+        await expect(assignBadges('WEEKLY', PHASE_B_DATE)).resolves.toBeUndefined();
+        expect(mockFetchAllWithPagination).toHaveBeenCalledTimes(1);
+        expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('group ranking queryが失敗した場合、固定AppErrorで副作用を停止する', async () => {
+        configureQualifyingGroup();
+        rankingResults = [
+            { data: [], error: null },
+            { data: [], error: dependencyError },
+        ];
+        await expectPhaseBFailure(
+            'BADGE_RANKING_QUERY_FAILED',
+            'rankings',
+            PHASE_B_RANKING_CONTEXT,
+        );
+    });
+
+    it('group rankingに指定外userがある場合、不正データとして拒否する', async () => {
+        configureQualifyingGroup();
+        rankingResults = [
+            { data: [], error: null },
+            { data: [{ user_id: 'foreign-user', steps: 1 }], error: null },
+        ];
+        await expectPhaseBFailure(
+            'BADGE_RANKING_INVALID_DATA',
+            'rankings',
+            PHASE_B_RANKING_CONTEXT,
+        );
+    });
+
+    it('group rankingに記録がない場合、0歩扱いで付与せず正常終了する', async () => {
+        configureQualifyingGroup();
+        rankingResults = [{ data: [], error: null }, { data: [], error: null }];
+        await expect(assignBadges('WEEKLY', PHASE_B_DATE)).resolves.toBeUndefined();
+        expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('award insertが23505の場合、既付与として通知せず正常終了する', async () => {
+        rankingResults = [{ data: globalRankingRows(), error: null }];
+        mockInsert.mockResolvedValue({
+            error: { code: '23505', message: RAW_DATABASE_SECRET },
+        });
+        await expect(assignBadges('WEEKLY', PHASE_B_DATE)).resolves.toBeUndefined();
+        expect(mockInsert).toHaveBeenCalledTimes(1);
+        expect(mockReportError).not.toHaveBeenCalled();
+        expect(mockSendBadgeNotification).not.toHaveBeenCalled();
+        expect(mockSendWebPushNotifications).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['23505以外のerror', () => mockInsert.mockResolvedValue({ error: dependencyError })],
+        ['throw', () => mockInsert.mockRejectedValue(new Error(RAW_DATABASE_SECRET))],
+    ])('award insertが%sの場合、固定AppErrorで通知を停止する', async (_label, arrange) => {
+        rankingResults = [{ data: globalRankingRows(), error: null }];
+        arrange();
+        await expectPhaseBFailure(
+            'BADGE_AWARD_INSERT_FAILED',
+            'award-insert',
+            GLOBAL_AWARD_CONTEXT,
+            1,
+        );
+    });
+
+    it('award insert成功時だけ統合通知とTeams通知を送る', async () => {
+        rankingResults = [{ data: globalRankingRows(), error: null }];
+        await expect(assignBadges('WEEKLY', PHASE_B_DATE)).resolves.toBeUndefined();
+        expect(mockInsert).toHaveBeenCalledTimes(1);
+        expect(mockSendWebPushNotifications).toHaveBeenCalledTimes(1);
+        expect(mockSendBadgeNotification).toHaveBeenCalledTimes(1);
     });
 });
