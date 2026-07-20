@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-19T16:10:56+09:00",
-  "lastAgent": "UCFitnessAgent (Next.js + React + Accessibility + QA + Self-Critique)",
+  "lastUpdated": "2026-07-19T23:30:45+09:00",
+  "lastAgent": "UCFitnessAgent (PostgreSQL + Security + Next.js + QA + Self-Critique)",
   "lastCommit": "pending",
-  "lastBranch": "himiyosh-himiyosh-f006-managed-group-select",
+  "lastBranch": "himiyosh-himiyosh-f006-group-reward-cron",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F006 Phase 2BでOWNER/ADMINの管理groupをServer Componentから一括取得し、GROUP作成時の必須select・取得不能/0件・送信失敗を明示。API/DB認可はPhase 2Aを維持。migration本番未適用、1000件超集計RPC、全member冪等報酬が残blocker。",
+  "summary": "F006 Phase 3C3で精算Outboxを最大20ユーザーずつlease claimし、ja/en集約Pushをユーザー単位で逐次送信してcomplete/releaseするEdge Cronを追加。失敗は隔離後に5xxと匿名集計で明示する。Phase 2A/3A/3B1/3C migrationsと精算・報酬Push Cron scheduleはproduction未適用blocker。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
@@ -33,7 +33,7 @@
     "F018レート制限APIはblocked。現行module-level MapはEdge isolate単位で、Workers KVは原子的incrementを保証しない。厳密なcross-isolate制限にはUpstash Redis、Cloudflare Rate Limiting binding、Durable Objects等の外部resource/binding作成とcredential設定が必要",
     "F021はin-progress。GROUP rankingは6→4 queries/6→4 waves、Feedは10→8/6→4、20ms固定RTTモデルは33.3%改善したが、実Supabaseログとproduction p95、更新中daily_steps/FeedのOFFSETページ間snapshot整合性は未検証",
     "F012はin-progress。公開LP・利用規約・プライバシーのja/en×5幅は30/30、公開6ページのLighthouse a11yは100だが、認証済み120ケース、安全な認証fixture、axe、VoiceOver/NVDAの主要フローは未検証",
-    "F006 Phase 2Bの管理者group選択UIとPhase 2Aの原子化コードは完了。Phase 2A migration本番未適用、1000件超集計RPC、全memberへの冪等報酬がblocked"
+    "F006 Phase 3C3までコード完了。Phase 2A/3A/3B1/3C migrationsと精算・報酬Push Cron scheduleはproduction未適用blocker"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -1129,7 +1129,22 @@
       "action": "F006 Phase 2BでOWNER/ADMINの管理groupを一括取得し、GROUP作成時の必須select、0件・取得不能・field error、GROUP限定group_id payload、送信中guardを実装。API/DB認可は既存stackを維持。",
       "commit": "pending",
       "filesChanged": ["app/[locale]/challenges/page.tsx", "components/challenge/CreateChallengeModal.tsx", "lib/services/managed-challenge-groups.ts", "messages/ja.json", "messages/en.json", "README.md", ".github/ucfitness-progress.json"]
-    }
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (PostgreSQL + Security + Next.js + QA + Self-Critique)",
+      "action": "F006 Phase 3AでGROUP challenge進捗をservice-role専用get_group_challenge_progress RPCへ移行。challenge/viewer再認可、参加者と現memberのintersection、inclusive期間の正歩数bigint集計を単一SQL snapshotで行い、PostgREST 1000行上限を除去した。INDIVIDUAL経路と全member報酬は変更せず、migrationは本番未適用。",
+      "commit": "pending",
+      "filesChanged": ["migrations/20260720_get_group_challenge_progress.sql", "app/api/challenge/[challengeId]/progress/route.ts", "app/api/challenge/[challengeId]/operation-authorization.test.ts", "lib/__tests__/group-challenge-progress-migration.test.ts", "types/database.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (PostgreSQL + Security + Next.js + QA + Self-Critique)",
+      "action": "F006 Phase 3B2で終了済み・未精算GROUP challengeをJST基準・end_date/id安定順・20件上限で取得し、Phase 3B1精算RPCへ逐次渡すEdge Cronを追加。RPC error・不正shape・未知status・不変条件違反を候補単位で隔離し、後続処理後に5xxと匿名集計を返す。Phase 2A/3A/3B1 migrationとCron scheduleはproduction未適用で、達成Push通知は別blocker。",
+      "commit": "pending",
+      "filesChanged": ["app/api/cron/group-challenge-settlement/route.ts", "app/api/cron/group-challenge-settlement/route.test.ts", "types/database.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {"date":"2026-07-19","agent":"UCFitnessAgent (Next.js + Security + Push + QA + Self-Critique)","action":"F006 Phase 3C3で報酬Outboxのclaim lease、ja/en集約Push、complete/release、匿名集計のEdge Cronと37件のroute契約テストを追加。F006はin-progressを維持し、Phase 2A/3A/3B1/3C migrationsと両Cron scheduleはproduction未適用blocker。","commit":"pending","filesChanged":["app/api/cron/group-challenge-reward/route.ts","app/api/cron/group-challenge-reward/route.test.ts","lib/api/web-push.ts","lib/api/web-push.test.ts","README.md",".github/ucfitness-progress.json"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",

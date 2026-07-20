@@ -221,6 +221,23 @@ describe('sendWebPushNotification', () => {
         });
     });
 
+    it('AbortSignalをfetchへ渡し、中断時は失敗を返す', async () => {
+        const keys = await crypto.subtle.generateKey(
+            { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+        const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey));
+        const signal = AbortSignal.abort();
+        const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+            expect(init?.signal).toBe(signal);
+            throw new DOMException('Aborted', 'AbortError');
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const result = await sendWebPushNotification({
+            endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint',
+            keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) },
+        }, { title: 'test', body: 'test' }, signal);
+        expect(result.success).toBe(false);
+    });
+
     it('payloadが暗号化body上限ちょうどの場合、4096bytes以内で送信する', async () => {
         const receiverKeys = await crypto.subtle.generateKey(
             { name: 'ECDH', namedCurve: 'P-256' },

@@ -324,6 +324,7 @@ export function findSupersededSubscriptionIds(
 export async function sendWebPushNotification(
     subscription: PushSubscriptionData,
     payload: PushPayload,
+    signal?: AbortSignal,
 ): Promise<PushSendResult> {
     try {
         if (!isAllowedPushEndpoint(subscription?.endpoint)) {
@@ -376,6 +377,7 @@ export async function sendWebPushNotification(
             method: 'POST',
             headers,
             body: copyToArrayBuffer(encryptedPayload),
+            ...(signal ? { signal } : {}),
         });
 
         if (!response.ok) {
@@ -407,6 +409,7 @@ export async function sendWebPushNotifications(
     userId: string,
     subscriptions: StoredPushSubscriptionData[],
     payload: PushPayload,
+    signal?: AbortSignal,
 ): Promise<PushDeliverySummary> {
     const activeSubscriptions = compactPushSubscriptions(subscriptions);
     const results = await Promise.all(
@@ -420,6 +423,7 @@ export async function sendWebPushNotifications(
                     },
                 },
                 payload,
+                signal,
             )),
     );
     const expiredEndpoints = results
@@ -437,7 +441,6 @@ export async function sendWebPushNotifications(
             .in('endpoint', expiredEndpoints);
         if (error) {
             reportError('sendWebPush:pruneExpired', error, {
-                userId,
                 count: expiredEndpoints.length,
             });
         }
