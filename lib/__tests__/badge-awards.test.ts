@@ -710,3 +710,235 @@ describe('assignBadges global and group dependency mapping', () => {
         expect(mockSendBadgeNotification).toHaveBeenCalledTimes(1);
     });
 });
+
+const PHASE_C_DATE = '2026-07-20';
+const PHASE_C_USER_CONTEXT = { userId: 'streak-user' };
+const PHASE_C_BADGE_CONTEXT = { ...PHASE_C_USER_CONTEXT, badgeCode: 'STREAK_7' };
+
+const streakSuccessRow = (userId = 'streak-user', badgeCode = 'STREAK_7', rewardAmount = 700):
+Record<string, unknown> => ({
+    awarded_user_id: userId, awarded_badge_code: badgeCode,
+    awarded_reward_amount: rewardAmount, error_code: null,
+});
+const streakFailureRow = (userId = 'failed-user', errorCode = 'INVALID_USER_OR_GOAL'):
+Record<string, unknown> => ({
+    awarded_user_id: userId, awarded_badge_code: null,
+    awarded_reward_amount: 0, error_code: errorCode,
+});
+
+describe('assignBadges streak and Teams dependency mapping', () => {
+    let teamsUserResult: DependencyResult;
+    let teamsBadgeResults: Map<string, DependencyResult>;
+
+    function validBadgeResult(badgeCode: string): DependencyResult {
+        return { data: { name: `${badgeCode} name`, image_url: `${badgeCode}.png`,
+            description: `${badgeCode} description` }, error: null };
+    }
+
+    function createPhaseCChain(table: string): MockChain {
+        let selectedColumns = '';
+        let selectedBadgeCode = '';
+        const chain: MockChain = {
+            select: vi.fn((columns: string) => { selectedColumns = columns; return chain; }),
+            eq: vi.fn((column: string, value: unknown) => {
+                if (table === 'badges' && column === 'code' && typeof value === 'string') selectedBadgeCode = value;
+                return chain;
+            }),
+            lte: vi.fn(() => chain), gte: vi.fn(() => chain),
+            order: vi.fn(() => chain), limit: vi.fn(() => chain),
+            single: vi.fn(async () => {
+                if (table === 'users') {
+                    return selectedColumns === 'username'
+                        ? teamsUserResult
+                        : { data: { language: 'ja', username: 'push-user' }, error: null };
+                }
+                if (table === 'badges') return teamsBadgeResults.get(selectedBadgeCode) ?? { data: null, error: null };
+                return { data: null, error: null };
+            }),
+            in: vi.fn(() => chain), insert: mockInsert, range: vi.fn(() => chain),
+            then: (resolve) => {
+                if (table === 'push_subscriptions') {
+                    return resolve({
+                        data: [{ id: 'subscription', endpoint: 'https://fcm.googleapis.com/test', p256dh: 'key',
+                            auth: 'auth', user_agent: 'test', created_at: '2026-01-01T00:00:00Z' }],
+                        error: null,
+                    });
+                }
+                return resolve({ data: [], error: null });
+            },
+        };
+        return chain;
+    }
+
+    async function captureAssignFailure(): Promise<unknown> {
+        try {
+            await assignBadges('DAILY', PHASE_C_DATE);
+            return undefined;
+        } catch (error: unknown) {
+            return error;
+        }
+    }
+
+    async function expectStreakFailure(code: string, stage: string): Promise<void> {
+        const caught = await captureAssignFailure();
+        expect(caught).toMatchObject({ name: 'AppError', code,
+            context: { stage, dateStr: PHASE_C_DATE }, cause: undefined });
+        expect(String(caught)).not.toContain(RAW_DATABASE_SECRET);
+        expect(JSON.stringify(caught)).not.toContain(RAW_DATABASE_SECRET);
+        expect(mockReportError).not.toHaveBeenCalled();
+        expect(mockSendBadgeNotification).not.toHaveBeenCalled();
+        expect(mockSendWebPushNotifications).not.toHaveBeenCalled();
+    }
+
+    async function expectTeamsFailure(
+        code: string,
+        stage: string,
+        context: Record<string, unknown>,
+    ): Promise<void> {
+        await expect(assignBadges('DAILY', PHASE_C_DATE)).resolves.toBeUndefined();
+        expect(mockSendWebPushNotifications).toHaveBeenCalledTimes(1);
+        expect(mockSendBadgeNotification).not.toHaveBeenCalled();
+        expect(mockReportError).toHaveBeenCalledTimes(1);
+        expect(mockReportError).toHaveBeenCalledWith(
+            'sendBadgeTeamsNotification',
+            expect.objectContaining({ name: 'AppError', code,
+                context: { stage, ...context }, cause: undefined }),
+        );
+        const reportedError = mockReportError.mock.calls[0][1];
+        expect(String(reportedError)).not.toContain(RAW_DATABASE_SECRET);
+        expect(JSON.stringify(reportedError)).not.toContain(RAW_DATABASE_SECRET);
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        teamsUserResult = { data: { username: 'teams-user' }, error: null };
+        teamsBadgeResults = new Map([['STREAK_7', validBadgeResult('STREAK_7')],
+            ['STREAK_30', validBadgeResult('STREAK_30')]]);
+        mockFrom.mockImplementation(createPhaseCChain);
+        mockFetchAllWithPagination.mockResolvedValue({ data: [], error: null });
+        mockRpc.mockResolvedValue({ data: [streakSuccessRow()], error: null });
+        mockInsert.mockResolvedValue({ error: null });
+        mockSendBadgeNotification.mockResolvedValue(undefined);
+        mockSendWebPushNotifications.mockResolvedValue({
+            sent: 1, failed: 0, expired: 0, skippedDuplicates: 0,
+        });
+    });
+
+    it.each([
+        ['RPC error', () => mockRpc.mockResolvedValueOnce({ data: [], error: dependencyError })],
+        ['RPC throw', () => mockRpc.mockRejectedValueOnce(new Error(RAW_DATABASE_SECRET))],
+    ])('streak %sの場合、固定AppErrorへ変換してraw errorを露出しない',
+        async (_label, arrange) => {
+            arrange();
+            await expectStreakFailure('BADGE_STREAK_RPC_FAILED', 'streak-rpc');
+        });
+
+    it.each([null, { unexpected: true }])(
+        'streak RPC dataが非配列の場合、固定AppErrorで拒否する',
+        async (data) => {
+            mockRpc.mockResolvedValueOnce({ data, error: null });
+            await expectStreakFailure('BADGE_STREAK_RPC_INVALID_RESPONSE', 'streak-response');
+        },
+    );
+
+    it.each([
+        ['非object', null],
+        ['key欠落', { awarded_user_id: 'user-1' }],
+        ['余分なkey', { ...streakSuccessRow(), raw_error: RAW_DATABASE_SECRET }],
+        ['空user', streakSuccessRow('')],
+        ['未知badge', streakSuccessRow('user-1', 'STREAK_999', 0)],
+        ['負reward', streakSuccessRow('user-1', 'STREAK_7', -1)],
+        ['badgeとreward不一致', streakSuccessRow('user-1', 'STREAK_7', 3000)],
+        ['successにerror code', { ...streakSuccessRow(), error_code: '23505' }],
+        ['failureにbadge', { ...streakFailureRow(), awarded_badge_code: 'STREAK_7' }],
+        ['failureにreward', { ...streakFailureRow(), awarded_reward_amount: 700 }],
+        ['failure codeが不正', streakFailureRow('user-1', 'invalid')],
+    ])('streak rowが%sの場合、固定AppErrorで拒否する', async (_label, row) => {
+        mockRpc.mockResolvedValueOnce({ data: [row], error: null });
+        await expectStreakFailure('BADGE_STREAK_ROW_INVALID', 'streak-row');
+    });
+
+    it.each([
+        ['同一user+badge', [streakSuccessRow(), streakSuccessRow()]],
+        ['同一failure row', [streakFailureRow(), streakFailureRow()]],
+    ])('streak rowが%sで重複する場合、固定AppErrorで拒否する', async (_label, data) => {
+        mockRpc.mockResolvedValueOnce({ data, error: null });
+        await expectStreakFailure('BADGE_STREAK_ROW_INVALID', 'streak-row');
+    });
+
+    it('streakが部分成功した場合、成功通知後にfailed userを一意集計して固定AppErrorを返す', async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: [streakSuccessRow(), streakFailureRow('failed-user'),
+                streakFailureRow('failed-user', '23505')],
+            error: null,
+        });
+        const caught = await captureAssignFailure();
+        expect(mockSendWebPushNotifications).toHaveBeenCalledTimes(1);
+        expect(mockSendBadgeNotification).toHaveBeenCalledTimes(1);
+        expect(mockReportError).not.toHaveBeenCalled();
+        expect(caught).toMatchObject({ name: 'AppError', code: 'BADGE_STREAK_PARTIAL_FAILURE',
+            context: { stage: 'streak-partial', dateStr: PHASE_C_DATE, failedUsers: 1 },
+            cause: undefined });
+        expect(JSON.stringify(caught)).not.toContain('INVALID_USER_OR_GOAL');
+        expect(JSON.stringify(caught)).not.toContain('23505');
+    });
+
+    const teamsFailures: [string, () => void, string, string, Record<string, unknown>][] = [
+        ['user query', () => { teamsUserResult = { data: null, error: dependencyError }; },
+            'BADGE_TEAMS_USER_QUERY_FAILED', 'teams-user-query', PHASE_C_USER_CONTEXT],
+        ['user null', () => { teamsUserResult = { data: null, error: null }; },
+            'BADGE_TEAMS_USER_INVALID_DATA', 'teams-user-data', PHASE_C_USER_CONTEXT],
+        ['username empty', () => { teamsUserResult = { data: { username: '' }, error: null }; },
+            'BADGE_TEAMS_USER_INVALID_DATA', 'teams-user-data', PHASE_C_USER_CONTEXT],
+        ['username type', () => { teamsUserResult = { data: { username: 1 }, error: null }; },
+            'BADGE_TEAMS_USER_INVALID_DATA', 'teams-user-data', PHASE_C_USER_CONTEXT],
+        ['badge query', () => teamsBadgeResults.set('STREAK_7', { data: null, error: dependencyError }),
+            'BADGE_TEAMS_BADGE_QUERY_FAILED', 'teams-badge-query', PHASE_C_BADGE_CONTEXT],
+        ['badge missing', () => teamsBadgeResults.set('STREAK_7', { data: null, error: null }),
+            'BADGE_TEAMS_BADGE_INVALID_DATA', 'teams-badge-data', PHASE_C_BADGE_CONTEXT],
+        ['badge name', () => teamsBadgeResults.set('STREAK_7', {
+            data: { name: '', image_url: null, description: null }, error: null }),
+            'BADGE_TEAMS_BADGE_INVALID_DATA', 'teams-badge-data', PHASE_C_BADGE_CONTEXT],
+        ['badge image', () => teamsBadgeResults.set('STREAK_7', {
+            data: { name: 'Badge', image_url: 1, description: null }, error: null }),
+            'BADGE_TEAMS_BADGE_INVALID_DATA', 'teams-badge-data', PHASE_C_BADGE_CONTEXT],
+        ['badge description', () => teamsBadgeResults.set('STREAK_7', {
+            data: { name: 'Badge', image_url: null, description: 1 }, error: null }),
+            'BADGE_TEAMS_BADGE_INVALID_DATA', 'teams-badge-data', PHASE_C_BADGE_CONTEXT],
+    ];
+    it.each(teamsFailures)(
+        'Teams %sが不正な場合、固定AppErrorだけを1回reportして主通知を維持する',
+        async (_label, arrange, code, stage, context) => {
+            arrange();
+            await expectTeamsFailure(code, stage, context);
+        },
+    );
+
+    it('Teams badge取得が部分的な場合、webhookへ不完全な一覧を送信しない', async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: [streakSuccessRow(), streakSuccessRow('streak-user', 'STREAK_30', 3000)],
+            error: null,
+        });
+        teamsBadgeResults.set('STREAK_30', { data: null, error: null });
+        await expectTeamsFailure('BADGE_TEAMS_BADGE_INVALID_DATA', 'teams-badge-data',
+            { ...PHASE_C_USER_CONTEXT, badgeCode: 'STREAK_30' });
+    });
+
+    it('Teams成功時、reward 0を含む全badgeの検証済みデータを順序どおり送信する', async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: [streakSuccessRow('streak-user', 'STREAK_7', 0),
+                streakSuccessRow('streak-user', 'STREAK_30', 3000)],
+            error: null,
+        });
+        teamsBadgeResults.set('STREAK_7',
+            { data: { name: 'Seven', image_url: null, description: null }, error: null });
+        teamsBadgeResults.set('STREAK_30', { data: {
+            name: 'Thirty', image_url: 'thirty.png', description: 'Thirty description',
+        }, error: null });
+        await expect(assignBadges('DAILY', PHASE_C_DATE)).resolves.toBeUndefined();
+        expect(mockSendWebPushNotifications).toHaveBeenCalledTimes(1);
+        expect(mockSendBadgeNotification).toHaveBeenCalledWith(
+            'teams-user', 'Seven / Thirty', 'thirty.png', 'Thirty description');
+        expect(mockReportError).not.toHaveBeenCalled();
+    });
+});
