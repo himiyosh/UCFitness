@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-    deleteIn: vi.fn(), from: vi.fn(), historyOrder: vi.fn(), reportError: vi.fn(),
-    rpc: vi.fn(), shieldLte: vi.fn(), upsert: vi.fn(), userSingle: vi.fn(),
+    from: vi.fn(), historyOrder: vi.fn(), reportError: vi.fn(), rpc: vi.fn(),
+    shieldLte: vi.fn(), userSingle: vi.fn(),
 }));
 
 vi.mock('@/lib/errors', async (importOriginal) => {
@@ -29,9 +29,7 @@ describe('coin-service', () => {
         mocks.userSingle.mockResolvedValue(ok({ step_goal: 10_000 }));
         mocks.historyOrder.mockResolvedValue(ok([{ date: TODAY, steps: 10_000 }]));
         mocks.shieldLte.mockResolvedValue(ok([]));
-        mocks.deleteIn.mockResolvedValue(ok(null));
-        mocks.upsert.mockResolvedValue(ok(null));
-        mocks.rpc.mockResolvedValue(ok(null));
+        mocks.rpc.mockResolvedValue(ok({ success: true }));
         mocks.from.mockImplementation((table: string) => {
             if (table === 'users') return {
                 select: vi.fn(() => ({ eq: vi.fn(() => ({ single: mocks.userSingle })) })),
@@ -50,12 +48,7 @@ describe('coin-service', () => {
                     eq: vi.fn(() => ({ gte: vi.fn(() => ({ lte: mocks.shieldLte })) })),
                 })),
             };
-            return {
-                delete: vi.fn(() => ({
-                    eq: vi.fn(() => ({ eq: vi.fn(() => ({ in: mocks.deleteIn })) })),
-                })),
-                upsert: mocks.upsert,
-            };
+            throw new Error(`Unexpected table query: ${table}`);
         });
     });
 
@@ -99,7 +92,7 @@ describe('coin-service', () => {
             mocks.userSingle.mockResolvedValueOnce(result);
             await expectAppError(processCoins('user-1', 1_000, TODAY), code, 'step-goal');
         }
-        expect(mocks.deleteIn).not.toHaveBeenCalled();
+        expect(mocks.rpc).not.toHaveBeenCalled();
     });
 
     it('processCoins_ストリーク依存データが取得不能または不正な場合_台帳処理を開始しない', async () => {
@@ -120,44 +113,74 @@ describe('coin-service', () => {
             mocks.shieldLte.mockResolvedValueOnce(shields);
             await expectAppError(processCoins('user-1', 1_000, TODAY), code, stage);
         }
-        expect(mocks.deleteIn).not.toHaveBeenCalled();
+        expect(mocks.rpc).not.toHaveBeenCalled();
     });
 
     it.each([
-        [[], '空の履歴'],
-        [[{ date: TODAY, steps: 0 }], '記録済み0歩'],
-    ])('processCoins_%sの場合_有効なストリーク中断として処理する', async (history) => {
+        { history: [], label: '空の履歴' },
+        { history: [{ date: TODAY, steps: 0 }], label: '記録済み0歩' },
+    ])('processCoins_$labelの場合_0歩のSTEPS payloadを原子RPCへ渡す', async ({ history }) => {
         mocks.historyOrder.mockResolvedValueOnce(ok(history));
         await expect(processCoins('user-1', 0, TODAY)).resolves.toBeUndefined();
-        expect(mocks.rpc).toHaveBeenCalledWith('recalculate_coin_balance', {
-            p_user_id: 'user-1', p_streak: 0,
+        expect(mocks.rpc).toHaveBeenCalledWith('apply_daily_coin_recalculation', {
+            p_user_id: 'user-1',
+            p_date: TODAY,
+            p_streak: 0,
+            p_transactions: [{
+                type: 'STEPS',
+                amount: 0,
+                description: '0 steps × 1 UC',
+            }],
         });
+        expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
     });
 
-    it('processCoins_既存台帳の削除に失敗した場合_upsertと残高再集計を行わない', async () => {
-        mocks.deleteIn.mockResolvedValueOnce({ data: null, error: { code: 'PGRST500' } });
-        await expectAppError(processCoins('user-1', 10_000, TODAY), 'COIN_TRANSACTIONS_DELETE_FAILED', 'delete-transactions');
-        expect(mocks.upsert).not.toHaveBeenCalled();
-        expect(mocks.rpc).not.toHaveBeenCalled();
-    });
-
-    it('processCoins_台帳upsertに失敗した場合_残高再集計を行わない', async () => {
-        mocks.upsert.mockResolvedValueOnce({ data: null, error: { code: 'PGRST500' } });
-        await expectAppError(processCoins('user-1', 10_000, TODAY), 'COIN_TRANSACTIONS_UPSERT_FAILED', 'upsert-transactions');
-        expect(mocks.rpc).not.toHaveBeenCalled();
-    });
-
-    it('processCoins_残高再集計に失敗した場合_同期元へ失敗を伝播する', async () => {
+    it('processCoins_日次再計算RPCに失敗した場合_固定AppErrorとして拒否する', async () => {
         mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST500' } });
-        await expectAppError(processCoins('user-1', 10_000, TODAY), 'COIN_BALANCE_RECALCULATION_FAILED', 'recalculate-balance');
+        await expectAppError(
+            processCoins('user-1', 10_000, TODAY),
+            'COIN_DAILY_RECALCULATION_RPC_FAILED',
+            'apply-daily-recalculation',
+        );
+        expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
     });
 
-    it('processCoins_目標へ到達した場合_既存payloadとべき等性キーを維持する', async () => {
+    it.each([
+        null,
+        false,
+        [],
+        { success: false },
+        { success: true, written_count: 1 },
+    ])('processCoins_日次再計算RPCが不正な応答を返した場合_固定AppErrorとして拒否する: %j', async (response) => {
+        mocks.rpc.mockResolvedValueOnce(ok(response));
+        await expectAppError(
+            processCoins('user-1', 10_000, TODAY),
+            'COIN_DAILY_RECALCULATION_INVALID_RESPONSE',
+            'apply-daily-recalculation-response',
+        );
+        expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
+    });
+
+    it('processCoins_目標と7日ストリークを達成した場合_厳密payloadだけを原子RPCへ渡す', async () => {
+        const streakHistory = Array.from({ length: 7 }, (_, offset) => {
+            const date = new Date(`${TODAY}T00:00:00Z`);
+            date.setUTCDate(date.getUTCDate() - offset);
+            return { date: date.toISOString().slice(0, 10), steps: 10_000 };
+        });
+        mocks.historyOrder.mockResolvedValueOnce(ok(streakHistory));
+
         await expect(processCoins('user-1', 10_000, TODAY)).resolves.toBeUndefined();
-        expect(mocks.upsert).toHaveBeenCalledWith([
-            { user_id: 'user-1', date: TODAY, type: 'STEPS', amount: 10_000, description: '10000 steps × 1 UC', idempotency_key: 'coins:user-1:2026-07-20:STEPS' },
-            { user_id: 'user-1', date: TODAY, type: 'GOAL_BONUS', amount: 2_000, description: 'Goal achieved bonus (+20%)', idempotency_key: 'coins:user-1:2026-07-20:GOAL_BONUS' },
-        ], { onConflict: 'idempotency_key', ignoreDuplicates: false });
+        expect(mocks.rpc).toHaveBeenCalledWith('apply_daily_coin_recalculation', {
+            p_user_id: 'user-1',
+            p_date: TODAY,
+            p_streak: 7,
+            p_transactions: [
+                { type: 'STEPS', amount: 10_000, description: '10000 steps × 1 UC' },
+                { type: 'GOAL_BONUS', amount: 2_000, description: 'Goal achieved bonus (+20%)' },
+                { type: 'STREAK_BONUS', amount: 1_999, description: '7-day streak bonus (×1.2)' },
+            ],
+        });
+        expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
         expect(mocks.reportError).not.toHaveBeenCalled();
     });
 
@@ -171,7 +194,7 @@ describe('coin-service', () => {
         try {
             const overflowModule = await import('./coin-service');
             await expectAppError(overflowModule.processCoins('user-1', 10_000, TODAY), 'COIN_CALCULATION_OVERFLOW', 'base-coins');
-            expect(mocks.deleteIn).not.toHaveBeenCalled();
+            expect(mocks.rpc).not.toHaveBeenCalled();
         } finally {
             vi.doUnmock('@/lib/constants');
             vi.resetModules();

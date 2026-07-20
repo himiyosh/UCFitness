@@ -31,6 +31,16 @@ interface StreakHistoryRow {
     steps: number;
 }
 
+interface DailyCoinTransaction {
+    type: 'STEPS' | 'GOAL_BONUS' | 'STREAK_BONUS';
+    amount: number;
+    description: string;
+}
+
+interface DailyCoinRecalculationResult {
+    success: true;
+}
+
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -49,6 +59,14 @@ function isValidIsoDate(value: unknown): value is string {
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+function isSuccessfulDailyCoinRecalculation(
+    value: unknown,
+): value is DailyCoinRecalculationResult {
+    return isRecord(value)
+        && value.success === true
+        && Object.keys(value).length === 1;
+}
+
 const COIN_ERRORS = {
     input: ['Invalid coin processing input', 'COIN_INPUT_INVALID'],
     'step-goal-query': ['Failed to load step goal', 'COIN_STEP_GOAL_QUERY_FAILED'],
@@ -57,8 +75,8 @@ const COIN_ERRORS = {
     'streak-history': ['Invalid streak history data', 'COIN_STREAK_HISTORY_INVALID_DATA'],
     'streak-shields-query': ['Failed to load streak shields', 'COIN_STREAK_SHIELD_QUERY_FAILED'],
     'streak-shields': ['Invalid streak shield data', 'COIN_STREAK_SHIELD_INVALID_DATA'],
-    'delete-transactions': ['Failed to delete existing coin transactions', 'COIN_TRANSACTIONS_DELETE_FAILED'],
-    'upsert-transactions': ['Failed to upsert coin transactions', 'COIN_TRANSACTIONS_UPSERT_FAILED'],
+    'apply-daily-recalculation': ['Failed to apply daily coin recalculation', 'COIN_DAILY_RECALCULATION_RPC_FAILED'],
+    'apply-daily-recalculation-response': ['Daily coin recalculation returned an invalid result', 'COIN_DAILY_RECALCULATION_INVALID_RESPONSE'],
     'recalculate-balance': ['Failed to recalculate coin balance', 'COIN_BALANCE_RECALCULATION_FAILED'],
 } as const;
 
@@ -154,54 +172,38 @@ export async function processCoins(userId: string, steps: number, date: string):
     const streakBonus = multiplier > 1.0
         ? calculateSafeCoinAmount(baseCoins * (multiplier - 1.0), 'streak-bonus')
         : 0;
-    const idempotencyPrefix = `coins:${userId}:${date}`;
-
-    const { error: deleteError } = await supabaseAdmin
-        .from('coin_transactions')
-        .delete()
-        .eq('user_id', userId)
-        .eq('date', date)
-        .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
-    if (deleteError !== null) {
-        throw coinProcessingError('delete-transactions');
-    }
-
-    const transactions = [{
-        user_id: userId,
-        date,
+    const transactions: DailyCoinTransaction[] = [{
         type: 'STEPS',
         amount: baseCoins,
         description: `${steps} steps × ${BASE_RATE} UC`,
-        idempotency_key: `${idempotencyPrefix}:STEPS`,
     }];
     if (goalBonus > 0) {
         transactions.push({
-            user_id: userId,
-            date,
             type: 'GOAL_BONUS',
             amount: goalBonus,
             description: `Goal achieved bonus (+${Math.round(GOAL_BONUS_RATE * 100)}%)`,
-            idempotency_key: `${idempotencyPrefix}:GOAL_BONUS`,
         });
     }
     if (streakBonus > 0) {
         transactions.push({
-            user_id: userId,
-            date,
             type: 'STREAK_BONUS',
             amount: streakBonus,
             description: `${currentStreak}-day streak bonus (×${multiplier})`,
-            idempotency_key: `${idempotencyPrefix}:STREAK_BONUS`,
         });
     }
 
-    const { error: upsertError } = await supabaseAdmin
-        .from('coin_transactions')
-        .upsert(transactions, { onConflict: 'idempotency_key', ignoreDuplicates: false });
-    if (upsertError !== null) {
-        throw coinProcessingError('upsert-transactions');
+    const { data, error } = await supabaseAdmin.rpc('apply_daily_coin_recalculation', {
+        p_user_id: userId,
+        p_date: date,
+        p_streak: currentStreak,
+        p_transactions: transactions,
+    });
+    if (error !== null) {
+        throw coinProcessingError('apply-daily-recalculation');
     }
-    await updateCoinBalance(userId, currentStreak);
+    if (!isSuccessfulDailyCoinRecalculation(data)) {
+        throw coinProcessingError('apply-daily-recalculation-response');
+    }
 }
 
 // ============================================
