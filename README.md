@@ -400,6 +400,8 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 | `lib/services/coin-service.ts` | backfillのuser / steps errorを未記録・no dataとしてreturn | DB errorを失敗として返し、台帳処理を開始しない |
 | `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
 
+実績APIはDB障害・未設定・不正な集計形状を0歩、0日、既定10,000歩へ偽装せず、固定5xxで判定を停止する。
+
 Phase 9で必要なtable catalogは、下記blockの対象
 `public.walking_routes`を`public.daily_steps`へ置換して同じread-only transactionで
 取得する。加えて、未追跡aggregation RPCを含む関数owner / security / config /
