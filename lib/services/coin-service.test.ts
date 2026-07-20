@@ -43,6 +43,14 @@ function expectStreakBonusOverflow(action: () => void): void {
     throw new Error('Expected streak bonus calculation to throw');
 }
 
+function createBigIntForRuntimeBoundary(value: number): unknown {
+    const bigIntConstructor = Reflect.get(globalThis, 'BigInt');
+    if (typeof bigIntConstructor !== 'function') {
+        throw new Error('BigInt is unavailable in the test runtime');
+    }
+    return bigIntConstructor(value);
+}
+
 describe('coin-service', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -144,6 +152,19 @@ describe('coin-service', () => {
         multiplier,
     ) => {
         expectStreakBonusOverflow(() => calculateStreakBonus(10_000, multiplier));
+    });
+
+    it.each([
+        ['Symbolの基本UC', Symbol('base-coins'), 1.2],
+        ['BigIntの基本UC', createBigIntForRuntimeBoundary(10_000), 1.2],
+        ['Symbolの倍率', 10_000, Symbol('multiplier')],
+        ['BigIntの倍率', 10_000, createBigIntForRuntimeBoundary(1)],
+    ])('calculateStreakBonus_実行時に%sが渡された場合_固定AppErrorで拒否する', (
+        _label,
+        baseCoins,
+        multiplier,
+    ) => {
+        expectStreakBonusOverflow(() => calculateStreakBonus(baseCoins, multiplier));
     });
 
     it('processCoins_入力が不正な場合_DB処理前に拒否する', async () => {

@@ -133,29 +133,34 @@ function parseShieldDates(value: unknown, startDate: string, currentDate: string
 function calculateSafeCoinAmount(value: number, stage: string): number {
     const amount = Math.floor(value);
     if (!isNonnegativeSafeInteger(amount) || amount > POSTGRES_INTEGER_MAX) {
-        throw new AppError(
-            'Coin calculation exceeded the supported integer range',
-            'COIN_CALCULATION_OVERFLOW',
-            { stage },
-        );
+        throw coinCalculationOverflow(stage);
     }
     return amount;
 }
 
-export function calculateStreakBonus(baseCoins: number, multiplier: number): number {
-    const bonusPercentage = Math.round((multiplier - 1) * 100);
+function coinCalculationOverflow(stage: string): AppError {
+    return new AppError(
+        'Coin calculation exceeded the supported integer range',
+        'COIN_CALCULATION_OVERFLOW',
+        { stage },
+    );
+}
+
+export function calculateStreakBonus(baseCoins: unknown, multiplier: unknown): number {
     if (
-        !Number.isFinite(multiplier)
+        typeof baseCoins !== 'number'
+        || typeof multiplier !== 'number'
+        || !Number.isFinite(multiplier)
         || multiplier < 1
         || !isNonnegativeSafeInteger(baseCoins)
         || baseCoins > POSTGRES_INTEGER_MAX
-        || !isNonnegativeSafeInteger(bonusPercentage)
     ) {
-        throw new AppError(
-            'Coin calculation exceeded the supported integer range',
-            'COIN_CALCULATION_OVERFLOW',
-            { stage: 'streak-bonus' },
-        );
+        throw coinCalculationOverflow('streak-bonus');
+    }
+
+    const bonusPercentage = Math.round((multiplier - 1) * 100);
+    if (!isNonnegativeSafeInteger(bonusPercentage)) {
+        throw coinCalculationOverflow('streak-bonus');
     }
 
     return calculateSafeCoinAmount(
