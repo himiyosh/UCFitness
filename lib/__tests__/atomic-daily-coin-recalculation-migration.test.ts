@@ -30,6 +30,8 @@ describe('atomic daily coin recalculation migration', () => {
         expect(migration).toContain(
             'LOCK TABLE public.users, public.coin_transactions, public.coin_balances',
         );
+        expect(migration.indexOf('DO $preconditions$')).toBeLessThan(migration.indexOf('CREATE FUNCTION'));
+        expect(migration).not.toMatch(/\b(?:CREATE|ALTER)\s+TABLE\b/i);
         for (const evidence of [
             "'amount|integer|t|f|'", "'idempotency_key|text|f|f|'",
             "'total_balance|bigint|t|0|'", "'investor_rank|text|t|''BEGINNER''::text|'",
@@ -56,21 +58,24 @@ describe('atomic daily coin recalculation migration', () => {
         );
         expect(lockIndex).toBeGreaterThan(-1);
         expect(lockIndex).toBeLessThan(functionBody.indexOf('DELETE FROM public.coin_transactions'));
+        expect(lockIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_transactions'));
         expect(lockIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_balances'));
     });
 
-    it('transaction入力_不正shapeまたはunsafe値の場合_書き込み前に拒否する', () => {
-        expect(functionBody).toContain("jsonb_typeof(p_transactions) <> 'array'");
-        expect(functionBody).toContain('jsonb_array_length(p_transactions) NOT BETWEEN 1 AND 4');
-        expect(functionBody).toContain("item ?& ARRAY['type', 'amount', 'description']");
-        expect(functionBody).toContain('(SELECT count(*) FROM jsonb_object_keys(item)) <> 3');
-        expect(functionBody).toContain('amount <> trunc(amount)');
-        expect(functionBody).toContain('amount > 2147483647');
-        expect(functionBody).toContain('total_balance > 9007199254740991');
-        expect(functionBody).toContain("WHERE type = 'STEPS'");
+    it('transaction入力_空配列・重複・不一致key・unsafe値の場合_書き込み前に拒否する', () => {
+        expect(migration).toContain('p_user_id uuid, p_date date');
+        for (const evidence of [
+            'p_user_id IS NULL OR p_date IS NULL', 'p_streak IS NULL OR p_streak < 0', "jsonb_typeof(p_transactions) <> 'array'",
+            'jsonb_array_length(p_transactions) NOT BETWEEN 1 AND 4', "item ?& ARRAY['type', 'amount', 'description']",
+            '(SELECT count(*) FROM jsonb_object_keys(item)) <> 3', 'GROUP BY type HAVING count(*) > 1',
+            'amount < 0 OR amount <> trunc(amount) OR amount > 2147483647', 'total_balance > 9007199254740991',
+            "type <> 'STEPS' AND amount = 0", "'coins:' || p_user_id::text", 'user does not exist',
+            'existing.user_id <> p_user_id', 'existing.date <> p_date', 'existing.type <> input.type',
+            'written_count <> jsonb_array_length(p_transactions)', "WHERE type = 'STEPS'",
+        ]) expect(functionBody).toContain(evidence);
     });
 
-    it('再計算_対象日の4種だけを置換する場合_不可逆報酬を保持する', () => {
+    it('再計算_同一keyは冪等更新し対象日の4種だけを置換する場合_不可逆報酬を保持する', () => {
         expect(functionBody.match(/DELETE FROM public\.coin_transactions/g)).toHaveLength(1);
         expect(functionBody).not.toMatch(/TRUNCATE\s+(?:TABLE\s+)?public\.coin_transactions/i);
         const deletedTypes = functionBody.match(
@@ -97,19 +102,17 @@ describe('atomic daily coin recalculation migration', () => {
         expect(functionBody).toContain("RETURN pg_catalog.jsonb_build_object('success', true)");
     });
 
-    it('RPC権限_service roleだけが実行する場合_直接UPDATEを撤去する', () => {
+    it('RPC全overload_ownerとservice roleだけが実行する場合_直接UPDATEを撤去する', () => {
         const signature = 'public.apply_daily_coin_recalculation(uuid, date, integer, jsonb)';
-        expect(migration).toContain(`REVOKE ALL ON FUNCTION ${signature}`);
-        expect(migration).toContain(`GRANT EXECUTE ON FUNCTION ${signature}`);
-        expect(migration).toContain('FROM PUBLIC, anon, authenticated, service_role');
-        expect(migration).toContain('TO service_role');
-        expect(migration).toContain('pg_catalog.aclexplode');
-        expect(migration).toContain('privilege.grantee NOT IN');
-        expect(migration).toContain(
+        for (const evidence of [
+            `REVOKE ALL ON FUNCTION ${signature}`, `GRANT EXECUTE ON FUNCTION ${signature}`,
+            'FROM PUBLIC, anon, authenticated, service_role', 'TO service_role',
+            "LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''", 'OWNER TO postgres',
+            'procedure.prosecdef', "procedure.proname = 'apply_daily_coin_recalculation'",
+            'pg_catalog.aclexplode', 'privilege.grantee NOT IN',
             'REVOKE UPDATE (user_id, date, type, amount, description, idempotency_key)',
-        );
-        expect(migration).toContain(
             "'service_role', 'public.coin_transactions', 'UPDATE'",
-        );
+        ]) expect(migration).toContain(evidence);
+        expect(migration).toMatch(/procedure\.proname = 'apply_daily_coin_recalculation'\s*\n\s*\) <> 1/);
     });
 });

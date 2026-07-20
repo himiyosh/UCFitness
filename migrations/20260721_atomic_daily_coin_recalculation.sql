@@ -200,9 +200,9 @@ BEGIN
             RAISE EXCEPTION 'F016: coin writer lock or ACL is unsafe: %', writer.signature;
         END IF;
     END LOOP;
-    IF pg_catalog.to_regprocedure(
-        'public.apply_daily_coin_recalculation(uuid,date,integer,jsonb)'
-    ) IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_proc AS procedure
+        JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+        WHERE namespace.nspname = 'public' AND procedure.proname = 'apply_daily_coin_recalculation') THEN
         RAISE EXCEPTION 'F016: daily coin recalculation function already exists';
     END IF;
 END;
@@ -332,16 +332,13 @@ END;
 $function$;
 
 ALTER FUNCTION public.apply_daily_coin_recalculation(uuid, date, integer, jsonb) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.apply_daily_coin_recalculation(uuid, date, integer, jsonb)
-    FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.apply_daily_coin_recalculation(uuid, date, integer, jsonb) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.apply_daily_coin_recalculation(uuid, date, integer, jsonb) TO service_role;
-REVOKE UPDATE (user_id, date, type, amount, description, idempotency_key)
-    ON TABLE public.coin_transactions FROM service_role;
+REVOKE UPDATE (user_id, date, type, amount, description, idempotency_key) ON TABLE public.coin_transactions FROM service_role;
 
 DO $postconditions$
 DECLARE
-    function_oid regprocedure :=
-        'public.apply_daily_coin_recalculation(uuid,date,integer,jsonb)'::regprocedure;
+    function_oid regprocedure := 'public.apply_daily_coin_recalculation(uuid,date,integer,jsonb)'::regprocedure;
 BEGIN
     IF NOT (
         SELECT procedure.prosecdef
@@ -352,12 +349,18 @@ BEGIN
        OR NOT pg_catalog.has_function_privilege('service_role', function_oid, 'EXECUTE')
        OR pg_catalog.has_function_privilege('anon', function_oid, 'EXECUTE')
        OR pg_catalog.has_function_privilege('authenticated', function_oid, 'EXECUTE')
+       OR (SELECT count(*) FROM pg_catalog.pg_proc AS procedure
+            JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+            WHERE namespace.nspname = 'public' AND procedure.proname = 'apply_daily_coin_recalculation'
+       ) <> 1
        OR EXISTS (
             SELECT 1 FROM pg_catalog.pg_proc AS procedure
+            JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
             CROSS JOIN LATERAL pg_catalog.aclexplode(
                 COALESCE(procedure.proacl, pg_catalog.acldefault('f', procedure.proowner))
             ) AS privilege
-            WHERE procedure.oid = function_oid
+            WHERE namespace.nspname = 'public'
+              AND procedure.proname = 'apply_daily_coin_recalculation'
               AND privilege.grantee NOT IN (
                   procedure.proowner,
                   (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
