@@ -5,9 +5,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getJSTDateString } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
-import { authorizeGroupManagement } from '@/lib/services/challenge-access';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isRecord, isValidISODate, isValidUUID } from '@/lib/validation';
+import type {
+    ChallengeRow,
+    GroupChallengeCreationRpcArgs,
+    GroupChallengeCreationRpcRow,
+} from '@/types/database';
 
 // ============================================
 // チャレンジ一覧取得 & 新規作成 API
@@ -63,6 +67,53 @@ interface ChallengeAccessRow {
     type: 'INDIVIDUAL' | 'GROUP';
     group_id: string | null;
     group: { is_public: boolean } | null;
+}
+
+function isChallengeRow(value: unknown): value is ChallengeRow {
+    return isRecord(value)
+        && isValidUUID(value.id)
+        && typeof value.title === 'string' && value.title.length > 0 && value.title.length <= 100
+        && (
+            value.description === null
+            || (typeof value.description === 'string' && value.description.length <= 1000)
+        )
+        && (value.type === 'INDIVIDUAL' || value.type === 'GROUP')
+        && typeof value.target_steps === 'number' && Number.isInteger(value.target_steps)
+        && value.target_steps > 0
+        && isValidISODate(value.start_date)
+        && isValidISODate(value.end_date) && value.end_date > value.start_date
+        && typeof value.reward_uc === 'number' && Number.isInteger(value.reward_uc)
+        && value.reward_uc >= 100 && value.reward_uc <= 10000
+        && typeof value.is_active === 'boolean'
+        && isValidUUID(value.created_by)
+        && (value.group_id === null || isValidUUID(value.group_id))
+        && typeof value.created_at === 'string' && !Number.isNaN(Date.parse(value.created_at));
+}
+
+function parseGroupChallengeCreationResult(
+    value: unknown,
+    expectedGroupId: string,
+    expectedUserId: string,
+): GroupChallengeCreationRpcRow | null {
+    if (!Array.isArray(value) || value.length !== 1 || !isRecord(value[0])) {
+        return null;
+    }
+    const row = value[0];
+    if (row.status !== 'created' && row.status !== 'not_found'
+        && row.status !== 'forbidden' && row.status !== 'invalid') {
+        return null;
+    }
+    if (row.status === 'created') {
+        return isChallengeRow(row.challenge)
+            && row.challenge.type === 'GROUP'
+            && row.challenge.group_id === expectedGroupId
+            && row.challenge.created_by === expectedUserId
+            ? { status: row.status, challenge: row.challenge }
+            : null;
+    }
+    return row.challenge === null
+        ? { status: row.status, challenge: null }
+        : null;
 }
 
 function isVisibleChallenge(
@@ -267,7 +318,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        if (!Number.isInteger(target_steps) || target_steps <= 0) {
+        if (
+            !Number.isInteger(target_steps)
+            || target_steps <= 0
+            || target_steps > 2_147_483_647
+        ) {
             return NextResponse.json({ error: 'Target steps must be a positive integer' }, { status: 400 });
         }
 
@@ -298,27 +353,57 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (type === 'INDIVIDUAL' && group_id !== undefined && group_id !== null) {
             return NextResponse.json({ error: 'Individual challenges cannot have a group ID' }, { status: 400 });
         }
-        if (type === 'GROUP') {
-            if (!isValidUUID(group_id)) {
-                return NextResponse.json({ error: 'A valid group ID is required' }, { status: 400 });
-            }
-            const authorization = await authorizeGroupManagement(
-                group_id,
-                session.user.id,
-                'challenge:create',
-            );
-            if (!authorization.allowed) {
-                const error = authorization.status === 500
-                    ? 'Failed to authorize group challenge creation'
-                    : authorization.status === 404 ? 'Group not found' : 'Forbidden';
-                return NextResponse.json({ error }, { status: authorization.status });
-            }
-        }
-
         const rewardAmount = Math.min(Math.max(
             typeof reward_uc === 'number' ? reward_uc : 500,
             100
         ), 10000);
+
+        if (type === 'GROUP') {
+            if (!isValidUUID(group_id)) {
+                return NextResponse.json({ error: 'A valid group ID is required' }, { status: 400 });
+            }
+            const rpcArgs: GroupChallengeCreationRpcArgs = {
+                p_group_id: group_id,
+                p_created_by: session.user.id,
+                p_type: type,
+                p_title: title.trim(),
+                p_description: description?.trim() || null,
+                p_target_steps: target_steps,
+                p_start_date: start_date,
+                p_end_date: end_date,
+                p_reward_uc: rewardAmount,
+            };
+            const { data: rpcData, error: rpcError } = await supabaseAdmin
+                .rpc('create_group_challenge', rpcArgs);
+            if (rpcError) {
+                reportError('challenge:create:group:rpc', rpcError, {
+                    userId: session.user.id,
+                    groupId: group_id,
+                });
+                return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
+            }
+
+            const rpcResult = parseGroupChallengeCreationResult(rpcData, group_id, session.user.id);
+            if (!rpcResult) {
+                reportError('challenge:create:group:rpc-result',
+                    new Error('create_group_challenge returned an invalid result'),
+                    { userId: session.user.id, groupId: group_id });
+                return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
+            }
+            if (rpcResult.status === 'not_found') {
+                return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+            }
+            if (rpcResult.status === 'forbidden') {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+            if (rpcResult.status === 'invalid' || !rpcResult.challenge) {
+                reportError('challenge:create:group:rpc-result',
+                    new Error('create_group_challenge rejected validated input'),
+                    { userId: session.user.id, groupId: group_id });
+                return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
+            }
+            return NextResponse.json({ challenge: rpcResult.challenge }, { status: 201 });
+        }
 
         const { data, error } = await supabaseAdmin
             .from('challenges')
@@ -331,7 +416,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 end_date,
                 reward_uc: rewardAmount,
                 created_by: session.user.id,
-                group_id: type === 'GROUP' ? group_id : null,
+                group_id: null,
             })
             .select('id, title, description, type, target_steps, start_date, end_date, reward_uc, is_active, created_by, group_id, created_at')
             .single();
