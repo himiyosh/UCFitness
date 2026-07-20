@@ -4,9 +4,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
-import { authorizeGroupView } from '@/lib/services/challenge-access';
+import { authorizeChallengeGroup, authorizeGroupView } from '@/lib/services/challenge-access';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isValidUUID } from '@/lib/validation';
+import { isRecord, isValidISODate, isValidUUID } from '@/lib/validation';
 
 // ============================================
 // チャレンジ詳細取得・編集 API
@@ -25,6 +25,7 @@ export async function GET(
 
         const { challengeId } = await params;
 
+        // UUID形式バリデーション
         if (!isValidUUID(challengeId)) {
             return NextResponse.json({ error: 'Invalid challenge ID' }, { status: 400 });
         }
@@ -165,28 +166,66 @@ export async function PUT(
     try {
         const { challengeId } = await params;
 
-        // UUID形式バリデーション
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(challengeId)) {
+        if (!isValidUUID(challengeId)) {
             return NextResponse.json({ error: 'Invalid challenge ID' }, { status: 400 });
+        }
+        let body: unknown;
+        try {
+            body = await req.json();
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        }
+        if (!isRecord(body)) {
+            return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+        }
+        const { title, description, target_steps, start_date, end_date, reward_uc, is_active } = body;
+        if (
+            (body.type !== undefined && body.type !== 'INDIVIDUAL' && body.type !== 'GROUP')
+            || (title !== undefined && (typeof title !== 'string' || title.trim().length === 0 || title.length > 100))
+            || (description !== undefined && description !== null
+                && (typeof description !== 'string' || description.length > 1000))
+            || (target_steps !== undefined
+                && (typeof target_steps !== 'number' || !Number.isInteger(target_steps) || target_steps <= 0))
+            || (start_date !== undefined && !isValidISODate(start_date))
+            || (end_date !== undefined && !isValidISODate(end_date))
+            || (reward_uc !== undefined
+                && (typeof reward_uc !== 'number' || !Number.isInteger(reward_uc)))
+            || (is_active !== undefined && typeof is_active !== 'boolean')
+        ) {
+            return NextResponse.json({ error: 'Invalid challenge update' }, { status: 400 });
         }
 
         // チャレンジの存在確認と作成者チェック
         const { data: existing, error: fetchError } = await supabaseAdmin
             .from('challenges')
-            .select('id, created_by, is_active')
+            .select('id, type, group_id, created_by, is_active, start_date, end_date')
             .eq('id', challengeId)
-            .single();
+            .maybeSingle();
 
-        if (fetchError || !existing) {
+        if (fetchError) {
+            reportError('challenge:update:fetch', fetchError, { userId: session.user.id, challengeId });
+            return NextResponse.json({ error: 'Failed to fetch challenge' }, { status: 500 });
+        }
+        if (!existing) {
             return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
         }
 
+        const access = await authorizeChallengeGroup(existing, session.user.id, 'manage', 'challenge:update');
+        if (!access.allowed) {
+            return NextResponse.json({
+                error: access.status === 500 ? 'Failed to authorize challenge update'
+                    : access.status === 404 ? 'Challenge not found' : 'Forbidden',
+            }, { status: access.status });
+        }
         if (existing.created_by !== session.user.id) {
             return NextResponse.json({ error: 'Only the creator can edit this challenge' }, { status: 403 });
         }
 
-        const body = await req.json();
-        const { title, description, target_steps, start_date, end_date, reward_uc, is_active } = body;
+        if (body.type !== undefined) {
+            if (body.type !== existing.type) {
+                return NextResponse.json({ error: 'Challenge type cannot be changed' }, { status: 400 });
+            }
+        }
 
         // 更新フィールドを構築（送信された値のみ更新）
         const updates: Record<string, unknown> = {};
@@ -202,44 +241,54 @@ export async function PUT(
         }
 
         if (description !== undefined) {
-            if (description && typeof description === 'string' && description.length > 1000) {
+            if (description !== null && typeof description !== 'string') {
+                return NextResponse.json({ error: 'Description must be a string' }, { status: 400 });
+            }
+            if (typeof description === 'string' && description.length > 1000) {
                 return NextResponse.json({ error: 'Description too long (max 1000 chars)' }, { status: 400 });
             }
-            updates.description = description?.trim() || null;
+            updates.description = typeof description === 'string' ? description.trim() || null : null;
         }
 
         if (target_steps !== undefined) {
-            if (typeof target_steps !== 'number' || !Number.isFinite(target_steps) || target_steps <= 0) {
-                return NextResponse.json({ error: 'Target steps must be a positive number' }, { status: 400 });
+            if (typeof target_steps !== 'number' || !Number.isInteger(target_steps) || target_steps <= 0) {
+                return NextResponse.json({ error: 'Target steps must be a positive integer' }, { status: 400 });
             }
             updates.target_steps = target_steps;
         }
 
         if (start_date !== undefined || end_date !== undefined) {
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
             if (start_date !== undefined) {
-                if (!dateRegex.test(start_date)) {
+                if (!isValidISODate(start_date)) {
                     return NextResponse.json({ error: 'Invalid start date format (expected YYYY-MM-DD)' }, { status: 400 });
                 }
                 updates.start_date = start_date;
             }
             if (end_date !== undefined) {
-                if (!dateRegex.test(end_date)) {
+                if (!isValidISODate(end_date)) {
                     return NextResponse.json({ error: 'Invalid end date format (expected YYYY-MM-DD)' }, { status: 400 });
                 }
                 updates.end_date = end_date;
             }
+            const nextStart = typeof start_date === 'string' ? start_date : existing.start_date;
+            const nextEnd = typeof end_date === 'string' ? end_date : existing.end_date;
+            if (new Date(nextEnd) <= new Date(nextStart)) {
+                return NextResponse.json({ error: 'End date must be after start date' }, { status: 400 });
+            }
         }
 
         if (reward_uc !== undefined) {
-            updates.reward_uc = Math.min(Math.max(
-                typeof reward_uc === 'number' && Number.isFinite(reward_uc) ? reward_uc : 500,
-                100
-            ), 10000);
+            if (typeof reward_uc !== 'number' || !Number.isInteger(reward_uc)) {
+                return NextResponse.json({ error: 'Reward must be an integer' }, { status: 400 });
+            }
+            updates.reward_uc = Math.min(Math.max(reward_uc, 100), 10000);
         }
 
         if (is_active !== undefined) {
-            updates.is_active = Boolean(is_active);
+            if (typeof is_active !== 'boolean') {
+                return NextResponse.json({ error: 'Active state must be a boolean' }, { status: 400 });
+            }
+            updates.is_active = is_active;
         }
 
         if (Object.keys(updates).length === 0) {
