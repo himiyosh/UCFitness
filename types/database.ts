@@ -61,6 +61,10 @@ export interface Database {
                     created_by: string;
                     group_id: string | null;
                     created_at: string;
+                    settled_at: string | null;
+                    settlement_completed: boolean | null;
+                    settled_total_steps: number | null;
+                    settled_member_count: number | null;
                 };
             };
             daily_steps: {
@@ -158,6 +162,23 @@ export interface Database {
                     settled_at: string | null;
                 }[];
             };
+            claim_group_challenge_reward_outbox: {
+                Returns: {
+                    user_id: string;
+                    challenge_count: number;
+                    total_reward: number;
+                    lease_id: string;
+                    lease_expires_at: string;
+                }[];
+            };
+            complete_group_challenge_reward_outbox: {
+                Args: { p_user_id: string; p_lease_id: string };
+                Returns: { delivered_count: number; total_reward: number }[];
+            };
+            release_group_challenge_reward_outbox: {
+                Args: { p_user_id: string; p_lease_id: string };
+                Returns: { released_count: number; total_reward: number }[];
+            };
         };
     };
 }
@@ -178,6 +199,8 @@ export type GroupChallengeProgressRpcArgs = Database['public']['Functions']['get
 export type GroupChallengeProgressRpcRow = Database['public']['Functions']['get_group_challenge_progress']['Returns'][number];
 export type GroupChallengeSettlementRpcArgs = Database['public']['Functions']['settle_group_challenge']['Args'];
 export type GroupChallengeSettlementRpcRow = Database['public']['Functions']['settle_group_challenge']['Returns'][number];
+export type GroupChallengeRewardClaimRpcRow =
+    Database['public']['Functions']['claim_group_challenge_reward_outbox']['Returns'][number];
 
 /** ランキング・フォロー等で頻出する公開プロフィール射影 (PII 除外) */
 export type PublicUserSummary = Pick<UserRow, 'id' | 'name' | 'image' | 'username'>;
