@@ -344,7 +344,7 @@ policyを含む古いsnapshotであり現行catalogの証拠にはできない�
 実catalog接続がなく、現行default/nullability/PK/FK/unique/check/owner/ACL/
 RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に据え置く。
 
-コメントを除外した実行可能コードには32 ファイル、42 件のdirect PostgREST
+コメントを除外した実行可能コードには32 ファイル、41 件のdirect PostgREST
 経路があり、すべてservice-roleの`SELECT`だった。direct `INSERT` / `UPDATE` /
 `DELETE` / upsertとbrowser clientからの直接接続はない。
 
@@ -352,7 +352,7 @@ RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に�
 |---|---|---|
 | Home / profile / analytics | `app/[locale]/page.tsx` (1), `app/[locale]/user/[username]/page.tsx` (2), `app/[locale]/wallet/page.tsx` (1), `app/[locale]/debug/session/page.tsx` (1), `lib/services/analytics-service.ts` (1) | Server Component / service。profileとanalyticsは取得失敗をunavailable / throwへ分離 |
 | Group / challenge | `app/[locale]/groups/[groupId]/page.tsx` (1), `app/api/challenge/[challengeId]/progress/route.ts` (2), `app/api/challenge/[challengeId]/route.ts` (1), `app/api/group/[groupId]/events/[eventId]/route.ts` (1), `app/api/group/[groupId]/ranking/route.ts` (1), `app/api/group/[groupId]/weekly-report/route.ts` (1), `lib/services/group-comparison-service.ts` (1) | session / membership認可後の期間集計。一部の参加者・歩数結果は別Fix候補 |
-| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (3), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
+| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (2), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
 | Social / export | `app/api/user/following/route.ts` (1), `app/api/user/following-comparison/route.ts` (1), `app/api/user/export/route.ts` (1) | session userを固定。following-comparisonの部分障害境界は別Fix候補 |
 | Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証 |
 | Utility / script | `lib/supabase-utils.ts` (1), `scripts/check_group_info.ts` (1) | server helper / service-role運用script。JSDoc例は件数から除外 |
@@ -393,15 +393,12 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 
 | 経路 | 現在の偽装 | 正しい障害境界 |
 |---|---|---|
-| `app/api/user/achievements/route.ts` | count / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | queryごとにerrorを検査し、5xxまたは明示unavailableで判定停止 |
+| `app/api/user/achievements/route.ts` | 修正前はcount / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | DB障害・未設定・不正shapeを0や10,000へ偽装せず、query別の固定5xxで判定停止 |
 | `lib/services/badge-allocator.ts` | 日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | 対象ユーザーの割当失敗として隔離し、成功通知を送らない |
 | `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
 | `lib/services/title-achievement-service.ts` | 歩数・目標・残高・件数のerrorを0または既定値へ変換 | 依存結果を個別検査し、称号判定をunavailableにする |
 | `lib/services/coin-service.ts` | backfillのuser / steps errorを未記録・no dataとしてreturn | DB errorを失敗として返し、台帳処理を開始しない |
 | `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
-
-実績APIはDB障害・未設定・不正な集計形状を0歩、0日、既定10,000歩へ偽装せず、固定5xxで判定を停止する。
-
 Phase 9で必要なtable catalogは、下記blockの対象
 `public.walking_routes`を`public.daily_steps`へ置換して同じread-only transactionで
 取得する。加えて、未追跡aggregation RPCを含む関数owner / security / config /

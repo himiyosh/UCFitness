@@ -87,7 +87,6 @@ function setValidResults(): void {
     };
     rpcResult = { data: [{ total_steps: 12_345 }], error: null };
 }
-
 function request(query = '?username=target'): Request {
     return new Request(`http://localhost/api/user/achievements${query}`);
 }
