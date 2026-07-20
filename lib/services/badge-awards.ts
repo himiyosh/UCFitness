@@ -21,6 +21,18 @@ const BADGE_DEFINITIONS = {
 } as const;
 const NOTIFICATION_BATCH_SIZE = 20;
 const PERSONAL_BADGE_BATCH_SIZE = 10;
+const STREAK_MILESTONE_REWARDS = {
+    STREAK_7: 700,
+    STREAK_30: 3000,
+    STREAK_100: 10000,
+    STREAK_365: 36500,
+} as const;
+const STREAK_RESULT_KEYS = [
+    'awarded_user_id',
+    'awarded_badge_code',
+    'awarded_reward_amount',
+    'error_code',
+] as const;
 const BADGE_ASSIGNMENT_ERRORS = {
     input: ['Invalid badge assignment input', 'BADGE_ASSIGN_INPUT_INVALID', 'input'],
     activeQuery: ['Failed to load active personal badge users', 'BADGE_PERSONAL_ACTIVE_USERS_QUERY_FAILED', 'active-users'],
@@ -39,9 +51,21 @@ const BADGE_ASSIGNMENT_ERRORS = {
     groupMembersData: ['Invalid badge group members data', 'BADGE_GROUP_MEMBERS_INVALID_DATA', 'group-members'],
     awardInsert: ['Failed to insert badge award', 'BADGE_AWARD_INSERT_FAILED', 'award-insert'],
 } as const;
+const BADGE_INTEGRATION_ERRORS = {
+    streakRpc: ['Failed to award streak milestones', 'BADGE_STREAK_RPC_FAILED', 'streak-rpc'],
+    streakResponse: ['Invalid streak milestone response', 'BADGE_STREAK_RPC_INVALID_RESPONSE', 'streak-response'],
+    streakRow: ['Invalid streak milestone row', 'BADGE_STREAK_ROW_INVALID', 'streak-row'],
+    streakPartial: ['Streak milestone rewards partially failed', 'BADGE_STREAK_PARTIAL_FAILURE', 'streak-partial'],
+    teamsUserQuery: ['Failed to load badge notification user', 'BADGE_TEAMS_USER_QUERY_FAILED', 'teams-user-query'],
+    teamsUserData: ['Invalid badge notification user data', 'BADGE_TEAMS_USER_INVALID_DATA', 'teams-user-data'],
+    teamsBadgeQuery: ['Failed to load badge notification badge', 'BADGE_TEAMS_BADGE_QUERY_FAILED', 'teams-badge-query'],
+    teamsBadgeData: ['Invalid badge notification badge data', 'BADGE_TEAMS_BADGE_INVALID_DATA', 'teams-badge-data'],
+} as const;
 
 type UserBadgeAwards = Map<string, string[]>;
 type BadgeAssignmentErrorKey = keyof typeof BADGE_ASSIGNMENT_ERRORS;
+type BadgeIntegrationErrorKey = keyof typeof BADGE_INTEGRATION_ERRORS;
+type StreakBadgeCode = keyof typeof STREAK_MILESTONE_REWARDS;
 
 interface ActiveUserRow { user_id: string; steps: number }
 interface UserGoalRow { id: string; step_goal: number }
@@ -50,6 +74,8 @@ interface UserHistoryRow { user_id: string; date: string; steps: number }
 interface RankingEntry { userId: string; steps: number }
 interface GroupRow { id: string }
 interface GroupMemberRow { user_id: string; group_id: string }
+interface TeamsUserRow { username: string }
+interface TeamsBadgeRow { name: string; image_url: string | null; description: string | null }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -61,6 +87,12 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isNonnegativeSafeInteger(value: unknown): value is number {
     return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function hasExactKeys(value: Record<string, unknown>, expectedKeys: readonly string[]): boolean {
+    const keys = Object.keys(value);
+    return keys.length === expectedKeys.length
+        && expectedKeys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
 
 function isIsoDate(value: unknown): value is string {
@@ -85,6 +117,14 @@ function throwBadgeAssignmentFailure(
     context: Record<string, unknown>,
 ): never {
     const [message, code, stage] = BADGE_ASSIGNMENT_ERRORS[key];
+    throw new AppError(message, code, { stage, ...context });
+}
+
+function throwBadgeIntegrationFailure(
+    key: BadgeIntegrationErrorKey,
+    context: Record<string, unknown>,
+): never {
+    const [message, code, stage] = BADGE_INTEGRATION_ERRORS[key];
     throw new AppError(message, code, { stage, ...context });
 }
 
@@ -245,54 +285,90 @@ function mergeUserBadgeAwards(...awardMaps: UserBadgeAwards[]): UserBadgeAwards 
     return merged;
 }
 
-interface StreakAward {
-    userId: string;
-    badgeCode: string;
-    rewardAmount: number;
+interface StreakAward { userId: string; badgeCode: string; rewardAmount: number }
+
+function isStreakBadgeCode(value: unknown): value is StreakBadgeCode {
+    return typeof value === 'string'
+        && Object.prototype.hasOwnProperty.call(STREAK_MILESTONE_REWARDS, value);
+}
+
+function isStreakFailureCode(value: unknown): value is string {
+    return value === 'INVALID_USER_OR_GOAL'
+        || (typeof value === 'string' && /^[A-Z0-9]{5}$/.test(value));
+}
+
+function parseStreakMilestoneRows(data: unknown, dateStr: string): {
+    awards: StreakAward[];
+    failedUsers: number;
+} {
+    if (!Array.isArray(data)) {
+        throwBadgeIntegrationFailure('streakResponse', { dateStr });
+    }
+
+    const awards: StreakAward[] = [];
+    const failedUserIds = new Set<string>();
+    const successfulUserIds = new Set<string>();
+    const seenAwards = new Set<string>();
+    const seenFailures = new Set<string>();
+    for (const value of data) {
+        if (!isRecord(value) || !hasExactKeys(value, STREAK_RESULT_KEYS)) {
+            throwBadgeIntegrationFailure('streakRow', { dateStr });
+        }
+        const userId = value.awarded_user_id;
+        const badgeCode = value.awarded_badge_code;
+        const rewardAmount = value.awarded_reward_amount;
+        const errorCode = value.error_code;
+        if (
+            isNonEmptyString(userId)
+            && isStreakBadgeCode(badgeCode)
+            && isNonnegativeSafeInteger(rewardAmount)
+            && (rewardAmount === 0 || rewardAmount === STREAK_MILESTONE_REWARDS[badgeCode])
+            && errorCode === null
+        ) {
+            const awardKey = `${userId}\u0000${badgeCode}`;
+            if (seenAwards.has(awardKey) || failedUserIds.has(userId)) {
+                throwBadgeIntegrationFailure('streakRow', { dateStr });
+            }
+            seenAwards.add(awardKey);
+            successfulUserIds.add(userId);
+            awards.push({ userId, badgeCode, rewardAmount });
+            continue;
+        }
+        if (
+            isNonEmptyString(userId)
+            && badgeCode === null
+            && rewardAmount === 0
+            && isStreakFailureCode(errorCode)
+        ) {
+            const failureKey = `${userId}\u0000${errorCode}`;
+            if (seenFailures.has(failureKey) || successfulUserIds.has(userId)) {
+                throwBadgeIntegrationFailure('streakRow', { dateStr });
+            }
+            seenFailures.add(failureKey);
+            failedUserIds.add(userId);
+            continue;
+        }
+        throwBadgeIntegrationFailure('streakRow', { dateStr });
+    }
+    return { awards, failedUsers: failedUserIds.size };
 }
 
 async function awardStreakMilestones(dateStr: string): Promise<{
     awards: StreakAward[];
     failedUsers: number;
 }> {
-    const { data, error } = await supabaseAdmin.rpc('award_streak_milestones', {
-        p_target_date: dateStr,
-    });
-    if (error || !Array.isArray(data)) {
-        reportError(
-            'awardStreakMilestones',
-            error ?? new Error('Invalid streak milestone response'),
-            { dateStr },
-        );
-        throw new Error('Failed to award streak milestones');
+    let result: { data: unknown; error: unknown };
+    try {
+        result = await supabaseAdmin.rpc('award_streak_milestones', {
+            p_target_date: dateStr,
+        });
+    } catch {
+        throwBadgeIntegrationFailure('streakRpc', { dateStr });
     }
-
-    const awards: StreakAward[] = [];
-    let failedUsers = 0;
-    for (const row of data) {
-        if (typeof row !== 'object' || row === null) {
-            throw new Error('Invalid streak milestone row');
-        }
-        const userId = 'awarded_user_id' in row ? row.awarded_user_id : null;
-        const badgeCode = 'awarded_badge_code' in row ? row.awarded_badge_code : null;
-        const rewardAmount = 'awarded_reward_amount' in row ? row.awarded_reward_amount : null;
-        const errorCode = 'error_code' in row ? row.error_code : null;
-        if (typeof errorCode === 'string') {
-            failedUsers++;
-            reportError('awardStreakMilestones:user', new Error(errorCode), { userId });
-        } else if (
-            typeof userId === 'string'
-            && typeof badgeCode === 'string'
-            && typeof rewardAmount === 'number'
-            && Number.isSafeInteger(rewardAmount)
-            && rewardAmount >= 0
-        ) {
-            awards.push({ userId, badgeCode, rewardAmount });
-        } else {
-            throw new Error('Invalid streak milestone award');
-        }
+    if (result.error !== null) {
+        throwBadgeIntegrationFailure('streakRpc', { dateStr });
     }
-    return { awards, failedUsers };
+    return parseStreakMilestoneRows(result.data, dateStr);
 }
 
 /**
@@ -357,9 +433,10 @@ export const assignBadges = async (period: Period, dateStr: string): Promise<voi
     }
 
     if (streakResult.failedUsers > 0) {
-        throw new Error(
-            `Streak milestone rewards failed for ${streakResult.failedUsers} users`,
-        );
+        throwBadgeIntegrationFailure('streakPartial', {
+            dateStr,
+            failedUsers: streakResult.failedUsers,
+        });
     }
 };
 
@@ -748,18 +825,70 @@ const sendBadgeTeamsNotification = async (
     userId: string,
     badgeCodes: string[],
 ): Promise<void> => {
-    const [userResult, badgeResults] = await Promise.all([
-        supabaseAdmin.from('users').select('username').eq('id', userId).single(),
-        Promise.all(badgeCodes.map((badgeCode) => supabaseAdmin.from('badges')
-            .select('name, image_url, description').eq('code', badgeCode).single())),
-    ]);
-    const badges = badgeResults.flatMap((result) => result.data ? [result.data] : []);
-    if (badges.length > 0 && userResult.data) {
+    try {
+        const [user, badges] = await Promise.all([
+            loadTeamsUser(userId),
+            Promise.all(badgeCodes.map((badgeCode) => loadTeamsBadge(userId, badgeCode))),
+        ]);
         await sendBadgeNotification(
-            userResult.data.username || 'A user',
+            user.username,
             badges.map((badge) => badge.name).join(' / '),
             badges.find((badge) => badge.image_url)?.image_url ?? null,
-            badges.map((badge) => badge.description).filter(Boolean).join(' / '),
+            badges
+                .map((badge) => badge.description)
+                .filter((description): description is string => description !== null)
+                .join(' / '),
         );
+    } catch (error: unknown) {
+        if (error instanceof AppError && error.code.startsWith('BADGE_TEAMS_')) {
+            reportError('sendBadgeTeamsNotification', error);
+            return;
+        }
+        throw error;
     }
 };
+
+async function loadTeamsUser(userId: string): Promise<TeamsUserRow> {
+    let result: { data: unknown; error: unknown };
+    try {
+        result = await supabaseAdmin
+            .from('users')
+            .select('username')
+            .eq('id', userId)
+            .single();
+    } catch {
+        throwBadgeIntegrationFailure('teamsUserQuery', { userId });
+    }
+    if (result.error !== null) {
+        throwBadgeIntegrationFailure('teamsUserQuery', { userId });
+    }
+    if (!isRecord(result.data) || !isNonEmptyString(result.data.username)) {
+        throwBadgeIntegrationFailure('teamsUserData', { userId });
+    }
+    return { username: result.data.username };
+}
+
+async function loadTeamsBadge(userId: string, badgeCode: string): Promise<TeamsBadgeRow> {
+    let result: { data: unknown; error: unknown };
+    try {
+        result = await supabaseAdmin
+            .from('badges')
+            .select('name, image_url, description')
+            .eq('code', badgeCode)
+            .single();
+    } catch {
+        throwBadgeIntegrationFailure('teamsBadgeQuery', { userId, badgeCode });
+    }
+    if (result.error !== null) {
+        throwBadgeIntegrationFailure('teamsBadgeQuery', { userId, badgeCode });
+    }
+    if (
+        !isRecord(result.data)
+        || !isNonEmptyString(result.data.name)
+        || !(typeof result.data.image_url === 'string' || result.data.image_url === null)
+        || !(typeof result.data.description === 'string' || result.data.description === null)
+    ) {
+        throwBadgeIntegrationFailure('teamsBadgeData', { userId, badgeCode });
+    }
+    return { name: result.data.name, image_url: result.data.image_url, description: result.data.description };
+}
