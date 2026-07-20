@@ -52,6 +52,7 @@ export type StepSyncCode =
     | 'updated'
     | 'no_data'
     | 'reauthorization_required'
+    | 'reward_processing_failed'
     | 'sync_in_progress'
     | 'unavailable';
 
@@ -433,16 +434,19 @@ async function processUserSteps(
                 processCoins(user.id, steps, today),
             ]);
             const labels = ['badges', 'titles', 'coins'] as const;
+            let rewardProcessingFailed = false;
             for (let i = 0; i < results.length; i++) {
-                if (results[i].status === 'rejected') {
-                    reportError(`processUserSteps:${labels[i]}`, (results[i] as PromiseRejectedResult).reason, {
+                const result = results[i];
+                if (result.status === 'rejected') {
+                    rewardProcessingFailed = true;
+                    reportError(`processUserSteps:${labels[i]}`, result.reason, {
                         userId: user.id,
                         ...(labels[i] === 'coins' ? { steps, date: today } : {}),
                     });
                 }
             }
             return {
-                code: 'updated',
+                code: rewardProcessingFailed ? 'reward_processing_failed' : 'updated',
                 source: usedGoogleHealth ? 'google_health' : 'fitbit',
                 steps,
             };

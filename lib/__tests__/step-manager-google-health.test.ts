@@ -183,7 +183,9 @@ describe('updateUserSteps', () => {
     it.each([
         ['badges', mocks.checkAndAwardBadges],
         ['titles', mocks.checkAndAwardTitleAchievements],
-    ] as const)('%s付与が失敗した場合、同期を継続して依存処理単位で隔離ログする', async (label, dependency) => {
+        ['coins', mocks.processCoins],
+    ] as const)('%s処理が失敗した場合、保存済み歩数を保持して報酬処理失敗を返す', async (label, dependency) => {
+        const today = getJSTDateString();
         const allocationError = new AppError(
             'Allocation failed',
             'ALLOCATION_FAILED',
@@ -196,14 +198,78 @@ describe('updateUserSteps', () => {
         });
         dependency.mockRejectedValueOnce(allocationError);
 
-        await expect(updateUserSteps('user-1')).resolves.toBe(1234);
+        await expect(syncUserSteps('user-1')).resolves.toEqual({
+            code: 'reward_processing_failed',
+            source: 'fitbit',
+            steps: 1234,
+        });
 
+        expect(mocks.checkAndAwardBadges).toHaveBeenCalled();
+        expect(mocks.checkAndAwardTitleAchievements).toHaveBeenCalled();
         expect(mocks.processCoins).toHaveBeenCalled();
         expect(mocks.reportError).toHaveBeenCalledWith(
             `processUserSteps:${label}`,
             allocationError,
+            {
+                userId: 'user-1',
+                ...(label === 'coins' ? { steps: 1234, date: today } : {}),
+            },
+        );
+    });
+
+    it('複数の報酬処理が失敗した場合、全失敗を既存operation名で記録する', async () => {
+        const badgeError = new Error('Badge allocation failed');
+        const coinError = new Error('Coin processing failed');
+        const today = getJSTDateString();
+        mocks.getGoogleHealthSyncSelection.mockResolvedValue({
+            userId: 'user-1',
+            status: 'disconnected',
+            connection: null,
+        });
+        mocks.checkAndAwardBadges.mockRejectedValueOnce(badgeError);
+        mocks.processCoins.mockRejectedValueOnce(coinError);
+
+        await expect(syncUserSteps('user-1')).resolves.toEqual({
+            code: 'reward_processing_failed',
+            source: 'fitbit',
+            steps: 1234,
+        });
+
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'processUserSteps:badges',
+            badgeError,
             { userId: 'user-1' },
         );
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'processUserSteps:coins',
+            coinError,
+            { userId: 'user-1', steps: 1234, date: today },
+        );
+    });
+
+    it('すべての報酬処理が成功した場合、更新成功を返す', async () => {
+        mocks.getGoogleHealthSyncSelection.mockResolvedValue({
+            userId: 'user-1',
+            status: 'disconnected',
+            connection: null,
+        });
+
+        await expect(syncUserSteps('user-1')).resolves.toEqual({
+            code: 'updated',
+            source: 'fitbit',
+            steps: 1234,
+        });
+    });
+
+    it('報酬処理が失敗した場合も、legacy helperは保存済み歩数を返す', async () => {
+        mocks.getGoogleHealthSyncSelection.mockResolvedValue({
+            userId: 'user-1',
+            status: 'disconnected',
+            connection: null,
+        });
+        mocks.processCoins.mockRejectedValueOnce(new Error('Coin processing failed'));
+
+        await expect(updateUserSteps('user-1')).resolves.toBe(1234);
     });
 
     it('Fitbitの取得値が保存済み値より小さい場合、DBの最大値を同期結果と報酬へ使う', async () => {
@@ -324,6 +390,46 @@ describe('updateUserSteps', () => {
             'user-1',
             '11111111-1111-4111-8111-111111111111',
         );
+    });
+
+    it('Google Healthの報酬処理が失敗した場合、同期完了を記録してからリースを解放する', async () => {
+        const today = getJSTDateString();
+        mocks.getGoogleHealthSyncSelection.mockResolvedValue({
+            userId: 'user-1',
+            status: 'active',
+            connection: {
+                userId: 'user-1',
+                providerUserId: 'health-user-1',
+                legacyProviderUserId: 'fitbit-user-1',
+                accessToken: 'google-access-token',
+                refreshToken: 'google-refresh-token',
+                accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+                scopes: ['scope'],
+                historySyncedAt: '2026-06-17T00:00:00.000Z',
+            },
+        });
+        mocks.stepReaderRead.mockResolvedValue([{ date: today, steps: 4_000 }]);
+        mocks.rpc.mockResolvedValueOnce({ data: 5_000, error: null });
+        mocks.processCoins.mockRejectedValueOnce(new Error('Coin processing failed'));
+
+        await expect(syncUserSteps('user-1')).resolves.toEqual({
+            code: 'reward_processing_failed',
+            source: 'google_health',
+            steps: 5_000,
+        });
+
+        expect(mocks.markGoogleHealthSynced).toHaveBeenCalledWith(
+            'user-1',
+            '11111111-1111-4111-8111-111111111111',
+        );
+        expect(mocks.releaseGoogleHealthSync).toHaveBeenCalledWith(
+            'user-1',
+            '11111111-1111-4111-8111-111111111111',
+        );
+        expect(mocks.markGoogleHealthSynced.mock.invocationCallOrder[0])
+            .toBeLessThan(mocks.processCoins.mock.invocationCallOrder[0]);
+        expect(mocks.processCoins.mock.invocationCallOrder[0])
+            .toBeLessThan(mocks.releaseGoogleHealthSync.mock.invocationCallOrder[0]);
     });
 
     it('Google Health履歴同期では前日までの欠測日を0にせず、一度のDB処理で置換する', async () => {
