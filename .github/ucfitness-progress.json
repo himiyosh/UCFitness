@@ -6,7 +6,7 @@
   "lastCommit": "1006e84f2051f3894182b248bf5882d662ce8a6d",
   "lastBranch": "himiyosh-fix-coin-backfill-failures",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016のcoin backfill failure mappingで、users / daily_stepsのDB障害と不正shapeを固定AppErrorへ分離し、ISO日付・非負safe integer歩数・重複なし昇順・未来日なしをfail-closed検証する。全transaction payloadとPostgreSQL integer境界をDELETE前に確定し、DELETE / 各batch INSERT失敗では後続batchと残高更新を停止する。生Supabase errorはAppErrorへ連結せず、空配列だけを正常no-data、記録済み0歩を有効値として維持した。既存description・7日/10,000歩の2,000 UC・business rulesは不変。focused 56件、全602テスト（--maxWorkers=1）、check:all、Security/Code/DataレビューをPASS。DELETE→複数batch INSERT→残高再集計は非原子的な既知blockerとして次stackに残す。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
+  "summary": "F016のcoin backfill failure mappingで、users / daily_stepsのDB障害と不正shapeを固定AppErrorへ分離し、ISO日付・非負safe integer歩数・重複なし昇順・未来日なしをfail-closed検証する。全transaction payloadとPostgreSQL integer境界をDELETE前に確定し、DELETE / 各batch INSERT失敗では後続batchと残高更新を停止する。生Supabase errorはAppErrorへ連結せず、空配列だけを正常no-data、記録済み0歩を有効値として維持した。既存description・7日/10,000歩の2,000 UC・business rulesは不変。保護済み件数は9/25据え置き。focused 56件、全602テスト（--maxWorkers=1）、check:all、Security/Code/DataレビューをPASS。DELETE→複数batch INSERT→残高再集計は非原子的な既知blockerとして次stackに残す。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
