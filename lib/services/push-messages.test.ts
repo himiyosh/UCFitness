@@ -4,6 +4,7 @@ import {
     badgeUnlockedBody,
     badgeUnlockedTitle,
     formatLocalizedBadgeNames,
+    getGroupChallengeRewardPushMessage,
     normalizePushLocale,
     stepReminderBody,
     testNotificationBody,
@@ -63,6 +64,26 @@ describe('badge notification messages', () => {
             .toContain('Streak milestone reward: +3,000 UC');
         expect(badgeUnlockedBody('ja', '「3日連続ストリーク」', 1, 0))
             .not.toContain('+0 UC');
+    });
+});
+
+describe('group challenge reward notification messages', () => {
+    it.each([
+        ['ja', 1, 500, 'グループチャレンジ達成報酬 500 UC を獲得しました。'],
+        ['ja', 3, 1500, '3件のグループチャレンジ達成報酬として 1,500 UC を獲得しました。'],
+        ['en', 1, 500, 'You earned 500 UC for completing a group challenge.'],
+        ['en', 3, 1500, 'You earned 1,500 UC for completing 3 group challenges.'],
+    ] as const)('%sの%d件を1通へ集約する', (locale, count, reward, body) => {
+        expect(getGroupChallengeRewardPushMessage(locale, count, reward).body).toBe(body);
+    });
+
+    it.each([
+        [0, 100],
+        [1, 0],
+        [1, Number.MAX_SAFE_INTEGER + 1],
+    ])('不正な件数・報酬(%s, %s)を拒否する', (count, reward) => {
+        expect(() => getGroupChallengeRewardPushMessage('ja', count, reward))
+            .toThrow(RangeError);
     });
 });
 
