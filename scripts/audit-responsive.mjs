@@ -250,6 +250,57 @@ async function auditReducedMotion(context, url) {
     await reducedPage.close();
   }
 }
+async function auditLandingMobileMenu(page, route, viewport) {
+  const notApplicable = {
+    applicable: false,
+    found: true,
+    visible: true,
+    viewportAligned: true,
+    linksMeetTouchTarget: true,
+    escapeClosed: true,
+    escapeReturnedFocus: true,
+  };
+  if (route.name !== 'home' || viewport.width > 375) return notApplicable;
+  const trigger = page.locator('[data-landing-mobile-nav-trigger]');
+  const menu = page.locator('[data-landing-mobile-nav]');
+  if (await trigger.count() !== 1 || await menu.count() !== 1) {
+    return { ...notApplicable, applicable: true, found: false };
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await trigger.click();
+  const geometry = await menu.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const linkSizes = Array.from(element.querySelectorAll('a')).map((link) => {
+      const linkRect = link.getBoundingClientRect();
+      return { width: linkRect.width, height: linkRect.height };
+    });
+    return {
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+      viewportWidth: window.innerWidth,
+      linksMeetTouchTarget: linkSizes.every(({ width, height }) => width >= 44 && height >= 44),
+    };
+  });
+  const visible = await menu.isVisible();
+  await trigger.focus();
+  await page.keyboard.press('Escape');
+  const escapeState = await trigger.evaluate((element) => ({
+    closed: !element.closest('details')?.hasAttribute('open'),
+    returnedFocus: document.activeElement === element,
+  }));
+  return {
+    applicable: true,
+    found: true,
+    visible,
+    viewportAligned: geometry.left >= 15
+      && geometry.right <= geometry.viewportWidth - 15
+      && geometry.width >= geometry.viewportWidth - 34,
+    linksMeetTouchTarget: geometry.linksMeetTouchTarget,
+    escapeClosed: escapeState.closed,
+    escapeReturnedFocus: escapeState.returnedFocus,
+  };
+}
 async function auditPage(browser, locale, viewport, route) {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
@@ -392,6 +443,7 @@ async function auditPage(browser, locale, viewport, route) {
   }
   const metrics = await collectMetrics(page, route, locale, viewport);
   const accessibilityMetrics = await collectAccessibilityTreeMetrics(context, page);
+  const landingMobileMenuState = await auditLandingMobileMenu(page, route, viewport);
   const reducedMotionState = await auditReducedMotion(context, page.url());
   const result = {
     locale,
@@ -403,6 +455,7 @@ async function auditPage(browser, locale, viewport, route) {
     firstTabIsSkipLink: firstTabState.isSkipLink,
     firstTabHasVisibleFocus: firstTabState.hasVisibleFocus,
     skipTargetState,
+    landingMobileMenuState,
     reducedMotionState,
     ...accessibilityMetrics,
     ...metrics,
@@ -448,6 +501,20 @@ function findViolations(result) {
   if (!result.skipTargetState.visibleBelowHeader) violations.push('skip target is obscured by a fixed header');
   if (!result.skipTargetState.hasVisibleFocus) violations.push('skip target focus is not visible');
   if (!result.skipTargetState.notObscured) violations.push('skip target is covered by another element');
+  if (result.landingMobileMenuState.applicable) {
+    if (!result.landingMobileMenuState.found) violations.push('mobile landing menu is missing');
+    if (!result.landingMobileMenuState.visible) violations.push('mobile landing menu does not open');
+    if (!result.landingMobileMenuState.viewportAligned) {
+      violations.push('mobile landing menu is not aligned to viewport gutters');
+    }
+    if (!result.landingMobileMenuState.linksMeetTouchTarget) {
+      violations.push('mobile landing menu links are below 44x44px');
+    }
+    if (!result.landingMobileMenuState.escapeClosed
+      || !result.landingMobileMenuState.escapeReturnedFocus) {
+      violations.push('mobile landing menu Escape behavior is incomplete');
+    }
+  }
   if (result.reducedMotionState.events.length
     || result.reducedMotionState.runningAnimations.length) {
     violations.push('motion remains active with reduced motion');

@@ -76,6 +76,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **トークン保護**: Google HealthトークンはユーザーID・プロバイダ・用途をAADへ含めたAES-256-GCM v2で暗号化する。解除時はDB内で接続停止・同期リース無効化・資格情報消去を原子的に完了してからGoogle側の失効を試行し、失効失敗でも接続を復活させない
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
+- **Fitbit一時障害の再試行**: 冪等な歩数GETだけを429・5xx・通信障害で1秒、2秒、4秒後に再試行する。401は既存の再認証経路へ即時返し、回転するrefresh tokenのPOSTは二重実行しない
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
@@ -487,7 +488,7 @@ npm run audit:responsive
 
 - テストフレームワーク: **Vitest**
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
-- 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
+- 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
 - テストファイル: `lib/__tests__/` 配下
