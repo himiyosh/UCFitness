@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-20T21:33:00+09:00",
+  "lastUpdated": "2026-07-21T01:22:29+09:00",
   "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
-  "lastCommit": "9062eb18f7ce99be7ca4985f2606ca58bb699ab6",
-  "lastBranch": "himiyosh-harden-daily-steps-rls",
+  "lastCommit": "cb3ea4469f7baae54b2fc5f003626c6d028432ba",
+  "lastBranch": "himiyosh-coin-recalculation-wiring",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016 Supabase RLS強化Phase 9としてdaily_stepsの32ファイル42 direct SELECT、10 RPC呼び出し、lease/source conflict/単調upsert、DB error fallbackを監査した。旧schema snapshotはあるが現行CREATE TABLE完全DDL・完全Database型・承認済みread-only実catalog接続がなくschemaを確定できないためmigrationを推測せずaudit-onlyとし、catalog SQL・blocker・別Fix候補と静的契約9件を追加した。全422テストとcheck:allをPASS。保護済み件数は9/25据え置き。DB接続・適用・read/writeは未実施でF016はin-progress。",
+  "summary": "F016の日次コイン再計算Phase Bで、Phase Aのapply_daily_coin_recalculation RPCへprocessCoinsを接続した。直接DELETE/upsert/残高再計算を撤去し、厳密payload・RPC失敗/不正応答のAppError・既存reward_processing_failed伝播を検証した。backfillとupdateCoinBalanceの直接経路は維持し、Phase A migrationのservice_role UPDATE revokeとRPC EXECUTEを静的検証した。全554テストとcheck:all、Security/PostgreSQL/code reviewをPASS。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-20T21:33:00+09:00"
+    "lastVerified": "2026-07-21T01:22:29+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1189,6 +1189,18 @@
       "action": "F016 Supabase RLS強化Phase 9でdaily_stepsの32ファイル42 direct SELECT、10 RPC呼び出し、lease/source conflict/単調upsert、DB error fallbackを監査した。旧schema snapshotはあるが現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく完全schemaを確定できないためmigrationを推測せずaudit-onlyとし、必要catalog SQL・blocker・別Fix候補を記録した。全422テストとcheck:allをPASS。保護済み件数は9/25据え置き。DB接続・適用・read/writeは未実施。",
       "commit": "9062eb18f7ce99be7ca4985f2606ca58bb699ab6",
       "filesChanged": ["README.md", "lib/__tests__/daily-steps-rls-audit.test.ts", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-21",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016の日次コイン再計算Phase Bで、Phase Aのapply_daily_coin_recalculation RPCへprocessCoinsを接続した。直接DELETE/upsert/残高再計算を撤去し、厳密な{type, amount, description}配列と{success: true}応答だけを受理する。RPC失敗・不正応答は固定AppErrorで既存Promise.allSettledのreward_processing_failedへ伝播し、backfillとupdateCoinBalanceの直接経路は維持した。Phase A migrationのservice_role UPDATE revokeとRPC EXECUTEを静的検証し、実装commit b497791696bfed4ffd86a686a0ae82f5b3b53c71と不正応答補強commit cb3ea4469f7baae54b2fc5f003626c6d028432baを作成。全554テスト、check:all、Security/PostgreSQL/code reviewをPASS。実catalog接続・DB適用・read/writeは未実施。",
+      "commit": "b497791696bfed4ffd86a686a0ae82f5b3b53c71",
+      "filesChanged": [
+        "README.md",
+        "lib/services/coin-service.ts",
+        "lib/services/coin-service.test.ts",
+        "lib/__tests__/coin-transactions-rls-migration.test.ts"
+      ]
     }
   ],
   "instincts": {
