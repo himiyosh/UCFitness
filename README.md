@@ -333,6 +333,164 @@ DBへの接続・適用・read/writeを行っていない。保護済み件数�
 in-progressを維持する。migration設計前にはPhase 7のread-only catalog queryで
 対象名だけを`public.user_follows`へ置き換え、全結果をDB管理者と確認する。
 
+#### Phase 9: `daily_steps` audit-only
+
+`daily_steps`は歩数履歴を保持する高感度健康データである。追跡済みmigrationと
+Git履歴には`CREATE TABLE public.daily_steps`の完全DDLがなく、
+`types/database.ts`の`DailyStepRow`は`user_id` / `date` / `steps`の3列だけで、
+実経路が参照する`updated_at`も含まない。承認済みread-only実catalog接続も
+ないため、ID、default、nullability、PK/FK、unique/check、owner、ACL、
+RLS/policy、owned sequenceを確定できない。Phase 9はmigrationを作成しない
+audit-onlyとし、保護済み件数を9/25に据え置く。
+
+コメントを除外した実行可能コードには32 ファイル、42 件のdirect PostgREST
+経路があり、すべてservice-roleの`SELECT`だった。direct `INSERT` / `UPDATE` /
+`DELETE` / upsertとbrowser clientからの直接接続はない。
+
+| 分類 | direct経路（件数） | 認可・エラー境界 |
+|---|---|---|
+| Home / profile / analytics | `app/[locale]/page.tsx` (1), `app/[locale]/user/[username]/page.tsx` (2), `app/[locale]/wallet/page.tsx` (1), `app/[locale]/debug/session/page.tsx` (1), `lib/services/analytics-service.ts` (1) | Server Component / service。profileとanalyticsは取得失敗をunavailable / throwへ分離 |
+| Group / challenge | `app/[locale]/groups/[groupId]/page.tsx` (1), `app/api/challenge/[challengeId]/progress/route.ts` (2), `app/api/challenge/[challengeId]/route.ts` (1), `app/api/group/[groupId]/events/[eventId]/route.ts` (1), `app/api/group/[groupId]/ranking/route.ts` (1), `app/api/group/[groupId]/weekly-report/route.ts` (1), `lib/services/group-comparison-service.ts` (1) | session / membership認可後の期間集計。一部の参加者・歩数結果は別Fix候補 |
+| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (3), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
+| Social / export | `app/api/user/following/route.ts` (1), `app/api/user/following-comparison/route.ts` (1), `app/api/user/export/route.ts` (1) | session userを固定。following-comparisonの部分障害境界は別Fix候補 |
+| Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証 |
+| Utility / script | `lib/supabase-utils.ts` (1), `scripts/check_group_info.ts` (1) | server helper / service-role運用script。JSDoc例は件数から除外 |
+
+関連RPC呼び出しは合計10件である。4 writerは
+`migrations/20260617_add_multi_provider_connections.sql`に追跡され、
+`search_path = ''`、lease/source conflict guard、service-role限定`EXECUTE`を持つ。
+追跡DDL上は`SECURITY DEFINER`指定がなく、既定invoker権限で`daily_steps`を更新する。
+
+| RPC | 呼び出し | read / write契約 |
+|---|---:|---|
+| `replace_daily_steps_range` | 1 | Google Health lease所有権を`FOR UPDATE`で検証し、期間`DELETE`後に取得済み行を`INSERT ... ON CONFLICT DO UPDATE`で置換 |
+| `upsert_daily_steps_max` | 1 | Google Health lease必須。当日値を`GREATEST`で単調upsertし、確定`steps`を返す |
+| `upsert_fitbit_daily_steps_max` | 1 | Fitbit userとGoogle Health状態をlockし、source conflict時は拒否。単調upsertして確定`steps`を返す |
+| `upsert_fitbit_daily_steps_batch` | 1 | 最大1000入力、履歴権威とsource conflictをlock下で検証し、単調batch upsert |
+| `get_user_step_stats` | 4 | 全期間集計read。型と呼び出しだけがあり、SQL定義、owner、security mode、`search_path`、`EXECUTE` ACLは未追跡 |
+| `get_batch_user_step_totals` | 1 | badge batch集計read。SQL定義、owner、security mode、`search_path`、`EXECUTE` ACLは未追跡 |
+| `award_streak_milestones` | 1 | `daily_steps`をreadし、Phase 4 migrationでowner固定・`SECURITY DEFINER`・service-role限定`EXECUTE`を検証済み |
+
+完全schema取得後もdirect操作と関数内部操作を分離する。direct grant候補は
+service-roleの`SELECT`だけで、直接DMLは現行経路にない。ただし`select('*')` /
+count経路が存在するため、列grantは全列catalogなしに確定できない。writerを
+definer化する場合だけ、実catalogでowner / BYPASSRLS / `prosecdef` / 固定
+`search_path` / 限定`EXECUTE`を検証し、lease ownership、monotonic upsert、
+history replacement、source conflict guardを保持した後にdirect DMLを除去する。
+`GRANT ALL`、`auth.uid()`、`auth.users`、broad policy、
+`FORCE ROW LEVEL SECURITY`は使用しない。
+
+PostgREST既定1000行上限について、global/group rankingの共通helperは900行
+OFFSET paginationと一意な`date,user_id`順序を使うが、stable orderは
+snapshotではない。同期中に別pageへ移ると集計時点は混在し得る。exportは
+最大365日、profileは直近400日で上限内だが、全ユーザーの当日badge候補、
+10ユーザー×30日履歴、GROUP challenge/rankingの参加者×期間は1000行を超え得る。
+ループ内のユーザー単位`daily_steps` N+1は検出していない。ランキングは集計後に
+正歩数だけを順位化する。recorded 0は行として分母に含め、missing rowと区別する。
+
+高確度のDB error fallbackはRLS変更へ混ぜず、別Fix候補とする。
+
+| 経路 | 現在の偽装 | 正しい障害境界 |
+|---|---|---|
+| `app/api/user/achievements/route.ts` | count / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | queryごとにerrorを検査し、5xxまたは明示unavailableで判定停止 |
+| `lib/services/badge-allocator.ts` | 日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | 対象ユーザーの割当失敗として隔離し、成功通知を送らない |
+| `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
+| `lib/services/title-achievement-service.ts` | 歩数・目標・残高・件数のerrorを0または既定値へ変換 | 依存結果を個別検査し、称号判定をunavailableにする |
+| `lib/services/coin-service.ts` | backfillのuser / steps errorを未記録・no dataとしてreturn | DB errorを失敗として返し、台帳処理を開始しない |
+| `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
+
+Phase 9で必要なtable catalogは、下記blockの対象
+`public.walking_routes`を`public.daily_steps`へ置換して同じread-only transactionで
+取得する。加えて、未追跡aggregation RPCを含む関数owner / security / config /
+ACL / dependencyを次のSQLで取得する。これは承認後のread-only接続専用であり、
+今回のPRではDBへ接続・実行していない。
+
+```sql
+BEGIN TRANSACTION READ ONLY;
+
+WITH expected(signature) AS (
+  VALUES
+    ('public.replace_daily_steps_range(uuid,text,date,date,jsonb)'::text),
+    ('public.upsert_daily_steps_max(uuid,text,date,bigint)'::text),
+    ('public.upsert_fitbit_daily_steps_max(uuid,date,bigint)'::text),
+    ('public.upsert_fitbit_daily_steps_batch(uuid,jsonb)'::text),
+    ('public.get_user_step_stats(uuid)'::text),
+    ('public.get_batch_user_step_totals(uuid[])'::text),
+    ('public.award_streak_milestones(date)'::text)
+),
+routines AS (
+  SELECT expected.signature, to_regprocedure(expected.signature) AS oid
+  FROM expected
+)
+SELECT
+  routines.signature,
+  routines.oid,
+  owner.rolname AS owner,
+  owner.rolbypassrls AS owner_bypassrls,
+  language.lanname,
+  procedure.prosecdef,
+  procedure.proconfig,
+  procedure.proacl,
+  pg_get_function_identity_arguments(procedure.oid) AS identity_arguments,
+  has_function_privilege('service_role', procedure.oid, 'EXECUTE') AS service_role_execute,
+  has_function_privilege('authenticated', procedure.oid, 'EXECUTE') AS authenticated_execute,
+  has_function_privilege('anon', procedure.oid, 'EXECUTE') AS anon_execute
+FROM routines
+LEFT JOIN pg_proc AS procedure ON procedure.oid = routines.oid
+LEFT JOIN pg_roles AS owner ON owner.oid = procedure.proowner
+LEFT JOIN pg_language AS language ON language.oid = procedure.prolang
+ORDER BY routines.signature;
+
+WITH target AS (
+  SELECT to_regclass('public.daily_steps') AS oid
+),
+expected(signature) AS (
+  VALUES
+    ('public.replace_daily_steps_range(uuid,text,date,date,jsonb)'::text),
+    ('public.upsert_daily_steps_max(uuid,text,date,bigint)'::text),
+    ('public.upsert_fitbit_daily_steps_max(uuid,date,bigint)'::text),
+    ('public.upsert_fitbit_daily_steps_batch(uuid,jsonb)'::text),
+    ('public.get_user_step_stats(uuid)'::text),
+    ('public.get_batch_user_step_totals(uuid[])'::text),
+    ('public.award_streak_milestones(date)'::text)
+),
+routines AS (
+  SELECT expected.signature, to_regprocedure(expected.signature) AS oid
+  FROM expected
+)
+SELECT
+  routines.signature,
+  dependency.deptype,
+  referenced.oid::regclass AS referenced_relation
+FROM routines
+LEFT JOIN pg_depend AS dependency ON dependency.objid = routines.oid
+LEFT JOIN pg_class AS referenced ON referenced.oid = dependency.refobjid
+CROSS JOIN target
+WHERE routines.oid IS NULL
+   OR dependency.refobjid = target.oid
+ORDER BY routines.signature, dependency.deptype;
+
+SELECT
+  routine_name,
+  grantee,
+  privilege_type,
+  is_grantable
+FROM information_schema.routine_privileges
+WHERE specific_schema = 'public'
+  AND routine_name IN (
+    'replace_daily_steps_range',
+    'upsert_daily_steps_max',
+    'upsert_fitbit_daily_steps_max',
+    'upsert_fitbit_daily_steps_batch',
+    'get_user_step_stats',
+    'get_batch_user_step_totals',
+    'award_streak_milestones'
+  )
+ORDER BY routine_name, grantee, privilege_type;
+
+ROLLBACK;
+```
+
 RLS変更とは分離すべき高確度のerror fallbackも監査した。
 
 | 経路 | 現行のDB障害時挙動 | 別Fix候補 |
