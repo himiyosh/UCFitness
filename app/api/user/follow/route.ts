@@ -34,14 +34,32 @@ export async function POST(request: Request) {
         }
 
         // 対象ユーザーの存在確認
-        const { data: targetUser } = await supabaseAdmin
+        const { data: targetUser, error: targetLookupError } = await supabaseAdmin
             .from("users")
             .select("id")
             .eq("id", targetUserId)
             .single();
 
-        if (!targetUser) {
+        if (targetLookupError?.code === "PGRST116") {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        if (targetLookupError) {
+            reportError(
+                "user/follow:target_lookup",
+                new Error("Target user lookup failed"),
+                { userId, targetUserId },
+            );
+            return NextResponse.json({ error: "Failed to load target user" }, { status: 500 });
+        }
+
+        if (!targetUser) {
+            reportError(
+                "user/follow:target_lookup",
+                new Error("Target user lookup returned no data without an error"),
+                { userId, targetUserId },
+            );
+            return NextResponse.json({ error: "Failed to load target user" }, { status: 500 });
         }
 
         // フォロー登録（重複は UNIQUE 制約でエラーになる）
