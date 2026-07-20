@@ -7,10 +7,14 @@ import { describe, expect, it } from 'vitest';
 const readFile = (path: string): string => readFileSync(join(process.cwd(), path), 'utf8');
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const migration = readFile('migrations/20260721_atomic_historical_coin_backfill.sql');
+const ATOMIC_HISTORICAL_COIN_BACKFILL_SHA256 = '43576cf79dbbc371c38b3e9f36b6eb23b1c24792bb5edbc3b9b11683ba5379fe';
 const body = migration.match(/CREATE FUNCTION public\.apply_coin_backfill[\s\S]+?AS \$function\$([\s\S]+?)\$function\$;/)?.[1] ?? '';
 const stale = body.match(/WITH existing_totals AS[\s\S]+?Stale coin backfill cannot reduce earned coins'; END IF;/)?.[0] ?? '';
 const normalizedStale = stale.replace(/\s+/g, ' ');
 describe('atomic historical coin backfill migration', () => {
+    it('Phase A migration_同一内容の場合_SHA-256契約を維持する', () => {
+        expect(sha256(migration)).toBe(ATOMIC_HISTORICAL_COIN_BACKFILL_SHA256);
+    });
     it('依存migration_同一内容の場合_SHA-256契約を維持する', () => {
         const hashes = new Map([
             ['migrations/20260718_add_streak_milestone_rewards.sql', '32d33a968327ce45d19f47377e7c69c4c727069dba447d36deb47d8fba16bf3f'],

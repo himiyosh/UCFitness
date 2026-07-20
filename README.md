@@ -398,12 +398,14 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 | `lib/services/badge-allocator.ts` | 修正前は日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | DB障害・不正shapeを未達成へ偽装せず対象ユーザーの割当失敗として隔離し、insert成功後だけ通知 |
 | `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
 | `lib/services/title-achievement-service.ts` | 修正前は歩数・目標・残高・件数のerrorを0または既定値へ変換 | DB障害・未設定・不正shapeを未達成へ偽装せず、称号付与だけを失敗として隔離 |
-| `lib/services/coin-service.ts` | 修正前はbackfillのuser / steps errorを未記録・no dataとしてreturnし、DELETE / batch INSERT失敗後も処理を継続 | DB error・不正shape・未来日・重複/非昇順・計算overflowをDELETE前に固定AppErrorで拒否し、DELETE / INSERT失敗後は後続batchと残高更新を開始しない。直接DELETEは再生成する歩数由来3種だけに限定し、`RANK_BONUS`等の別経路報酬を保持する |
+| `lib/services/coin-service.ts` | 修正前はbackfillのuser / steps errorを未記録・no dataとしてreturnし、DELETE / batch INSERT失敗後も処理を継続 | DB error・不正shape・未来日・重複/非昇順・計算overflowを原子RPC前に固定AppErrorで拒否する。全履歴のexact 4-key payloadを`apply_coin_backfill`へ1回だけ渡し、RPC失敗・不正応答を固定AppErrorとして伝播する。direct DELETE / batch INSERT / 残高再計算へfallbackせず、`RANK_BONUS`等の別経路報酬はPhase A RPC側で保持する |
 | `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
 
 `migrations/20260721_atomic_historical_coin_backfill.sql`は、履歴全件の検証、stale guard、
 歩数由来3種の置換、全台帳残高再集計を単一transactionへ閉じ込めるPhase Aである。
-`backfillCoinsForUser`のPhase B接続、実catalog実行、DB適用は別stackまで未実施とする。
+Phase Bでは`backfillCoinsForUser`を同RPCへ接続済みで、payloadの`user_id`除外、
+exact `{date,type,amount,description}`、exact `{success:true}`応答、direct writer不在を
+アプリ側でも固定した。実catalog接続・SQL実行・DB適用は未実施のままとする。
 Phase 9で必要なtable catalogは、下記blockの対象
 `public.walking_routes`を`public.daily_steps`へ置換して同じread-only transactionで
 取得する。加えて、未追跡aggregation RPCを含む関数owner / security / config /
