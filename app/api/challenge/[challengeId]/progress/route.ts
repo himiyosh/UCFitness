@@ -6,13 +6,79 @@ import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
 import { authorizeChallengeGroup } from '@/lib/services/challenge-access';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isValidUUID } from '@/lib/validation';
+import { isRecord, isValidUUID } from '@/lib/validation';
+import type {
+    GroupChallengeProgressRpcArgs,
+    GroupChallengeProgressRpcRow,
+} from '@/types/database';
 
 // ============================================
 // チャレンジ進捗取得 API
 // INDIVIDUAL: 個人の歩数合計で判定
 // GROUP: 全参加者の歩数合計で判定
 // ============================================
+
+type ParsedGroupProgressResult =
+    | {
+        status: 'ok';
+        total_steps: number;
+        participant_count: number;
+        target_steps: number;
+        is_completed: boolean;
+    }
+    | {
+        status: Exclude<GroupChallengeProgressRpcRow['status'], 'ok'>;
+        total_steps: null;
+        participant_count: null;
+        target_steps: null;
+        is_completed: null;
+    };
+
+function parseGroupProgressResult(
+    value: unknown,
+    expectedTargetSteps: number,
+): ParsedGroupProgressResult | null {
+    if (!Array.isArray(value) || value.length !== 1 || !isRecord(value[0])) {
+        return null;
+    }
+    const row = value[0];
+    if (row.status !== 'ok' && row.status !== 'not_found'
+        && row.status !== 'forbidden' && row.status !== 'not_participating') {
+        return null;
+    }
+    if (row.status !== 'ok') {
+        return row.total_steps === null && row.participant_count === null
+            && row.target_steps === null && row.is_completed === null
+            ? {
+                status: row.status,
+                total_steps: null,
+                participant_count: null,
+                target_steps: null,
+                is_completed: null,
+            }
+            : null;
+    }
+    if (
+        typeof row.total_steps !== 'number'
+        || !Number.isSafeInteger(row.total_steps)
+        || row.total_steps < 0
+        || typeof row.participant_count !== 'number'
+        || !Number.isSafeInteger(row.participant_count)
+        || row.participant_count < 1
+        || row.target_steps !== expectedTargetSteps
+        || typeof row.is_completed !== 'boolean'
+        || row.is_completed !== (row.total_steps >= expectedTargetSteps)
+    ) {
+        return null;
+    }
+    return {
+        status: 'ok',
+        total_steps: row.total_steps,
+        participant_count: row.participant_count,
+        target_steps: row.target_steps,
+        is_completed: row.is_completed,
+    };
+}
 
 /** GET: チャレンジ進捗を取得 */
 export async function GET(
@@ -70,60 +136,35 @@ export async function GET(
         }
 
         let totalSteps: number;
+        let isCompleted: boolean;
 
         if (challenge.type === 'GROUP') {
-            // GROUP チャレンジ: 全参加者の歩数合計で目標達成を判定
-            const { data: participants, error: participantsError, count: participantCount } = await supabaseAdmin
-                .from('challenge_participants')
-                .select('user_id', { count: 'exact' })
-                .eq('challenge_id', challengeId);
-            if (participantsError || (participantCount ?? 0) > 1000) {
+            const rpcArgs: GroupChallengeProgressRpcArgs = {
+                p_challenge_id: challengeId,
+                p_viewer_id: userId,
+            };
+            const { data: rpcData, error: rpcError } = await supabaseAdmin
+                .rpc('get_group_challenge_progress', rpcArgs);
+            if (rpcError) {
+                reportError('challenge:progress:group-rpc', rpcError, { userId, challengeId });
+                return NextResponse.json({ error: 'Failed to calculate progress' }, { status: 500 });
+            }
+            const rpcResult = parseGroupProgressResult(rpcData, challenge.target_steps);
+            if (!rpcResult) {
                 reportError(
-                    'challenge:progress:participants',
-                    participantsError ?? new Error('Challenge participant aggregation exceeded 1000 rows'),
+                    'challenge:progress:group-rpc-result',
+                    new Error('get_group_challenge_progress returned an invalid result'),
                     { userId, challengeId },
                 );
-                return NextResponse.json({ error: 'Failed to fetch challenge participants' }, { status: 500 });
+                return NextResponse.json({ error: 'Failed to calculate progress' }, { status: 500 });
             }
-
-            const participantIds = (participants || []).map(p => p.user_id);
-            const { data: members, error: membersError } = participantIds.length > 0
-                ? await supabaseAdmin
-                    .from('group_members')
-                    .select('user_id')
-                    .eq('group_id', challenge.group_id)
-                    .in('user_id', participantIds)
-                : { data: [], error: null };
-            if (membersError) {
-                reportError('challenge:progress:members', membersError, { userId, challengeId });
-                return NextResponse.json({ error: 'Failed to fetch group members' }, { status: 500 });
+            if (rpcResult.status !== 'ok') {
+                return rpcResult.status === 'not_found'
+                    ? NextResponse.json({ error: 'Challenge not found' }, { status: 404 })
+                    : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
-            const eligibleIds = (members ?? []).map((member) => member.user_id);
-
-            if (eligibleIds.length === 0) {
-                totalSteps = 0;
-            } else {
-                const { data: stepsData, error: stepsError, count: stepsCount } = await supabaseAdmin
-                    .from('daily_steps')
-                    .select('steps', { count: 'exact' })
-                    .in('user_id', eligibleIds)
-                    .gte('date', challenge.start_date)
-                    .lte('date', challenge.end_date);
-
-                if (stepsError || (stepsCount ?? 0) > 1000) {
-                    reportError(
-                        'challenge:progress:group-steps',
-                        stepsError ?? new Error('Challenge step aggregation exceeded 1000 rows'),
-                        { userId, challengeId },
-                    );
-                    return NextResponse.json({ error: 'Failed to fetch steps' }, { status: 500 });
-                }
-
-                totalSteps = (stepsData || []).reduce(
-                    (sum, row) => sum + (typeof row.steps === 'number' && row.steps > 0 ? row.steps : 0),
-                    0,
-                );
-            }
+            totalSteps = rpcResult.total_steps;
+            isCompleted = rpcResult.is_completed;
         } else {
             // INDIVIDUAL チャレンジ: 個人の歩数のみ
             const { data: stepsData, error: stepsError, count: stepsCount } = await supabaseAdmin
@@ -146,9 +187,9 @@ export async function GET(
                 (sum, row) => sum + (typeof row.steps === 'number' && row.steps > 0 ? row.steps : 0),
                 0,
             );
+            isCompleted = totalSteps >= challenge.target_steps;
         }
 
-        const isCompleted = totalSteps >= challenge.target_steps;
         const progressPercent = Math.min(100, Math.round((totalSteps / challenge.target_steps) * 100));
 
         const completedAt = isCompleted && !participation.is_completed
