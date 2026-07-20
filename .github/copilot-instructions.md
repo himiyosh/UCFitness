@@ -1521,3 +1521,4 @@ export const runtime = "edge";
 - **根本原因**: 反復するstatusやcommitだけを検索・置換し、対象idやdateと同じobject内にあることを編集前後のdiffで確認しなかった。
 - **対策**: 構造化台帳は対象objectの一意な識別子範囲を先に読み、変更後に対象値と同名キーを持つ他objectの差分を同時検証する。
 - **教訓**: 同名キーが反復する台帳は値だけで編集しない。識別子をanchorにし、PR差分で意図したobjectだけが変わったことを確認する。
+- **追加教訓**: 履歴テストは可変のtop-level `lastCommit`ではなく対象sessionLogを固定し、進捗更新後にfull testを再実行する。
