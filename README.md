@@ -398,8 +398,12 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 | `lib/services/badge-allocator.ts` | 修正前は日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | DB障害・不正shapeを未達成へ偽装せず対象ユーザーの割当失敗として隔離し、insert成功後だけ通知 |
 | `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
 | `lib/services/title-achievement-service.ts` | 修正前は歩数・目標・残高・件数のerrorを0または既定値へ変換 | DB障害・未設定・不正shapeを未達成へ偽装せず、称号付与だけを失敗として隔離 |
-| `lib/services/coin-service.ts` | backfillのuser / steps errorを未記録・no dataとしてreturn | DB errorを失敗として返し、台帳処理を開始しない |
+| `lib/services/coin-service.ts` | 修正前はbackfillのuser / steps errorを未記録・no dataとしてreturnし、DELETE / batch INSERT失敗後も処理を継続 | DB error・不正shape・未来日・重複/非昇順・計算overflowをDELETE前に固定AppErrorで拒否し、DELETE / INSERT失敗後は後続batchと残高更新を開始しない |
 | `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
+
+`backfillCoinsForUser`の`DELETE`→複数batch `INSERT`→残高再集計は、現段階では単一
+transactionではない。DELETE成功後のINSERT失敗を後続処理へ進めないが、既に削除・挿入
+された台帳をrollbackできない既知blockerが残るため、次stackでtransactional RPCへ原子化する。
 Phase 9で必要なtable catalogは、下記blockの対象
 `public.walking_routes`を`public.daily_steps`へ置換して同じread-only transactionで
 取得する。加えて、未追跡aggregation RPCを含む関数owner / security / config /
