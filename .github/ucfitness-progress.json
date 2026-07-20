@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-20T22:21:14Z",
+  "lastUpdated": "2026-07-20T22:41:30Z",
   "lastAgent": "UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)",
-  "lastCommit": "67cea5b8a816008366f271d5e81f8a57cd1b02de",
-  "lastBranch": "himiyosh-himiyosh-badge-awards-phase-b",
+  "lastCommit": "839a52e67d51847ee44fec5bfb8a6ccce9d589bf",
+  "lastBranch": "himiyosh-himiyosh-badge-awards-phase-c",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016 badge-awards failure mapping Phase Bで、global/group ranking・groups・group members・award insertを生Supabase error非露出の固定AppErrorへ分離した。ranking/group/membershipのshape・foreign・重複・非負safe integer・集計overflowを検証し、0歩・空集合・記録なしは正常、award insertは23505だけを既付与として維持した。依存失敗後のuser_badges insert・通知停止と成功通知を固定し、Phase A personal、10+/5+閾値、正歩数付与、batch、streakを維持した。保護済み件数は9/25据え置き。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors。実装差分3ファイル・+416/-44・total 460。DB接続/read/write/applyは未実施でF016はin-progress。残るbadge-awards範囲はstreak milestoneとTeams enrichment。",
+  "summary": "F016 badge-awards failure mapping Phase Cで、streak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorで検証し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge queryと全件shapeを固定AppErrorへ変換し、不完全データやA user fallbackを送らず主バッジ付与を維持するbest-effort境界へ分離した。生DB error/error_code/message/causeは内部report/contextへ渡さず、webhook transport自体はlib/api/teams.tsの既存best-effort処理を維持。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors。実装差分3ファイル・+410/-49・total 459。保護済み件数は9/25据え置き。DB接続/read/write/applyは未実施でF016はin-progress。badge-awards coreの依存障害分離は完了。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-20T22:21:14Z"
+    "lastVerified": "2026-07-20T22:41:30Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1251,7 +1251,8 @@
       "filesChanged": ["lib/services/badge-awards.ts", "lib/__tests__/badge-awards.test.ts", "README.md", ".github/ucfitness-progress.json"]
     },
     {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"badge-awards Phase A follow-upで、4依存の生Supabase errorを内部reportErrorへ渡す漏洩を除去し、固定AppErrorだけをCron callerへ伝播した。secret sentinelをmessage/detailsへ含むDB errorでもAppErrorのmessage/context/cause/String/JSONへ露出せず、Phase A内部reportError未呼出を固定した。focused 58件、全647テスト（--maxWorkers=1）、check:all、Security/Code/DataレビューをPASS。既存global/group/award/streak loggingは未変更。DB接続/read/write/applyなし。","commit":"1fec1aac37229a88cc4348b7d6df638404ce3638","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts",".github/copilot-instructions.md","README.md",".github/ucfitness-progress.json"]},
-    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Bでglobal/group ranking、groups、group members、award insertを固定AppErrorへ分離した。生Supabase errorを内部report/causeへ渡さず、row shape・foreign・重複・safe integer・集計overflowを拒否し、0歩・空集合・記録なし・23505既付与を維持した。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。残る範囲はstreak milestoneとTeams enrichment。DB接続/read/write/applyなし。","commit":"67cea5b8a816008366f271d5e81f8a57cd1b02de","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]}
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Bでglobal/group ranking、groups、group members、award insertを固定AppErrorへ分離した。生Supabase errorを内部report/causeへ渡さず、row shape・foreign・重複・safe integer・集計overflowを拒否し、0歩・空集合・記録なし・23505既付与を維持した。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。残る範囲はstreak milestoneとTeams enrichment。DB接続/read/write/applyなし。","commit":"67cea5b8a816008366f271d5e81f8a57cd1b02de","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]},
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Cでstreak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorへ分離し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge全件検証を固定AppErrorのbest-effort境界へ分離し、不完全データやA user fallbackを送らず主付与を維持した。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。実装差分3ファイル・459行。DB接続/read/write/applyなし。badge-awards core完了、webhook transportはlib/api/teams.tsの既存best-effort処理を維持。","commit":"839a52e67d51847ee44fec5bfb8a6ccce9d589bf","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
