@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 const readRepositoryFile = (path: string): string => readFileSync(join(process.cwd(), path), 'utf8');
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const migration = readRepositoryFile('migrations/20260721_atomic_daily_coin_recalculation.sql');
+const ATOMIC_DAILY_COIN_MIGRATION_SHA256 = 'bbae1db91aa16bf8045bd28a504c7e2b689da2de38aa4a4834f07e2a6f665e20';
 const functionBody = migration.match(/CREATE FUNCTION public\.apply_daily_coin_recalculation[\s\S]+?AS \$function\$([\s\S]+?)\$function\$;/)?.[1] ?? '';
 const staleGuard = functionBody.match(
     /IF EXISTS \(\s*WITH existing_totals AS[\s\S]+?Stale daily coin recalculation cannot reduce earned coins';\s*END IF;/,
@@ -15,6 +16,10 @@ const existingTotals = staleGuard.match(/WITH existing_totals AS \(([\s\S]+?)\),
 const normalizedStaleGuard = staleGuard.replace(/\s+/g, ' ');
 
 describe('atomic daily coin recalculation migration', () => {
+    it('Phase A2 migration_同一内容の場合_SHA-256契約を維持する', () => {
+        expect(sha256(migration)).toBe(ATOMIC_DAILY_COIN_MIGRATION_SHA256);
+    });
+
     it('依存migration_変更されていない場合_hash契約を維持する', () => {
         const expectedHashes = new Map([
             ['migrations/20260720_harden_coin_transactions_rls.sql', '32324ceae1333fefb67a0d8788facf23ea2fd435332e78c4ac103bbcabdf426f'],
