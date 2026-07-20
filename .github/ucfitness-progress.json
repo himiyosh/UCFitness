@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-20T18:15:57Z",
+  "lastUpdated": "2026-07-20T18:17:33Z",
   "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
   "lastCommit": "040f1b31debfc09844e7bba8734b91767c8c7329",
   "lastBranch": "himiyosh-coin-recalculation-wiring",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016の日次コイン再計算Phase Bで、Phase A2の型別stale-payload防止revision 8503797をmerge commit c2e2373で非破壊統合した。Phase Bのmigration本文は0差分のまま、A2 migration SHA-256 bbae1db91aa16bf8045bd28a504c7e2b689da2de38aa4a4834f07e2a6f665e20を静的に固定した。processCoinsはapply_daily_coin_recalculation RPCへ接続し、直接DELETE/upsert/残高再計算を撤去した。厳密payload・RPC失敗/不正応答のAppError・既存reward_processing_failed伝播を検証し、backfillとupdateCoinBalanceの直接経路は維持した。STREAK_BONUSは共有公開helperで倍率差を整数百分率へ丸め、基本UC・倍率・結果を非負safe integerかつPostgreSQL integer域へ固定してSymbol/BigIntを含む境界外をCOIN_CALCULATION_OVERFLOW/streak-bonusで拒否する。10,000歩・7日ストリークの追加分2,000 UCと既存descriptionを維持した。revision 040f1b3では旧誤差値の参照を除去し、9,999歩・1.2倍率の端数境界も維持した。ローカルではfocused 56件、全581テスト（--maxWorkers=1）、check:all、Security/PostgreSQL/コードレビューをPASS。PR #274のbaseはhimiyosh-fix-coin-stale-payloadへ更新済みで、040f1b3を含む未push revisionのGitHub検証は通常push後に確認する。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
+  "summary": "F016の日次コイン再計算Phase Bで、Phase A2の型別stale-payload防止revision 8503797をmerge commit c2e2373で非破壊統合した。Phase Bのmigration本文は0差分のまま、A2 migration SHA-256 bbae1db91aa16bf8045bd28a504c7e2b689da2de38aa4a4834f07e2a6f665e20を静的に固定した。processCoinsはapply_daily_coin_recalculation RPCへ接続し、直接DELETE/upsert/残高再計算を撤去した。厳密payload・RPC失敗/不正応答のAppError・既存reward_processing_failed伝播を検証し、backfillとupdateCoinBalanceの直接経路は維持した。STREAK_BONUSは共有公開helperで倍率差を整数百分率へ丸め、基本UC・倍率・結果を非負safe integerかつPostgreSQL integer域へ固定してSymbol/BigIntを含む境界外をCOIN_CALCULATION_OVERFLOW/streak-bonusで拒否する。10,000歩・7日ストリークの追加分2,000 UCと既存descriptionを維持した。revision 040f1b3では旧誤差値の参照を除去し、9,999歩・1.2倍率の端数境界も維持した。ローカルではfocused 56件、全581テスト（--maxWorkers=1）、check:all、Security/PostgreSQL/コードレビューをPASS。PR #274のbaseはhimiyosh-fix-coin-stale-payloadへ更新済みで、040f1b3を含む未push revisionのGitHub検証は通常push後に確認する。保護済み件数は9/25据え置き。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-20T18:15:57Z"
+    "lastVerified": "2026-07-20T18:17:33Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
