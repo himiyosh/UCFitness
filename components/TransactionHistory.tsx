@@ -26,6 +26,11 @@ const TYPE_CONFIG: Record<string, { color: string; icon: string; key: string }> 
         key: 'streakMilestone',
     },
     RANK_BONUS: { color: 'text-purple-700', icon: '🏆', key: 'rankBonus' },
+    GROUP_CHALLENGE_REWARD: {
+        color: 'text-[var(--color-reward-strong)]',
+        icon: '👥',
+        key: 'groupChallengeReward',
+    },
     PURCHASE: { color: 'text-red-600', icon: '🛍️', key: 'purchase' },
 };
 

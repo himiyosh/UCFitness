@@ -1,9 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+
+import { useTranslations } from 'next-intl';
+
+import type { ManagedChallengeGroupsState } from '@/lib/services/managed-challenge-groups';
+
 import ChallengeList from '@/components/challenge/ChallengeList';
 import CreateChallengeModal from '@/components/challenge/CreateChallengeModal';
-import { useTranslations } from 'next-intl';
 
 // ============================================
 // チャレンジページ クライアントラッパー
@@ -12,9 +16,13 @@ import { useTranslations } from 'next-intl';
 
 interface ChallengesPageClientProps {
     currentUserId?: string;
+    managedGroups: ManagedChallengeGroupsState;
 }
 
-export default function ChallengesPageClient({ currentUserId }: ChallengesPageClientProps) {
+export default function ChallengesPageClient({
+    currentUserId,
+    managedGroups,
+}: ChallengesPageClientProps) {
     const t = useTranslations('Challenge');
     const [showCreate, setShowCreate] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -42,6 +50,7 @@ export default function ChallengesPageClient({ currentUserId }: ChallengesPageCl
                 isOpen={showCreate}
                 onClose={() => setShowCreate(false)}
                 onCreated={() => setRefreshKey(k => k + 1)}
+                managedGroups={managedGroups}
             />
         </div>
     );
