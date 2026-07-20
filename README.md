@@ -394,7 +394,7 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 | 経路 | 現在の偽装 | 正しい障害境界 |
 |---|---|---|
 | `app/api/user/achievements/route.ts` | 修正前はcount / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | DB障害・未設定・不正shapeを0や10,000へ偽装せず、query別の固定5xxで判定停止 |
-| `lib/services/badge-allocator.ts` | 日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | 対象ユーザーの割当失敗として隔離し、成功通知を送らない |
+| `lib/services/badge-allocator.ts` | 修正前は日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | DB障害・不正shapeを未達成へ偽装せず対象ユーザーの割当失敗として隔離し、insert成功後だけ通知 |
 | `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
 | `lib/services/title-achievement-service.ts` | 歩数・目標・残高・件数のerrorを0または既定値へ変換 | 依存結果を個別検査し、称号判定をunavailableにする |
 | `lib/services/coin-service.ts` | backfillのuser / steps errorを未記録・no dataとしてreturn | DB errorを失敗として返し、台帳処理を開始しない |

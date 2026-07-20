@@ -180,6 +180,29 @@ describe('updateUserSteps', () => {
         });
     });
 
+    it('バッジ付与が失敗した場合、同期を継続してbadges単位で隔離ログする', async () => {
+        const badgeError = new AppError(
+            'Failed to load daily steps',
+            'DAILY_STEPS_QUERY_FAILED',
+            { stage: 'daily-steps' },
+        );
+        mocks.getGoogleHealthSyncSelection.mockResolvedValue({
+            userId: 'user-1',
+            status: 'disconnected',
+            connection: null,
+        });
+        mocks.checkAndAwardBadges.mockRejectedValueOnce(badgeError);
+
+        await expect(updateUserSteps('user-1')).resolves.toBe(1234);
+
+        expect(mocks.processCoins).toHaveBeenCalled();
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'processUserSteps:badges',
+            badgeError,
+            { userId: 'user-1' },
+        );
+    });
+
     it('Fitbitの取得値が保存済み値より小さい場合、DBの最大値を同期結果と報酬へ使う', async () => {
         const today = getJSTDateString();
         mocks.getGoogleHealthSyncSelection.mockResolvedValue({
