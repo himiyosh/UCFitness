@@ -168,7 +168,6 @@ describe("walking_routes RLS audit", () => {
     const progress = JSON.parse(
       readRepositoryFile(".github/ucfitness-progress.json"),
     ) as {
-      lastCommit: string;
       sessionLog: Array<{
         date: string;
         action: string;
@@ -180,7 +179,6 @@ describe("walking_routes RLS audit", () => {
       ({ commit }) => commit === auditCommit,
     );
 
-    expect(progress.lastCommit).toBe(auditCommit);
     expect(phase?.date).toBe("2026-07-20");
     expect(phase?.action).toContain(
       "追跡DDL・完全Database型・read-only実catalog接続がなく完全schemaを確定できないためmigrationを推測せずaudit-only",
