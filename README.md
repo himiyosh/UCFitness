@@ -75,7 +75,8 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **接続UX**: 設定画面でGoogle同意画面への外部遷移、読み取り範囲、再認証中の同期停止、Fitbitへの暗黙切替を行わないこと、解除後の同期元または同期停止を接続状況に応じて明示する。セッション切れ時は再認証通知を保持し、FitbitログインがUCFitness本人確認であることを説明して設定画面へ戻す
 - **トークン保護**: Google HealthトークンはユーザーID・プロバイダ・用途をAADへ含めたAES-256-GCM v2で暗号化する。解除時はDB内で接続停止・同期リース無効化・資格情報消去を原子的に完了してからGoogle側の失効を試行し、失効失敗でも接続を復活させない
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
-- **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、利用不能を構造化コードで返し、歩数が取得できない状態を成功通知にしない
+- **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、報酬処理失敗、利用不能を構造化コードで返す。バッジ・称号・コインのいずれかが失敗した場合は保存済み歩数を保持しつつ同期成功にしない
+- **コイン再計算の既知制約**: `processCoins` は削除・台帳upsert・残高再集計の各失敗を同期失敗へ伝播するが、3段階はまだ単一DBトランザクションではない。原子化には既存DDL確認後の専用migration/RPCが必要であり、アプリ側で推測実装しない
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
@@ -344,7 +345,7 @@ policyを含む古いsnapshotであり現行catalogの証拠にはできない�
 実catalog接続がなく、現行default/nullability/PK/FK/unique/check/owner/ACL/
 RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に据え置く。
 
-コメントを除外した実行可能コードには32 ファイル、42 件のdirect PostgREST
+コメントを除外した実行可能コードには32 ファイル、41 件のdirect PostgREST
 経路があり、すべてservice-roleの`SELECT`だった。direct `INSERT` / `UPDATE` /
 `DELETE` / upsertとbrowser clientからの直接接続はない。
 
@@ -352,7 +353,7 @@ RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に�
 |---|---|---|
 | Home / profile / analytics | `app/[locale]/page.tsx` (1), `app/[locale]/user/[username]/page.tsx` (2), `app/[locale]/wallet/page.tsx` (1), `app/[locale]/debug/session/page.tsx` (1), `lib/services/analytics-service.ts` (1) | Server Component / service。profileとanalyticsは取得失敗をunavailable / throwへ分離 |
 | Group / challenge | `app/[locale]/groups/[groupId]/page.tsx` (1), `app/api/challenge/[challengeId]/progress/route.ts` (2), `app/api/challenge/[challengeId]/route.ts` (1), `app/api/group/[groupId]/events/[eventId]/route.ts` (1), `app/api/group/[groupId]/ranking/route.ts` (1), `app/api/group/[groupId]/weekly-report/route.ts` (1), `lib/services/group-comparison-service.ts` (1) | session / membership認可後の期間集計。一部の参加者・歩数結果は別Fix候補 |
-| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (3), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
+| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (2), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
 | Social / export | `app/api/user/following/route.ts` (1), `app/api/user/following-comparison/route.ts` (1), `app/api/user/export/route.ts` (1) | session userを固定。following-comparisonの部分障害境界は別Fix候補 |
 | Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証 |
 | Utility / script | `lib/supabase-utils.ts` (1), `scripts/check_group_info.ts` (1) | server helper / service-role運用script。JSDoc例は件数から除外 |
@@ -393,13 +394,12 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 
 | 経路 | 現在の偽装 | 正しい障害境界 |
 |---|---|---|
-| `app/api/user/achievements/route.ts` | count / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | queryごとにerrorを検査し、5xxまたは明示unavailableで判定停止 |
-| `lib/services/badge-allocator.ts` | 日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | 対象ユーザーの割当失敗として隔離し、成功通知を送らない |
+| `app/api/user/achievements/route.ts` | 修正前はcount / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | DB障害・未設定・不正shapeを0や10,000へ偽装せず、query別の固定5xxで判定停止 |
+| `lib/services/badge-allocator.ts` | 修正前は日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | DB障害・不正shapeを未達成へ偽装せず対象ユーザーの割当失敗として隔離し、insert成功後だけ通知 |
 | `lib/services/badge-awards.ts` | batch total / 30日履歴 errorを空map・0へ、ranking errorを空ランキングへ変換 | batch/scope単位の失敗を返し、0歩・参加者なしと区別 |
-| `lib/services/title-achievement-service.ts` | 歩数・目標・残高・件数のerrorを0または既定値へ変換 | 依存結果を個別検査し、称号判定をunavailableにする |
+| `lib/services/title-achievement-service.ts` | 修正前は歩数・目標・残高・件数のerrorを0または既定値へ変換 | DB障害・未設定・不正shapeを未達成へ偽装せず、称号付与だけを失敗として隔離 |
 | `lib/services/coin-service.ts` | backfillのuser / steps errorを未記録・no dataとしてreturn | DB errorを失敗として返し、台帳処理を開始しない |
 | `app/api/user/following-comparison/route.ts` | follow / users / steps errorを空比較・`Unknown`・日別0歩へ変換 | dependencyごとに5xxまたは部分障害を返し、missing / recorded 0と分離 |
-
 Phase 9で必要なtable catalogは、下記blockの対象
 `public.walking_routes`を`public.daily_steps`へ置換して同じread-only transactionで
 取得する。加えて、未追跡aggregation RPCを含む関数owner / security / config /
