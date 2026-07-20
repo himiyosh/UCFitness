@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-20T18:17:33Z",
-  "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
-  "lastCommit": "040f1b31debfc09844e7bba8734b91767c8c7329",
-  "lastBranch": "himiyosh-coin-recalculation-wiring",
+  "lastUpdated": "2026-07-20T22:41:30Z",
+  "lastAgent": "UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)",
+  "lastCommit": "839a52e67d51847ee44fec5bfb8a6ccce9d589bf",
+  "lastBranch": "himiyosh-himiyosh-badge-awards-phase-c",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016の日次コイン再計算Phase Bで、Phase A2の型別stale-payload防止revision 8503797をmerge commit c2e2373で非破壊統合した。Phase Bのmigration本文は0差分のまま、A2 migration SHA-256 bbae1db91aa16bf8045bd28a504c7e2b689da2de38aa4a4834f07e2a6f665e20を静的に固定した。processCoinsはapply_daily_coin_recalculation RPCへ接続し、直接DELETE/upsert/残高再計算を撤去した。厳密payload・RPC失敗/不正応答のAppError・既存reward_processing_failed伝播を検証し、backfillとupdateCoinBalanceの直接経路は維持した。STREAK_BONUSは共有公開helperで倍率差を整数百分率へ丸め、基本UC・倍率・結果を非負safe integerかつPostgreSQL integer域へ固定してSymbol/BigIntを含む境界外をCOIN_CALCULATION_OVERFLOW/streak-bonusで拒否する。10,000歩・7日ストリークの追加分2,000 UCと既存descriptionを維持した。revision 040f1b3では旧誤差値の参照を除去し、9,999歩・1.2倍率の端数境界も維持した。ローカルではfocused 56件、全581テスト（--maxWorkers=1）、check:all、Security/PostgreSQL/コードレビューをPASS。PR #274のbaseはhimiyosh-fix-coin-stale-payloadへ更新済みで、040f1b3を含む未push revisionのGitHub検証は通常push後に確認する。保護済み件数は9/25据え置き。実catalog接続・DB適用・read/writeは未実施でF016はin-progress。",
+  "summary": "F016 badge-awards failure mapping Phase Cで、streak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorで検証し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge queryと全件shapeを固定AppErrorへ変換し、不完全データやA user fallbackを送らず主バッジ付与を維持するbest-effort境界へ分離した。生DB error/error_code/message/causeは内部report/contextへ渡さず、webhook transport自体はlib/api/teams.tsの既存best-effort処理を維持。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors。実装差分3ファイル・+410/-49・total 459。保護済み件数は9/25据え置き。DB接続/read/write/applyは未実施でF016はin-progress。badge-awards coreの依存障害分離は完了。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-20T18:17:33Z"
+    "lastVerified": "2026-07-20T22:41:30Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -33,7 +33,7 @@
     "F018レート制限APIはblocked。現行module-level MapはEdge isolate単位で、Workers KVは原子的incrementを保証しない。厳密なcross-isolate制限にはUpstash Redis、Cloudflare Rate Limiting binding、Durable Objects等の外部resource/binding作成とcredential設定が必要",
     "F021はin-progress。GROUP rankingは6→4 queries/6→4 waves、Feedは10→8/6→4、20ms固定RTTモデルは33.3%改善したが、実Supabaseログとproduction p95、更新中daily_steps/FeedのOFFSETページ間snapshot整合性は未検証",
     "F012はin-progress。公開LP・利用規約・プライバシーのja/en×5幅は30/30、公開6ページのLighthouse a11yは100だが、認証済み120ケース、安全な認証fixture、axe、VoiceOver/NVDAの主要フローは未検証",
-    "F016はin-progress。Phase 1〜6の6表を静的保護したが実catalog・migration適用は未検証。Phase 7 walking_routes、Phase 8 user_follows、Phase 9 daily_stepsは現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく、型・nullability・default・FK/PK/unique・check・owner・RLS/policy・ACL・owned sequenceを確定できないためaudit-onlyで停止。daily_stepsには旧schema snapshotがあるが現行証拠ではない。既存のwalking_routes/user_follows候補に加え、achievement・badge・title・coin backfill・following comparisonのDB error偽装は別Fix候補"
+    "F016はin-progress。Phase 1〜6の6表を静的保護したが実catalog・migration適用は未検証。Phase 7 walking_routes、Phase 8 user_follows、Phase 9 daily_stepsは現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく、型・nullability・default・FK/PK/unique・check・owner・RLS/policy・ACL・owned sequenceを確定できないためaudit-onlyで停止。daily_stepsには旧schema snapshotがあるが現行証拠ではない。badge-awardsはPhase A personalとPhase B global/group/award insertを修正済みで、streak milestone・Teams enrichmentとachievement・title・following comparisonのDB error偽装が別Fix候補。coin backfill原子RPCはPhase A migrationとPhase B app wiringを接続済みだが、実catalog未実行・DB接続/read/write/apply未実施"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -1220,7 +1220,39 @@
       "filesChanged": [
         ".github/ucfitness-progress.json"
       ]
-    }
+    },
+    {
+      "date": "2026-07-21",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016のcoin backfill failure mappingで、DB障害・不正shape・未来日・重複/非昇順・計算overflowをDELETE前に固定AppErrorで拒否し、DELETE / batch INSERT失敗後の後続writeと残高更新を停止した。空配列だけを正常no-data、0歩を有効値として維持し、生Supabase errorを例外へ連結しない。focused 56件、全602テスト（--maxWorkers=1）、check:all、Security/Code/DataレビューをPASS。非原子的なDELETE→複数batch INSERT→残高再集計は次stackのblockerとして維持し、DB接続・適用・read/writeは未実施。",
+      "commit": "1006e84f2051f3894182b248bf5882d662ce8a6d",
+      "filesChanged": ["lib/services/coin-service.ts", "lib/services/coin-service.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-21",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016の日次コイン再計算とbackfillの入力・DELETEを再生成可能なSTEPS / GOAL_BONUS / STREAK_BONUSの3種へ限定し、RANK_BONUSと他の別経路報酬を保持した。未適用migrationのfollow-up revisionとして配列上限3、RANK入力拒否、DELETE exact 3、全台帳再集計を固定し、creditBalance型・表示/i18n・A2 stale guard・7日2,000 UC・failure mappingを維持した。focused 77件、全602テスト（--maxWorkers=1）、check:all、PostgreSQL/Security/Code/DataレビューをPASS。DB接続・適用・read/writeは未実施。backfillのtransactional RPCは次stackに残す。",
+      "commit": "cbdbb5b3532338b668994b80d03fe4c9d38a3939",
+      "filesChanged": ["migrations/20260721_atomic_daily_coin_recalculation.sql", "lib/__tests__/atomic-daily-coin-recalculation-migration.test.ts", "lib/services/coin-service.ts", "lib/services/coin-service.test.ts", "README.md"]
+    },
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)","action":"F016 coin backfill原子化Phase Aでservice-role-only RPC migrationと静的契約を追加。focused 33件、全608テスト（--maxWorkers=1）、check:all、PostgreSQL/Security/Code/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors、差分4ファイル・480行。実catalog未実行・DB未適用でPhase B app wiringは未実施。","commit":"dba564474459460fdcb9484affa7bef181bff9dc","filesChanged":["migrations/20260721_atomic_historical_coin_backfill.sql","lib/__tests__/atomic-historical-coin-backfill-migration.test.ts","README.md",".github/ucfitness-progress.json"]},
+    {
+      "date": "2026-07-21",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 coin backfill原子化Phase Bで、直接DELETE・1000件batch INSERT・updateCoinBalance呼出しを撤去し、exact 4-key全履歴payloadをapply_coin_backfillへ1回だけ渡すよう接続した。既存検証・0歩・7日2,000 UC・descriptionを維持し、RPC失敗と不正応答を生error非露出の固定AppErrorで拒否した。migration SHAとdirect writer不在を静的契約化し、focused 90件、全615テスト（--maxWorkers=1）、check:all、PostgreSQL/Security/Code/Data/Self-CritiqueレビューをPASS。実catalog未実行・DB接続/read/write/apply未実施。",
+      "commit": "d93af870a30efa8804470956d6026f877d52ae05",
+      "filesChanged": ["lib/services/coin-service.ts", "lib/services/coin-service.test.ts", "lib/__tests__/atomic-historical-coin-backfill-migration.test.ts", "lib/__tests__/coin-transactions-rls-migration.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-21",
+      "agent": "UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)",
+      "action": "F016 badge-awards failure mapping Phase Aで、日付入力とpersonal badgeのactive users / users / batch totals / 30日historyを固定AppErrorへ分離した。exact membership、重複・foreign・safe integer・step_goal・history範囲を検証し、0歩・0日・空historyを維持、生Supabase error非露出、dependency失敗後のpersonal insert・通知停止を固定した。focused 58件、全647テスト（--maxWorkers=1）、check:all、Security/Code/DataレビューをPASS。global/group/award insertは次Phase、DB接続/read/write/applyは未実施。",
+      "commit": "f3b2760ee32603ffb654693e459f36eaacb0bb35",
+      "filesChanged": ["lib/services/badge-awards.ts", "lib/__tests__/badge-awards.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"badge-awards Phase A follow-upで、4依存の生Supabase errorを内部reportErrorへ渡す漏洩を除去し、固定AppErrorだけをCron callerへ伝播した。secret sentinelをmessage/detailsへ含むDB errorでもAppErrorのmessage/context/cause/String/JSONへ露出せず、Phase A内部reportError未呼出を固定した。focused 58件、全647テスト（--maxWorkers=1）、check:all、Security/Code/DataレビューをPASS。既存global/group/award/streak loggingは未変更。DB接続/read/write/applyなし。","commit":"1fec1aac37229a88cc4348b7d6df638404ce3638","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts",".github/copilot-instructions.md","README.md",".github/ucfitness-progress.json"]},
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Bでglobal/group ranking、groups、group members、award insertを固定AppErrorへ分離した。生Supabase errorを内部report/causeへ渡さず、row shape・foreign・重複・safe integer・集計overflowを拒否し、0歩・空集合・記録なし・23505既付与を維持した。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。残る範囲はstreak milestoneとTeams enrichment。DB接続/read/write/applyなし。","commit":"67cea5b8a816008366f271d5e81f8a57cd1b02de","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]},
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Cでstreak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorへ分離し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge全件検証を固定AppErrorのbest-effort境界へ分離し、不完全データやA user fallbackを送らず主付与を維持した。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。実装差分3ファイル・459行。DB接続/read/write/applyなし。badge-awards core完了、webhook transportはlib/api/teams.tsの既存best-effort処理を維持。","commit":"839a52e67d51847ee44fec5bfb8a6ccce9d589bf","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",

@@ -37,8 +37,12 @@ interface DailyCoinTransaction {
     description: string;
 }
 
-interface DailyCoinRecalculationResult {
+interface SuccessfulCoinMutationResult {
     success: true;
+}
+
+interface BackfillCoinTransaction extends DailyCoinTransaction {
+    date: string;
 }
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
@@ -59,9 +63,9 @@ function isValidIsoDate(value: unknown): value is string {
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-function isSuccessfulDailyCoinRecalculation(
+function isSuccessfulCoinMutation(
     value: unknown,
-): value is DailyCoinRecalculationResult {
+): value is SuccessfulCoinMutationResult {
     return isRecord(value)
         && value.success === true
         && Object.keys(value).length === 1;
@@ -80,9 +84,27 @@ const COIN_ERRORS = {
     'recalculate-balance': ['Failed to recalculate coin balance', 'COIN_BALANCE_RECALCULATION_FAILED'],
 } as const;
 
+const COIN_BACKFILL_ERRORS = {
+    'user-query': ['Failed to load coin backfill user', 'COIN_BACKFILL_USER_QUERY_FAILED', 'user'],
+    'user-data': ['Invalid coin backfill user data', 'COIN_BACKFILL_USER_INVALID_DATA', 'user'],
+    'steps-query': ['Failed to load coin backfill steps', 'COIN_BACKFILL_STEPS_QUERY_FAILED', 'steps'],
+    'steps-data': ['Invalid coin backfill steps data', 'COIN_BACKFILL_STEPS_INVALID_DATA', 'steps'],
+    'apply-backfill': ['Failed to apply coin backfill', 'COIN_BACKFILL_RPC_FAILED', 'apply-backfill'],
+    'apply-backfill-response': ['Coin backfill returned an invalid result', 'COIN_BACKFILL_INVALID_RESPONSE', 'apply-backfill-response'],
+} as const;
+
 function coinProcessingError(stage: keyof typeof COIN_ERRORS): AppError {
     const [message, code] = COIN_ERRORS[stage];
     return new AppError(message, code, { stage: stage.replace(/-query$/, '') });
+}
+
+function coinBackfillError(
+    errorType: keyof typeof COIN_BACKFILL_ERRORS,
+    userId: string,
+    context: Record<string, unknown> = {},
+): AppError {
+    const [message, code, stage] = COIN_BACKFILL_ERRORS[errorType];
+    return new AppError(message, code, { userId, stage, ...context });
 }
 
 function parseStreakHistory(
@@ -136,6 +158,95 @@ function calculateSafeCoinAmount(value: number, stage: string): number {
         throw coinCalculationOverflow(stage);
     }
     return amount;
+}
+
+function parseBackfillSteps(value: unknown, userId: string, currentDate: string): StreakHistoryRow[] {
+    if (!Array.isArray(value)) {
+        throw coinBackfillError('steps-data', userId);
+    }
+
+    const seenDates = new Set<string>();
+    let previousDate: string | null = null;
+    return value.map((row) => {
+        if (
+            !isRecord(row)
+            || !isValidIsoDate(row.date)
+            || !isNonnegativeSafeInteger(row.steps)
+            || row.date > currentDate
+            || seenDates.has(row.date)
+            || (previousDate !== null && row.date < previousDate)
+        ) {
+            throw coinBackfillError('steps-data', userId);
+        }
+        seenDates.add(row.date);
+        previousDate = row.date;
+        return { date: row.date, steps: row.steps };
+    });
+}
+
+function buildBackfillTransactions(
+    allSteps: StreakHistoryRow[],
+    stepGoal: number,
+): { transactions: BackfillCoinTransaction[]; currentStreak: number } {
+    let streak = 0;
+    let previousDate: Date | null = null;
+    const transactions: BackfillCoinTransaction[] = [];
+
+    for (const { date, steps } of allSteps) {
+        const currentDate = new Date(`${date}T00:00:00Z`);
+        if (previousDate !== null) {
+            const diffDays = Math.round(
+                (currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24),
+            );
+            if (diffDays === 1 && steps >= stepGoal) {
+                streak++;
+            } else {
+                streak = steps >= stepGoal ? 1 : 0;
+            }
+        } else {
+            streak = steps >= stepGoal ? 1 : 0;
+        }
+
+        const baseCoins = calculateSafeCoinAmount(steps * BASE_RATE, 'base-coins');
+        transactions.push({
+            date,
+            type: 'STEPS',
+            amount: baseCoins,
+            description: `${steps} steps × ${BASE_RATE} UC`,
+        });
+
+        if (steps >= stepGoal) {
+            const goalBonus = calculateSafeCoinAmount(baseCoins * GOAL_BONUS_RATE, 'goal-bonus');
+            if (goalBonus > 0) {
+                transactions.push({
+                    date,
+                    type: 'GOAL_BONUS',
+                    amount: goalBonus,
+                    description: `Goal achieved bonus (+${Math.round(GOAL_BONUS_RATE * 100)}%)`,
+                });
+            }
+        }
+
+        const multiplier = getStreakMultiplier(streak);
+        if (multiplier > 1.0) {
+            const streakBonus = calculateStreakBonus(baseCoins, multiplier);
+            if (streakBonus > 0) {
+                transactions.push({
+                    date,
+                    type: 'STREAK_BONUS',
+                    amount: streakBonus,
+                    description: `${streak}-day streak bonus (×${multiplier})`,
+                });
+            }
+        }
+
+        previousDate = currentDate;
+    }
+
+    return {
+        transactions,
+        currentStreak: calculateSafeCoinAmount(streak, 'backfill-streak'),
+    };
 }
 
 function coinCalculationOverflow(stage: string): AppError {
@@ -228,7 +339,7 @@ export async function processCoins(userId: string, steps: number, date: string):
     if (error !== null) {
         throw coinProcessingError('apply-daily-recalculation');
     }
-    if (!isSuccessfulDailyCoinRecalculation(data)) {
+    if (!isSuccessfulCoinMutation(data)) {
         throw coinProcessingError('apply-daily-recalculation-response');
     }
 }
@@ -305,6 +416,8 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
 /**
  * コイン残高を再集計して更新
  */
+// Phase Bでは直接呼ばないが、既存helperを削除しない契約のため保持する。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function updateCoinBalance(userId: string, currentStreak: number): Promise<void> {
     const { error } = await supabaseAdmin.rpc('recalculate_coin_balance', {
         p_user_id: userId,
@@ -494,8 +607,7 @@ export async function getCoinLeaderboard(limit: number = 10) {
 /**
  * 既存の歩数データからコインを一括計算（初回マイグレーション用）
  */
-export async function backfillCoinsForUser(userId: string) {
-    // ⚡ 独立した2クエリを並列実行
+export async function backfillCoinsForUser(userId: string): Promise<void> {
     const [userResult, stepsResult] = await Promise.all([
         supabaseAdmin
             .from('users')
@@ -509,102 +621,36 @@ export async function backfillCoinsForUser(userId: string) {
             .order('date', { ascending: true }),
     ]);
 
-    const stepGoal = userResult.data?.step_goal || 10000;
-    const allSteps = stepsResult.data;
+    if (userResult.error !== null) {
+        throw coinBackfillError('user-query', userId);
+    }
+    if (!isRecord(userResult.data) || !isValidStepGoal(userResult.data.step_goal)) {
+        throw coinBackfillError('user-data', userId);
+    }
+    if (stepsResult.error !== null) {
+        throw coinBackfillError('steps-query', userId);
+    }
 
-    if (!allSteps || allSteps.length === 0) {
+    const allSteps = parseBackfillSteps(stepsResult.data, userId, getJSTDateString());
+    if (allSteps.length === 0) {
         return;
     }
+    const { transactions, currentStreak } = buildBackfillTransactions(
+        allSteps,
+        userResult.data.step_goal,
+    );
 
-    // 既存の歩数系トランザクションのみ削除（PURCHASE等は保持）
-    await supabaseAdmin
-        .from('coin_transactions')
-        .delete()
-        .eq('user_id', userId)
-        .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
-
-    // ストリークを追跡しながらコインを計算
-    let streak = 0;
-    const transactions: {
-        user_id: string;
-        date: string;
-        type: string;
-        amount: number;
-        description: string;
-    }[] = [];
-
-    let prevDate: Date | null = null;
-
-    for (const { date, steps } of allSteps) {
-        const currentDate = new Date(`${date}T00:00:00Z`);
-
-        // ストリーク計算：前日と連続しているか確認
-        if (prevDate) {
-            const diffDays = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
-            if (diffDays === 1 && steps >= stepGoal) {
-                streak++;
-            } else if (steps >= stepGoal) {
-                streak = 1;
-            } else {
-                streak = 0;
-            }
-        } else {
-            streak = steps >= stepGoal ? 1 : 0;
-        }
-
-        const baseCoins = Math.floor(steps * BASE_RATE);
-        transactions.push({
-            user_id: userId,
-            date,
-            type: 'STEPS',
-            amount: baseCoins,
-            description: `${steps} steps × ${BASE_RATE} UC`,
-        });
-
-        if (steps >= stepGoal) {
-            const goalBonus = Math.floor(baseCoins * GOAL_BONUS_RATE);
-            if (goalBonus > 0) {
-                transactions.push({
-                    user_id: userId,
-                    date,
-                    type: 'GOAL_BONUS',
-                    amount: goalBonus,
-                    description: `Goal achieved bonus (+${Math.round(GOAL_BONUS_RATE * 100)}%)`,
-                });
-            }
-        }
-
-        const multiplier = getStreakMultiplier(streak);
-        if (multiplier > 1.0) {
-            const streakBonus = calculateStreakBonus(baseCoins, multiplier);
-            if (streakBonus > 0) {
-                transactions.push({
-                    user_id: userId,
-                    date,
-                    type: 'STREAK_BONUS',
-                    amount: streakBonus,
-                    description: `${streak}-day streak bonus (×${multiplier})`,
-                });
-            }
-        }
-
-        prevDate = currentDate;
+    const { data, error } = await supabaseAdmin.rpc('apply_coin_backfill', {
+        p_user_id: userId,
+        p_current_streak: currentStreak,
+        p_transactions: transactions,
+    });
+    if (error !== null) {
+        throw coinBackfillError('apply-backfill', userId);
     }
-
-    // バッチ挿入（Supabaseの制限に注意: 1000件ずつ）
-    const BATCH_SIZE = 1000;
-    for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
-        const batch = transactions.slice(i, i + BATCH_SIZE);
-        const { error } = await supabaseAdmin
-            .from('coin_transactions')
-            .insert(batch);
-        if (error) {
-            reportError('backfillCoinsForUser:batchInsert', error, { userId, offset: i, batchSize: batch.length });
-        }
+    if (!isSuccessfulCoinMutation(data)) {
+        throw coinBackfillError('apply-backfill-response', userId);
     }
-
-    // 残高更新
-    await updateCoinBalance(userId, streak);
 }
 
 // ============================================

@@ -43,6 +43,53 @@ function expectStreakBonusOverflow(action: () => void): void {
     throw new Error('Expected streak bonus calculation to throw');
 }
 
+async function expectBackfillError(
+    promise: Promise<unknown>,
+    code: string,
+    stage: string,
+    context: Record<string, unknown> = {},
+): Promise<void> {
+    try {
+        await promise;
+    } catch (error: unknown) {
+        if (!(error instanceof AppError)) {
+            throw new Error('Expected backfill to throw AppError');
+        }
+        expect(error).toMatchObject({
+            code,
+            message: expect.not.stringContaining('database-secret'),
+            context: { userId: 'user-1', stage, ...context },
+        });
+        expect(error.context).toEqual({ userId: 'user-1', stage, ...context });
+        expect(error.cause).toBeUndefined();
+        expect(JSON.stringify(error)).not.toContain('database-secret');
+        expect(mocks.reportError).not.toHaveBeenCalled();
+        return;
+    }
+    throw new Error('Expected backfill to throw');
+}
+
+function expectNoBackfillWrites(): void {
+    expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
+    expect(mocks.coinDeleteIn).not.toHaveBeenCalled();
+    expect(mocks.coinInsert).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+}
+
+function expectNoDirectBackfillWrites(): void {
+    expect(mocks.from).not.toHaveBeenCalledWith('coin_transactions');
+    expect(mocks.coinDeleteIn).not.toHaveBeenCalled();
+    expect(mocks.coinInsert).not.toHaveBeenCalled();
+}
+
+function createStepHistory(count: number): Array<{ date: string; steps: number }> {
+    return Array.from({ length: count }, (_, offset) => {
+        const date = new Date('2020-01-01T00:00:00Z');
+        date.setUTCDate(date.getUTCDate() + offset);
+        return { date: date.toISOString().slice(0, 10), steps: 0 };
+    });
+}
+
 function createBigIntForRuntimeBoundary(value: number): unknown {
     const bigIntConstructor = Reflect.get(globalThis, 'BigInt');
     if (typeof bigIntConstructor !== 'function') {
@@ -283,23 +330,188 @@ describe('coin-service', () => {
         expect(mocks.reportError).not.toHaveBeenCalled();
     });
 
-    it('backfillCoinsForUser_7日ストリークの追加分を整数百分率で計算する', async () => {
-        const history = Array.from({ length: 7 }, (_, offset) => {
-            const date = new Date('2026-07-14T00:00:00Z');
-            date.setUTCDate(date.getUTCDate() + offset);
-            return { date: date.toISOString().slice(0, 10), steps: 10_000 };
+    describe('backfillCoinsForUser', () => {
+        it.each([
+            ['query error', { data: null, error: { message: 'database-secret' } }, 'COIN_BACKFILL_USER_QUERY_FAILED'],
+            ['null data', ok(null), 'COIN_BACKFILL_USER_INVALID_DATA'],
+            ['missing goal', ok({}), 'COIN_BACKFILL_USER_INVALID_DATA'],
+            ['invalid goal', ok({ step_goal: 0 }), 'COIN_BACKFILL_USER_INVALID_DATA'],
+        ])('user_%sの場合_固定AppErrorで台帳処理前に拒否する', async (
+            _label,
+            result,
+            code,
+        ) => {
+            mocks.userSingle.mockResolvedValueOnce(result);
+            await expectBackfillError(backfillCoinsForUser('user-1'), code, 'user');
+            expectNoBackfillWrites();
         });
-        mocks.allStepsOrder.mockResolvedValueOnce(ok(history));
 
-        await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
+        it('daily_steps_query errorの場合_固定AppErrorで台帳処理前に拒否する', async () => {
+            mocks.allStepsOrder.mockResolvedValueOnce({
+                data: null,
+                error: { message: 'database-secret' },
+            });
+            await expectBackfillError(
+                backfillCoinsForUser('user-1'),
+                'COIN_BACKFILL_STEPS_QUERY_FAILED',
+                'steps',
+            );
+            expectNoBackfillWrites();
+        });
 
-        expect(mocks.coinInsert).toHaveBeenCalledWith(expect.arrayContaining([
-            expect.objectContaining({
-                type: 'STREAK_BONUS',
-                amount: 2_000,
-                description: '7-day streak bonus (×1.2)',
-            }),
-        ]));
+        it.each([
+            ['null', null],
+            ['non-array', {}],
+            ['invalid row', [null]],
+            ['invalid date', [{ date: '2026-02-30', steps: 1 }]],
+            ['negative steps', [{ date: TODAY, steps: -1 }]],
+            ['noninteger steps', [{ date: TODAY, steps: 1.5 }]],
+            ['non-safe steps', [{ date: TODAY, steps: Number.MAX_SAFE_INTEGER + 1 }]],
+            ['duplicate date', [{ date: '2026-07-19', steps: 1 }, { date: '2026-07-19', steps: 2 }]],
+            ['out-of-order date', [{ date: TODAY, steps: 1 }, { date: '2026-07-19', steps: 2 }]],
+            ['future date', [{ date: '9999-01-01', steps: 1 }]],
+        ])('daily_steps_%sの場合_固定AppErrorで台帳処理前に拒否する', async (
+            _label,
+            data,
+        ) => {
+            mocks.allStepsOrder.mockResolvedValueOnce(ok(data));
+            await expectBackfillError(
+                backfillCoinsForUser('user-1'),
+                'COIN_BACKFILL_STEPS_INVALID_DATA',
+                'steps',
+            );
+            expectNoBackfillWrites();
+        });
+
+        it('daily_stepsが空配列の場合_正常no-dataとして書き込まない', async () => {
+            await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
+            expectNoBackfillWrites();
+        });
+
+        it('daily_stepsに記録済み0歩がある場合_exact payloadを原子RPCへ渡す', async () => {
+            mocks.allStepsOrder.mockResolvedValueOnce(ok([{ date: TODAY, steps: 0 }]));
+            await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expect(mocks.rpc).toHaveBeenCalledWith('apply_coin_backfill', {
+                p_user_id: 'user-1',
+                p_current_streak: 0,
+                p_transactions: [{
+                    date: TODAY,
+                    type: 'STEPS',
+                    amount: 0,
+                    description: '0 steps × 1 UC',
+                }],
+            });
+            expectNoDirectBackfillWrites();
+        });
+
+        it('計算結果がPostgreSQL integer範囲を超える場合_DELETE前に拒否する', async () => {
+            mocks.allStepsOrder.mockResolvedValueOnce(ok([{
+                date: TODAY,
+                steps: 2_147_483_648,
+            }]));
+            await expectAppError(
+                backfillCoinsForUser('user-1'),
+                'COIN_CALCULATION_OVERFLOW',
+                'base-coins',
+            );
+            expectNoBackfillWrites();
+        });
+
+        it('原子RPCに失敗した場合_固定AppErrorでdirect writerへfallbackしない', async () => {
+            mocks.allStepsOrder.mockResolvedValueOnce(ok([{ date: TODAY, steps: 0 }]));
+            mocks.rpc.mockResolvedValueOnce({
+                data: null,
+                error: { message: 'database-secret' },
+            });
+            await expectBackfillError(
+                backfillCoinsForUser('user-1'),
+                'COIN_BACKFILL_RPC_FAILED',
+                'apply-backfill',
+            );
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expectNoDirectBackfillWrites();
+        });
+
+        it.each([
+            undefined,
+            null,
+            false,
+            [],
+            {},
+            { success: false },
+            { success: true, written_count: 1 },
+        ])('原子RPCが不正な応答を返した場合_固定AppErrorで拒否する: %j', async (response) => {
+            mocks.allStepsOrder.mockResolvedValueOnce(ok([{ date: TODAY, steps: 0 }]));
+            mocks.rpc.mockResolvedValueOnce(ok(response));
+            await expectBackfillError(
+                backfillCoinsForUser('user-1'),
+                'COIN_BACKFILL_INVALID_RESPONSE',
+                'apply-backfill-response',
+            );
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expectNoDirectBackfillWrites();
+        });
+
+        it('1000件を超えるpayloadの場合_分割せず原子RPCを1回だけ呼ぶ', async () => {
+            mocks.allStepsOrder.mockResolvedValueOnce(ok(createStepHistory(2001)));
+            await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expect(mocks.rpc).toHaveBeenCalledWith('apply_coin_backfill', {
+                p_user_id: 'user-1',
+                p_current_streak: 0,
+                p_transactions: expect.arrayContaining([
+                    {
+                        date: '2020-01-01',
+                        type: 'STEPS',
+                        amount: 0,
+                        description: '0 steps × 1 UC',
+                    },
+                ]),
+            });
+            expect(mocks.rpc.mock.calls[0]?.[1]?.p_transactions).toHaveLength(2001);
+            expectNoDirectBackfillWrites();
+        });
+
+        it('7日ストリークをbackfillする場合_exact 4 keysと2,000 UCを維持する', async () => {
+            const history = Array.from({ length: 7 }, (_, offset) => {
+                const date = new Date('2026-07-14T00:00:00Z');
+                date.setUTCDate(date.getUTCDate() + offset);
+                return { date: date.toISOString().slice(0, 10), steps: 10_000 };
+            });
+            mocks.allStepsOrder.mockResolvedValueOnce(ok(history));
+
+            await expect(backfillCoinsForUser('user-1')).resolves.toBeUndefined();
+
+            expect(mocks.rpc).toHaveBeenCalledTimes(1);
+            expect(mocks.rpc).toHaveBeenCalledWith('apply_coin_backfill', {
+                p_user_id: 'user-1',
+                p_current_streak: 7,
+                p_transactions: expect.arrayContaining([{
+                    date: TODAY,
+                    type: 'STREAK_BONUS',
+                    amount: 2_000,
+                    description: '7-day streak bonus (×1.2)',
+                }]),
+            });
+            const transactions = mocks.rpc.mock.calls[0]?.[1]?.p_transactions;
+            if (!Array.isArray(transactions)) {
+                throw new Error('Expected backfill transaction payload');
+            }
+            for (const transaction of transactions) {
+                if (typeof transaction !== 'object' || transaction === null || Array.isArray(transaction)) {
+                    throw new Error('Expected backfill transaction object');
+                }
+                expect(Object.keys(transaction).sort()).toEqual([
+                    'amount', 'date', 'description', 'type',
+                ]);
+            }
+            expect(transactions).not.toEqual(expect.arrayContaining([
+                expect.objectContaining({ type: 'RANK_BONUS' }),
+            ]));
+            expectNoDirectBackfillWrites();
+            expect(mocks.reportError).not.toHaveBeenCalled();
+        });
     });
 
     it('processCoins_基本コイン計算がDBまたはsafe integer範囲を超える場合_台帳処理前に拒否する', async () => {
