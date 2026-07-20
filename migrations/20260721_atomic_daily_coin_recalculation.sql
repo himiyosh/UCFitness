@@ -253,6 +253,14 @@ BEGIN
         RAISE EXCEPTION 'Invalid daily coin transaction shape';
     END IF;
 
+    IF EXISTS (SELECT 1 FROM public.coin_transactions AS existing
+        LEFT JOIN jsonb_to_recordset(p_transactions) AS input(type text, amount numeric, description text)
+          ON input.type = existing.type
+        WHERE existing.user_id = p_user_id AND existing.date = p_date AND existing.type = 'STEPS'
+          AND existing.amount > COALESCE(input.amount, 0)) THEN
+        RAISE EXCEPTION 'Stale daily coin recalculation cannot reduce earned coins';
+    END IF;
+
     IF EXISTS (
         SELECT 1
         FROM jsonb_to_recordset(p_transactions)

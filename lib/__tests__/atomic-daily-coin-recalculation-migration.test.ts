@@ -7,9 +7,7 @@ import { describe, expect, it } from 'vitest';
 const readRepositoryFile = (path: string): string => readFileSync(join(process.cwd(), path), 'utf8');
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const migration = readRepositoryFile('migrations/20260721_atomic_daily_coin_recalculation.sql');
-const functionBody = migration.match(
-    /CREATE FUNCTION public\.apply_daily_coin_recalculation[\s\S]+?AS \$function\$([\s\S]+?)\$function\$;/,
-)?.[1] ?? '';
+const functionBody = migration.match(/CREATE FUNCTION public\.apply_daily_coin_recalculation[\s\S]+?AS \$function\$([\s\S]+?)\$function\$;/)?.[1] ?? '';
 
 describe('atomic daily coin recalculation migration', () => {
     it('依存migration_変更されていない場合_hash契約を維持する', () => {
@@ -27,9 +25,7 @@ describe('atomic daily coin recalculation migration', () => {
         expect(migration).toMatch(/^BEGIN;/);
         expect(migration).toMatch(/COMMIT;\s*$/);
         expect(migration).toContain("SET LOCAL search_path = ''");
-        expect(migration).toContain(
-            'LOCK TABLE public.users, public.coin_transactions, public.coin_balances',
-        );
+        expect(migration).toContain('LOCK TABLE public.users, public.coin_transactions, public.coin_balances');
         expect(migration.indexOf('DO $preconditions$')).toBeLessThan(migration.indexOf('CREATE FUNCTION'));
         expect(migration).not.toMatch(/\b(?:CREATE|ALTER)\s+TABLE\b/i);
         for (const evidence of [
@@ -53,11 +49,11 @@ describe('atomic daily coin recalculation migration', () => {
         ]) {
             expect(migration).toContain(`public.${signature}`);
         }
-        const lockIndex = functionBody.indexOf(
-            'PERFORM 1 FROM public.users WHERE id = p_user_id FOR UPDATE',
-        );
+        const lockIndex = functionBody.indexOf('PERFORM 1 FROM public.users WHERE id = p_user_id FOR UPDATE');
+        const monotonicIndex = functionBody.indexOf('existing.amount > COALESCE(input.amount, 0)');
         expect(lockIndex).toBeGreaterThan(-1);
-        expect(lockIndex).toBeLessThan(functionBody.indexOf('DELETE FROM public.coin_transactions'));
+        expect(lockIndex).toBeLessThan(monotonicIndex);
+        expect(monotonicIndex).toBeLessThan(functionBody.indexOf('DELETE FROM public.coin_transactions'));
         expect(lockIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_transactions'));
         expect(lockIndex).toBeLessThan(functionBody.indexOf('INSERT INTO public.coin_balances'));
     });
@@ -71,7 +67,7 @@ describe('atomic daily coin recalculation migration', () => {
             'amount < 0 OR amount <> trunc(amount) OR amount > 2147483647', 'total_balance > 9007199254740991',
             "type <> 'STEPS' AND amount = 0", "'coins:' || p_user_id::text", 'user does not exist',
             'existing.user_id <> p_user_id', 'existing.date <> p_date', 'existing.type <> input.type',
-            'written_count <> jsonb_array_length(p_transactions)', "WHERE type = 'STEPS'",
+            'written_count <> jsonb_array_length(p_transactions)', "WHERE type = 'STEPS'", "existing.type = 'STEPS'",
         ]) expect(functionBody).toContain(evidence);
     });
 
