@@ -79,6 +79,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
+- **フォロー歩数比較の表示契約**: 日別チャートは記録済み0歩を基準線上の点、未記録を線の切れ目として表示し、tooltipと読み上げ用数値表でも両者を区別する
 - **公開プロフィールAPIの入力契約**: Achievement進捗と年間歩数カレンダーは認証を要求しつつ、UUID検証済みの公開target `userId`をそのまま照会する。フォロー状態と公開リアクションもtarget UUID・emoji・periodをDB操作前に検証する。プロフィール/バナー画像の保存拡張子は元ファイル名ではなく検証済みMIMEから決定し、`contentType`と一致させる
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
@@ -338,9 +339,11 @@ RLS変更とは分離すべき高確度のerror fallbackも監査した。
 | 経路 | 現行のDB障害時挙動 | 別Fix候補 |
 |---|---|---|
 | `POST /api/user/follow`の対象ユーザー確認 | `PGRST116`だけを404とし、その他のDB障害と`null/null`は登録前に報告して500 | 修正済み |
-| `GET /api/user/followers`のプロフィール取得 | `users`照会errorを取得せず欠落行または空の200へ変換 | 取得不能を空状態から分離 |
-| `GET /api/user/following-comparison` | `user_follows`照会errorを空比較へ、users/steps errorを`Unknown`/0歩へ変換 | 各errorを報告して非成功応答 |
+| `GET /api/user/followers`のプロフィール取得 | `users`照会error・不正null・プロフィール欠落を報告し、空状態へ変換せず500 | 修正済み |
+| `GET /api/user/following-comparison` | follows/users/steps照会error・不正null・プロフィール欠落を報告し、空比較・`Unknown`・0歩へ変換せず500 | 修正済み |
 | group invite anti-abuse | `PGRST116`だけを403とし、その他のDB障害と`null/null`は招待・legacy同期前に報告して500 | 修正済み |
+
+社会データのDB障害は空配列・`Unknown`・0歩へ偽装しない。歩数照会が成功した場合に限り、日付ごとの合法的な未記録は既存API互換として0歩で返し、`dailySteps.hasRecord`で記録済み0歩と区別する。
 
 migration設計前に、DB管理者が承認したread-only接続で次を保存する。結果に未知の列、
 制約、policy、grantee、owner、BYPASSRLS、sequenceがあれば設計を中止して個別に確認する。
