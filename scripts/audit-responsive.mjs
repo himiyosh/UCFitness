@@ -260,7 +260,7 @@ async function auditLandingMobileMenu(page, route, viewport) {
     escapeClosed: true,
     escapeReturnedFocus: true,
   };
-  if (route.name !== 'home' || viewport.width > 375) return notApplicable;
+  if (scope !== 'public' || route.name !== 'home' || viewport.width > 375) return notApplicable;
   const trigger = page.locator('[data-landing-mobile-nav-trigger]');
   const menu = page.locator('[data-landing-mobile-nav]');
   if (await trigger.count() !== 1 || await menu.count() !== 1) {
