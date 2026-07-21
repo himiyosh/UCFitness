@@ -82,15 +82,19 @@ export function LandingHeaderControls({
                 </ul>
             </nav>
             <details className="group relative lg:hidden" onKeyDown={handleMobileNavKeyDown}>
-                <summary className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                <summary
+                    data-landing-mobile-nav-trigger
+                    className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden"
+                >
                     <span className="sr-only">{navLabel}</span>
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                         <path strokeLinecap="round" d="M5 7h14M5 12h14M5 17h14" />
                     </svg>
                 </summary>
                 <nav
+                    data-landing-mobile-nav
                     aria-label={navLabel}
-                    className="absolute right-0 top-[calc(100%+0.5rem)] z-30 hidden w-52 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg group-open:block"
+                    className="fixed inset-x-4 top-16 z-30 hidden max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg group-open:block sm:left-auto sm:right-6 sm:top-[4.5rem] sm:w-72"
                 >
                     <ul className="grid gap-1">
                         {navItems.map((item) => (
