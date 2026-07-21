@@ -33,6 +33,7 @@
     "F018レート制限APIはblocked。現行module-level MapはEdge isolate単位で、Workers KVは原子的incrementを保証しない。厳密なcross-isolate制限にはUpstash Redis、Cloudflare Rate Limiting binding、Durable Objects等の外部resource/binding作成とcredential設定が必要",
     "F021はin-progress。GROUP rankingは6→4 queries/6→4 waves、Feedは10→8/6→4、20ms固定RTTモデルは33.3%改善したが、実Supabaseログとproduction p95、更新中daily_steps/FeedのOFFSETページ間snapshot整合性は未検証",
     "F012はin-progress。公開LP・利用規約・プライバシーのja/en×5幅は30/30、公開6ページのLighthouse a11yは100だが、認証済み120ケース、安全な認証fixture、axe、VoiceOver/NVDAの主要フローは未検証",
+    "F030はin-progress。Phase 2の発行・参加UI、ja/en、実ブラウザ、security/a11y検証は完了したが、招待migrationは本番Supabase未適用で、joinの厳密なcross-isolate rate limitにはF018と同じ外部resource/bindingが必要",
     "F016はin-progress。Phase 1〜6の6表を静的保護したが実catalog・migration適用は未検証。Phase 7 walking_routes、Phase 8 user_follows、Phase 9 daily_stepsは現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく、型・nullability・default・FK/PK/unique・check・owner・RLS/policy・ACL・owned sequenceを確定できないためaudit-onlyで停止。daily_stepsには旧schema snapshotがあるが現行証拠ではない。既存のwalking_routes/user_follows候補に加え、achievement・badge・title・coin backfill・following comparisonのDB error偽装は別Fix候補",
     "F015はin-progress。Fitbit歩数GETの429・5xx・通信障害再試行と認証/手動同期/Cron境界は実装・検証済みだが、sync_errorsテーブルと管理画面での失敗可視化は未実装"
   ],
@@ -54,7 +55,7 @@
       "date": "2026-05-23",
       "agent": "UCFitnessAgent",
       "action": "監査結果対応 — FrameSelector Hooks 違反修正、CreateChallengeModal の a11y/i18n 改善、Push subscribe API 統一、URL allowlist/CSP/rate-limit/log redaction/API key hash migration/画像署名検証/CI/hooks 安全化/README・Skill・Agent 整合性修正を実施。",
-      "commit": "",
+      "commit": "d6747f0d7e2d79ac8c8e185ff9ad1ce247289593",
       "filesChanged": [
         "components/FrameSelector.tsx",
         "components/challenge/CreateChallengeModal.tsx",
@@ -1119,6 +1120,20 @@
     },
     {
       "date": "2026-07-19",
+      "agent": "UCFitnessAgent (PostgreSQL + Security + QA)",
+      "action": "F030を500行上限で安全に分割し、Phase 1としてOWNER/ADMINだけの7日招待発行、256-bit tokenのSHA-256 hash-only保存、グループ・ユーザー・招待をロックする原子的参加、group_keyword同期、Edge APIと回帰テストを実装。UI・ja/en・実ブラウザはstacked Phase 2へ継続。本番migration未適用。",
+      "commit": "",
+      "filesChanged": [
+        "migrations/20260719_add_group_invite_links.sql",
+        "app/api/group/invite/route.ts",
+        "app/api/group/invite/route.test.ts",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-19",
       "agent": "UCFitnessAgent (Recovery + Hallmark + Accessibility + QA + Self-Critique)",
       "action": "破損した旧UI/UX改善セッションの未コミット差分を現branchへSHA-256一致で復元。公開LPの装飾用無限オービットを削除し、Journey/Showcaseの重複ラベルとカード装飾を圧縮、モバイルナビをviewport基準の固定パネルへ変更した。公開監査へメニューの表示・viewport整列・44px・Escape閉鎖/焦点復帰を追加。30/30公開監査、全355テスト、check:all、375/1280実画面、Mobile Beginner/Accessibility Keyboard、独立自己批判をPASS。",
       "commit": "65baa9375831843636c2215a7b4c7ebca6167d5c",
@@ -1157,6 +1172,21 @@
       "filesChanged": [
         "migrations/20260720_harden_api_keys_rls.sql",
         "lib/__tests__/api-keys-rls-migration.test.ts",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (React + Security + Accessibility + QA + Self-Critique)",
+      "action": "F030 Phase 2を発行UIと参加UIの2段stacked PRへ分割。OWNER/ADMIN限定発行、7日URL、Clipboard fallback、Web Share、fragment即時削除、memory retry、404/410/既参加/未認証/通信/サービス障害の分離を実装した。320/375/768/1280px、keyboard、reduced motion、Mobile Beginner、Accessibility Keyboard、独立security/a11y/code review、check:all、全369テストをPASS。本番migrationは未適用。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/groups/invite/page.tsx",
+        "components/group/GroupInviteJoinClient.tsx",
+        "messages/ja.json",
+        "messages/en.json",
         "README.md",
         ".github/ucfitness-features.json",
         ".github/ucfitness-progress.json"

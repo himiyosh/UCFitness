@@ -453,6 +453,7 @@ export default async function GroupDetailPage(props: GroupDetailPageProps): Prom
                             <GroupHeaderActions
                                 group={group}
                                 isOwner={isOwner}
+                                canCreateInviteLinks={isOwnerOrAdmin}
                                 members={members}
                                 membersUnavailable={membersUnavailable}
                                 membersIncomplete={membersIncomplete}
