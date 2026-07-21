@@ -474,12 +474,12 @@ UCFitness は**フィットネスゲーム**であり、ユーザーが**毎日�
 ### dev サーバー起動ルール（ポート 3000 必須）
 
 - **NextAuth の OAuth コールバック URL が `localhost:3000` に固定されているため、dev サーバーは必ずポート 3000 で起動すること**
-- ポート 3000 が他のプロセスに使用されている場合は、**先にそのプロセスをキルしてから起動する**:
+- ユーザー向けの手動devサーバーを起動する場合、ポート 3000 が他のプロセスに使用されていれば、**先にそのプロセスをキルしてから起動する**:
   ```powershell
   Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
   ```
 - `npm run dev` は自動的にポート 3000 を使用する。ポート競合で 3001 等にフォールバックした場合、認証（ログイン・セッション）が機能しないため、必ずキル→再起動すること
-- Playwright テストも `localhost:3000` を対象とする
+- Playwright テストも `localhost:3000` を対象とする。ただし`npm run test:e2e`は手動devサーバー起動ルールの例外とし、既存プロセスをキルせず、デフォルトでポート競合を失敗にする。同じbranch・commitのサーバーを操作者が確認した場合だけ`PLAYWRIGHT_REUSE_SERVER=1`で再利用する
 - **ユーザーへローカル表示を案内する前に、閲覧タブを通常のデスクトップ表示へ戻す** — モバイルエミュレーションや途中スクロールを残さず、1280×800・スクロール先頭で対象URLを再読み込みし、タブを前面化する
 - **Chrome DevTools / MCP の自動検証タブをユーザー向け閲覧タブとして扱わない** — `Unshared browser tab` はユーザー画面に表示されない。ローカル確認を依頼された場合は、検証後に macOS の `open 'http://localhost:3000/'` で通常ブラウザを明示的に開く
 - **「見られる状態」はサーバー応答や自動検証タブだけで判定しない** — LISTEN、HTTP 200、自動検証側の描画確認に加え、通常ブラウザが前面化したことを確認し、最終的にはユーザーの閲覧確認を完了条件とする
@@ -1530,3 +1530,10 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+
+### LL-064: E2Eが既存localhostを暗黙再利用すると別worktreeを検証し得る
+
+- **事象**: Playwrightの`reuseExistingServer: true`により、localhost:3000で動作中の別worktreeや古いcommitを再利用し、対象branchの回帰を検出できない偽陽性が起こり得た。CIのretryも、再試行で成功したflaky testを成功扱いにしていた。
+- **根本原因**: ポート競合を避けることを優先し、検証対象サーバーのbranch・commit同一性を確認できない既存プロセスを暗黙に信頼した。retryとflaky判定も別の品質契約として設定していなかった。
+- **対策**: E2Eの既存サーバー再利用はデフォルトfalseとし、同じbranch・commitのサーバーを意図的に管理する場合だけ`PLAYWRIGHT_REUSE_SERVER=1`で明示opt-inする。ポート競合時に既存プロセスをkillしない。CIでは`failOnFlakyTests`を有効にし、retry後の成功をPASSへ変換しない。
+- **教訓**: E2Eの成功にはDOM結果だけでなく、対象commitのサーバーを検証したという出所保証が必要である。共有ポートの暗黙再利用を禁止し、再利用は操作者が同一性を保証した明示設定に限定する。リファレンス: `playwright.config.ts`, `README.md`
