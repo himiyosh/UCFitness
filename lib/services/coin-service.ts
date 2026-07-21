@@ -640,7 +640,7 @@ export interface CreditResult {
 export async function creditBalance(
     userId: string,
     amount: number,
-    type: 'GIFT_RECEIVE' | 'RANK_BONUS' | 'MISSION_REWARD',
+    type: 'GIFT_RECEIVE' | 'RANK_BONUS' | 'MISSION_REWARD' | 'GROUP_CHALLENGE_REWARD',
     description: string,
     idempotencyKey?: string,
     date?: string,
