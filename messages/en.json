@@ -846,7 +846,23 @@
       "lifestyle": "Walked 20,000+ steps on a weekend",
       "title": "Maintained a daily average of {val} steps"
     },
-    "onDate": "{date}"
+    "onDate": "{date}",
+    "growthTimelineTitle": "Growth timeline",
+    "growthTimelineDescription": "Review past challenge participation and earned badges.",
+    "growthTimelinePrivate": "Only you can see this timeline on your profile.",
+    "growthTimelineEmpty": "No ended challenges or earned badges yet.",
+    "challengeHistoryUnavailable": "Challenge history could not be loaded. Available records such as badges are still shown.",
+    "timelineBadgesUnavailable": "Badge history could not be loaded. Available records such as challenges are still shown.",
+    "timelinePartialData": "Some history records could not be read, so only valid records are shown.",
+    "challengeHistoryLimited": "Showing ended or completed records from the 100 most recent participations out of {count}.",
+    "timelineDateUnknown": "Date unknown",
+    "timelineBadgeEarned": "Badge earned",
+    "timelineChallengeCompleted": "Completion recorded",
+    "timelineChallengeEnded": "Period ended (completion not verified)",
+    "timelineProgressRecorded": "{progress} steps recorded",
+    "timelineProgressUnavailable": "Progress unavailable",
+    "loadMoreTimeline": "Show {count} more",
+    "timelineAllShown": "All records are shown"
   },
   "Groups": {
     "title": "My Groups",
