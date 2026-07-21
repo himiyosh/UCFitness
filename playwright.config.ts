@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
+
 import { defineConfig } from "playwright/test";
 
 const BASE_URL = "http://localhost:3000";
+const LOCAL_ONLY_TOKEN = randomUUID();
 
 export default defineConfig({
   testDir: "./tests",
@@ -22,11 +25,11 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:9",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "local-public-placeholder",
-      SUPABASE_SERVICE_ROLE_KEY: "local-service-placeholder",
-      NEXTAUTH_SECRET: "local-e2e-placeholder-secret-32-bytes",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: LOCAL_ONLY_TOKEN,
+      SUPABASE_SERVICE_ROLE_KEY: LOCAL_ONLY_TOKEN,
+      NEXTAUTH_SECRET: LOCAL_ONLY_TOKEN,
       FITBIT_CLIENT_ID: "local-fitbit-client",
-      FITBIT_CLIENT_SECRET: "local-fitbit-secret",
+      FITBIT_CLIENT_SECRET: LOCAL_ONLY_TOKEN,
     },
   },
 });
