@@ -106,6 +106,17 @@ export interface Database {
                     updated_at: string;
                 };
             };
+            challenge_participants: {
+                Row: {
+                    id: string;
+                    user_id: string;
+                    challenge_id: string;
+                    joined_at: string;
+                    progress_steps: number;
+                    is_completed: boolean;
+                    completed_at: string | null;
+                };
+            };
         };
         Functions: {
             get_user_step_stats: {
@@ -191,6 +202,7 @@ export type DailyStepRow = Database['public']['Tables']['daily_steps']['Row'];
 export type UserFollowRow = Database['public']['Tables']['user_follows']['Row'];
 export type CoinTransactionRow = Database['public']['Tables']['coin_transactions']['Row'];
 export type RecommendedItemRow = Database['public']['Tables']['recommended_items']['Row'];
+export type ChallengeParticipantRow = Database['public']['Tables']['challenge_participants']['Row'];
 export type UserStepStatsRpcRow = Database['public']['Functions']['get_user_step_stats']['Returns'];
 export type BatchUserStepTotalsRpcRow = Database['public']['Functions']['get_batch_user_step_totals']['Returns'][number];
 export type GroupChallengeCreationRpcArgs = Database['public']['Functions']['create_group_challenge']['Args'];

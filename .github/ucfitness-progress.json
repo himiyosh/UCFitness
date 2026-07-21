@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-19T23:30:45+09:00",
-  "lastAgent": "UCFitnessAgent (PostgreSQL + Security + Next.js + QA + Self-Critique)",
-  "lastCommit": "pending",
-  "lastBranch": "himiyosh-himiyosh-f006-group-reward-cron",
+  "lastUpdated": "2026-07-20T21:33:00+09:00",
+  "lastAgent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+  "lastCommit": "9062eb18f7ce99be7ca4985f2606ca58bb699ab6",
+  "lastBranch": "himiyosh-harden-daily-steps-rls",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F006 Phase 3C3で精算Outboxを最大20ユーザーずつlease claimし、ja/en集約Pushをユーザー単位で逐次送信してcomplete/releaseするEdge Cronを追加。失敗は隔離後に5xxと匿名集計で明示する。Phase 2A/3A/3B1/3C migrationsと精算・報酬Push Cron scheduleはproduction未適用blocker。",
+  "summary": "F016 Supabase RLS強化Phase 9としてdaily_stepsの32ファイル42 direct SELECT、10 RPC呼び出し、lease/source conflict/単調upsert、DB error fallbackを監査した。旧schema snapshotはあるが現行CREATE TABLE完全DDL・完全Database型・承認済みread-only実catalog接続がなくschemaを確定できないためmigrationを推測せずaudit-onlyとし、catalog SQL・blocker・別Fix候補と静的契約9件を追加した。全422テストとcheck:allをPASS。保護済み件数は9/25据え置き。DB接続・適用・read/writeは未実施でF016はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "@typescript-eslint/no-explicit-anyはerror設定で0件。残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
+    "lintErrorsNote": "残る65件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-19T16:10:56+09:00"
+    "lastVerified": "2026-07-20T21:33:00+09:00"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -33,7 +33,11 @@
     "F018レート制限APIはblocked。現行module-level MapはEdge isolate単位で、Workers KVは原子的incrementを保証しない。厳密なcross-isolate制限にはUpstash Redis、Cloudflare Rate Limiting binding、Durable Objects等の外部resource/binding作成とcredential設定が必要",
     "F021はin-progress。GROUP rankingは6→4 queries/6→4 waves、Feedは10→8/6→4、20ms固定RTTモデルは33.3%改善したが、実Supabaseログとproduction p95、更新中daily_steps/FeedのOFFSETページ間snapshot整合性は未検証",
     "F012はin-progress。公開LP・利用規約・プライバシーのja/en×5幅は30/30、公開6ページのLighthouse a11yは100だが、認証済み120ケース、安全な認証fixture、axe、VoiceOver/NVDAの主要フローは未検証",
-    "F006 Phase 3C3までコード完了。Phase 2A/3A/3B1/3C migrationsと精算・報酬Push Cron scheduleはproduction未適用blocker"
+    "F006 Phase 3C3までコード完了。Phase 2A/3A/3B1/3C migrationsと精算・報酬Push Cron scheduleはproduction未適用blocker",
+    "F028はin-progress。所有者限定タイムラインは実装済みだが、過去時点のchallenge定義と確定達成状態を保持する履歴スナップショットDBがなく、認証fixtureと必須Supabase環境変数もないため認証済み375/1280実画面は未検証",
+    "F030はin-progress。Phase 2の発行・参加UI、ja/en、実ブラウザ、security/a11y検証は完了したが、招待migrationは本番Supabase未適用で、joinの厳密なcross-isolate rate limitにはF018と同じ外部resource/bindingが必要",
+    "F016はin-progress。Phase 1〜6の6表を静的保護したが実catalog・migration適用は未検証。Phase 7 walking_routes、Phase 8 user_follows、Phase 9 daily_stepsは現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく、型・nullability・default・FK/PK/unique・check・owner・RLS/policy・ACL・owned sequenceを確定できないためaudit-onlyで停止。daily_stepsには旧schema snapshotがあるが現行証拠ではない。既存のwalking_routes/user_follows候補に加え、achievement・badge・title・coin backfill・following comparisonのDB error偽装は別Fix候補",
+    "F015はin-progress。Fitbit歩数GETの429・5xx・通信障害再試行と認証/手動同期/Cron境界は実装・検証済みだが、sync_errorsテーブルと管理画面での失敗可視化は未実装"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -53,7 +57,7 @@
       "date": "2026-05-23",
       "agent": "UCFitnessAgent",
       "action": "監査結果対応 — FrameSelector Hooks 違反修正、CreateChallengeModal の a11y/i18n 改善、Push subscribe API 統一、URL allowlist/CSP/rate-limit/log redaction/API key hash migration/画像署名検証/CI/hooks 安全化/README・Skill・Agent 整合性修正を実施。",
-      "commit": "",
+      "commit": "d6747f0d7e2d79ac8c8e185ff9ad1ce247289593",
       "filesChanged": [
         "components/FrameSelector.tsx",
         "components/challenge/CreateChallengeModal.tsx",
@@ -1144,7 +1148,143 @@
       "commit": "pending",
       "filesChanged": ["app/api/cron/group-challenge-settlement/route.ts", "app/api/cron/group-challenge-settlement/route.test.ts", "types/database.ts", "README.md", ".github/ucfitness-progress.json"]
     },
-    {"date":"2026-07-19","agent":"UCFitnessAgent (Next.js + Security + Push + QA + Self-Critique)","action":"F006 Phase 3C3で報酬Outboxのclaim lease、ja/en集約Push、complete/release、匿名集計のEdge Cronと37件のroute契約テストを追加。F006はin-progressを維持し、Phase 2A/3A/3B1/3C migrationsと両Cron scheduleはproduction未適用blocker。","commit":"pending","filesChanged":["app/api/cron/group-challenge-reward/route.ts","app/api/cron/group-challenge-reward/route.test.ts","lib/api/web-push.ts","lib/api/web-push.test.ts","README.md",".github/ucfitness-progress.json"]}
+    {"date":"2026-07-19","agent":"UCFitnessAgent (Next.js + Security + Push + QA + Self-Critique)","action":"F006 Phase 3C3で報酬Outboxのclaim lease、ja/en集約Push、complete/release、匿名集計のEdge Cronと37件のroute契約テストを追加。F006はin-progressを維持し、Phase 2A/3A/3B1/3C migrationsと両Cron scheduleはproduction未適用blocker。","commit":"pending","filesChanged":["app/api/cron/group-challenge-reward/route.ts","app/api/cron/group-challenge-reward/route.test.ts","lib/api/web-push.ts","lib/api/web-push.test.ts","README.md",".github/ucfitness-progress.json"]},
+    {"date":"2026-07-19","agent":"UCFitnessAgent (Profile + Accessibility + QA + Self-Critique)","action":"F028で所有者限定の成長タイムラインを実装。参加日時の新しい100件から終了・達成済みchallengeを抽出し、awarded_atが確かなbadgeと月別統合して初期10件＋10件ずつ開示。DBフラグ以外で達成を推測せず、可変target/rewardを過去実績から除外し、部分障害・不正形状・日付不明、44px、focus維持、ja/enを整備。全359テスト、check:all、3ペルソナと独立reviewを実施し、履歴snapshotと認証済み実画面は未検証のためin-progress。","commit":"c09c7b46d90791ddcaf238107fe8c3b0e20575f0","filesChanged":["profile page","GrowthTimeline","profile timeline service/helper/test","ja/en","README","feature/progress"]},
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (PostgreSQL + Security + QA)",
+      "action": "F030を500行上限で安全に分割し、Phase 1としてOWNER/ADMINだけの7日招待発行、256-bit tokenのSHA-256 hash-only保存、グループ・ユーザー・招待をロックする原子的参加、group_keyword同期、Edge APIと回帰テストを実装。UI・ja/en・実ブラウザはstacked Phase 2へ継続。本番migration未適用。",
+      "commit": "",
+      "filesChanged": [
+        "migrations/20260719_add_group_invite_links.sql",
+        "app/api/group/invite/route.ts",
+        "app/api/group/invite/route.test.ts",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (Recovery + Hallmark + Accessibility + QA + Self-Critique)",
+      "action": "破損した旧UI/UX改善セッションの未コミット差分を現branchへSHA-256一致で復元。公開LPの装飾用無限オービットを削除し、Journey/Showcaseの重複ラベルとカード装飾を圧縮、モバイルナビをviewport基準の固定パネルへ変更した。公開監査へメニューの表示・viewport整列・44px・Escape閉鎖/焦点復帰を追加。30/30公開監査、全355テスト、check:all、375/1280実画面、Mobile Beginner/Accessibility Keyboard、独立自己批判をPASS。",
+      "commit": "65baa9375831843636c2215a7b4c7ebca6167d5c",
+      "filesChanged": [
+        "README.md",
+        "app/globals.css",
+        "components/LandingPage.tsx",
+        "components/landing/LandingInteractions.tsx",
+        "scripts/audit-responsive.mjs",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (Fitbit Resilience + Auth + QA + Self-Critique)",
+      "action": "F015の再試行コアを実装。Fitbitの冪等な歩数GETだけを429・5xx・通信障害で1秒、2秒、4秒後に最大3回再試行し、401とrefresh token POSTは即時失敗を維持した。枯渇をAppErrorのcode/contextで構造化し、手動履歴同期は500、新規サインインは補助backfill延期、全ユーザーCronは既存allSettledで次ユーザー継続とした。独立レビュー2件の回帰指摘を修正後、関連29テスト、全363テスト、check:all、最終レビュー、自己批判をPASS。sync_errors可視化未実装のためF015はin-progress。",
+      "commit": "d279120f4cb268b5d9a8906b08b70000c9aa738d",
+      "filesChanged": [
+        ".github/ucfitness-features.json",
+        "README.md",
+        "app/api/steps/sync/route.test.ts",
+        "lib/__tests__/step-manager-google-health.test.ts",
+        "lib/api/fitbit.ts",
+        "lib/api/fitbit.test.ts",
+        "lib/auth.ts",
+        "lib/auth.test.ts",
+        "lib/services/step-manager.ts",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 1をorigin/mainから開始。全Supabase client・from/rpc経路と25参照tableを監査し、browser/anon直接DB利用0件を確認した。api_keysへpolicyなしRLS、通常role・列・sequence権限剥奪、service_roleの現行8読取列＋last_used_at更新だけを再付与するfail-closed migrationと静的契約6件を追加。全361テストとcheck:allをPASS。実catalog適用は未実施のためin-progressを維持。",
+      "commit": "550ac15da5ac2288758dfd7b5ca76b0d859a4d9c",
+      "filesChanged": [
+        "migrations/20260720_harden_api_keys_rls.sql",
+        "lib/__tests__/api-keys-rls-migration.test.ts",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-19",
+      "agent": "UCFitnessAgent (React + Security + Accessibility + QA + Self-Critique)",
+      "action": "F030 Phase 2を発行UIと参加UIの2段stacked PRへ分割。OWNER/ADMIN限定発行、7日URL、Clipboard fallback、Web Share、fragment即時削除、memory retry、404/410/既参加/未認証/通信/サービス障害の分離を実装した。320/375/768/1280px、keyboard、reduced motion、Mobile Beginner、Accessibility Keyboard、独立security/a11y/code review、check:all、全369テストをPASS。本番migrationは未適用。",
+      "commit": "",
+      "filesChanged": [
+        "app/[locale]/groups/invite/page.tsx",
+        "components/group/GroupInviteJoinClient.tsx",
+        "messages/ja.json",
+        "messages/en.json",
+        "README.md",
+        ".github/ucfitness-features.json",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 2でpush_subscriptionsの全CRUD、配信、重複整理、404/410 cleanup、browser境界を監査。既知schema・FK・index・ownerをfail-closed検証し、policyなしRLSとservice_roleの最小CRUD・対象所有sequence USAGEだけを許可するmigrationを追加。全368テストとcheck:allをPASS。実catalog接続・DB適用は未実施。",
+      "commit": "8211a42a099890ab0fd2b45d9c4a90f0a2b81ebd",
+      "filesChanged": [
+        "migrations/20260720_harden_push_subscriptions_rls.sql",
+        "lib/__tests__/push-subscriptions-rls-migration.test.ts",
+        "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 3でcoin_transactionsの全CRUD・upsert・原子RPCを監査し、既知schema・FK・type・idempotency index・ownerをfail-closed検証する最小権限migrationを追加。全375テストとcheck:allをPASS。実catalog接続・DB適用は未実施。",
+      "commit": "f0bdde158f66c6f01e10e90e8fdfb40bd488a2b1",
+      "filesChanged": ["migrations/20260720_harden_coin_transactions_rls.sql", "lib/__tests__/coin-transactions-rls-migration.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 4でcoin_balancesの直接8 SELECT経路とatomic writer RPCを監査し、既知schema・FK・PK・default・非負check・owner・関数境界をfail-closed検証する最小権限migrationを追加。全381テストとcheck:all、Security/PostgreSQL/code reviewをPASS。実catalog接続・DB適用は未実施。",
+      "commit": "6fe4cb275fcf2c9e11b5b131107d82a8944c3e72",
+      "filesChanged": ["migrations/20260720_harden_coin_balances_rls.sql", "lib/__tests__/coin-balances-rls-migration.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 5でuser_badgesの全direct CRUD・手動upsert・atomic writer RPCを監査し、既知schema・FK・PK/unique・default・owner・関数境界をfail-closed検証する最小権限migrationを追加。全387テストとcheck:all、Security/PostgreSQL/code reviewをPASS。実catalog接続・DB適用は未実施。",
+      "commit": "83b6ae4ae038b248a2549b3966048aba8dfc2fac",
+      "filesChanged": ["migrations/20260720_harden_user_badges_rls.sql", "lib/__tests__/user-badges-rls-migration.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 6でbadgesのdirect SELECT・relation SELECT・owner実行seedを監査し、既知schema・PK/unique・incoming FK・default・ownerをfail-closed検証する最小権限migrationを追加。全393テストとcheck:all、Security/PostgreSQL/code reviewをPASS。実catalog接続・DB適用は未実施。",
+      "commit": "fa261c044c6bced39d0e7ffd6fe97932b2799c84",
+      "filesChanged": ["migrations/20260720_harden_badges_rls.sql", "lib/__tests__/badges-rls-migration.test.ts", "README.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 7でwalking_routesのGET/count/POST/PATCH/DELETE、returning SELECT、user_id所有者filter、browser境界を監査した。追跡DDL・完全Database型・read-only実catalog接続がなく完全schemaを確定できないためmigrationを推測せずaudit-onlyとし、必要catalog queryとblockerを記録した。全399テストとcheck:allをPASS。DB接続・適用・read/writeは未実施。",
+      "commit": "b34076de8376076b5ff5b5eb524e0ebfe5d18265",
+      "filesChanged": ["README.md", "lib/__tests__/walking-routes-rls-audit.test.ts", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 8でuser_followsの7 SELECT・1 INSERT・1 DELETE、same-origin API境界、DB error fallbackを監査した。追跡DDL・完全Database型・read-only実catalog接続がなく完全schemaを確定できないためmigrationを推測せずaudit-onlyとし、最小grant候補・blocker・別Fix候補を記録した。全413テストとcheck:allをPASS。保護済み件数は9/25据え置き。DB接続・適用・read/writeは未実施。",
+      "commit": "6e40ce547b78f04a1cb331e2e29a784459f3357d",
+      "filesChanged": ["README.md", "lib/__tests__/user-follows-rls-audit.test.ts", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-20",
+      "agent": "UCFitnessAgent (Security + PostgreSQL + QA + Self-Critique)",
+      "action": "F016 Supabase RLS強化Phase 9でdaily_stepsの32ファイル42 direct SELECT、10 RPC呼び出し、lease/source conflict/単調upsert、DB error fallbackを監査した。旧schema snapshotはあるが現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく完全schemaを確定できないためmigrationを推測せずaudit-onlyとし、必要catalog SQL・blocker・別Fix候補を記録した。全422テストとcheck:allをPASS。保護済み件数は9/25据え置き。DB接続・適用・read/writeは未実施。",
+      "commit": "9062eb18f7ce99be7ca4985f2606ca58bb699ab6",
+      "filesChanged": ["README.md", "lib/__tests__/daily-steps-rls-audit.test.ts", ".github/ucfitness-progress.json"]
+    }
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",

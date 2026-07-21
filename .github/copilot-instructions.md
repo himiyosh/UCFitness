@@ -1515,3 +1515,10 @@ export const runtime = "edge";
 - **根本原因**: 当日歩数に応じて何度でも再計算される倍率ボーナスと、生涯一回だけ確定する達成報酬を同じライフサイクル・種別・日付キーで扱った。
 - **対策**: `STREAK_MILESTONE`を日次削除対象から分離し、`streak_milestone:{userId}:{badgeCode}`を一生涯キーとした。DBで連続日を再検証し、ユーザー行ロック下でバッジ・台帳・残高を単一トランザクションへ統合した。
 - **教訓**: 台帳種別と冪等キーは表示分類ではなく、再計算・取消・一回限り・遡及可否のライフサイクル境界で設計する。定常再計算のdelete/upsert集合へ不可逆な達成報酬を混ぜない。リファレンス: `lib/services/coin-service.ts`, `migrations/20260718_add_streak_milestone_rewards.sql`
+
+### LL-062: 構造化台帳の反復キーを識別子照合せず誤適用した
+- **事象**: F016のstatus更新をF001へ、今回sessionLogのcommit更新を過去ログへ誤適用したままPRを作成した。
+- **根本原因**: 反復するstatusやcommitだけを検索・置換し、対象idやdateと同じobject内にあることを編集前後のdiffで確認しなかった。
+- **対策**: 構造化台帳は対象objectの一意な識別子範囲を先に読み、変更後に対象値と同名キーを持つ他objectの差分を同時検証する。
+- **教訓**: 同名キーが反復する台帳は値だけで編集しない。識別子をanchorにし、PR差分で意図したobjectだけが変わったことを確認する。
+- **追加教訓**: 履歴テストは可変のtop-level `lastCommit`ではなく対象sessionLogを固定し、進捗更新後にfull testを再実行する。

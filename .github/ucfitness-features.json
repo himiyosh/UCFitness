@@ -393,7 +393,7 @@
         "resilience": "レート制限突破せず全ユーザー同期完了",
         "observability": "失敗理由が構造化ログで追跡可能"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
@@ -416,7 +416,7 @@
         "isolation": "cross-user データ漏洩がゼロ",
         "regression_free": "既存機能が全て動作する"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
@@ -693,7 +693,7 @@
         "information_density": "モバイルでも読みやすい",
         "performance": "LCP < 2.5s"
       },
-      "status": "not-started",
+      "status": "in-progress",
       "lastAttempt": null,
       "lastError": null
     },
@@ -739,9 +739,9 @@
         "expiration_handling": "失効リンクで 410 Gone を返す",
         "authorization": "管理者のみが発行可能"
       },
-      "status": "not-started",
-      "lastAttempt": null,
-      "lastError": null
+      "status": "in-progress",
+      "lastAttempt": "2026-07-19T12:08:30+09:00",
+      "lastError": "Phase 1 migrationが本番Supabase未適用のため、productionでの招待発行・参加E2Eは未実施"
     },
     {
       "id": "F031",

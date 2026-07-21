@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import {
     BASE_RATE,
     GOAL_BONUS_RATE,
@@ -10,6 +10,7 @@ import {
     getNextRankInfo,
 } from '@/lib/constants';
 import { getJSTDateString } from '@/lib/date-utils';
+import { isValidStepGoal } from '@/lib/step-goal';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,95 +26,182 @@ export { INVESTOR_RANKS, type InvestorRank, getStreakMultiplier, getInvestorRank
 // コイン計算と記録
 // ============================================
 
+interface StreakHistoryRow {
+    date: string;
+    steps: number;
+}
+
+const POSTGRES_INTEGER_MAX = 2_147_483_647;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonnegativeSafeInteger(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isValidIsoDate(value: unknown): value is string {
+    if (typeof value !== 'string' || !/^(?!0000)\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+    }
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+const COIN_ERRORS = {
+    input: ['Invalid coin processing input', 'COIN_INPUT_INVALID'],
+    'step-goal-query': ['Failed to load step goal', 'COIN_STEP_GOAL_QUERY_FAILED'],
+    'step-goal': ['Invalid step goal data', 'COIN_STEP_GOAL_INVALID_DATA'],
+    'streak-history-query': ['Failed to load streak history', 'COIN_STREAK_HISTORY_QUERY_FAILED'],
+    'streak-history': ['Invalid streak history data', 'COIN_STREAK_HISTORY_INVALID_DATA'],
+    'streak-shields-query': ['Failed to load streak shields', 'COIN_STREAK_SHIELD_QUERY_FAILED'],
+    'streak-shields': ['Invalid streak shield data', 'COIN_STREAK_SHIELD_INVALID_DATA'],
+    'delete-transactions': ['Failed to delete existing coin transactions', 'COIN_TRANSACTIONS_DELETE_FAILED'],
+    'upsert-transactions': ['Failed to upsert coin transactions', 'COIN_TRANSACTIONS_UPSERT_FAILED'],
+    'recalculate-balance': ['Failed to recalculate coin balance', 'COIN_BALANCE_RECALCULATION_FAILED'],
+} as const;
+
+function coinProcessingError(stage: keyof typeof COIN_ERRORS): AppError {
+    const [message, code] = COIN_ERRORS[stage];
+    return new AppError(message, code, { stage: stage.replace(/-query$/, '') });
+}
+
+function parseStreakHistory(
+    value: unknown,
+    startDate: string,
+    currentDate: string,
+): StreakHistoryRow[] {
+    if (!Array.isArray(value)) {
+        throw coinProcessingError('streak-history');
+    }
+    const seenDates = new Set<string>();
+    return value.map((row) => {
+        if (
+            !isRecord(row)
+            || !isValidIsoDate(row.date)
+            || !isNonnegativeSafeInteger(row.steps)
+            || row.date < startDate
+            || row.date > currentDate
+            || seenDates.has(row.date)
+        ) {
+            throw coinProcessingError('streak-history');
+        }
+        seenDates.add(row.date);
+        return { date: row.date, steps: row.steps };
+    });
+}
+
+function parseShieldDates(value: unknown, startDate: string, currentDate: string): Set<string> {
+    if (!Array.isArray(value)) {
+        throw coinProcessingError('streak-shields');
+    }
+    const dates = new Set<string>();
+    for (const row of value) {
+        if (
+            !isRecord(row)
+            || !isValidIsoDate(row.used_date)
+            || row.used_date < startDate
+            || row.used_date > currentDate
+            || dates.has(row.used_date)
+        ) {
+            throw coinProcessingError('streak-shields');
+        }
+        dates.add(row.used_date);
+    }
+    return dates;
+}
+
+function calculateSafeCoinAmount(value: number, stage: string): number {
+    const amount = Math.floor(value);
+    if (!isNonnegativeSafeInteger(amount) || amount > POSTGRES_INTEGER_MAX) {
+        throw new AppError(
+            'Coin calculation exceeded the supported integer range',
+            'COIN_CALCULATION_OVERFLOW',
+            { stage },
+        );
+    }
+    return amount;
+}
+
 /**
  * 歩数からコインを計算して記録する
  * step-manager.ts の processUserSteps() から呼ばれる
  */
-export async function processCoins(userId: string, steps: number, date: string) {
-    try {
-        // ユーザーの目標歩数を取得
-        const { data: userData } = await supabaseAdmin
-            .from('users')
-            .select('step_goal')
-            .eq('id', userId)
-            .single();
-
-        const stepGoal = userData?.step_goal || 10000;
-
-        // 現在のストリークを取得 (stepGoal依存のため順次実行)
-        const currentStreak = await calculateCurrentStreak(userId, date, stepGoal);
-
-        // --- 基本コイン（歩数 × レート）---
-        const baseCoins = Math.floor(steps * BASE_RATE);
-
-        // --- 目標達成ボーナス ---
-        const goalBonus = steps >= stepGoal ? Math.floor(baseCoins * GOAL_BONUS_RATE) : 0;
-
-        // --- ストリークボーナス ---
-        const multiplier = getStreakMultiplier(currentStreak);
-        const streakBonus = multiplier > 1.0 ? Math.floor(baseCoins * (multiplier - 1.0)) : 0;
-
-        // べき等性キー: userId + date で同日の再処理を検知
-        const idempotencyPrefix = `coins:${userId}:${date}`;
-
-        // 既存のその日のトランザクションを削除（upsert相当）
-        // ※ PURCHASE / GIFT_SEND など手動取引は保持する
-        await supabaseAdmin
-            .from('coin_transactions')
-            .delete()
-            .eq('user_id', userId)
-            .eq('date', date)
-            .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
-
-        // トランザクション挿入
-        const transactions = [
-            {
-                user_id: userId,
-                date,
-                type: 'STEPS',
-                amount: baseCoins,
-                description: `${steps} steps × ${BASE_RATE} UC`,
-                idempotency_key: `${idempotencyPrefix}:STEPS`,
-            },
-        ];
-
-        if (goalBonus > 0) {
-            transactions.push({
-                user_id: userId,
-                date,
-                type: 'GOAL_BONUS',
-                amount: goalBonus,
-                description: `Goal achieved bonus (+${Math.round(GOAL_BONUS_RATE * 100)}%)`,
-                idempotency_key: `${idempotencyPrefix}:GOAL_BONUS`,
-            });
-        }
-
-        if (streakBonus > 0) {
-            transactions.push({
-                user_id: userId,
-                date,
-                type: 'STREAK_BONUS',
-                amount: streakBonus,
-                description: `${currentStreak}-day streak bonus (×${multiplier})`,
-                idempotency_key: `${idempotencyPrefix}:STREAK_BONUS`,
-            });
-        }
-
-        const { error: txError } = await supabaseAdmin
-            .from('coin_transactions')
-            .upsert(transactions, { onConflict: 'idempotency_key', ignoreDuplicates: false });
-
-        if (txError) {
-            reportError('processCoins:insertTransactions', txError, { userId, date });
-            throw new Error(`Failed to insert coin transactions for user ${userId}`);
-        }
-
-        // 残高を再計算して更新
-        await updateCoinBalance(userId, currentStreak);
-
-    } catch (error) {
-        reportError('processCoins', error, { userId, steps, date });
+export async function processCoins(userId: string, steps: number, date: string): Promise<void> {
+    if (!isNonnegativeSafeInteger(steps) || !isValidIsoDate(date)) {
+        throw coinProcessingError('input');
     }
+
+    const { data: userData, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('step_goal')
+        .eq('id', userId)
+        .single();
+    if (userError !== null) {
+        throw coinProcessingError('step-goal-query');
+    }
+    if (!isRecord(userData) || !isValidStepGoal(userData.step_goal)) {
+        throw coinProcessingError('step-goal');
+    }
+    const stepGoal = userData.step_goal;
+    const currentStreak = await calculateCurrentStreak(userId, date, stepGoal);
+    const baseCoins = calculateSafeCoinAmount(steps * BASE_RATE, 'base-coins');
+    const goalBonus = steps >= stepGoal
+        ? calculateSafeCoinAmount(baseCoins * GOAL_BONUS_RATE, 'goal-bonus')
+        : 0;
+    const multiplier = getStreakMultiplier(currentStreak);
+    const streakBonus = multiplier > 1.0
+        ? calculateSafeCoinAmount(baseCoins * (multiplier - 1.0), 'streak-bonus')
+        : 0;
+    const idempotencyPrefix = `coins:${userId}:${date}`;
+
+    const { error: deleteError } = await supabaseAdmin
+        .from('coin_transactions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('date', date)
+        .in('type', ['STEPS', 'GOAL_BONUS', 'STREAK_BONUS', 'RANK_BONUS']);
+    if (deleteError !== null) {
+        throw coinProcessingError('delete-transactions');
+    }
+
+    const transactions = [{
+        user_id: userId,
+        date,
+        type: 'STEPS',
+        amount: baseCoins,
+        description: `${steps} steps × ${BASE_RATE} UC`,
+        idempotency_key: `${idempotencyPrefix}:STEPS`,
+    }];
+    if (goalBonus > 0) {
+        transactions.push({
+            user_id: userId,
+            date,
+            type: 'GOAL_BONUS',
+            amount: goalBonus,
+            description: `Goal achieved bonus (+${Math.round(GOAL_BONUS_RATE * 100)}%)`,
+            idempotency_key: `${idempotencyPrefix}:GOAL_BONUS`,
+        });
+    }
+    if (streakBonus > 0) {
+        transactions.push({
+            user_id: userId,
+            date,
+            type: 'STREAK_BONUS',
+            amount: streakBonus,
+            description: `${currentStreak}-day streak bonus (×${multiplier})`,
+            idempotency_key: `${idempotencyPrefix}:STREAK_BONUS`,
+        });
+    }
+
+    const { error: upsertError } = await supabaseAdmin
+        .from('coin_transactions')
+        .upsert(transactions, { onConflict: 'idempotency_key', ignoreDuplicates: false });
+    if (upsertError !== null) {
+        throw coinProcessingError('upsert-transactions');
+    }
+    await updateCoinBalance(userId, currentStreak);
 }
 
 // ============================================
@@ -148,9 +236,8 @@ export function calculateStreakDays(
  * ストリークシールドが使用された日は「パス」として扱う
  */
 async function calculateCurrentStreak(userId: string, currentDate: string, stepGoal: number): Promise<number> {
-    const oldestStreakDate = new Date(
-        new Date(currentDate).getTime() - 364 * 24 * 60 * 60 * 1000,
-    );
+    const oldestStreakDate = new Date(`${currentDate}T00:00:00Z`);
+    oldestStreakDate.setUTCDate(oldestStreakDate.getUTCDate() - 364);
     const startDate = oldestStreakDate.toISOString().split('T')[0];
 
     // ⚡ 歩数データとシールド使用日を並列取得
@@ -170,12 +257,14 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
             .lte('used_date', currentDate),
     ]);
 
-    if (historyResult.error) throw historyResult.error;
-    if (shieldResult.error) throw shieldResult.error;
-    const history = historyResult.data ?? [];
-    const shieldUsedDates = new Set(
-        shieldResult.data?.map((shield) => shield.used_date) ?? [],
-    );
+    if (historyResult.error !== null) {
+        throw coinProcessingError('streak-history-query');
+    }
+    if (shieldResult.error !== null) {
+        throw coinProcessingError('streak-shields-query');
+    }
+    const history = parseStreakHistory(historyResult.data, startDate, currentDate);
+    const shieldUsedDates = parseShieldDates(shieldResult.data, startDate, currentDate);
 
     return calculateStreakDays(history, shieldUsedDates, currentDate, stepGoal);
 }
@@ -187,14 +276,14 @@ async function calculateCurrentStreak(userId: string, currentDate: string, stepG
 /**
  * コイン残高を再集計して更新
  */
-async function updateCoinBalance(userId: string, currentStreak: number) {
+async function updateCoinBalance(userId: string, currentStreak: number): Promise<void> {
     const { error } = await supabaseAdmin.rpc('recalculate_coin_balance', {
         p_user_id: userId,
         p_streak: currentStreak,
     });
 
-    if (error) {
-        reportError('updateCoinBalance:rpc', error, { userId });
+    if (error !== null) {
+        throw coinProcessingError('recalculate-balance');
     }
 }
 

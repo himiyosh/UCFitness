@@ -3,7 +3,7 @@ import { CallbackRouteError } from "@auth/core/errors";
 import type { OAuthConfig } from "@auth/core/providers/oauth";
 import { supabaseAdmin } from "./supabase";
 import { backfillUserSteps } from "@/lib/services/step-manager";
-import { reportError } from "./errors";
+import { AppError, reportError } from "./errors";
 
 // Custom Fitbit Provider since it's missing from the installed next-auth package
 interface FitbitProfile {
@@ -131,11 +131,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 error = insertError;
 
                 if (newUser && !insertError) {
-                    // Note: This backfill might take time, in Edge environment ensure it doesn't timeout or block response too long.
-                    // Ideally this should be offloaded to a queue or background job, but for now we await it or fire-and-forget?
-                    // Given runtime=edge, fire-and-forget might be killed. user setups page handles loading history too.
-                    // We'll await it for now, assuming it's fast enough or we accept strict timeout.
-                    await backfillUserSteps(newUser.id);
+                    try {
+                        await backfillUserSteps(newUser.id);
+                    } catch (backfillError: unknown) {
+                        if (
+                            backfillError instanceof AppError
+                            && backfillError.code === 'FITBIT_API_RETRY_EXHAUSTED'
+                        ) {
+                            reportError(
+                                'auth.signIn:initialBackfillDeferred',
+                                backfillError,
+                                { userId: newUser.id },
+                            );
+                        } else {
+                            throw backfillError;
+                        }
+                    }
                 }
             }
 
