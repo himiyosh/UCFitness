@@ -52,6 +52,7 @@ export type StepSyncCode =
     | 'updated'
     | 'no_data'
     | 'reauthorization_required'
+    | 'reward_processing_failed'
     | 'sync_in_progress'
     | 'unavailable';
 
@@ -65,6 +66,10 @@ type GoogleHealthLeaseResult<T> =
     | { status: 'acquired'; value: T }
     | { status: 'sync_in_progress' }
     | { status: 'unavailable' };
+
+function isFitbitRetryExhausted(error: unknown): error is AppError {
+    return error instanceof AppError && error.code === 'FITBIT_API_RETRY_EXHAUSTED';
+}
 
 async function replaceGoogleHealthStepRange(
     userId: string,
@@ -433,16 +438,19 @@ async function processUserSteps(
                 processCoins(user.id, steps, today),
             ]);
             const labels = ['badges', 'titles', 'coins'] as const;
+            let rewardProcessingFailed = false;
             for (let i = 0; i < results.length; i++) {
-                if (results[i].status === 'rejected') {
-                    reportError(`processUserSteps:${labels[i]}`, (results[i] as PromiseRejectedResult).reason, {
+                const result = results[i];
+                if (result.status === 'rejected') {
+                    rewardProcessingFailed = true;
+                    reportError(`processUserSteps:${labels[i]}`, result.reason, {
                         userId: user.id,
                         ...(labels[i] === 'coins' ? { steps, date: today } : {}),
                     });
                 }
             }
             return {
-                code: 'updated',
+                code: rewardProcessingFailed ? 'reward_processing_failed' : 'updated',
                 source: usedGoogleHealth ? 'google_health' : 'fitbit',
                 steps,
             };
@@ -616,6 +624,8 @@ export async function backfillUserSteps(userId: string): Promise<void> {
                     } else {
                         break;
                     }
+                } else if (isFitbitRetryExhausted(e)) {
+                    throw e;
                 } else {
                     // 404 等はこの期間にデータなし → ループ終了
                     break;
@@ -651,8 +661,11 @@ export async function backfillUserSteps(userId: string): Promise<void> {
             }
         }
 
-    } catch (error) {
+    } catch (error: unknown) {
         reportError('backfillUserSteps', error, { userId: user.id });
+        if (isFitbitRetryExhausted(error)) {
+            throw error;
+        }
     }
 }
 

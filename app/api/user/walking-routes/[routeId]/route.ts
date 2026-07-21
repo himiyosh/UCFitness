@@ -43,15 +43,28 @@ export async function PATCH(
         }
 
         // 所有権確認
-        const { data: existing } = await supabaseAdmin
+        const { data: existing, error: lookupError } = await supabaseAdmin
             .from('walking_routes')
             .select('id, walk_count')
             .eq('id', routeId)
             .eq('user_id', session.user.id)
             .single();
 
-        if (!existing) {
+        if (lookupError?.code === 'PGRST116') {
             return NextResponse.json({ error: 'Route not found' }, { status: 404 });
+        }
+
+        if (lookupError) {
+            reportError('walking-routes:patch:lookup', lookupError);
+            return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        }
+
+        if (!existing) {
+            reportError(
+                'walking-routes:patch:lookup',
+                new Error('Walking route ownership lookup returned no data without an error')
+            );
+            return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
         }
 
         const body = await request.json();
@@ -87,7 +100,7 @@ export async function PATCH(
             .single();
 
         if (error) {
-            reportError('walking-routes:patch', error);
+            reportError('walking-routes:patch:update', error);
             return NextResponse.json({ error: 'Failed to update route' }, { status: 500 });
         }
 

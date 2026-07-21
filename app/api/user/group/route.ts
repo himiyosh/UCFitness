@@ -438,15 +438,33 @@ export async function POST(request: Request) {
       // 🛡️ Sentinel: Security Check (Anti-Abuse)
       // Require target user to follow the inviter (Group Owner) before allowing an invite.
       // This prevents spam/harassment by forcing users into groups.
-      const { data: followRelationship } = await supabaseAdmin
+      const { data: followRelationship, error: followLookupError } = await supabaseAdmin
         .from('user_follows')
         .select('id')
         .eq('follower_id', targetUserId)
         .eq('following_id', userId)
         .single();
 
-      if (!followRelationship) {
+      if (followLookupError?.code === 'PGRST116') {
         return NextResponse.json({ error: "User must follow you to be invited." }, { status: 403 });
+      }
+
+      if (followLookupError) {
+        reportError(
+          'user/group:invite_follow_lookup',
+          new Error('Invite follow relationship lookup failed'),
+          { userId, groupId: group.id, targetUserId },
+        );
+        return NextResponse.json({ error: "Failed to verify follow relationship" }, { status: 500 });
+      }
+
+      if (!followRelationship) {
+        reportError(
+          'user/group:invite_follow_lookup',
+          new Error('Invite follow relationship lookup returned no data without an error'),
+          { userId, groupId: group.id, targetUserId },
+        );
+        return NextResponse.json({ error: "Failed to verify follow relationship" }, { status: 500 });
       }
 
       // Add Member

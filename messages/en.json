@@ -1520,6 +1520,10 @@
     "weekly": "Weekly",
     "monthly": "Monthly",
     "dailyTrend": "Daily Trend",
+    "trendExplanation": "Line gaps mean no record. Recorded zeroes appear as points on the baseline.",
+    "comparisonTableCaption": "Step comparison by date and user",
+    "date": "Date",
+    "stepsUnit": "steps",
     "comparisonError": "Failed to load comparison data",
     "retry": "Retry",
     "noComparisonData": "Follow more users to compare steps"
