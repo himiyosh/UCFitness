@@ -61,7 +61,7 @@ const trackedArtifactHashes: Record<string, string> = {
     'migrations/20260720_harden_user_badges_rls.sql': 'afb875da92a405b692b12ef702ea7a7b739088f9a4179cab452be02df9eccc3d',
     'migrations/20260720_harden_badges_rls.sql': 'b584c8edc85db244c9e8412a8b5a1bc58d95006448e1f492eb67a58283d8d06c',
     'lib/__tests__/walking-routes-rls-audit.test.ts': 'b9e3facb93417dd8a5ad0dfbd129e6006388c87d64e4f72c13bba26fa7d090e1',
-    'lib/__tests__/user-follows-rls-audit.test.ts': '79585d101e9e25ca5cbd7ac9173b8ac846fd4b48b8d022f2f4b3f776fdf874e1',
+    'lib/__tests__/user-follows-rls-audit.test.ts': '3ee22874a099bacb220ddc10f7b3da7cb5150754add1daddaaaa532bfe9bd93d',
 };
 
 describe('daily_steps RLS Phase 9 audit', () => {
@@ -71,7 +71,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
             expect(actualHash, path).toBe(expectedHash);
         }
     });
-    it('achievements totalDays query除去後のdirect経路が32ファイル41 SELECTに限定される', () => {
+    it('GROUP進捗RPC化後のdirect経路が32ファイル40 SELECTに限定される', () => {
         expect(dailyStepsSources).toEqual(expectedDailyStepsSources);
 
         const referenceCount = dailyStepsSources.reduce((count, path) => {
@@ -79,7 +79,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
             const matches = source.matchAll(/\.from\(\s*['"]daily_steps['"]\s*\)/g);
             return count + [...matches].length;
         }, 0);
-        expect(referenceCount).toBe(41);
+        expect(referenceCount).toBe(40);
         for (const path of dailyStepsSources) {
             const source = stripComments(readRepositoryFile(path));
             expect(source, path).not.toMatch(/^['"]use client['"];?/m);

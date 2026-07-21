@@ -609,6 +609,28 @@ describe('updateUserSteps', () => {
         );
     });
 
+    it('Fitbit履歴の再試行枯渇をデータなしへ変換せず伝播する', async () => {
+        mocks.getGoogleHealthSyncSelection.mockResolvedValue({
+            userId: 'user-1',
+            status: 'disconnected',
+            connection: null,
+        });
+        const retryError = new AppError(
+            'Fitbit API error: 503',
+            'FITBIT_API_RETRY_EXHAUSTED',
+            { status: 503, attempts: 4 },
+        );
+        mocks.getFitbitActivityTimeSeriesByDateRange.mockRejectedValueOnce(retryError);
+
+        await expect(backfillUserSteps('user-1')).rejects.toBe(retryError);
+
+        expect(mocks.reportError).toHaveBeenCalledWith(
+            'backfillUserSteps',
+            retryError,
+            { userId: 'user-1' },
+        );
+    });
+
     it('全ユーザー同期を5ユーザー単位の固定並列バッチで処理する', async () => {
         const users = Array.from({ length: 6 }, (_, index) => ({
             id: `user-${index + 1}`,

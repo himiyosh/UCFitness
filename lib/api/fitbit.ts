@@ -3,6 +3,8 @@
  * セキュリティ: エラーメッセージから生APIレスポンスを除去し、クライアントへの情報漏洩を防止
  */
 
+import { AppError } from '@/lib/errors';
+
 /** Fitbit API レスポンスの日次歩数型 */
 interface FitbitTimeSeries {
     dateTime: string;
@@ -19,6 +21,8 @@ interface FitbitTokenResponse {
     scope: string;
 }
 
+const FITBIT_RETRY_DELAYS_MS = [1000, 2000, 4000] as const;
+
 /**
  * 入力値バリデーション（共通）
  */
@@ -34,17 +38,60 @@ function validateDateFormat(date: string): void {
     }
 }
 
+function isRetryableFitbitStatus(status: number): boolean {
+    return status === 429 || status >= 500;
+}
+
+function waitForFitbitRetry(delayMs: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function fetchFitbitGet(url: string, accessToken: string): Promise<Response> {
+    for (let attempt = 0; ; attempt += 1) {
+        const retryDelay = FITBIT_RETRY_DELAYS_MS[attempt];
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+            if (!isRetryableFitbitStatus(response.status)) {
+                return response;
+            }
+            if (retryDelay === undefined) {
+                throw new AppError(
+                    `Fitbit API error: ${response.status}`,
+                    'FITBIT_API_RETRY_EXHAUSTED',
+                    { status: response.status, attempts: attempt + 1 },
+                );
+            }
+        } catch (error: unknown) {
+            if (retryDelay === undefined) {
+                if (error instanceof AppError) {
+                    throw error;
+                }
+                throw new AppError(
+                    'Fitbit API network error after retries',
+                    'FITBIT_API_RETRY_EXHAUSTED',
+                    { attempts: attempt + 1 },
+                    error,
+                );
+            }
+        }
+
+        await waitForFitbitRetry(retryDelay);
+    }
+}
+
 export async function getFitbitSteps(accessToken: string, date: string = 'today'): Promise<number> {
     validateAccessToken(accessToken);
     validateDateFormat(date);
 
-    const response = await fetch(
+    const response = await fetchFitbitGet(
         `https://api.fitbit.com/1/user/-/activities/date/${date}.json`,
-        {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        }
+        accessToken,
     );
 
     if (!response.ok) {
@@ -61,13 +108,9 @@ export async function getFitbitActivityTimeSeries(
 ): Promise<FitbitTimeSeries[]> {
     validateAccessToken(accessToken);
 
-    const response = await fetch(
+    const response = await fetchFitbitGet(
         `https://api.fitbit.com/1/user/-/activities/steps/date/today/${range}.json`,
-        {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        }
+        accessToken,
     );
 
     if (!response.ok) {
@@ -92,13 +135,9 @@ export async function getFitbitActivityTimeSeriesByDateRange(
     validateDateFormat(startDate);
     validateDateFormat(endDate);
 
-    const response = await fetch(
+    const response = await fetchFitbitGet(
         `https://api.fitbit.com/1/user/-/activities/steps/date/${startDate}/${endDate}.json`,
-        {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        }
+        accessToken,
     );
 
     if (!response.ok) {

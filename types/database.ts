@@ -47,6 +47,26 @@ export interface Database {
                     joined_at: string;
                 };
             };
+            challenges: {
+                Row: {
+                    id: string;
+                    title: string;
+                    description: string | null;
+                    type: 'INDIVIDUAL' | 'GROUP';
+                    target_steps: number;
+                    start_date: string;
+                    end_date: string;
+                    reward_uc: number;
+                    is_active: boolean;
+                    created_by: string;
+                    group_id: string | null;
+                    created_at: string;
+                    settled_at: string | null;
+                    settlement_completed: boolean | null;
+                    settled_total_steps: number | null;
+                    settled_member_count: number | null;
+                };
+            };
             daily_steps: {
                 Row: {
                     user_id: string;
@@ -86,6 +106,17 @@ export interface Database {
                     updated_at: string;
                 };
             };
+            challenge_participants: {
+                Row: {
+                    id: string;
+                    user_id: string;
+                    challenge_id: string;
+                    joined_at: string;
+                    progress_steps: number;
+                    is_completed: boolean;
+                    completed_at: string | null;
+                };
+            };
         };
         Functions: {
             get_user_step_stats: {
@@ -99,6 +130,66 @@ export interface Database {
             get_batch_user_step_totals: {
                 Returns: { user_id: string; total_steps: number; total_days: number }[];
             };
+            create_group_challenge: {
+                Args: {
+                    p_group_id: string;
+                    p_created_by: string;
+                    p_type: 'GROUP';
+                    p_title: string;
+                    p_description: string | null;
+                    p_target_steps: number;
+                    p_start_date: string;
+                    p_end_date: string;
+                    p_reward_uc: number;
+                };
+                Returns: {
+                    status: 'created' | 'not_found' | 'forbidden' | 'invalid';
+                    challenge: Database['public']['Tables']['challenges']['Row'] | null;
+                }[];
+            };
+            get_group_challenge_progress: {
+                Args: {
+                    p_challenge_id: string;
+                    p_viewer_id: string;
+                };
+                Returns: {
+                    status: 'ok' | 'not_found' | 'forbidden' | 'not_participating';
+                    total_steps: number | null;
+                    participant_count: number | null;
+                    target_steps: number | null;
+                    is_completed: boolean | null;
+                }[];
+            };
+            settle_group_challenge: {
+                Args: {
+                    p_challenge_id: string;
+                };
+                Returns: {
+                    status: 'settled' | 'already_settled' | 'not_found' | 'invalid_type' | 'not_ended';
+                    is_completed: boolean | null;
+                    total_steps: number | null;
+                    member_count: number | null;
+                    rewarded_count: number | null;
+                    settled_at: string | null;
+                }[];
+            };
+            claim_group_challenge_reward_outbox: {
+                Returns: {
+                    user_id: string;
+                    challenge_count: number;
+                    total_reward: number;
+                    lease_id: string;
+                    lease_expires_at: string;
+                }[];
+            };
+            complete_group_challenge_reward_outbox: {
+                Args: { p_user_id: string; p_lease_id: string };
+                Returns: { delivered_count: number; total_reward: number }[];
+            };
+            release_group_challenge_reward_outbox: {
+                Args: { p_user_id: string; p_lease_id: string };
+                Returns: { released_count: number; total_reward: number }[];
+            };
         };
     };
 }
@@ -106,12 +197,22 @@ export interface Database {
 export type UserRow = Database['public']['Tables']['users']['Row'];
 export type GroupRow = Database['public']['Tables']['groups']['Row'];
 export type GroupMemberRow = Database['public']['Tables']['group_members']['Row'];
+export type ChallengeRow = Database['public']['Tables']['challenges']['Row'];
 export type DailyStepRow = Database['public']['Tables']['daily_steps']['Row'];
 export type UserFollowRow = Database['public']['Tables']['user_follows']['Row'];
 export type CoinTransactionRow = Database['public']['Tables']['coin_transactions']['Row'];
 export type RecommendedItemRow = Database['public']['Tables']['recommended_items']['Row'];
+export type ChallengeParticipantRow = Database['public']['Tables']['challenge_participants']['Row'];
 export type UserStepStatsRpcRow = Database['public']['Functions']['get_user_step_stats']['Returns'];
 export type BatchUserStepTotalsRpcRow = Database['public']['Functions']['get_batch_user_step_totals']['Returns'][number];
+export type GroupChallengeCreationRpcArgs = Database['public']['Functions']['create_group_challenge']['Args'];
+export type GroupChallengeCreationRpcRow = Database['public']['Functions']['create_group_challenge']['Returns'][number];
+export type GroupChallengeProgressRpcArgs = Database['public']['Functions']['get_group_challenge_progress']['Args'];
+export type GroupChallengeProgressRpcRow = Database['public']['Functions']['get_group_challenge_progress']['Returns'][number];
+export type GroupChallengeSettlementRpcArgs = Database['public']['Functions']['settle_group_challenge']['Args'];
+export type GroupChallengeSettlementRpcRow = Database['public']['Functions']['settle_group_challenge']['Returns'][number];
+export type GroupChallengeRewardClaimRpcRow =
+    Database['public']['Functions']['claim_group_challenge_reward_outbox']['Returns'][number];
 
 /** ランキング・フォロー等で頻出する公開プロフィール射影 (PII 除外) */
 export type PublicUserSummary = Pick<UserRow, 'id' | 'name' | 'image' | 'username'>;

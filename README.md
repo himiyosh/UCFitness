@@ -20,7 +20,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **ログイン・登録** | Fitbit OAuth後に未設定ユーザーを3ステップsetupへ送り、失敗時は生のAuth.js情報を露出せずja/enの理由と安全な再試行を表示 |
 | **初回セットアップ** | プロフィール/歩数ソース→日次目標→グループ/チャレンジの3ステップで、各段階を後回しにでき、保存後の「最初の500歩」からホームの価値ループへ接続 |
 | **設定** | 歩数ソースと日次目標をプロフィール・装飾より先に配置し、500〜100,000歩の共通Client/API契約で更新 |
-| **プロフィール** | 記録済み0歩・未記録・取得失敗を分離し、歩数・比較・バッジ・装備・コイン等を部分障害でも継続表示 |
+| **プロフィール** | 記録済み0歩・未記録・取得失敗を分離し、歩数・比較・バッジ・装備・コインを部分障害でも継続表示。所有者には参加日時の新しい100件を対象とした終了チャレンジと、獲得日時が確かなバッジの成長タイムラインを10件ずつ開示 |
 | **ウォレット** | 今日の獲得・支出・純増減を分離し、次の歩数UC、取引後残高、日次純増減チャートを部分障害でも表示 |
 | **ホームダッシュボード** | 今日の進捗、次ライバル差、固定5行ランキング、個別目標ベースのFriend Pulse、今週トレンド、UC残高、チャレンジ、ミッション、次の行動を意味色と動的barで可視化 |
 | **グループ対抗** | 未所属からの参加導線、正歩数だけのメンバー/グループ順位、部分障害でも継続するイベント・チャット・ギア・週間レポート |
@@ -77,18 +77,23 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **履歴の一貫性**: Google Health初回移行では前日まで365日分を最大90日単位で全取得した後、DBで一度だけ原子的に置換する。ユーザー単位の同期リースでCron・手動同期を直列化し、トークン更新・状態遷移・履歴置換・当日upsert・同期完了記録の全書き込みで同じリースIDを検証する。当日はGoogle Health／Fitbitとも保存済み最大値を維持する。Fitbit履歴は外部取得後にDB関数内で接続元を再検証し、Google Health接続・移行と競合した古い書き込みを拒否する。履歴差し替えで獲得済みUCは再計算・減額しない
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、報酬処理失敗、利用不能を構造化コードで返す。バッジ・称号・コインのいずれかが失敗した場合は保存済み歩数を保持しつつ同期成功にしない
 - **コイン再計算の原子化**: 未適用の`migrations/20260721_atomic_daily_coin_recalculation.sql`と`migrations/20260721_atomic_historical_coin_backfill.sql`は、既知DDL・RLS・ACL・既存writerのユーザー行ロックをfail-closed検証し、STEPS減額、既存STEPS日の欠落、同一STEPS時のGOAL_BONUS/STREAK_BONUS減額を置換前に拒否する。日次・履歴RPCが入力・削除・再生成するのは歩数由来の`STEPS` / `GOAL_BONUS` / `STREAK_BONUS`だけで、別経路の獲得済み`RANK_BONUS`等を保持したまま全台帳残高を同一transactionで再集計する。日次RPCだけがアプリ接続済みで、履歴RPCのPhase B wiring、実catalog実行、DB適用は未実施
+- **Fitbit一時障害の再試行**: 冪等な歩数GETだけを429・5xx・通信障害で1秒、2秒、4秒後に再試行する。401は既存の再認証経路へ即時返し、回転するrefresh tokenのPOSTは二重実行しない
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
+- **フォロー歩数比較の表示契約**: 日別チャートは記録済み0歩を基準線上の点、未記録を線の切れ目として表示し、tooltipと読み上げ用数値表でも両者を区別する
 - **公開プロフィールAPIの入力契約**: Achievement進捗と年間歩数カレンダーは認証を要求しつつ、UUID検証済みの公開target `userId`をそのまま照会する。フォロー状態と公開リアクションもtarget UUID・emoji・periodをDB操作前に検証する。プロフィール/バナー画像の保存拡張子は元ファイル名ではなく検証済みMIMEから決定し、`contentType`と一致させる
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する
 - **Home Quest契約**: 認証ホームは進捗・競争・歩いた価値・次の一歩を1つのQuest面で連結する。Mission→Weekly→Reward→Challengeの後はQuickActionsを独立補助Dockとし、Friend Pulseと週間Rankingをxlで直接同一行にする。Friend Pulseは個別目標と正歩数の活動人数/合計/達成人数、Rankingは次ライバル名/必要歩数を表示する。詳細Rankingは固定5行を維持し、Competition Missionへ現在順位・参加者数・次ライバル・トップ差を集約、外側多列化は2xlへ遅らせる
 - **Challenge継続契約**: Challengesは参加中・active・開始済み・未終了・未達成・進捗取得済みを優先し、残り歩数→期限→報酬で並べる。主表示は最大500歩、期限/報酬は補足、作成は一覧後へ置く。期限は一覧・カード・参加APIでJST統一し、進捗不明を0へ変換しない
+- **GROUP Challenge認可契約**: public閲覧と参加を分離し、join/progress/leaveは現group member、PUTはcreatorかつ現OWNER/ADMINだけを許可する。GROUP作成はservice-role専用`create_group_challenge`、進捗は同専用`get_group_challenge_progress` RPCでDB再認可する。進捗RPCは参加者と現memberをDB内でintersectionし、inclusive期間の正歩数を`bigint`集計するためPostgRESTの1000行上限へ依存しない。両migrationは本番未適用で、未適用時は明示的な5xxとする
+- **F006 migration運用**: productionはPhase 2A→3A→3B1→3C Outbox (`20260722`)→3C claim lease (`20260723`)→精算Cron/報酬Push Cron scheduleの順に適用する。途中の歩数減少・欠測による先払いを避けるため終了翌日以降に精算し、settlement transaction→durable outbox→最大20ユーザーのclaim lease→`users.language`によるja/en集約Push（同一ユーザー1通、Topic/tag=`group-challenge-reward`）→成功時complete/失敗時releaseで配信を再試行可能にする。rollbackは両scheduleを停止してから報酬Push→claim→outbox→3B1→3A→2Aの逆順（各RPCのREVOKE/DROP、`credit_balance`・取引type・settlement列/constraintの復元を含む）で行う。Phase 2A/3A/3B1/3C migrationsと両Cron scheduleはproduction未適用で、適用・schedule設定がF006完了blocker
 - **競争差の導線継続**: Homeで示す「あと何歩」を、歩数が記録されたユーザーのグローバルランキング・選択グループ・グループ詳細の自分順位サマリーでも表示する。0歩・不在時は順位・メダル・成功形の対象にせず、空行でランキング5行・72px固定仕様を維持する。取得失敗は未所属表示へ変換せず、Global/Group双方でエラーと再試行を明示する。計算は`getRankGapInsight()`へ集約する
 - **Amazon CTA実験契約**: プロフィール・ホーム・ShopのAmazon導線はセッション内で安定した配置/文言2×2実験を行い、50%以上を1秒表示したimpressionとclickだけをPIIなしの構造化platform logへ送る。価格・配送はAPI値を推測せずAmazon.co.jp確認と明記し、PR開示と`sponsored` linkを必須にする
 - **Groups状態分離契約**: グループ内ユーザー順位とグループ対抗順位は正歩数だけを対象にし、ランキング配列長は「ランキング参加人数」と表示する。group/user/membership認可だけを詳細ページの必須境界とし、private group非メンバー404を維持する。メンバー一覧/件数、順位、比較、期間別競争の失敗は個別警告として、取得不能を0人・空順位・未所属へ変換せず、利用可能なイベント・チャット・ギア・週間レポートを継続する
+- **F030招待リンク**: `POST /api/group/invite`の`create`/`join`はEdge Runtimeで動作し、発行はOWNER/ADMINだけをDB RPC内で認可する。256-bit生tokenは成功時に一度だけ返し、DBにはSHA-256 hashと7日後の失効時刻だけを保存する。UIは生tokenを`/groups/invite#token=...`のfragmentだけに置き、読取後すぐURLから除去してメモリ内retryに限定する。Clipboard失敗時は選択可能なread-only linkを維持し、参加画面は404/410/既参加/成功/通信・基盤障害を分離する。参加は単一RPCでmembershipと`group_keyword`を原子的に同期する。migrationは未適用のため、`migrations/20260719_add_group_invite_links.sql`適用前はUIが明示的な利用不能状態を表示する
 - **ランキング期間コンテキスト**: 期間filterはURLの`period`を唯一の状態として共有し、既存クエリを保持したまま置換する。主要ナビと仲間発見導線は週次へ統一し、グループ詳細もHero直後の分析を週次で開始する。Global・Group・Group detailの表示、再読込、共有URL、リアクション取得を同じ期間へ揃え、旧期間のリアクション応答は中断する。filterは固定semantic色・チェック・高contrast境界を使い、短い期間名とチャート説明を分離する。下部の愛用ギアへは初期viewportの44px導線を残す
 - **テーマ優先順位**: 明示的な端末内テーマを優先し、保存値がない端末だけDB装備テーマを初期値として使用する。item code変換は`lib/theme.ts`へ集約
 
@@ -507,10 +512,12 @@ RLS変更とは分離すべき高確度のerror fallbackも監査した。
 
 | 経路 | 現行のDB障害時挙動 | 別Fix候補 |
 |---|---|---|
-| `POST /api/user/follow`の対象ユーザー確認 | `users`照会errorを取得せず404へ変換 | DB errorを報告して5xx |
-| `GET /api/user/followers`のプロフィール取得 | `users`照会errorを取得せず欠落行または空の200へ変換 | 取得不能を空状態から分離 |
-| `GET /api/user/following-comparison` | `user_follows`照会errorを空比較へ、users/steps errorを`Unknown`/0歩へ変換 | 各errorを報告して非成功応答 |
-| group invite anti-abuse | `user_follows`照会errorを「フォローなし」の403へ変換 | 権限拒否とDB障害を分離 |
+| `POST /api/user/follow`の対象ユーザー確認 | `PGRST116`だけを404とし、その他のDB障害と`null/null`は登録前に報告して500 | 修正済み |
+| `GET /api/user/followers`のプロフィール取得 | `users`照会error・不正null・プロフィール欠落を報告し、空状態へ変換せず500 | 修正済み |
+| `GET /api/user/following-comparison` | follows/users/steps照会error・不正null・プロフィール欠落を報告し、空比較・`Unknown`・0歩へ変換せず500 | 修正済み |
+| group invite anti-abuse | `PGRST116`だけを403とし、その他のDB障害と`null/null`は招待・legacy同期前に報告して500 | 修正済み |
+
+社会データのDB障害は空配列・`Unknown`・0歩へ偽装しない。歩数照会が成功した場合に限り、日付ごとの合法的な未記録は既存API互換として0歩で返し、`dailySteps.hasRecord`で記録済み0歩と区別する。
 
 migration設計前に、DB管理者が承認したread-only接続で次を保存する。結果に未知の列、
 制約、policy、grantee、owner、BYPASSRLS、sequenceがあれば設計を中止して個別に確認する。
@@ -896,7 +903,7 @@ npm run audit:responsive
 
 - テストフレームワーク: **Vitest**
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
-- 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
+- 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
 - テストファイル: `lib/__tests__/` 配下

@@ -29,6 +29,7 @@ const TYPE_CONFIG: Record<string, { emoji: string; labelKey: string; color: stri
   LOGIN_BONUS: { emoji: '📅', labelKey: 'loginBonus', color: 'bg-purple-500' },
   RANK_BONUS: { emoji: '🏆', labelKey: 'rankBonus', color: 'bg-amber-500' },
   MISSION_REWARD: { emoji: '✅', labelKey: 'missionReward', color: 'bg-teal-500' },
+  GROUP_CHALLENGE_REWARD: { emoji: '👥', labelKey: 'groupChallengeReward', color: 'bg-indigo-500' },
   GIFT_RECEIVE: { emoji: '🎁', labelKey: 'giftReceived', color: 'bg-pink-500' },
   PURCHASE: { emoji: '🛒', labelKey: 'purchases', color: 'bg-red-500' },
   GIFT_SEND: { emoji: '💸', labelKey: 'giftSent', color: 'bg-red-400' },

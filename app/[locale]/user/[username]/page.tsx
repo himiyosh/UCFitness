@@ -6,6 +6,7 @@ import { reportError } from '@/lib/errors';
 import { supabaseAdmin } from "@/lib/supabase";
 import Link from 'next/link';
 import ActivityGraph from '@/components/ActivityGraph';
+import GrowthTimeline from '@/components/profile/GrowthTimeline';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileBadges from '@/components/profile/ProfileBadges';
 import AchievementProgress from '@/components/profile/AchievementProgress';
@@ -13,6 +14,7 @@ import AuthenticatedPageHeader from '@/components/layout/AuthenticatedPageHeader
 import PageIntro from '@/components/layout/PageIntro';
 import { notFound, redirect } from 'next/navigation';
 import { getUserBadges } from "@/lib/services/badge-service";
+import { getProfileChallengeHistory } from '@/lib/services/profile-timeline-service';
 import { getEquippedItems } from "@/lib/services/shop-service";
 import { getRankings } from "@/lib/services/ranking-service";
 import { getTranslations } from "next-intl/server";
@@ -30,6 +32,7 @@ import {
     type ProfilePeriodSteps,
     type ProfileStepRecord,
 } from '@/lib/profile-steps';
+import { buildProfileTimeline } from '@/lib/profile-timeline';
 import { isValidStepGoal } from '@/lib/step-goal';
 
 // 遅延読み込み: プロフィール追加コンポーネント
@@ -107,6 +110,14 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
     if (!user) {
         notFound();
     }
+    const isOwner = session.user.id === user.id;
+    const challengeHistoryPromise = isOwner
+        ? captureProfileDependency(
+            'profile:challenge-history',
+            user.id,
+            getProfileChallengeHistory(user.id),
+        )
+        : Promise.resolve({ data: null, failed: false });
 
     // ⚡ パフォーマンス: 独立クエリを並列実行
     // 📊 歩数データは Supabase PostgREST 1000行制限回避のため、直近400日 + 集計クエリに分割
@@ -123,6 +134,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         statsResult,
         weeklyRankingsResult,
         coinBalanceState,
+        challengeHistoryState,
     ] = await Promise.all([
         supabaseAdmin
             .from('group_members')
@@ -155,6 +167,7 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         ),
         // コイン残高（パーソナルレコード用）
         captureProfileDependency('profile:coin-balance', user.id, getCoinBalance(user.id)),
+        challengeHistoryPromise,
     ]);
 
     if (publicGroupsResult.error) {
@@ -268,6 +281,11 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
         day: '2-digit'
     });
     const todayStr = formatter.format(now); // YYYY-MM-DD
+    const profileTimeline = buildProfileTimeline(
+        challengeHistoryState.data?.rows ?? [],
+        userBadges,
+        todayStr,
+    );
 
     // Weekly Start (Mon)
     const currentDate = new Date(`${todayStr}T00:00:00Z`);
@@ -293,7 +311,6 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
     // Viewer Stats (Fetch if logged in and different user)
     // 🛡️ Sentinel: email ではなく ID で所有者判定
-    const isOwner = session.user.id === user.id;
     let viewerStats: ProfilePeriodSteps = {
         daily: null,
         weekly: null,
@@ -698,6 +715,23 @@ export default async function PublicProfilePage(props: { params: Promise<{ usern
 
                         {/* Step Heatmap Calendar */}
                         <StepCalendar userId={user.id} />
+
+                        {isOwner && (
+                            <GrowthTimeline
+                                entries={profileTimeline.entries}
+                                challengeUnavailable={challengeHistoryState.failed}
+                                badgesUnavailable={badgesUnavailable}
+                                malformedCount={
+                                    profileTimeline.malformedChallengeCount
+                                    + profileTimeline.malformedBadgeCount
+                                }
+                                truncatedChallengeCount={
+                                    challengeHistoryState.data?.isTruncated
+                                        ? challengeHistoryState.data.totalCount
+                                        : null
+                                }
+                            />
+                        )}
 
                         {/* バッジミュージアム — タイムライン表示 */}
                         {!badgesUnavailable && userBadges.length > 0 && (

@@ -212,12 +212,6 @@ export default async function LandingPage({ locale, searchParams }: LandingPageP
                 {authContext && <AuthGateNotice context={authContext} />}
 
                 <section className="relative overflow-hidden border-b border-[var(--color-border)]" aria-labelledby="landing-headline">
-                    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-                        <div className="landing-orbit landing-orbit-play absolute -left-28 top-10 h-56 w-56 rounded-full bg-[var(--color-play-soft)]" />
-                        <div className="landing-orbit landing-orbit-competition absolute -right-28 top-16 h-64 w-64 rounded-full bg-[var(--color-competition-soft)] sm:h-80 sm:w-80" />
-                        <div className="landing-orbit landing-orbit-success absolute bottom-8 left-[48%] hidden h-20 w-20 rounded-full bg-[var(--color-success-soft)] sm:block" />
-                    </div>
-
                     <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 xl:py-24">
                         <div className="grid items-center gap-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(30rem,1.1fr)] xl:gap-14">
                             <div className="landing-hero-copy min-w-0 max-w-2xl">
@@ -337,15 +331,14 @@ function DeferredLandingSections({
             >
                 <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-start lg:gap-14 lg:px-8 lg:py-16">
                     <div className="max-w-xl lg:sticky lg:top-28">
-                        <p className="text-sm font-bold text-[var(--color-competition-strong)]">{t('journeyLabel')}</p>
-                        <h2 id="landing-journey-title" className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                        <h2 id="landing-journey-title" className="text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
                             {t('journeyTitle')}
                         </h2>
                         <p className="mt-3 max-w-lg text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
                             {t('journeyDesc')}
                         </p>
                     </div>
-                    <ol className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+                    <ol className="grid gap-x-5 sm:grid-cols-2">
                         {journeyItems.map((item, index) => (
                             <JourneyCard key={item.label} item={item} index={index} />
                         ))}
@@ -356,8 +349,7 @@ function DeferredLandingSections({
             <section className="bg-[var(--color-surface)]">
                 <div className="mx-auto grid w-full max-w-7xl items-center gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:gap-14 lg:px-8 lg:py-16">
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[var(--color-competition-strong)]">{t('showcaseLabel')}</p>
-                        <h2 className="mt-2 text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+                        <h2 className="text-balance text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
                             {t('showcaseTitle')}
                         </h2>
                         <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
@@ -637,9 +629,9 @@ function StatItem({
 
 function JourneyCard({ item, index }: { item: JourneyItem; index: number }) {
     return (
-        <li className="min-w-0 rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
-            <div className="flex items-start gap-4">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${getJourneyCardClass(index)}`}>
+        <li className="min-w-0 border-t border-[var(--color-border)] py-4 sm:py-5">
+            <div className="flex items-start gap-3">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${getJourneyCardClass(index)}`}>
                     <JourneyIcon index={index} />
                 </div>
                 <div className="min-w-0">
