@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-21T16:16:21Z",
+  "lastUpdated": "2026-07-21T16:52:00Z",
   "lastAgent": "Playwright Tester (QA + Self-Critique)",
-  "lastCommit": "c010fefdc32265f18452c0c0f425e58d8558b991",
+  "lastCommit": "b3ac197d935ba363f165f3410efcc316e3d3fa3f",
   "lastBranch": "himiyosh-potential-spoon",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "F025 E2Eテストスイートの最初の未認証公開面スライスとして、既存playwright/testとlocalhost:3000の安全なweb server設定を追加した。320px日本語と1280px英語で、LPのheader/main/footer兄弟ランドマーク、唯一のh1、スキップリンク、FitbitログインCTA、locale遷移、Terms/Privacy導線、全画面の横overflowなしを2ユーザージャーニーで検証する。E2E 2件、10回反復20件、全955 Vitest（--maxWorkers=1）、check:allをPASS。lintは既存62 warnings・0 errors。保護済み件数は9/25据え置き。OAuth、DB接続・read/write、本番操作は未実施でF025はin-progress。",
@@ -13,7 +13,7 @@
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-21T16:16:21Z"
+    "lastVerified": "2026-07-21T16:52:00Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1352,7 +1352,7 @@
       "date": "2026-07-22",
       "agent": "Playwright Tester (QA + Self-Critique)",
       "action": "F025 E2Eテストスイートの最初の未認証公開面スライスとして、既存playwright/testとlocalhost:3000のweb server設定を追加した。320px日本語と1280px英語でLP、スキップリンク、FitbitログインCTA、locale遷移、Terms/Privacy、ランドマーク、唯一のh1、横overflowを2ユーザージャーニーで検証する。E2E 2件、10回反復20件、全955 Vitest（--maxWorkers=1）、check:allをPASS。lintは既存62 warnings・0 errors。OAuth、DB接続・read/write、本番操作なし。F025はin-progress。",
-      "commit": "c010fefdc32265f18452c0c0f425e58d8558b991",
+      "commit": "b3ac197d935ba363f165f3410efcc316e3d3fa3f",
       "filesChanged": ["playwright.config.ts", "tests/public-routes.spec.ts", "package.json", ".gitignore", "README.md", ".github/ucfitness-features.json"]
     }
   ],
