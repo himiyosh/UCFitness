@@ -671,6 +671,7 @@ npm run dev
 | `npm run pages:build` | Cloudflare Pages ビルド |
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
+| `npm run test:e2e` | Playwright 公開主要導線E2E (localhost:3000、320 / 1280px、ja/en) |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -895,13 +896,18 @@ npm run test:watch
 # カバレッジ付き
 npm run test:coverage
 
+# 未認証の公開主要導線E2E
+npm run test:e2e
+
 # 全主要画面のレスポンシブ監査
 RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNAME_JA=ja-user RESPONSIVE_AUDIT_GROUP_ID_JA=ja-group \
 RESPONSIVE_AUDIT_STORAGE_STATE_EN=/path/to/en-state.json RESPONSIVE_AUDIT_USERNAME_EN=en-user RESPONSIVE_AUDIT_GROUP_ID_EN=en-group \
 npm run audit:responsive
 ```
 
-- テストフレームワーク: **Vitest**
+- テストフレームワーク: **Vitest**、公開主要導線E2Eは既存の `playwright/test`
+- `npm run test:e2e` はlocalhost:3000の未認証公開面だけを対象とし、320px日本語と1280px英語でLP、スキップリンク、ログインCTA、言語切替、利用規約、プライバシーポリシー、ランドマーク、唯一の`h1`、横overflowをユーザー導線として検証する
+- E2Eのweb serverは既存のlocalhost:3000を再利用し、起動済みプロセスをkillしない。ローカル専用プレースホルダー環境変数を使い、OAuth・DB write・本番操作は実行しない
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない

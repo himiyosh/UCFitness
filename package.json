@@ -13,6 +13,7 @@
     "check:i18n": "node scripts/check-i18n-keys.mjs",
     "check:all": "npm run check:rules && npm run check:i18n && npx tsc --noEmit && npm run lint",
     "audit:responsive": "node scripts/audit-responsive.mjs",
+    "test:e2e": "playwright test",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
