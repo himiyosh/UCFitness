@@ -1537,3 +1537,9 @@ export const runtime = "edge";
 - **根本原因**: ポート競合を避けることを優先し、検証対象サーバーのbranch・commit同一性を確認できない既存プロセスを暗黙に信頼した。retryとflaky判定も別の品質契約として設定していなかった。
 - **対策**: E2Eの既存サーバー再利用はデフォルトfalseとし、同じbranch・commitのサーバーを意図的に管理する場合だけ`PLAYWRIGHT_REUSE_SERVER=1`で明示opt-inする。ポート競合時に既存プロセスをkillしない。CIでは`failOnFlakyTests`を有効にし、retry後の成功をPASSへ変換しない。
 - **教訓**: E2Eの成功にはDOM結果だけでなく、対象commitのサーバーを検証したという出所保証が必要である。共有ポートの暗黙再利用を禁止し、再利用は操作者が同一性を保証した明示設定に限定する。リファレンス: `playwright.config.ts`, `README.md`
+
+### LL-065: 成功runでskipされるActionはruntimeとartifact安全性を検証できない
+- **事象**: 失敗時だけ実行する`upload-artifact`が成功runではskipされ、Node 20 runtime警告とtrace内の匿名Auth.js cookie値を検出できていなかった。
+- **根本原因**: tag・commit署名だけでAction更新を判定し、`action.yml`の`runs.using`と実失敗経路を確認しなかった。artifactのファイル種別だけを制限し、trace内部のrequest/response情報を監査していなかった。
+- **対策**: Node 24の公式v7 SHAへ固定し、一時失敗probeでPNG/trace upload、3日retention、runtime警告を実測した。trace内の全cookie値と認証header値をupload前に伏せ、処理失敗時はuploadしない。
+- **教訓**: 条件付きActionは実際に条件を成立させるrunまで検証する。trace等の複合artifactは拡張子だけで安全と判断せず、内部データを検査・伏せ字化し、失敗時はfail closedにする。リファレンス: `.github/workflows/public-e2e.yml`, `scripts/sanitize-playwright-traces.ts`
