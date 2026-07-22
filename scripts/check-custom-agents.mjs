@@ -239,6 +239,7 @@ if (source) {
       const nextVersion = packageJson.dependencies.next.replace(/^[^\d]*/, '');
       const eslintConfigNextVersion =
         packageJson.devDependencies['eslint-config-next'].replace(/^[^\d]*/, '');
+      const { frontmatter: nextAgentFrontmatter } = parseAgent(nextAgentSource);
 
       if (frontmatter.name !== 'hallmark') {
         fail('Hallmark frontmatter name must be exactly "hallmark"');
@@ -281,6 +282,24 @@ if (source) {
 
       if (nextVersion !== eslintConfigNextVersion) {
         fail('next and eslint-config-next versions must match');
+      }
+
+      if (
+        nextAgentFrontmatter.name !== 'Next.js Expert' ||
+        nextAgentFrontmatter['user-invocable'] !== true
+      ) {
+        fail('Next.js Expert must remain explicitly user-invocable');
+      }
+
+      if (
+        typeof nextAgentFrontmatter.description !== 'string' ||
+        nextAgentFrontmatter.description.trim() === ''
+      ) {
+        fail('Next.js Expert description must be a non-empty string');
+      }
+
+      if ('model' in nextAgentFrontmatter) {
+        fail('Next.js Expert must inherit an available runtime model');
       }
 
       const nextVersionReferences = [
