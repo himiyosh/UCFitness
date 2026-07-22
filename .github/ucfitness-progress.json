@@ -6,7 +6,7 @@
   "lastCommit": "40b3bc8f5174b56272c4b4cec66690449fcb47bf",
   "lastBranch": "himiyosh-probable-robot",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F025 stacked Phase 2として、PRごとに公開Playwright E2Eを実行する最小権限の独立GitHub Actions workflowを追加した。Node.js 22でlock済み依存とChromiumだけを準備し、専用localhost:3000とfailOnFlakyTests契約を維持する。同一PRの古い実行をcancelし、失敗PNGとtraceだけを3日保存する。E2E 2件、全955 Vitest（--maxWorkers=1）、check:all、workflow構文・供給網検証、独立レビューをPASS。lintは既存62 warnings・0 errors。F025はin-progress。",
+  "summary": "F025 stacked Phase 2として、PRごとに公開Playwright E2Eを実行する最小権限の独立GitHub Actions workflowを追加した。Node.js 22でlock済み依存とChromiumだけを準備し、専用localhost:3000とfailOnFlakyTests契約を維持する。同一PRの古い実行をcancelし、失敗PNGとtraceだけを3日保存する。E2E 2件、全955 Vitest（--maxWorkers=1）、check:all、workflow構文・供給網検証、独立レビューをPASS。lintは既存62 warnings・0 errors。保護済み件数は9/25据え置き。F025はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
