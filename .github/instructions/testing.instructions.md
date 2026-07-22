@@ -78,6 +78,7 @@ test.describe("ページ名", () => {
 - `waitForSelector` より `expect(...).toBeVisible()` の自動待機を活用
 - テストごとに独立した状態を保つ（テスト間の依存なし）
 - アクセシビリティ機能・キーボードナビゲーションもテスト
+- ページ横overflowは`scrollWidth - clientWidth <= 0`で判定する。Linux Chromiumではスクロールバー幅等により負値になり得るため、厳密な`0`一致を要求しない
 
 ## 共通ルール
 

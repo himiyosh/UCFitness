@@ -73,7 +73,7 @@ async function expectPublicShell(page: Page, title: string): Promise<void> {
   await expect.poll(async () => page.evaluate(() =>
     Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
       - document.documentElement.clientWidth,
-  )).toBe(0);
+  )).toBeLessThanOrEqual(0);
 }
 
 test.describe("公開主要導線", () => {

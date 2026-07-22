@@ -911,7 +911,9 @@ npm run audit:responsive
 - テストフレームワーク: **Vitest**、公開主要導線E2Eは既存の `playwright/test`
 - `npm run test:e2e` はlocalhost:3000の未認証公開面だけを対象とし、320px日本語と1280px英語でLP、スキップリンク、ログインCTA、言語切替、利用規約、プライバシーポリシー、ランドマーク、唯一の`h1`、横overflowをユーザー導線として検証する
 - E2Eのweb serverはデフォルトで専用のlocalhost:3000を起動し、別worktreeや古いcommitの既存サーバーを再利用しない。ポート競合時も既存プロセスをkillせず失敗する。同じbranch・commitのサーバーを意図的に管理している場合だけ、`PLAYWRIGHT_REUSE_SERVER=1`で明示的に再利用できる。ローカル専用プレースホルダー環境変数を使い、OAuth・DB write・本番操作は実行しない
-- CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない
+- PRでは独立した`Public E2E` workflowがNode.js 22とChromiumだけを準備し、専用localhost:3000で`npm run test:e2e`を実行する。新しいPR更新時は同一PRの古い実行をcancelし、失敗時に限って公開面のscreenshot/traceを`test-results/`から3日間保存する
+- 失敗trace内のcookieと認証header値はupload前に伏せ、処理に失敗した場合はartifactをuploadしない
+- CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない。E2E workflowは`contents: read`以外の権限や本番secretを使用しない
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
