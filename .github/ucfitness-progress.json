@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-22T03:09:44Z",
+  "lastUpdated": "2026-07-22T03:21:13Z",
   "lastAgent": "Playwright Tester (CI + QA + Self-Critique)",
-  "lastCommit": "40b3bc8f5174b56272c4b4cec66690449fcb47bf",
+  "lastCommit": "21ec9966b3f0d6fb63ae167aa5ca3403f0e0fdd6",
   "lastBranch": "himiyosh-probable-robot",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F025 stacked Phase 2として、PRごとに公開Playwright E2Eを実行する最小権限の独立GitHub Actions workflowを追加した。Node.js 22でlock済み依存とChromiumだけを準備し、専用localhost:3000とfailOnFlakyTests契約を維持する。同一PRの古い実行をcancelし、失敗PNGとtraceだけを3日保存する。E2E 2件、全955 Vitest（--maxWorkers=1）、check:all、workflow構文・供給網検証、独立レビューをPASS。lintは既存62 warnings・0 errors。保護済み件数は9/25据え置き。F025はin-progress。",
+  "summary": "F025 stacked Phase 2として、PRごとに公開Playwright E2Eを実行する最小権限の独立GitHub Actions workflowを追加した。Node.js 22でlock済み依存とChromiumだけを準備し、専用localhost:3000とfailOnFlakyTests契約を維持する。同一PRの古い実行をcancelし、失敗PNGとtraceだけを3日保存する。Linux Chromiumの負のscroll差を許容しつつ正の横overflow検出を維持した。GitHub Public E2E run 29888059629は1分35秒でPASS。ローカルE2E 2件、全955 Vitest（--maxWorkers=1）、check:all、workflow構文・供給網検証、独立レビューもPASS。lintは既存62 warnings・0 errors。Validateはproject checks/955 testsまでPASS後、既存Next.js経由sharpの新規high audit 2件で失敗。保護済み件数は9/25据え置き。F025はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-22T03:09:44Z"
+    "lastVerified": "2026-07-22T03:21:13Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -37,7 +37,8 @@
     "F028はin-progress。所有者限定タイムラインは実装済みだが、過去時点のchallenge定義と確定達成状態を保持する履歴スナップショットDBがなく、認証fixtureと必須Supabase環境変数もないため認証済み375/1280実画面は未検証",
     "F030はin-progress。Phase 2の発行・参加UI、ja/en、実ブラウザ、security/a11y検証は完了したが、招待migrationは本番Supabase未適用で、joinの厳密なcross-isolate rate limitにはF018と同じ外部resource/bindingが必要",
     "F016はin-progress。Phase 1〜6の6表を静的保護したが実catalog・migration適用は未検証。Phase 7 walking_routes、Phase 8 user_follows、Phase 9 daily_stepsは現行CREATE TABLE完全DDL・完全Database型・read-only実catalog接続がなく、型・nullability・default・FK/PK/unique・check・owner・RLS/policy・ACL・owned sequenceを確定できないためaudit-onlyで停止。daily_stepsには旧schema snapshotがあるが現行証拠ではない。badge-awardsはPhase A personalとPhase B global/group/award insertを修正済みで、streak milestone・Teams enrichmentとachievement・title・following comparisonのDB error偽装が別Fix候補。coin backfill原子RPCはPhase A migrationとPhase B app wiringを接続済みだが、実catalog未実行・DB接続/read/write/apply未実施",
-    "F015はin-progress。Fitbit歩数GETの429・5xx・通信障害再試行と認証/手動同期/Cron境界は実装・検証済みだが、sync_errorsテーブルと管理画面での失敗可視化は未実装"
+    "F015はin-progress。Fitbit歩数GETの429・5xx・通信障害再試行と認証/手動同期/Cron境界は実装・検証済みだが、sync_errorsテーブルと管理画面での失敗可視化は未実装",
+    "Validateのproject checksと955テストはPASSするが、2026-07-22時点で既存Next.js経由のsharp <0.35.0にhigh audit 2件（CVE-2026-33327、CVE-2026-33328、CVE-2026-35590、CVE-2026-35591）があり、npm audit --omit=dev --audit-level=highが失敗する。今回のF025 CI変更ではdependencyを変更せず、別のsecurity updateで解消が必要"
   ],
   "artifacts": {
     "initScript": ".github/ucfitness-init.sh",
@@ -1361,6 +1362,13 @@
       "action": "F025 stacked Phase 2として、pull_requestごとに公開Playwright E2Eを実行する独立workflowを追加した。contents: read、SHA pin済みAction、Node.js 22、npm ci、lock済みPlaywright、Chromium限定、15分timeout、同一PRの古い実行cancelを設定した。失敗時は失敗PNGとtraceだけを3日保存する。E2E 2件、全955 Vitest（--maxWorkers=1）、check:all、YAML構文・必須契約・Action SHA実在性/署名、独立レビューをPASS。lintは既存62 warnings・0 errors。F025はin-progress。",
       "commit": "40b3bc8f5174b56272c4b4cec66690449fcb47bf",
       "filesChanged": [".github/workflows/public-e2e.yml", "README.md"]
+    },
+    {
+      "date": "2026-07-22",
+      "agent": "Playwright Tester (CI + QA + Self-Critique)",
+      "action": "GitHub初回実行でLinux ChromiumのscrollWidth差が-15となるCI移植性問題を検出し、正の横overflowだけを失敗させる<=0契約へ修正した。再発防止をtesting instructionへ固定し、既存RLS進捗anchorを保持した。GitHub Public E2E run 29888059629は1分35秒でPASS。ローカルE2E 2件、全955 Vitest（--maxWorkers=1）、check:all、独立レビューもPASS。Validateはproject checks/955 testsをPASS後、今回未変更のNext.js経由sharp high audit 2件で失敗し、別security updateが必要。F025はin-progress。",
+      "commit": "21ec9966b3f0d6fb63ae167aa5ca3403f0e0fdd6",
+      "filesChanged": ["tests/public-routes.spec.ts", ".github/instructions/testing.instructions.md", ".github/ucfitness-progress.json"]
     }
   ],
   "instincts": {
