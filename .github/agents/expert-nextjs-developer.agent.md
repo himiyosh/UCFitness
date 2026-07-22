@@ -1,7 +1,8 @@
 ---
 description: "Expert Next.js 15 developer for UCFitness. Use for App Router, Server Components, Edge Runtime, next-intl, Cloudflare Pages, routing, caching, and API routes."
 name: "Next.js Expert"
-user-invocable: true
+model: "GPT-4.1"
+tools: ["changes", "codebase", "edit/editFiles", "fetch", "findTestFiles", "githubRepo", "new", "openSimpleBrowser", "problems", "runCommands", "runTasks", "runTests", "search", "searchResults", "terminalLastCommand", "terminalSelection", "testFailure", "usages", "vscodeAPI"]
 ---
 
 # Expert Next.js Developer
