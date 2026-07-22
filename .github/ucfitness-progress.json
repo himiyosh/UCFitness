@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-22T03:21:13Z",
+  "lastUpdated": "2026-07-22T03:27:14Z",
   "lastAgent": "Playwright Tester (CI + QA + Self-Critique)",
-  "lastCommit": "21ec9966b3f0d6fb63ae167aa5ca3403f0e0fdd6",
+  "lastCommit": "bf7615e960c01ed23c6d2a3d23b68857159716fe",
   "lastBranch": "himiyosh-probable-robot",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F025 stacked Phase 2として、PRごとに公開Playwright E2Eを実行する最小権限の独立GitHub Actions workflowを追加した。Node.js 22でlock済み依存とChromiumだけを準備し、専用localhost:3000とfailOnFlakyTests契約を維持する。同一PRの古い実行をcancelし、失敗PNGとtraceだけを3日保存する。Linux Chromiumの負のscroll差を許容しつつ正の横overflow検出を維持した。GitHub Public E2E run 29888059629は1分35秒でPASS。ローカルE2E 2件、全955 Vitest（--maxWorkers=1）、check:all、workflow構文・供給網検証、独立レビューもPASS。lintは既存62 warnings・0 errors。Validateはproject checks/955 testsまでPASS後、既存Next.js経由sharpの新規high audit 2件で失敗。保護済み件数は9/25据え置き。F025はin-progress。",
+  "summary": "F025 stacked Phase 2として、PRごとに公開Playwright E2Eを実行する最小権限の独立GitHub Actions workflowを追加した。Node.js 22でlock済み依存とChromiumだけを準備し、専用localhost:3000とfailOnFlakyTests契約を維持する。同一PRの古い実行をcancelし、失敗PNGとtraceだけを3日保存する。Linux Chromiumの負のscroll差を許容しつつ正の横overflow検出を維持した。checkout/setup-nodeはNode 24対応v5の検証済みSHAへ固定し、GitHub Public E2E run 29888407622は1分31秒で警告なくPASS。ローカルE2E 2件、全955 Vitest（--maxWorkers=1）、check:all、workflow構文・供給網検証、独立レビューもPASS。lintは既存62 warnings・0 errors。Validateはproject checks/955 testsまでPASS後、既存Next.js経由sharpの新規high audit 2件で失敗。保護済み件数は9/25据え置き。F025はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-22T03:21:13Z"
+    "lastVerified": "2026-07-22T03:27:14Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1369,6 +1369,13 @@
       "action": "GitHub初回実行でLinux ChromiumのscrollWidth差が-15となるCI移植性問題を検出し、正の横overflowだけを失敗させる<=0契約へ修正した。再発防止をtesting instructionへ固定し、既存RLS進捗anchorを保持した。GitHub Public E2E run 29888059629は1分35秒でPASS。ローカルE2E 2件、全955 Vitest（--maxWorkers=1）、check:all、独立レビューもPASS。Validateはproject checks/955 testsをPASS後、今回未変更のNext.js経由sharp high audit 2件で失敗し、別security updateが必要。F025はin-progress。",
       "commit": "21ec9966b3f0d6fb63ae167aa5ca3403f0e0fdd6",
       "filesChanged": ["tests/public-routes.spec.ts", ".github/instructions/testing.instructions.md", ".github/ucfitness-progress.json"]
+    },
+    {
+      "date": "2026-07-22",
+      "agent": "Playwright Tester (CI + QA + Self-Critique)",
+      "action": "GitHub runnerのNode 20非推奨annotationを解消するため、checkout/setup-nodeをNode 24対応v5の検証済みSHAへ更新した。GitHub APIでv5 tag一致とcommit verificationを確認し、独立レビューをPASS。Public E2E run 29888407622は最終workflowで1分31秒・失敗artifact uploadなし・annotationなしでPASS。Validateの既存sharp high audit 2件は別security updateへ記録した。F025はin-progress。",
+      "commit": "bf7615e960c01ed23c6d2a3d23b68857159716fe",
+      "filesChanged": [".github/workflows/public-e2e.yml", ".github/ucfitness-progress.json"]
     }
   ],
   "instincts": {
