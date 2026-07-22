@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-21T16:52:00Z",
-  "lastAgent": "Playwright Tester (QA + Self-Critique)",
-  "lastCommit": "b3ac197d935ba363f165f3410efcc316e3d3fa3f",
-  "lastBranch": "himiyosh-potential-spoon",
+  "lastUpdated": "2026-07-22T03:09:44Z",
+  "lastAgent": "Playwright Tester (CI + QA + Self-Critique)",
+  "lastCommit": "40b3bc8f5174b56272c4b4cec66690449fcb47bf",
+  "lastBranch": "himiyosh-probable-robot",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F025 E2Eテストスイートの最初の未認証公開面スライスとして、既存playwright/testとlocalhost:3000の安全なweb server設定を追加した。320px日本語と1280px英語で、LPのheader/main/footer兄弟ランドマーク、唯一のh1、スキップリンク、FitbitログインCTA、locale遷移、Terms/Privacy導線、全画面の横overflowなしを2ユーザージャーニーで検証する。E2E 2件、10回反復20件、全955 Vitest（--maxWorkers=1）、check:allをPASS。lintは既存62 warnings・0 errors。保護済み件数は9/25据え置き。OAuth、DB接続・read/write、本番操作は未実施でF025はin-progress。",
+  "summary": "F025 stacked Phase 2として、PRごとに公開Playwright E2Eを実行する最小権限の独立GitHub Actions workflowを追加した。Node.js 22でlock済み依存とChromiumだけを準備し、専用localhost:3000とfailOnFlakyTests契約を維持する。同一PRの古い実行をcancelし、失敗PNGとtraceだけを3日保存する。E2E 2件、全955 Vitest（--maxWorkers=1）、check:all、workflow構文・供給網検証、独立レビューをPASS。lintは既存62 warnings・0 errors。F025はin-progress。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-21T16:52:00Z"
+    "lastVerified": "2026-07-22T03:09:44Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1354,6 +1354,13 @@
       "action": "F025 E2Eテストスイートの最初の未認証公開面スライスとして、既存playwright/testとlocalhost:3000のweb server設定を追加した。320px日本語と1280px英語でLP、スキップリンク、FitbitログインCTA、locale遷移、Terms/Privacy、ランドマーク、唯一のh1、横overflowを2ユーザージャーニーで検証する。E2E 2件、10回反復20件、全955 Vitest（--maxWorkers=1）、check:allをPASS。lintは既存62 warnings・0 errors。OAuth、DB接続・read/write、本番操作なし。F025はin-progress。",
       "commit": "b3ac197d935ba363f165f3410efcc316e3d3fa3f",
       "filesChanged": ["playwright.config.ts", "tests/public-routes.spec.ts", "package.json", ".gitignore", "README.md", ".github/ucfitness-features.json"]
+    },
+    {
+      "date": "2026-07-22",
+      "agent": "Playwright Tester (CI + QA + Self-Critique)",
+      "action": "F025 stacked Phase 2として、pull_requestごとに公開Playwright E2Eを実行する独立workflowを追加した。contents: read、SHA pin済みAction、Node.js 22、npm ci、lock済みPlaywright、Chromium限定、15分timeout、同一PRの古い実行cancelを設定した。失敗時は失敗PNGとtraceだけを3日保存する。E2E 2件、全955 Vitest（--maxWorkers=1）、check:all、YAML構文・必須契約・Action SHA実在性/署名、独立レビューをPASS。lintは既存62 warnings・0 errors。F025はin-progress。",
+      "commit": "40b3bc8f5174b56272c4b4cec66690449fcb47bf",
+      "filesChanged": [".github/workflows/public-e2e.yml", "README.md"]
     }
   ],
   "instincts": {
