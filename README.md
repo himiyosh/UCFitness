@@ -704,6 +704,9 @@ npm run pages:build
 
 - すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` が必要
 - `layout.tsx` には不要
+- Next.jsはApp Router DoS修正版の15.5.21以上を使用し、transitive `sharp`はlibvips脆弱性修正版0.35.3へoverrideする
+- 出荷前に`npm audit --omit=dev --audit-level=high`を実行し、high/criticalを0件にする。major downgradeや`--force`で解消しない
+- 非推奨`@cloudflare/next-on-pages`のpeer範囲は15.5.2までで警告になるため、15.5.21互換性は`pages:build`で実証する。adapter移行は別変更として扱う
 
 ## エージェント・プロンプト構成
 
@@ -824,7 +827,7 @@ npm run pages:build
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
 | **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings/Profile/Wallet/Groups状態分離、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期・並行membershipの原子性を統括する |
-| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
+| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.21 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
 | SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
