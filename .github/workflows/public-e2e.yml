@@ -35,8 +35,13 @@ jobs:
       - name: Run public E2E tests
         run: npm run test:e2e
 
-      - name: Upload failure artifacts
+      - name: Sanitize failure traces
+        id: sanitize-failure-traces
         if: ${{ failure() && hashFiles('test-results/**/test-failed-*.png', 'test-results/**/trace.zip') != '' }}
+        run: npx --no-install tsx scripts/sanitize-playwright-traces.ts test-results
+
+      - name: Upload failure artifacts
+        if: ${{ failure() && steps.sanitize-failure-traces.outcome == 'success' && hashFiles('test-results/**/test-failed-*.png', 'test-results/**/trace.zip') != '' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: public-e2e-failure-${{ github.run_id }}-${{ github.run_attempt }}
