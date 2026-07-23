@@ -17,6 +17,8 @@ import Sparkline from '@/components/leaderboard/Sparkline';
 import LeaderboardGroupSection from '@/components/leaderboard/LeaderboardGroupSection';
 
 
+const EMPTY_RANKINGS: readonly RankingEntry[] = Object.freeze([]);
+
 const TABS: { key: Period; labelKey: string }[] = [
     { key: 'DAILY', labelKey: 'periods.daily' },
     { key: 'WEEKLY', labelKey: 'periods.weekly' },
@@ -113,7 +115,7 @@ export default function AnimatedLeaderboard({ userId, allGlobalRankings, allGrou
     }, [period]);
 
     // Filter current view data
-    const currentGlobal = allGlobalRankings[period] ?? [];
+    const currentGlobal = allGlobalRankings[period] ?? EMPTY_RANKINGS;
 
     // Pagination safety — must be at top level (not inside conditional JSX)
     const ITEMS_PER_PAGE = 5;

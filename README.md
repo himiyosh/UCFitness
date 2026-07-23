@@ -95,6 +95,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **Groups状態分離契約**: グループ内ユーザー順位とグループ対抗順位は正歩数だけを対象にし、ランキング配列長は「ランキング参加人数」と表示する。group/user/membership認可だけを詳細ページの必須境界とし、private group非メンバー404を維持する。メンバー一覧/件数、順位、比較、期間別競争の失敗は個別警告として、取得不能を0人・空順位・未所属へ変換せず、利用可能なイベント・チャット・ギア・週間レポートを継続する
 - **F030招待リンク**: `POST /api/group/invite`の`create`/`join`はEdge Runtimeで動作し、発行はOWNER/ADMINだけをDB RPC内で認可する。256-bit生tokenは成功時に一度だけ返し、DBにはSHA-256 hashと7日後の失効時刻だけを保存する。UIは生tokenを`/groups/invite#token=...`のfragmentだけに置き、読取後すぐURLから除去してメモリ内retryに限定する。Clipboard失敗時は選択可能なread-only linkを維持し、参加画面は404/410/既参加/成功/通信・基盤障害を分離する。参加は単一RPCでmembershipと`group_keyword`を原子的に同期する。migrationは未適用のため、`migrations/20260719_add_group_invite_links.sql`適用前はUIが明示的な利用不能状態を表示する
 - **ランキング期間コンテキスト**: 期間filterはURLの`period`を唯一の状態として共有し、既存クエリを保持したまま置換する。主要ナビと仲間発見導線は週次へ統一し、グループ詳細もHero直後の分析を週次で開始する。Global・Group・Group detailの表示、再読込、共有URL、リアクション取得を同じ期間へ揃え、旧期間のリアクション応答は中断する。filterは固定semantic色・チェック・高contrast境界を使い、短い期間名とチャート説明を分離する。下部の愛用ギアへは初期viewportの44px導線を残す
+- **ランキング派生データ性能契約**: 期間別ランキングが未取得の場合はmodule-levelのimmutable空配列を共有し、`useMemo`依存をrenderごとに変えない。チャート用順位データは選択期間の配列参照が変わった時だけ再計算し、72px行高・固定5行・リアクション・プロフィール導線の表示契約は変更しない
 - **テーマ優先順位**: 明示的な端末内テーマを優先し、保存値がない端末だけDB装備テーマを初期値として使用する。item code変換は`lib/theme.ts`へ集約
 
 ## プロジェクト構造
