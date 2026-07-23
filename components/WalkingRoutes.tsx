@@ -24,10 +24,7 @@ interface WalkingRouteDistanceAria {
     'aria-invalid'?: true;
 }
 
-interface WalkingRouteActionError {
-    message: string;
-    shouldFocus: boolean;
-}
+interface WalkingRouteActionError { message: string; shouldFocus: boolean }
 
 interface WalkingRoute {
     id: string;
@@ -95,11 +92,22 @@ export default function WalkingRoutes() {
     const [isSaving, setIsSaving] = useState(false);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const actionErrorRef = useRef<HTMLDivElement>(null);
-    const actionErrorAlertRef = useRef<HTMLDivElement>(null);
+    const actionErrorRef = useRef<HTMLDivElement>(null); const actionErrorAlertRef = useRef<HTMLDivElement>(null);
+    const mutationLockRef = useRef(false); const deleteDialogOpenRef = useRef(false);
     const deleteDialogRef = useRef<HTMLDivElement>(null);
     const deleteCancelRef = useRef<HTMLButtonElement>(null);
-    const closeDeleteDialog = useCallback(() => setDeleteConfirmId(null), []);
+    const closeDeleteDialog = useCallback(() => { deleteDialogOpenRef.current = false; setDeleteConfirmId(null); }, []);
+    const openDeleteDialog = useCallback((routeId: string) => { if (mutationLockRef.current || deleteDialogOpenRef.current) return; deleteDialogOpenRef.current = true; setDeleteConfirmId(routeId); }, []);
+    const beginMutation = useCallback((routeId?: string, fromDeleteDialog = false): boolean => {
+        if (mutationLockRef.current || (deleteDialogOpenRef.current && !fromDeleteDialog)) return false;
+        mutationLockRef.current = true; setActionError(null);
+        if (routeId === undefined) setIsSaving(true); else setActionLoadingId(routeId);
+        return true;
+    }, []);
+    const endMutation = useCallback((routeId?: string): void => {
+        mutationLockRef.current = false;
+        if (routeId === undefined) setIsSaving(false); else setActionLoadingId(null);
+    }, []);
 
     useDialogFocus({
         isOpen: Boolean(deleteConfirmId),
@@ -158,12 +166,9 @@ export default function WalkingRoutes() {
     }, [durationValidationAttempt]);
 
     useEffect(() => {
-        if (actionError) {
-            actionErrorRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-            if (actionError.shouldFocus) {
-                actionErrorAlertRef.current?.focus({ preventScroll: true });
-            }
-        }
+        if (!actionError) return;
+        actionErrorRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        if (actionError.shouldFocus) actionErrorAlertRef.current?.focus({ preventScroll: true });
     }, [actionError]);
 
     // コース作成
@@ -189,10 +194,9 @@ export default function WalkingRoutes() {
             return;
         }
 
+        if (!beginMutation()) return;
         setIsDistanceInvalid(false);
         setIsDurationInvalid(false);
-        setActionError(null);
-        setIsSaving(true);
         try {
             const res = await fetch('/api/user/walking-routes', {
                 method: 'POST',
@@ -217,23 +221,17 @@ export default function WalkingRoutes() {
             setFormDuration('');
             setFormDifficulty('normal');
         } catch {
-            setActionError({
-                message: t('createError'),
-                shouldFocus: shouldFocusActionError,
-            });
+            setActionError({ message: t('createError'), shouldFocus: shouldFocusActionError });
         } finally {
-            setIsSaving(false);
+            endMutation();
         }
-    }, [formName, formDescription, formDistance, formDuration, formDifficulty, isSaving, t]);
+    }, [beginMutation, endMutation, formName, formDescription, formDistance, formDuration, formDifficulty, isSaving, t]);
 
     // お気に入り切替
     const handleToggleFavorite = useCallback(async (
-        routeId: string,
-        currentValue: boolean,
-        shouldFocusActionError: boolean,
+        routeId: string, currentValue: boolean, shouldFocusActionError: boolean,
     ) => {
-        setActionError(null);
-        setActionLoadingId(routeId);
+        if (!beginMutation(routeId)) return;
         try {
             const res = await fetch(`/api/user/walking-routes/${routeId}`, {
                 method: 'PATCH',
@@ -244,19 +242,15 @@ export default function WalkingRoutes() {
             const data = await res.json();
             setRoutes((prev) => prev.map((r) => (r.id === routeId ? data.route : r)));
         } catch {
-            setActionError({
-                message: t('updateError'),
-                shouldFocus: shouldFocusActionError,
-            });
+            setActionError({ message: t('updateError'), shouldFocus: shouldFocusActionError });
         } finally {
-            setActionLoadingId(null);
+            endMutation(routeId);
         }
-    }, [t]);
+    }, [beginMutation, endMutation, t]);
 
     // 歩いた記録
     const handleLogWalk = useCallback(async (routeId: string, shouldFocusActionError: boolean) => {
-        setActionError(null);
-        setActionLoadingId(routeId);
+        if (!beginMutation(routeId)) return;
         try {
             const res = await fetch(`/api/user/walking-routes/${routeId}`, {
                 method: 'PATCH',
@@ -267,20 +261,17 @@ export default function WalkingRoutes() {
             const data = await res.json();
             setRoutes((prev) => prev.map((r) => (r.id === routeId ? data.route : r)));
         } catch {
-            setActionError({
-                message: t('updateError'),
-                shouldFocus: shouldFocusActionError,
-            });
+            setActionError({ message: t('updateError'), shouldFocus: shouldFocusActionError });
         } finally {
-            setActionLoadingId(null);
+            endMutation(routeId);
         }
-    }, [t]);
+    }, [beginMutation, endMutation, t]);
 
     // 削除
     const handleDelete = useCallback(async (routeId: string, shouldFocusActionError: boolean) => {
+        if (!beginMutation(routeId, true)) return;
+        deleteDialogOpenRef.current = false;
         setDeleteConfirmId(null);
-        setActionError(null);
-        setActionLoadingId(routeId);
         try {
             const res = await fetch(`/api/user/walking-routes/${routeId}`, {
                 method: 'DELETE',
@@ -288,14 +279,13 @@ export default function WalkingRoutes() {
             if (!res.ok) throw new Error('delete failed');
             setRoutes((prev) => prev.filter((r) => r.id !== routeId));
         } catch {
-            setActionError({
-                message: t('deleteError'),
-                shouldFocus: shouldFocusActionError,
-            });
+            setActionError({ message: t('deleteError'), shouldFocus: shouldFocusActionError });
         } finally {
-            setActionLoadingId(null);
+            endMutation(routeId);
         }
-    }, [t]);
+    }, [beginMutation, endMutation, t]);
+
+    const routeActionsDisabled = isSaving || actionLoadingId !== null || deleteConfirmId !== null;
 
     // ローディング
     if (isLoading) {
@@ -329,21 +319,14 @@ export default function WalkingRoutes() {
         <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 p-4 hover:shadow-lg transition-shadow">
             {/* アクションエラートースト */}
             {actionError && (
-                <div
-                    ref={actionErrorRef}
-                    className="mb-3 flex scroll-mt-20 items-center justify-between gap-2 rounded-lg border border-[var(--color-danger)] bg-[var(--color-surface)] p-2"
-                >
+                <div ref={actionErrorRef} className="mb-3 flex scroll-mt-20 items-center justify-between gap-2 rounded-lg border border-[var(--color-danger)] bg-[var(--color-surface)] p-2">
                     <div
                         ref={actionErrorAlertRef}
                         className="flex min-w-0 items-start gap-2 rounded-sm focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-danger)]"
-                        role="alert"
-                        aria-atomic="true"
-                        tabIndex={-1}
+                        role="alert" aria-atomic="true" tabIndex={-1}
                     >
                         <span className="shrink-0" aria-hidden="true">⚠️</span>
-                        <p className="text-xs font-medium text-[var(--color-danger-strong)]">
-                            {actionError.message}
-                        </p>
+                        <p className="text-xs font-medium text-[var(--color-danger-strong)]">{actionError.message}</p>
                     </div>
                     <button
                         type="button"
@@ -500,7 +483,7 @@ export default function WalkingRoutes() {
                     <div className="flex gap-2 pt-1">
                         <button
                             onClick={(event) => handleCreate(event.detail === 0)}
-                            disabled={!formName.trim() || isSaving}
+                            disabled={!formName.trim() || routeActionsDisabled}
                             className="flex-1 px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg bg-[var(--theme-primary)] text-white disabled:opacity-40 hover:scale-105 active:scale-95 transition-transform flex items-center justify-center gap-2"
                         >
                             {isSaving ? (
@@ -569,10 +552,10 @@ export default function WalkingRoutes() {
                                     </div>
 
                                     {/* アクションボタン */}
-                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                    <div className="flex items-center gap-1 flex-shrink-0 [&>button:disabled]:cursor-not-allowed [&>button:disabled]:opacity-40">
                                         <button
                                             onClick={(event) => handleLogWalk(route.id, event.detail === 0)}
-                                            disabled={isActioning}
+                                            disabled={routeActionsDisabled}
                                             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-green-700 transition-colors hover:bg-green-50"
                                             aria-label={t('logWalk')}
                                             title={t('logWalk')}
@@ -584,12 +567,8 @@ export default function WalkingRoutes() {
                                             )}
                                         </button>
                                         <button
-                                            onClick={(event) => handleToggleFavorite(
-                                                route.id,
-                                                route.is_favorite,
-                                                event.detail === 0,
-                                            )}
-                                            disabled={isActioning}
+                                            onClick={(event) => handleToggleFavorite(route.id, route.is_favorite, event.detail === 0)}
+                                            disabled={routeActionsDisabled}
                                             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs transition-colors hover:bg-amber-50"
                                             aria-label={route.is_favorite ? t('unfavorite') : t('favorite')}
                                             title={route.is_favorite ? t('unfavorite') : t('favorite')}
@@ -597,8 +576,8 @@ export default function WalkingRoutes() {
                                             {route.is_favorite ? '⭐' : '☆'}
                                         </button>
                                         <button
-                                            onClick={() => setDeleteConfirmId(route.id)}
-                                            disabled={isActioning}
+                                            onClick={() => openDeleteDialog(route.id)}
+                                            disabled={routeActionsDisabled}
                                             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-red-700 transition-colors hover:bg-red-50"
                                             aria-label={t('delete')}
                                             title={t('delete')}
@@ -632,10 +611,7 @@ export default function WalkingRoutes() {
                             <p className="text-sm text-gray-500 mb-4">{t('deleteConfirmDesc')}</p>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={(event) => handleDelete(
-                                        deleteConfirmId,
-                                        event.detail === 0,
-                                    )}
+                                    onClick={(event) => handleDelete(deleteConfirmId, event.detail === 0)}
                                     className="flex-1 px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
                                 >
                                     {t('delete')}
