@@ -1544,3 +1544,10 @@ export const runtime = "edge";
 - **根本原因**: 数値キーボードの提供と生文字列の保持を同じ`type="number"`へ委ね、ブラウザDOMのvalue sanitizationを送信境界に含めていなかった。parser単体の全文一致を、実UIからparserへ同じ字句が届く証拠として扱った。
 - **対策**: 距離だけを`type="text"` + `inputMode="decimal"`へ変更して生文字列を保持し、空文字だけを`null`、存在時は符号・空白・指数を含まない非負10進数全文かつfiniteの場合だけ送信する。locale依存のdecimal keyboardが`,`を提示する場合は、小数点1個を含む全文一致時だけ`.`へ正規化する。距離専用error/ARIA/commit後focus、任意ラベル、320px縦積み、意味色outlineを維持する。既設Chrome channelのUIへ禁止文字列を実入力し、raw value、POST 0回、反復submit、空への修正、0/1.5/1,5 payload、44pxを固定する。
 - **教訓**: 字句自体を厳格検証するdecimal入力では`type="number"`を正本にしない。`inputMode`はモバイルキーボードのhintとして使い、提示されるlocale小数点も同じ全文検証へ含める。raw文字列をClient parserへ渡した証拠と、変換後numberを再検証するServer契約の両方を持つ。エラー文追加時は狭幅の入力幅と全テーマの実focus indicatorも同じ完了条件にする。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`
+
+### LL-072: 可視トーストだけでは非同期操作失敗が支援技術へ届かない
+
+- **事象**: Walking Routesの作成・更新・削除失敗は可視トーストだけで、支援技術へ即時通知するlive semanticsがなかった。dismiss buttonは英語固定名かつ44pxと明示focusを持たず、別actionの成功後も以前のエラーが残り得た。
+- **根本原因**: field validationの関連付けだけをアクセシビリティ境界として確認し、非同期action結果のannouncement、翻訳、操作領域、action lifecycleを同じ状態契約で監査していなかった。
+- **対策**: action本文だけを`role="alert"` + `aria-atomic`へ載せ、button名の読み上げを混在させない。dismissはnext-intl名を持つnative 44px buttonと明示outlineにし、create/favorite/log/deleteの開始時に古いaction errorだけを解除する。各error objectへ起動入力のfocus意図を同梱して並行actionの上書きを防ぎ、画面外のtoastは`block: nearest`で可視化する。pointer起動ではfocusを奪わず、keyboard起動ではTab停止を増やさないalert本文へfocusして読み上げ、次のTabでdismissへ進める。field errorは独立して保持する。Google Chrome channelでAPI失敗、ja/en、semantics、入力手段別focus、Enter/Space dismiss、実寸、成功後の消去、狭幅の可視範囲を検証する。
+- **教訓**: 非同期操作エラーは支援技術へ届くことだけで完了とせず、操作位置から視覚的にも発見可能にする。assertiveな通知は新しく発生した本文だけに限定し、dismiss controlをlive regionの外へ置く。field errorとaction errorを別stateで保ち、開始・成功・失敗・dismissの全遷移とローカライズ済み操作を実DOMで固定する。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`

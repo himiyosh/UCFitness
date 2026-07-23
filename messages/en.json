@@ -1747,6 +1747,7 @@
     "difficultyHard": "Hard",
     "save": "Save",
     "cancel": "Cancel",
+    "dismissActionError": "Dismiss action error",
     "logWalk": "Walked!",
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites",
