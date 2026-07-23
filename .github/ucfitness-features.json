@@ -647,9 +647,9 @@
         "coverage_target": "lib/ カバレッジ 60%+",
         "test_quality": "テストが振る舞い駆動で脆弱でない"
       },
-      "status": "in-progress",
-      "lastAttempt": "2026-07-23T00:50:22Z",
-      "lastError": "Vitest coverage実行が5秒基準を超過（18.10秒）"
+      "status": "passing",
+      "lastAttempt": "2026-07-23T01:05:50Z",
+      "lastError": null
     },
     {
       "id": "F027",

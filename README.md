@@ -903,7 +903,7 @@ npm run audit:responsive
 
 - テストフレームワーク: **Vitest**
 - CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
-- 2026-07-23T00:50:22Zのsingle-worker全54本番モジュール実測は89ファイル・955テスト、Statements 66.54%、Branches 63.28%、Functions 77.36%、Lines 67.58%、18.10秒。カバレッジ条件はPASSしたが、F026正本の5秒以内を満たさないためstatusは`in-progress`
+- single-workerのcoverage実行は全54本番モジュール・89ファイル・955テストで、Statements 66.54%、Branches 63.28%、Functions 77.36%、Lines 67.58%（18.10秒）。coverage所要時間とは別に、F026の5秒条件を確認する通常`npm test`は親実測2.01秒、2026-07-23T01:05:50Zの独立再実測2.75秒でPASSしたためstatusは`passing`
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
