@@ -1531,7 +1531,7 @@ export const runtime = "edge";
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
 
-### LL-064: focus時のスクロールと無制限画像fallbackが隣接操作を無反応にした
+### LL-074: focus時のスクロールと無制限画像fallbackが隣接操作を無反応にした
 
 - **事象**: Daily Missionsのprepare buttonをPlaywrightで物理クリックするとPOSTが発生せず、Trending Gearでは画像失敗が数万件の再リクエストになった。
 - **根本原因**: buttonの`onFocus`がmousedownとclickの間に`scrollIntoView()`してポインター着地点を別要素へ移し、画像`onError`も失敗するfallback URLを再設定し続けた。

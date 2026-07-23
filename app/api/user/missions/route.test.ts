@@ -14,13 +14,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 const mission = (id: string, type: string, reward: number) => ({
-    id,
-    mission_type: type,
-    title: type,
-    description: type,
-    reward_uc: reward,
-    is_completed: false,
-    completed_at: null,
+    id, mission_type: type, title: type, description: type,
+    reward_uc: reward, is_completed: false, completed_at: null,
 });
 
 vi.mock('@/lib/auth', () => ({
