@@ -32,24 +32,22 @@ interface QueryChain extends PromiseLike<QueryResult> {
     maybeSingle: ReturnType<typeof vi.fn>;
 }
 type DependencyKey = 'stats' | 'user' | 'balance' | 'purchase' | 'group' | 'streak' | 'owned';
-
 type Scenario = Record<DependencyKey, QueryResult>;
-
+type FailureKind = 'dependency' | 'invalid' | 'unexpected';
 const VIEWER_ID = '11111111-1111-1111-1111-111111111111';
 const TARGET_ID = '22222222-2222-2222-2222-222222222222';
 const SENSITIVE_DETAIL = 'sensitive-database-detail';
+const FAILURE_EXPECTATIONS = {
+    dependency: [503, 'Achievement progress data unavailable', 'DEPENDENCY_UNAVAILABLE', 'Achievement progress dependency unavailable'],
+    invalid: [500, 'Invalid achievement progress data', 'INVALID_DATA', 'Invalid achievement progress data'],
+    unexpected: [500, 'Internal Server Error', 'INTERNAL_ERROR', 'Unexpected achievement progress failure'],
+} as const;
 const DEPENDENCIES: ReadonlyArray<readonly [DependencyKey, string]> = [
-    ['stats', 'step-stats'],
-    ['user', 'step-goal'],
-    ['balance', 'coin-balance'],
-    ['purchase', 'purchase-count'],
-    ['group', 'group-count'],
-    ['streak', 'streak-steps'],
-    ['owned', 'owned-items'],
+    ['stats', 'step-stats'], ['user', 'step-goal'], ['balance', 'coin-balance'],
+    ['purchase', 'purchase-count'], ['group', 'group-count'],
+    ['streak', 'streak-steps'], ['owned', 'owned-items'],
 ];
-
 let scenario: Scenario;
-
 function validScenario(): Scenario {
     return {
         stats: { data: { total_steps: 0, total_days: 0 }, error: null },
@@ -61,7 +59,6 @@ function validScenario(): Scenario {
         owned: { data: [], error: null },
     };
 }
-
 function createQueryChain(result: QueryResult): QueryChain {
     const chain = {
         eq: vi.fn((column: string, value: unknown) => {
@@ -81,7 +78,6 @@ function createQueryChain(result: QueryResult): QueryChain {
     chain.limit.mockReturnValue(chain);
     return chain;
 }
-
 function resolveResult(table: string, columns: string): QueryResult {
     if (table === 'users') return scenario.user;
     if (table === 'coin_balances') return scenario.balance;
@@ -92,9 +88,39 @@ function resolveResult(table: string, columns: string): QueryResult {
     }
     throw new Error(`Unexpected query: ${table}`);
 }
-
 function request(userId = TARGET_ID): NextRequest {
     return new NextRequest(`http://localhost/api/user/achievement-progress?userId=${userId}`);
+}
+async function expectFixedFailure(
+    response: Response,
+    stage: string,
+    kind: FailureKind,
+    rawError?: unknown,
+): Promise<void> {
+    const [status, error, code, message] = FAILURE_EXPECTATIONS[kind];
+    expect([response.status, await response.json()]).toEqual([status, { error, code }]);
+    expect(mocks.reportError).toHaveBeenCalledTimes(1);
+    expect(mocks.reportError.mock.calls[0]).toHaveLength(3);
+    const [operation, loggedError, context] = mocks.reportError.mock.calls[0];
+    if (typeof operation !== 'string' || !(loggedError instanceof Error)
+        || typeof context !== 'object' || context === null || Array.isArray(context)) {
+        throw new Error('Invalid reportError call');
+    }
+    expect(operation).toBe(`achievement-progress:${stage}`);
+    expect(loggedError).not.toBe(rawError);
+    expect([
+        loggedError.message, loggedError.name, Reflect.get(loggedError, 'code'),
+        Reflect.get(loggedError, 'cause'), Reflect.get(loggedError, 'context'),
+    ]).toEqual([message, 'Error', undefined, undefined, undefined]);
+    expect(context).toEqual({ stage, kind });
+    for (const sensitive of [SENSITIVE_DETAIL, TARGET_ID, VIEWER_ID]) {
+        expect(operation).not.toContain(sensitive);
+        expect(loggedError.message).not.toContain(sensitive);
+        expect(loggedError.name).not.toContain(sensitive);
+        expect(Reflect.get(loggedError, 'cause')).not.toBe(sensitive);
+        expect(Reflect.get(loggedError, 'context')).not.toBe(sensitive);
+        expect(Object.values(context)).not.toContain(sensitive);
+    }
 }
 
 describe('GET /api/user/achievement-progress', () => {
@@ -130,7 +156,6 @@ describe('GET /api/user/achievement-progress', () => {
                 .toEqual([400, 0, 0]);
         },
     );
-
     it.each([
         { total_steps: 0, total_days: 0 },
         [{ total_steps: 0, total_days: 0 }],
@@ -195,23 +220,11 @@ describe('GET /api/user/achievement-progress', () => {
     it.each(DEPENDENCIES)(
         '%s依存がDB errorの場合_生エラーを漏らさず固定503を返す',
         async (key, stage) => {
-            scenario[key].error = { message: SENSITIVE_DETAIL };
-            const response = await GET(request());
-            const payload = await response.json();
-            expect([response.status, payload]).toEqual([503, {
-                error: 'Achievement progress data unavailable',
-                code: 'DEPENDENCY_UNAVAILABLE',
-            }]);
-            expect(mocks.reportError).toHaveBeenCalledWith(
-                `achievement-progress:${stage}`,
-                expect.objectContaining({ message: 'Achievement progress dependency unavailable' }),
-                { stage, kind: 'dependency' },
-            );
-            expect(JSON.stringify([payload, ...mocks.reportError.mock.calls]))
-                .not.toContain(SENSITIVE_DETAIL);
+            const rawError = { message: SENSITIVE_DETAIL, target: TARGET_ID, viewer: VIEWER_ID, cause: { detail: SENSITIVE_DETAIL, target: TARGET_ID, viewer: VIEWER_ID } };
+            scenario[key].error = rawError;
+            await expectFixedFailure(await GET(request()), stage, 'dependency', rawError);
         },
     );
-
     it.each<readonly [string, string, () => void]>([
         ['step stats null', 'step-stats', () => { scenario.stats.data = null; }],
         ['step goal null', 'step-goal', () => { scenario.user.data = null; }],
@@ -249,27 +262,13 @@ describe('GET /api/user/achievement-progress', () => {
         ['broken owned relation', 'owned-items', () => { scenario.owned.data = [{ shop_items: [] }]; }],
     ])('%sの場合_壊れたrowをskipせず固定500を返す', async (_label, stage, arrange) => {
         arrange();
-        const response = await GET(request());
-        expect([response.status, await response.json()]).toEqual([500, {
-            error: 'Invalid achievement progress data',
-            code: 'INVALID_DATA',
-        }]);
-        expect(mocks.reportError).toHaveBeenCalledWith(
-            `achievement-progress:${stage}`,
-            expect.objectContaining({ message: 'Invalid achievement progress data' }),
-            { stage, kind: 'invalid' },
-        );
+        await expectFixedFailure(await GET(request()), stage, 'invalid');
     });
-
     it('RPCが予期せずrejectした場合_生エラーを漏らさず固定500を返す', async () => {
-        mocks.rpc.mockRejectedValueOnce(new Error(SENSITIVE_DETAIL));
-        const response = await GET(request());
-        const payload = await response.json();
-        expect([response.status, payload]).toEqual([500, {
-            error: 'Internal Server Error',
-            code: 'INTERNAL_ERROR',
-        }]);
-        expect(JSON.stringify([payload, ...mocks.reportError.mock.calls]))
-            .not.toContain(SENSITIVE_DETAIL);
+        const rawError = new Error(SENSITIVE_DETAIL, {
+            cause: { target: TARGET_ID, viewer: VIEWER_ID },
+        });
+        mocks.rpc.mockRejectedValueOnce(rawError);
+        await expectFixedFailure(await GET(request()), 'request', 'unexpected', rawError);
     });
 });

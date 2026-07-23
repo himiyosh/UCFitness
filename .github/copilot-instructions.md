@@ -1544,3 +1544,4 @@ export const runtime = "edge";
 - **根本原因**: `data || []`、optional chaining、`count || 0`を正常系の既定値として使い、取得失敗・不正形状・正当なzero/emptyを同じ分岐へ統合した。全期間集計にも既存RPCを再利用しなかった。
 - **対策**: `get_user_step_stats`と称号サービスの共有parserへ統一し、7依存のDB errorを固定503、不正形状を固定500へ分離した。正当な0・空・残高行なし、公開target契約だけを維持し、生errorをログ・responseへ渡さないbehavior testを追加した。
 - **教訓**: 並列DB結果は各resultのerrorとdata/count shapeを個別に検証し、zero/emptyを許可する契約を依存ごとに明示する。集計は取得件数上限のある全行走査ではなくDB側RPCを使い、relation rowは壊れた要素をskipせず全体を失敗させる。リファレンス: `app/api/user/achievement-progress/route.ts`, `lib/services/title-achievement-service.ts`
+- **追加教訓**: `JSON.stringify(Error)`は非列挙のmessage/causeを落として`{}`になるため、ログ非漏洩の証拠にしない。raw error identityと固定operation、Error message/name/code/cause/context、固定contextを直接分解し、PII値ごとに非包含を検証する。
