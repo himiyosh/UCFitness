@@ -1533,7 +1533,7 @@ export const runtime = "edge";
 
 ### LL-064: import済みファイルだけのカバレッジを全`lib/`達成と誤認した
 
-- **事象**: F026の60%回帰ゲートを追加した際、`coverage.include`を指定せず、未importの本番`lib/`ファイルを分母から除外した数値でstatusを`passing`にした。正本には5秒以内の条件もあるが、約15秒のcoverage実行をもって達成扱いにしていた。
+- **事象**: F026の60%回帰ゲートを追加した際、`coverage.include`を指定せず、未importの本番`lib/`ファイルを分母から除外した数値でstatusを`passing`にした。正本には5秒以内の条件もあるが、12〜18秒台のcoverage実行をもって達成扱いにしていた。
 - **根本原因**: Vitestの既定coverageがテストで実行されたファイルだけを対象にすることを確認せず、threshold値だけで対象範囲も保証できると判断した。複数のverification stepのうち一部だけを満たした状態でfeature全体を達成扱いにした。
 - **対策**: `coverage.include`へ`lib/**/*.{ts,tsx}`を明示し、テスト、test-utils、型定義だけを除外する。all-filesの4指標と所要時間を別々に実測し、正本のverification stepをすべて満たすまでstatusを`in-progress`に保つ。
 - **教訓**: coverage gateは閾値だけでなく分母となる本番ファイル集合を明示して初めて回帰防止になる。feature statusは変更禁止のverification stepを全件実測し、一項目でも未達なら`passing`へ進めない。リファレンス: `vitest.config.ts`, `.github/ucfitness-features.json`
