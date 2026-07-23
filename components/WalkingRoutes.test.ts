@@ -2,8 +2,23 @@ import { build } from 'esbuild';
 import { chromium } from 'playwright';
 import { describe, expect, it } from 'vitest';
 
-import { getWalkingRouteDurationAria, parseWalkingRouteDuration } from './WalkingRoutes';
-describe('WalkingRoutes duration validation', () => {
+import {
+    getWalkingRouteDistanceAria,
+    getWalkingRouteDurationAria,
+    parseWalkingRouteDistance,
+    parseWalkingRouteDuration,
+} from './WalkingRoutes';
+
+describe('WalkingRoutes field validation', () => {
+    it.each([
+        ['1e2', undefined], ['1E2', undefined], ['1.', undefined], ['.5', undefined],
+        ['+1', undefined], ['-1', undefined], ['3abc', undefined], [' ', undefined],
+        ['1\n', undefined], ['\t1', undefined], ['NaN', undefined], ['Infinity', undefined],
+        ['9'.repeat(400), undefined],
+        ['', null], ['0', 0], ['0.0', 0], ['1.5', 1.5], ['001.50', 1.5],
+    ])('距離入力"%s"を非負10進数全文として検証する', (value, expected) => {
+        expect(parseWalkingRouteDistance(value)).toBe(expected);
+    });
     it.each([
         ['1e2', undefined], ['1.5', undefined], ['3abc', undefined], [' ', undefined],
         ['-1', undefined], ['', null], ['0', 0], ['3', 3], ['+3', 3],
@@ -15,7 +30,12 @@ describe('WalkingRoutes duration validation', () => {
     ])('入力エラー状態が%sの場合にARIAを同期する', (invalid, expected) => {
         expect(getWalkingRouteDurationAria(invalid)).toEqual(expected);
     });
-    it('native badInputを送信せず、エラーDOM反映後に毎回入力へfocusする', async () => {
+    it.each([
+        [true, { 'aria-describedby': 'walking-route-distance-error', 'aria-invalid': true }], [false, {}],
+    ])('距離入力エラー状態が%sの場合にARIAを同期する', (invalid, expected) => {
+        expect(getWalkingRouteDistanceAria(invalid)).toEqual(expected);
+    });
+    it('距離と時間のnative badInputを送信せず、エラーDOM反映後に毎回入力へfocusする', async () => {
         const bundle = await build({
             stdin: {
                 contents: `
@@ -52,6 +72,8 @@ describe('WalkingRoutes duration validation', () => {
             await page.getByRole('textbox', { name: 'namePlaceholder' }).fill('Route');
             const duration = page.getByRole('spinbutton', { name: 'durationPlaceholder' });
             expect(await duration.getAttribute('class')).toContain('min-h-[44px]');
+            expect(await duration.getAttribute('class')).toContain('focus:ring-[var(--color-primary)]');
+            expect(await duration.getAttribute('class')).toContain('focus:outline-[var(--color-primary)]');
             await duration.pressSequentially('-');
             expect(await duration.evaluate((input) => [
                 (input as HTMLInputElement).validity.badInput, (input as HTMLInputElement).value,
@@ -78,6 +100,55 @@ describe('WalkingRoutes duration validation', () => {
             expect(await duration.evaluate((input) => [
                 (input as HTMLInputElement).validity.badInput, input.getAttribute('aria-invalid'),
                 input.getAttribute('aria-describedby'), Boolean(document.getElementById('walking-route-duration-error')),
+            ])).toEqual([false, null, null, false]);
+
+            const distance = page.getByRole('spinbutton', { name: 'distancePlaceholder' });
+            expect(await distance.getAttribute('class')).toContain('min-h-[44px]');
+            expect(await distance.getAttribute('class')).toContain('focus:ring-[var(--color-primary)]');
+            expect(await distance.getAttribute('class')).toContain('focus:outline-[var(--color-primary)]');
+            expect(await distance.locator('xpath=../..').getAttribute('class')).toContain('flex-col');
+            await distance.fill('1e2');
+            await distance.evaluate((input) => {
+                document.body.dataset.distanceFocusCount = '0';
+                input.addEventListener('focus', () => {
+                    document.body.dataset.distanceFocusCount = String(
+                        Number(document.body.dataset.distanceFocusCount) + 1,
+                    );
+                    document.body.dataset.distanceFocusSnapshot = [
+                        input.getAttribute('aria-invalid'), input.getAttribute('aria-describedby'),
+                        Boolean(document.getElementById('walking-route-distance-error')),
+                    ].join('|');
+                });
+            });
+            await save.click();
+            await page.waitForFunction(() => document.body.dataset.distanceFocusCount === '1');
+            expect(await page.locator('body').getAttribute('data-distance-focus-snapshot')).toBe(
+                'true|walking-route-distance-error|true');
+            expect(await page.locator('body').getAttribute('data-post-count')).toBe('0');
+
+            await distance.fill('');
+            expect(await distance.evaluate((input) => [
+                input.getAttribute('aria-invalid'), input.getAttribute('aria-describedby'),
+                Boolean(document.getElementById('walking-route-distance-error')),
+            ])).toEqual([null, null, false]);
+            await distance.pressSequentially('-');
+            expect(await distance.evaluate((input) => [
+                (input as HTMLInputElement).validity.badInput, (input as HTMLInputElement).value,
+            ])).toEqual([true, '']);
+            for (const expectedFocusCount of ['2', '3']) {
+                await save.click();
+                await page.waitForFunction(
+                    (count) => document.body.dataset.distanceFocusCount === count,
+                    expectedFocusCount,
+                );
+                expect(await page.locator('body').getAttribute('data-distance-focus-snapshot')).toBe(
+                    'true|walking-route-distance-error|true');
+                expect(await page.locator('body').getAttribute('data-post-count')).toBe('0');
+            }
+            await distance.press('Backspace');
+            expect(await distance.evaluate((input) => [
+                (input as HTMLInputElement).validity.badInput, input.getAttribute('aria-invalid'),
+                input.getAttribute('aria-describedby'), Boolean(document.getElementById('walking-route-distance-error')),
             ])).toEqual([false, null, null, false]);
         } finally {
             await browser.close();

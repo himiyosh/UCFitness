@@ -19,6 +19,11 @@ interface WalkingRouteDurationAria {
     'aria-invalid'?: true;
 }
 
+interface WalkingRouteDistanceAria {
+    'aria-describedby'?: string;
+    'aria-invalid'?: true;
+}
+
 interface WalkingRoute {
     id: string;
     name: string;
@@ -39,12 +44,30 @@ const DIFFICULTY_MAP: Record<Difficulty, { emoji: string; colorClass: string }> 
     hard: { emoji: '🔴', colorClass: 'text-red-600 bg-red-50' },
 };
 
+const WALKING_ROUTE_DISTANCE_ERROR_ID = 'walking-route-distance-error';
 const WALKING_ROUTE_DURATION_ERROR_ID = 'walking-route-duration-error';
+const NONNEGATIVE_DECIMAL_REGEX = /^\d+(?:\.\d+)?$/;
+
+export function parseWalkingRouteDistance(value: string): number | null | undefined {
+    if (value === '') return null;
+    if (NONNEGATIVE_DECIMAL_REGEX.exec(value)?.[0] !== value) return undefined;
+    const distance = Number(value);
+    return Number.isFinite(distance) ? distance : undefined;
+}
 
 export function parseWalkingRouteDuration(value: string): number | null | undefined {
     if (value === '') return null;
     const duration = parseStrictInteger(value);
     return duration !== null && duration >= 0 ? duration : undefined;
+}
+
+export function getWalkingRouteDistanceAria(isInvalid: boolean): WalkingRouteDistanceAria {
+    return isInvalid
+        ? {
+            'aria-describedby': WALKING_ROUTE_DISTANCE_ERROR_ID,
+            'aria-invalid': true,
+        }
+        : {};
 }
 
 export function getWalkingRouteDurationAria(isInvalid: boolean): WalkingRouteDurationAria {
@@ -84,9 +107,13 @@ export default function WalkingRoutes() {
     const [formDistance, setFormDistance] = useState('');
     const [formDuration, setFormDuration] = useState('');
     const [formDifficulty, setFormDifficulty] = useState<Difficulty>('normal');
+    const [isDistanceInvalid, setIsDistanceInvalid] = useState(false);
     const [isDurationInvalid, setIsDurationInvalid] = useState(false);
+    const [distanceValidationAttempt, setDistanceValidationAttempt] = useState(0);
     const [durationValidationAttempt, setDurationValidationAttempt] = useState(0);
+    const distanceInputRef = useRef<HTMLInputElement>(null);
     const durationInputRef = useRef<HTMLInputElement>(null);
+    const distanceAria = getWalkingRouteDistanceAria(isDistanceInvalid);
     const durationAria = getWalkingRouteDurationAria(isDurationInvalid);
 
     // 統計情報の計算
@@ -116,6 +143,10 @@ export default function WalkingRoutes() {
     }, [fetchRoutes]);
 
     useEffect(() => {
+        if (distanceValidationAttempt > 0) distanceInputRef.current?.focus();
+    }, [distanceValidationAttempt]);
+
+    useEffect(() => {
         if (durationValidationAttempt > 0) durationInputRef.current?.focus();
     }, [durationValidationAttempt]);
 
@@ -124,16 +155,27 @@ export default function WalkingRoutes() {
         const name = formName.trim();
         if (!name || isSaving) return;
 
+        const distanceKm = distanceInputRef.current?.validity.badInput
+            ? undefined
+            : parseWalkingRouteDistance(formDistance);
         const durationMinutes = durationInputRef.current?.validity.badInput
             ? undefined
             : parseWalkingRouteDuration(formDuration);
-        if (durationMinutes === undefined) {
-            setIsDurationInvalid(true);
+        if (distanceKm === undefined || durationMinutes === undefined) {
+            const hasDistanceError = distanceKm === undefined;
+            const hasDurationError = durationMinutes === undefined;
+            setIsDistanceInvalid(hasDistanceError);
+            setIsDurationInvalid(hasDurationError);
             setActionError(null);
-            setDurationValidationAttempt((attempt) => attempt + 1);
+            if (hasDistanceError) {
+                setDistanceValidationAttempt((attempt) => attempt + 1);
+            } else {
+                setDurationValidationAttempt((attempt) => attempt + 1);
+            }
             return;
         }
 
+        setIsDistanceInvalid(false);
         setIsDurationInvalid(false);
         setActionError(null);
         setIsSaving(true);
@@ -144,7 +186,7 @@ export default function WalkingRoutes() {
                 body: JSON.stringify({
                     name,
                     description: formDescription.trim(),
-                    distance_km: formDistance ? parseFloat(formDistance) : null,
+                    distance_km: distanceKm,
                     duration_minutes: durationMinutes,
                     difficulty: formDifficulty,
                 }),
@@ -278,6 +320,7 @@ export default function WalkingRoutes() {
                 <button
                     onClick={() => {
                         setShowForm((prev) => !prev);
+                        setIsDistanceInvalid(false);
                         setIsDurationInvalid(false);
                     }}
                     className="text-xs font-semibold text-[var(--theme-primary)] hover:underline min-h-[44px] px-2 flex items-center gap-1"
@@ -326,18 +369,39 @@ export default function WalkingRoutes() {
                         maxLength={500}
                         aria-label={t('descriptionPlaceholder')}
                     />
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                         <div className="flex-1">
                             <input
+                                ref={distanceInputRef}
                                 type="number"
                                 value={formDistance}
-                                onChange={(e) => setFormDistance(e.target.value)}
+                                onInput={(e) => {
+                                    const value = e.currentTarget.value;
+                                    setFormDistance(value);
+                                    if (
+                                        isDistanceInvalid
+                                        && !e.currentTarget.validity.badInput
+                                        && parseWalkingRouteDistance(value) !== undefined
+                                    ) {
+                                        setIsDistanceInvalid(false);
+                                    }
+                                }}
                                 placeholder={t('distancePlaceholder')}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 min-h-[44px]"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 min-h-[44px]"
                                 min="0"
                                 step="0.1"
                                 aria-label={t('distancePlaceholder')}
+                                {...distanceAria}
                             />
+                            {isDistanceInvalid && (
+                                <p
+                                    id={WALKING_ROUTE_DISTANCE_ERROR_ID}
+                                    className="mt-1 text-xs font-medium text-red-600"
+                                    role="alert"
+                                >
+                                    {t('distanceError')}
+                                </p>
+                            )}
                         </div>
                         <div className="flex-1">
                             <input
@@ -356,7 +420,7 @@ export default function WalkingRoutes() {
                                     }
                                 }}
                                 placeholder={t('durationPlaceholder')}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 min-h-[44px]"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 min-h-[44px]"
                                 min="0"
                                 aria-label={t('durationPlaceholder')}
                                 {...durationAria}
@@ -400,6 +464,7 @@ export default function WalkingRoutes() {
                         <button
                             onClick={() => {
                                 setShowForm(false);
+                                setIsDistanceInvalid(false);
                                 setIsDurationInvalid(false);
                             }}
                             className="px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
