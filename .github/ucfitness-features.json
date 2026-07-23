@@ -647,7 +647,7 @@
         "coverage_target": "lib/ カバレッジ 60%+",
         "test_quality": "テストが振る舞い駆動で脆弱でない"
       },
-      "status": "not-started",
+      "status": "passing",
       "lastAttempt": null,
       "lastError": null
     },

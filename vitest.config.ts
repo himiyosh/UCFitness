@@ -12,6 +12,15 @@ export default defineConfig({
         isolate: true,
         include: ['**/*.test.ts'],
         exclude: ['node_modules', '.next'],
+        coverage: {
+            provider: 'v8',
+            thresholds: {
+                statements: 60,
+                branches: 60,
+                functions: 60,
+                lines: 60,
+            },
+        },
     },
     resolve: {
         alias: {
