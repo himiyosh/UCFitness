@@ -1758,6 +1758,7 @@
     "favorites": "Favorites",
     "minutes": "min",
     "times": "times",
+    "durationError": "Enter duration as a whole number of minutes, 0 or greater (for example, 30).",
     "createError": "Failed to create route. Please try again.",
     "updateError": "Failed to update. Please try again.",
     "deleteError": "Failed to delete. Please try again."

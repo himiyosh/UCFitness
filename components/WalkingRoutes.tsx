@@ -14,6 +14,11 @@ import { parseStrictInteger } from '@/lib/validation';
 
 type Difficulty = 'easy' | 'normal' | 'hard';
 
+interface WalkingRouteDurationAria {
+    'aria-describedby'?: string;
+    'aria-invalid'?: true;
+}
+
 interface WalkingRoute {
     id: string;
     name: string;
@@ -34,6 +39,8 @@ const DIFFICULTY_MAP: Record<Difficulty, { emoji: string; colorClass: string }> 
     hard: { emoji: '🔴', colorClass: 'text-red-600 bg-red-50' },
 };
 
+const WALKING_ROUTE_DURATION_ERROR_ID = 'walking-route-duration-error';
+
 export function parseWalkingRouteDuration(value: string): number | null | undefined {
     if (value === '') {
         return null;
@@ -41,6 +48,15 @@ export function parseWalkingRouteDuration(value: string): number | null | undefi
 
     const duration = parseStrictInteger(value);
     return duration !== null && duration >= 0 ? duration : undefined;
+}
+
+export function getWalkingRouteDurationAria(isInvalid: boolean): WalkingRouteDurationAria {
+    return isInvalid
+        ? {
+            'aria-describedby': WALKING_ROUTE_DURATION_ERROR_ID,
+            'aria-invalid': true,
+        }
+        : {};
 }
 
 export default function WalkingRoutes() {
@@ -71,6 +87,9 @@ export default function WalkingRoutes() {
     const [formDistance, setFormDistance] = useState('');
     const [formDuration, setFormDuration] = useState('');
     const [formDifficulty, setFormDifficulty] = useState<Difficulty>('normal');
+    const [isDurationInvalid, setIsDurationInvalid] = useState(false);
+    const durationInputRef = useRef<HTMLInputElement>(null);
+    const durationAria = getWalkingRouteDurationAria(isDurationInvalid);
 
     // 統計情報の計算
     const stats = useMemo(() => {
@@ -105,10 +124,13 @@ export default function WalkingRoutes() {
 
         const durationMinutes = parseWalkingRouteDuration(formDuration);
         if (durationMinutes === undefined) {
-            setActionError(t('createError'));
+            setIsDurationInvalid(true);
+            setActionError(null);
+            durationInputRef.current?.focus();
             return;
         }
 
+        setIsDurationInvalid(false);
         setActionError(null);
         setIsSaving(true);
         try {
@@ -253,7 +275,10 @@ export default function WalkingRoutes() {
                     )}
                 </h3>
                 <button
-                    onClick={() => setShowForm((prev) => !prev)}
+                    onClick={() => {
+                        setShowForm((prev) => !prev);
+                        setIsDurationInvalid(false);
+                    }}
                     className="text-xs font-semibold text-[var(--theme-primary)] hover:underline min-h-[44px] px-2 flex items-center gap-1"
                     aria-label={t('addRoute')}
                 >
@@ -315,14 +340,31 @@ export default function WalkingRoutes() {
                         </div>
                         <div className="flex-1">
                             <input
+                                ref={durationInputRef}
                                 type="number"
                                 value={formDuration}
-                                onChange={(e) => setFormDuration(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFormDuration(value);
+                                    if (isDurationInvalid && parseWalkingRouteDuration(value) !== undefined) {
+                                        setIsDurationInvalid(false);
+                                    }
+                                }}
                                 placeholder={t('durationPlaceholder')}
                                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]/30 min-h-[44px]"
                                 min="0"
                                 aria-label={t('durationPlaceholder')}
+                                {...durationAria}
                             />
+                            {isDurationInvalid && (
+                                <p
+                                    id={WALKING_ROUTE_DURATION_ERROR_ID}
+                                    className="mt-1 text-xs font-medium text-red-600"
+                                    role="alert"
+                                >
+                                    {t('durationError')}
+                                </p>
+                            )}
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -351,7 +393,10 @@ export default function WalkingRoutes() {
                             )}
                         </button>
                         <button
-                            onClick={() => setShowForm(false)}
+                            onClick={() => {
+                                setShowForm(false);
+                                setIsDurationInvalid(false);
+                            }}
                             className="px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                         >
                             {t('cancel')}
