@@ -83,6 +83,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
 - **フォロー歩数比較の表示契約**: 日別チャートは記録済み0歩を基準線上の点、未記録を線の切れ目として表示し、tooltipと読み上げ用数値表でも両者を区別する
 - **公開プロフィールAPIの入力契約**: Achievement進捗と年間歩数カレンダーは認証を要求しつつ、UUID検証済みの公開target `userId`をそのまま照会する。フォロー状態と公開リアクションもtarget UUID・emoji・periodをDB操作前に検証する。プロフィール/バナー画像の保存拡張子は元ファイル名ではなく検証済みMIMEから決定し、`contentType`と一致させる
+- **バナー画像編集のgeometry契約**: 2.5:1のcrop高さ・bleed・offset clamp・ズーム中心は現在のpreview幅から同じpure helperで算出する。ResizeObserverで描画幅とoffsetを同期し、pointer・keyboard・wheel・slider・保存は操作時のDOM幅を使う。upload先、MIME、5 MB上限、JPEG圧縮契約は変更しない
 - **全ページ品質契約**: 17ユーザールートを共通Shell・競争・アカウント・商取引へ分け、正常/空/障害/権限/320px/キーボード状態を監査する。Portal Dialogは共通focus stack、視覚チャートは数値表、GROUPランキングはmembership認可を必須とする
 - **認証ページUI契約**: 標準ページは`AuthenticatedPageHeader` + `PageIntro`で多色ブランド、context label、操作群、パンくず、唯一の`h1`、意味色アクセントを統一する。プロフィール導線はcanonical `/user/{username}`へ直接つなぎ、route固有スケルトンとServer確定日付で白画面・水和差を防ぐ
 - **狭幅レスポンシブ契約**: 320pxから法務Footerと44px操作領域を維持し、1024pxはSidebar差引後の本文幅で設計する。複雑な多列化・詳細展開は1280pxへ送り、Shop/Settingsを含む通常ページは自然スクロールへ統一する

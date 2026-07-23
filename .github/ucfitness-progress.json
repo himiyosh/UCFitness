@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-20T22:41:30Z",
-  "lastAgent": "UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)",
-  "lastCommit": "839a52e67d51847ee44fec5bfb8a6ccce9d589bf",
-  "lastBranch": "himiyosh-himiyosh-badge-awards-phase-c",
+  "lastUpdated": "2026-07-23T09:44:30Z",
+  "lastAgent": "Expert React Frontend Engineer + QA + Self-Critique",
+  "lastCommit": "pending",
+  "lastBranch": "himiyosh-stunning-guide",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F016 badge-awards failure mapping Phase Cで、streak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorで検証し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge queryと全件shapeを固定AppErrorへ変換し、不完全データやA user fallbackを送らず主バッジ付与を維持するbest-effort境界へ分離した。生DB error/error_code/message/causeは内部report/contextへ渡さず、webhook transport自体はlib/api/teams.tsの既存best-effort処理を維持。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。lintは既存62 warnings・0 errors。実装差分3ファイル・+410/-49・total 459。保護済み件数は9/25据え置き。DB接続/read/write/applyは未実施でF016はin-progress。badge-awards coreの依存障害分離は完了。",
+  "summary": "BannerImageEditorのcrop geometryをpure helperへ集約し、ResizeObserverで現在のpreview幅とoffset clampを同期した。pointer・keyboard・wheel・slider・保存は操作時のDOM幅を使用し、stale crop heightを防止。対象react-hooks/exhaustive-deps警告は2件から0件、component警告は4件から既存2件、全体lintは62件から60件へ減少。focused 3件、全958テスト（--maxWorkers=1）、check:allをPASS。UI、upload、MIME、画像サイズ、security契約は変更なし。F016の保護済み件数は9/25据え置き。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
@@ -1347,7 +1347,20 @@
     },
     {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"badge-awards Phase A follow-upで、4依存の生Supabase errorを内部reportErrorへ渡す漏洩を除去し、固定AppErrorだけをCron callerへ伝播した。secret sentinelをmessage/detailsへ含むDB errorでもAppErrorのmessage/context/cause/String/JSONへ露出せず、Phase A内部reportError未呼出を固定した。focused 58件、全647テスト（--maxWorkers=1）、check:all、Security/Code/DataレビューをPASS。既存global/group/award/streak loggingは未変更。DB接続/read/write/applyなし。","commit":"1fec1aac37229a88cc4348b7d6df638404ce3638","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts",".github/copilot-instructions.md","README.md",".github/ucfitness-progress.json"]},
     {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Bでglobal/group ranking、groups、group members、award insertを固定AppErrorへ分離した。生Supabase errorを内部report/causeへ渡さず、row shape・foreign・重複・safe integer・集計overflowを拒否し、0歩・空集合・記録なし・23505既付与を維持した。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。残る範囲はstreak milestoneとTeams enrichment。DB接続/read/write/applyなし。","commit":"67cea5b8a816008366f271d5e81f8a57cd1b02de","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]},
-    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Cでstreak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorへ分離し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge全件検証を固定AppErrorのbest-effort境界へ分離し、不完全データやA user fallbackを送らず主付与を維持した。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。実装差分3ファイル・459行。DB接続/read/write/applyなし。badge-awards core完了、webhook transportはlib/api/teams.tsの既存best-effort処理を維持。","commit":"839a52e67d51847ee44fec5bfb8a6ccce9d589bf","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]}
+    {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Cでstreak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorへ分離し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge全件検証を固定AppErrorのbest-effort境界へ分離し、不完全データやA user fallbackを送らず主付与を維持した。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。実装差分3ファイル・459行。DB接続/read/write/applyなし。badge-awards core完了、webhook transportはlib/api/teams.tsの既存best-effort処理を維持。","commit":"839a52e67d51847ee44fec5bfb8a6ccce9d589bf","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]},
+    {
+      "date": "2026-07-23",
+      "agent": "Expert React Frontend Engineer + QA + Self-Critique",
+      "action": "BannerImageEditorの2件のreact-hooks/exhaustive-deps警告を、依存抑制や不安定callback追加ではなくpure geometry helperとResizeObserverで解消した。描画は観測した現在幅、pointer・keyboard・wheel・slider・保存は実行時DOM幅を共有し、resize時はoffsetも現在範囲へ再clampする。stale crop heightとzoom中心の回帰3件、全958テスト（--maxWorkers=1）、check:allをPASS。対象componentはexhaustive-deps 2→0、全警告4→既存2、全体lint 62→60。UI、upload、MIME、5 MB上限、JPEG圧縮、security契約は未変更。",
+      "commit": "pending",
+      "filesChanged": [
+        "components/BannerImageEditor.tsx",
+        "lib/banner-crop-geometry.ts",
+        "lib/__tests__/banner-crop-geometry.test.ts",
+        "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    }
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
