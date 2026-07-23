@@ -1538,9 +1538,9 @@ export const runtime = "edge";
 - **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは`validity.badInput`を空文字判定より先に確認し、native `input`イベントでValidityState修正を追跡し、試行counterを契機とするeffectでARIA/error DOM commit後に毎回focusする。CI実DOM testはrunner既設Chromeのchannelとbrowser起動を含むtest timeoutを明示する。
 - **教訓**: 入力検証監査はHTTP境界だけで完了とせず、native validity・value不変時のinput event・フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付け、無効化と修正直後の解除を実ブラウザで固定する。CIのbrowser testはdownload済みbrowserを暗黙前提にせず、実行環境の既設browser経路と起動予算を明示する。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`
 
-### LL-071: optional number入力を`parseFloat`へ渡すと部分一致とnative不正値を正常化する
+### LL-071: optional decimalを`type="number"`で受けると厳格検証前に字句を失う
 
-- **事象**: Walking Routesの任意距離が`formDistance ? parseFloat(formDistance) : null`で変換され、指数・後続garbage等を文字列全体で検証しなかった。`type="number"`の一時的不正値はDOM `value=""`でも`validity.badInput=true`となるため、未入力の`null`へ偽装され得た。
-- **根本原因**: 任意入力を「空か数値か」の2状態で扱い、文字列構文、変換後finite、native validityを一つのClient送信境界で検証していなかった。時間fieldのerror stateを距離へ流用すると、同時エラー時の関連付けとfocus先も競合する。
-- **対策**: 空文字だけを`null`とし、距離は符号・空白・指数を含まない非負10進数全文へ一致し、`Number`変換後もfiniteの場合だけ送信する。距離専用のerror state・ref・ID・attempt counterを持ち、`input`イベントで`badInput`解除を追跡し、React commit後に毎回focusする。任意ラベルを可視化し、320pxは距離/時間を縦積み、error focusは装備テーマの`box-shadow !important`に依存しない意味色outlineを併設する。既設Chrome channelの実DOMでPOST抑止、ARIA、反復submit、空への修正、44pxを固定する。
-- **教訓**: 任意のnumber inputは空文字、構文不正、native `badInput`、非finite、業務範囲外を別状態として扱う。`parseFloat`やtruthy判定で送信値を作らず、fieldごとの修正コピー・ARIA・focusをAPI操作エラーや隣接fieldから独立させる。エラー文追加時は狭幅の入力幅と全テーマの実focus indicatorも同じ完了条件にする。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`
+- **事象**: Walking Routesの任意距離を`parseFloat`から全文parserへ変更しても、`type="number"`がReactの`onInput`より前に`+1`→`1`、`3abc`→`3`、前後空白と`1.`→`1`へ正規化し、禁止した生文字列が正常値としてPOSTされた。純粋parser testは正規化前文字列を直接渡すため検出できなかった。
+- **根本原因**: 数値キーボードの提供と生文字列の保持を同じ`type="number"`へ委ね、ブラウザDOMのvalue sanitizationを送信境界に含めていなかった。parser単体の全文一致を、実UIからparserへ同じ字句が届く証拠として扱った。
+- **対策**: 距離だけを`type="text"` + `inputMode="decimal"`へ変更して生文字列を保持し、空文字だけを`null`、存在時は符号・空白・指数を含まない非負10進数全文かつfiniteの場合だけ送信する。locale依存のdecimal keyboardが`,`を提示する場合は、小数点1個を含む全文一致時だけ`.`へ正規化する。距離専用error/ARIA/commit後focus、任意ラベル、320px縦積み、意味色outlineを維持する。既設Chrome channelのUIへ禁止文字列を実入力し、raw value、POST 0回、反復submit、空への修正、0/1.5/1,5 payload、44pxを固定する。
+- **教訓**: 字句自体を厳格検証するdecimal入力では`type="number"`を正本にしない。`inputMode`はモバイルキーボードのhintとして使い、提示されるlocale小数点も同じ全文検証へ含める。raw文字列をClient parserへ渡した証拠と、変換後numberを再検証するServer契約の両方を持つ。エラー文追加時は狭幅の入力幅と全テーマの実focus indicatorも同じ完了条件にする。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`

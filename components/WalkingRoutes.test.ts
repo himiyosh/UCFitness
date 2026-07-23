@@ -11,11 +11,12 @@ import {
 
 describe('WalkingRoutes field validation', () => {
     it.each([
-        ['1e2', undefined], ['1E2', undefined], ['1.', undefined], ['.5', undefined],
+        ['1e2', undefined], ['1E2', undefined], ['1.', undefined], ['1,', undefined],
+        ['.5', undefined],
         ['+1', undefined], ['-1', undefined], ['3abc', undefined], [' ', undefined],
         ['1\n', undefined], ['\t1', undefined], ['NaN', undefined], ['Infinity', undefined],
         ['9'.repeat(400), undefined],
-        ['', null], ['0', 0], ['0.0', 0], ['1.5', 1.5], ['001.50', 1.5],
+        ['', null], ['0', 0], ['0.0', 0], ['1.5', 1.5], ['1,5', 1.5], ['001.50', 1.5],
     ])('距離入力"%s"を非負10進数全文として検証する', (value, expected) => {
         expect(parseWalkingRouteDistance(value)).toBe(expected);
     });
@@ -35,14 +36,25 @@ describe('WalkingRoutes field validation', () => {
     ])('距離入力エラー状態が%sの場合にARIAを同期する', (invalid, expected) => {
         expect(getWalkingRouteDistanceAria(invalid)).toEqual(expected);
     });
-    it('距離と時間のnative badInputを送信せず、エラーDOM反映後に毎回入力へfocusする', async () => {
+    it('距離の生文字列と時間のnative badInputを検証し、エラーDOM反映後に毎回入力へfocusする', async () => {
         const bundle = await build({
             stdin: {
                 contents: `
                     import {createRoot} from 'react-dom/client'; import WalkingRoutes from './components/WalkingRoutes';
                     document.body.dataset.postCount = '0';
                     globalThis.fetch = async (_input, init) => {
-                        if (init?.method === 'POST') document.body.dataset.postCount++;
+                        if (init?.method === 'POST') {
+                            const body = JSON.parse(String(init.body));
+                            document.body.dataset.postCount = String(Number(document.body.dataset.postCount) + 1);
+                            document.body.dataset.postBody = JSON.stringify(body);
+                            return {ok: true, json: async () => ({route: {
+                                id: 'route-' + document.body.dataset.postCount,
+                                name: body.name, description: body.description,
+                                distance_km: body.distance_km, duration_minutes: body.duration_minutes,
+                                difficulty: body.difficulty, is_favorite: false, walk_count: 0,
+                                last_walked_at: null, created_at: '2026-07-24T00:00:00.000Z',
+                            }})};
+                        }
                         return {ok: true, json: async () => ({routes: []})};
                     };
                     createRoot(document.querySelector('#root')).render(<WalkingRoutes />);`,
@@ -102,12 +114,19 @@ describe('WalkingRoutes field validation', () => {
                 input.getAttribute('aria-describedby'), Boolean(document.getElementById('walking-route-duration-error')),
             ])).toEqual([false, null, null, false]);
 
-            const distance = page.getByRole('spinbutton', { name: 'distancePlaceholder' });
+            const distance = page.getByRole('textbox', { name: 'distancePlaceholder' });
             expect(await distance.getAttribute('class')).toContain('min-h-[44px]');
             expect(await distance.getAttribute('class')).toContain('focus:ring-[var(--color-primary)]');
             expect(await distance.getAttribute('class')).toContain('focus:outline-[var(--color-primary)]');
             expect(await distance.locator('xpath=../..').getAttribute('class')).toContain('flex-col');
-            await distance.fill('1e2');
+            expect(await distance.getAttribute('type')).toBe('text');
+            expect(await distance.getAttribute('inputmode')).toBe('decimal');
+            expect(await distance.getAttribute('min')).toBeNull();
+            expect(await distance.getAttribute('step')).toBeNull();
+            const invalidDistanceValues = [
+                '+1', '3abc', ' 1 ', '1.', '1e2', '-1', '9'.repeat(400),
+            ];
+            await distance.fill(invalidDistanceValues[0]);
             await distance.evaluate((input) => {
                 document.body.dataset.distanceFocusCount = '0';
                 input.addEventListener('focus', () => {
@@ -120,36 +139,52 @@ describe('WalkingRoutes field validation', () => {
                     ].join('|');
                 });
             });
-            await save.click();
-            await page.waitForFunction(() => document.body.dataset.distanceFocusCount === '1');
-            expect(await page.locator('body').getAttribute('data-distance-focus-snapshot')).toBe(
-                'true|walking-route-distance-error|true');
-            expect(await page.locator('body').getAttribute('data-post-count')).toBe('0');
+            let expectedDistanceFocusCount = 0;
+            for (const [index, value] of invalidDistanceValues.entries()) {
+                if (index > 0) await distance.fill(value);
+                expect(await distance.inputValue()).toBe(value);
+                const submitCount = index === 0 ? 2 : 1;
+                for (let attempt = 0; attempt < submitCount; attempt += 1) {
+                    expectedDistanceFocusCount += 1;
+                    await save.click();
+                    await page.waitForFunction(
+                        (count) => document.body.dataset.distanceFocusCount === count,
+                        String(expectedDistanceFocusCount),
+                    );
+                    expect(await page.locator('body').getAttribute('data-distance-focus-snapshot')).toBe(
+                        'true|walking-route-distance-error|true');
+                    expect(await page.locator('body').getAttribute('data-post-count')).toBe('0');
+                }
+                await distance.fill('');
+                expect(await distance.evaluate((input) => [
+                    (input as HTMLInputElement).value,
+                    input.getAttribute('aria-invalid'), input.getAttribute('aria-describedby'),
+                    Boolean(document.getElementById('walking-route-distance-error')),
+                ])).toEqual(['', null, null, false]);
+            }
 
-            await distance.fill('');
-            expect(await distance.evaluate((input) => [
-                input.getAttribute('aria-invalid'), input.getAttribute('aria-describedby'),
-                Boolean(document.getElementById('walking-route-distance-error')),
-            ])).toEqual([null, null, false]);
-            await distance.pressSequentially('-');
-            expect(await distance.evaluate((input) => [
-                (input as HTMLInputElement).validity.badInput, (input as HTMLInputElement).value,
-            ])).toEqual([true, '']);
-            for (const expectedFocusCount of ['2', '3']) {
+            for (const [index, [value, expected]] of [
+                ['0', 0], ['1.5', 1.5], ['1,5', 1.5],
+            ].entries()) {
+                if (index > 0) {
+                    await page.getByRole('button', { name: 'addRoute' }).click();
+                    await page.getByRole('textbox', { name: 'namePlaceholder' }).fill('Route');
+                }
+                await distance.fill(String(value));
+                expect(await distance.inputValue()).toBe(value);
                 await save.click();
                 await page.waitForFunction(
-                    (count) => document.body.dataset.distanceFocusCount === count,
-                    expectedFocusCount,
+                    (count) => document.body.dataset.postCount === count,
+                    String(index + 1),
                 );
-                expect(await page.locator('body').getAttribute('data-distance-focus-snapshot')).toBe(
-                    'true|walking-route-distance-error|true');
-                expect(await page.locator('body').getAttribute('data-post-count')).toBe('0');
+                await page.getByRole('textbox', { name: 'namePlaceholder' }).waitFor({ state: 'detached' });
+                const postBody = await page.locator('body').getAttribute('data-post-body');
+                expect(JSON.parse(postBody ?? '{}')).toMatchObject({
+                    distance_km: expected,
+                    duration_minutes: null,
+                });
             }
-            await distance.press('Backspace');
-            expect(await distance.evaluate((input) => [
-                (input as HTMLInputElement).validity.badInput, input.getAttribute('aria-invalid'),
-                input.getAttribute('aria-describedby'), Boolean(document.getElementById('walking-route-distance-error')),
-            ])).toEqual([false, null, null, false]);
+            expect(pageErrors).toEqual([]);
         } finally {
             await browser.close();
         }

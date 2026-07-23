@@ -46,12 +46,12 @@ const DIFFICULTY_MAP: Record<Difficulty, { emoji: string; colorClass: string }> 
 
 const WALKING_ROUTE_DISTANCE_ERROR_ID = 'walking-route-distance-error';
 const WALKING_ROUTE_DURATION_ERROR_ID = 'walking-route-duration-error';
-const NONNEGATIVE_DECIMAL_REGEX = /^\d+(?:\.\d+)?$/;
+const NONNEGATIVE_DECIMAL_REGEX = /^\d+(?:[.,]\d+)?$/;
 
 export function parseWalkingRouteDistance(value: string): number | null | undefined {
     if (value === '') return null;
     if (NONNEGATIVE_DECIMAL_REGEX.exec(value)?.[0] !== value) return undefined;
-    const distance = Number(value);
+    const distance = Number(value.replace(',', '.'));
     return Number.isFinite(distance) ? distance : undefined;
 }
 
@@ -155,9 +155,7 @@ export default function WalkingRoutes() {
         const name = formName.trim();
         if (!name || isSaving) return;
 
-        const distanceKm = distanceInputRef.current?.validity.badInput
-            ? undefined
-            : parseWalkingRouteDistance(formDistance);
+        const distanceKm = parseWalkingRouteDistance(formDistance);
         const durationMinutes = durationInputRef.current?.validity.badInput
             ? undefined
             : parseWalkingRouteDuration(formDuration);
@@ -373,14 +371,14 @@ export default function WalkingRoutes() {
                         <div className="flex-1">
                             <input
                                 ref={distanceInputRef}
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={formDistance}
                                 onInput={(e) => {
                                     const value = e.currentTarget.value;
                                     setFormDistance(value);
                                     if (
                                         isDistanceInvalid
-                                        && !e.currentTarget.validity.badInput
                                         && parseWalkingRouteDistance(value) !== undefined
                                     ) {
                                         setIsDistanceInvalid(false);
@@ -388,8 +386,6 @@ export default function WalkingRoutes() {
                                 }}
                                 placeholder={t('distancePlaceholder')}
                                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 min-h-[44px]"
-                                min="0"
-                                step="0.1"
                                 aria-label={t('distancePlaceholder')}
                                 {...distanceAria}
                             />

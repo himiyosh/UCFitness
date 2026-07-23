@@ -1758,7 +1758,7 @@
     "favorites": "Favorites",
     "minutes": "min",
     "times": "times",
-    "distanceError": "Enter distance in km as a standard decimal number, 0 or greater (for example, 1.5). Exponential notation is not supported.",
+    "distanceError": "Enter distance in km as a standard decimal number, 0 or greater (for example, 1.5; use 1,5 if your keyboard shows a comma decimal separator). Exponential notation is not supported.",
     "durationError": "Enter duration as a whole number of minutes, 0 or greater (for example, 30).",
     "createError": "Failed to create route. Please try again.",
     "updateError": "Failed to update. Please try again.",
