@@ -1537,3 +1537,10 @@ export const runtime = "edge";
 - **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、native `ValidityState`とvalue不変時のevent差を確認しなかった。React state更新直後の同期focusで、ARIA属性とerror DOMのcommit前に入力へ移動し、実DOM testはPlaywright bundled browserがCIに存在すると仮定した。
 - **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは`validity.badInput`を空文字判定より先に確認し、native `input`イベントでValidityState修正を追跡し、試行counterを契機とするeffectでARIA/error DOM commit後に毎回focusする。CI実DOM testはrunner既設Chromeのchannelとbrowser起動を含むtest timeoutを明示する。
 - **教訓**: 入力検証監査はHTTP境界だけで完了とせず、native validity・value不変時のinput event・フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付け、無効化と修正直後の解除を実ブラウザで固定する。CIのbrowser testはdownload済みbrowserを暗黙前提にせず、実行環境の既設browser経路と起動予算を明示する。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`
+
+### LL-073: 並列DB結果の既定化で依存障害を未達成へ偽装した
+
+- **事象**: 実績進捗APIが7件のSupabase結果の`.error`とshapeを確認せず、DB障害・null・壊れたrelation rowを0件、0歩、未所有として200で返していた。累計歩数の全行取得はPostgRESTの1000行上限で欠落し得た。
+- **根本原因**: `data || []`、optional chaining、`count || 0`を正常系の既定値として使い、取得失敗・不正形状・正当なzero/emptyを同じ分岐へ統合した。全期間集計にも既存RPCを再利用しなかった。
+- **対策**: `get_user_step_stats`と称号サービスの共有parserへ統一し、7依存のDB errorを固定503、不正形状を固定500へ分離した。正当な0・空・残高行なし、公開target契約だけを維持し、生errorをログ・responseへ渡さないbehavior testを追加した。
+- **教訓**: 並列DB結果は各resultのerrorとdata/count shapeを個別に検証し、zero/emptyを許可する契約を依存ごとに明示する。集計は取得件数上限のある全行走査ではなくDB側RPCを使い、relation rowは壊れた要素をskipせず全体を失敗させる。リファレンス: `app/api/user/achievement-progress/route.ts`, `lib/services/title-achievement-service.ts`

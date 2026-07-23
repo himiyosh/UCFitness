@@ -71,7 +71,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
             expect(actualHash, path).toBe(expectedHash);
         }
     });
-    it('GROUP進捗RPC化後のdirect経路が32ファイル40 SELECTに限定される', () => {
+    it('実績進捗RPC化後のdirect経路が32ファイル39 SELECTに限定される', () => {
         expect(dailyStepsSources).toEqual(expectedDailyStepsSources);
 
         const referenceCount = dailyStepsSources.reduce((count, path) => {
@@ -79,7 +79,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
             const matches = source.matchAll(/\.from\(\s*['"]daily_steps['"]\s*\)/g);
             return count + [...matches].length;
         }, 0);
-        expect(referenceCount).toBe(40);
+        expect(referenceCount).toBe(39);
         for (const path of dailyStepsSources) {
             const source = stripComments(readRepositoryFile(path));
             expect(source, path).not.toMatch(/^['"]use client['"];?/m);
@@ -117,7 +117,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
             upsert_daily_steps_max: 1,
             upsert_fitbit_daily_steps_max: 1,
             upsert_fitbit_daily_steps_batch: 1,
-            get_user_step_stats: 4,
+            get_user_step_stats: 5,
             get_batch_user_step_totals: 1,
             award_streak_milestones: 1,
         };
@@ -184,7 +184,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
         const readme = readRepositoryFile('README.md');
         const requiredEvidence = [
             'Phase 9: `daily_steps` audit-only',
-            '32 ファイル、41 件',
+            '32 ファイル、39 件',
             '`46a3af7:supabase_schema.sql`',
             '261aa4b63d97ac3b924fc46a57109c2f4371a584c3ab63535f71157b5bedad31',
             '`get_user_step_stats`',

@@ -351,7 +351,7 @@ policyを含む古いsnapshotであり現行catalogの証拠にはできない�
 実catalog接続がなく、現行default/nullability/PK/FK/unique/check/owner/ACL/
 RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に据え置く。
 
-コメントを除外した実行可能コードには32 ファイル、41 件のdirect PostgREST
+コメントを除外した実行可能コードには32 ファイル、39 件のdirect PostgREST
 経路があり、すべてservice-roleの`SELECT`だった。direct `INSERT` / `UPDATE` /
 `DELETE` / upsertとbrowser clientからの直接接続はない。
 
@@ -359,12 +359,14 @@ RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に�
 |---|---|---|
 | Home / profile / analytics | `app/[locale]/page.tsx` (1), `app/[locale]/user/[username]/page.tsx` (2), `app/[locale]/wallet/page.tsx` (1), `app/[locale]/debug/session/page.tsx` (1), `lib/services/analytics-service.ts` (1) | Server Component / service。profileとanalyticsは取得失敗をunavailable / throwへ分離 |
 | Group / challenge | `app/[locale]/groups/[groupId]/page.tsx` (1), `app/api/challenge/[challengeId]/progress/route.ts` (2), `app/api/challenge/[challengeId]/route.ts` (1), `app/api/group/[groupId]/events/[eventId]/route.ts` (1), `app/api/group/[groupId]/ranking/route.ts` (1), `app/api/group/[groupId]/weekly-report/route.ts` (1), `lib/services/group-comparison-service.ts` (1) | session / membership認可後の期間集計。一部の参加者・歩数結果は別Fix候補 |
-| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (2), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
+| Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (1), `app/api/user/achievements/route.ts` (2), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。achievement-progressは7依存のDB errorを503、不正形状を500へ分離し、正当な0・空・残高行なしだけを成功形として維持。他経路の偽装は別Fix候補 |
 | Social / export | `app/api/user/following/route.ts` (1), `app/api/user/following-comparison/route.ts` (1), `app/api/user/export/route.ts` (1) | session userを固定。following-comparisonの部分障害境界は別Fix候補 |
 | Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証 |
 | Utility / script | `lib/supabase-utils.ts` (1), `scripts/check_group_info.ts` (1) | server helper / service-role運用script。JSDoc例は件数から除外 |
 
-関連RPC呼び出しは合計10件である。4 writerは
+`GET /api/user/achievement-progress`の累計歩数は`get_user_step_stats`で全期間集計し、PostgRESTの1000行上限を回避する。RPCのarray/object両形状、公開target user ID、購入・グループ件数0、streak・owned items空を受理し、errorless null・unsafe integer・重複日付・壊れたrelation rowはskipせず固定エラーにする。
+
+関連RPC呼び出しは合計11件である。4 writerは
 `migrations/20260617_add_multi_provider_connections.sql`に追跡され、
 `search_path = ''`、lease/source conflict guard、service-role限定`EXECUTE`を持つ。
 追跡DDL上は`SECURITY DEFINER`指定がなく、既定invoker権限で`daily_steps`を更新する。
@@ -375,7 +377,7 @@ RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に�
 | `upsert_daily_steps_max` | 1 | Google Health lease必須。当日値を`GREATEST`で単調upsertし、確定`steps`を返す |
 | `upsert_fitbit_daily_steps_max` | 1 | Fitbit userとGoogle Health状態をlockし、source conflict時は拒否。単調upsertして確定`steps`を返す |
 | `upsert_fitbit_daily_steps_batch` | 1 | 最大1000入力、履歴権威とsource conflictをlock下で検証し、単調batch upsert |
-| `get_user_step_stats` | 4 | 全期間集計read。型と呼び出しだけがあり、SQL定義、owner、security mode、`search_path`、`EXECUTE` ACLは未追跡 |
+| `get_user_step_stats` | 5 | 全期間集計read。型と呼び出しだけがあり、SQL定義、owner、security mode、`search_path`、`EXECUTE` ACLは未追跡 |
 | `get_batch_user_step_totals` | 1 | badge batch集計read。SQL定義、owner、security mode、`search_path`、`EXECUTE` ACLは未追跡 |
 | `award_streak_milestones` | 1 | `daily_steps`をreadし、Phase 4 migrationでowner固定・`SECURITY DEFINER`・service-role限定`EXECUTE`を検証済み |
 
