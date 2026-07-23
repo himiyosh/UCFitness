@@ -3,7 +3,7 @@
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
   "lastUpdated": "2026-07-23T09:44:30Z",
   "lastAgent": "Expert React Frontend Engineer + QA + Self-Critique",
-  "lastCommit": "pending",
+  "lastCommit": "42562050b4a4dc6361e517b5ac4edd253921d554",
   "lastBranch": "himiyosh-stunning-guide",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "BannerImageEditorのcrop geometryをpure helperへ集約し、ResizeObserverで現在のpreview幅とoffset clampを同期した。pointer・keyboard・wheel・slider・保存は操作時のDOM幅を使用し、stale crop heightを防止。対象react-hooks/exhaustive-deps警告は2件から0件、component警告は4件から既存2件、全体lintは62件から60件へ減少。focused 3件、全958テスト（--maxWorkers=1）、check:allをPASS。UI、upload、MIME、画像サイズ、security契約は変更なし。F016の保護済み件数は9/25据え置き。",
@@ -1352,7 +1352,7 @@
       "date": "2026-07-23",
       "agent": "Expert React Frontend Engineer + QA + Self-Critique",
       "action": "BannerImageEditorの2件のreact-hooks/exhaustive-deps警告を、依存抑制や不安定callback追加ではなくpure geometry helperとResizeObserverで解消した。描画は観測した現在幅、pointer・keyboard・wheel・slider・保存は実行時DOM幅を共有し、resize時はoffsetも現在範囲へ再clampする。stale crop heightとzoom中心の回帰3件、全958テスト（--maxWorkers=1）、check:allをPASS。対象componentはexhaustive-deps 2→0、全警告4→既存2、全体lint 62→60。UI、upload、MIME、5 MB上限、JPEG圧縮、security契約は未変更。",
-      "commit": "pending",
+      "commit": "42562050b4a4dc6361e517b5ac4edd253921d554",
       "filesChanged": [
         "components/BannerImageEditor.tsx",
         "lib/banner-crop-geometry.ts",
