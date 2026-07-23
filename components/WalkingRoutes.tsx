@@ -344,8 +344,8 @@ export default function WalkingRoutes() {
                                 ref={durationInputRef}
                                 type="number"
                                 value={formDuration}
-                                onChange={(e) => {
-                                    const value = e.target.value;
+                                onInput={(e) => {
+                                    const value = e.currentTarget.value;
                                     setFormDuration(value);
                                     if (
                                         isDurationInvalid
