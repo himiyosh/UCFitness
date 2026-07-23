@@ -221,7 +221,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                         targetId={item.asin}
                         actionLabel={t('viewOnAmazon')}
                         showMerchantDetails={false}
-                        className="w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 p-2 transition-all duration-200 hover:scale-[1.03] hover:border-[var(--theme-primary)]/20 hover:shadow-lg group"
+                        className="group w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 p-2 transition-colors duration-200 hover:border-[var(--theme-primary)]/20 hover:bg-[var(--color-primary-soft)] active:translate-y-px"
                     >
                         {/* 商品画像 — コンパクト */}
                         <div className="w-full h-[90px] rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-1.5">
