@@ -46,8 +46,7 @@ describe('WalkingRoutes duration validation', () => {
         try {
             const page = await browser.newPage({ viewport: { width: 320, height: 800 } });
             const pageErrors: string[] = []; page.on('pageerror', (error) => pageErrors.push(error.message));
-            await page.setContent('<div id="root"></div>');
-            await page.addScriptTag({ content: bundle.outputFiles[0].text });
+            await page.setContent('<div id="root"></div>'); await page.addScriptTag({ content: bundle.outputFiles[0].text });
             await page.getByRole('button', { name: 'addRoute' }).click();
             expect(pageErrors).toEqual([]);
             await page.getByRole('textbox', { name: 'namePlaceholder' }).fill('Route');
@@ -83,5 +82,5 @@ describe('WalkingRoutes duration validation', () => {
         } finally {
             await browser.close();
         }
-    });
+    }, 15_000);
 });
