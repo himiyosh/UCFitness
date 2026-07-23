@@ -1523,6 +1523,7 @@ export const runtime = "edge";
 - **対策**: 構造化台帳は対象objectの一意な識別子範囲を先に読み、変更後に対象値と同名キーを持つ他objectの差分を同時検証する。
 - **教訓**: 同名キーが反復する台帳は値だけで編集しない。識別子をanchorにし、PR差分で意図したobjectだけが変わったことを確認する。
 - **追加教訓**: 履歴テストは可変のtop-level `lastCommit`ではなく対象sessionLogを固定し、進捗更新後にfull testを再実行する。
+- **追加教訓**: feature台帳の`status` / `lastAttempt` / `lastError`を変更した後は、対象IDの値だけでなく、同名キーが変わった全IDを構造化比較し、対象外IDの変更をcommit前に拒否する。
 
 ### LL-063: 報酬倍率差を浮動小数点のまま切り捨てると正規UCを1減らす
 
