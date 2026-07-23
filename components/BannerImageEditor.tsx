@@ -9,13 +9,24 @@ import { useDialogFocus } from '@/hooks/useDialogFocus';
 import {
     clampBannerOffsets,
     getBannerCropGeometry,
-    scaleBannerOffsets,
+    getBannerScaleBounds,
+    resizeBannerCropState,
+    resolveBannerCropState,
+    scaleBannerCropState,
 } from "@/lib/banner-crop-geometry";
 import { compressImage } from '@/lib/image-utils';
 
 interface BannerImageEditorProps {
     currentBanner: string | null;
     children?: React.ReactNode;
+}
+
+interface CropInteractionSnapshot {
+    hasFile: boolean;
+    imageSize: { w: number; h: number } | null;
+    offsetX: number;
+    offsetY: number;
+    scale: number;
 }
 
 const MIN_SCALE = 1;
@@ -46,6 +57,21 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const containerRef = useRef<HTMLDivElement>(null);
     const dialogRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const previousContainerWidthRef = useRef(DEFAULT_CONTAINER_WIDTH);
+    const latestCropRef = useRef<CropInteractionSnapshot>({
+        hasFile: false,
+        imageSize: null,
+        offsetX: 0,
+        offsetY: 0,
+        scale: MIN_SCALE,
+    });
+    latestCropRef.current = {
+        hasFile: Boolean(file),
+        imageSize,
+        offsetX,
+        offsetY,
+        scale,
+    };
     const readContainerWidth = useCallback(
         (): number => containerRef.current?.clientWidth || DEFAULT_CONTAINER_WIDTH,
         [],
@@ -69,33 +95,66 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         const container = containerRef.current;
         if (!container) return;
 
-        const updateContainerWidth = (): void => {
+        const updateContainerGeometry = (): void => {
             const nextWidth = readContainerWidth();
+            const previousWidth = previousContainerWidthRef.current;
+            previousContainerWidthRef.current = nextWidth;
             setContainerWidth((currentWidth) => (
                 currentWidth === nextWidth ? currentWidth : nextWidth
             ));
-            setOffsetX((currentOffsetX) => clampBannerOffsets({
-                offsetX: currentOffsetX,
-                offsetY: 0,
-                scale,
-                imageSize,
-                containerWidth: nextWidth,
-            }).x);
-            setOffsetY((currentOffsetY) => clampBannerOffsets({
-                offsetX: 0,
-                offsetY: currentOffsetY,
-                scale,
-                imageSize,
-                containerWidth: nextWidth,
-            }).y);
+
+            const current = latestCropRef.current;
+            if (!current.hasFile || !current.imageSize) return;
+
+            const resized = resizeBannerCropState({
+                offsetX: current.offsetX,
+                offsetY: current.offsetY,
+                scale: current.scale,
+                imageSize: current.imageSize,
+                previousContainerWidth: previousWidth,
+                nextContainerWidth: nextWidth,
+                preferredMaxScale: MAX_SCALE,
+            });
+            setScale(resized.scale);
+            setOffsetX(resized.x);
+            setOffsetY(resized.y);
         };
 
-        updateContainerWidth();
-        const observer = new ResizeObserver(updateContainerWidth);
+        updateContainerGeometry();
+        const observer = new ResizeObserver(updateContainerGeometry);
         observer.observe(container);
 
         return () => observer.disconnect();
-    }, [imageSize, isOpen, readContainerWidth, scale]);
+    }, [isOpen, readContainerWidth]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const container = containerRef.current;
+        if (!container) return;
+
+        const handleNativeWheel = (event: WheelEvent): void => {
+            const current = latestCropRef.current;
+            if (!current.hasFile || !current.imageSize) return;
+
+            event.preventDefault();
+            const next = scaleBannerCropState({
+                offsetX: current.offsetX,
+                offsetY: current.offsetY,
+                scale: current.scale,
+                nextScale: current.scale - event.deltaY * 0.002,
+                imageSize: current.imageSize,
+                containerWidth: readContainerWidth(),
+                preferredMaxScale: MAX_SCALE,
+            });
+            setScale(next.scale);
+            setOffsetX(next.x);
+            setOffsetY(next.y);
+        };
+
+        container.addEventListener("wheel", handleNativeWheel, { passive: false });
+        return () => container.removeEventListener("wheel", handleNativeWheel);
+    }, [isOpen, readContainerWidth]);
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -128,14 +187,23 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
             const img = new Image();
             img.onload = () => {
-                setImageSize({ w: img.width, h: img.height });
-                setOffsetX(0);
-                setOffsetY(0);
-                setScale(1);
+                const nextImageSize = { w: img.width, h: img.height };
+                const initial = resolveBannerCropState({
+                    offsetX: 0,
+                    offsetY: 0,
+                    scale: MIN_SCALE,
+                    imageSize: nextImageSize,
+                    containerWidth: readContainerWidth(),
+                    preferredMaxScale: MAX_SCALE,
+                });
+                setImageSize(nextImageSize);
+                setOffsetX(initial.x);
+                setOffsetY(initial.y);
+                setScale(initial.scale);
             };
             img.src = url;
         }
-    }, [previewUrl, t]);
+    }, [previewUrl, readContainerWidth, t]);
 
     // Cleanup object URLs on unmount
     useEffect(() => {
@@ -150,6 +218,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         containerWidth,
         Boolean(file && imageSize),
     );
+    const scaleBounds = getBannerScaleBounds(imageSize, containerWidth, MAX_SCALE);
 
     // ドラッグ開始
     const handlePointerDown = (e: React.PointerEvent) => {
@@ -207,40 +276,21 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         setOffsetY(clamped.y);
     }, [file, imageSize, offsetX, offsetY, readContainerWidth, scale]);
 
-    // ホイールでズーム
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-        if (!file) return;
-        e.preventDefault();
-        const delta = -e.deltaY * 0.002;
-        const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale + delta));
-        const clamped = scaleBannerOffsets({
-            offsetX,
-            offsetY,
-            scale,
-            nextScale: newScale,
-            imageSize,
-            containerWidth: readContainerWidth(),
-        });
-
-        setScale(newScale);
-        setOffsetX(clamped.x);
-        setOffsetY(clamped.y);
-    }, [file, imageSize, offsetX, offsetY, readContainerWidth, scale]);
-
     // スライダーでズーム
     const handleScaleChange = (newScale: number) => {
-        const clamped = scaleBannerOffsets({
+        const next = scaleBannerCropState({
             offsetX,
             offsetY,
             scale,
             nextScale: newScale,
             imageSize,
             containerWidth: readContainerWidth(),
+            preferredMaxScale: MAX_SCALE,
         });
 
-        setScale(newScale);
-        setOffsetX(clamped.x);
-        setOffsetY(clamped.y);
+        setScale(next.scale);
+        setOffsetX(next.x);
+        setOffsetY(next.y);
     };
 
     // クロップしてから保存
@@ -250,14 +300,15 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         try {
             const currentWidth = readContainerWidth();
             const { cropHeight } = getBannerCropGeometry(currentWidth, false);
-            const clamped = clampBannerOffsets({
+            const current = resolveBannerCropState({
                 offsetX,
                 offsetY,
                 scale,
                 imageSize,
                 containerWidth: currentWidth,
+                preferredMaxScale: MAX_SCALE,
             });
-            const croppedFile = await cropBanner(file, imageSize, clamped.x, clamped.y, scale, currentWidth, cropHeight);
+            const croppedFile = await cropBanner(file, imageSize, current.x, current.y, current.scale, currentWidth, cropHeight);
             const compressedFile = await compressImage(croppedFile, 1200, 0.8);
 
             const formData = new FormData();
@@ -337,13 +388,12 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                             <div ref={containerRef} className="rounded-lg overflow-hidden bg-gray-900">
                                 {previewUrl ? (
                                     <div
-                                        className={`relative w-full overflow-hidden select-none ${file ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                                        className={`relative w-full overflow-hidden select-none ${file ? 'touch-none cursor-grab active:cursor-grabbing' : ''}`}
                                         style={{ height: `${file ? cropGeometry.previewHeight : cropGeometry.cropHeight}px` }}
                                         onPointerDown={handlePointerDown}
                                         onPointerMove={handlePointerMove}
                                         onPointerUp={handlePointerUp}
                                         onPointerCancel={handlePointerUp}
-                                        onWheel={handleWheel}
                                         onKeyDown={handleCropKeyDown}
                                         role={file ? 'application' : undefined}
                                         tabIndex={file ? 0 : -1}
@@ -429,8 +479,8 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                     </svg>
                                     <input
                                         type="range"
-                                        min={MIN_SCALE}
-                                        max={MAX_SCALE}
+                                        min={scaleBounds.minScale}
+                                        max={scaleBounds.maxScale}
                                         step={0.01}
                                         value={scale}
                                         onChange={(e) => handleScaleChange(Number(e.target.value))}
