@@ -1530,3 +1530,10 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+
+### LL-064: Dialogの開始時fallbackだけを固定するとunmount後のfocus復帰先を失う
+
+- **事象**: `useDialogFocus`のcleanup警告を消すため開始時fallbackだけをclosureへ固定した結果、その要素がunmount・切断された場合に差し替え後refや現在のmainへ復帰せず、bodyへfocusが残り得た。
+- **根本原因**: 可変refのcleanup時再参照をすべて不正と捉え、開始時snapshotの安定性と、切断後に有効な代替要素を再解決する必要性を両立していなかった。テストも開始時fallbackを常に`isConnected=true`としていた。
+- **対策**: focus復帰をprevious active element→開始時fallback→cleanup時current fallback→cleanup時mainの優先チェーンにし、cleanup時候補はeffect内で生成したgetter経由で評価する。開始時fallback切断、current差し替え、current無効、最新mainのNode fake DOMテストを固定する。
+- **教訓**: cleanupで使うDOM参照はsnapshotだけに限定しない。安定した開始時候補を先に試し、切断・`inert`時だけ明示依存のlive getterへフォールバックし、cleanup本体で外部refを直接読まない。
