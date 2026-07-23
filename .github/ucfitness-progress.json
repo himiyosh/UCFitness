@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-23T09:44:30Z",
-  "lastAgent": "Expert React Frontend Engineer + QA + Self-Critique",
-  "lastCommit": "42562050b4a4dc6361e517b5ac4edd253921d554",
+  "lastUpdated": "2026-07-23T10:13:31Z",
+  "lastAgent": "Expert React Frontend Engineer + Accessibility + Code Review + QA + Self-Critique",
+  "lastCommit": "4c10a8b1a80186e1c8e89659194878265559bb18",
   "lastBranch": "himiyosh-stunning-guide",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "BannerImageEditorのcrop geometryをpure helperへ集約し、ResizeObserverで現在のpreview幅とoffset clampを同期した。pointer・keyboard・wheel・slider・保存は操作時のDOM幅を使用し、stale crop heightを防止。対象react-hooks/exhaustive-deps警告は2件から0件、component警告は4件から既存2件、全体lintは62件から60件へ減少。focused 3件、全958テスト（--maxWorkers=1）、check:allをPASS。UI、upload、MIME、画像サイズ、security契約は変更なし。F016の保護済み件数は9/25据え置き。",
+  "summary": "BannerImageEditorのcrop geometryをpure helperへ集約し、ResizeObserverでoffsetを幅比補正して元画像上の選択中心を保持した。画像比率由来のdynamic minimum scaleを初期化・wheel・slider・resize・保存へ統一し、crop枠の空白を防止。編集面だけにtouch-action noneとpassive:falseのnative wheel listenerを適用し、latest refとcleanupを固定した。対象react-hooks/exhaustive-deps警告は2件から0件、component警告は4件から既存2件、全体lintは62件から60件へ減少。focused 10件、全965テスト（--maxWorkers=1）、check:allをPASS。UI、upload、MIME、5 MB上限、JPEG圧縮、security契約は変更なし。F016の保護済み件数は9/25据え置き。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
-    "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
+    "lintErrorsNote": "残る60件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-20T22:41:30Z"
+    "lastVerified": "2026-07-23T10:13:31Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1358,6 +1358,20 @@
         "lib/banner-crop-geometry.ts",
         "lib/__tests__/banner-crop-geometry.test.ts",
         "README.md",
+        ".github/ucfitness-progress.json"
+      ]
+    },
+    {
+      "date": "2026-07-23",
+      "agent": "Expert React Frontend Engineer + Accessibility + Code Review + QA + Self-Critique",
+      "action": "PR #291親レビューfollow-upで、連続resize時のoffsetを幅比補正して元画像上の選択中心を保持した。画像比率由来のdynamic minimum scaleとeffective maxを初期化・wheel・slider・resize・保存へ統一し、1200x300・縦長・極端横長でもcrop枠の空白を防止した。編集面だけにtouch-action noneとpassive:falseのnative wheel listenerを適用し、latest ref、preventDefault、pointercancel、listener/ResizeObserver cleanupを固定した。focused 10件、全965テスト（--maxWorkers=1）、check:all、React/Accessibility/Code/Self-CritiqueレビューをPASSし、再発防止をLL-064へ記録。対象exhaustive-depsは0、全体lintは既存60 warnings・0 errors。UI、upload、MIME、5 MB上限、JPEG圧縮、security契約は未変更。",
+      "commit": "4c10a8b1a80186e1c8e89659194878265559bb18",
+      "filesChanged": [
+        "components/BannerImageEditor.tsx",
+        "lib/banner-crop-geometry.ts",
+        "lib/__tests__/banner-crop-geometry.test.ts",
+        "README.md",
+        ".github/copilot-instructions.md",
         ".github/ucfitness-progress.json"
       ]
     }

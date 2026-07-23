@@ -1530,3 +1530,10 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+
+### LL-064: crop geometryを表示幅だけへ同期するとresize中心と画像被覆を失う
+
+- **事象**: バナーcropのHook依存警告をpure helper化した初回修正で、resize後に旧offsetを新幅でclampするだけだったため元画像上の選択中心がずれ、横長画像ではscale 1のままcrop枠へ空白が入った。Reactのwheel handlerもpassive listenerとscroll競合の契約を固定できていなかった。
+- **根本原因**: crop stateをoffset・scale・画像比率・前後container幅の一体的なgeometryとして扱わず、各イベント経路を個別に補正した。
+- **対策**: resizeはoffsetを`nextWidth / previousWidth`倍してから新geometryでclampする。画像がcrop枠を覆うdynamic minimum scaleとeffective maxを初期化・wheel・slider・resize・保存へ共通適用し、編集面だけへ`touch-action: none`と`passive: false`のnative wheel listenerを登録してlatest ref・preventDefault・cleanupを固定する。
+- **教訓**: crop操作は各callbackの依存追加だけで直さず、全入力経路が同じ正規化済みstate transitionを使う。連続resizeのsource center、推奨比率・縦長・極端横長の被覆、listenerの局所登録とcleanupをpure/static testで検証する。リファレンス: `components/BannerImageEditor.tsx`, `lib/banner-crop-geometry.ts`
