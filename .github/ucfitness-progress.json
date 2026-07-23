@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-23T00:40:05Z",
+  "lastUpdated": "2026-07-23T00:53:59Z",
   "lastAgent": "UCFitnessAgent (Test Coverage + QA)",
-  "lastCommit": "07a111ee4a407fc9fb7ace12426747e5054b6454",
+  "lastCommit": "5d4ab49e22ff96214d540411686366f0495b6f61",
   "lastBranch": "himiyosh-test-coverage-60-gate",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "F026ユニットテストカバレッジ60%の親レビュー修正として、V8 coverageの分母を未importを含むlib全54本番モジュールへ明示した。89ファイル・955テストがPASSし、Statements 66.54%、Branches 63.28%、Functions 77.36%、Lines 67.58%で4指標の60% thresholdをPASS。一方、single-worker実測15.09秒で正本の5秒以内を満たさないためF026はin-progress。CIの単一coverage suite、依存関係・package-lock・artifact uploadなしを維持し、check:allをPASS。F016の保護済み件数は9/25据え置き。",
+  "summary": "F026ユニットテストカバレッジ60%の親レビュー修正として、V8 coverageの分母を未importを含むlib全54本番モジュールへ明示した。2026-07-23T00:50:22Zの実測は89ファイル・955テストがPASSし、Statements 66.54%、Branches 63.28%、Functions 77.36%、Lines 67.58%で4指標の60% thresholdをPASS。一方、single-worker実測18.10秒で正本の5秒以内を満たさないためF026はin-progressとし、lastAttempt/lastErrorへ日時と超過理由を記録。CIの単一coverage suite、依存関係・package-lock・artifact uploadなしを維持した。F016の保護済み件数は9/25据え置き。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-23T00:40:05Z"
+    "lastVerified": "2026-07-23T00:53:59Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1349,7 +1349,8 @@
     {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Bでglobal/group ranking、groups、group members、award insertを固定AppErrorへ分離した。生Supabase errorを内部report/causeへ渡さず、row shape・foreign・重複・safe integer・集計overflowを拒否し、0歩・空集合・記録なし・23505既付与を維持した。focused 62件、全676テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。残る範囲はstreak milestoneとTeams enrichment。DB接続/read/write/applyなし。","commit":"67cea5b8a816008366f271d5e81f8a57cd1b02de","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]},
     {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Cでstreak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorへ分離し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge全件検証を固定AppErrorのbest-effort境界へ分離し、不完全データやA user fallbackを送らず主付与を維持した。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。実装差分3ファイル・459行。DB接続/read/write/applyなし。badge-awards core完了、webhook transportはlib/api/teams.tsの既存best-effort処理を維持。","commit":"839a52e67d51847ee44fec5bfb8a6ccce9d589bf","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]},
     {"date":"2026-07-23","agent":"UCFitnessAgent (QA + Self-Critique)","action":"F026ユニットテストカバレッジ60%をV8 global thresholdとして回帰ゲート化した。CIはsingle-workerのcoverage suiteを1回だけ実行し、89ファイル・955テストとStatements 73.26%・Branches 68.53%・Functions 84.92%・Lines 74.12%のthreshold判定を同時にPASS。check:all、workflow YAML、Actions SHA pin、独立Code/QA reviewをPASS。依存関係・package-lock・coverage artifact uploadは変更なし。","commit":"cf56e8813863e0b1c1c446aff69b2778a9466706","filesChanged":["vitest.config.ts",".github/workflows/validate.yml","README.md",".github/ucfitness-features.json",".github/ucfitness-progress.json"]},
-    {"date":"2026-07-23","agent":"UCFitnessAgent (Test Coverage + QA)","action":"PR #289の親レビュー修正としてcoverage.includeへlib全本番モジュールを明示し、テスト・test-utils・型定義を除外した。全54本番モジュールで89ファイル・955テスト、Statements 66.54%・Branches 63.28%・Functions 77.36%・Lines 67.58%となり、4指標の60% thresholdをPASS。実測15.09秒で正本の5秒以内は未達のためF026をin-progressへ戻した。依存関係・package-lock・coverage artifact uploadは変更なし。","commit":"07a111ee4a407fc9fb7ace12426747e5054b6454","filesChanged":["vitest.config.ts","README.md",".github/copilot-instructions.md",".github/ucfitness-features.json"]}
+    {"date":"2026-07-23","agent":"UCFitnessAgent (Test Coverage + QA)","action":"PR #289の親レビュー修正としてcoverage.includeへlib全本番モジュールを明示し、テスト・test-utils・型定義を除外した。全54本番モジュールで89ファイル・955テスト、Statements 66.54%・Branches 63.28%・Functions 77.36%・Lines 67.58%となり、4指標の60% thresholdをPASS。実測15.09秒で正本の5秒以内は未達のためF026をin-progressへ戻した。依存関係・package-lock・coverage artifact uploadは変更なし。","commit":"07a111ee4a407fc9fb7ace12426747e5054b6454","filesChanged":["vitest.config.ts","README.md",".github/copilot-instructions.md",".github/ucfitness-features.json"]},
+    {"date":"2026-07-23","agent":"UCFitnessAgent (Test Coverage + QA)","action":"F026の最新coverage実測を2026-07-23T00:50:22Zに実施し、全54本番モジュールで89ファイル・955テスト、Statements 66.54%・Branches 63.28%・Functions 77.36%・Lines 67.58%の60% thresholdをPASS。18.10秒で5秒基準を超えたためstatusはin-progressを維持し、lastAttemptとlastErrorへ日時・超過理由を対象IDへ構造化比較して記録した。name/description/verificationSteps、依存関係、package-lockは変更なし。","commit":"5d4ab49e22ff96214d540411686366f0495b6f61","filesChanged":[".github/ucfitness-features.json","README.md",".github/copilot-instructions.md"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
