@@ -673,7 +673,7 @@ npm run dev
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
-| `npm run test:coverage` | V8 カバレッジレポートと global 60% 回帰ゲート |
+| `npm run test:coverage` | `lib/` の全本番モジュールを対象にした V8 カバレッジレポートと global 60% 回帰ゲート |
 
 ### 公開LPのCore Web Vitals基準
 
@@ -902,12 +902,13 @@ npm run audit:responsive
 ```
 
 - テストフレームワーク: **Vitest**
-- CI はテストスイートをカバレッジ付きで1回だけ実行し、Statements / Branches / Functions / Lines の global threshold 60% を検証
+- CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
+- 2026-07-23のsingle-worker全54本番モジュール実測は89ファイル・955テスト、Statements 66.54%、Branches 63.28%、Functions 77.36%、Lines 67.58%、15.09秒。カバレッジ条件はPASSしたが、F026正本の5秒以内を満たさないためstatusは`in-progress`
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
-- テストファイル: `lib/__tests__/` 配下
+- テストファイル: `lib/__tests__/` と `lib/` 配下の `*.test.ts`
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 
 ## 注意事項 / 制約

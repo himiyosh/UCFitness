@@ -1530,3 +1530,10 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+
+### LL-064: import済みファイルだけのカバレッジを全`lib/`達成と誤認した
+
+- **事象**: F026の60%回帰ゲートを追加した際、`coverage.include`を指定せず、未importの本番`lib/`ファイルを分母から除外した数値でstatusを`passing`にした。正本には5秒以内の条件もあるが、約15秒のcoverage実行をもって達成扱いにしていた。
+- **根本原因**: Vitestの既定coverageがテストで実行されたファイルだけを対象にすることを確認せず、threshold値だけで対象範囲も保証できると判断した。複数のverification stepのうち一部だけを満たした状態でfeature全体を達成扱いにした。
+- **対策**: `coverage.include`へ`lib/**/*.{ts,tsx}`を明示し、テスト、test-utils、型定義だけを除外する。all-filesの4指標と所要時間を別々に実測し、正本のverification stepをすべて満たすまでstatusを`in-progress`に保つ。
+- **教訓**: coverage gateは閾値だけでなく分母となる本番ファイル集合を明示して初めて回帰防止になる。feature statusは変更禁止のverification stepを全件実測し、一項目でも未達なら`passing`へ進めない。リファレンス: `vitest.config.ts`, `.github/ucfitness-features.json`

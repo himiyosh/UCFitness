@@ -14,6 +14,14 @@ export default defineConfig({
         exclude: ['node_modules', '.next'],
         coverage: {
             provider: 'v8',
+            include: ['lib/**/*.{ts,tsx}'],
+            exclude: [
+                'lib/**/*.test.{ts,tsx}',
+                'lib/**/*.spec.{ts,tsx}',
+                'lib/**/__tests__/**',
+                'lib/**/test-utils/**',
+                'lib/**/*.d.ts',
+            ],
             thresholds: {
                 statements: 60,
                 branches: 60,
