@@ -1,13 +1,14 @@
 export const runtime = 'edge';
 
+import { NextResponse } from "next/server";
+
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
-import { isValidUUID } from "@/lib/validation";
-import { NextResponse } from "next/server";
+import { isValidUUID, parseStrictInteger } from "@/lib/validation";
 
 // 歩数カレンダー用API: 指定年の日別歩数データを返す
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -25,8 +26,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
     }
 
-    const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
-    if (isNaN(year) || year < 2000 || year > 2100) {
+    const year = yearParam === null ? new Date().getFullYear() : parseStrictInteger(yearParam);
+    if (year === null || year < 2000 || year > 2100) {
         return NextResponse.json({ error: "Invalid year" }, { status: 400 });
     }
 
@@ -43,13 +44,21 @@ export async function GET(request: Request) {
             .order("date", { ascending: true });
 
         if (error) {
-            reportError("step-calendar-fetch", error);
+            reportError(
+                "step-calendar-fetch",
+                new Error("Failed to fetch step calendar"),
+                { code: "STEP_CALENDAR_FETCH_FAILED" },
+            );
             return NextResponse.json({ error: "Database error" }, { status: 500 });
         }
 
         return NextResponse.json({ data: data || [] });
-    } catch (error: unknown) {
-        reportError("step-calendar-fetch", error);
+    } catch {
+        reportError(
+            "step-calendar-fetch",
+            new Error("Failed to fetch step calendar"),
+            { code: "STEP_CALENDAR_FETCH_FAILED" },
+        );
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
