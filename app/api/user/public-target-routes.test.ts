@@ -167,11 +167,9 @@ describe('公開target userId API', () => {
 
     it('step-calendar_未認証の場合_DB照会せず401を返す', async () => {
         mocks.auth.mockResolvedValue(null);
-
         const response = await getStepCalendar(new Request(
             `http://localhost/api/user/step-calendar?userId=${TARGET_ID}&year=2026`,
         ));
-
         expect(response.status).toBe(401);
         expect(mocks.from).not.toHaveBeenCalled();
     });
@@ -180,67 +178,38 @@ describe('公開target userId API', () => {
         const chain = createQueryChain({ data: [], error: null });
         mocks.from.mockReturnValue(chain);
         const currentYear = getJSTDateString().slice(0, 4);
-
         const response = await getStepCalendar(new Request(
             `http://localhost/api/user/step-calendar?userId=${TARGET_ID}`,
         ));
-
         expect(response.status).toBe(200);
         expect(chain.gte).toHaveBeenCalledWith('date', `${currentYear}-01-01`);
         expect(chain.lte).toHaveBeenCalledWith('date', `${currentYear}-12-31`);
     });
 
     it('step-calendar_year省略時_JST元日のUTC前年時刻でもJST年を返す', () => {
-        const jstNewYear = new Date('2026-12-31T15:30:00Z');
-
-        expect(resolveStepCalendarYear(null, jstNewYear)).toBe(2027);
+        expect(resolveStepCalendarYear(null, new Date('2026-12-31T15:30:00Z'))).toBe(2027);
     });
 
-    it.each([2000, 2100])(
-        'step-calendar_yearが境界値%dの場合_指定年の範囲で照会する',
-        async (year) => {
+    it.each<[string, number]>([
+        ['2000', 2000], ['2100', 2100], ['+2024', 2024],
+    ])('step-calendar_year="%s"の場合_%d年の範囲で照会する', async (value, year) => {
             const chain = createQueryChain({ data: [], error: null });
             mocks.from.mockReturnValue(chain);
-
             const response = await getStepCalendar(new Request(
-                `http://localhost/api/user/step-calendar?userId=${TARGET_ID}&year=${year}`,
+                `http://localhost/api/user/step-calendar?userId=${TARGET_ID}&year=${encodeURIComponent(value)}`,
             ));
-
             expect(response.status).toBe(200);
             expect(chain.gte).toHaveBeenCalledWith('date', `${year}-01-01`);
             expect(chain.lte).toHaveBeenCalledWith('date', `${year}-12-31`);
-        },
-    );
-
-    it('step-calendar_yearが符号付き整数の場合_整数として照会する', async () => {
-        const chain = createQueryChain({ data: [], error: null });
-        mocks.from.mockReturnValue(chain);
-
-        const response = await getStepCalendar(new Request(
-            `http://localhost/api/user/step-calendar?userId=${TARGET_ID}&year=%2B2024`,
-        ));
-
-        expect(response.status).toBe(200);
-        expect(chain.gte).toHaveBeenCalledWith('date', '2024-01-01');
-        expect(chain.lte).toHaveBeenCalledWith('date', '2024-12-31');
     });
 
     it.each([
-        '',
-        ' ',
-        '1999',
-        '2101',
-        '-2024',
-        '2024junk',
-        '2024.5',
-        '2e3',
-        '0x7e8',
+        '', ' ', '1999', '2101', '-2024', '2024junk', '2024.5', '2e3', '0x7e8',
         '9007199254740992',
     ])('step-calendar_yearが不正な値"%s"の場合_DB照会せず400を返す', async (year) => {
         const response = await getStepCalendar(new Request(
             `http://localhost/api/user/step-calendar?userId=${TARGET_ID}&year=${encodeURIComponent(year)}`,
         ));
-
         expect(response.status).toBe(400);
         expect(await response.json()).toEqual({ error: 'Invalid year' });
         expect(mocks.from).not.toHaveBeenCalled();
@@ -248,20 +217,14 @@ describe('公開target userId API', () => {
 
     it('step-calendar_DB取得が失敗した場合_生エラーを露出せず500を返す', async () => {
         const sensitiveDetail = 'sensitive-database-detail';
-        mocks.from.mockReturnValue(createQueryChain({
-            data: null,
-            error: { message: sensitiveDetail },
-        }));
-
+        mocks.from.mockReturnValue(createQueryChain({ data: null, error: { message: sensitiveDetail } }));
         const response = await getStepCalendar(new Request(
             `http://localhost/api/user/step-calendar?userId=${TARGET_ID}&year=2026`,
         ));
         const payload = await response.json();
-
         expect(response.status).toBe(500);
         expect(payload).toEqual({ error: 'Database error' });
-        expect(JSON.stringify(payload)).not.toContain(sensitiveDetail);
-        expect(JSON.stringify(mocks.reportError.mock.calls)).not.toContain(sensitiveDetail);
+        expect(JSON.stringify([payload, ...mocks.reportError.mock.calls])).not.toContain(sensitiveDetail);
     });
 
     it('follow/status_正当なtargetUserIdの場合_閲覧者から対象への関係を照会する', async () => {

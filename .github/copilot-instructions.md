@@ -1531,7 +1531,7 @@ export const runtime = "edge";
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
 
-### LL-064: API入力だけのparseInt監査でClient送信値とJST境界を見落とした
+### LL-070: API入力だけのparseInt監査でClient送信値とJST境界を見落とした
 
 - **事象**: query整数の部分受理修正後も、`WalkingRoutes`のduration入力が`parseInt`で`1e2`・`1.5`・`3abc`を部分受理し、Step Calendarの省略yearはEdge UTCの元日境界で前年を選び得た。Client修正後も汎用alertだけで、入力の無効状態と修正方法が支援技術へ関連付いていなかった。
 - **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、検証失敗を通信エラーと同じ表示契約で扱った。

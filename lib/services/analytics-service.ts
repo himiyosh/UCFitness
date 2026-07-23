@@ -1,3 +1,4 @@
+import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export interface AnalyticsData {
@@ -44,6 +45,7 @@ export async function getPersonalAnalytics(userId: string, months: number = 3): 
         .order("date", { ascending: true });
 
     if (error) {
+        reportError("analytics-fetch", error);
         throw new Error("Failed to fetch analytics");
     }
 

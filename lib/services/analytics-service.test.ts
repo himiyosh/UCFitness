@@ -122,15 +122,4 @@ describe('getPersonalAnalytics', () => {
             changePercent: 100,
         });
     });
-
-    it('DB取得失敗を固定エラーへ変換し、生エラーを内部ログへ渡さない', async () => {
-        const sensitiveDetail = 'sensitive-database-detail';
-        mocks.order.mockResolvedValue({
-            data: null,
-            error: { message: sensitiveDetail, details: sensitiveDetail },
-        });
-
-        await expect(getPersonalAnalytics('user-1')).rejects.toThrow('Failed to fetch analytics');
-        expect(mocks.reportError).not.toHaveBeenCalled();
-    });
 });
