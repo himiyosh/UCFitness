@@ -369,7 +369,7 @@
   "LoginBonus": {
     "title": "デイリーボーナス",
     "claimed": "+{amount} UC! ({streak}日連続)",
-    "streak": "ログイン連続: {streak}日"
+    "streak": "{streak}日連続ログイン"
   },
   "Setup": {
     "displayNameRequired": "表示名を入力してください",
@@ -1159,7 +1159,12 @@
   },
   "TrendingGear": {
     "title": "みんなの愛用ギア",
-    "subtitle": "コミュニティで人気のフィットネスアイテム",
+    "subtitle": "愛用者が多い順にチェック",
+    "loading": "人気の愛用ギアを読み込んでいます",
+    "empty": "愛用ギアが集まると、コミュニティで人気のアイテムを確認できます。",
+    "addGear": "愛用ギアを登録",
+    "popularity": "{count}人が愛用",
+    "viewOnAmazon": "Amazonで見る",
     "scrollLeft": "前のギアを表示",
     "scrollRight": "次のギアを表示"
   },
@@ -1562,6 +1567,7 @@
     "prepare": "今日のミッションを準備",
     "preparing": "準備しています...",
     "refreshError": "ミッションを更新できませんでした。もう一度お試しください。",
+    "rewardUnavailable": "ミッションは表示できますが、報酬を安全に反映できませんでした。時間をおいて再チェックしてください。",
     "updatedAnnouncement": "今日のミッションを{count}件表示しました。",
     "bonusAnnouncement": "全ミッション達成。{amount} UCボーナスを獲得しました。",
     "bonusEarned": "獲得した全達成ボーナス: +{amount} UC",

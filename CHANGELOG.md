@@ -4,6 +4,16 @@ UCFitness の主な変更をこのファイルに記録します。
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) を参考にし、変更日と統合単位が追跡できる見出しを使用します。
 
+## 2026-07-24 - Dashboard主要操作の回復
+
+### 修正
+- Daily Missionsのfocus時スクロールで物理クリックが別要素へ着地する問題を修正し、報酬障害時も生成済みミッションと回復案内を表示
+- Trending Fitness GearからPrice/Deliveryを除去し、人気人数と外部遷移を明確化。画像fallbackの無限再試行と全画面reload retryも修正
+- ログインボーナスの英語表示と44pxの閉じる操作領域を修正
+
+### 品質
+- 375px/1280pxでmission操作、gear表示、画像fallback、横overflow、44px操作領域を検証するPlaywright回帰テストを追加
+
 ## 2026-07-16 - 認証後体験と品質基盤の正本統合
 
 ### 追加

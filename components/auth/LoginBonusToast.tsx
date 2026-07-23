@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { useTranslations } from 'next-intl';
+
 interface LoginBonusToastProps {
     userId: string;
 }
@@ -11,6 +13,8 @@ interface LoginBonusToastProps {
  * マウント時にAPIを呼び出し、ボーナス獲得時にトーストを表示する
  */
 export default function LoginBonusToast({ userId }: LoginBonusToastProps) {
+    const t = useTranslations('LoginBonus');
+    const commonT = useTranslations('Common');
     const [visible, setVisible] = useState(false);
     const [amount, setAmount] = useState(0);
     const [streak, setStreak] = useState(0);
@@ -59,7 +63,6 @@ export default function LoginBonusToast({ userId }: LoginBonusToastProps) {
             <div
                 className="bg-white midnight-solid-panel rounded-2xl shadow-2xl border border-gray-200 px-5 py-4 flex items-center gap-3 min-w-[280px] max-w-[400px]"
                 style={{
-                    borderLeft: '4px solid var(--theme-primary)',
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04)',
                 }}
             >
@@ -74,28 +77,22 @@ export default function LoginBonusToast({ userId }: LoginBonusToastProps) {
                 {/* テキスト */}
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900" style={{ color: 'var(--theme-primary)' }}>
-                        デイリーボーナス
+                        {t('title')}
                     </p>
-                    <p className="text-base font-black text-gray-800">
-                        +{amount.toLocaleString()} UC!
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                        🔥 {streak}日連続ログイン
-                        {streak >= 30 && ' — x3.0 ボーナス!'}
-                        {streak >= 14 && streak < 30 && ' — x2.0 ボーナス!'}
-                        {streak >= 7 && streak < 14 && ' — x1.5 ボーナス!'}
-                        {streak >= 3 && streak < 7 && ' — x1.2 ボーナス!'}
+                    <p className="text-sm font-semibold text-gray-800">
+                        {t('claimed', { amount: amount.toLocaleString(), streak })}
                     </p>
                 </div>
 
                 {/* 閉じるボタン */}
                 <button
+                    type="button"
                     onClick={() => {
                         setDismissing(true);
                         setTimeout(() => setVisible(false), 400);
                     }}
-                    className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors p-1"
-                    aria-label="閉じる"
+                    className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                    aria-label={commonT('close')}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
