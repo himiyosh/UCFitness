@@ -63,6 +63,20 @@ function isVisibleFocusable(element: HTMLElement): boolean {
   );
 }
 
+export function createDialogFocusRestorer(
+  previouslyFocused: HTMLElement | null,
+  fallbackFocusTarget: HTMLElement | null,
+): () => void {
+  return () => {
+    const focusTarget = previouslyFocused?.isConnected && !previouslyFocused.inert
+      ? previouslyFocused
+      : fallbackFocusTarget;
+    if (focusTarget instanceof HTMLElement && focusTarget.isConnected && !focusTarget.inert) {
+      focusTarget.focus();
+    }
+  };
+}
+
 export function useDialogFocus({
   isOpen,
   onClose,
@@ -86,6 +100,9 @@ export function useDialogFocus({
     const previouslyFocused = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
+    const fallbackFocusTarget = fallbackFocusRef?.current
+      ?? document.getElementById('main-page-content');
+    const restoreFocus = createDialogFocusRestorer(previouslyFocused, fallbackFocusTarget);
     const overlayElement = dialogRef.current?.parentElement ?? null;
     if (!overlayElement) return;
 
@@ -141,15 +158,7 @@ export function useDialogFocus({
       const stackIndex = dialogStack.findIndex((entry) => entry.id === id);
       if (stackIndex >= 0) dialogStack.splice(stackIndex, 1);
       refreshDialogStack();
-
-      const fallbackTarget = fallbackFocusRef?.current
-        ?? document.getElementById('main-page-content');
-      const focusTarget = previouslyFocused?.isConnected && !previouslyFocused.inert
-        ? previouslyFocused
-        : fallbackTarget;
-      if (focusTarget instanceof HTMLElement && focusTarget.isConnected && !focusTarget.inert) {
-        focusTarget.focus();
-      }
+      restoreFocus();
     };
   }, [dialogRef, fallbackFocusRef, initialFocusRef, isOpen]);
 }
