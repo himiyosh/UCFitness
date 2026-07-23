@@ -24,13 +24,9 @@ function parseOptionalNonnegativeNumber(
 ): number | null | undefined {
     if (value === null || value === undefined) return null;
     if (
-        typeof value !== 'number'
-        || !Number.isFinite(value)
-        || value < 0
+        typeof value !== 'number' || !Number.isFinite(value) || value < 0
         || (requireInteger && !Number.isSafeInteger(value))
-    ) {
-        return undefined;
-    }
+    ) return undefined;
     return value;
 }
 

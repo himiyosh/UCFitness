@@ -1533,7 +1533,7 @@ export const runtime = "edge";
 
 ### LL-070: API入力だけのparseInt監査でClient送信値とJST境界を見落とした
 
-- **事象**: query整数の部分受理修正後も、`WalkingRoutes`のduration入力が`parseInt`で`1e2`・`1.5`・`3abc`を部分受理し、Step Calendarの省略yearはEdge UTCの元日境界で前年を選び得た。Client修正後も汎用alertだけで、入力の無効状態と修正方法が支援技術へ関連付いていなかった。
-- **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、検証失敗を通信エラーと同じ表示契約で扱った。
-- **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは修正方法を示し、送信後だけ`aria-invalid`と`aria-describedby`を同期して対象入力へfocusする。
-- **教訓**: 入力検証監査はHTTP境界だけで完了とせず、フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付ける。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`
+- **事象**: query整数の部分受理修正後も、`WalkingRoutes`のduration入力が`parseInt`で`1e2`・`1.5`・`3abc`を部分受理し、Step Calendarの省略yearはEdge UTCの元日境界で前年を選び得た。Client修正後も汎用alertだけで、入力の無効状態と修正方法が支援技術へ関連付いていなかった。さらにnumber inputの`1e309`等はDOM valueが空でも`validity.badInput=true`となり、文字列だけでは未指定と誤認した。
+- **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、native `ValidityState`を確認しなかった。React state更新直後の同期focusで、ARIA属性とerror DOMのcommit前に入力へ移動していた。
+- **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは`validity.badInput`を空文字判定より先に確認し、試行counterを契機とするeffectでARIA/error DOM commit後に毎回focusする。
+- **教訓**: 入力検証監査はHTTP境界だけで完了とせず、native validity・フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付け、focus時点のDOMを実ブラウザで固定する。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`

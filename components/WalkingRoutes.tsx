@@ -42,10 +42,7 @@ const DIFFICULTY_MAP: Record<Difficulty, { emoji: string; colorClass: string }> 
 const WALKING_ROUTE_DURATION_ERROR_ID = 'walking-route-duration-error';
 
 export function parseWalkingRouteDuration(value: string): number | null | undefined {
-    if (value === '') {
-        return null;
-    }
-
+    if (value === '') return null;
     const duration = parseStrictInteger(value);
     return duration !== null && duration >= 0 ? duration : undefined;
 }
@@ -88,6 +85,7 @@ export default function WalkingRoutes() {
     const [formDuration, setFormDuration] = useState('');
     const [formDifficulty, setFormDifficulty] = useState<Difficulty>('normal');
     const [isDurationInvalid, setIsDurationInvalid] = useState(false);
+    const [durationValidationAttempt, setDurationValidationAttempt] = useState(0);
     const durationInputRef = useRef<HTMLInputElement>(null);
     const durationAria = getWalkingRouteDurationAria(isDurationInvalid);
 
@@ -117,16 +115,22 @@ export default function WalkingRoutes() {
         fetchRoutes();
     }, [fetchRoutes]);
 
+    useEffect(() => {
+        if (durationValidationAttempt > 0) durationInputRef.current?.focus();
+    }, [durationValidationAttempt]);
+
     // コース作成
     const handleCreate = useCallback(async () => {
         const name = formName.trim();
         if (!name || isSaving) return;
 
-        const durationMinutes = parseWalkingRouteDuration(formDuration);
+        const durationMinutes = durationInputRef.current?.validity.badInput
+            ? undefined
+            : parseWalkingRouteDuration(formDuration);
         if (durationMinutes === undefined) {
             setIsDurationInvalid(true);
             setActionError(null);
-            durationInputRef.current?.focus();
+            setDurationValidationAttempt((attempt) => attempt + 1);
             return;
         }
 
@@ -250,10 +254,7 @@ export default function WalkingRoutes() {
         <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 p-4 hover:shadow-lg transition-shadow">
             {/* アクションエラートースト */}
             {actionError && (
-                <div
-                    className="mb-3 p-2.5 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between gap-2"
-                    role="alert"
-                >
+                <div className="mb-3 p-2.5 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between gap-2">
                     <p className="text-xs text-red-600 font-medium">{actionError}</p>
                     <button
                         onClick={() => setActionError(null)}
@@ -346,7 +347,11 @@ export default function WalkingRoutes() {
                                 onChange={(e) => {
                                     const value = e.target.value;
                                     setFormDuration(value);
-                                    if (isDurationInvalid && parseWalkingRouteDuration(value) !== undefined) {
+                                    if (
+                                        isDurationInvalid
+                                        && !e.currentTarget.validity.badInput
+                                        && parseWalkingRouteDuration(value) !== undefined
+                                    ) {
                                         setIsDurationInvalid(false);
                                     }
                                 }}

@@ -9,11 +9,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { isValidUUID, parseStrictInteger } from "@/lib/validation";
 
 export function resolveStepCalendarYear(yearParam: string | null, now: Date = new Date()): number | null {
-    if (yearParam !== null) {
-        return parseStrictInteger(yearParam);
-    }
-
-    return parseStrictInteger(getJSTDateString(now).slice(0, 4));
+    const value = yearParam ?? getJSTDateString(now).slice(0, 4);
+    return parseStrictInteger(value);
 }
 
 // 歩数カレンダー用API: 指定年の日別歩数データを返す
