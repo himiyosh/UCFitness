@@ -24,7 +24,6 @@ interface QueryResult {
     error: unknown;
     count?: unknown;
 }
-
 interface QueryChain extends PromiseLike<QueryResult> {
     eq: ReturnType<typeof vi.fn>;
     order: ReturnType<typeof vi.fn>;
@@ -32,7 +31,6 @@ interface QueryChain extends PromiseLike<QueryResult> {
     single: ReturnType<typeof vi.fn>;
     maybeSingle: ReturnType<typeof vi.fn>;
 }
-
 type DependencyKey = 'stats' | 'user' | 'balance' | 'purchase' | 'group' | 'streak' | 'owned';
 
 type Scenario = Record<DependencyKey, QueryResult>;
