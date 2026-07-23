@@ -242,7 +242,8 @@ describe('WalkingRoutes field validation', () => {
             const disabledStates = () => Promise.all(routeControls.map((controls) => controls.evaluateAll(
                 (buttons) => buttons.every((button) => (button as HTMLButtonElement).disabled))));
             const forceClick = (controls: typeof logButtons) => controls.first().evaluate((button) => {
-                (button as HTMLButtonElement).disabled = false; (button as HTMLButtonElement).click();
+                const key = Object.keys(button).find((name) => name.startsWith('__reactProps$')); const onClick = key ? Reflect.get(button, key)?.onClick : null;
+                if (typeof onClick !== 'function') throw new Error('missing React click handler'); onClick({ detail: 0 });
             });
             const settleDeferredFailure = () => page.evaluate(() => Reflect.get(globalThis,
                 'resolveDeferredAction')({ ok: false, json: async () => ({}) }));
@@ -252,11 +253,7 @@ describe('WalkingRoutes field validation', () => {
                 const root = document.querySelector('#root');
                 if (!root) throw new Error('missing test root');
                 new MutationObserver((records) => {
-                    if (records.flatMap((record) => Array.from(record.addedNodes)).some((node) =>
-                        node instanceof Element && (node.matches('[role="alert"]')
-                            ? node.textContent?.includes(message) : Array.from(node.querySelectorAll(
-                                '[role="alert"]')).some((alert) => alert.textContent?.includes(message)))))
-                        document.body.dataset.updateAlertMounts = String(Number(document.body.dataset.updateAlertMounts) + 1);
+                    if (records.flatMap((record) => Array.from(record.addedNodes)).some((node) => node instanceof Element && (node.matches('[role="alert"]') ? node.textContent?.includes(message) : Array.from(node.querySelectorAll('[role="alert"]')).some((alert) => alert.textContent?.includes(message))))) document.body.dataset.updateAlertMounts = String(Number(document.body.dataset.updateAlertMounts) + 1);
                 }).observe(root, { childList: true, subtree: true });
             }, enWalkingRoutes.updateError);
             const lastLogWalkButton = logButtons.last(); await lastLogWalkButton.scrollIntoViewIfNeeded();
@@ -274,9 +271,8 @@ describe('WalkingRoutes field validation', () => {
                 .toEqual([0, '0']);
             await settleDeferredFailure(); await updateActionAlert.waitFor();
             await page.waitForFunction((message) => {
-                const alert = Array.from(document.querySelectorAll('[role="alert"]'))
-                    .find((element) => element.textContent?.includes(message));
-                const rect = alert?.getBoundingClientRect();
+                const rect = Array.from(document.querySelectorAll('[role="alert"]')).find(
+                    (element) => element.textContent?.includes(message))?.getBoundingClientRect();
                 return rect !== undefined && rect.top >= 0 && rect.bottom <= window.innerHeight;
             }, enWalkingRoutes.updateError);
             expect([await duration.getAttribute('aria-invalid'), await durationAlert.count(), await updateActionAlert.getAttribute('tabindex'), await updateActionAlert.evaluate((alert) => document.activeElement === alert), await bodyAttr('update-alert-mounts')]).toEqual(['true', 1, '-1', true, '1']);
@@ -299,25 +295,26 @@ describe('WalkingRoutes field validation', () => {
             const createActionAlert = actionAlert(enWalkingRoutes.createError); await createActionAlert.waitFor();
             await page.getByRole('button', { name: enWalkingRoutes.dismissActionError }).click();
 
-            await deleteButtons.first().click(); const deleteDialog = page.getByRole('alertdialog');
-            await deleteDialog.waitFor(); await forceClick(logButtons);
-            expect(await bodyAttr('patch-attempt-count')).toBe('2'); await deleteDialog.getByRole(
-                'button', { name: enWalkingRoutes.cancel }).click(); await deleteDialog.waitFor({ state: 'detached' });
-
-            await deleteButtons.first().click();
-            await setActionFlag('deferNextAction'); await page.getByRole('alertdialog').getByRole(
-                'button', { name: enWalkingRoutes.delete }).click();
-            await page.waitForFunction(() => document.body.dataset.deleteAttemptCount === '1');
-            expect([await page.getByRole('alertdialog').count(), await disabledStates(),
-                await logButtons.first().locator('.animate-spin').count()]).toEqual([0, [true, true, true], 1]);
+            const deleteDialog = page.getByRole('alertdialog'); const deleteTrigger = deleteButtons.first(); for (const closeMode of ['cancel', 'escape'] as const) {
+                await deleteTrigger.focus(); await deleteTrigger.press('Enter'); await deleteDialog.waitFor();
+                if (closeMode === 'cancel') { await forceClick(logButtons); expect(await bodyAttr('patch-attempt-count')).toBe('2'); }
+                await deleteDialog.evaluate((dialog, input) => {
+                    const buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')); const staleConfirm = buttons.find((button) => button.textContent === input.deleteLabel); if (input.mode === 'cancel') buttons.find((button) => button.textContent === input.cancelLabel)?.click(); else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); staleConfirm?.click();
+                }, { mode: closeMode, deleteLabel: enWalkingRoutes.delete, cancelLabel: enWalkingRoutes.cancel });
+                expect(await bodyAttr('delete-attempt-count')).toBe('0'); await deleteDialog.waitFor({ state: 'detached' }); expect(await deleteTrigger.evaluate((trigger) => document.activeElement === trigger)).toBe(true);
+            }
+            await deleteTrigger.click(); await deleteDialog.waitFor(); const oldDialogToken = await deleteDialog.getAttribute('data-delete-dialog-token');
+            await deleteDialog.evaluate((dialog, deleteLabel) => {
+                const oldConfirm = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.textContent === deleteLabel); dialog.querySelectorAll<HTMLButtonElement>('button')[1]?.click(); const routeDelete = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.title === deleteLabel); if (!routeDelete) throw new Error('missing route delete');
+                const key = Object.keys(routeDelete).find((name) => name.startsWith('__reactProps$')); const onClick = key ? Reflect.get(routeDelete, key)?.onClick : null; if (typeof onClick !== 'function') throw new Error('missing React delete handler'); onClick({ detail: 0 }); oldConfirm?.click();
+            }, enWalkingRoutes.delete);
+            expect(await bodyAttr('delete-attempt-count')).toBe('0'); await page.waitForFunction((oldToken) => document.querySelector<HTMLElement>('[role="alertdialog"]')?.dataset.deleteDialogToken !== oldToken, oldDialogToken);
+            await setActionFlag('deferNextAction'); await page.getByRole('alertdialog').getByRole('button', { name: enWalkingRoutes.delete }).click();
+            await page.waitForFunction(() => document.body.dataset.deleteAttemptCount === '1'); expect([await page.getByRole('alertdialog').count(), await disabledStates(), await logButtons.first().locator('.animate-spin').count()]).toEqual([0, [true, true, true], 1]);
             await forceClick(logButtons); expect(await bodyAttr('patch-attempt-count')).toBe('2');
             await page.evaluate(() => { document.documentElement.lang = 'ja'; });
-            await settleDeferredFailure(); const deleteActionAlert = actionAlert(jaWalkingRoutes.deleteError);
-            await deleteActionAlert.waitFor();
-            expect([await deleteActionAlert.evaluate((alert) => alert.closest('[inert]')),
-                await deleteActionAlert.evaluate((alert) => document.activeElement === alert),
-                await page.getByRole('button', { name: jaWalkingRoutes.dismissActionError })
-                    .getAttribute('aria-label')]).toEqual([null, false, jaWalkingRoutes.dismissActionError]);
+            await settleDeferredFailure(); const deleteActionAlert = actionAlert(jaWalkingRoutes.deleteError); await deleteActionAlert.waitFor();
+            expect([await deleteActionAlert.evaluate((alert) => alert.closest('[inert]')), await deleteActionAlert.evaluate((alert) => document.activeElement === alert), await page.getByRole('button', { name: jaWalkingRoutes.dismissActionError }).getAttribute('aria-label')]).toEqual([null, false, jaWalkingRoutes.dismissActionError]);
             expect(pageErrors).toEqual([]);
         } finally {
             await browser.close();

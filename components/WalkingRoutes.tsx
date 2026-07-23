@@ -24,7 +24,7 @@ interface WalkingRouteDistanceAria {
     'aria-invalid'?: true;
 }
 
-interface WalkingRouteActionError { message: string; shouldFocus: boolean }
+interface WalkingRouteActionError { message: string; shouldFocus: boolean } interface DeleteDialogIdentity { routeId: string; token: number }
 
 interface WalkingRoute {
     id: string;
@@ -92,14 +92,15 @@ export default function WalkingRoutes() {
     const [isSaving, setIsSaving] = useState(false);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [deleteDialogToken, setDeleteDialogToken] = useState(0);
     const actionErrorRef = useRef<HTMLDivElement>(null); const actionErrorAlertRef = useRef<HTMLDivElement>(null);
-    const mutationLockRef = useRef(false); const deleteDialogOpenRef = useRef(false);
+    const mutationLockRef = useRef(false); const activeDeleteDialogRef = useRef<DeleteDialogIdentity | null>(null); const nextDeleteDialogTokenRef = useRef(0);
     const deleteDialogRef = useRef<HTMLDivElement>(null);
     const deleteCancelRef = useRef<HTMLButtonElement>(null);
-    const closeDeleteDialog = useCallback(() => { deleteDialogOpenRef.current = false; setDeleteConfirmId(null); }, []);
-    const openDeleteDialog = useCallback((routeId: string) => { if (mutationLockRef.current || deleteDialogOpenRef.current) return; deleteDialogOpenRef.current = true; setDeleteConfirmId(routeId); }, []);
-    const beginMutation = useCallback((routeId?: string, fromDeleteDialog = false): boolean => {
-        if (mutationLockRef.current || (deleteDialogOpenRef.current && !fromDeleteDialog)) return false;
+    const closeDeleteDialog = useCallback(() => { activeDeleteDialogRef.current = null; setDeleteConfirmId(null); }, []);
+    const openDeleteDialog = useCallback((routeId: string) => { if (mutationLockRef.current || activeDeleteDialogRef.current) return; const token = ++nextDeleteDialogTokenRef.current; activeDeleteDialogRef.current = { routeId, token }; setDeleteConfirmId(routeId); setDeleteDialogToken(token); }, []);
+    const beginMutation = useCallback((routeId?: string): boolean => {
+        if (mutationLockRef.current || activeDeleteDialogRef.current) return false;
         mutationLockRef.current = true; setActionError(null);
         if (routeId === undefined) setIsSaving(true); else setActionLoadingId(routeId);
         return true;
@@ -268,9 +269,10 @@ export default function WalkingRoutes() {
     }, [beginMutation, endMutation, t]);
 
     // 削除
-    const handleDelete = useCallback(async (routeId: string, shouldFocusActionError: boolean) => {
-        if (!beginMutation(routeId, true)) return;
-        deleteDialogOpenRef.current = false;
+    const handleDelete = useCallback(async (routeId: string, dialogToken: number, shouldFocusActionError: boolean) => {
+        const activeDialog = activeDeleteDialogRef.current;
+        if (!activeDialog || activeDialog.routeId !== routeId || activeDialog.token !== dialogToken || mutationLockRef.current) return; activeDeleteDialogRef.current = null;
+        if (!beginMutation(routeId)) return;
         setDeleteConfirmId(null);
         try {
             const res = await fetch(`/api/user/walking-routes/${routeId}`, {
@@ -285,7 +287,7 @@ export default function WalkingRoutes() {
         }
     }, [beginMutation, endMutation, t]);
 
-    const routeActionsDisabled = isSaving || actionLoadingId !== null || deleteConfirmId !== null;
+    const routeActionsDisabled = isSaving || actionLoadingId !== null;
 
     // ローディング
     if (isLoading) {
@@ -606,12 +608,13 @@ export default function WalkingRoutes() {
                             aria-modal="true"
                             aria-label={t('deleteConfirm')}
                             tabIndex={-1}
+                            data-delete-dialog-token={deleteDialogToken}
                         >
                             <h4 className="text-base font-bold text-gray-900 mb-2">{t('deleteConfirm')}</h4>
                             <p className="text-sm text-gray-500 mb-4">{t('deleteConfirmDesc')}</p>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={(event) => handleDelete(deleteConfirmId, event.detail === 0)}
+                                    onClick={(event) => handleDelete(deleteConfirmId, deleteDialogToken, event.detail === 0)}
                                     className="flex-1 px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
                                 >
                                     {t('delete')}
