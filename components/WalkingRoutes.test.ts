@@ -48,6 +48,7 @@ describe('WalkingRoutes field validation', () => {
                     import {createRoot} from 'react-dom/client'; import WalkingRoutes from './components/WalkingRoutes';
                     import enMessages from './messages/en.json'; import jaMessages from './messages/ja.json';
                     globalThis.walkingRouteMessages = {en: enMessages.WalkingRoutes, ja: jaMessages.WalkingRoutes};
+                    globalThis.invokeReactClick = (button) => { const key = Object.keys(button).find((name) => name.startsWith('__reactProps$')); const onClick = key ? Reflect.get(button, key)?.onClick : null; if (typeof onClick !== 'function') throw new Error('missing React click handler'); onClick({detail: 0}); };
                     document.documentElement.lang = 'en';
                     document.body.dataset.postCount = '0';
                     let routeIdSequence = 0;
@@ -238,15 +239,13 @@ describe('WalkingRoutes field validation', () => {
             await duration.pressSequentially('-'); await save.click();
             const durationAlert = actionAlert(enWalkingRoutes.durationError); await durationAlert.waitFor();
             const logButtons = page.locator(`button[title="${enWalkingRoutes.logWalk}"]`); const favoriteButtons = page.locator(`button[title="${enWalkingRoutes.favorite}"]`); const deleteButtons = page.locator(`button[title="${enWalkingRoutes.delete}"]`);
-            const routeControls = [logButtons, favoriteButtons, deleteButtons];
+            const routeControls = [logButtons, favoriteButtons, deleteButtons]; const deleteDialog = page.getByRole('alertdialog');
             const disabledStates = () => Promise.all(routeControls.map((controls) => controls.evaluateAll(
                 (buttons) => buttons.every((button) => (button as HTMLButtonElement).disabled))));
-            const forceClick = (controls: typeof logButtons) => controls.first().evaluate((button) => {
-                const key = Object.keys(button).find((name) => name.startsWith('__reactProps$')); const onClick = key ? Reflect.get(button, key)?.onClick : null;
-                if (typeof onClick !== 'function') throw new Error('missing React click handler'); onClick({ detail: 0 });
-            });
+            const forceClick = (controls: typeof logButtons) => controls.first().evaluate((button) => Reflect.get(globalThis, 'invokeReactClick')(button));
             const settleDeferredFailure = () => page.evaluate(() => Reflect.get(globalThis,
                 'resolveDeferredAction')({ ok: false, json: async () => ({}) }));
+            const settleAndForceClick = (controls: typeof logButtons) => controls.first().evaluate(async (button) => { Reflect.get(globalThis, 'resolveDeferredAction')({ ok: false, json: async () => ({}) }); await Promise.resolve(); await Promise.resolve(); Reflect.get(globalThis, 'invokeReactClick')(button); });
             const updateActionAlert = actionAlert(enWalkingRoutes.updateError);
             await page.evaluate((message) => {
                 Object.assign(document.body.dataset, { postAttemptCount: '0', patchAttemptCount: '0', deleteAttemptCount: '0', updateAlertMounts: '0' });
@@ -269,13 +268,14 @@ describe('WalkingRoutes field validation', () => {
             await forceClick(deleteButtons); expect([
                 await page.getByRole('alertdialog').count(), await bodyAttr('delete-attempt-count')])
                 .toEqual([0, '0']);
-            await settleDeferredFailure(); await updateActionAlert.waitFor();
+            await settleAndForceClick(deleteButtons); expect(await deleteDialog.count()).toBe(0); await updateActionAlert.waitFor();
             await page.waitForFunction((message) => {
                 const rect = Array.from(document.querySelectorAll('[role="alert"]')).find(
                     (element) => element.textContent?.includes(message))?.getBoundingClientRect();
                 return rect !== undefined && rect.top >= 0 && rect.bottom <= window.innerHeight;
             }, enWalkingRoutes.updateError);
             expect([await duration.getAttribute('aria-invalid'), await durationAlert.count(), await updateActionAlert.getAttribute('tabindex'), await updateActionAlert.evaluate((alert) => document.activeElement === alert), await bodyAttr('update-alert-mounts')]).toEqual(['true', 1, '-1', true, '1']);
+            await deleteButtons.first().click(); await deleteDialog.waitFor(); await deleteDialog.getByRole('button', { name: enWalkingRoutes.cancel }).click(); await deleteDialog.waitFor({ state: 'detached' });
 
             await setActionFlag('deferNextAction'); await favoriteButtons.first().click();
             await page.waitForFunction(() => document.body.dataset.patchAttemptCount === '2');
@@ -295,7 +295,7 @@ describe('WalkingRoutes field validation', () => {
             const createActionAlert = actionAlert(enWalkingRoutes.createError); await createActionAlert.waitFor();
             await page.getByRole('button', { name: enWalkingRoutes.dismissActionError }).click();
 
-            const deleteDialog = page.getByRole('alertdialog'); const deleteTrigger = deleteButtons.first(); for (const closeMode of ['cancel', 'escape'] as const) {
+            const deleteTrigger = deleteButtons.first(); for (const closeMode of ['cancel', 'escape'] as const) {
                 await deleteTrigger.focus(); await deleteTrigger.press('Enter'); await deleteDialog.waitFor();
                 if (closeMode === 'cancel') { await forceClick(logButtons); expect(await bodyAttr('patch-attempt-count')).toBe('2'); }
                 await deleteDialog.evaluate((dialog, input) => {
@@ -306,7 +306,7 @@ describe('WalkingRoutes field validation', () => {
             await deleteTrigger.click(); await deleteDialog.waitFor(); const oldDialogToken = await deleteDialog.getAttribute('data-delete-dialog-token');
             await deleteDialog.evaluate((dialog, deleteLabel) => {
                 const oldConfirm = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.textContent === deleteLabel); dialog.querySelectorAll<HTMLButtonElement>('button')[1]?.click(); const routeDelete = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.title === deleteLabel); if (!routeDelete) throw new Error('missing route delete');
-                const key = Object.keys(routeDelete).find((name) => name.startsWith('__reactProps$')); const onClick = key ? Reflect.get(routeDelete, key)?.onClick : null; if (typeof onClick !== 'function') throw new Error('missing React delete handler'); onClick({ detail: 0 }); oldConfirm?.click();
+                Reflect.get(globalThis, 'invokeReactClick')(routeDelete); oldConfirm?.click();
             }, enWalkingRoutes.delete);
             expect(await bodyAttr('delete-attempt-count')).toBe('0'); await page.waitForFunction((oldToken) => document.querySelector<HTMLElement>('[role="alertdialog"]')?.dataset.deleteDialogToken !== oldToken, oldDialogToken);
             await setActionFlag('deferNextAction'); await page.getByRole('alertdialog').getByRole('button', { name: enWalkingRoutes.delete }).click();

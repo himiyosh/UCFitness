@@ -92,9 +92,9 @@ export default function WalkingRoutes() {
     const [isSaving, setIsSaving] = useState(false);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const [deleteDialogToken, setDeleteDialogToken] = useState(0);
+    const [deleteDialogToken, setDeleteDialogToken] = useState(0); const [mutationReleaseToken, setMutationReleaseToken] = useState(0);
     const actionErrorRef = useRef<HTMLDivElement>(null); const actionErrorAlertRef = useRef<HTMLDivElement>(null);
-    const mutationLockRef = useRef(false); const activeDeleteDialogRef = useRef<DeleteDialogIdentity | null>(null); const nextDeleteDialogTokenRef = useRef(0);
+    const mutationLockRef = useRef(false); const activeDeleteDialogRef = useRef<DeleteDialogIdentity | null>(null); const nextDeleteDialogTokenRef = useRef(0); const nextMutationReleaseTokenRef = useRef(0); const releasedMutationTokenRef = useRef(0);
     const deleteDialogRef = useRef<HTMLDivElement>(null);
     const deleteCancelRef = useRef<HTMLButtonElement>(null);
     const closeDeleteDialog = useCallback(() => { activeDeleteDialogRef.current = null; setDeleteConfirmId(null); }, []);
@@ -106,8 +106,7 @@ export default function WalkingRoutes() {
         return true;
     }, []);
     const endMutation = useCallback((routeId?: string): void => {
-        mutationLockRef.current = false;
-        if (routeId === undefined) setIsSaving(false); else setActionLoadingId(null);
+        if (routeId === undefined) setIsSaving(false); else setActionLoadingId(null); setMutationReleaseToken(++nextMutationReleaseTokenRef.current);
     }, []);
 
     useDialogFocus({
@@ -167,10 +166,9 @@ export default function WalkingRoutes() {
     }, [durationValidationAttempt]);
 
     useEffect(() => {
-        if (!actionError) return;
-        actionErrorRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        if (actionError.shouldFocus) actionErrorAlertRef.current?.focus({ preventScroll: true });
-    }, [actionError]);
+        if (actionError) actionErrorRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (actionError?.shouldFocus) actionErrorAlertRef.current?.focus({ preventScroll: true });
+        if (mutationReleaseToken > releasedMutationTokenRef.current) { releasedMutationTokenRef.current = mutationReleaseToken; mutationLockRef.current = false; }
+    }, [actionError, mutationReleaseToken]);
 
     // コース作成
     const handleCreate = useCallback(async (shouldFocusActionError: boolean) => {
