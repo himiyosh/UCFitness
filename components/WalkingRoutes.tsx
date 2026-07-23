@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { parseStrictInteger } from '@/lib/validation';
 
 // ============================================
 // WalkingRoutes — ウォーキングコース記録コンポーネント
@@ -32,6 +33,15 @@ const DIFFICULTY_MAP: Record<Difficulty, { emoji: string; colorClass: string }> 
     normal: { emoji: '🟡', colorClass: 'text-amber-600 bg-amber-50' },
     hard: { emoji: '🔴', colorClass: 'text-red-600 bg-red-50' },
 };
+
+export function parseWalkingRouteDuration(value: string): number | null | undefined {
+    if (value === '') {
+        return null;
+    }
+
+    const duration = parseStrictInteger(value);
+    return duration !== null && duration >= 0 ? duration : undefined;
+}
 
 export default function WalkingRoutes() {
     const t = useTranslations('WalkingRoutes');
@@ -93,6 +103,13 @@ export default function WalkingRoutes() {
         const name = formName.trim();
         if (!name || isSaving) return;
 
+        const durationMinutes = parseWalkingRouteDuration(formDuration);
+        if (durationMinutes === undefined) {
+            setActionError(t('createError'));
+            return;
+        }
+
+        setActionError(null);
         setIsSaving(true);
         try {
             const res = await fetch('/api/user/walking-routes', {
@@ -102,7 +119,7 @@ export default function WalkingRoutes() {
                     name,
                     description: formDescription.trim(),
                     distance_km: formDistance ? parseFloat(formDistance) : null,
-                    duration_minutes: formDuration ? parseInt(formDuration, 10) : null,
+                    duration_minutes: durationMinutes,
                     difficulty: formDifficulty,
                 }),
             });
@@ -211,7 +228,10 @@ export default function WalkingRoutes() {
         <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 p-4 hover:shadow-lg transition-shadow">
             {/* アクションエラートースト */}
             {actionError && (
-                <div className="mb-3 p-2.5 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between gap-2">
+                <div
+                    className="mb-3 p-2.5 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between gap-2"
+                    role="alert"
+                >
                     <p className="text-xs text-red-600 font-medium">{actionError}</p>
                     <button
                         onClick={() => setActionError(null)}

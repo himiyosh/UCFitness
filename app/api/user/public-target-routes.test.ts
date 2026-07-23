@@ -24,7 +24,11 @@ vi.mock('@/lib/supabase', () => ({
 
 import { GET as getAchievementProgress } from '@/app/api/user/achievement-progress/route';
 import { GET as getFollowStatus } from '@/app/api/user/follow/status/route';
-import { GET as getStepCalendar } from '@/app/api/user/step-calendar/route';
+import {
+    GET as getStepCalendar,
+    resolveStepCalendarYear,
+} from '@/app/api/user/step-calendar/route';
+import { getJSTDateString } from '@/lib/date-utils';
 
 interface QueryResult {
     data: unknown;
@@ -175,7 +179,7 @@ describe('公開target userId API', () => {
     it('step-calendar_year省略時_現在年の範囲で照会する', async () => {
         const chain = createQueryChain({ data: [], error: null });
         mocks.from.mockReturnValue(chain);
-        const currentYear = new Date().getFullYear();
+        const currentYear = getJSTDateString().slice(0, 4);
 
         const response = await getStepCalendar(new Request(
             `http://localhost/api/user/step-calendar?userId=${TARGET_ID}`,
@@ -184,6 +188,12 @@ describe('公開target userId API', () => {
         expect(response.status).toBe(200);
         expect(chain.gte).toHaveBeenCalledWith('date', `${currentYear}-01-01`);
         expect(chain.lte).toHaveBeenCalledWith('date', `${currentYear}-12-31`);
+    });
+
+    it('step-calendar_year省略時_JST元日のUTC前年時刻でもJST年を返す', () => {
+        const jstNewYear = new Date('2026-12-31T15:30:00Z');
+
+        expect(resolveStepCalendarYear(null, jstNewYear)).toBe(2027);
     });
 
     it.each([2000, 2100])(

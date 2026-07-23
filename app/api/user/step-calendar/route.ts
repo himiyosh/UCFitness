@@ -3,9 +3,18 @@ export const runtime = 'edge';
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { getJSTDateString } from "@/lib/date-utils";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isValidUUID, parseStrictInteger } from "@/lib/validation";
+
+export function resolveStepCalendarYear(yearParam: string | null, now: Date = new Date()): number | null {
+    if (yearParam !== null) {
+        return parseStrictInteger(yearParam);
+    }
+
+    return parseStrictInteger(getJSTDateString(now).slice(0, 4));
+}
 
 // 歩数カレンダー用API: 指定年の日別歩数データを返す
 export async function GET(request: Request): Promise<NextResponse> {
@@ -26,7 +35,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
     }
 
-    const year = yearParam === null ? new Date().getFullYear() : parseStrictInteger(yearParam);
+    const year = resolveStepCalendarYear(yearParam);
     if (year === null || year < 2000 || year > 2100) {
         return NextResponse.json({ error: "Invalid year" }, { status: 400 });
     }
