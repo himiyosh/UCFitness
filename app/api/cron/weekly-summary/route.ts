@@ -3,11 +3,14 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendWebPushNotifications } from '@/lib/api/web-push';
-import { reportError } from '@/lib/errors';
+import {
+    isAllowedPushEndpoint,
+    isValidPushKey,
+    sendWebPushNotifications,
+} from '@/lib/api/web-push';
+import { AppError, reportError } from '@/lib/errors';
 import { getJSTDateString } from '@/lib/date-utils';
 import {
-    normalizePushLocale,
     weeklySummaryTitle,
     formatWeeklySummaryBody,
 } from '@/lib/services/push-messages';
@@ -19,6 +22,51 @@ export const dynamic = 'force-dynamic';
 
 /** バッチサイズ: 一度に処理するユーザー数 */
 const BATCH_SIZE = 20;
+const SUBSCRIPTION_PAGE_SIZE = 900;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+type FailureCategory = 'subscriptions-query' | 'subscriptions-data' | 'users-query' | 'users-data' | 'user-context' | 'steps-query' | 'steps-data' | 'coins-query' | 'coins-data' | 'push' | 'delivery-data' | 'metrics-overflow' | 'unexpected';
+interface UserContext { locale: PushLocale; username: string }
+interface DeliveryMetrics { sent: number; failed: number; deduplicated: number }
+export interface PreviousJSTWeekRange { weekStart: string; weekEnd: string; startUtc: string; endUtcExclusive: string }
+class WeeklySummaryFailure extends Error { constructor(readonly category: FailureCategory) {
+    super('Weekly summary processing failed'); this.name = 'WeeklySummaryFailure'; } }
+function fail(category: FailureCategory): never { throw new WeeklySummaryFailure(category); }
+function failureCategory(error: unknown): FailureCategory { return error instanceof WeeklySummaryFailure ? error.category : 'unexpected'; }
+function reportFailure(operation: string, category: FailureCategory, context: Record<string, number> = {}): void {
+    reportError(operation, new AppError('Weekly summary processing failed', 'WEEKLY_SUMMARY_FAILURE', { category, ...context })); }
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }
+function isDateString(value: unknown): value is string {
+    if (typeof value !== 'string' || !DATE_PATTERN.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00Z`); return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
+}
+function isNonNegativeSafeInteger(value: unknown): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0; }
+function addMetric(left: number, right: number): number {
+    const total = left + right; if (!Number.isSafeInteger(total) || total < 0) fail('metrics-overflow'); return total;
+}
+
+function parseUserContexts(data: unknown, expectedIds: Set<string>): Map<string, UserContext | null> {
+    if (!Array.isArray(data)) fail('users-data');
+    const contexts = new Map<string, UserContext | null>();
+    for (const row of data) {
+        if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id)
+            || !expectedIds.has(row.id) || contexts.has(row.id)) fail('users-data');
+        const locale = row.language; const username = row.username;
+        contexts.set(row.id, (locale === 'ja' || locale === 'en') && typeof username === 'string'
+            && username.length > 0 && username.length <= 64 ? { locale, username } : null);
+    }
+    return contexts;
+}
+
+function parseDelivery(data: unknown, subscriptionCount: number): DeliveryMetrics {
+    if (!isRecord(data) || !isNonNegativeSafeInteger(data.sent) || !isNonNegativeSafeInteger(data.failed)
+        || !isNonNegativeSafeInteger(data.expired) || !isNonNegativeSafeInteger(data.skippedDuplicates)
+        || data.expired > data.failed || data.skippedDuplicates > subscriptionCount
+        || addMetric(data.sent, data.failed) !== subscriptionCount - data.skippedDuplicates
+    ) fail('delivery-data');
+    return { sent: data.sent, failed: data.failed, deduplicated: data.skippedDuplicates };
+}
 
 /**
  * GET /api/cron/weekly-summary
@@ -28,6 +76,7 @@ const BATCH_SIZE = 20;
 export async function GET(request: Request): Promise<NextResponse> {
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
+    let stage: FailureCategory = 'unexpected';
 
     // 🛡️ セキュリティチェック: CRON_SECRET が未設定 or ヘッダー不一致なら拒否
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
@@ -36,18 +85,11 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     try {
         // 前週の月曜日〜日曜日の日付範囲を計算（JST基準）
-        const { weekStart, weekEnd } = getPreviousWeekRange();
-
+        const range = getPreviousWeekRange();
+        stage = 'subscriptions-query';
         // プッシュ通知を購読しているユーザーの一覧を取得（ユニークなuser_idのみ）
-        const { data: subscriptionRows, error: subError } = await supabaseAdmin
-            .from('push_subscriptions')
-            .select('id, user_id, endpoint, p256dh, auth, user_agent, created_at');
-
-        if (subError) {
-            throw new Error(`Failed to fetch subscriptions: ${subError.message}`);
-        }
-
-        if (!subscriptionRows || subscriptionRows.length === 0) {
+        const subscriptionRows = await loadSubscriptionRows();
+        if (subscriptionRows.length === 0) {
             return NextResponse.json({
                 success: true,
                 message: 'プッシュ通知の購読者がいません',
@@ -58,7 +100,16 @@ export async function GET(request: Request): Promise<NextResponse> {
 
         // ユーザーごとにサブスクリプションをグループ化
         const userSubscriptions = new Map<string, StoredPushSubscriptionData[]>();
+        const subscriptionIds = new Set<string>();
         for (const row of subscriptionRows) {
+            if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id)
+                || subscriptionIds.has(row.id) || typeof row.user_id !== 'string'
+                || !UUID_PATTERN.test(row.user_id) || !isAllowedPushEndpoint(row.endpoint)
+                || !isValidPushKey(row.p256dh, 256, 65) || !isValidPushKey(row.auth, 128, 16)
+                || (row.user_agent !== null && typeof row.user_agent !== 'string')
+                || typeof row.created_at !== 'string'
+                || !Number.isFinite(Date.parse(row.created_at))) fail('subscriptions-data');
+            subscriptionIds.add(row.id);
             const existing = userSubscriptions.get(row.user_id) || [];
             existing.push({
                 id: row.id,
@@ -72,88 +123,94 @@ export async function GET(request: Request): Promise<NextResponse> {
         }
 
         const userIds = Array.from(userSubscriptions.keys());
-
-        // ユーザーの言語設定を一括取得
-        const { data: usersLangData, error: usersLangError } = await supabaseAdmin
-            .from('users')
-            .select('id, language, username')
-            .in('id', userIds);
-
-        if (usersLangError) {
-            throw new Error(`Failed to fetch notification locales: ${usersLangError.message}`);
-        }
-
-        const userContextMap = new Map<string, { locale: PushLocale; username: string | null }>();
-        for (const u of usersLangData || []) {
-            userContextMap.set(u.id, {
-                locale: normalizePushLocale(u.language),
-                username: u.username,
-            });
-        }
-
+        stage = 'users-query';
+        const userContextMap = await loadUserContexts(userIds);
         let totalSent = 0;
         let totalFailed = 0;
         let totalDeduplicated = 0;
+        stage = 'unexpected';
 
         // バッチ処理: BATCH_SIZE ユーザーずつ並列処理
         for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
             const batch = userIds.slice(i, i + BATCH_SIZE);
-
             const results = await Promise.allSettled(
                 batch.map(async (userId) => {
-                    const summary = await getUserWeeklySummary(userId, weekStart, weekEnd);
+                    const summary = await getUserWeeklySummary(userId, range);
                     const subs = userSubscriptions.get(userId) || [];
                     const userContext = userContextMap.get(userId);
-                    if (!userContext) {
-                        throw new Error('Missing notification user context');
-                    }
-
+                    if (!userContext || subs.length === 0) fail('user-context');
                     const notificationBody = formatWeeklySummaryBody(
                         userContext.locale,
                         summary,
                     );
-
-                    const delivery = await sendWebPushNotifications(userId, subs, {
-                        title: weeklySummaryTitle(userContext.locale),
-                        body: notificationBody,
-                        url: userContext.username
-                            ? `/user/${encodeURIComponent(userContext.username)}`
-                            : '/',
-                        locale: userContext.locale,
-                        tag: 'weekly-summary',
-                    });
-
-                    return { userId, delivery };
-                })
+                    let rawDelivery: unknown;
+                    try {
+                        rawDelivery = await sendWebPushNotifications(userId, subs, {
+                            title: weeklySummaryTitle(userContext.locale),
+                            body: notificationBody,
+                            url: `/user/${encodeURIComponent(userContext.username)}`,
+                            locale: userContext.locale,
+                            tag: 'weekly-summary',
+                        });
+                    } catch {
+                        fail('push');
+                    }
+                    return { userId, delivery: parseDelivery(rawDelivery, subs.length) };
+                }),
             );
 
-            for (const result of results) {
+            for (const [itemIndex, result] of results.entries()) {
                 if (result.status === 'fulfilled') {
-                    totalSent += result.value.delivery.sent;
-                    totalFailed += result.value.delivery.failed;
-                    totalDeduplicated += result.value.delivery.skippedDuplicates;
+                    totalSent = addMetric(totalSent, result.value.delivery.sent);
+                    totalFailed = addMetric(totalFailed, result.value.delivery.failed);
+                    totalDeduplicated = addMetric(
+                        totalDeduplicated, result.value.delivery.deduplicated,
+                    );
+                    if (result.value.delivery.failed > 0) {
+                        reportFailure('cron/weekly-summary:user', 'push', {
+                            batchIndex: i / BATCH_SIZE, itemIndex,
+                        });
+                    }
                 } else {
-                    totalFailed++;
-                    reportError('cron/weekly-summary:batch', result.reason);
+                    totalFailed = addMetric(totalFailed, 1);
+                    reportFailure(
+                        'cron/weekly-summary:user',
+                        failureCategory(result.reason),
+                        { batchIndex: i / BATCH_SIZE, itemIndex },
+                    );
                 }
             }
         }
 
-        return NextResponse.json({
-            success: true,
-            message: 'ウィークリーサマリー通知の送信が完了しました',
-            weekRange: `${weekStart} ~ ${weekEnd}`,
+        const metrics = {
+            weekRange: `${range.weekStart} ~ ${range.weekEnd}`,
             users: userIds.length,
             sent: totalSent,
             failed: totalFailed,
             deduplicated: totalDeduplicated,
             timestamp: new Date().toISOString(),
+        };
+        if (totalFailed > 0) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Weekly summary delivery incomplete',
+                    ...metrics,
+                },
+                { status: 503 },
+            );
+        }
+        return NextResponse.json({
+            success: true,
+            message: 'ウィークリーサマリー通知の送信が完了しました',
+            ...metrics,
         });
     } catch (error: unknown) {
-        reportError('cron/weekly-summary', error);
+        const category = failureCategory(error);
+        reportFailure('cron/weekly-summary', category === 'unexpected' ? stage : category);
         return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
+            { success: false, error: 'Internal Server Error' },
+            { status: 500 },
         );
     }
 }
@@ -162,78 +219,98 @@ export async function GET(request: Request): Promise<NextResponse> {
 // ヘルパー関数
 // ============================================
 
+async function loadSubscriptionRows(): Promise<unknown[]> {
+    const rows: unknown[] = []; let cursor: string | null = null;
+    while (true) {
+        let query = supabaseAdmin.from('push_subscriptions')
+            .select('id, user_id, endpoint, p256dh, auth, user_agent, created_at')
+            .order('id', { ascending: true }).limit(SUBSCRIPTION_PAGE_SIZE);
+        if (cursor) query = query.gt('id', cursor);
+        const page = await query;
+        if (page.error) fail('subscriptions-query');
+        if (!Array.isArray(page.data)) fail('subscriptions-data');
+        rows.push(...page.data);
+        if (page.data.length < SUBSCRIPTION_PAGE_SIZE) return rows;
+        const last = page.data.at(-1);
+        if (!isRecord(last) || typeof last.id !== 'string'
+            || (cursor !== null && last.id <= cursor)) fail('subscriptions-data');
+        cursor = last.id;
+    }
+}
+
+export function getPreviousWeekRange(date: Date = new Date()): PreviousJSTWeekRange {
+    const today = getJSTDateString(date);
+    const todayDate = new Date(`${today}T00:00:00Z`);
+    const utcDay = todayDate.getUTCDay();
+    const daysSinceMonday = (utcDay + 6) % 7;
+    const prevMonday = new Date(todayDate);
+    prevMonday.setUTCDate(todayDate.getUTCDate() - daysSinceMonday - 7);
+    const prevSunday = new Date(prevMonday);
+    prevSunday.setUTCDate(prevMonday.getUTCDate() + 6);
+    const nextMonday = new Date(prevMonday);
+    nextMonday.setUTCDate(prevMonday.getUTCDate() + 7);
+    const weekStart = prevMonday.toISOString().split('T')[0];
+    const weekEnd = prevSunday.toISOString().split('T')[0];
+    const nextWeekStart = nextMonday.toISOString().split('T')[0];
+    return { weekStart, weekEnd,
+        startUtc: new Date(`${weekStart}T00:00:00+09:00`).toISOString(),
+        endUtcExclusive: new Date(`${nextWeekStart}T00:00:00+09:00`).toISOString(),
+    };
+}
+
 interface WeeklySummary {
     totalSteps: number;
     totalCoins: number;
     bestDay: { date: string; steps: number } | null;
 }
 
-/**
- * 前週（月曜〜日曜）の日付範囲を返す（JST基準）
- */
-function getPreviousWeekRange(): { weekStart: string; weekEnd: string } {
-    const today = getJSTDateString();
-    const todayDate = new Date(`${today}T00:00:00Z`);
-
-    // 今日のUTC曜日を取得し、先週の月曜日を計算
-    const utcDay = todayDate.getUTCDay(); // 0(Sun)〜6(Sat)
-    // 月曜起算: Mon(1)->0, Tue(2)->1, ... Sun(0)->6
-    const daysSinceMonday = (utcDay + 6) % 7;
-    // 先週月曜 = 今日 - daysSinceMonday - 7
-    const prevMonday = new Date(todayDate);
-    prevMonday.setUTCDate(todayDate.getUTCDate() - daysSinceMonday - 7);
-
-    // 先週日曜 = 先週月曜 + 6
-    const prevSunday = new Date(prevMonday);
-    prevSunday.setUTCDate(prevMonday.getUTCDate() + 6);
-
-    const weekStart = prevMonday.toISOString().split('T')[0];
-    const weekEnd = prevSunday.toISOString().split('T')[0];
-
-    return { weekStart, weekEnd };
+async function loadUserContexts(userIds: string[]): Promise<Map<string, UserContext | null>> {
+    const contexts = new Map<string, UserContext | null>();
+    for (let index = 0; index < userIds.length; index += BATCH_SIZE) {
+        const batch = userIds.slice(index, index + BATCH_SIZE);
+        const result = await supabaseAdmin.from('users')
+            .select('id, language, username').in('id', batch);
+        if (result.error) fail('users-query');
+        for (const [id, context] of parseUserContexts(result.data, new Set(batch))) {
+            contexts.set(id, context);
+        }
+    }
+    return contexts;
 }
 
-/**
- * ユーザーの前週サマリーを取得
- */
 async function getUserWeeklySummary(
     userId: string,
-    weekStart: string,
-    weekEnd: string
+    range: PreviousJSTWeekRange,
 ): Promise<WeeklySummary> {
-    // 歩数データとコインデータを並列取得
-    const [stepsResult, coinsResult] = await Promise.all([
-        // daily_steps から前週の歩数を取得
+    const [stepsResult, coinsResult] = await Promise.allSettled([
         supabaseAdmin
             .from('daily_steps')
             .select('date, steps')
             .eq('user_id', userId)
-            .gte('date', weekStart)
-            .lte('date', weekEnd)
+            .gte('date', range.weekStart)
+            .lte('date', range.weekEnd)
             .order('date', { ascending: true }),
-
-        // coin_transactions から前週のコイン獲得を取得（earned のみ）
         supabaseAdmin
             .from('coin_transactions')
-            .select('amount')
+            .select('id, amount')
             .eq('user_id', userId)
-            .gte('created_at', `${weekStart}T00:00:00Z`)
-            .lte('created_at', `${weekEnd}T23:59:59Z`)
+            .gte('created_at', range.startUtc)
+            .lt('created_at', range.endUtcExclusive)
             .gt('amount', 0),
     ]);
+    if (stepsResult.status === 'rejected' || stepsResult.value.error) fail('steps-query');
+    if (coinsResult.status === 'rejected' || coinsResult.value.error) fail('coins-query');
+    const stepsData = stepsResult.value.data;
+    if (!Array.isArray(stepsData)) fail('steps-data');
+    const dates = new Set<string>();
+    const totalSteps = stepsData.reduce((sum, row) => {
+        if (!isRecord(row) || !isDateString(row.date) || dates.has(row.date)
+            || row.date < range.weekStart || row.date > range.weekEnd
+            || !isNonNegativeSafeInteger(row.steps)) fail('steps-data');
+        dates.add(row.date);
+        return addMetric(sum, row.steps);
+    }, 0);
 
-    if (stepsResult.error) {
-        throw new Error(`Failed to load weekly steps: ${stepsResult.error.message}`);
-    }
-    if (coinsResult.error) {
-        throw new Error(`Failed to load weekly coins: ${coinsResult.error.message}`);
-    }
-
-    // 歩数集計
-    const stepsData = stepsResult.data || [];
-    const totalSteps = stepsData.reduce((sum, row) => sum + (row.steps || 0), 0);
-
-    // ベストデイの計算
     let bestDay: WeeklySummary['bestDay'] = null;
     for (const row of stepsData) {
         if (!bestDay || row.steps > bestDay.steps) {
@@ -241,9 +318,16 @@ async function getUserWeeklySummary(
         }
     }
 
-    // コイン集計
-    const coinsData = coinsResult.data || [];
-    const totalCoins = coinsData.reduce((sum, row) => sum + (row.amount || 0), 0);
+    const coinsData = coinsResult.value.data;
+    if (!Array.isArray(coinsData)) fail('coins-data');
+    const transactionIds = new Set<string>();
+    const totalCoins = coinsData.reduce((sum, row) => {
+        if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id)
+            || transactionIds.has(row.id) || !isNonNegativeSafeInteger(row.amount)
+            || row.amount === 0) fail('coins-data');
+        transactionIds.add(row.id);
+        return addMetric(sum, row.amount);
+    }, 0);
 
     return { totalSteps, totalCoins, bestDay };
 }

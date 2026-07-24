@@ -4,11 +4,12 @@ import {
     compactPushSubscriptions,
     findSupersededSubscriptionIds,
     sendWebPushNotification,
+    sendWebPushNotifications,
 } from '@/lib/api/web-push';
 
-vi.mock('@/lib/errors', () => ({
-    reportError: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ prune: vi.fn(), reportError: vi.fn() }));
+vi.mock('@/lib/errors', async () => ({ ...await vi.importActual<typeof import('@/lib/errors')>('@/lib/errors'), reportError: mocks.reportError }));
+vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: () => ({ delete: () => ({ eq: () => ({ in: mocks.prune }) }) }) } }));
 
 const encoder = new TextEncoder();
 const MAX_ENCRYPTED_PUSH_BODY = 4096;
@@ -155,7 +156,7 @@ describe('sendWebPushNotification', () => {
     const originalSubject = process.env.VAPID_SUBJECT;
 
     beforeEach(async () => {
-        await createVapidEnvironment();
+        vi.clearAllMocks(); await createVapidEnvironment();
     });
 
     afterEach(() => {
@@ -219,6 +220,10 @@ describe('sendWebPushNotification', () => {
             locale: 'ja',
             tag: 'ucfitness-badges',
         });
+        const rawPruneError = new Error('private endpoint and user'); mocks.prune.mockRejectedValueOnce(rawPruneError); fetchMock.mockResolvedValueOnce(new Response(null, { status: 410 }));
+        await sendWebPushNotifications('private-user', [{ endpoint: 'https://fcm.googleapis.com/private', p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret) }], { title: 'test', body: 'test' });
+        const pruneError = mocks.reportError.mock.calls.at(-1)?.[1];
+        expect(pruneError).not.toBe(rawPruneError); expect(pruneError instanceof Error ? pruneError.message : '').toBe('Failed to prune expired push subscriptions'); expect(Reflect.get(pruneError ?? {}, 'cause')).toBeUndefined();
     });
 
     it('AbortSignalをfetchへ渡し、中断時は失敗を返す', async () => {
@@ -226,16 +231,23 @@ describe('sendWebPushNotification', () => {
             { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
         const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey));
         const signal = AbortSignal.abort();
+        const rawError = new DOMException('private endpoint and key', 'AbortError');
         const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
             expect(init?.signal).toBe(signal);
-            throw new DOMException('Aborted', 'AbortError');
+            throw rawError;
         });
         vi.stubGlobal('fetch', fetchMock);
         const result = await sendWebPushNotification({
             endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint',
             keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) },
         }, { title: 'test', body: 'test' }, signal);
-        expect(result.success).toBe(false);
+        expect(result.success).toBe(false); expect(result.error?.message).toBe('Web push delivery failed');
+        const loggedError = mocks.reportError.mock.calls.at(-1)?.[1];
+        expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
+        process.env.VAPID_PRIVATE_KEY = 'private-key-sentinel';
+        const keyResult = await sendWebPushNotification({ endpoint: 'https://fcm.googleapis.com/test', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(new Uint8Array(16)) } }, { title: 'test', body: 'test' });
+        const keyError = mocks.reportError.mock.calls.at(-1)?.[1];
+        expect(keyResult.error?.message).toBe('Failed to import VAPID key'); expect(keyError instanceof Error ? keyError.message : '').toBe('Failed to import VAPID key'); expect(Reflect.get(keyError ?? {}, 'cause')).toBeUndefined();
     });
 
     it('payloadが暗号化body上限ちょうどの場合、4096bytes以内で送信する', async () => {
@@ -295,7 +307,7 @@ describe('sendWebPushNotification', () => {
         );
 
         expect(result.success).toBe(false);
-        expect(result.error?.message).toContain('exceeds');
+        expect(result.error?.message).toBe('Web push delivery failed');
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });

@@ -26,8 +26,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionRequest {
     if (!isRecord(value) || !isRecord(value.keys)) return false;
     return isAllowedPushEndpoint(value.endpoint)
-        && isValidPushKey(value.keys.p256dh, 256)
-        && isValidPushKey(value.keys.auth, 128);
+        && isValidPushKey(value.keys.p256dh, 256, 65)
+        && isValidPushKey(value.keys.auth, 128, 16);
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

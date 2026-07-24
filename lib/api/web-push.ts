@@ -1,6 +1,6 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 
 export interface PushPayload {
     title: string;
@@ -52,6 +52,7 @@ const PUSH_ENDPOINT_HOSTS = [
 
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
+const P256_FIELD_PRIME = BigInt('0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff'); const P256_CURVE_B = BigInt('0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b');
 const AES_128_GCM_RECORD_SIZE = 4096;
 const P256_PUBLIC_KEY_SIZE = 65;
 const AES_128_GCM_HEADER_SIZE = 21 + P256_PUBLIC_KEY_SIZE;
@@ -76,11 +77,21 @@ export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
     }
 }
 
-export function isValidPushKey(value: unknown, maxLength: number): value is string {
-    return typeof value === 'string'
-        && value.length > 0
-        && value.length <= maxLength
-        && BASE64URL_PATTERN.test(value);
+export function isValidPushKey(
+    value: unknown, maxLength: number, expectedBytes?: number,
+): value is string {
+    const valid = typeof value === 'string' && value.length > 0
+        && value.length <= maxLength && BASE64URL_PATTERN.test(value);
+    if (!valid || expectedBytes === undefined) return valid;
+    try { const bytes = base64UrlToUint8Array(value); return bytes.length === expectedBytes && (expectedBytes !== 65 || isValidP256Point(bytes)); } catch { return false; }
+}
+
+function bytesToBigInt(bytes: Uint8Array): bigint { return bytes.reduce((value, byte) => (value << BigInt(8)) | BigInt(byte), BigInt(0)); }
+function isValidP256Point(bytes: Uint8Array): boolean {
+    if (bytes[0] !== 0x04) return false;
+    const x = bytesToBigInt(bytes.slice(1, 33)); const y = bytesToBigInt(bytes.slice(33));
+    if (x >= P256_FIELD_PRIME || y >= P256_FIELD_PRIME) return false;
+    const curve = (x * x % P256_FIELD_PRIME * x - BigInt(3) * x + P256_CURVE_B) % P256_FIELD_PRIME; return ((y * y - curve) % P256_FIELD_PRIME + P256_FIELD_PRIME) % P256_FIELD_PRIME === BigInt(0);
 }
 
 function base64UrlToUint8Array(base64Url: string): Uint8Array {
@@ -331,8 +342,8 @@ export async function sendWebPushNotification(
             throw new Error('Invalid push subscription endpoint');
         }
         if (!subscription.keys
-            || !isValidPushKey(subscription.keys.p256dh, 256)
-            || !isValidPushKey(subscription.keys.auth, 128)) {
+            || !isValidPushKey(subscription.keys.p256dh, 256, 65)
+            || !isValidPushKey(subscription.keys.auth, 128, 16)) {
             throw new Error('Invalid push subscription keys');
         }
 
@@ -347,8 +358,9 @@ export async function sendWebPushNotification(
         let privateKey;
         try {
             privateKey = await importVapidPrivateKey(vapidPublicKey, vapidPrivateKey);
-        } catch (keyError: unknown) {
-            reportError('sendWebPush:keyImport', keyError);
+        } catch {
+            reportError('sendWebPush:keyImport',
+                new AppError('Failed to import VAPID key', 'WEB_PUSH_KEY_IMPORT_FAILED'));
             return { success: false, error: { message: 'Failed to import VAPID key' } };
         }
 
@@ -394,13 +406,13 @@ export async function sendWebPushNotification(
         }
 
         return { success: true, statusCode: response.status };
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+    } catch {
+        const error = new AppError('Web push delivery failed', 'WEB_PUSH_DELIVERY_FAILED');
         reportError('sendWebPush', error);
         return {
             success: false,
             statusCode: 500,
-            error: { message },
+            error: { message: error.message },
         };
     }
 }
@@ -433,17 +445,16 @@ export async function sendWebPushNotifications(
         .map(({ endpoint }) => endpoint);
 
     if (expiredEndpoints.length > 0) {
-        const { supabaseAdmin } = await import('@/lib/supabase');
-        const { error } = await supabaseAdmin
-            .from('push_subscriptions')
-            .delete()
-            .eq('user_id', userId)
-            .in('endpoint', expiredEndpoints);
-        if (error) {
-            reportError('sendWebPush:pruneExpired', error, {
-                count: expiredEndpoints.length,
-            });
-        }
+        let failed = false;
+        try {
+            const { supabaseAdmin } = await import('@/lib/supabase');
+            const result = await supabaseAdmin.from('push_subscriptions').delete()
+                .eq('user_id', userId).in('endpoint', expiredEndpoints);
+            failed = Boolean(result.error);
+        } catch { failed = true; }
+        if (failed) reportError('sendWebPush:pruneExpired', new AppError(
+            'Failed to prune expired push subscriptions', 'WEB_PUSH_PRUNE_FAILED',
+            { count: expiredEndpoints.length }));
     }
 
     const sent = results.filter((result) => result.success).length;
