@@ -1531,8 +1531,8 @@ export const runtime = "edge";
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
 
-### LL-076: 外部ランキングが依存障害と未参加者を正常ランキングへ変換していた
-- **事象**: `GET /api/external/ranking`がgroups・members・users・daily_stepsのDB障害やnullを空集合・0歩へ変換し、profile欠落をdrop/Unknown、未記録・0歩を順位として返していた。
-- **根本原因**: 外部連携の成功形維持を優先し、各依存のerror・shape・一意性・safe integerと、正当な空集合を分けるfail-closed境界がなかった。
-- **対策**: CRON secretを定時間比較し、optional groupIdを共有UUID validatorで全文検証した。各依存を固定operationだけで500へ分離し、正歩数だけを既存安定sort後に1..Nへ再採番する専用route testを追加した。
-- **教訓**: 外部ランキングでも空集合は明示的な空配列だけに限定し、DB障害・null・不正shape・重複・欠損profileを成功形へ変換しない。日時・UUID・同値順は共有正本を再利用し、raw error・secret・IDをログへ渡さない。リファレンス: `app/api/external/ranking/route.ts`, `app/api/external/ranking/route.test.ts`
+### LL-076: 外部ランキングが依存障害・切り捨て・未参加者を正常ランキングへ変換していた
+- **事象**: `GET /api/external/ranking`がDB障害やnullを空集合・0歩へ変換し、profile欠落をdrop/Unknown、未記録・0歩を順位として返していた。PostgREST listのexact countを見ず1000行超の部分配列も正常200にし、CRON secret比較は文字列長で早期returnしていた。
+- **根本原因**: 成功形維持を優先し、error・shape・一意性・safe integer・exact countと正当な空集合を分ける境界がなかった。「定時間」を同長UTF-16 loopだけで満たしたと誤認し、異長・Unicodeを同じ比較経路へ通していなかった。
+- **対策**: 全可変list queryで`count: exact`と返却長を照合し、切り捨て・null/負/unsafe countを固定500へ分離した。CRON/OAuth比較はTextEncoder UTF-8をWebCrypto SHA-256の固定32-byte digestへ変換後に固定長loopで比較し、正歩数だけを既存安定sort後に1..Nへ再採番する。
+- **教訓**: 外部ランキングで正常な空集合は完全取得を証明した空配列だけに限定する。stable pagingをsnapshotと呼ばず、上限超の完全取得はtransactional RPCへ委ねる。secret比較は文字列長やUTF-16単位で短絡せず、raw error・secret・IDをログへ渡さない。SHA-256 digest比較は衝突耐性を前提とする等価判定であり、secret保存用hashの代替ではない。リファレンス: `app/api/external/ranking/route.ts`, `app/api/external/ranking/route.test.ts`, `lib/validation.ts`

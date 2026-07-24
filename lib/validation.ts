@@ -7,15 +7,13 @@
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-export function constantTimeEqual(actual: string, expected: string): boolean {
-    if (!actual || actual.length !== expected.length) {
-        return false;
-    }
-
+// UTF-8入力を固定長digestへ変換し、文字列長による比較loopの短絡を避ける。
+export async function constantTimeEqual(actual: string, expected: string): Promise<boolean> {
+    const encoder = new TextEncoder();
+    const [actualBytes, expectedBytes] = await Promise.all([actual, expected].map(async (value) =>
+        new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)))));
     let difference = 0;
-    for (let index = 0; index < actual.length; index += 1) {
-        difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
-    }
+    for (let index = 0; index < actualBytes.length; index += 1) difference |= actualBytes[index] ^ expectedBytes[index];
     return difference === 0;
 }
 

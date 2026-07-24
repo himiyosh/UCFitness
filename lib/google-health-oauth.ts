@@ -99,7 +99,7 @@ export async function isMatchingGoogleHealthOAuthState(
     expected: string,
     userId: string,
 ): Promise<boolean> {
-    if (!constantTimeEqual(actual, expected)) {
+    if (!await constantTimeEqual(actual, expected)) {
         return false;
     }
 
@@ -132,5 +132,5 @@ export async function isMatchingGoogleHealthOAuthState(
 
     const payload = `${version}.${issuedAtValue}.${nonce}`;
     const expectedSignature = await createOAuthStateSignature(payload, userId);
-    return constantTimeEqual(signature, expectedSignature);
+    return await constantTimeEqual(signature, expectedSignature);
 }

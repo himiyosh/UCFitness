@@ -22,10 +22,10 @@ const isUserRow = (value: unknown): value is UserRow => isRecord(value) && isVal
     && isNullableString(value.name) && isNullableString(value.username) && isNullableString(value.image);
 const isStepRow = (value: unknown): value is StepRow => isRecord(value) && isValidUUID(value.user_id)
     && typeof value.steps === 'number' && Number.isSafeInteger(value.steps) && value.steps >= 0;
-function getUniqueRows<T>(
-    data: unknown, isRow: (value: unknown) => value is T, getKey: (row: T) => string,
+function getCompleteRows<T>(
+    data: unknown, count: unknown, isRow: (value: unknown) => value is T, getKey: (row: T) => string,
 ): T[] | null {
-    if (!Array.isArray(data)) return null;
+    if (!Array.isArray(data) || typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0 || data.length !== count) return null;
     const keys = new Set<string>();
     const rows: T[] = [];
     for (const value of data) {
@@ -47,7 +47,7 @@ export async function GET(request: Request): Promise<Response> {
     try {
         const secret = process.env.CRON_SECRET;
         const authorization = request.headers.get('authorization') ?? '';
-        if (!secret || !constantTimeEqual(authorization, 'Bearer ' + secret)) {
+        if (!secret || !await constantTimeEqual(authorization, 'Bearer ' + secret)) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
         const groupId = new URL(request.url).searchParams.get('groupId');
@@ -58,27 +58,27 @@ export async function GET(request: Request): Promise<Response> {
         const date = getJSTDateString(new Date());
         let groups: GroupRow[];
         if (normalizedGroupId !== null) {
-            const result = await supabaseAdmin.from('groups').select('id, name')
+            const result = await supabaseAdmin.from('groups').select('id, name', { count: 'exact' })
                 .eq('id', normalizedGroupId).maybeSingle();
             if (result.error) return internalFailure('groups');
-            if (result.data === null) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
-            if (!isGroupRow(result.data) || result.data.id.toLowerCase() !== normalizedGroupId) {
+            if (result.data === null) return result.count === 0 ? NextResponse.json({ error: 'Group not found' }, { status: 404 }) : internalFailure('groups');
+            if (result.count !== 1 || !isGroupRow(result.data) || result.data.id.toLowerCase() !== normalizedGroupId) {
                 return internalFailure('groups');
             }
             groups = [result.data];
         } else {
-            const result = await supabaseAdmin.from('groups').select('id, name');
+            const result = await supabaseAdmin.from('groups').select('id, name', { count: 'exact' });
             if (result.error) return internalFailure('groups');
-            const rows = getUniqueRows(result.data, isGroupRow, (row) => row.id);
+            const rows = getCompleteRows(result.data, result.count, isGroupRow, (row) => row.id);
             if (!rows) return internalFailure('groups');
             groups = rows;
         }
         if (groups.length === 0) return NextResponse.json({ date, groups: [] });
         const groupIds = groups.map((group) => group.id);
         const membersResult = await supabaseAdmin.from('group_members')
-            .select('group_id, user_id').in('group_id', groupIds);
+            .select('group_id, user_id', { count: 'exact' }).in('group_id', groupIds);
         if (membersResult.error) return internalFailure('members');
-        const members = getUniqueRows(membersResult.data, isMemberRow, (row) => `${row.group_id}:${row.user_id}`);
+        const members = getCompleteRows(membersResult.data, membersResult.count, isMemberRow, (row) => `${row.group_id}:${row.user_id}`);
         const groupIdSet = new Set(groupIds);
         if (!members || members.some((row) => !groupIdSet.has(row.group_id))) {
             return internalFailure('members');
@@ -86,14 +86,14 @@ export async function GET(request: Request): Promise<Response> {
         if (members.length === 0) return NextResponse.json({ date, groups: [] });
         const memberIds = [...new Set(members.map((member) => member.user_id))];
         const [usersResult, stepsResult] = await Promise.all([
-            supabaseAdmin.from('users').select('id, name, username, image').in('id', memberIds),
-            supabaseAdmin.from('daily_steps').select('user_id, steps')
+            supabaseAdmin.from('users').select('id, name, username, image', { count: 'exact' }).in('id', memberIds),
+            supabaseAdmin.from('daily_steps').select('user_id, steps', { count: 'exact' })
                 .eq('date', date).in('user_id', memberIds),
         ]);
         if (usersResult.error) return internalFailure('users');
         if (stepsResult.error) return internalFailure('steps');
-        const users = getUniqueRows(usersResult.data, isUserRow, (row) => row.id);
-        const steps = getUniqueRows(stepsResult.data, isStepRow, (row) => row.user_id);
+        const users = getCompleteRows(usersResult.data, usersResult.count, isUserRow, (row) => row.id);
+        const steps = getCompleteRows(stepsResult.data, stepsResult.count, isStepRow, (row) => row.user_id);
         const memberIdSet = new Set(memberIds);
         if (!users || users.length !== memberIds.length || users.some((row) => !memberIdSet.has(row.id))) {
             return internalFailure('users');
