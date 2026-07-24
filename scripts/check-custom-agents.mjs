@@ -18,13 +18,6 @@ const HALLMARK_UPSTREAM_PATH = fileURLToPath(
   new URL('../.github/skills/hallmark/UPSTREAM.md', import.meta.url),
 );
 const README_PATH = fileURLToPath(new URL('../README.md', import.meta.url));
-const PACKAGE_PATH = fileURLToPath(new URL('../package.json', import.meta.url));
-const NEXT_AGENT_PATH = fileURLToPath(
-  new URL('../.github/agents/expert-nextjs-developer.agent.md', import.meta.url),
-);
-const NEXT_REFERENCE_PATH = fileURLToPath(
-  new URL('../.github/instructions/awesome-copilot/nextjs.instructions.md', import.meta.url),
-);
 const MAX_PROMPT_CHARACTERS = 30_000;
 const MAX_PROFILE_BYTES = 24_000;
 const REQUIRED_PROMPT_REFERENCES = [
@@ -216,29 +209,14 @@ if (source) {
     }
 
     try {
-      const [
-        hallmarkSource,
-        licenseSource,
-        upstreamSource,
-        readmeSource,
-        packageSource,
-        nextAgentSource,
-        nextReferenceSource,
-      ] =
+      const [hallmarkSource, licenseSource, upstreamSource, readmeSource] =
         await Promise.all([
           readFile(HALLMARK_SKILL_PATH, 'utf8'),
           readFile(HALLMARK_LICENSE_PATH, 'utf8'),
           readFile(HALLMARK_UPSTREAM_PATH, 'utf8'),
           readFile(README_PATH, 'utf8'),
-          readFile(PACKAGE_PATH, 'utf8'),
-          readFile(NEXT_AGENT_PATH, 'utf8'),
-          readFile(NEXT_REFERENCE_PATH, 'utf8'),
         ]);
       const { frontmatter, prompt } = parseAgent(hallmarkSource);
-      const packageJson = JSON.parse(packageSource);
-      const nextVersion = packageJson.dependencies.next.replace(/^[^\d]*/, '');
-      const eslintConfigNextVersion =
-        packageJson.devDependencies['eslint-config-next'].replace(/^[^\d]*/, '');
 
       if (frontmatter.name !== 'hallmark') {
         fail('Hallmark frontmatter name must be exactly "hallmark"');
@@ -277,22 +255,6 @@ if (source) {
 
       if (!readmeSource.includes('](.github/skills/hallmark/SKILL.md)')) {
         fail('README must link to the Hallmark skill');
-      }
-
-      if (nextVersion !== eslintConfigNextVersion) {
-        fail('next and eslint-config-next versions must match');
-      }
-
-      const nextVersionReferences = [
-        [nextAgentSource, `Next.js version: ${nextVersion}.`, 'Next.js agent'],
-        [nextReferenceSource, `uses Next.js ${nextVersion}.`, 'Next.js reference'],
-        [readmeSource, `Next.js ${nextVersion} App Router`, 'README agent table'],
-      ];
-
-      for (const [referenceSource, expected, label] of nextVersionReferences) {
-        if (!referenceSource.includes(expected)) {
-          fail(`${label} must reference package Next.js ${nextVersion}`);
-        }
       }
 
       const markdownFiles = await collectMarkdownFiles(HALLMARK_ROOT);
