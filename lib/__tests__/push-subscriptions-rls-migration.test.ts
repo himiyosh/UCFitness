@@ -20,6 +20,9 @@ const deliverySources = [
     'app/api/cron/weekly-summary/route.ts', 'lib/services/badge-allocator.ts',
 ].map(readRepositoryFile);
 const webPushSource = readRepositoryFile('lib/api/web-push.ts');
+const runtimeHarness = readRepositoryFile('scripts/test-push-cas-postgres.ts');
+const validateWorkflow = readRepositoryFile('.github/workflows/validate.yml');
+const packageManifest = readRepositoryFile('package.json');
 const browserSources = [
     'hooks/useWebPush.ts', 'components/PushNotificationManager.tsx',
     'components/PushSubscriptionButton.tsx',
@@ -142,6 +145,19 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(subscribeRoute).toContain('findSupersededSubscriptionIds');
         expect(subscribeRoute).not.toContain(".in('id', staleIds)");
         expect(casMigration).not.toMatch(/auth\.users|CREATE\s+POLICY/i);
+    });
+
+    it('CAS runtime jobが固定imageとloopback test-only commandだけを使用する', () => {
+        expect(packageManifest).toContain('"test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts"');
+        expect(runtimeHarness).toContain("join(process.cwd(), 'migrations/20260725_delete_push_subscription_if_unchanged.sql'), 'utf8'");
+        expect(runtimeHarness).toContain("process.env.PUSH_CAS_POSTGRES_TEST_ONLY !== '1'");
+        expect(runtimeHarness).toContain("['127.0.0.1', 'localhost', '[::1]']");
+        expect(runtimeHarness).toContain('SET allow_system_table_mods = on');
+        expect(validateWorkflow).toContain('postgres:16.13-bookworm@sha256:472efd9a66f2b2f1a5aeb18b28de74332e6ef88c2b93a1a5d812fb6db67a5f60');
+        expect(validateWorkflow).toContain('"127.0.0.1:5432:5432"');
+        expect(validateWorkflow).toContain('PUSH_CAS_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres');
+        expect(validateWorkflow).toContain('run: npm run test:postgres:push-cas');
+        expect(validateWorkflow).not.toMatch(/uses:\s+actions\/(?:checkout|setup-node)@v\d/);
     });
 
     it('F001を変更せずF016をin-progressに維持する', () => {

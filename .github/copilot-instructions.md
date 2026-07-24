@@ -1557,3 +1557,9 @@ export const runtime = "edge";
 - **根本原因**: Push Service応答が失効を証明するのは送信時に観測した購読版だけであり、endpointを不変versionとして扱った。初版migrationもdefault存在とunordered uniqueだけをtext testで確認し、exact catalog・個別ACL・実row lock競合を実行検証していなかった。
 - **対策**: `delete_push_subscription_if_unchanged`をservice-role限定の`SECURITY DEFINER` RPCとして追加し、主キー`FOR UPDATE`後に全7観測項目が一致した場合だけ削除する。履歴正本の`gen_random_uuid()`/`now()`、ordered non-deferrable uniqueとvalid/ready/immediate backing index、SELECT/INSERT/UPDATE/DELETEの個別ACLをfail closedで検証し、404/410の`expired`互換と`pruned`/`preserved`/`cleanupFailed`を分離する。
 - **教訓**: 古い外部応答で可変リソースを削除する場合は完全row versionをDB transaction内でcompare-and-deleteする。text testだけを実行検証と呼ばず、別stacked PRのPostgreSQL serviceでnegative catalog fixturesと二接続のupdate-first/delete-first競合を通すまでfoundationをmergeしない。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`
+
+### LL-081: migrationのtext testだけでは実catalogとrow lock競合を証明できない
+
+- **事象**: Push購読CAS migrationは文字列検査を通っても、default式、constraint backing index、個別ACL、`SECURITY DEFINER`属性、2 transactionの待機順序を実PostgreSQLで検証できていなかった。
+- **根本原因**: SQL sourceに期待する語があることと、PostgreSQL catalogへ期待どおり反映され並行transactionで安全に動くことを同一視した。
+- **対策・教訓**: migrationはdigest固定のGitHub Actions PostgreSQL serviceへ実適用し、fresh databaseごとのnegative catalog fixture、role別実行、rollback、update-first/delete-firstの明示lock barrierを必須化する。本番migrationを書き換えず、loopback＋test-only gateでproduction接続を拒否する。リファレンス: `scripts/test-push-cas-postgres.ts`, `.github/workflows/validate.yml`
