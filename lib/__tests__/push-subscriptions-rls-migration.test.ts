@@ -150,7 +150,6 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(subscribeRoute).not.toContain(".in('id', staleIds)");
         expect(casMigration).not.toMatch(/auth\.users|CREATE\s+POLICY/i);
     });
-
     it('F001を変更せずF016をin-progressに維持する', () => {
         const ledger = readRepositoryFile('.github/ucfitness-features.json');
         const statusFor = (id: string): string | undefined =>
