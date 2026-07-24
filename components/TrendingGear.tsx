@@ -219,7 +219,6 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                         surface="dashboard"
                         targetType="product"
                         targetId={item.asin}
-                        actionLabel={t('viewOnAmazon')}
                         showMerchantDetails={false}
                         className="group w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 p-2 transition-colors duration-200 hover:border-[var(--theme-primary)]/20 hover:bg-[var(--color-primary-soft)] active:translate-y-px"
                     >

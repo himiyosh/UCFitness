@@ -1164,7 +1164,6 @@
     "empty": "Popular items will appear once community members add their favorite gear.",
     "addGear": "Add your favorite gear",
     "popularity": "{count, plural, one {# community member uses this} other {# community members use this}}",
-    "viewOnAmazon": "View on Amazon",
     "scrollLeft": "Show previous gear",
     "scrollRight": "Show next gear"
   },

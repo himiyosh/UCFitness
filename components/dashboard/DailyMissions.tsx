@@ -69,7 +69,6 @@ export default function DailyMissions(): ReactNode {
     // 歩数同期後にミッション再チェック
     const refreshMissions = useCallback(async () => {
         setRefreshing(true);
-        setRefreshError(null);
         try {
             const res = await fetch('/api/user/missions', {
                 method: 'POST',
@@ -91,6 +90,7 @@ export default function DailyMissions(): ReactNode {
             setAllCompleted(Boolean(result.allCompleted));
             setStreak(typeof result.streak === 'number' ? result.streak : null);
             setStreakUnavailable(Boolean(result.streakUnavailable));
+            setRefreshError(null);
             setAnnouncement(t('updatedAnnouncement', { count: result.missions.length }));
             setFocusHeadingAfterRefresh(true);
             if (result.allCompleted) {
@@ -212,7 +212,7 @@ export default function DailyMissions(): ReactNode {
                             {completedCount}/{missions.length}
                         </span>
                         {/* 再チェックボタン */}
-                        {!allCompleted && (
+                        {(!allCompleted || refreshError === 'reward') && (
                             <button
                                 onClick={refreshMissions}
                                 disabled={refreshing}

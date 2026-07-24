@@ -17,7 +17,6 @@ const mission = (id: string, type: string, reward: number) => ({
     id, mission_type: type, title: type, description: type,
     reward_uc: reward, is_completed: false, completed_at: null,
 });
-
 vi.mock('@/lib/auth', () => ({
     auth: mocks.auth,
 }));
@@ -205,6 +204,27 @@ describe('/api/user/missions', () => {
         expect(mocks.creditBalance).toHaveBeenCalledTimes(1);
         expect(mocks.missionUpdateResult).not.toHaveBeenCalled();
         expect(mocks.reportError).toHaveBeenCalled();
+    });
+
+    it('POSTでミッション完了済みの場合、ミッションを再付与せずボーナスだけ再試行する', async () => {
+        mocks.dailyMissionsOrder.mockResolvedValue({
+            data: [{ ...mission('mission-1', 'WALK_500', 10), is_completed: true }],
+            error: null,
+        });
+        mocks.stepSingle.mockResolvedValue({ data: { steps: 500 }, error: null });
+
+        const response = await POST(new Request('http://localhost/api/user/missions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'refresh' }),
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.newlyCompleted).toBe(0);
+        expect(body.bonusAwarded).toBe(true);
+        expect(mocks.creditBalance).toHaveBeenCalledTimes(1);
+        expect(mocks.missionUpdateResult).not.toHaveBeenCalled();
     });
 
     it('POSTの全書き込みが成功した場合だけ完了とボーナスを返す', async () => {

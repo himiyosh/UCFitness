@@ -114,21 +114,21 @@ export default function LoginBonusToast({ userId }: LoginBonusToastProps) {
                 @keyframes loginBonusSlideIn {
                     from {
                         opacity: 0;
-                        transform: translateX(-50%) translateY(-20px) scale(0.95);
+                        transform: translateX(-50%) translateY(-20px);
                     }
                     to {
                         opacity: 1;
-                        transform: translateX(-50%) translateY(0) scale(1);
+                        transform: translateX(-50%) translateY(0);
                     }
                 }
                 @keyframes loginBonusSlideOut {
                     from {
                         opacity: 1;
-                        transform: translateX(-50%) translateY(0) scale(1);
+                        transform: translateX(-50%) translateY(0);
                     }
                     to {
                         opacity: 0;
-                        transform: translateX(-50%) translateY(-20px) scale(0.95);
+                        transform: translateX(-50%) translateY(-20px);
                     }
                 }
             `}</style>
