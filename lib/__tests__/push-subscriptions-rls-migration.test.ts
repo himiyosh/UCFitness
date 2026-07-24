@@ -132,6 +132,13 @@ describe('F016 push_subscriptions RLS migration', () => {
             /\) TO service_role;/, /expected\.column_name, 'INSERT'/, /expected\.column_name, 'UPDATE'/,
             /procedure\.proconfig = ARRAY\['search_path=""'\]::text\[\]/, /pg_catalog\.aclexplode/,
         ]) expect(casMigration).toMatch(contract);
+        expect(casMigration).toMatch(
+            /FROM pg_catalog\.pg_attribute AS attribute\s+CROSS JOIN LATERAL pg_catalog\.aclexplode\(attribute\.attacl\) AS privilege\s+WHERE attribute\.attrelid = target_table\s+AND attribute\.attnum > 0\s+AND NOT attribute\.attisdropped\s+AND privilege\.grantee = 0/,
+        );
+        expect(casMigration).not.toMatch(/COALESCE\(\s*attribute\.attacl/);
+        expect(casMigration).toMatch(
+            /pg_catalog\.has_any_column_privilege\(role\.role_name, target_table,\s+'SELECT, INSERT, UPDATE, REFERENCES'\)/,
+        );
         for (const field of ['user_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at']) {
             expect(casMigration).toContain(`observed_row.${field} IS NOT DISTINCT FROM p_${field}`);
         }
