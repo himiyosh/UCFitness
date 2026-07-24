@@ -1,122 +1,139 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from "@/lib/supabase";
-import { reportError } from "@/lib/errors";
+
+import { getJSTDateString } from '@/lib/date-utils';
+import { reportError } from '@/lib/errors';
+import { sortPositiveStepRankings } from '@/lib/services/ranking-utils';
+import { supabaseAdmin } from '@/lib/supabase';
+import { constantTimeEqual, isRecord, isValidUUID } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-
+interface GroupRow { id: string; name: string }
+interface MemberRow { group_id: string; user_id: string }
+interface UserRow { id: string; name: string | null; username: string | null; image: string | null }
+interface StepRow { user_id: string; steps: number }
+type FailureStage = 'groups' | 'members' | 'users' | 'steps' | 'unexpected';
+const isNullableString = (value: unknown): value is string | null => value === null || typeof value === 'string';
+const isGroupRow = (value: unknown): value is GroupRow => isRecord(value) && isValidUUID(value.id) && typeof value.name === 'string';
+const isMemberRow = (value: unknown): value is MemberRow => isRecord(value) && isValidUUID(value.group_id) && isValidUUID(value.user_id);
+const isUserRow = (value: unknown): value is UserRow => isRecord(value) && isValidUUID(value.id)
+    && isNullableString(value.name) && isNullableString(value.username) && isNullableString(value.image);
+const isStepRow = (value: unknown): value is StepRow => isRecord(value) && isValidUUID(value.user_id)
+    && typeof value.steps === 'number' && Number.isSafeInteger(value.steps) && value.steps >= 0;
+function getUniqueRows<T>(
+    data: unknown, isRow: (value: unknown) => value is T, getKey: (row: T) => string,
+): T[] | null {
+    if (!Array.isArray(data)) return null;
+    const keys = new Set<string>();
+    const rows: T[] = [];
+    for (const value of data) {
+        if (!isRow(value)) return null;
+        const key = getKey(value);
+        if (keys.has(key)) return null;
+        keys.add(key);
+        rows.push(value);
+    }
+    return rows;
+}
+function internalFailure(stage: FailureStage): NextResponse {
+    reportError(`external/ranking:${stage}`, new Error('External ranking request failed'));
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+}
+const displayName = (user: UserRow): string | null =>
+    user.name?.trim() || user.username?.trim() || null;
+export async function GET(request: Request): Promise<Response> {
     try {
-        const authHeader = request.headers.get('authorization');
-        const cronSecret = process.env.CRON_SECRET;
-
-        // Fail securely if CRON_SECRET is not configured or if the header is missing/incorrect
-        if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        const secret = process.env.CRON_SECRET;
+        const authorization = request.headers.get('authorization') ?? '';
+        if (!secret || !constantTimeEqual(authorization, 'Bearer ' + secret)) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
-
-        const { searchParams } = new URL(request.url);
-        const groupId = searchParams.get('groupId');
-
-        // JST Date Logic
-        const now = new Date();
-        const jstOffset = 9 * 60 * 60 * 1000;
-        const jstDate = new Date(now.getTime() + jstOffset);
-
-        const year = jstDate.getUTCFullYear();
-        const month = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(jstDate.getUTCDate()).padStart(2, '0');
-        const todayYMD = `${year}-${month}-${day}`;
-
-        let targetGroups: { id: string; name: string }[] = [];
-
-        if (groupId) {
-            const { data: group } = await supabaseAdmin
-                .from('groups')
-                .select('id, name')
-                .eq('id', groupId)
-                .single();
-            if (group) targetGroups.push(group);
+        const groupId = new URL(request.url).searchParams.get('groupId');
+        if (groupId !== null && !isValidUUID(groupId)) {
+            return NextResponse.json({ error: 'Invalid groupId' }, { status: 400 });
+        }
+        const normalizedGroupId = groupId?.toLowerCase() ?? null;
+        const date = getJSTDateString(new Date());
+        let groups: GroupRow[];
+        if (normalizedGroupId !== null) {
+            const result = await supabaseAdmin.from('groups').select('id, name')
+                .eq('id', normalizedGroupId).maybeSingle();
+            if (result.error) return internalFailure('groups');
+            if (result.data === null) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+            if (!isGroupRow(result.data) || result.data.id.toLowerCase() !== normalizedGroupId) {
+                return internalFailure('groups');
+            }
+            groups = [result.data];
         } else {
-            const { data: groups } = await supabaseAdmin
-                .from('groups')
-                .select('id, name');
-            if (groups) targetGroups = groups;
+            const result = await supabaseAdmin.from('groups').select('id, name');
+            if (result.error) return internalFailure('groups');
+            const rows = getUniqueRows(result.data, isGroupRow, (row) => row.id);
+            if (!rows) return internalFailure('groups');
+            groups = rows;
         }
-
-        // N+1 防止: 全グループのメンバー・ユーザー・歩数を一括取得
-        const allGroupIds = targetGroups.map(g => g.id);
-
-        // 1. 全グループのメンバーを一括取得
-        const { data: allMembers } = await supabaseAdmin
-            .from('group_members')
-            .select('group_id, user_id')
-            .in('group_id', allGroupIds);
-
-        if (!allMembers || allMembers.length === 0) {
-            return NextResponse.json({ date: todayYMD, groups: [] });
+        if (groups.length === 0) return NextResponse.json({ date, groups: [] });
+        const groupIds = groups.map((group) => group.id);
+        const membersResult = await supabaseAdmin.from('group_members')
+            .select('group_id, user_id').in('group_id', groupIds);
+        if (membersResult.error) return internalFailure('members');
+        const members = getUniqueRows(membersResult.data, isMemberRow, (row) => `${row.group_id}:${row.user_id}`);
+        const groupIdSet = new Set(groupIds);
+        if (!members || members.some((row) => !groupIdSet.has(row.group_id))) {
+            return internalFailure('members');
         }
-
-        const allMemberIds = [...new Set(allMembers.map(m => m.user_id))];
-
-        // 2. ユーザー情報と歩数を並列取得
+        if (members.length === 0) return NextResponse.json({ date, groups: [] });
+        const memberIds = [...new Set(members.map((member) => member.user_id))];
         const [usersResult, stepsResult] = await Promise.all([
-            supabaseAdmin
-                .from('users')
-                .select('id, name, username, image, is_custom_image')
-                .in('id', allMemberIds),
-            supabaseAdmin
-                .from('daily_steps')
-                .select('user_id, steps')
-                .eq('date', todayYMD)
-                .in('user_id', allMemberIds),
+            supabaseAdmin.from('users').select('id, name, username, image').in('id', memberIds),
+            supabaseAdmin.from('daily_steps').select('user_id, steps')
+                .eq('date', date).in('user_id', memberIds),
         ]);
-
-        const usersMap = new Map((usersResult.data || []).map(u => [u.id, u]));
-        const stepsMap = new Map((stepsResult.data || []).map(s => [s.user_id, s.steps]));
-
-        // 3. グループごとにインメモリでランキング構築
-        const stats = [];
-
-        for (const group of targetGroups) {
-            const memberIds = allMembers
-                .filter(m => m.group_id === group.id)
-                .map(m => m.user_id);
-
-            if (memberIds.length === 0) continue;
-
-            const ranking = memberIds
-                .map(id => {
-                    const user = usersMap.get(id);
-                    if (!user) return null;
-                    return {
-                        id: user.id,
-                        name: user.name || user.username || 'Unknown',
-                        image: user.image,
-                        steps: stepsMap.get(id) || 0,
-                    };
-                })
-                .filter(Boolean)
-                .sort((a, b) => b!.steps - a!.steps)
-                .map((u, i) => ({ ...u, rank: i + 1 }));
-
-            stats.push({
-                groupId: group.id,
-                groupName: group.name,
-                date: todayYMD,
-                ranking,
-            });
+        if (usersResult.error) return internalFailure('users');
+        if (stepsResult.error) return internalFailure('steps');
+        const users = getUniqueRows(usersResult.data, isUserRow, (row) => row.id);
+        const steps = getUniqueRows(stepsResult.data, isStepRow, (row) => row.user_id);
+        const memberIdSet = new Set(memberIds);
+        if (!users || users.length !== memberIds.length || users.some((row) => !memberIdSet.has(row.id))) {
+            return internalFailure('users');
         }
-
-        return NextResponse.json({
-            date: todayYMD,
-            groups: stats
-        });
-
-    } catch (error: unknown) {
-        reportError('external/ranking', error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        if (!steps || steps.some((row) => !memberIdSet.has(row.user_id))) return internalFailure('steps');
+        const profiles = new Map<string, { user: UserRow; name: string }>();
+        for (const user of users) {
+            const name = displayName(user);
+            if (!name) return internalFailure('users');
+            profiles.set(user.id, { user, name });
+        }
+        const stepMap = new Map(steps.map((row) => [row.user_id, row.steps]));
+        const stats = [];
+        for (const group of groups) {
+            const rankingInput = [];
+            let hasMember = false;
+            for (const member of members) {
+                if (member.group_id !== group.id) continue;
+                hasMember = true;
+                const profile = profiles.get(member.user_id);
+                if (!profile) return internalFailure('users');
+                const memberSteps = stepMap.get(member.user_id);
+                if (memberSteps === undefined) continue;
+                rankingInput.push({
+                    userId: member.user_id,
+                    id: profile.user.id,
+                    name: profile.name,
+                    image: profile.user.image,
+                    steps: memberSteps,
+                });
+            }
+            if (!hasMember) continue;
+            const ranking = sortPositiveStepRankings(rankingInput).map((user, index) => ({
+                id: user.id, name: user.name, image: user.image,
+                steps: user.steps, rank: index + 1,
+            }));
+            stats.push({ groupId: group.id, groupName: group.name, date, ranking });
+        }
+        return NextResponse.json({ date, groups: stats });
+    } catch {
+        return internalFailure('unexpected');
     }
 }
-
-export const runtime = 'edge';

@@ -7,6 +7,18 @@
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+export function constantTimeEqual(actual: string, expected: string): boolean {
+    if (!actual || actual.length !== expected.length) {
+        return false;
+    }
+
+    let difference = 0;
+    for (let index = 0; index < actual.length; index += 1) {
+        difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+    }
+    return difference === 0;
+}
+
 /**
  * 文字列が有効な UUID 形式かを判定
  * @param value - 検証する値

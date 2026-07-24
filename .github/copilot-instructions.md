@@ -1530,3 +1530,9 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+
+### LL-076: 外部ランキングが依存障害と未参加者を正常ランキングへ変換していた
+- **事象**: `GET /api/external/ranking`がgroups・members・users・daily_stepsのDB障害やnullを空集合・0歩へ変換し、profile欠落をdrop/Unknown、未記録・0歩を順位として返していた。
+- **根本原因**: 外部連携の成功形維持を優先し、各依存のerror・shape・一意性・safe integerと、正当な空集合を分けるfail-closed境界がなかった。
+- **対策**: CRON secretを定時間比較し、optional groupIdを共有UUID validatorで全文検証した。各依存を固定operationだけで500へ分離し、正歩数だけを既存安定sort後に1..Nへ再採番する専用route testを追加した。
+- **教訓**: 外部ランキングでも空集合は明示的な空配列だけに限定し、DB障害・null・不正shape・重複・欠損profileを成功形へ変換しない。日時・UUID・同値順は共有正本を再利用し、raw error・secret・IDをログへ渡さない。リファレンス: `app/api/external/ranking/route.ts`, `app/api/external/ranking/route.test.ts`
