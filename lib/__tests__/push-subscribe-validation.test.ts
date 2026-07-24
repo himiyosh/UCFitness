@@ -34,4 +34,5 @@ describe('POST /api/push/subscribe validation', () => {
         const invalidKeys = await POST(new Request('http://localhost/api/push/subscribe', { method: 'POST', body: JSON.stringify({ endpoint: 'https://fcm.googleapis.com/fcm/send/test', keys: { p256dh: 'AA', auth: 'AA' } }) }) as never); const invalidCurve = btoa(String.fromCharCode(...new Uint8Array(65))).replace(/=+$/, ''); const invalidCurveKeys = await POST(new Request('http://localhost/api/push/subscribe', { method: 'POST', body: JSON.stringify({ endpoint: 'https://fcm.googleapis.com/fcm/send/test', keys: { p256dh: invalidCurve, auth: 'A'.repeat(22) } }) }) as never);
         expect(invalidKeys.status).toBe(400); expect(invalidCurveKeys.status).toBe(400);
     });
+    it('rejects credentialed endpoints before persistence', async () => { const response = await POST(new Request('http://localhost/api/push/subscribe', { method: 'POST', body: JSON.stringify({ endpoint: 'https://account:secret@fcm.googleapis.com/fcm/send/test', keys: { p256dh: 'AA', auth: 'AA' } }) }) as never); expect(response.status).toBe(400); expect(mockSupabaseAdmin.from).not.toHaveBeenCalled(); });
 });

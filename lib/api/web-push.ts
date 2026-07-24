@@ -65,18 +65,22 @@ const MAX_PAYLOAD_BYTES = AES_128_GCM_RECORD_SIZE
     - AES_GCM_TAG_SIZE
     - RECORD_DELIMITER_SIZE;
 
-export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
-    if (typeof endpoint !== 'string' || endpoint.length > 2048) return false;
-
+function getPushEndpointOwnershipKey(endpoint: unknown): string | null {
+    if (typeof endpoint !== 'string' || endpoint.length > 2048) return null;
     try {
         const url = new URL(endpoint);
-        if (url.protocol !== 'https:') return false;
-        return PUSH_ENDPOINT_HOSTS.some(
+        const allowedHost = PUSH_ENDPOINT_HOSTS.some(
             (host) => url.hostname === host || url.hostname.endsWith(`.${host}`),
         );
+        if (url.protocol !== 'https:' || url.username || url.password || !allowedHost) return null;
+        url.hash = '';
+        return url.href;
     } catch {
-        return false;
+        return null;
     }
+}
+export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
+    return getPushEndpointOwnershipKey(endpoint) !== null;
 }
 
 export function isValidPushKey(
@@ -119,7 +123,7 @@ export async function loadPushSubscriptionSnapshot(): Promise<unknown[]> {
 }
 export async function preparePushSubscriptionSnapshot(rows: unknown[]): Promise<PreparedPushSubscriptions> {
     const byUser = new Map<string, StoredPushSubscriptionData[]>(); const userIds = new Set<string>(); const invalid = new Set<string>(); const capped = new Set<string>(); const counts = new Map<string, number>(); const rowIds = new Set<string>(); const endpointOwners = new Map<string, string>(); const identities: Array<{ row: Record<string, unknown>; id: string; userId: string }> = []; let duplicateRowId = false;
-    for (const row of rows) { if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id) || typeof row.user_id !== 'string' || !UUID_PATTERN.test(row.user_id)) pushBoundaryFail('data'); if (rowIds.has(row.id)) duplicateRowId = true; else rowIds.add(row.id); userIds.add(row.user_id); const count = (counts.get(row.user_id) ?? 0) + 1; counts.set(row.user_id, count); if (count > MAX_PUSH_SUBSCRIPTIONS) capped.add(row.user_id); if (isAllowedPushEndpoint(row.endpoint)) { const endpointUrl = new URL(row.endpoint); const endpointKey = `${endpointUrl.origin}${endpointUrl.pathname}${endpointUrl.search}`; const owner = endpointOwners.get(endpointKey); if (owner === undefined) endpointOwners.set(endpointKey, row.user_id); else { invalid.add(owner); invalid.add(row.user_id); } } identities.push({ row, id: row.id, userId: row.user_id }); } if (duplicateRowId) pushBoundaryFail('data');
+    for (const row of rows) { if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id) || typeof row.user_id !== 'string' || !UUID_PATTERN.test(row.user_id)) pushBoundaryFail('data'); if (rowIds.has(row.id)) duplicateRowId = true; else rowIds.add(row.id); userIds.add(row.user_id); const count = (counts.get(row.user_id) ?? 0) + 1; counts.set(row.user_id, count); if (count > MAX_PUSH_SUBSCRIPTIONS) capped.add(row.user_id); const endpointKey = getPushEndpointOwnershipKey(row.endpoint); if (endpointKey !== null) { const owner = endpointOwners.get(endpointKey); if (owner === undefined) endpointOwners.set(endpointKey, row.user_id); else { invalid.add(owner); invalid.add(row.user_id); } } identities.push({ row, id: row.id, userId: row.user_id }); } if (duplicateRowId) pushBoundaryFail('data');
     for (const { row, id, userId } of identities) { if (capped.has(userId) || invalid.has(userId)) continue; if (!isAllowedPushEndpoint(row.endpoint) || typeof row.p256dh !== 'string' || typeof row.auth !== 'string' || !await isValidPushSubscriptionKeys(row.p256dh, row.auth) || (row.user_agent !== null && typeof row.user_agent !== 'string') || typeof row.created_at !== 'string' || !Number.isFinite(Date.parse(row.created_at))) { invalid.add(userId); byUser.delete(userId); continue; } const subs = byUser.get(userId) ?? []; subs.push({ id, endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth, user_agent: row.user_agent, created_at: row.created_at }); byUser.set(userId, subs); }
     return { byUser, userIds: Array.from(userIds), invalidUserIds: Array.from(invalid), cappedUserIds: Array.from(capped) };
 }
