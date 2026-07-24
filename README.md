@@ -29,7 +29,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **バッジ & 称号** | 連続達成や累計歩数・順位に応じたバッジ獲得・称号付与システム |
 | **コイン経済** | 歩数でコインを獲得し、7/30/100/365日のストリーク節目で一回限りの追加UCを受け取り、ショップでギアを購入 |
 | **ギア & リアクション** | プロフィールギア装着、メンバーへのリアクション |
-| **プッシュ通知** | 言語設定対応Web Push、バッジ横断集約、歩数リマインダー、JST前週サマリー、端末重複制御。週次通知はsnapshot付きUUID keyset・総10,000/user20上限・15秒timeout・legacy不正購読cleanup・coin exact countで部分障害を503へ伝播するが、`(week,user)` outbox/ledgerがなく成功済みuserを再送し得るため、本PRは後続stacked outbox PRとのセットmergeを必須とする |
+| **プッシュ通知** | 言語対応Web Push、バッジ集約、歩数リマインダー、JST前週サマリー、端末重複制御。共有server正本`lib/api/web-push.ts`は`loadPushSubscriptionSnapshot`・`preparePushSubscriptionSnapshot`・`isValidPushSubscriptionKeys`・`sendWebPushNotifications`でsnapshot/keyset、総10,000/raw user20、WebCrypto鍵検証、active20/15秒timeoutを提供する。週次固有JST/coin処理は`lib/services/weekly-summary.ts`に限定し、非原子的cleanupは行わずoutboxとCAS cleanupの2 stacked PRをmerge前必須とする |
 | **i18n** | 日本語・英語の 2 言語対応 |
 | **法務情報** | アプリ内の `/legal/terms` と `/legal/privacy` で利用条件・健康情報の注意・データ取扱いを ja/en で明示 |
 | **PWA** | ホーム画面追加、オフライン対応 |

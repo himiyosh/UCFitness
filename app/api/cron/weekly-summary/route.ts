@@ -11,7 +11,6 @@ import {
 } from '@/lib/services/push-messages';
 import {
     addWeeklyMetric,
-    cleanupInvalidWeeklySubscriptions,
     failWeekly,
     loadUserWeeklySummary,
     loadWeeklySubscriptionRows,
@@ -56,8 +55,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         // プッシュ通知を購読しているユーザーの一覧を取得（ユニークなuser_idのみ）
         const subscriptionRows = await loadWeeklySubscriptionRows(snapshotAt);
         if (subscriptionRows.length === 0) return NextResponse.json({ success: true, message: 'プッシュ通知の購読者がいません', sent: 0, timestamp: snapshotAt });
-        const prepared = prepareWeeklySubscriptions(subscriptionRows, snapshotAt);
-        await cleanupInvalidWeeklySubscriptions(prepared.cleanupIds, snapshotAt);
+        const prepared = await prepareWeeklySubscriptions(subscriptionRows, snapshotAt);
         const sendUserIds = Array.from(prepared.byUser.keys());
         stage = 'users-query'; const userContextMap = await loadWeeklyUserContexts(sendUserIds);
         let totalSent = 0; let totalFailed = prepared.failures.size; let totalDeduplicated = 0; let failureIndex = 0;

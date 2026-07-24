@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     compactPushSubscriptions,
     findSupersededSubscriptionIds,
+    isValidPushSubscriptionKeys,
+    preparePushSubscriptionSnapshot,
     sendWebPushNotification,
     sendWebPushNotifications,
 } from '@/lib/api/web-push';
@@ -160,6 +162,7 @@ describe('sendWebPushNotification', () => {
     });
 
     afterEach(() => {
+        vi.useRealTimers();
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
         process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = originalPublicKey;
@@ -177,6 +180,8 @@ describe('sendWebPushNotification', () => {
             await crypto.subtle.exportKey('raw', receiverKeys.publicKey),
         );
         const authSecret = crypto.getRandomValues(new Uint8Array(16));
+        expect(await isValidPushSubscriptionKeys(toBase64Url(receiverPublicKey), toBase64Url(authSecret))).toBe(true);
+        const invalid = { id: '10000000-0000-4000-8000-000000000001', user_id: '00000000-0000-4000-8000-000000000001', endpoint: 'https://fcm.googleapis.com/invalid', p256dh: toBase64Url(receiverPublicKey), auth: 'a', user_agent: 'Browser', created_at: '2026-07-01T00:00:00Z' }; const valid = { ...invalid, id: '10000000-0000-4000-8000-000000000002', user_id: '00000000-0000-4000-8000-000000000002', endpoint: 'https://fcm.googleapis.com/valid', auth: toBase64Url(authSecret) }; const prepared = await preparePushSubscriptionSnapshot([...Array.from({ length: 21 }, () => invalid), valid], '2026-07-13T00:00:00Z'); expect(prepared.cappedUserIds).toEqual([invalid.user_id]); expect(prepared.byUser.get(valid.user_id)).toHaveLength(1);
         const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 201 }));
         vi.stubGlobal('fetch', fetchMock);
 
@@ -220,11 +225,9 @@ describe('sendWebPushNotification', () => {
             locale: 'ja',
             tag: 'ucfitness-badges',
         });
-        const rawPruneError = new Error('private endpoint and user'); mocks.prune.mockRejectedValueOnce(rawPruneError); fetchMock.mockResolvedValueOnce(new Response(null, { status: 410 }));
-        await sendWebPushNotifications('private-user', [{ endpoint: 'https://fcm.googleapis.com/private', p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret) }], { title: 'test', body: 'test' });
-        const pruneError = mocks.reportError.mock.calls.at(-1)?.[1];
-        expect(pruneError).not.toBe(rawPruneError); expect(pruneError instanceof Error ? pruneError.message : '').toBe('Failed to prune expired push subscriptions'); expect(Reflect.get(pruneError ?? {}, 'cause')).toBeUndefined();
-        const capped = await sendWebPushNotifications('private-user', Array.from({ length: 21 }, (_, index) => ({ endpoint: `https://fcm.googleapis.com/${index}`, p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret), user_agent: `Browser ${index}` })), { title: 'test', body: 'test' }); expect(capped).toMatchObject({ sent: 0, failed: 21 }); expect(fetchMock).toHaveBeenCalledTimes(2);
+        const capped = await sendWebPushNotifications('private-user', Array.from({ length: 21 }, (_, index) => ({ endpoint: `https://fcm.googleapis.com/${index}`, p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret), user_agent: `Browser ${index}` })), { title: 'test', body: 'test' }); expect(capped).toMatchObject({ sent: 0, failed: 21 }); expect(fetchMock).toHaveBeenCalledTimes(1);
+        const rawPrune = new Error('private endpoint and user'); mocks.prune.mockRejectedValueOnce(rawPrune); fetchMock.mockResolvedValueOnce(new Response(null, { status: 410 })); await sendWebPushNotifications('private-user', [{ endpoint: 'https://fcm.googleapis.com/private', p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret) }], { title: 'test', body: 'test' });
+        const pruneError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(pruneError).not.toBe(rawPrune); expect(pruneError instanceof Error ? pruneError.message : '').toBe('Failed to prune expired push subscriptions'); expect(Reflect.get(pruneError ?? {}, 'cause')).toBeUndefined();
     });
 
     it('AbortSignalをfetchへ渡し、中断時は失敗を返す', async () => {
@@ -243,8 +246,9 @@ describe('sendWebPushNotification', () => {
         expect(result.success).toBe(false); expect(result.error?.message).toBe('Web push delivery failed');
         const loggedError = mocks.reportError.mock.calls.at(-1)?.[1];
         expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
-        fetchMock.mockImplementationOnce(async (_input, init) => { expect(init?.signal).toBeInstanceOf(AbortSignal); throw new DOMException('private timeout', 'TimeoutError'); });
-        const timeoutResult = await sendWebPushNotifications('private-user', [{ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }], { title: 'test', body: 'test' }); const timeoutError = mocks.reportError.mock.calls.at(-1)?.[1];
+        vi.useFakeTimers(); let markStarted: (() => void) | undefined; const started = new Promise<void>((resolve) => { markStarted = resolve; });
+        fetchMock.mockImplementationOnce(async (_input, init) => { const timeoutSignal = init?.signal; expect(timeoutSignal).toBeInstanceOf(AbortSignal); markStarted?.(); return await new Promise<Response>((_resolve, reject) => timeoutSignal?.addEventListener('abort', () => reject(timeoutSignal.reason), { once: true })); });
+        const timeoutPromise = sendWebPushNotifications('private-user', [{ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }], { title: 'test', body: 'test' }); await started; await vi.advanceTimersByTimeAsync(15_000); const timeoutResult = await timeoutPromise; const timeoutError = mocks.reportError.mock.calls.at(-1)?.[1];
         expect(timeoutResult.failed).toBe(1); expect(Reflect.get(timeoutError ?? {}, 'code')).toBe('WEB_PUSH_TIMEOUT'); expect(Reflect.get(timeoutError ?? {}, 'cause')).toBeUndefined();
         process.env.VAPID_PRIVATE_KEY = 'private-key-sentinel';
         const keyResult = await sendWebPushNotification({ endpoint: 'https://fcm.googleapis.com/test', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(new Uint8Array(16)) } }, { title: 'test', body: 'test' });

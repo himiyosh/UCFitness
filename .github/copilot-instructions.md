@@ -1532,7 +1532,7 @@ export const runtime = "edge";
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
 
 ### LL-077: JST日付とUTC時刻の境界を別々に組み立てると週次集計が9時間ずれる
-- **事象**: 週次通知でJST/UTCが9時間ずれ、DB障害を既定値へ畳み、購読と端末fan-out・positive coin取得が無上限/1000件cutoff、生Pushエラーがログへ到達し、不正legacy鍵1件が全体を停止、部分失敗後も200だった。
-- **根本原因**: 単一業務期間、snapshot、総/user上限、timeout、invalid row cleanup、exact count、固定エラー、再試行冪等性を1つの契約として設計せず、Topic/tagを永続ledgerの代替と誤認した。
-- **対策**: 前週JST helper、snapshot付きUUID keyset、総10,000/user20上限、15秒timeout、`id + user_id` cleanup、coin exact count、固定AppError、user隔離503を実装する。Topic/tagは置換補助に限定し、`(week,user)` outbox/ledgerの後続stacked PRを本PRのmerge前必須依存とする。
-- **教訓**: 無制限fan-outはsnapshot・keyset・総/所有者上限・timeoutで封じ、既存不正行は所有権条件付きcleanupで隔離する。部分成功の非2xxは必要だがexactly-onceではなく、永続outboxなしに解決扱いしない。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
+- **事象**: 週次通知でJST/UTCがずれ、購読/端末fan-outとcoin取得が無上限/1000件cutoff、不正legacy鍵が全体停止、raw invalid 21件がuser上限を迂回し、非原子的cleanupが同時再購読を削除し得た。日付/mockも正規化や即時例外を成功証拠にしていた。
+- **根本原因**: identity直後のraw count、calendar round-trip、実abort、null保持、row-version CAS、再試行冪等性を1つの契約として設計せず、Topic/tagとfilter mockを永続整合性の代替と誤認した。
+- **対策**: `lib/api/web-push.ts`へsnapshot loader・raw cap validator・WebCrypto鍵検証・active20/15秒送信境界を共有正本化し、週次固有JST/coin処理だけをserviceへ残す。非原子的cleanupは撤回し、outbox/ledgerとDB lock下CAS cleanupの2 stacked PRをmerge前必須依存とする。
+- **教訓**: capはvalidation前のraw identity単位で数え、timeoutは実signal abort、外部countは明示nullを保持して検証する。並行更新行の削除はアプリ側filterで安全と称さず、DB lock付きCASがない間は隔離に留める。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`

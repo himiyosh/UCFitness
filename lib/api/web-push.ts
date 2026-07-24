@@ -42,8 +42,8 @@ export interface PushDeliverySummary {
     expired: number;
     skippedDuplicates: number;
 }
-export const MAX_PUSH_SUBSCRIPTIONS = 20;
-const PUSH_SEND_TIMEOUT_MS = 15_000;
+export const MAX_PUSH_SUBSCRIPTIONS = 20; export const MAX_TOTAL_PUSH_SUBSCRIPTIONS = 10_000;
+const PUSH_SEND_TIMEOUT_MS = 15_000; const PUSH_SUBSCRIPTION_PAGE_SIZE = 900;
 
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com',
@@ -54,7 +54,7 @@ const PUSH_ENDPOINT_HOSTS = [
 
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
-const P256_FIELD_PRIME = BigInt('0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff'); const P256_CURVE_B = BigInt('0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b');
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const AES_128_GCM_RECORD_SIZE = 4096;
 const P256_PUBLIC_KEY_SIZE = 65;
 const AES_128_GCM_HEADER_SIZE = 21 + P256_PUBLIC_KEY_SIZE;
@@ -85,15 +85,7 @@ export function isValidPushKey(
     const valid = typeof value === 'string' && value.length > 0
         && value.length <= maxLength && BASE64URL_PATTERN.test(value);
     if (!valid || expectedBytes === undefined) return valid;
-    try { const bytes = base64UrlToUint8Array(value); return bytes.length === expectedBytes && (expectedBytes !== 65 || isValidP256Point(bytes)); } catch { return false; }
-}
-
-function bytesToBigInt(bytes: Uint8Array): bigint { return bytes.reduce((value, byte) => (value << BigInt(8)) | BigInt(byte), BigInt(0)); }
-function isValidP256Point(bytes: Uint8Array): boolean {
-    if (bytes[0] !== 0x04) return false;
-    const x = bytesToBigInt(bytes.slice(1, 33)); const y = bytesToBigInt(bytes.slice(33));
-    if (x >= P256_FIELD_PRIME || y >= P256_FIELD_PRIME) return false;
-    const curve = (x * x % P256_FIELD_PRIME * x - BigInt(3) * x + P256_CURVE_B) % P256_FIELD_PRIME; return ((y * y - curve) % P256_FIELD_PRIME + P256_FIELD_PRIME) % P256_FIELD_PRIME === BigInt(0);
+    try { return base64UrlToUint8Array(value).length === expectedBytes; } catch { return false; }
 }
 
 function base64UrlToUint8Array(base64Url: string): Uint8Array {
@@ -109,6 +101,26 @@ function base64UrlToUint8Array(base64Url: string): Uint8Array {
     }
 
     return output;
+}
+
+export async function isValidPushSubscriptionKeys(p256dh: unknown, auth: unknown): Promise<boolean> {
+    if (!isValidPushKey(p256dh, 256, 65) || !isValidPushKey(auth, 128, 16)) return false;
+    try { await crypto.subtle.importKey('raw', copyToArrayBuffer(base64UrlToUint8Array(p256dh)), { name: 'ECDH', namedCurve: 'P-256' }, false, []); return true; } catch { return false; }
+}
+
+export type PushSubscriptionBoundaryReason = 'query' | 'data' | 'limit'; export class PushSubscriptionBoundaryError extends Error { constructor(readonly reason: PushSubscriptionBoundaryReason) { super('Push subscription boundary failed'); this.name = 'PushSubscriptionBoundaryError'; } } export interface PreparedPushSubscriptions { byUser: Map<string, StoredPushSubscriptionData[]>; userIds: string[]; invalidUserIds: string[]; cappedUserIds: string[] }
+function pushBoundaryFail(reason: PushSubscriptionBoundaryReason): never { throw new PushSubscriptionBoundaryError(reason); } function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }
+export async function loadPushSubscriptionSnapshot(snapshot: string): Promise<unknown[]> {
+    let admin: (typeof import('@/lib/supabase'))['supabaseAdmin']; try { admin = (await import('@/lib/supabase')).supabaseAdmin; } catch { pushBoundaryFail('query'); }
+    const rows: unknown[] = []; let cursor: string | null = null; while (true) {
+        const limit = Math.min(PUSH_SUBSCRIPTION_PAGE_SIZE, MAX_TOTAL_PUSH_SUBSCRIPTIONS - rows.length + 1); let query = admin.from('push_subscriptions').select('id, user_id, endpoint, p256dh, auth, user_agent, created_at').or(`created_at.lte.${snapshot},created_at.is.null`).order('id', { ascending: true }).limit(limit); if (cursor) query = query.gt('id', cursor);
+        let page; try { page = await query; } catch { pushBoundaryFail('query'); } if (page.error) pushBoundaryFail('query'); if (!Array.isArray(page.data)) pushBoundaryFail('data'); rows.push(...page.data); if (rows.length > MAX_TOTAL_PUSH_SUBSCRIPTIONS) pushBoundaryFail('limit'); if (page.data.length < limit) return rows; const last = page.data.at(-1); if (!isRecord(last) || typeof last.id !== 'string' || (cursor !== null && last.id <= cursor)) pushBoundaryFail('data'); cursor = last.id;
+    }
+}
+export async function preparePushSubscriptionSnapshot(rows: unknown[], snapshot: string): Promise<PreparedPushSubscriptions> {
+    const byUser = new Map<string, StoredPushSubscriptionData[]>(); const userIds = new Set<string>(); const invalid = new Set<string>(); const capped = new Set<string>(); const counts = new Map<string, number>(); const rowIds = new Set<string>(); const snapshotMs = Date.parse(snapshot);
+    for (const row of rows) { if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id) || typeof row.user_id !== 'string' || !UUID_PATTERN.test(row.user_id)) pushBoundaryFail('data'); userIds.add(row.user_id); const count = (counts.get(row.user_id) ?? 0) + 1; counts.set(row.user_id, count); if (count > MAX_PUSH_SUBSCRIPTIONS) { capped.add(row.user_id); invalid.delete(row.user_id); byUser.delete(row.user_id); continue; } if (capped.has(row.user_id) || invalid.has(row.user_id)) continue; if (rowIds.has(row.id)) pushBoundaryFail('data'); rowIds.add(row.id); if (!isAllowedPushEndpoint(row.endpoint) || typeof row.p256dh !== 'string' || typeof row.auth !== 'string' || !await isValidPushSubscriptionKeys(row.p256dh, row.auth) || (row.user_agent !== null && typeof row.user_agent !== 'string') || typeof row.created_at !== 'string' || !Number.isFinite(Date.parse(row.created_at)) || Date.parse(row.created_at) > snapshotMs) { invalid.add(row.user_id); byUser.delete(row.user_id); continue; } const subs = byUser.get(row.user_id) ?? []; subs.push({ id: row.id, endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth, user_agent: row.user_agent, created_at: row.created_at }); byUser.set(row.user_id, subs); }
+    return { byUser, userIds: Array.from(userIds), invalidUserIds: Array.from(invalid), cappedUserIds: Array.from(capped) };
 }
 
 function uint8ArrayToBase64Url(bytes: Uint8Array): string {
@@ -344,8 +356,7 @@ export async function sendWebPushNotification(
             throw new Error('Invalid push subscription endpoint');
         }
         if (!subscription.keys
-            || !isValidPushKey(subscription.keys.p256dh, 256, 65)
-            || !isValidPushKey(subscription.keys.auth, 128, 16)) {
+            || !await isValidPushSubscriptionKeys(subscription.keys.p256dh, subscription.keys.auth)) {
             throw new Error('Invalid push subscription keys');
         }
 
@@ -435,7 +446,12 @@ export async function sendWebPushNotifications(
         return { sent: 0, failed: activeSubscriptions.length, expired: 0,
             skippedDuplicates: subscriptions.length - activeSubscriptions.length };
     }
-    const effectiveSignal = signal ?? AbortSignal.timeout(PUSH_SEND_TIMEOUT_MS);
+    const timeoutController = new AbortController();
+    const effectiveSignal = signal ?? timeoutController.signal;
+    const timeoutId = signal ? null : setTimeout(
+        () => timeoutController.abort(new DOMException('Web push timed out', 'TimeoutError')),
+        PUSH_SEND_TIMEOUT_MS,
+    );
     const results = await Promise.all(
         activeSubscriptions.map((subscription) =>
             sendWebPushNotification(
@@ -450,6 +466,7 @@ export async function sendWebPushNotifications(
                 effectiveSignal,
             )),
     );
+    if (timeoutId !== null) clearTimeout(timeoutId);
     const expiredEndpoints = results
         .map((result, index) => ({ result, endpoint: activeSubscriptions[index]?.endpoint }))
         .filter(({ result, endpoint }) =>
@@ -458,15 +475,8 @@ export async function sendWebPushNotifications(
 
     if (expiredEndpoints.length > 0) {
         let failed = false;
-        try {
-            const { supabaseAdmin } = await import('@/lib/supabase');
-            const result = await supabaseAdmin.from('push_subscriptions').delete()
-                .eq('user_id', userId).in('endpoint', expiredEndpoints);
-            failed = Boolean(result.error);
-        } catch { failed = true; }
-        if (failed) reportError('sendWebPush:pruneExpired', new AppError(
-            'Failed to prune expired push subscriptions', 'WEB_PUSH_PRUNE_FAILED',
-            { count: expiredEndpoints.length }));
+        try { const { supabaseAdmin } = await import('@/lib/supabase'); const result = await supabaseAdmin.from('push_subscriptions').delete().eq('user_id', userId).in('endpoint', expiredEndpoints); failed = Boolean(result.error); } catch { failed = true; }
+        if (failed) reportError('sendWebPush:pruneExpired', new AppError('Failed to prune expired push subscriptions', 'WEB_PUSH_PRUNE_FAILED', { count: expiredEndpoints.length }));
     }
 
     const sent = results.filter((result) => result.success).length;
