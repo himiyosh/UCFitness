@@ -29,7 +29,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **バッジ & 称号** | 連続達成や累計歩数・順位に応じたバッジ獲得・称号付与システム |
 | **コイン経済** | 歩数でコインを獲得し、7/30/100/365日のストリーク節目で一回限りの追加UCを受け取り、ショップでギアを購入 |
 | **ギア & リアクション** | プロフィールギア装着、メンバーへのリアクション |
-| **プッシュ通知** | 言語対応Web Push、バッジ集約、歩数リマインダー、JST前週サマリー、端末重複制御。共有server正本`lib/api/web-push.ts`は`loadPushSubscriptionSnapshot`・`preparePushSubscriptionSnapshot`・`isValidPushSubscriptionKeys`・`sendWebPushNotifications`でexact count付き単一statement最大900件、raw user20、WebCrypto鍵検証、active20/15秒timeoutを提供し、超過・count欠落・件数不一致は部分処理せずfail closedとする。将来の拡張にはqueueまたはtransactional RPCが必要。週次固有JST/coin処理は`lib/services/weekly-summary.ts`に限定する。main既存の404/410 cleanupは非CAS、購読保存はendpoint ownership/raw20を原子保証しないため、outbox、row-version CAS cleanup、atomic save RPCの3 stacked PRを#300/#301 merge前必須とする |
+| **プッシュ通知** | 言語対応Web Push、バッジ集約、歩数リマインダー、JST前週サマリー、端末重複制御。共有server正本`lib/api/web-push.ts`は`loadPushSubscriptionSnapshot`・`preparePushSubscriptionSnapshot`・`isValidPushSubscriptionKeys`・`sendWebPushNotifications`でexact count付き単一statement最大900件、raw user20、WebCrypto鍵検証、active20/15秒timeoutを提供し、超過・count欠落・件数不一致は部分処理せずfail closedとする。第一identity passではcredentialなしHTTPS endpointのfragmentを除くRFC3986正規化済み`url.href`でglobal所有権を検査し、unreserved escape aliasは同一視する一方、reserved/UTF-8 byte列・query orderのsemantic diffを保持する。same-user/cross-userの重複endpointは関係user全員を隔離し、global重複row IDは全体data errorとして拒否する。subscribe境界は固定non-PII AppErrorだけを一回reportし、raw backend errorやuser/endpoint/key値を渡さない。週次固有JST/coin処理は`lib/services/weekly-summary.ts`に限定する。#300は新規weekly legacy-invalid cleanupを追加せずinvalid userを隔離する。書込時901 DoSとsnapshot後のendpoint ownership transferは未解決であり、(1) PR #302のrow-version CAS + runtime PostgreSQL stack、(2) atomic endpoint ownership + per-user raw20、random recipient generation rotation、payload generation binding、current-generation一致時だけ表示するService Worker、logout/account switch後のold payload drop、delayed-delivery browser testを含む配信privacy stack、(3) notification outboxの3依存をmerge前必須とする。TTL 300のdelivery lease、Topic/tag、単純ownership transferは遅延配信中privacyを解決しない |
 | **i18n** | 日本語・英語の 2 言語対応 |
 | **法務情報** | アプリ内の `/legal/terms` と `/legal/privacy` で利用条件・健康情報の注意・データ取扱いを ja/en で明示 |
 | **PWA** | ホーム画面追加、オフライン対応 |
@@ -78,7 +78,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、報酬処理失敗、利用不能を構造化コードで返す。バッジ・称号・コインのいずれかが失敗した場合は保存済み歩数を保持しつつ同期成功にしない
 - **コイン再計算の原子化**: 未適用の`migrations/20260721_atomic_daily_coin_recalculation.sql`と`migrations/20260721_atomic_historical_coin_backfill.sql`は、既知DDL・RLS・ACL・既存writerのユーザー行ロックをfail-closed検証し、STEPS減額、既存STEPS日の欠落、同一STEPS時のGOAL_BONUS/STREAK_BONUS減額を置換前に拒否する。日次・履歴RPCが入力・削除・再生成するのは歩数由来の`STEPS` / `GOAL_BONUS` / `STREAK_BONUS`だけで、別経路の獲得済み`RANK_BONUS`等を保持したまま全台帳残高を同一transactionで再集計する。日次RPCだけがアプリ接続済みで、履歴RPCのPhase B wiring、実catalog実行、DB適用は未実施
 - **Fitbit一時障害の再試行**: 冪等な歩数GETだけを429・5xx・通信障害で1秒、2秒、4秒後に再試行する。401は既存の再認証経路へ即時返し、回転するrefresh tokenのPOSTは二重実行しない
-- **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。歩数リマインダーはPR #300の共有`loadPushSubscriptionSnapshot` / `preparePushSubscriptionSnapshot` / `sendWebPushNotifications`を正本とし、single-statement exact count最大900件、validation前raw20端末、WebCrypto P-256/auth16、active20端末、15秒abortを継承する。プロフィールとJST当日歩数だけを20ユーザー単位で検証し、DB・null・不完全行を既定目標/言語/0歩へ変換せず、users/stepsにforeign行があれば該当batch全体を送信せず次batchを継続する。Topic/tag=`step-reminder`と`renotify:false`は永続冪等性ではなく、`notification-delivery-outbox`の`(JST date,user,notification type)` ledger+claim leaseが#301 merge前必須である。既存404/410 cleanupも非CASのため`push-subscription-cas`が必須であり、同一endpointのcross-user所有権移転とraw20をDB RPCで原子保証する`atomic-push-subscription-save`が#300/#301 merge前必須である。保存側の原子制約がない間は1ユーザー901件でglobal snapshot capを停止できるため、route capを緩めたり部分処理へ戻してはならない
+- **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。歩数リマインダーはPR #300の共有`loadPushSubscriptionSnapshot` / `preparePushSubscriptionSnapshot` / `sendWebPushNotifications`を正本とし、single-statement exact count最大900件、validation前raw20端末、global endpoint ownership quarantine、WebCrypto P-256/auth16、active20端末、15秒abortを継承する。プロフィールとJST当日歩数だけを20ユーザー単位で検証し、DB・null・不完全行を既定目標/言語/0歩へ変換せず、users/stepsにforeign行があれば該当batch全体を送信せず次batchを継続する。Topic/tag=`step-reminder`と`renotify:false`は永続冪等性ではない。#301はDraftを維持し、(1) PR #302のrow-version CAS + runtime PostgreSQL、(2) atomic endpoint ownership + per-user raw20 + random recipient generation rotation + payload generation binding + current-generation Service Worker表示を含む配信privacy、(3) `(JST date,user,notification type)` ledger+claim leaseを持つnotification outboxの3 foundationが先にmergeされるまでmerge禁止とする。保存側の原子制約がない間は1ユーザー901件でglobal snapshot capを停止できるため、route capを緩めたり部分処理へ戻してはならない
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
 - **フォロー歩数比較の表示契約**: 日別チャートは記録済み0歩を基準線上の点、未記録を線の切れ目として表示し、tooltipと読み上げ用数値表でも両者を区別する
@@ -668,9 +668,10 @@ npm run dev
 |---|---|
 | `npm run dev` | 開発サーバー起動 (ポート 3000) |
 | `npm run build` | プロダクションビルド |
-| `npm run pages:build` | Cloudflare Pages ビルド |
+| `npm run pages:build` | Cloudflare Pages ビルド + Worker 2.8 MiB budget検証 |
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
+| `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -686,6 +687,8 @@ npm run dev
 ### Client bundle budget
 
 - `npm run build` のroute表で、全ページのFirst Load JSを200KB未満に保つ
+- `npm run pages:build`でWorker moduleのgzip推定合計を2.8 MiB以下に保ち、Cloudflare無料枠3 MiBへ十分な余裕を残す
+- favicon / Apple Touch Iconは`public/`の静的PNGを正本とし、metadata routeは`force-dynamic`の307で参照する。`next/og`のresvg WASMをWorkerへ同梱せず、Pages静的化でredirect statusを失わない
 - Client Componentと共有するmoduleからSupabase等のserver-only依存を静的importしない
 - Recharts、下部チャット、ギア等の非critical UIはClient境界内の`next/dynamic`とviewport判定で遅延し、loading名、`aria-busy`、低減モーション、JS無効時の主要情報を維持する
 - 2026-07-18のF020実測: wallet 260→141KB、group detail 207→152KB、leaderboard 198→146KB。遅延chunkの存在と初期route manifestからの分離も同じproduction buildで確認した
@@ -703,6 +706,9 @@ npm run pages:build
 
 - すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` が必要
 - `layout.tsx` には不要
+- Next.jsはApp Router/Server Actions修正版15.5.21以上、NextAuthは`@auth/core` 0.41.3を含む5.0.0-beta.32以上を使用する
+- transitive依存は`sharp` 0.35.3、`postcss` 8.5.18へoverrideし、`npm audit --omit=dev --audit-level=high`を0件に保つ。`npm audit fix --force`やmajor downgradeは使用しない
+- `@cloudflare/next-on-pages`のpeer範囲はNext.js 15.5.2までのため警告が出る。15.5.21との互換性は`npm run pages:build`で検証し、adapter移行は別変更として扱う
 
 ## エージェント・プロンプト構成
 
@@ -823,7 +829,7 @@ npm run pages:build
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
 | **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings/Profile/Wallet/Groups状態分離、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期・並行membershipの原子性を統括する |
-| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
+| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.21 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
 | SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
@@ -899,10 +905,14 @@ npm run test:coverage
 RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNAME_JA=ja-user RESPONSIVE_AUDIT_GROUP_ID_JA=ja-group \
 RESPONSIVE_AUDIT_STORAGE_STATE_EN=/path/to/en-state.json RESPONSIVE_AUDIT_USERNAME_EN=en-user RESPONSIVE_AUDIT_GROUP_ID_EN=en-group \
 npm run audit:responsive
+
+# Dashboardのミッション操作・愛用ギア・モバイル操作領域
+DASHBOARD_E2E_STORAGE_STATE=/path/to/ja-state.json npm run test:e2e:dashboard
 ```
 
 - テストフレームワーク: **Vitest**
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
+- Dashboard回帰テストはbonus-only報酬失敗→reload→retry、商品loaded状態、Price/Delivery非表示、有限画像fallback、A/B両treatmentと計測値、LoginBonus閉鎖、AutoSync遮断、375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用

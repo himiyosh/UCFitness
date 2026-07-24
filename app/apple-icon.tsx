@@ -1,4 +1,6 @@
-import { ImageResponse } from 'next/og';
+export const runtime = 'edge';
+
+export const dynamic = 'force-dynamic';
 
 // Apple Touch Icon — 180×180 PNG（iOS PWAインストール用）
 export const size = {
@@ -7,60 +9,12 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-// レインボーボーダー＋3色グラデ＋ガラス＋塗りつぶし稲妻
-export default function AppleIcon() {
-    return new ImageResponse(
-        (
-            <div
-                style={{
-                    width: '180px',
-                    height: '180px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #34D399 0%, #A5F3FC 100%)',
-                    borderRadius: '40px',
-                }}
-            >
-                {/* 内側: グラデーション背景 + ガラス + 稲妻 */}
-                <div
-                    style={{
-                        width: '116px',
-                        height: '116px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #7C3AED 100%)',
-                        borderRadius: '24px',
-                        position: 'relative',
-                    }}
-                >
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '116px',
-                            height: '58px',
-                            background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
-                            borderRadius: '24px 24px 0 0',
-                        }}
-                    />
-                    <svg viewBox="0 0 24 24" width="56" height="56">
-                        <path
-                            d="M13.5 2.5L7 13h4.5L9 21.5l8.5-11h-4.5z"
-                            fill="white"
-                            stroke="white"
-                            strokeWidth="0.8"
-                            strokeLinejoin="round"
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                </div>
-            </div>
-        ),
-        {
-            ...size,
-        }
-    );
+// 静的PNGを正本にして、Edge Workerへresvg WASMを同梱しない。
+export default function AppleIcon(): Response {
+    return new Response(null, {
+        status: 307,
+        headers: {
+            location: '/apple-touch-icon.png',
+        },
+    });
 }
