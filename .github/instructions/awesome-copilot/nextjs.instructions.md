@@ -4,7 +4,7 @@ description: "Reference only: upstream Next.js 16.1.1 guidance. Do not auto-appl
 
 # Next.js 16 Reference Notes
 
-> UCFitness currently uses Next.js 15.5.18. This upstream reference is intentionally not bound with `applyTo`; consult `.github/instructions/nextjs-app-router.instructions.md` and `.github/agents/expert-nextjs-developer.agent.md` first.
+> UCFitness currently uses Next.js 15.5.21. This upstream reference is intentionally not bound with `applyTo`; consult `.github/instructions/nextjs-app-router.instructions.md` and `.github/agents/expert-nextjs-developer.agent.md` first.
 
 _Last updated: January 2026 (aligned to Next.js 16.1.1)_
 

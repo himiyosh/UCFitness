@@ -1,5 +1,4 @@
-BEGIN;
-SET LOCAL search_path = '';
+BEGIN; SET LOCAL search_path = '';
 DO $preconditions$
 DECLARE
     target_table regclass := pg_catalog.to_regclass('public.push_subscriptions');
@@ -98,8 +97,7 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'LL079: push subscription ACL changed';
     END IF;
-END;
-$preconditions$;
+END; $preconditions$;
 CREATE FUNCTION public.delete_push_subscription_if_unchanged(
     p_id uuid, p_user_id uuid, p_endpoint text, p_p256dh text, p_auth text, p_user_agent text, p_created_at timestamptz
 ) RETURNS boolean
