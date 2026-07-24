@@ -224,6 +224,7 @@ describe('sendWebPushNotification', () => {
         await sendWebPushNotifications('private-user', [{ endpoint: 'https://fcm.googleapis.com/private', p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret) }], { title: 'test', body: 'test' });
         const pruneError = mocks.reportError.mock.calls.at(-1)?.[1];
         expect(pruneError).not.toBe(rawPruneError); expect(pruneError instanceof Error ? pruneError.message : '').toBe('Failed to prune expired push subscriptions'); expect(Reflect.get(pruneError ?? {}, 'cause')).toBeUndefined();
+        const capped = await sendWebPushNotifications('private-user', Array.from({ length: 21 }, (_, index) => ({ endpoint: `https://fcm.googleapis.com/${index}`, p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret), user_agent: `Browser ${index}` })), { title: 'test', body: 'test' }); expect(capped).toMatchObject({ sent: 0, failed: 21 }); expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('AbortSignalをfetchへ渡し、中断時は失敗を返す', async () => {
@@ -237,13 +238,14 @@ describe('sendWebPushNotification', () => {
             throw rawError;
         });
         vi.stubGlobal('fetch', fetchMock);
-        const result = await sendWebPushNotification({
-            endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint',
-            keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) },
-        }, { title: 'test', body: 'test' }, signal);
+        const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) } };
+        const result = await sendWebPushNotification(subscription, { title: 'test', body: 'test' }, signal);
         expect(result.success).toBe(false); expect(result.error?.message).toBe('Web push delivery failed');
         const loggedError = mocks.reportError.mock.calls.at(-1)?.[1];
         expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
+        fetchMock.mockImplementationOnce(async (_input, init) => { expect(init?.signal).toBeInstanceOf(AbortSignal); throw new DOMException('private timeout', 'TimeoutError'); });
+        const timeoutResult = await sendWebPushNotifications('private-user', [{ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }], { title: 'test', body: 'test' }); const timeoutError = mocks.reportError.mock.calls.at(-1)?.[1];
+        expect(timeoutResult.failed).toBe(1); expect(Reflect.get(timeoutError ?? {}, 'code')).toBe('WEB_PUSH_TIMEOUT'); expect(Reflect.get(timeoutError ?? {}, 'cause')).toBeUndefined();
         process.env.VAPID_PRIVATE_KEY = 'private-key-sentinel';
         const keyResult = await sendWebPushNotification({ endpoint: 'https://fcm.googleapis.com/test', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(new Uint8Array(16)) } }, { title: 'test', body: 'test' });
         const keyError = mocks.reportError.mock.calls.at(-1)?.[1];

@@ -15,7 +15,7 @@ const phaseOneMigration = readRepositoryFile(
 const subscribeRoute = readRepositoryFile('app/api/push/subscribe/route.ts');
 const deliverySources = [
     'app/api/push/send/route.ts', 'app/api/cron/step-reminder/route.ts',
-    'app/api/cron/weekly-summary/route.ts', 'lib/services/badge-allocator.ts',
+    'lib/services/weekly-summary.ts', 'lib/services/badge-allocator.ts',
     'lib/api/web-push.ts',
 ].map(readRepositoryFile);
 const browserSources = [

@@ -42,6 +42,8 @@ export interface PushDeliverySummary {
     expired: number;
     skippedDuplicates: number;
 }
+export const MAX_PUSH_SUBSCRIPTIONS = 20;
+const PUSH_SEND_TIMEOUT_MS = 15_000;
 
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com',
@@ -406,8 +408,10 @@ export async function sendWebPushNotification(
         }
 
         return { success: true, statusCode: response.status };
-    } catch {
-        const error = new AppError('Web push delivery failed', 'WEB_PUSH_DELIVERY_FAILED');
+    } catch (cause: unknown) {
+        const timedOut = typeof cause === 'object' && cause !== null && 'name' in cause && cause.name === 'TimeoutError';
+        const error = new AppError(timedOut ? 'Web push delivery timed out' : 'Web push delivery failed',
+            timedOut ? 'WEB_PUSH_TIMEOUT' : 'WEB_PUSH_DELIVERY_FAILED');
         reportError('sendWebPush', error);
         return {
             success: false,
@@ -424,6 +428,14 @@ export async function sendWebPushNotifications(
     signal?: AbortSignal,
 ): Promise<PushDeliverySummary> {
     const activeSubscriptions = compactPushSubscriptions(subscriptions);
+    if (activeSubscriptions.length > MAX_PUSH_SUBSCRIPTIONS) {
+        reportError('sendWebPush:subscriptionLimit', new AppError(
+            'Push subscription limit exceeded', 'WEB_PUSH_SUBSCRIPTION_LIMIT',
+            { count: activeSubscriptions.length }));
+        return { sent: 0, failed: activeSubscriptions.length, expired: 0,
+            skippedDuplicates: subscriptions.length - activeSubscriptions.length };
+    }
+    const effectiveSignal = signal ?? AbortSignal.timeout(PUSH_SEND_TIMEOUT_MS);
     const results = await Promise.all(
         activeSubscriptions.map((subscription) =>
             sendWebPushNotification(
@@ -435,7 +447,7 @@ export async function sendWebPushNotifications(
                     },
                 },
                 payload,
-                signal,
+                effectiveSignal,
             )),
     );
     const expiredEndpoints = results

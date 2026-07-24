@@ -1532,7 +1532,7 @@ export const runtime = "edge";
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
 
 ### LL-077: JST日付とUTC時刻の境界を別々に組み立てると週次集計が9時間ずれる
-- **事象**: 週次通知の歩数はJST日付、コインは同じ日付へ`Z`を付けたUTC境界で取得し、DB障害・不正行を既定値へ畳んだ。購読はPostgREST既定上限で切れ、生Pushエラーをログへ渡し、部分失敗後も200を返していた。
-- **根本原因**: 1つの業務期間から日付範囲とUTC timestamp半開区間を導出せず、ページング、外部データ検証、固定エラー変換、Cron再試行判定を各処理へ任せた。
-- **対策**: Date注入可能な前週JST helperからUTC半開区間も生成し、全購読をUUID keysetでページ取得、ユーザーを20件ずつ照会して各行・集計をfail-closedで検証する。送信層を含む生error/PIIは固定AppErrorへ置換し、処理可能ユーザーを継続した部分失敗はTopic/tag置換を維持した503で返す。
-- **教訓**: 日付列とtimestamp列は単一helper、並行変異し得る無制限集合はOFFSETでなく一意keysetから境界を生成する。部分成功をHTTP成功へ偽装せず、成功件数を残した非2xxと固定識別子だけで再試行へ伝える。リファレンス: `app/api/cron/weekly-summary/route.ts`, `route.test.ts`, `lib/api/web-push.ts`
+- **事象**: 週次通知でJST/UTCが9時間ずれ、DB障害を既定値へ畳み、購読と端末fan-out・positive coin取得が無上限/1000件cutoff、生Pushエラーがログへ到達し、不正legacy鍵1件が全体を停止、部分失敗後も200だった。
+- **根本原因**: 単一業務期間、snapshot、総/user上限、timeout、invalid row cleanup、exact count、固定エラー、再試行冪等性を1つの契約として設計せず、Topic/tagを永続ledgerの代替と誤認した。
+- **対策**: 前週JST helper、snapshot付きUUID keyset、総10,000/user20上限、15秒timeout、`id + user_id` cleanup、coin exact count、固定AppError、user隔離503を実装する。Topic/tagは置換補助に限定し、`(week,user)` outbox/ledgerの後続stacked PRを本PRのmerge前必須依存とする。
+- **教訓**: 無制限fan-outはsnapshot・keyset・総/所有者上限・timeoutで封じ、既存不正行は所有権条件付きcleanupで隔離する。部分成功の非2xxは必要だがexactly-onceではなく、永続outboxなしに解決扱いしない。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
