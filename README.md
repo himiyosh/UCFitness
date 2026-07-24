@@ -668,7 +668,7 @@ npm run dev
 |---|---|
 | `npm run dev` | 開発サーバー起動 (ポート 3000) |
 | `npm run build` | プロダクションビルド |
-| `npm run pages:build` | Cloudflare Pages ビルド |
+| `npm run pages:build` | Cloudflare Pages ビルド + Worker 2.8 MiB budget検証 |
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
 | `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
@@ -687,6 +687,8 @@ npm run dev
 ### Client bundle budget
 
 - `npm run build` のroute表で、全ページのFirst Load JSを200KB未満に保つ
+- `npm run pages:build`でWorker moduleのgzip推定合計を2.8 MiB以下に保ち、Cloudflare無料枠3 MiBへ十分な余裕を残す
+- favicon / Apple Touch Iconは`public/`の静的PNGを正本とし、metadata routeは`force-dynamic`の307で参照する。`next/og`のresvg WASMをWorkerへ同梱せず、Pages静的化でredirect statusを失わない
 - Client Componentと共有するmoduleからSupabase等のserver-only依存を静的importしない
 - Recharts、下部チャット、ギア等の非critical UIはClient境界内の`next/dynamic`とviewport判定で遅延し、loading名、`aria-busy`、低減モーション、JS無効時の主要情報を維持する
 - 2026-07-18のF020実測: wallet 260→141KB、group detail 207→152KB、leaderboard 198→146KB。遅延chunkの存在と初期route manifestからの分離も同じproduction buildで確認した
