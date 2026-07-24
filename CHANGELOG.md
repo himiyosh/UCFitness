@@ -13,7 +13,7 @@ UCFitness の主な変更をこのファイルに記録します。
 
 ### 品質
 - 375px/1280pxで報酬reload retry、gear loaded/fallback/A-B両計測、Toast閉鎖、AutoSync遮断、横overflow、44pxを検証するPlaywright回帰テストを追加
-- production auditを再調査し、取得不能なNext/Auth patchとprovenance違反lockを採用せず、互換版公開待ちblockerとして分離
+- Next.js 15.5.21、NextAuth 5.0.0-beta.32、sharp 0.35.3、PostCSS 8.5.18へ互換更新し、production auditのhigh/criticalを0件化
 
 ## 2026-07-16 - 認証後体験と品質基盤の正本統合
 
