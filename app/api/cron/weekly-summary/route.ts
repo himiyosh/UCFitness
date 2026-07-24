@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 
 import { sendWebPushNotifications } from '@/lib/api/web-push';
 import { AppError, reportError } from '@/lib/errors';
-import { getJSTDateString } from '@/lib/date-utils';
 import {
     weeklySummaryTitle,
     formatWeeklySummaryBody,
@@ -12,6 +11,7 @@ import {
 import {
     addWeeklyMetric,
     failWeekly,
+    getPreviousWeekRange,
     loadUserWeeklySummary,
     loadWeeklySubscriptionRows,
     loadWeeklyUserContexts,
@@ -20,9 +20,7 @@ import {
     weeklyFailureCategory,
 } from '@/lib/services/weekly-summary';
 
-import type { PreviousJSTWeekRange, WeeklyFailure } from '@/lib/services/weekly-summary';
-
-export type { PreviousJSTWeekRange } from '@/lib/services/weekly-summary';
+import type { WeeklyFailure } from '@/lib/services/weekly-summary';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,28 +102,4 @@ export async function GET(request: Request): Promise<NextResponse> {
         reportFailure('cron/weekly-summary', category === 'unexpected' ? stage : category);
         return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
     }
-}
-
-// ============================================
-// ヘルパー関数
-// ============================================
-
-export function getPreviousWeekRange(date: Date = new Date()): PreviousJSTWeekRange {
-    const today = getJSTDateString(date);
-    const todayDate = new Date(`${today}T00:00:00Z`);
-    const utcDay = todayDate.getUTCDay();
-    const daysSinceMonday = (utcDay + 6) % 7;
-    const prevMonday = new Date(todayDate);
-    prevMonday.setUTCDate(todayDate.getUTCDate() - daysSinceMonday - 7);
-    const prevSunday = new Date(prevMonday);
-    prevSunday.setUTCDate(prevMonday.getUTCDate() + 6);
-    const nextMonday = new Date(prevMonday);
-    nextMonday.setUTCDate(prevMonday.getUTCDate() + 7);
-    const weekStart = prevMonday.toISOString().split('T')[0];
-    const weekEnd = prevSunday.toISOString().split('T')[0];
-    const nextWeekStart = nextMonday.toISOString().split('T')[0];
-    return { weekStart, weekEnd,
-        startUtc: new Date(`${weekStart}T00:00:00+09:00`).toISOString(),
-        endUtcExclusive: new Date(`${nextWeekStart}T00:00:00+09:00`).toISOString(),
-    };
 }
