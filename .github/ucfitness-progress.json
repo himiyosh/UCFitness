@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-24T12:00:00Z",
+  "lastUpdated": "2026-07-24T16:02:00Z",
   "lastAgent": "UCFitnessAgent (Dashboard UX + Hallmark + QA + Self-Critique)",
-  "lastCommit": "3e39f4482b58659e0fe2e23c29cd9bfe4a585a5f",
+  "lastCommit": "4bc79fbb7e8369c33d1a9871fbbaef4c0ca8251c",
   "lastBranch": "himiyosh-miniature-train",
   "promptVersion": "2.0.1-rule-enforcement",
   "summary": "Dashboard UXを独立QA 2系統で再監査し全957テストをPASS。production auditは取得可能な互換patchがなく、安全なlockを維持して公開待ちblockerへ分離。保護済み件数は9/25据え置き。",
@@ -13,7 +13,7 @@
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-24T12:00:00Z"
+    "lastVerified": "2026-07-24T16:02:00Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1353,7 +1353,7 @@
     {"date":"2026-07-24","agent":"UCFitnessAgent (Independent Review + QA + Self-Critique)","action":"PR #295のbonus-only retry、loaded-state E2E、affiliate A/B表示/計測一致を修正し、Toast 44pxを含む決定的browser回帰へ強化した。","commit":"c46e5a08b7c1b9e782a00af818103f1493bd8e48","filesChanged":["DailyMissions","TrendingGear","AffiliateLink","LoginBonusToast","dashboard E2E","mission API test","README/CHANGELOG"]},
     {"date":"2026-07-24","agent":"UCFitnessAgent (Independent Child QA + Accessibility + Playwright)","action":"別Copilot QA 2セッションの指摘を反映し、報酬retry永続化、A/B両variant、AutoSync遮断、Challenges/Following retry focus、i18n fallbackを追加検証した。","commit":"1408d084bfc3ca1f9fa12de12e705148bfb1f728","filesChanged":["DailyMissions","DashboardChallenges","DashboardFollowing","TrendingGear","LoginBonusToast","dashboard E2E","ja/en","README/CHANGELOG"]},
     {"date":"2026-07-24","agent":"UCFitnessAgent (Keyboard Race Review + Self-Critique)","action":"ja/en実ブラウザでrequestAnimationFrame焦点復帰の競合を検出し、見出しcallback refでDOM再マウント時に確実にfocusするよう修正した。","commit":"3e39f4482b58659e0fe2e23c29cd9bfe4a585a5f","filesChanged":["DashboardChallenges","DashboardFollowing"]},
-    {"date":"2026-07-25","agent":"UCFitnessAgent (Dependency Security Review)","action":"Next/Auth/sharp advisoryを再調査し、互換patch未公開・取得不能とlock provenance違反を確認。manifest/lockを変更せず公開待ちblockerへ分離した。","commit":"pending","filesChanged":["CHANGELOG.md",".github/copilot-instructions.md",".github/ucfitness-progress.json"]}
+    {"date":"2026-07-25","agent":"UCFitnessAgent (Dependency Security Review)","action":"Next/Auth/sharp advisoryを再調査し、互換patch未公開・取得不能とlock provenance違反を確認。manifest/lockを変更せず公開待ちblockerへ分離した。","commit":"4bc79fbb7e8369c33d1a9871fbbaef4c0ca8251c","filesChanged":["CHANGELOG.md",".github/copilot-instructions.md",".github/ucfitness-progress.json"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
