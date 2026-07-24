@@ -103,9 +103,7 @@ $preconditions$;
 CREATE FUNCTION public.delete_push_subscription_if_unchanged(
     p_id uuid, p_user_id uuid, p_endpoint text, p_p256dh text, p_auth text, p_user_agent text, p_created_at timestamptz
 ) RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $function$
 DECLARE observed_row public.push_subscriptions%ROWTYPE;
 BEGIN
