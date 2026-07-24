@@ -1,6 +1,5 @@
 BEGIN; SET LOCAL search_path = '';
-DO $preconditions$
-DECLARE
+DO $preconditions$ DECLARE
     target_table regclass := pg_catalog.to_regclass('public.push_subscriptions'); users_table regclass := pg_catalog.to_regclass('public.users');
     actual_columns text[]; actual_defaults text[];
     select_columns constant text[] := ARRAY['id', 'user_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at'];
