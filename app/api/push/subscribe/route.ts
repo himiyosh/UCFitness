@@ -23,6 +23,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
+function isStoredPushSubscription(value: unknown): value is { id: string; endpoint: string; p256dh: string; auth: string; user_agent: string | null; created_at: string } {
+    return isRecord(value) && typeof value.id === 'string' && typeof value.endpoint === 'string' && typeof value.p256dh === 'string' && typeof value.auth === 'string' && (value.user_agent === null || typeof value.user_agent === 'string') && typeof value.created_at === 'string' && Number.isFinite(Date.parse(value.created_at));
+}
+
 function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionRequest {
     if (!isRecord(value) || !isRecord(value.keys)) return false;
     return isAllowedPushEndpoint(value.endpoint)
@@ -46,22 +50,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         const userId = session.user.id;
         const userAgent = request.headers.get('user-agent');
-        const { data: currentSubscription, error: upsertError } = await supabaseAdmin
-            .from('push_subscriptions')
-            .upsert({
-                user_id: userId,
-                endpoint: subscription.endpoint,
-                p256dh: subscription.keys.p256dh,
-                auth: subscription.keys.auth,
-                user_agent: userAgent,
-                created_at: new Date().toISOString(),
-            }, { onConflict: 'user_id, endpoint' })
-            .select('id, endpoint, p256dh, auth, user_agent, created_at')
-            .single();
-
-        if (upsertError || !currentSubscription) {
-            reportError('push/subscribe:save', upsertError, { userId });
-            return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });
+        const { data: claimedSubscriptions, error: claimError } = await supabaseAdmin.rpc(
+            'claim_push_subscription_endpoint',
+            { p_user_id: userId, p_endpoint: subscription.endpoint, p_p256dh: subscription.keys.p256dh, p_auth: subscription.keys.auth, p_user_agent: userAgent },
+        );
+        const currentSubscription = Array.isArray(claimedSubscriptions) && claimedSubscriptions.length === 1 && isStoredPushSubscription(claimedSubscriptions[0]) ? claimedSubscriptions[0] : null;
+        if (claimError || !currentSubscription) {
+            const limitReached = isRecord(claimError) && claimError.code === 'P0001';
+            if (!limitReached) reportError('push/subscribe:claim', claimError ?? new Error('Push subscription claim returned invalid data'), { userId });
+            return NextResponse.json({ error: limitReached ? 'Push subscription limit reached' : 'Failed to save subscription' }, { status: limitReached ? 409 : 500 });
         }
 
         const { data: existingSubscriptions, error: listError } = await supabaseAdmin

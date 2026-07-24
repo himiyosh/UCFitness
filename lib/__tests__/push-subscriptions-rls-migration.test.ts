@@ -6,9 +6,7 @@ import { describe, expect, it } from 'vitest';
 const readRepositoryFile = (path: string): string =>
     readFileSync(join(process.cwd(), path), 'utf8');
 
-const migration = readRepositoryFile(
-    'migrations/20260720_harden_push_subscriptions_rls.sql',
-);
+const migration = ['migrations/20260720_harden_push_subscriptions_rls.sql', 'migrations/20260725_claim_push_subscription_endpoint.sql'].map(readRepositoryFile).join('\n');
 const phaseOneMigration = readRepositoryFile(
     'migrations/20260720_harden_api_keys_rls.sql',
 );
@@ -101,8 +99,7 @@ describe('F016 push_subscriptions RLS migration', () => {
 
     it('全CRUDがsupabaseAdmin経由でbrowserはAPIだけを呼ぶ', () => {
         expect(subscribeRoute).toContain("import { supabaseAdmin } from '@/lib/supabase'");
-        expect(subscribeRoute).toContain(".from('push_subscriptions')");
-        expect(subscribeRoute).toContain('.upsert({');
+        expect(subscribeRoute).toContain(".from('push_subscriptions')"); expect(subscribeRoute).toContain('claim_push_subscription_endpoint'); expect(subscribeRoute).not.toContain('.upsert({'); expect(migration).toContain('CREATE FUNCTION public.claim_push_subscription_endpoint'); expect(migration).toContain('pg_advisory_xact_lock'); expect(migration).toContain('v_raw_count >= 20'); expect(migration).toContain('FOR UPDATE'); expect(migration).toContain('REVOKE ALL ON FUNCTION public.claim_push_subscription_endpoint'); expect(migration).toContain('GRANT EXECUTE ON FUNCTION public.claim_push_subscription_endpoint');
         expect(subscribeRoute).toContain('.delete()');
         expect(deliverySources.every((source) =>
             source.includes(".from('push_subscriptions')")
@@ -112,6 +109,7 @@ describe('F016 push_subscriptions RLS migration', () => {
             && !source.includes(".from('push_subscriptions')")
             && !source.includes('@/lib/supabase'))).toBe(true);
     });
+    it('endpoint claim swaps are serialized before user rows are locked', () => expect(migration).toContain("hashtextextended('push-subscription-claim', 0)"));
 
     it('F001を変更せずF016をin-progressに維持する', () => {
         const ledger = readRepositoryFile('.github/ucfitness-features.json');

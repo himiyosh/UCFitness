@@ -1549,7 +1549,7 @@ export const runtime = "edge";
 
 - **事象**: 週次通知でJST/UTCがずれ、購読/端末fan-outとcoin取得が無上限/1000件cutoff、不正legacy鍵が全体停止、raw invalid 21件がuser上限を迂回した。複数PostgREST requestのcreated_at/keyset走査も、再購読updateや同値timestamp insertに対する同一snapshotを保証できなかった。
 - **根本原因**: identity直後のraw count、calendar round-trip、実abort、exact count、row-version CAS、再試行冪等性を1つの契約として設計せず、複数statementのfilterやTopic/tagを永続整合性の代替と誤認した。
-- **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。raw cap validator・WebCrypto鍵検証・active20/15秒送信境界と週次固有JST/coin処理を維持する。#300は新規weekly legacy-invalid cleanupを追加せずinvalid userを隔離する。main既存の404/410 `user_id + endpoint` cleanupは非CASで未解決のため、outbox/ledgerとDB lock下row-version CAS cleanupの2 stacked PRをmerge前必須依存とする。
+- **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。raw cap validator・WebCrypto鍵検証・active20/15秒送信境界と週次固有JST/coin処理を維持する。#300は新規weekly legacy-invalid cleanupを追加せずinvalid userを隔離し、endpoint ownership transferをraw20の`claim_push_subscription_endpoint` transaction RPCへ限定する。main既存の404/410 `user_id + endpoint` cleanupは非CASで未解決のため、outbox/ledgerとDB lock下row-version CAS cleanupの2 stacked PRと同じmerge前必須blockerとする。
 - **教訓**: capはvalidation前のraw identity単位で数え、timeoutは実signal abort、外部countは明示nullを保持して検証する。PostgRESTの複数requestを同一snapshotと称さず、900件超の将来拡張はqueueまたはtransactional RPCで行う。並行更新行の削除はDB lock付きCASがない間は安全と称さない。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
 
 ### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
