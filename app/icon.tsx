@@ -1,66 +1,20 @@
-import { ImageResponse } from 'next/og';
+export const runtime = 'edge';
 
-// Image metadata — ブラウザタブ用32×32ファビコン
+export const dynamic = 'force-dynamic';
+
+// Image metadata — ブラウザタブ用アイコン
 export const size = {
-    width: 32,
-    height: 32,
+    width: 192,
+    height: 192,
 };
 export const contentType = 'image/png';
 
-// ファビコン生成 — レインボーボーダー＋3色グラデ＋ガラス＋塗りつぶし稲妻
-export default function Icon() {
-    return new ImageResponse(
-        (
-            <div
-                style={{
-                    width: '32px',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #34D399 0%, #A5F3FC 100%)',
-                    borderRadius: '8px',
-                }}
-            >
-                {/* 内側: グラデーション背景 + ガラス + 稲妻 */}
-                <div
-                    style={{
-                        width: '18px',
-                        height: '18px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #7C3AED 100%)',
-                        borderRadius: '4px',
-                        position: 'relative',
-                    }}
-                >
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '18px',
-                            height: '9px',
-                            background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
-                            borderRadius: '4px 4px 0 0',
-                        }}
-                    />
-                    <svg viewBox="0 0 24 24" width="10" height="10">
-                        <path
-                            d="M13.5 2.5L7 13h4.5L9 21.5l8.5-11h-4.5z"
-                            fill="white"
-                            stroke="white"
-                            strokeWidth="0.8"
-                            strokeLinejoin="round"
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                </div>
-            </div>
-        ),
-        {
-            ...size,
-        }
-    );
+// 静的PNGを正本にして、Edge Workerへresvg WASMを同梱しない。
+export default function Icon(): Response {
+    return new Response(null, {
+        status: 307,
+        headers: {
+            location: '/icon-192.png',
+        },
+    });
 }
