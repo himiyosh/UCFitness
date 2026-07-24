@@ -153,7 +153,6 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(subscribeRoute).not.toContain(".in('id', staleIds)");
         expect(casMigration).not.toMatch(/auth\.users|CREATE\s+POLICY/i);
     });
-
     it('CAS runtime jobが固定imageとloopback test-only commandだけを使用する', () => {
         expect(packageManifest).toContain('"test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts"');
         expect(runtimeHarness).toContain("join(process.cwd(), 'migrations/20260725_delete_push_subscription_if_unchanged.sql'), 'utf8'");
