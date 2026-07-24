@@ -8,6 +8,7 @@ if (!connectionString || process.env.PUSH_CAS_POSTGRES_TEST_ONLY !== '1') {
 }
 const adminUrl = new URL(connectionString);
 if (!['postgres:', 'postgresql:'].includes(adminUrl.protocol)
+    || adminUrl.search !== '' || adminUrl.hash !== ''
     || !['127.0.0.1', 'localhost', '[::1]'].includes(adminUrl.hostname)) {
     throw new Error('PostgreSQL runtime verification only accepts a loopback database');
 }
@@ -18,45 +19,33 @@ const casMigration = readFileSync(
 const rollbackSql = 'BEGIN; REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz); COMMIT;';
 const writeColumns = 'user_id, endpoint, p256dh, auth, user_agent, created_at';
 const functionCall = 'SELECT public.delete_push_subscription_if_unchanged($1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::text, $7::timestamptz) AS deleted';
-const USER_A = '10000000-0000-4000-8000-000000000001';
-const USER_B = '10000000-0000-4000-8000-000000000002';
+const USER_A = '10000000-0000-4000-8000-000000000001', USER_B = '10000000-0000-4000-8000-000000000002';
 const deniedRoles: Array<'anon' | 'authenticated'> = ['anon', 'authenticated'];
 let databaseSequence = 0;
 let activeCase = 'bootstrap';
 
 interface PgFailure { code?: string; message?: string }
 interface FailureFixture { name: string; sql: string; code: string; marker: string }
-interface SubscriptionRow extends QueryResultRow {
-    id: string; user_id: string; endpoint: string; p256dh: string; auth: string; user_agent: string | null; created_at: Date | null;
-}
+interface SubscriptionRow extends QueryResultRow { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; user_agent: string | null; created_at: Date | null }
 
 function pgFailure(error: unknown): PgFailure {
     if (typeof error !== 'object' || error === null) return {};
     const code = Reflect.get(error, 'code');
     const message = Reflect.get(error, 'message');
-    return { code: typeof code === 'string' ? code : undefined,
-        message: typeof message === 'string' ? message : undefined };
+    return { code: typeof code === 'string' ? code : undefined, message: typeof message === 'string' ? message : undefined };
 }
 
 function databaseUrl(database: string): string { const url = new URL(adminUrl); url.pathname = `/${database}`; return url.toString() }
-function quoteIdentifier(value: string): string {
-    assert.match(value, /^[a-z0-9_]+$/);
-    return `"${value}"`;
-}
+function quoteIdentifier(value: string): string { assert.match(value, /^[a-z0-9_]+$/); return `"${value}"` }
 async function connect(database: string): Promise<Client> {
-    const client = new Client({
-        connectionString: databaseUrl(database),
-        connectionTimeoutMillis: 5_000,
-        application_name: 'ucfitness_push_cas_runtime',
-    });
+    const client = new Client({ connectionString: databaseUrl(database), connectionTimeoutMillis: 5_000,
+        application_name: 'ucfitness_push_cas_runtime' });
     await client.connect();
     await client.query(
         "SET statement_timeout = '8s'; SET lock_timeout = '6s'; SET allow_system_table_mods = on");
     return client;
 }
-async function one<T extends QueryResultRow>(
-    client: Client, text: string, values: unknown[] = [],
-): Promise<T> {
+async function one<T extends QueryResultRow>(client: Client, text: string, values: unknown[] = []): Promise<T> {
     const result = await client.query<T>(text, values);
     assert.equal(result.rowCount, 1);
     const row = result.rows[0];
@@ -79,9 +68,7 @@ async function prepareDatabase(client: Client): Promise<void> {
     `);
     await client.query(hardeningMigration);
 }
-async function withFreshDatabase(
-    admin: Client, test: (client: Client, database: string) => Promise<void>,
-): Promise<void> {
+async function withFreshDatabase(admin: Client, test: (client: Client, database: string) => Promise<void>): Promise<void> {
     databaseSequence += 1;
     const database = `ucfitness_push_cas_${process.pid}_${databaseSequence}`;
     await admin.query(`CREATE DATABASE ${quoteIdentifier(database)} TEMPLATE template0 ENCODING 'UTF8'`);
@@ -363,6 +350,7 @@ const negativeFixtures: FailureFixture[] = [
     { name: 'created-at-default', sql: "ALTER TABLE public.push_subscriptions ALTER created_at SET DEFAULT '2000-01-01T00:00:00Z'::timestamptz", code: 'P0001', marker: 'LL080: push subscription columns or defaults changed' },
     { name: 'update-only', sql: `REVOKE INSERT (${writeColumns}) ON public.push_subscriptions FROM service_role`, code: 'P0001', marker: 'LL080: push subscription ACL changed' },
     { name: 'insert-only', sql: `REVOKE UPDATE (${writeColumns}) ON public.push_subscriptions FROM service_role`, code: 'P0001', marker: 'LL080: push subscription ACL changed' },
+    { name: 'reversed-unique-order', sql: 'ALTER TABLE public.push_subscriptions DROP CONSTRAINT push_subscriptions_user_id_endpoint_key; ALTER TABLE public.push_subscriptions ADD CONSTRAINT push_subscriptions_user_id_endpoint_key UNIQUE (endpoint, user_id)', code: 'P0001', marker: 'LL080: push subscription keys or public.users FK changed' },
     { name: 'deferrable-non-immediate-unique', sql: 'ALTER TABLE public.push_subscriptions DROP CONSTRAINT push_subscriptions_user_id_endpoint_key; ALTER TABLE public.push_subscriptions ADD CONSTRAINT push_subscriptions_user_id_endpoint_key UNIQUE (user_id, endpoint) DEFERRABLE INITIALLY IMMEDIATE', code: 'P0001', marker: 'LL080: push subscription keys or public.users FK changed' },
     { name: 'invalid-index', sql: "UPDATE pg_catalog.pg_index SET indisvalid = false WHERE indexrelid = (SELECT conindid FROM pg_catalog.pg_constraint WHERE conrelid = 'public.push_subscriptions'::regclass AND contype = 'u')", code: 'P0001', marker: 'LL080: push subscription keys or public.users FK changed' },
     { name: 'not-ready-index', sql: "UPDATE pg_catalog.pg_index SET indisready = false WHERE indexrelid = (SELECT conindid FROM pg_catalog.pg_constraint WHERE conrelid = 'public.push_subscriptions'::regclass AND contype = 'u')", code: 'P0001', marker: 'LL080: push subscription keys or public.users FK changed' },

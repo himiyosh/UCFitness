@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -158,12 +159,23 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(runtimeHarness).toContain("join(process.cwd(), 'migrations/20260725_delete_push_subscription_if_unchanged.sql'), 'utf8'");
         expect(runtimeHarness).toContain("process.env.PUSH_CAS_POSTGRES_TEST_ONLY !== '1'");
         expect(runtimeHarness).toContain("['127.0.0.1', 'localhost', '[::1]']");
+        expect(runtimeHarness).toContain("adminUrl.search !== ''");
         expect(runtimeHarness).toContain('SET allow_system_table_mods = on');
         expect(validateWorkflow).toContain('postgres:16.13-bookworm@sha256:472efd9a66f2b2f1a5aeb18b28de74332e6ef88c2b93a1a5d812fb6db67a5f60');
         expect(validateWorkflow).toContain('"127.0.0.1:5432:5432"');
         expect(validateWorkflow).toContain('PUSH_CAS_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres');
         expect(validateWorkflow).toContain('run: npm run test:postgres:push-cas');
-        expect(validateWorkflow).not.toMatch(/uses:\s+actions\/(?:checkout|setup-node)@v\d/);
+        expect(validateWorkflow.match(/uses:\s+\S+@[0-9a-f]{40}\s+#/g)).toHaveLength(4);
+        expect(validateWorkflow.match(/uses:/g)).toHaveLength(4);
+    });
+    it('CAS runtime harnessがquery host overrideを接続前に拒否する', () => {
+        const probe = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/test-push-cas-postgres.ts'], {
+            encoding: 'utf8', env: { ...process.env, PUSH_CAS_POSTGRES_TEST_ONLY: '1',
+                PUSH_CAS_POSTGRES_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/postgres?host=external.invalid' },
+        });
+        expect(probe.status).not.toBe(0);
+        expect(probe.stderr).toContain('only accepts a loopback database');
+        expect(probe.stdout).not.toContain('OK:');
     });
 
     it('F001を変更せずF016をin-progressに維持する', () => {
