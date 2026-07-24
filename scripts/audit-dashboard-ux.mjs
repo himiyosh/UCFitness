@@ -5,10 +5,7 @@ import { chromium } from "playwright";
 const baseUrl = process.env.DASHBOARD_E2E_BASE_URL ?? "http://localhost:3000", storageState = process.env.DASHBOARD_E2E_STORAGE_STATE, secret = process.env.DASHBOARD_E2E_LOCAL_SECRET;
 if (!storageState && !secret) throw new Error("Dashboard E2E auth is required");
 if (storageState) await access(storageState);
-const token = secret ? await encode({
-  token: { id: "11111111-1111-4111-8111-111111111111", sub: "fixture-provider", provider: "fitbit", provider_account_id: "fixture-provider", username: "fixture-runner", name: "Fixture Runner", email: "fixture@example.invalid", language: "ja" },
-  secret, salt: "authjs.session-token", maxAge: 3600,
-}) : null;
+const token = secret ? await encode({ token: { id: "11111111-1111-4111-8111-111111111111", sub: "fixture-provider", provider: "fitbit", provider_account_id: "fixture-provider", username: "fixture-runner", name: "Fixture Runner", email: "fixture@example.invalid", language: "ja" }, secret, salt: "authjs.session-token", maxAge: 3600 }) : null;
 const mission = { id: "mission-1", mission_type: "WALK_100", title: "100 steps", description: "Walk 100 steps", reward_uc: 5, is_completed: true, completed_at: "2026-07-24T00:00:00.000Z" };
 const gear = { asin: "B000000001", title: "Lightweight walking shoes", image_url: "https://images.example.invalid/shoes.jpg", affiliate_link: "https://www.amazon.co.jp/dp/B000000001?tag=ucfitness-22", count: 2, users: [{ username: "walker-one", image: null, comment: "Easy to wear" }] };
 const browser = await chromium.launch({ headless: true });
@@ -21,10 +18,7 @@ try {
     let postCount = 0, imageFailures = 0;
     const analyticsEvents = [];
     await page.route("**/api/user/missions", (route) => {
-      if (route.request().method() === "POST" && ++postCount === 1) return route.fulfill({
-        status: 503, contentType: "application/json",
-        json: { error: "Reward unavailable", code: "MISSION_REWARD_DATABASE_ERROR" },
-      });
+      if (route.request().method() === "POST" && ++postCount === 1) return route.fulfill({ status: 503, contentType: "application/json", json: { error: "Reward unavailable", code: "MISSION_REWARD_DATABASE_ERROR" } });
       return route.fulfill({ contentType: "application/json", json: route.request().method() === "POST"
         ? { success: true, missions: [mission], allCompleted: true, streak: 1, newlyCompleted: 0, bonusAwarded: true, bonusUc: 100 }
         : { missions: postCount ? [mission] : [], date: "2026-07-24", allCompleted: postCount > 0, streak: postCount ? 1 : 0 } });
@@ -60,11 +54,7 @@ try {
     assert.equal(await product.locator(`span.order-${variant === "B" ? "first" : "last"}`).count(), 1);
     const clickRequest = page.waitForRequest((request) => request.url().includes("/api/analytics/affiliate") && request.postDataJSON().event === "click");
     await Promise.all([clickRequest, product.click()]);
-    assert.deepEqual(analyticsEvents.find((event) => event.event === "click"), {
-      schema: 1, event: "click", experiment: "f008_c3_v1",
-      positionVariant: variant, copyVariant: variant, surface: "dashboard",
-      targetType: "product", targetId: "B000000001",
-    });
+    assert.deepEqual(analyticsEvents.find((event) => event.event === "click"), { schema: 1, event: "click", experiment: "f008_c3_v1", positionVariant: variant, copyVariant: variant, surface: "dashboard", targetType: "product", targetId: "B000000001" });
     assert.equal(imageFailures, 4);
     const controls = page.locator(".home-mission-module button,.trending-gear-module button,.trending-gear-module a[href]");
     for (const control of await controls.evaluateAll((elements) => elements.map((element) => ({ label: element.getAttribute("aria-label") ?? element.textContent?.trim(), box: element.getBoundingClientRect() })))) {
