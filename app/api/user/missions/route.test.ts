@@ -5,12 +5,18 @@ const mocks = vi.hoisted(() => ({
     creditBalance: vi.fn(),
     dailyMissionsOrder: vi.fn(),
     from: vi.fn(),
+    missionInsertSelect: vi.fn(),
     missionUpdateResult: vi.fn(),
+    recentStepsLt: vi.fn(),
     reportError: vi.fn(),
     stepSingle: vi.fn(),
     streakOrder: vi.fn(),
 }));
 
+const mission = (id: string, type: string, reward: number) => ({
+    id, mission_type: type, title: type, description: type,
+    reward_uc: reward, is_completed: false, completed_at: null,
+});
 vi.mock('@/lib/auth', () => ({
     auth: mocks.auth,
 }));
@@ -56,6 +62,11 @@ describe('/api/user/missions', () => {
             already_processed: false,
         });
         mocks.missionUpdateResult.mockResolvedValue({ error: null });
+        mocks.missionInsertSelect.mockResolvedValue({ data: [], error: null });
+        mocks.recentStepsLt.mockResolvedValue({
+            data: Array.from({ length: 7 }, () => ({ steps: 720 })),
+            error: null,
+        });
         mocks.streakOrder.mockResolvedValue({
             data: [],
             error: null,
@@ -82,6 +93,9 @@ describe('/api/user/missions', () => {
                             }),
                         }),
                     }),
+                    insert: () => ({
+                        select: mocks.missionInsertSelect,
+                    }),
                 };
             }
             if (table === 'daily_steps') {
@@ -90,6 +104,9 @@ describe('/api/user/missions', () => {
                         eq: () => ({
                             eq: () => ({
                                 single: mocks.stepSingle,
+                            }),
+                            gte: () => ({
+                                lt: mocks.recentStepsLt,
                             }),
                         }),
                     }),
@@ -136,6 +153,34 @@ describe('/api/user/missions', () => {
         expect(mocks.reportError).toHaveBeenCalled();
     });
 
+    it('POSTで今日のミッションが空の場合、準備して現在歩数を評価する', async () => {
+        mocks.dailyMissionsOrder.mockResolvedValue({ data: [], error: null });
+        mocks.missionInsertSelect.mockResolvedValue({
+            data: [
+                mission('mission-login', 'LOGIN', 10),
+                mission('mission-100', 'WALK_100', 5),
+                mission('mission-500', 'WALK_500', 10),
+            ],
+            error: null,
+        });
+        mocks.stepSingle.mockResolvedValue({ data: { steps: 720 }, error: null });
+
+        const response = await POST(new Request('http://localhost/api/user/missions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'refresh' }),
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.missions).toHaveLength(3);
+        expect(body.newlyCompleted).toBe(3);
+        expect(body.allCompleted).toBe(true);
+        expect(mocks.recentStepsLt).toHaveBeenCalledTimes(1);
+        expect(mocks.missionUpdateResult).toHaveBeenCalledTimes(3);
+        expect(mocks.creditBalance).toHaveBeenCalledTimes(4);
+    });
+
     it('POSTの報酬台帳書き込みが失敗した場合、完了成功へ偽装しない', async () => {
         mocks.stepSingle.mockResolvedValue({
             data: { steps: 500 },
@@ -159,6 +204,27 @@ describe('/api/user/missions', () => {
         expect(mocks.creditBalance).toHaveBeenCalledTimes(1);
         expect(mocks.missionUpdateResult).not.toHaveBeenCalled();
         expect(mocks.reportError).toHaveBeenCalled();
+    });
+
+    it('POSTでミッション完了済みの場合、ミッションを再付与せずボーナスだけ再試行する', async () => {
+        mocks.dailyMissionsOrder.mockResolvedValue({
+            data: [{ ...mission('mission-1', 'WALK_500', 10), is_completed: true }],
+            error: null,
+        });
+        mocks.stepSingle.mockResolvedValue({ data: { steps: 500 }, error: null });
+
+        const response = await POST(new Request('http://localhost/api/user/missions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'refresh' }),
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.newlyCompleted).toBe(0);
+        expect(body.bonusAwarded).toBe(true);
+        expect(mocks.creditBalance).toHaveBeenCalledTimes(1);
+        expect(mocks.missionUpdateResult).not.toHaveBeenCalled();
     });
 
     it('POSTの全書き込みが成功した場合だけ完了とボーナスを返す', async () => {

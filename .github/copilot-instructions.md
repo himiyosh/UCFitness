@@ -1537,3 +1537,16 @@ export const runtime = "edge";
 - **根本原因**: routeのFirst Load JSだけをF020のbudgetとして監視し、Pages Workerの全moduleとWASMを含むupload sizeを出荷ゲートにしていなかった。
 - **対策**: metadata routeは`force-dynamic`のEdge routeとして既存の静的PNGへredirectし、`next/og`依存を除去する。静的化されたredirectはPages上で200空本文になり得るため使用しない。`npm run pages:build`後に全Worker moduleのgzip推定合計を計測し、2.8 MiBを超えたら失敗させる。
 - **教訓**: Cloudflare Pagesではclient bundleとWorker upload sizeを別々に管理する。固定画像に動的画像生成を使わず、deploy段階の3 MiB制限をCI相当のlocal buildで事前検出する。リファレンス: `app/icon.tsx`, `app/apple-icon.tsx`, `scripts/check-cloudflare-worker-size.mjs`
+
+### LL-074: focus時のスクロールと無制限画像fallbackが隣接操作を無反応にした
+
+- **事象**: Daily Missionsのprepare buttonをPlaywrightで物理クリックするとPOSTが発生せず、Trending Gearでは画像失敗が数万件の再リクエストになった。
+- **根本原因**: buttonの`onFocus`がmousedownとclickの間に`scrollIntoView()`してポインター着地点を別要素へ移し、画像`onError`も失敗するfallback URLを再設定し続けた。
+- **対策**: focus handlerからレイアウト・スクロール副作用を除去し、画像fallbackを1回で打ち切る。回帰テストはDOM上のhandler直接呼び出しでなく物理クリックと失敗画像リクエスト上限を検証する。
+- **教訓**: focusは即時の視覚表示に限定し、スクロール補正が必要ならfocus成立後の別契機で行う。fallbackは必ず最終失敗状態を持つ。リファレンス: `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
+
+### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
+
+- **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
+- **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
+- **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。

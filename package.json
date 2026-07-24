@@ -13,6 +13,7 @@
     "check:i18n": "node scripts/check-i18n-keys.mjs",
     "check:all": "npm run check:rules && npm run check:i18n && npx tsc --noEmit && npm run lint",
     "audit:responsive": "node scripts/audit-responsive.mjs",
+    "test:e2e:dashboard": "node scripts/audit-dashboard-ux.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
@@ -25,8 +26,8 @@
     "@supabase/supabase-js": "^2.90.1",
     "html-to-image": "^1.11.13",
     "jose": "^6.1.3",
-    "next": "^15.5.18",
-    "next-auth": "^5.0.0-beta.30",
+    "next": "^15.5.21",
+    "next-auth": "^5.0.0-beta.32",
     "next-intl": "^4.8.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -45,7 +46,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "dotenv": "^17.2.3",
     "eslint": "^9",
-    "eslint-config-next": "^15.5.18",
+    "eslint-config-next": "^15.5.21",
     "pg": "^8.17.2",
     "playwright": "^1.58.2",
     "tailwindcss": "^4",
@@ -57,7 +58,8 @@
     "cookie": "0.7.2",
     "esbuild": "^0.28.0",
     "miniflare": "^4.20260526.0",
-    "postcss": "^8.5.15",
+    "postcss": "8.5.18",
+    "sharp": "0.35.3",
     "ws": "^8.21.0"
   }
 }
