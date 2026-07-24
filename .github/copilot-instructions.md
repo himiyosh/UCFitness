@@ -1530,3 +1530,8 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+### LL-078: Cron通知の取得境界と送信batchを分離しないと切り捨てと障害偽装が起きる
+- **事象**: 歩数リマインダーが購読をPostgREST既定上限のまま取得し、全ユーザーIDをusers/stepsの単一`.in`へ渡し、DB障害・不正目標・不明言語を既定値へ変換したまま部分失敗でも200を返していた。
+- **根本原因**: 全件取得、依存データ検証、通知送信を別の有界境界として設計せず、OFFSETのstable orderを完全なsnapshot、欠落値を正常な未記録とみなしていた。
+- **対策**: 購読は一意順序・明示上限付きpagination、依存DBは20ユーザーbatch、Pushは検証済みbatchだけに限定し、帰属可能な不正行をユーザー単位で隔離してraw errorを固定categoryへ変換し、後続を継続しつつ失敗ユーザーがいれば5xxにした。
+- **教訓**: stable orderはsnapshotではなく、DB成功時の歩数行欠落だけが未記録0歩である。再試行可能な通知の部分失敗は成功へ丸めず、同一Topic/tagによる置換を前提に非成功を返す。リファレンス: `app/api/cron/step-reminder/route.ts`, `lib/services/step-reminder.ts`

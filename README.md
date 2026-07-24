@@ -78,7 +78,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **同期結果の明示**: `/api/steps/sync` は更新、データなし、再認証待ち、別同期の進行中、報酬処理失敗、利用不能を構造化コードで返す。バッジ・称号・コインのいずれかが失敗した場合は保存済み歩数を保持しつつ同期成功にしない
 - **コイン再計算の原子化**: 未適用の`migrations/20260721_atomic_daily_coin_recalculation.sql`と`migrations/20260721_atomic_historical_coin_backfill.sql`は、既知DDL・RLS・ACL・既存writerのユーザー行ロックをfail-closed検証し、STEPS減額、既存STEPS日の欠落、同一STEPS時のGOAL_BONUS/STREAK_BONUS減額を置換前に拒否する。日次・履歴RPCが入力・削除・再生成するのは歩数由来の`STEPS` / `GOAL_BONUS` / `STREAK_BONUS`だけで、別経路の獲得済み`RANK_BONUS`等を保持したまま全台帳残高を同一transactionで再集計する。日次RPCだけがアプリ接続済みで、履歴RPCのPhase B wiring、実catalog実行、DB適用は未実施
 - **Fitbit一時障害の再試行**: 冪等な歩数GETだけを429・5xx・通信障害で1秒、2秒、4秒後に再試行する。401は既存の再認証経路へ即時返し、回転するrefresh tokenのPOSTは二重実行しない
-- **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
+- **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。歩数リマインダーは購読を`id`の一意順序で最大10,000件までページ取得し（OFFSETはsnapshotではない）、プロフィールとJST当日歩数を20ユーザー単位で検証してから送る。DB・null・不完全行・個別Push失敗は既定目標/言語/0歩へ変換せず、帰属可能な不正行はユーザー単位で隔離して後続ユーザー/batchを継続し、失敗ユーザーがいれば5xxを返す。再試行で成功済み端末へ再送され得るためPush `Topic`とNotification `tag`を`step-reminder`へ揃え、`renotify:false`で同種表示を置換する。通知ベルの集約単位と未読数も一致させる
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
 - **フォロー歩数比較の表示契約**: 日別チャートは記録済み0歩を基準線上の点、未記録を線の切れ目として表示し、tooltipと読み上げ用数値表でも両者を区別する
