@@ -668,9 +668,10 @@ npm run dev
 |---|---|
 | `npm run dev` | 開発サーバー起動 (ポート 3000) |
 | `npm run build` | プロダクションビルド |
-| `npm run pages:build` | Cloudflare Pages ビルド |
+| `npm run pages:build` | Cloudflare Pages ビルド + Worker 2.8 MiB budget検証 |
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
+| `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -686,6 +687,8 @@ npm run dev
 ### Client bundle budget
 
 - `npm run build` のroute表で、全ページのFirst Load JSを200KB未満に保つ
+- `npm run pages:build`でWorker moduleのgzip推定合計を2.8 MiB以下に保ち、Cloudflare無料枠3 MiBへ十分な余裕を残す
+- favicon / Apple Touch Iconは`public/`の静的PNGを正本とし、metadata routeは`force-dynamic`の307で参照する。`next/og`のresvg WASMをWorkerへ同梱せず、Pages静的化でredirect statusを失わない
 - Client Componentと共有するmoduleからSupabase等のserver-only依存を静的importしない
 - Recharts、下部チャット、ギア等の非critical UIはClient境界内の`next/dynamic`とviewport判定で遅延し、loading名、`aria-busy`、低減モーション、JS無効時の主要情報を維持する
 - 2026-07-18のF020実測: wallet 260→141KB、group detail 207→152KB、leaderboard 198→146KB。遅延chunkの存在と初期route manifestからの分離も同じproduction buildで確認した
@@ -703,6 +706,9 @@ npm run pages:build
 
 - すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` が必要
 - `layout.tsx` には不要
+- Next.jsはApp Router/Server Actions修正版15.5.21以上、NextAuthは`@auth/core` 0.41.3を含む5.0.0-beta.32以上を使用する
+- transitive依存は`sharp` 0.35.3、`postcss` 8.5.18へoverrideし、`npm audit --omit=dev --audit-level=high`を0件に保つ。`npm audit fix --force`やmajor downgradeは使用しない
+- `@cloudflare/next-on-pages`のpeer範囲はNext.js 15.5.2までのため警告が出る。15.5.21との互換性は`npm run pages:build`で検証し、adapter移行は別変更として扱う
 
 ## エージェント・プロンプト構成
 
@@ -823,7 +829,7 @@ npm run pages:build
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
 | **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings/Profile/Wallet/Groups状態分離、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期・並行membershipの原子性を統括する |
-| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
+| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.21 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
 | SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
@@ -899,10 +905,14 @@ npm run test:coverage
 RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNAME_JA=ja-user RESPONSIVE_AUDIT_GROUP_ID_JA=ja-group \
 RESPONSIVE_AUDIT_STORAGE_STATE_EN=/path/to/en-state.json RESPONSIVE_AUDIT_USERNAME_EN=en-user RESPONSIVE_AUDIT_GROUP_ID_EN=en-group \
 npm run audit:responsive
+
+# Dashboardのミッション操作・愛用ギア・モバイル操作領域
+DASHBOARD_E2E_STORAGE_STATE=/path/to/ja-state.json npm run test:e2e:dashboard
 ```
 
 - テストフレームワーク: **Vitest**
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
+- Dashboard回帰テストはbonus-only報酬失敗→reload→retry、商品loaded状態、Price/Delivery非表示、有限画像fallback、A/B両treatmentと計測値、LoginBonus閉鎖、AutoSync遮断、375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用

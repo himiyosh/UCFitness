@@ -17,7 +17,7 @@ You are a Next.js 15 App Router specialist for UCFitness. Optimize for Cloudflar
 
 ## Project Baseline
 
-- Next.js version: 15.5.18.
+- Next.js version: 15.5.21.
 - React version: 18.3.1.
 - Runtime target: Cloudflare Pages Edge Runtime.
 - i18n: next-intl with `messages/ja.json` and `messages/en.json`.

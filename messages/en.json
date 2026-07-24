@@ -369,7 +369,8 @@
   "LoginBonus": {
     "title": "Daily Bonus",
     "claimed": "+{amount} UC! (Day {streak})",
-    "streak": "Login Streak: {streak} days"
+    "multiplier": "x{value} bonus",
+    "streak": "{streak}-day login streak"
   },
   "Setup": {
     "displayNameRequired": "Enter a display name",
@@ -1159,7 +1160,12 @@
   },
   "TrendingGear": {
     "title": "Trending Fitness Gear",
-    "subtitle": "Popular picks from the community",
+    "subtitle": "See what more community members use",
+    "loading": "Loading popular community gear",
+    "empty": "Popular items will appear once community members add their favorite gear.",
+    "itemFallback": "Fitness gear",
+    "addGear": "Add your favorite gear",
+    "popularity": "{count, plural, one {# community member uses this} other {# community members use this}}",
     "scrollLeft": "Show previous gear",
     "scrollRight": "Show next gear"
   },
@@ -1562,6 +1568,7 @@
     "prepare": "Prepare today's missions",
     "preparing": "Preparing...",
     "refreshError": "Could not refresh missions. Please try again.",
+    "rewardUnavailable": "Your missions are available, but the reward could not be applied safely. Check again later.",
     "updatedAnnouncement": "{count} missions are ready for today.",
     "bonusAnnouncement": "All missions completed. You earned a {amount} UC bonus.",
     "bonusEarned": "All-clear bonus earned: +{amount} UC",

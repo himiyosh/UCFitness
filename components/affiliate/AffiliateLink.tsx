@@ -10,10 +10,18 @@ import type { AffiliateAssignment, AffiliateEventName, AffiliateSurface, Affilia
 interface AffiliateLinkProps {
   href: string; surface: AffiliateSurface; targetType: AffiliateTargetType; targetId: string;
   className?: string; contentClassName?: string;
+  showMerchantDetails?: boolean;
   children: ReactNode;
 }
 export default function AffiliateLink({
-  href, surface, targetType, targetId, className = '', contentClassName = '', children,
+  href,
+  surface,
+  targetType,
+  targetId,
+  className = '',
+  contentClassName = '',
+  showMerchantDetails = true,
+  children,
 }: AffiliateLinkProps) {
   const t = useTranslations('AffiliateExperiment');
   const linkRef = useRef<HTMLAnchorElement>(null);
@@ -73,9 +81,11 @@ export default function AffiliateLink({
   const copyVariant = assignment?.copyVariant ?? 'A';
   const details = (
     <span className={`${positionVariant === 'B' ? 'order-first mb-2 border-b pb-2' : 'order-last mt-2 border-t pt-2'} grid gap-1 border-[var(--color-border)] text-xs`}>
-      <span className="text-[var(--color-text-muted)]">{t('priceUnknown')}</span>
-      <span className="text-[var(--color-text-muted)]">{t('deliveryUnknown')}</span>
-      <span className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-3 py-2 text-center font-bold text-white">{t(copyVariant === 'A' ? 'ctaDetails' : 'ctaCheck')}</span>
+      {showMerchantDetails && <span className="text-[var(--color-text-muted)]">{t('priceUnknown')}</span>}
+      {showMerchantDetails && <span className="text-[var(--color-text-muted)]">{t('deliveryUnknown')}</span>}
+      <span className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-3 py-2 text-center font-bold text-white">
+        {t(copyVariant === 'A' ? 'ctaDetails' : 'ctaCheck')}
+      </span>
     </span>
   );
   const content = <div className={contentClassName}>{children}</div>;
