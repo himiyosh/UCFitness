@@ -1,6 +1,6 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 
 export interface PushPayload {
     title: string;
@@ -42,6 +42,8 @@ export interface PushDeliverySummary {
     expired: number;
     skippedDuplicates: number;
 }
+export const MAX_PUSH_SUBSCRIPTIONS = 20; export const MAX_TOTAL_PUSH_SUBSCRIPTIONS = 900;
+const PUSH_SEND_TIMEOUT_MS = 15_000; const PUSH_SUBSCRIPTION_QUERY_LIMIT = MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1;
 
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com',
@@ -52,6 +54,7 @@ const PUSH_ENDPOINT_HOSTS = [
 
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const AES_128_GCM_RECORD_SIZE = 4096;
 const P256_PUBLIC_KEY_SIZE = 65;
 const AES_128_GCM_HEADER_SIZE = 21 + P256_PUBLIC_KEY_SIZE;
@@ -76,11 +79,13 @@ export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
     }
 }
 
-export function isValidPushKey(value: unknown, maxLength: number): value is string {
-    return typeof value === 'string'
-        && value.length > 0
-        && value.length <= maxLength
-        && BASE64URL_PATTERN.test(value);
+export function isValidPushKey(
+    value: unknown, maxLength: number, expectedBytes?: number,
+): value is string {
+    const valid = typeof value === 'string' && value.length > 0
+        && value.length <= maxLength && BASE64URL_PATTERN.test(value);
+    if (!valid || expectedBytes === undefined) return valid;
+    try { return base64UrlToUint8Array(value).length === expectedBytes; } catch { return false; }
 }
 
 function base64UrlToUint8Array(base64Url: string): Uint8Array {
@@ -96,6 +101,27 @@ function base64UrlToUint8Array(base64Url: string): Uint8Array {
     }
 
     return output;
+}
+
+export async function isValidPushSubscriptionKeys(p256dh: unknown, auth: unknown): Promise<boolean> {
+    if (!isValidPushKey(p256dh, 256, 65) || !isValidPushKey(auth, 128, 16)) return false;
+    try { await crypto.subtle.importKey('raw', copyToArrayBuffer(base64UrlToUint8Array(p256dh)), { name: 'ECDH', namedCurve: 'P-256' }, false, []); return true; } catch { return false; }
+}
+
+export type PushSubscriptionBoundaryReason = 'query' | 'data' | 'snapshot-cap'; export class PushSubscriptionBoundaryError extends Error { constructor(readonly reason: PushSubscriptionBoundaryReason) { super('Push subscription boundary failed'); this.name = 'PushSubscriptionBoundaryError'; } } export interface PreparedPushSubscriptions { byUser: Map<string, StoredPushSubscriptionData[]>; userIds: string[]; invalidUserIds: string[]; cappedUserIds: string[] }
+function pushBoundaryFail(reason: PushSubscriptionBoundaryReason): never { throw new PushSubscriptionBoundaryError(reason); } function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }
+export async function loadPushSubscriptionSnapshot(): Promise<unknown[]> {
+    let admin: (typeof import('@/lib/supabase'))['supabaseAdmin']; try { admin = (await import('@/lib/supabase')).supabaseAdmin; } catch { pushBoundaryFail('query'); }
+    let result; try { result = await admin.from('push_subscriptions').select('id, user_id, endpoint, p256dh, auth, user_agent, created_at', { count: 'exact' }).order('id', { ascending: true }).limit(PUSH_SUBSCRIPTION_QUERY_LIMIT); } catch { pushBoundaryFail('query'); }
+    if (result.error) pushBoundaryFail('query'); if (!Array.isArray(result.data)) pushBoundaryFail('data');
+    if (typeof result.count !== 'number' || !Number.isSafeInteger(result.count) || result.count < 0 || result.count > MAX_TOTAL_PUSH_SUBSCRIPTIONS || result.count !== result.data.length) pushBoundaryFail('snapshot-cap');
+    return result.data;
+}
+export async function preparePushSubscriptionSnapshot(rows: unknown[]): Promise<PreparedPushSubscriptions> {
+    const byUser = new Map<string, StoredPushSubscriptionData[]>(); const userIds = new Set<string>(); const invalid = new Set<string>(); const capped = new Set<string>(); const counts = new Map<string, number>(); const rowIds = new Set<string>(); const identities: Array<{ row: Record<string, unknown>; id: string; userId: string }> = [];
+    for (const row of rows) { if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id) || typeof row.user_id !== 'string' || !UUID_PATTERN.test(row.user_id) || rowIds.has(row.id)) pushBoundaryFail('data'); rowIds.add(row.id); userIds.add(row.user_id); const count = (counts.get(row.user_id) ?? 0) + 1; counts.set(row.user_id, count); if (count > MAX_PUSH_SUBSCRIPTIONS) capped.add(row.user_id); identities.push({ row, id: row.id, userId: row.user_id }); }
+    for (const { row, id, userId } of identities) { if (capped.has(userId) || invalid.has(userId)) continue; if (!isAllowedPushEndpoint(row.endpoint) || typeof row.p256dh !== 'string' || typeof row.auth !== 'string' || !await isValidPushSubscriptionKeys(row.p256dh, row.auth) || (row.user_agent !== null && typeof row.user_agent !== 'string') || typeof row.created_at !== 'string' || !Number.isFinite(Date.parse(row.created_at))) { invalid.add(userId); byUser.delete(userId); continue; } const subs = byUser.get(userId) ?? []; subs.push({ id, endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth, user_agent: row.user_agent, created_at: row.created_at }); byUser.set(userId, subs); }
+    return { byUser, userIds: Array.from(userIds), invalidUserIds: Array.from(invalid), cappedUserIds: Array.from(capped) };
 }
 
 function uint8ArrayToBase64Url(bytes: Uint8Array): string {
@@ -331,8 +357,7 @@ export async function sendWebPushNotification(
             throw new Error('Invalid push subscription endpoint');
         }
         if (!subscription.keys
-            || !isValidPushKey(subscription.keys.p256dh, 256)
-            || !isValidPushKey(subscription.keys.auth, 128)) {
+            || !await isValidPushSubscriptionKeys(subscription.keys.p256dh, subscription.keys.auth)) {
             throw new Error('Invalid push subscription keys');
         }
 
@@ -347,8 +372,9 @@ export async function sendWebPushNotification(
         let privateKey;
         try {
             privateKey = await importVapidPrivateKey(vapidPublicKey, vapidPrivateKey);
-        } catch (keyError: unknown) {
-            reportError('sendWebPush:keyImport', keyError);
+        } catch {
+            reportError('sendWebPush:keyImport',
+                new AppError('Failed to import VAPID key', 'WEB_PUSH_KEY_IMPORT_FAILED'));
             return { success: false, error: { message: 'Failed to import VAPID key' } };
         }
 
@@ -394,13 +420,15 @@ export async function sendWebPushNotification(
         }
 
         return { success: true, statusCode: response.status };
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+    } catch (cause: unknown) {
+        const timedOut = typeof cause === 'object' && cause !== null && 'name' in cause && cause.name === 'TimeoutError';
+        const error = new AppError(timedOut ? 'Web push delivery timed out' : 'Web push delivery failed',
+            timedOut ? 'WEB_PUSH_TIMEOUT' : 'WEB_PUSH_DELIVERY_FAILED');
         reportError('sendWebPush', error);
         return {
             success: false,
             statusCode: 500,
-            error: { message },
+            error: { message: error.message },
         };
     }
 }
@@ -412,6 +440,19 @@ export async function sendWebPushNotifications(
     signal?: AbortSignal,
 ): Promise<PushDeliverySummary> {
     const activeSubscriptions = compactPushSubscriptions(subscriptions);
+    if (activeSubscriptions.length > MAX_PUSH_SUBSCRIPTIONS) {
+        reportError('sendWebPush:subscriptionLimit', new AppError(
+            'Push subscription limit exceeded', 'WEB_PUSH_SUBSCRIPTION_LIMIT',
+            { count: activeSubscriptions.length }));
+        return { sent: 0, failed: activeSubscriptions.length, expired: 0,
+            skippedDuplicates: subscriptions.length - activeSubscriptions.length };
+    }
+    const timeoutController = new AbortController();
+    const effectiveSignal = signal ?? timeoutController.signal;
+    const timeoutId = signal ? null : setTimeout(
+        () => timeoutController.abort(new DOMException('Web push timed out', 'TimeoutError')),
+        PUSH_SEND_TIMEOUT_MS,
+    );
     const results = await Promise.all(
         activeSubscriptions.map((subscription) =>
             sendWebPushNotification(
@@ -423,9 +464,10 @@ export async function sendWebPushNotifications(
                     },
                 },
                 payload,
-                signal,
+                effectiveSignal,
             )),
     );
+    if (timeoutId !== null) clearTimeout(timeoutId);
     const expiredEndpoints = results
         .map((result, index) => ({ result, endpoint: activeSubscriptions[index]?.endpoint }))
         .filter(({ result, endpoint }) =>
@@ -433,17 +475,9 @@ export async function sendWebPushNotifications(
         .map(({ endpoint }) => endpoint);
 
     if (expiredEndpoints.length > 0) {
-        const { supabaseAdmin } = await import('@/lib/supabase');
-        const { error } = await supabaseAdmin
-            .from('push_subscriptions')
-            .delete()
-            .eq('user_id', userId)
-            .in('endpoint', expiredEndpoints);
-        if (error) {
-            reportError('sendWebPush:pruneExpired', error, {
-                count: expiredEndpoints.length,
-            });
-        }
+        let failed = false;
+        try { const { supabaseAdmin } = await import('@/lib/supabase'); const result = await supabaseAdmin.from('push_subscriptions').delete().eq('user_id', userId).in('endpoint', expiredEndpoints); failed = Boolean(result.error); } catch { failed = true; }
+        if (failed) reportError('sendWebPush:pruneExpired', new AppError('Failed to prune expired push subscriptions', 'WEB_PUSH_PRUNE_FAILED', { count: expiredEndpoints.length }));
     }
 
     const sent = results.filter((result) => result.success).length;

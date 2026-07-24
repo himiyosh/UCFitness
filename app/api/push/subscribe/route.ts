@@ -5,7 +5,7 @@ import { reportError } from '@/lib/errors';
 import {
     findSupersededSubscriptionIds,
     isAllowedPushEndpoint,
-    isValidPushKey,
+    isValidPushSubscriptionKeys,
 } from '@/lib/api/web-push';
 import { supabaseAdmin } from '@/lib/supabase';
 
@@ -26,8 +26,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionRequest {
     if (!isRecord(value) || !isRecord(value.keys)) return false;
     return isAllowedPushEndpoint(value.endpoint)
-        && isValidPushKey(value.keys.p256dh, 256)
-        && isValidPushKey(value.keys.auth, 128);
+        && typeof value.keys.p256dh === 'string'
+        && typeof value.keys.auth === 'string';
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -39,7 +39,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     try {
         const subscription: unknown = await request.json();
-        if (!isPushSubscriptionRequest(subscription)) {
+        if (!isPushSubscriptionRequest(subscription)
+            || !await isValidPushSubscriptionKeys(subscription.keys.p256dh, subscription.keys.auth)) {
             return NextResponse.json({ error: 'Invalid subscription object' }, { status: 400 });
         }
 

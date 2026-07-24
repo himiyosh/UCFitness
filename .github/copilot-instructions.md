@@ -1530,6 +1530,12 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+### LL-077: JST日付とUTC時刻の境界を別々に組み立てると週次集計が9時間ずれる
+- **事象**: 週次通知でJST/UTCがずれ、購読/端末fan-outとcoin取得が無上限/1000件cutoff、不正legacy鍵が全体停止、raw invalid 21件がuser上限を迂回した。複数PostgREST requestのcreated_at/keyset走査も、再購読updateや同値timestamp insertに対する同一snapshotを保証できなかった。
+- **根本原因**: identity直後のraw count、calendar round-trip、実abort、exact count、row-version CAS、再試行冪等性を1つの契約として設計せず、複数statementのfilterやTopic/tagを永続整合性の代替と誤認した。
+- **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。raw cap validator・WebCrypto鍵検証・active20/15秒送信境界と週次固有JST/coin処理を維持する。#300は新規weekly legacy-invalid cleanupを追加せずinvalid userを隔離する。main既存の404/410 `user_id + endpoint` cleanupは非CASで未解決のため、outbox/ledgerとDB lock下row-version CAS cleanupの2 stacked PRをmerge前必須依存とする。
+- **教訓**: capはvalidation前のraw identity単位で数え、timeoutは実signal abort、外部countは明示nullを保持して検証する。PostgRESTの複数requestを同一snapshotと称さず、900件超の将来拡張はqueueまたはtransactional RPCで行う。並行更新行の削除はDB lock付きCASがない間は安全と称さない。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
+
 ### LL-078: Cron通知の取得境界と送信batchを分離しないと切り捨てと障害偽装が起きる
 - **事象**: 歩数リマインダーが購読をPostgREST既定上限のまま取得し、全ユーザーIDをusers/stepsの単一`.in`へ渡し、DB障害・不正目標・不明言語を既定値へ変換したまま部分失敗でも200を返していた。
 - **根本原因**: 全件取得、依存データ検証、通知送信を別の有界境界として設計せず、OFFSETのstable orderを完全なsnapshot、欠落値を正常な未記録とみなしていた。

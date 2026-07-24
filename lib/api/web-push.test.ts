@@ -3,12 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     compactPushSubscriptions,
     findSupersededSubscriptionIds,
+    isValidPushSubscriptionKeys, loadPushSubscriptionSnapshot, MAX_TOTAL_PUSH_SUBSCRIPTIONS,
+    preparePushSubscriptionSnapshot,
     sendWebPushNotification,
+    sendWebPushNotifications,
 } from '@/lib/api/web-push';
 
-vi.mock('@/lib/errors', () => ({
-    reportError: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ from: vi.fn(), prune: vi.fn(), reportError: vi.fn() }));
+vi.mock('@/lib/errors', async () => ({ ...await vi.importActual<typeof import('@/lib/errors')>('@/lib/errors'), reportError: mocks.reportError }));
+vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from } }));
 
 const encoder = new TextEncoder();
 const MAX_ENCRYPTED_PUSH_BODY = 4096;
@@ -149,16 +152,18 @@ async function decryptPayload(
     return JSON.parse(new TextDecoder().decode(plaintext.slice(0, -1))) as Record<string, unknown>;
 }
 
+describe('loadPushSubscriptionSnapshot', () => { const mockSnapshotQuery = (result: { data: unknown; error: unknown; count: unknown }) => { const limit = vi.fn().mockResolvedValue(result); const order = vi.fn(() => ({ limit })); const select = vi.fn(() => ({ order })); mocks.from.mockReturnValue({ select }); return { select, order, limit }; }; beforeEach(() => { vi.clearAllMocks(); }); it.each([0, MAX_TOTAL_PUSH_SUBSCRIPTIONS])('%i件の場合、単一statementの完全snapshotを返す', async (count) => { const rows = Array.from({ length: count }, (_, index) => ({ id: String(index) })); const query = mockSnapshotQuery({ data: rows, error: null, count }); await expect(loadPushSubscriptionSnapshot()).resolves.toEqual(rows); expect(mocks.from).toHaveBeenCalledTimes(1); expect(query.select).toHaveBeenCalledWith('id, user_id, endpoint, p256dh, auth, user_agent, created_at', { count: 'exact' }); expect(query.order).toHaveBeenCalledWith('id', { ascending: true }); expect(query.limit).toHaveBeenCalledWith(MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1); }); it.each([['901件', MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1, MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1], ['count null', null, 0], ['count mismatch', 1, 0], ['count negative', -1, 0], ['count unsafe', Number.MAX_SAFE_INTEGER + 1, 0]])('%sの場合、部分snapshotを返さず固定境界失敗にする', async (_name, count, rowCount) => { mockSnapshotQuery({ data: Array.from({ length: rowCount }, (_, index) => ({ id: String(index) })), error: null, count }); await expect(loadPushSubscriptionSnapshot()).rejects.toMatchObject({ reason: 'snapshot-cap' }); expect(mocks.from).toHaveBeenCalledTimes(1); }); });
 describe('sendWebPushNotification', () => {
     const originalPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     const originalPrivateKey = process.env.VAPID_PRIVATE_KEY;
     const originalSubject = process.env.VAPID_SUBJECT;
 
     beforeEach(async () => {
-        await createVapidEnvironment();
+        vi.clearAllMocks(); mocks.from.mockImplementation(() => ({ delete: () => ({ eq: () => ({ in: mocks.prune }) }) })); await createVapidEnvironment();
     });
 
     afterEach(() => {
+        vi.useRealTimers();
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
         process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = originalPublicKey;
@@ -176,6 +181,8 @@ describe('sendWebPushNotification', () => {
             await crypto.subtle.exportKey('raw', receiverKeys.publicKey),
         );
         const authSecret = crypto.getRandomValues(new Uint8Array(16));
+        expect(await isValidPushSubscriptionKeys(toBase64Url(receiverPublicKey), toBase64Url(authSecret))).toBe(true);
+        const invalid = { id: '10000000-0000-4000-8000-000000000001', user_id: '00000000-0000-4000-8000-000000000001', endpoint: 'https://fcm.googleapis.com/invalid', p256dh: toBase64Url(receiverPublicKey), auth: 'a', user_agent: 'Browser', created_at: '2026-07-01T00:00:00Z' }; const valid = { ...invalid, id: '10000000-0000-4000-8000-000000000002', user_id: '00000000-0000-4000-8000-000000000002', endpoint: 'https://fcm.googleapis.com/valid', auth: toBase64Url(authSecret) }; const invalidRows = Array.from({ length: 21 }, (_, index) => ({ ...invalid, id: `10000000-0000-4000-8001-${String(index + 1).padStart(12, '0')}` })); const prepared = await preparePushSubscriptionSnapshot([...invalidRows, valid]); expect(prepared.cappedUserIds).toEqual([invalid.user_id]); expect(prepared.byUser.get(valid.user_id)).toHaveLength(1); await expect(preparePushSubscriptionSnapshot([invalid, { ...valid, id: invalid.id }])).rejects.toMatchObject({ reason: 'data' });
         const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 201 }));
         vi.stubGlobal('fetch', fetchMock);
 
@@ -219,6 +226,9 @@ describe('sendWebPushNotification', () => {
             locale: 'ja',
             tag: 'ucfitness-badges',
         });
+        const capped = await sendWebPushNotifications('private-user', Array.from({ length: 21 }, (_, index) => ({ endpoint: `https://fcm.googleapis.com/${index}`, p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret), user_agent: `Browser ${index}` })), { title: 'test', body: 'test' }); expect(capped).toMatchObject({ sent: 0, failed: 21 }); expect(fetchMock).toHaveBeenCalledTimes(1);
+        const rawPrune = new Error('private endpoint and user'); mocks.prune.mockRejectedValueOnce(rawPrune); fetchMock.mockResolvedValueOnce(new Response(null, { status: 410 })); await sendWebPushNotifications('private-user', [{ endpoint: 'https://fcm.googleapis.com/private', p256dh: toBase64Url(receiverPublicKey), auth: toBase64Url(authSecret) }], { title: 'test', body: 'test' });
+        const pruneError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(pruneError).not.toBe(rawPrune); expect(pruneError instanceof Error ? pruneError.message : '').toBe('Failed to prune expired push subscriptions'); expect(Reflect.get(pruneError ?? {}, 'cause')).toBeUndefined();
     });
 
     it('AbortSignalをfetchへ渡し、中断時は失敗を返す', async () => {
@@ -226,16 +236,24 @@ describe('sendWebPushNotification', () => {
             { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
         const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey));
         const signal = AbortSignal.abort();
+        const rawError = new DOMException('private endpoint and key', 'AbortError');
         const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
             expect(init?.signal).toBe(signal);
-            throw new DOMException('Aborted', 'AbortError');
+            throw rawError;
         });
         vi.stubGlobal('fetch', fetchMock);
-        const result = await sendWebPushNotification({
-            endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint',
-            keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) },
-        }, { title: 'test', body: 'test' }, signal);
-        expect(result.success).toBe(false);
+        const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) } };
+        const result = await sendWebPushNotification(subscription, { title: 'test', body: 'test' }, signal);
+        expect(result.success).toBe(false); expect(result.error?.message).toBe('Web push delivery failed');
+        const loggedError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
+        vi.useFakeTimers(); let markStarted: (() => void) | undefined; const started = new Promise<void>((resolve) => { markStarted = resolve; });
+        fetchMock.mockImplementationOnce(async (_input, init) => { const timeoutSignal = init?.signal; expect(timeoutSignal).toBeInstanceOf(AbortSignal); markStarted?.(); return await new Promise<Response>((_resolve, reject) => timeoutSignal?.addEventListener('abort', () => reject(timeoutSignal.reason), { once: true })); });
+        const timeoutPromise = sendWebPushNotifications('private-user', [{ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }], { title: 'test', body: 'test' }); await started; await vi.advanceTimersByTimeAsync(15_000); const timeoutResult = await timeoutPromise; const timeoutError = mocks.reportError.mock.calls.at(-1)?.[1];
+        expect(timeoutResult.failed).toBe(1); expect(Reflect.get(timeoutError ?? {}, 'code')).toBe('WEB_PUSH_TIMEOUT'); expect(Reflect.get(timeoutError ?? {}, 'cause')).toBeUndefined();
+        process.env.VAPID_PRIVATE_KEY = 'private-key-sentinel';
+        const keyResult = await sendWebPushNotification({ endpoint: 'https://fcm.googleapis.com/test', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(new Uint8Array(16)) } }, { title: 'test', body: 'test' });
+        const keyError = mocks.reportError.mock.calls.at(-1)?.[1];
+        expect(keyResult.error?.message).toBe('Failed to import VAPID key'); expect(keyError instanceof Error ? keyError.message : '').toBe('Failed to import VAPID key'); expect(Reflect.get(keyError ?? {}, 'cause')).toBeUndefined();
     });
 
     it('payloadが暗号化body上限ちょうどの場合、4096bytes以内で送信する', async () => {
@@ -295,7 +313,7 @@ describe('sendWebPushNotification', () => {
         );
 
         expect(result.success).toBe(false);
-        expect(result.error?.message).toContain('exceeds');
+        expect(result.error?.message).toBe('Web push delivery failed');
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });
