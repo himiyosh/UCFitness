@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import {
     compactPushSubscriptions,
     deletePushSubscriptionIfUnchanged,
@@ -12,8 +12,8 @@ import type { StoredPushSubscriptionData } from '@/lib/api/web-push';
 
 const { mockRpc } = vi.hoisted(() => ({ mockRpc: vi.fn() }));
 
-vi.mock('@/lib/errors', () => ({
-    reportError: vi.fn(),
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/lib/errors')>()), reportError: vi.fn(),
 }));
 vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { rpc: mockRpc } }));
 
@@ -427,14 +427,18 @@ describe('push subscription cleanup CAS', () => {
         const cleanupCall = reportCalls.find(
             ([operation]) => operation === 'pushSubscriptionCleanup:compareAndDelete');
         expect(cleanupCall).toBeDefined();
+        expect(reportCalls).toHaveLength(2); expect(cleanupCall).toHaveLength(2);
         const [operation, cleanupError, cleanupContext] = cleanupCall ?? [];
         expect(operation).toBe('pushSubscriptionCleanup:compareAndDelete');
-        expect(cleanupError).toBeInstanceOf(Error);
-        if (!(cleanupError instanceof Error)) throw new Error('Expected fixed cleanup Error');
-        expect(cleanupError.constructor).toBe(Error);
-        expect(cleanupError).toMatchObject({ name: 'Error', message: 'Push subscription cleanup failed' });
+        expect(cleanupError).toBeInstanceOf(AppError);
+        if (!(cleanupError instanceof AppError)) throw new Error('Expected fixed cleanup AppError');
+        expect(cleanupError.constructor).toBe(AppError);
+        expect(cleanupError).toMatchObject({
+            name: 'AppError', message: 'Push subscription cleanup failed',
+            code: 'PUSH_SUBSCRIPTION_CLEANUP_FAILED',
+        });
         expect(cleanupError).not.toBe(rawRpcError);
-        for (const property of ['cause', 'code', 'context']) expect(property in cleanupError).toBe(false);
+        expect(cleanupError.cause).toBeUndefined(); expect(cleanupError.context).toBeUndefined();
         expect(cleanupContext).toBeUndefined();
         expect(reportCalls.find(([stage]) => stage === 'sendWebPush:pushService')).toEqual(
             ['sendWebPush:pushService', expect.any(Error), { statusCode: 410 }]);
@@ -443,7 +447,8 @@ describe('push subscription cleanup CAS', () => {
             expect(call).not.toContain(rawRpcError); expect(call).not.toContain(rawCause);
             const errorMessage = call[1] instanceof Error ? call[1].message : String(call[1]);
             for (const secret of [sentinel, expired.endpoint, expired.p256dh, expired.auth, userId]) {
-                expect(errorMessage).not.toContain(secret); expect(Object.values(call[2] ?? {})).not.toContain(secret);
+                expect(call[0]).not.toContain(secret); expect(errorMessage).not.toContain(secret);
+                expect(Object.values(call[2] ?? {})).not.toContain(secret);
             }
         }
     });

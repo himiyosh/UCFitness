@@ -1,6 +1,6 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 
 export interface PushPayload {
     title: string;
@@ -327,7 +327,7 @@ export function findSupersededSubscriptionIds(
 
 function reportPushSubscriptionCleanupFailure(): void {
     reportError('pushSubscriptionCleanup:compareAndDelete',
-        new Error('Push subscription cleanup failed'));
+        new AppError('Push subscription cleanup failed', 'PUSH_SUBSCRIPTION_CLEANUP_FAILED'));
 }
 
 export async function deletePushSubscriptionIfUnchanged(

@@ -8,8 +8,8 @@ DECLARE
 BEGIN IF target_table IS NULL OR users_table IS NULL OR
        (SELECT relkind FROM pg_catalog.pg_class WHERE oid = target_table) <> 'r' OR
        (SELECT relnamespace FROM pg_catalog.pg_class WHERE oid = target_table) <> pg_catalog.to_regnamespace('public') THEN
-        RAISE EXCEPTION 'LL080: push subscription schema is unavailable';
-    END IF; LOCK TABLE public.push_subscriptions IN ACCESS EXCLUSIVE MODE;
+        RAISE EXCEPTION 'LL080: push subscription schema is unavailable'; END IF;
+    LOCK TABLE public.push_subscriptions IN ACCESS EXCLUSIVE MODE;
     SELECT pg_catalog.array_agg(pg_catalog.format('%s:%s:%s:%s', attribute.attname,
         pg_catalog.format_type(attribute.atttypid, attribute.atttypmod), attribute.attnotnull::text,
         (attribute.attgenerated = '')::text) ORDER BY attribute.attname),
@@ -26,8 +26,7 @@ BEGIN IF target_table IS NULL OR users_table IS NULL OR
     ]::text[] OR actual_defaults IS DISTINCT FROM ARRAY['auth:<none>', 'created_at:now()',
         'endpoint:<none>', 'id:gen_random_uuid()', 'p256dh:<none>', 'user_agent:<none>',
         'user_id:<none>']::text[] THEN
-        RAISE EXCEPTION 'LL080: push subscription columns or defaults changed';
-    END IF;
+        RAISE EXCEPTION 'LL080: push subscription columns or defaults changed'; END IF;
     IF NOT EXISTS (
         SELECT 1 FROM pg_catalog.pg_constraint
         WHERE conrelid = target_table AND contype = 'p'
@@ -54,8 +53,7 @@ BEGIN IF target_table IS NULL OR users_table IS NULL OR
           AND backing_index.indnkeyatts = 2 AND backing_index.indnatts = 2
           AND backing_index.indpred IS NULL AND backing_index.indexprs IS NULL
     ) THEN
-        RAISE EXCEPTION 'LL080: push subscription keys or public.users FK changed';
-    END IF;
+        RAISE EXCEPTION 'LL080: push subscription keys or public.users FK changed'; END IF;
     IF NOT EXISTS (
         SELECT 1 FROM pg_catalog.pg_class AS relation
         JOIN pg_catalog.pg_roles AS owner ON owner.oid = relation.relowner
@@ -65,8 +63,7 @@ BEGIN IF target_table IS NULL OR users_table IS NULL OR
     ) OR NOT (SELECT relrowsecurity FROM pg_catalog.pg_class WHERE oid = target_table)
        OR (SELECT relforcerowsecurity FROM pg_catalog.pg_class WHERE oid = target_table)
        OR EXISTS (SELECT 1 FROM pg_catalog.pg_policy WHERE polrelid = target_table) THEN
-        RAISE EXCEPTION 'LL080: push subscription owner or RLS state changed';
-    END IF;
+        RAISE EXCEPTION 'LL080: push subscription owner or RLS state changed'; END IF;
     IF EXISTS (
         SELECT 1 FROM pg_catalog.pg_class AS relation
         CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(
@@ -97,8 +94,7 @@ BEGIN IF target_table IS NULL OR users_table IS NULL OR
             expected.column_name, 'INSERT') OR NOT pg_catalog.has_column_privilege(
             'service_role', target_table, expected.column_name, 'UPDATE')
     ) THEN
-        RAISE EXCEPTION 'LL080: push subscription ACL changed';
-    END IF;
+        RAISE EXCEPTION 'LL080: push subscription ACL changed'; END IF;
 END; $preconditions$;
 CREATE FUNCTION public.delete_push_subscription_if_unchanged(
     p_id uuid, p_user_id uuid, p_endpoint text, p_p256dh text, p_auth text, p_user_agent text, p_created_at timestamptz
@@ -112,12 +108,9 @@ BEGIN
     WHERE subscription.id = p_id
     FOR UPDATE;
     IF NOT FOUND THEN RETURN false; END IF;
-    IF observed_row.user_id IS NOT DISTINCT FROM p_user_id
-       AND observed_row.endpoint IS NOT DISTINCT FROM p_endpoint
-       AND observed_row.p256dh IS NOT DISTINCT FROM p_p256dh
-       AND observed_row.auth IS NOT DISTINCT FROM p_auth
-       AND observed_row.user_agent IS NOT DISTINCT FROM p_user_agent
-       AND observed_row.created_at IS NOT DISTINCT FROM p_created_at THEN
+    IF observed_row.user_id IS NOT DISTINCT FROM p_user_id AND observed_row.endpoint IS NOT DISTINCT FROM p_endpoint
+       AND observed_row.p256dh IS NOT DISTINCT FROM p_p256dh AND observed_row.auth IS NOT DISTINCT FROM p_auth
+       AND observed_row.user_agent IS NOT DISTINCT FROM p_user_agent AND observed_row.created_at IS NOT DISTINCT FROM p_created_at THEN
         DELETE FROM public.push_subscriptions AS subscription
         WHERE subscription.id = p_id;
         RETURN FOUND;
@@ -125,12 +118,9 @@ BEGIN
     RETURN false;
 END;
 $function$;
-ALTER FUNCTION public.delete_push_subscription_if_unchanged(
-    uuid, uuid, text, text, text, text, timestamptz) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(
-    uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.delete_push_subscription_if_unchanged(
-    uuid, uuid, text, text, text, text, timestamptz) TO service_role;
+ALTER FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) TO service_role;
 DO $postconditions$
 DECLARE
     function_oid regprocedure :=
@@ -162,8 +152,7 @@ BEGIN
             (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
           )
     ) THEN
-        RAISE EXCEPTION 'LL080: push subscription CAS RPC postcondition failed';
-    END IF;
+        RAISE EXCEPTION 'LL080: push subscription CAS RPC postcondition failed'; END IF;
 END;
 $postconditions$;
 COMMIT;
