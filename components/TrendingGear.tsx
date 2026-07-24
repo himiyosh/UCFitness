@@ -92,7 +92,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
 
     /** タイトルから【】内の装飾テキストを除去して整形 */
     const cleanTitle = useCallback((title: string) =>
-        title.replace(/【.*?】/g, '').trim() || 'Item', []);
+        title.replace(/【.*?】/g, '').trim() || t('itemFallback'), [t]);
 
     if (loading) {
         return (

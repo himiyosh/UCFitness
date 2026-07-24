@@ -81,6 +81,7 @@ export default function LoginBonusToast({ userId }: LoginBonusToastProps) {
                     </p>
                     <p className="text-sm font-semibold text-gray-800">
                         {t('claimed', { amount: amount.toLocaleString(), streak })}
+                        {streak >= 3 ? ` · ${t('multiplier', { value: streak >= 30 ? '3.0' : streak >= 14 ? '2.0' : streak >= 7 ? '1.5' : '1.2' })}` : ''}
                     </p>
                 </div>
 

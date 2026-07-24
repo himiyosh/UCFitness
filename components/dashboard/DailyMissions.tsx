@@ -21,6 +21,7 @@ interface Mission {
 }
 
 type RefreshError = 'reward' | 'generic' | null;
+const REWARD_RETRY_KEY = 'ucfitness:mission-reward-retry';
 
 export default function DailyMissions(): ReactNode {
     const t = useTranslations('Mission');
@@ -58,13 +59,14 @@ export default function DailyMissions(): ReactNode {
 
     useEffect(() => {
         fetchMissions();
+        try { if (sessionStorage.getItem(REWARD_RETRY_KEY)) setRefreshError('reward'); } catch {}
     }, [fetchMissions]);
 
     useEffect(() => {
-        if (!focusHeadingAfterRefresh || missions.length === 0) return;
+        if (!focusHeadingAfterRefresh || isLoading) return;
         missionHeadingRef.current?.focus();
         setFocusHeadingAfterRefresh(false);
-    }, [focusHeadingAfterRefresh, missions.length]);
+    }, [focusHeadingAfterRefresh, isLoading, missions.length]);
 
     // 歩数同期後にミッション再チェック
     const refreshMissions = useCallback(async () => {
@@ -82,7 +84,10 @@ export default function DailyMissions(): ReactNode {
                         ? 'reward'
                         : 'generic',
                 );
+                if (isErrorResponse(result) && result.code === 'MISSION_REWARD_DATABASE_ERROR')
+                    try { sessionStorage.setItem(REWARD_RETRY_KEY, '1'); } catch {}
                 await fetchMissions();
+                setFocusHeadingAfterRefresh(true);
                 return;
             }
 
@@ -91,6 +96,7 @@ export default function DailyMissions(): ReactNode {
             setStreak(typeof result.streak === 'number' ? result.streak : null);
             setStreakUnavailable(Boolean(result.streakUnavailable));
             setRefreshError(null);
+            try { sessionStorage.removeItem(REWARD_RETRY_KEY); } catch { /* Success state is still authoritative. */ }
             setAnnouncement(t('updatedAnnouncement', { count: result.missions.length }));
             setFocusHeadingAfterRefresh(true);
             if (result.allCompleted) {
@@ -138,7 +144,7 @@ export default function DailyMissions(): ReactNode {
                         <h2 className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('dailyMissions')}</h2>
                         <p className="mt-1 text-xs text-[var(--color-text-muted)]" role="alert">{t('loadError')}</p>
                         <button
-                            onClick={fetchMissions}
+                            onClick={async () => { await fetchMissions(); setFocusHeadingAfterRefresh(true); }}
                             className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-primary-strong)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                         >
                             {t('retry')}

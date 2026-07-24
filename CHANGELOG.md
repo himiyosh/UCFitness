@@ -7,12 +7,12 @@ UCFitness の主な変更をこのファイルに記録します。
 ## 2026-07-24 - Dashboard主要操作の回復
 
 ### 修正
-- Daily Missionsのfocus時スクロールで物理クリックが別要素へ着地する問題を修正し、bonus-only報酬障害も成功まで再試行可能に変更
+- Daily Missionsのfocus時スクロールで物理クリックが別要素へ着地する問題を修正し、bonus-only報酬障害をreload後も成功まで再試行可能に変更
 - Trending Fitness GearからPrice/Deliveryを除去し、人気人数とA/B CTAを明確化。画像fallbackループ・全画面reload retry・未表示variant計測も修正
 - ログインボーナスの英語表示と44pxの閉じる操作領域を修正
 
 ### 品質
-- 375px/1280pxで報酬retry、gear loaded/fallback/A-B計測、Toast閉鎖、横overflow、44px操作領域を検証するPlaywright回帰テストを追加
+- 375px/1280pxで報酬reload retry、gear loaded/fallback/A-B両計測、Toast閉鎖、AutoSync遮断、横overflow、44pxを検証するPlaywright回帰テストを追加
 
 ## 2026-07-16 - 認証後体験と品質基盤の正本統合
 

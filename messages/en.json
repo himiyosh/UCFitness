@@ -369,6 +369,7 @@
   "LoginBonus": {
     "title": "Daily Bonus",
     "claimed": "+{amount} UC! (Day {streak})",
+    "multiplier": "x{value} bonus",
     "streak": "{streak}-day login streak"
   },
   "Setup": {
@@ -1162,6 +1163,7 @@
     "subtitle": "See what more community members use",
     "loading": "Loading popular community gear",
     "empty": "Popular items will appear once community members add their favorite gear.",
+    "itemFallback": "Fitness gear",
     "addGear": "Add your favorite gear",
     "popularity": "{count, plural, one {# community member uses this} other {# community members use this}}",
     "scrollLeft": "Show previous gear",
