@@ -9,9 +9,7 @@ import {
     sendWebPushNotifications,
 } from '@/lib/api/web-push';
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), prune: vi.fn(), reportError: vi.fn() }));
-vi.mock('@/lib/errors', async () => ({ ...await vi.importActual<typeof import('@/lib/errors')>('@/lib/errors'), reportError: mocks.reportError }));
-vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from } }));
+const mocks = vi.hoisted(() => ({ from: vi.fn(), prune: vi.fn(), reportError: vi.fn() })); vi.mock('@/lib/errors', async () => ({ ...await vi.importActual<typeof import('@/lib/errors')>('@/lib/errors'), reportError: mocks.reportError })); vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from } }));
 
 const encoder = new TextEncoder();
 const MAX_ENCRYPTED_PUSH_BODY = 4096;
@@ -243,18 +241,11 @@ describe('sendWebPushNotification', () => {
             throw rawError;
         });
         vi.stubGlobal('fetch', fetchMock);
-        const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) } };
-        const result = await sendWebPushNotification(subscription, { title: 'test', body: 'test' }, signal);
-        expect(result.success).toBe(false); expect(result.error?.message).toBe('Web push delivery failed');
-        const loggedError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
-        vi.useFakeTimers(); let markStarted: (() => void) | undefined; const started = new Promise<void>((resolve) => { markStarted = resolve; });
-        fetchMock.mockImplementationOnce(async (_input, init) => { const timeoutSignal = init?.signal; expect(timeoutSignal).toBeInstanceOf(AbortSignal); markStarted?.(); return await new Promise<Response>((_resolve, reject) => timeoutSignal?.addEventListener('abort', () => reject(timeoutSignal.reason), { once: true })); });
-        const timeoutPromise = sendWebPushNotifications('private-user', [{ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }], { title: 'test', body: 'test' }); await started; await vi.advanceTimersByTimeAsync(15_000); const timeoutResult = await timeoutPromise; const timeoutError = mocks.reportError.mock.calls.at(-1)?.[1];
-        expect(timeoutResult.failed).toBe(1); expect(Reflect.get(timeoutError ?? {}, 'code')).toBe('WEB_PUSH_TIMEOUT'); expect(Reflect.get(timeoutError ?? {}, 'cause')).toBeUndefined();
-        process.env.VAPID_PRIVATE_KEY = 'private-key-sentinel';
-        const keyResult = await sendWebPushNotification({ endpoint: 'https://fcm.googleapis.com/test', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(new Uint8Array(16)) } }, { title: 'test', body: 'test' });
-        const keyError = mocks.reportError.mock.calls.at(-1)?.[1];
-        expect(keyResult.error?.message).toBe('Failed to import VAPID key'); expect(keyError instanceof Error ? keyError.message : '').toBe('Failed to import VAPID key'); expect(Reflect.get(keyError ?? {}, 'cause')).toBeUndefined();
+        const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) } }; const result = await sendWebPushNotification(subscription, { title: 'test', body: 'test' }, signal);
+        expect(result.success).toBe(false); expect(result.error?.message).toBe('Web push delivery failed'); const loggedError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
+        vi.useFakeTimers(); let markStarted: (() => void) | undefined; const started = new Promise<void>((resolve) => { markStarted = resolve; }); fetchMock.mockImplementationOnce(async (_input, init) => { const timeoutSignal = init?.signal; expect(timeoutSignal).toBeInstanceOf(AbortSignal); markStarted?.(); return await new Promise<Response>((_resolve, reject) => timeoutSignal?.addEventListener('abort', () => reject(timeoutSignal.reason), { once: true })); });
+        const timeoutPromise = sendWebPushNotifications('private-user', [{ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }], { title: 'test', body: 'test' }); await started; await vi.advanceTimersByTimeAsync(15_000); const timeoutResult = await timeoutPromise; const timeoutError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(timeoutResult.failed).toBe(1); expect(Reflect.get(timeoutError ?? {}, 'code')).toBe('WEB_PUSH_TIMEOUT'); expect(Reflect.get(timeoutError ?? {}, 'cause')).toBeUndefined();
+        process.env.VAPID_PRIVATE_KEY = 'private-key-sentinel'; const keyResult = await sendWebPushNotification({ endpoint: 'https://fcm.googleapis.com/test', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(new Uint8Array(16)) } }, { title: 'test', body: 'test' }); const keyError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(keyResult.error?.message).toBe('Failed to import VAPID key'); expect(keyError instanceof Error ? keyError.message : '').toBe('Failed to import VAPID key'); expect(Reflect.get(keyError ?? {}, 'cause')).toBeUndefined();
     });
 
     it('payloadが暗号化body上限ちょうどの場合、4096bytes以内で送信する', async () => {
