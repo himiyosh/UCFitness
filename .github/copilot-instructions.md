@@ -1549,7 +1549,7 @@ export const runtime = "edge";
 
 - **事象**: 週次通知でJST/UTCがずれ、購読/端末fan-outとcoin取得が無上限/1000件cutoff、不正legacy鍵が全体停止、raw invalid 21件がuser上限を迂回した。複数PostgREST requestのcreated_at/keyset走査も同一snapshotを保証できず、同一Push endpointが複数userへ帰属すると双方へ個人サマリーを送信し得た。
 - **根本原因**: identity直後のraw count、global endpoint所有権、calendar round-trip、実abort、exact count、row-version CAS、再試行冪等性を1つの契約として設計せず、複数statementのfilter、`user_id,endpoint`だけのupsert、Topic/tagを永続整合性の代替と誤認した。
-- **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。第一identity passでallowed endpointのglobal所有権をraw cap・鍵検証より先に走査し、same-user/cross-user重複は関係user全員を隔離、global重複row IDは従来どおり全体data errorとする。#300は新規cleanupを行わず、`(week,user)` outbox/ledger、DB lock下row-version CAS cleanup、endpoint所有権移管とper-user raw20を原子的に保証する`atomic-push-subscription-save` RPC stackの3依存をmerge前必須とする。
+- **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。第一identity passでrequest-relevant URLへ正規化したallowed endpointのglobal所有権をraw cap・鍵検証より先に走査し、same-user/cross-user重複は関係user全員を隔離、global重複row IDは従来どおり全体data errorとする。#300は新規cleanupを行わず、`(week,user)` outbox/ledger、DB lock下row-version CAS cleanup、endpoint所有権移管とper-user raw20を原子的に保証する`atomic-push-subscription-save` RPC stackの3依存をmerge前必須とする。
 - **教訓**: capとendpoint所有権はvalidation前のraw identity単位で検査し、値やuser IDをlog/responseへ出さない。PostgRESTの複数requestを同一snapshotと称さず、900件超はqueue/RPC、永続的なendpoint移管とraw20はDB transaction、並行削除はDB lock付きCASで保証する。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
 
 ### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
