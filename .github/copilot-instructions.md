@@ -1531,8 +1531,29 @@ export const runtime = "edge";
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
 
+### LL-064: 静的アイコンを`next/og`で再生成するとPages Workerの無料枠を超える
+
+- **事象**: `app/icon.tsx`と`app/apple-icon.tsx`が`ImageResponse`を使ったため、既に同じPNGが`public/`にあるにもかかわらずresvg WASM約1.32 MiBをWorkerへ同梱し、gzip推定3.052 MiBでCloudflare無料枠3 MiBのdeployだけが失敗した。
+- **根本原因**: routeのFirst Load JSだけをF020のbudgetとして監視し、Pages Workerの全moduleとWASMを含むupload sizeを出荷ゲートにしていなかった。
+- **対策**: metadata routeは`force-dynamic`のEdge routeとして既存の静的PNGへredirectし、`next/og`依存を除去する。静的化されたredirectはPages上で200空本文になり得るため使用しない。`npm run pages:build`後に全Worker moduleのgzip推定合計を計測し、2.8 MiBを超えたら失敗させる。
+- **教訓**: Cloudflare Pagesではclient bundleとWorker upload sizeを別々に管理する。固定画像に動的画像生成を使わず、deploy段階の3 MiB制限をCI相当のlocal buildで事前検出する。リファレンス: `app/icon.tsx`, `app/apple-icon.tsx`, `scripts/check-cloudflare-worker-size.mjs`
+
+### LL-074: focus時のスクロールと無制限画像fallbackが隣接操作を無反応にした
+
+- **事象**: Daily Missionsのprepare buttonをPlaywrightで物理クリックするとPOSTが発生せず、Trending Gearでは画像失敗が数万件の再リクエストになった。
+- **根本原因**: buttonの`onFocus`がmousedownとclickの間に`scrollIntoView()`してポインター着地点を別要素へ移し、画像`onError`も失敗するfallback URLを再設定し続けた。
+- **対策**: focus handlerからレイアウト・スクロール副作用を除去し、画像fallbackを1回で打ち切る。回帰テストはDOM上のhandler直接呼び出しでなく物理クリックと失敗画像リクエスト上限を検証する。
+- **教訓**: focusは即時の視覚表示に限定し、スクロール補正が必要ならfocus成立後の別契機で行う。fallbackは必ず最終失敗状態を持つ。リファレンス: `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
+
 ### LL-077: JST日付とUTC時刻の境界を別々に組み立てると週次集計が9時間ずれる
+
 - **事象**: 週次通知でJST/UTCがずれ、購読/端末fan-outとcoin取得が無上限/1000件cutoff、不正legacy鍵が全体停止、raw invalid 21件がuser上限を迂回した。複数PostgREST requestのcreated_at/keyset走査も、再購読updateや同値timestamp insertに対する同一snapshotを保証できなかった。
 - **根本原因**: identity直後のraw count、calendar round-trip、実abort、exact count、row-version CAS、再試行冪等性を1つの契約として設計せず、複数statementのfilterやTopic/tagを永続整合性の代替と誤認した。
 - **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。raw cap validator・WebCrypto鍵検証・active20/15秒送信境界と週次固有JST/coin処理を維持する。#300は新規weekly legacy-invalid cleanupを追加せずinvalid userを隔離する。main既存の404/410 `user_id + endpoint` cleanupは非CASで未解決のため、outbox/ledgerとDB lock下row-version CAS cleanupの2 stacked PRをmerge前必須依存とする。
 - **教訓**: capはvalidation前のraw identity単位で数え、timeoutは実signal abort、外部countは明示nullを保持して検証する。PostgRESTの複数requestを同一snapshotと称さず、900件超の将来拡張はqueueまたはtransactional RPCで行う。並行更新行の削除はDB lock付きCASがない間は安全と称さない。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
+
+### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
+
+- **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
+- **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
+- **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
