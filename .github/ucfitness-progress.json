@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-24T01:00:00Z",
+  "lastUpdated": "2026-07-24T12:00:00Z",
   "lastAgent": "UCFitnessAgent (Dashboard UX + Hallmark + QA + Self-Critique)",
-  "lastCommit": "c46e5a08b7c1b9e782a00af818103f1493bd8e48",
+  "lastCommit": "1408d084bfc3ca1f9fa12de12e705148bfb1f728",
   "lastBranch": "himiyosh-miniature-train",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "Dashboard UX監査と独立レビュー3件を反映。bonus-only報酬retry、gear loaded/fallback、表示A/Bと計測一致、Toast閉鎖を375/1280pxで固定し、全957テストとcheck:allをPASS。保護済み件数は9/25据え置き。",
+  "summary": "Dashboard UXを独立QA 2系統で再監査。報酬retryをreload後も保持し、A/B両variant、AutoSync遮断、Toast/gear/focusを375/1280pxで固定。全957テストとcheck:allをPASS。保護済み件数は9/25据え置き。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-24T01:00:00Z"
+    "lastVerified": "2026-07-24T12:00:00Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1350,7 +1350,8 @@
     {"date":"2026-07-21","agent":"UCFitnessAgent (Security + Data Integrity + QA + Self-Critique)","action":"F016 badge-awards failure mapping Phase Cでstreak milestone RPCのexact row・badge/reward・failure SQLSTATE・重複を固定AppErrorへ分離し、部分成功は成功通知後に一意failed user数だけをCronへ伝播した。Teams enrichmentはuser/badge全件検証を固定AppErrorのbest-effort境界へ分離し、不完全データやA user fallbackを送らず主付与を維持した。focused 91件、全705テスト（--maxWorkers=1）、check:all、Security/Code/Data/Self-CritiqueレビューをPASS。実装差分3ファイル・459行。DB接続/read/write/applyなし。badge-awards core完了、webhook transportはlib/api/teams.tsの既存best-effort処理を維持。","commit":"839a52e67d51847ee44fec5bfb8a6ccce9d589bf","filesChanged":["lib/services/badge-awards.ts","lib/__tests__/badge-awards.test.ts","README.md",".github/ucfitness-progress.json"]},
     {"date":"2026-07-24","agent":"UCFitnessAgent (Dashboard UX + Hallmark + QA + Self-Critique)","action":"Daily Missionsの物理click、失敗状態、Trending Gearの情報階層・有限画像fallback、login toastのi18n/44pxを修正。Playwright 375/1280px、全956テスト、check:all、production buildをPASS。","commit":"2fc632c1ef27677014aca5329f3a602e82b0e8f5","filesChanged":["dashboard mission/gear UI","ja/en","Playwright regression","README/CHANGELOG/Lessons Learned"]},
     {"date":"2026-07-24","agent":"UCFitnessAgent (PR Finalization + QA + Self-Critique)","action":"PR #295のLessons Learnedをopen stackで未使用のLL-074へ一意化し、既存機能を維持したまま差分上限内で再検証した。","commit":"5d29de30d7104985f23a05a3e739f8823c720041","filesChanged":[".github/copilot-instructions.md",".github/ucfitness-progress.json","app/api/user/missions/route.test.ts"]},
-    {"date":"2026-07-24","agent":"UCFitnessAgent (Independent Review + QA + Self-Critique)","action":"PR #295のbonus-only retry、loaded-state E2E、affiliate A/B表示/計測一致を修正し、Toast 44pxを含む決定的browser回帰へ強化した。","commit":"c46e5a08b7c1b9e782a00af818103f1493bd8e48","filesChanged":["DailyMissions","TrendingGear","AffiliateLink","LoginBonusToast","dashboard E2E","mission API test","README/CHANGELOG"]}
+    {"date":"2026-07-24","agent":"UCFitnessAgent (Independent Review + QA + Self-Critique)","action":"PR #295のbonus-only retry、loaded-state E2E、affiliate A/B表示/計測一致を修正し、Toast 44pxを含む決定的browser回帰へ強化した。","commit":"c46e5a08b7c1b9e782a00af818103f1493bd8e48","filesChanged":["DailyMissions","TrendingGear","AffiliateLink","LoginBonusToast","dashboard E2E","mission API test","README/CHANGELOG"]},
+    {"date":"2026-07-24","agent":"UCFitnessAgent (Independent Child QA + Accessibility + Playwright)","action":"別Copilot QA 2セッションの指摘を反映し、報酬retry永続化、A/B両variant、AutoSync遮断、Challenges/Following retry focus、i18n fallbackを追加検証した。","commit":"1408d084bfc3ca1f9fa12de12e705148bfb1f728","filesChanged":["DailyMissions","DashboardChallenges","DashboardFollowing","TrendingGear","LoginBonusToast","dashboard E2E","ja/en","README/CHANGELOG"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
