@@ -118,34 +118,20 @@ describe('F016 push_subscriptions RLS migration', () => {
             && !source.includes('@/lib/supabase'))).toBe(true);
     });
 
-    it('CAS migrationはschema、public.users FK、owner、RLS、ACLをfail closedで検証する', () => {
+    it('CAS migrationの補助的text testでcatalog、lock、ACL、wiring契約を固定する', () => {
         for (const contract of [
-            /^BEGIN;/, /COMMIT;\s*$/, /SET LOCAL search_path = ''/,
-            /to_regclass\('public\.push_subscriptions'\)/, /to_regclass\('public\.users'\)/,
-            /LOCK TABLE public\.push_subscriptions IN ACCESS EXCLUSIVE MODE/,
-            /owner\.rolname = 'postgres'/, /owner\.rolbypassrls/,
-            /created_at:timestamp with time zone:false:true/,
-            /confdeltype = 'c'/, /convalidated/, /pg_catalog\.pg_policy/,
-            /'service_role', target_table, 'DELETE'/, /pg_catalog\.aclexplode/,
+            /^BEGIN;/, /COMMIT;\s*$/, /SET LOCAL search_path = ''/, /to_regclass\('public\.push_subscriptions'\)/,
+            /to_regclass\('public\.users'\)/, /LOCK TABLE public\.push_subscriptions IN ACCESS EXCLUSIVE MODE/,
+            /created_at:timestamp with time zone:false:true/, /created_at:now\(\)/, /id:gen_random_uuid\(\)/,
+            /condeferrable/, /condeferred/, /indisunique/, /indisvalid/, /indisready/, /indimmediate/,
+            /confdeltype = 'c'/, /pg_catalog\.pg_policy/, /WHERE subscription\.id = p_id\s+FOR UPDATE;/,
+            /SECURITY DEFINER/, /\) OWNER TO postgres;/, /\) FROM PUBLIC, anon, authenticated, service_role;/,
+            /\) TO service_role;/, /expected\.column_name, 'INSERT'/, /expected\.column_name, 'UPDATE'/,
+            /procedure\.proconfig = ARRAY\['search_path=""'\]::text\[\]/, /pg_catalog\.aclexplode/,
         ]) expect(casMigration).toMatch(contract);
-        expect(casMigration).not.toMatch(/auth\.users|CREATE\s+POLICY/i);
-    });
-
-    it('CAS RPCはrow lock、全version比較、service-role限定ACLと共有wiringを備える', () => {
-        expect(casMigration).toMatch(/WHERE subscription\.id = p_id\s+FOR UPDATE;/);
         for (const field of ['user_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at']) {
-            expect(casMigration).toContain(
-                `observed_row.${field} IS NOT DISTINCT FROM p_${field}`,
-            );
+            expect(casMigration).toContain(`observed_row.${field} IS NOT DISTINCT FROM p_${field}`);
         }
-        for (const contract of [
-            /SECURITY DEFINER/, /SET search_path = ''/,
-            /\) OWNER TO postgres;/,
-            /\) FROM PUBLIC, anon, authenticated, service_role;/,
-            /\) TO service_role;/,
-            /procedure\.proconfig = ARRAY\['search_path=""'\]::text\[\]/,
-            /has_function_privilege\('anon', function_oid, 'EXECUTE'\)/,
-        ]) expect(casMigration).toMatch(contract);
         expect(casMigration).toMatch(/DELETE FROM public\.push_subscriptions AS subscription\s+WHERE subscription\.id = p_id;/);
         expect(casMigration.match(/RETURN false;/g)).toHaveLength(2);
         expect(casMigration).toContain('RETURN FOUND;');
@@ -155,6 +141,7 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(subscribeRoute).toContain('deletePushSubscriptionIfUnchanged');
         expect(subscribeRoute).toContain('findSupersededSubscriptionIds');
         expect(subscribeRoute).not.toContain(".in('id', staleIds)");
+        expect(casMigration).not.toMatch(/auth\.users|CREATE\s+POLICY/i);
     });
 
     it('F001を変更せずF016をin-progressに維持する', () => {

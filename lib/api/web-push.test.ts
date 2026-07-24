@@ -346,7 +346,6 @@ describe('sendWebPushNotification', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });
-
 describe('push subscription cleanup CAS', () => {
     const userId = '00000000-0000-4000-8000-000000000010';
     const savedEnv = {
@@ -363,7 +362,6 @@ describe('push subscription cleanup CAS', () => {
         process.env.VAPID_PRIVATE_KEY = savedEnv.privateKey;
         process.env.VAPID_SUBJECT = savedEnv.subject;
     });
-
     it('exact版だけを削除し別user・deviceを維持する', async () => {
         const target = createStoredSubscription();
         const otherUser = { ...toCasRow(userId, target), id: 'other-user', user_id: 'other' };
@@ -404,7 +402,6 @@ describe('push subscription cleanup CAS', () => {
                 rows[0] = toCasRow(userId, replacement);
                 return new Response(null, { status: statusCode });
             }));
-
             const summary = await sendWebPushNotifications(
                 userId, [old], { title: 'test', body: 'test' },
             );
@@ -413,27 +410,41 @@ describe('push subscription cleanup CAS', () => {
         },
     );
     it('CAS errorを固定失敗にし他端末を送信しつつ秘密をログへ渡さない', async () => {
-        const expired = createStoredSubscription({
-            endpoint: 'https://fcm.googleapis.com/fcm/send/private-endpoint',
-        });
+        const expired = createStoredSubscription(
+            { endpoint: 'https://fcm.googleapis.com/fcm/send/private-endpoint' });
         const healthy = createStoredSubscription({
-            id: 'healthy', endpoint: 'https://fcm.googleapis.com/fcm/send/healthy',
-            user_agent: 'Browser B',
+            id: 'healthy', endpoint: 'https://fcm.googleapis.com/fcm/send/healthy', user_agent: 'Browser B',
         });
         const sentinel = 'raw-db-secret@example.com';
-        mockRpc.mockResolvedValue({ data: null, error: { message: sentinel } });
+        const rawCause = { endpoint: expired.endpoint, p256dh: expired.p256dh, auth: expired.auth, userId };
+        const rawRpcError = { message: sentinel, code: 'RAW_DB_ERROR', cause: rawCause };
+        mockRpc.mockResolvedValue({ data: null, error: rawRpcError });
         vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input) =>
             new Response(null, { status: String(input).includes('private') ? 410 : 201 })));
-
         const summary = await sendWebPushNotifications(
-            userId, [expired, healthy], { title: 'test', body: 'test' },
-        );
-        const logged = vi.mocked(reportError).mock.calls.map(([stage, error, context]) =>
-            `${stage}|${error instanceof Error ? error.message : String(error)}|${JSON.stringify(context)}`,
-        ).join('\n');
+            userId, [expired, healthy], { title: 'test', body: 'test' });
+        const reportCalls = vi.mocked(reportError).mock.calls;
+        const cleanupCall = reportCalls.find(
+            ([operation]) => operation === 'pushSubscriptionCleanup:compareAndDelete');
+        expect(cleanupCall).toBeDefined();
+        const [operation, cleanupError, cleanupContext] = cleanupCall ?? [];
+        expect(operation).toBe('pushSubscriptionCleanup:compareAndDelete');
+        expect(cleanupError).toBeInstanceOf(Error);
+        if (!(cleanupError instanceof Error)) throw new Error('Expected fixed cleanup Error');
+        expect(cleanupError.constructor).toBe(Error);
+        expect(cleanupError).toMatchObject({ name: 'Error', message: 'Push subscription cleanup failed' });
+        expect(cleanupError).not.toBe(rawRpcError);
+        for (const property of ['cause', 'code', 'context']) expect(property in cleanupError).toBe(false);
+        expect(cleanupContext).toBeUndefined();
+        expect(reportCalls.find(([stage]) => stage === 'sendWebPush:pushService')).toEqual(
+            ['sendWebPush:pushService', expect.any(Error), { statusCode: 410 }]);
         expect(summary).toMatchObject({ sent: 1, failed: 1, expired: 1, cleanupFailed: 1 });
-        for (const secret of [sentinel, expired.endpoint, expired.p256dh, expired.auth]) {
-            expect(logged).not.toContain(secret);
+        for (const call of reportCalls) {
+            expect(call).not.toContain(rawRpcError); expect(call).not.toContain(rawCause);
+            const errorMessage = call[1] instanceof Error ? call[1].message : String(call[1]);
+            for (const secret of [sentinel, expired.endpoint, expired.p256dh, expired.auth, userId]) {
+                expect(errorMessage).not.toContain(secret); expect(Object.values(call[2] ?? {})).not.toContain(secret);
+            }
         }
     });
     it.each([201, 400, 500])('%iではCASを呼ばない', async (statusCode) => {
@@ -448,7 +459,6 @@ describe('push subscription cleanup CAS', () => {
         expect(summary).toMatchObject({ expired: 0, pruned: 0, preserved: 0 });
     });
 });
-
 describe('compactPushSubscriptions', () => {
     it('同一UAとlegacy購読が複数ある場合、各グループの最新endpointだけを残す', () => {
         const subscriptions = [

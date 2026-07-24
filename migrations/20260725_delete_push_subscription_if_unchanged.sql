@@ -1,35 +1,32 @@
 BEGIN; SET LOCAL search_path = '';
 DO $preconditions$
 DECLARE
-    target_table regclass := pg_catalog.to_regclass('public.push_subscriptions');
-    users_table regclass := pg_catalog.to_regclass('public.users');
-    actual_columns text[];
+    target_table regclass := pg_catalog.to_regclass('public.push_subscriptions'); users_table regclass := pg_catalog.to_regclass('public.users');
+    actual_columns text[]; actual_defaults text[];
     select_columns constant text[] := ARRAY['id', 'user_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at'];
     write_columns constant text[] := ARRAY['user_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at'];
-BEGIN
-    IF target_table IS NULL OR users_table IS NULL
-       OR (SELECT relkind FROM pg_catalog.pg_class WHERE oid = target_table) <> 'r'
-       OR (SELECT relnamespace FROM pg_catalog.pg_class WHERE oid = target_table)
-            <> pg_catalog.to_regnamespace('public') THEN
-        RAISE EXCEPTION 'LL079: push subscription schema is unavailable';
-    END IF;
-    LOCK TABLE public.push_subscriptions IN ACCESS EXCLUSIVE MODE;
+BEGIN IF target_table IS NULL OR users_table IS NULL OR
+       (SELECT relkind FROM pg_catalog.pg_class WHERE oid = target_table) <> 'r' OR
+       (SELECT relnamespace FROM pg_catalog.pg_class WHERE oid = target_table) <> pg_catalog.to_regnamespace('public') THEN
+        RAISE EXCEPTION 'LL080: push subscription schema is unavailable';
+    END IF; LOCK TABLE public.push_subscriptions IN ACCESS EXCLUSIVE MODE;
     SELECT pg_catalog.array_agg(pg_catalog.format('%s:%s:%s:%s', attribute.attname,
-        pg_catalog.format_type(attribute.atttypid, attribute.atttypmod),
-        attribute.attnotnull::text, (attribute.attgenerated = '')::text)
-        ORDER BY attribute.attname) INTO actual_columns
+        pg_catalog.format_type(attribute.atttypid, attribute.atttypmod), attribute.attnotnull::text,
+        (attribute.attgenerated = '')::text) ORDER BY attribute.attname),
+        pg_catalog.array_agg(pg_catalog.format('%s:%s', attribute.attname,
+        COALESCE(pg_catalog.pg_get_expr(default_value.adbin, default_value.adrelid), '<none>'))
+        ORDER BY attribute.attname) INTO actual_columns, actual_defaults
     FROM pg_catalog.pg_attribute AS attribute
-    WHERE attribute.attrelid = target_table
-      AND attribute.attnum > 0 AND NOT attribute.attisdropped;
+    LEFT JOIN pg_catalog.pg_attrdef AS default_value ON
+      default_value.adrelid = attribute.attrelid AND default_value.adnum = attribute.attnum
+    WHERE attribute.attrelid = target_table AND attribute.attnum > 0 AND NOT attribute.attisdropped;
     IF actual_columns IS DISTINCT FROM ARRAY[
         'auth:text:true:true', 'created_at:timestamp with time zone:false:true', 'endpoint:text:true:true',
         'id:uuid:true:true', 'p256dh:text:true:true', 'user_agent:text:false:true', 'user_id:uuid:true:true'
-    ]::text[] OR NOT EXISTS (
-        SELECT 1 FROM pg_catalog.pg_attribute
-        WHERE attrelid = target_table AND attname = 'id'
-          AND atthasdef AND attgenerated = '' AND NOT attisdropped
-    ) THEN
-        RAISE EXCEPTION 'LL079: push subscription columns or defaults changed';
+    ]::text[] OR actual_defaults IS DISTINCT FROM ARRAY['auth:<none>', 'created_at:now()',
+        'endpoint:<none>', 'id:gen_random_uuid()', 'p256dh:<none>', 'user_agent:<none>',
+        'user_id:<none>']::text[] THEN
+        RAISE EXCEPTION 'LL080: push subscription columns or defaults changed';
     END IF;
     IF NOT EXISTS (
         SELECT 1 FROM pg_catalog.pg_constraint
@@ -45,15 +42,19 @@ BEGIN
           AND confkey = ARRAY[(SELECT attnum FROM pg_catalog.pg_attribute
               WHERE attrelid = users_table AND attname = 'id')]::smallint[]
     ) OR NOT EXISTS (
-        SELECT 1 FROM pg_catalog.pg_constraint
-        WHERE conrelid = target_table AND contype = 'u'
-          AND pg_catalog.cardinality(conkey) = 2
-          AND (SELECT attnum FROM pg_catalog.pg_attribute
-               WHERE attrelid = target_table AND attname = 'user_id') = ANY(conkey)
-          AND (SELECT attnum FROM pg_catalog.pg_attribute
-               WHERE attrelid = target_table AND attname = 'endpoint') = ANY(conkey)
+        SELECT 1 FROM pg_catalog.pg_constraint AS constraint_record
+        JOIN pg_catalog.pg_index AS backing_index ON backing_index.indexrelid = constraint_record.conindid
+        WHERE constraint_record.conrelid = target_table AND constraint_record.contype = 'u'
+          AND constraint_record.convalidated AND NOT constraint_record.condeferrable
+          AND NOT constraint_record.condeferred AND constraint_record.conkey = ARRAY[
+            (SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid = target_table AND attname = 'user_id'),
+            (SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid = target_table AND attname = 'endpoint')]::smallint[]
+          AND backing_index.indrelid = target_table AND backing_index.indisunique
+          AND backing_index.indisvalid AND backing_index.indisready AND backing_index.indimmediate
+          AND backing_index.indnkeyatts = 2 AND backing_index.indnatts = 2
+          AND backing_index.indpred IS NULL AND backing_index.indexprs IS NULL
     ) THEN
-        RAISE EXCEPTION 'LL079: push subscription keys or public.users FK changed';
+        RAISE EXCEPTION 'LL080: push subscription keys or public.users FK changed';
     END IF;
     IF NOT EXISTS (
         SELECT 1 FROM pg_catalog.pg_class AS relation
@@ -64,7 +65,7 @@ BEGIN
     ) OR NOT (SELECT relrowsecurity FROM pg_catalog.pg_class WHERE oid = target_table)
        OR (SELECT relforcerowsecurity FROM pg_catalog.pg_class WHERE oid = target_table)
        OR EXISTS (SELECT 1 FROM pg_catalog.pg_policy WHERE polrelid = target_table) THEN
-        RAISE EXCEPTION 'LL079: push subscription owner or RLS state changed';
+        RAISE EXCEPTION 'LL080: push subscription owner or RLS state changed';
     END IF;
     IF EXISTS (
         SELECT 1 FROM pg_catalog.pg_class AS relation
@@ -81,10 +82,10 @@ BEGIN
             'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
            OR pg_catalog.has_any_column_privilege(role.role_name, target_table,
             'SELECT, INSERT, UPDATE, REFERENCES')
-    ) OR pg_catalog.has_table_privilege('service_role', target_table,
-        'SELECT, INSERT, UPDATE, TRUNCATE, REFERENCES, TRIGGER')
-       OR NOT pg_catalog.has_table_privilege('service_role', target_table, 'DELETE')
-       OR pg_catalog.has_column_privilege('service_role', target_table, 'id', 'INSERT, UPDATE')
+    ) OR pg_catalog.has_table_privilege('service_role', target_table, 'SELECT') OR pg_catalog.has_table_privilege('service_role', target_table, 'INSERT') OR pg_catalog.has_table_privilege('service_role', target_table, 'UPDATE')
+       OR pg_catalog.has_table_privilege('service_role', target_table, 'TRUNCATE') OR pg_catalog.has_table_privilege('service_role', target_table, 'REFERENCES') OR pg_catalog.has_table_privilege('service_role', target_table, 'TRIGGER') OR NOT pg_catalog.has_table_privilege('service_role', target_table, 'DELETE')
+       OR pg_catalog.has_column_privilege('service_role', target_table, 'id', 'INSERT')
+       OR pg_catalog.has_column_privilege('service_role', target_table, 'id', 'UPDATE')
        OR pg_catalog.has_any_column_privilege('service_role', target_table, 'REFERENCES')
        OR EXISTS (
         SELECT 1 FROM unnest(select_columns) AS expected(column_name)
@@ -92,10 +93,11 @@ BEGIN
             'service_role', target_table, expected.column_name, 'SELECT')
     ) OR EXISTS (
         SELECT 1 FROM unnest(write_columns) AS expected(column_name)
-        WHERE NOT pg_catalog.has_column_privilege(
-            'service_role', target_table, expected.column_name, 'INSERT, UPDATE')
+        WHERE NOT pg_catalog.has_column_privilege('service_role', target_table,
+            expected.column_name, 'INSERT') OR NOT pg_catalog.has_column_privilege(
+            'service_role', target_table, expected.column_name, 'UPDATE')
     ) THEN
-        RAISE EXCEPTION 'LL079: push subscription ACL changed';
+        RAISE EXCEPTION 'LL080: push subscription ACL changed';
     END IF;
 END; $preconditions$;
 CREATE FUNCTION public.delete_push_subscription_if_unchanged(
@@ -160,7 +162,7 @@ BEGIN
             (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
           )
     ) THEN
-        RAISE EXCEPTION 'LL079: push subscription CAS RPC postcondition failed';
+        RAISE EXCEPTION 'LL080: push subscription CAS RPC postcondition failed';
     END IF;
 END;
 $postconditions$;

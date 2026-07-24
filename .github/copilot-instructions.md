@@ -1545,15 +1545,15 @@ export const runtime = "edge";
 - **対策**: focus handlerからレイアウト・スクロール副作用を除去し、画像fallbackを1回で打ち切る。回帰テストはDOM上のhandler直接呼び出しでなく物理クリックと失敗画像リクエスト上限を検証する。
 - **教訓**: focusは即時の視覚表示に限定し、スクロール補正が必要ならfocus成立後の別契機で行う。fallbackは必ず最終失敗状態を持つ。リファレンス: `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
 
-### LL-079: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
-
-- **事象**: 送信中に同じendpointが新しい`p256dh`、`auth`、`created_at`へ再購読された場合、古い送信の404/410を受けた`user_id + endpoint`直接DELETEが有効なreplacementまで削除し得た。再購読時の古い端末整理も、一覧取得後に対象行が更新される同じ競合を持っていた。
-- **根本原因**: Push Service応答が失効を証明するのは送信時に観測した購読版だけであり、endpointを購読行の不変versionとして扱った。アプリ側のread-then-deleteには行ロックも全観測項目の比較もなかった。
-- **対策**: `delete_push_subscription_if_unchanged`をservice-role限定の`SECURITY DEFINER` RPCとして追加し、主キーで`FOR UPDATE`後に`id`、`user_id`、`endpoint`、`p256dh`、`auth`、nullable `user_agent`、nullable `created_at`を`IS NOT DISTINCT FROM`で比較して一致時だけ削除する。404/410件数は既存`expired`を維持し、再購読整理と共有するCASのtrueを`pruned`、falseを`preserved`、RPC障害を固定`cleanupFailed`として分離する。
-- **教訓**: 外部サービスの古い応答を根拠に可変リソースを削除する場合、論理キーだけで削除しない。副作用開始時の完全なrow versionを保持し、DB transaction内のrow lock付きcompare-and-deleteで一致した版だけを削除する。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`
-
-### LL-080: 既定npm proxyの遅延を公開registry未公開と誤認した
+### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
 
 - **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
 - **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
 - **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
+
+### LL-080: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
+
+- **事象**: 送信中に同じendpointが新しい`p256dh`、`auth`、`created_at`へ再購読された場合、古い送信の404/410を受けた`user_id + endpoint`直接DELETEが有効なreplacementまで削除し得た。再購読時の古い端末整理も、一覧取得後に対象行が更新される同じ競合を持っていた。
+- **根本原因**: Push Service応答が失効を証明するのは送信時に観測した購読版だけであり、endpointを不変versionとして扱った。初版migrationもdefault存在とunordered uniqueだけをtext testで確認し、exact catalog・個別ACL・実row lock競合を実行検証していなかった。
+- **対策**: `delete_push_subscription_if_unchanged`をservice-role限定の`SECURITY DEFINER` RPCとして追加し、主キー`FOR UPDATE`後に全7観測項目が一致した場合だけ削除する。履歴正本の`gen_random_uuid()`/`now()`、ordered non-deferrable uniqueとvalid/ready/immediate backing index、SELECT/INSERT/UPDATE/DELETEの個別ACLをfail closedで検証し、404/410の`expired`互換と`pruned`/`preserved`/`cleanupFailed`を分離する。
+- **教訓**: 古い外部応答で可変リソースを削除する場合は完全row versionをDB transaction内でcompare-and-deleteする。text testだけを実行検証と呼ばず、別stacked PRのPostgreSQL serviceでnegative catalog fixturesと二接続のupdate-first/delete-first競合を通すまでfoundationをmergeしない。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`
