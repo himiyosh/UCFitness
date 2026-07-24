@@ -1,15 +1,11 @@
-import assert from "node:assert/strict";
-import { access } from "node:fs/promises";
+import assert from "node:assert/strict"; import { access } from "node:fs/promises";
 import { encode } from "@auth/core/jwt";
 import { chromium } from "playwright";
 const baseUrl = process.env.DASHBOARD_E2E_BASE_URL ?? "http://localhost:3000", storageState = process.env.DASHBOARD_E2E_STORAGE_STATE, secret = process.env.DASHBOARD_E2E_LOCAL_SECRET;
-if (!storageState && !secret) throw new Error("Dashboard E2E auth is required");
-if (storageState) await access(storageState);
+if (!storageState && !secret) throw new Error("Dashboard E2E auth is required"); if (storageState) await access(storageState);
 const token = secret ? await encode({ token: { id: "11111111-1111-4111-8111-111111111111", sub: "fixture-provider", provider: "fitbit", provider_account_id: "fixture-provider", username: "fixture-runner", name: "Fixture Runner", email: "fixture@example.invalid", language: "ja" }, secret, salt: "authjs.session-token", maxAge: 3600 }) : null;
 const mission = { id: "mission-1", mission_type: "WALK_100", title: "100 steps", description: "Walk 100 steps", reward_uc: 5, is_completed: true, completed_at: "2026-07-24T00:00:00.000Z" };
-const gear = { asin: "B000000001", title: "Lightweight walking shoes", image_url: "https://images.example.invalid/shoes.jpg", affiliate_link: "https://www.amazon.co.jp/dp/B000000001?tag=ucfitness-22", count: 2, users: [{ username: "walker-one", image: null, comment: "Easy to wear" }] };
-const browser = await chromium.launch({ headless: true });
-try {
+const gear = { asin: "B000000001", title: "Lightweight walking shoes", image_url: "https://images.example.invalid/shoes.jpg", affiliate_link: "https://www.amazon.co.jp/dp/B000000001?tag=ucfitness-22", count: 2, users: [{ username: "walker-one", image: null, comment: "Easy to wear" }] }, browser = await chromium.launch({ headless: true }); try {
   for (const viewport of [{ name: "mobile", width: 375, height: 812 }, { name: "desktop", width: 1280, height: 900 }]) {
     const context = await browser.newContext({ storageState: storageState || undefined, viewport });
     if (token) await context.addCookies([{ name: "authjs.session-token", value: token, domain: new URL(baseUrl).hostname, path: "/" }]);
@@ -31,13 +27,10 @@ try {
     await page.route("https://www.amazon.co.jp/**", (route) => route.fulfill({ contentType: "text/html", body: "fixture" }));
     await page.route(/https:\/\/(?:images\.example\.invalid|ws-fe\.amazon-adsystem\.com)\/.*/, (route) => { imageFailures += 1; return route.abort(); });
     await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    const close = page.getByRole("button", { name: /閉じる|Close/ }); await close.waitFor();
-    const closeBox = await close.boundingBox(); assert.ok(closeBox.width + 0.01 >= 44 && closeBox.height + 0.01 >= 44);
-    await close.click(); await close.waitFor({ state: "detached" });
+    const close = page.getByRole("button", { name: /閉じる|Close/ }); await close.waitFor(); const closeBox = await close.boundingBox(); assert.ok(closeBox.width + 0.01 >= 44 && closeBox.height + 0.01 >= 44); await close.click(); await close.waitFor({ state: "detached" });
     const missionPanel = page.locator(".home-mission-module");
     await missionPanel.getByRole("button", { name: /今日のミッションを準備|Prepare today's missions/ }).click();
-    await missionPanel.getByText(/報酬を安全に反映できませんでした|reward could not be applied safely/).waitFor();
-    await page.reload({ waitUntil: "commit", timeout: 60_000 });
+    await missionPanel.getByText(/報酬を安全に反映できませんでした|reward could not be applied safely/).waitFor(); await page.reload({ waitUntil: "commit", timeout: 60_000 });
     const retry = missionPanel.getByRole("button", { name: /ミッション再チェック|Refresh missions/ });
     await retry.click();
     await missionPanel.getByText(/獲得した全達成ボーナス|All-clear bonus earned/).waitFor();

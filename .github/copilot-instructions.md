@@ -1537,3 +1537,8 @@ export const runtime = "edge";
 - **根本原因**: buttonの`onFocus`がmousedownとclickの間に`scrollIntoView()`してポインター着地点を別要素へ移し、画像`onError`も失敗するfallback URLを再設定し続けた。
 - **対策**: focus handlerからレイアウト・スクロール副作用を除去し、画像fallbackを1回で打ち切る。回帰テストはDOM上のhandler直接呼び出しでなく物理クリックと失敗画像リクエスト上限を検証する。
 - **教訓**: focusは即時の視覚表示に限定し、スクロール補正が必要ならfocus成立後の別契機で行う。fallbackは必ず最終失敗状態を持つ。リファレンス: `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
+
+### LL-079: 過去に検証済みの脆弱性修正版でも再取得不能なら安全なlockではない
+- **事象**: Next 15.5.21の既存PRはauditを通過していたが、現在のregistry/proxy/cacheではtarballが404となり、NextAuth v5も影響範囲外の修正版が未公開だった。
+- **根本原因**: 過去のCI成功を現在も再現可能なpackage availabilityの証拠として扱い、breaking downgradeを提案する`npm audit fix`と互換patchを区別していなかった。
+- **対策・教訓**: approved registry + sha512 lockで`npm ci`を再実行できるversionだけを採用し、未公開・取得不能patchや`--force`は拒否する。auditは解消済み項目と公開待ちblockerを分離する。
