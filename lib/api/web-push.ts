@@ -65,6 +65,11 @@ const MAX_PAYLOAD_BYTES = AES_128_GCM_RECORD_SIZE
     - AES_GCM_TAG_SIZE
     - RECORD_DELIMITER_SIZE;
 
+function normalizePushEndpointHref(href: string): string {
+    return href.replace(/%([0-9a-f]{2})/gi, (_encoded, hex: string) => {
+        const character = String.fromCharCode(Number.parseInt(hex, 16)); return /^[A-Za-z0-9._~-]$/.test(character) ? character : `%${hex.toUpperCase()}`;
+    });
+}
 function getPushEndpointOwnershipKey(endpoint: unknown): string | null {
     if (typeof endpoint !== 'string' || endpoint.length > 2048) return null;
     try {
@@ -74,7 +79,7 @@ function getPushEndpointOwnershipKey(endpoint: unknown): string | null {
         );
         if (url.protocol !== 'https:' || url.username || url.password || !allowedHost) return null;
         url.hash = '';
-        return url.href;
+        return normalizePushEndpointHref(url.href);
     } catch {
         return null;
     }
