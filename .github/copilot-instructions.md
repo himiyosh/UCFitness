@@ -1530,3 +1530,9 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
+
+### LL-075: nullableなDB結果を既定値へ畳むと障害と新規状態を混同する
+- **事象**: AmazonパーソナライズAPIが残高・歩数照会のerrorを無視し、nullや不正値もBEGINNER・0歩の成功レスポンスへ変換していた。
+- **根本原因**: DB照会結果のerror・正当な行なし・不正shapeを分類する前に`|| 0`と`|| []`へ畳み、ランクfallbackでも内部不整合を隠した。
+- **対策**: 残高は`.maybeSingle()`の行なしだけを新規ユーザー0として許可し、query error・不正shape・unsafe数値・予期しないrejectを固定503へ分離した。生error・message・cause・user IDはログと応答へ渡さず、空歩数と記録済み0歩は合法な平均0として維持した。
+- **教訓**: nullableなDB結果は既定化前に`error`・absence・shapeを分類する。0や空配列を使えるのは正本が欠落を正常状態と定義する場合だけで、障害境界は固定エラーとtable-driven testで回帰固定する。リファレンス: `app/api/amazon/personalized/route.ts`
