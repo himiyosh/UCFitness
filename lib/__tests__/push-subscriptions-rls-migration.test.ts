@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -13,11 +14,11 @@ const phaseOneMigration = readRepositoryFile(
     'migrations/20260720_harden_api_keys_rls.sql',
 );
 const subscribeRoute = readRepositoryFile('app/api/push/subscribe/route.ts');
-const deliverySources = [
-    'app/api/push/send/route.ts', 'app/api/cron/step-reminder/route.ts',
-    'lib/services/badge-allocator.ts',
-    'lib/api/web-push.ts',
-].map(readRepositoryFile);
+const stepReminderRoute = readRepositoryFile('app/api/cron/step-reminder/route.ts');
+const deliverySources = execFileSync('git', ['ls-files', '*.ts', '*.tsx'], { encoding: 'utf8' })
+    .trim().split('\n').filter((path) => !path.includes('__tests__'))
+    .filter((path) => /\.from\(\s*['"]push_subscriptions['"]\s*\)/.test(readRepositoryFile(path)))
+    .map(readRepositoryFile);
 const browserSources = [
     'hooks/useWebPush.ts', 'components/PushNotificationManager.tsx',
     'components/PushSubscriptionButton.tsx',
@@ -107,6 +108,8 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(deliverySources.every((source) =>
             source.includes(".from('push_subscriptions')")
             && source.includes('supabaseAdmin'))).toBe(true);
+        expect(stepReminderRoute).toContain('loadPushSubscriptionSnapshot');
+        expect(stepReminderRoute).not.toContain(".from('push_subscriptions')");
         expect(browserSources.every((source) =>
             source.includes('/api/push/subscribe')
             && !source.includes(".from('push_subscriptions')")

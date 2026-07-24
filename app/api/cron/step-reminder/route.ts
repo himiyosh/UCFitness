@@ -3,22 +3,21 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendWebPushNotifications } from '@/lib/api/web-push';
+import { loadPushSubscriptionSnapshot, preparePushSubscriptionSnapshot,
+    PushSubscriptionBoundaryError, sendWebPushNotifications } from '@/lib/api/web-push';
 import { reportError } from '@/lib/errors';
 import { getJSTDateString } from '@/lib/date-utils';
 import {
     stepReminderTitle,
     stepReminderBody,
 } from '@/lib/services/push-messages';
-import { extractStepReminderRows, isStepReminderDeliverySummary, parseStepReminderProfiles, parseStepReminderSteps, parseStepReminderSubscriptions } from '@/lib/services/step-reminder';
-import { fetchAllWithPagination } from '@/lib/supabase-utils';
+import { extractStepReminderRows, isStepReminderDeliverySummary,
+    parseStepReminderProfiles, parseStepReminderSteps } from '@/lib/services/step-reminder';
 
 export const dynamic = 'force-dynamic';
 
 /** バッチサイズ: 一度に処理するユーザー数 */
 const BATCH_SIZE = 20;
-const SUBSCRIPTION_PAGE_SIZE = 900;
-const MAX_SUBSCRIPTIONS = 10_000;
 
 /** 目標達成率の閾値（70%未満でリマインダー送信） */
 const GOAL_THRESHOLD = 0.7;
@@ -43,46 +42,32 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
 
     try {
+        const snapshotAt = new Date().toISOString();
         const today = getJSTDateString();
 
-        // プッシュ通知を購読しているユーザー一覧を取得
-        const subscriptionResult = await fetchAllWithPagination<unknown>(
-            async (from, to) => {
-                const result = await supabaseAdmin
-                    .from('push_subscriptions')
-                    .select('id, user_id, endpoint, p256dh, auth, user_agent, created_at')
-                    .order('id', { ascending: true })
-                    .range(from, to);
-                return { data: result.data, error: result.error ?? (result.data === null ? true : null) };
-            },
-            SUBSCRIPTION_PAGE_SIZE, MAX_SUBSCRIPTIONS,
-        );
-        if (subscriptionResult.error) {
-            reportFailure('subscriptions-query');
-            return internalError();
-        }
-
-        // ユーザーごとにサブスクリプションをグループ化
-        const parsedSubscriptions = parseStepReminderSubscriptions(subscriptionResult.data);
-        if (!parsedSubscriptions) {
-            reportFailure('subscriptions-shape');
-            return internalError();
-        }
-        if (parsedSubscriptions.allUserIds.size === 0) {
+        const subscriptionRows = await loadPushSubscriptionSnapshot();
+        const preparedSubscriptions = await preparePushSubscriptionSnapshot(subscriptionRows);
+        if (preparedSubscriptions.userIds.length === 0) {
             return NextResponse.json({
                 success: true, message: 'プッシュ通知の購読者がいません',
                 checked: 0, underGoal: 0, sent: 0, failed: 0,
-                expired: 0, deduplicated: 0, failedUsers: 0, timestamp: new Date().toISOString(),
+                expired: 0, deduplicated: 0, failedUsers: 0, timestamp: snapshotAt,
             });
         }
 
-        const userSubscriptions = parsedSubscriptions.rows;
+        const userSubscriptions = preparedSubscriptions.byUser;
         const userIds = Array.from(userSubscriptions.keys());
         userIds.sort();
         let totalSent = 0, totalFailed = 0, totalExpired = 0;
         let totalDeduplicated = 0, totalUnderGoal = 0;
-        const failedUserIds = new Set(parsedSubscriptions.invalidUserIds);
-        if (failedUserIds.size > 0) reportFailure('subscriptions-validation');
+        const checkedUserIds = new Set(preparedSubscriptions.userIds);
+        const failedUserIds = new Set([
+            ...preparedSubscriptions.invalidUserIds,
+            ...preparedSubscriptions.cappedUserIds,
+        ]);
+        let hasAttributionAnomaly = false;
+        if (preparedSubscriptions.invalidUserIds.length > 0) reportFailure('subscriptions-validation');
+        if (preparedSubscriptions.cappedUserIds.length > 0) reportFailure('subscriptions-user-limit');
 
         // バッチ処理: リマインダー通知を送信
         for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
@@ -105,9 +90,15 @@ export async function GET(request: Request): Promise<NextResponse> {
                 continue;
             }
 
-            const invalidUserIds = new Set([...parsedProfiles.invalidUserIds, ...parsedSteps.invalidUserIds,
-                ...parsedProfiles.foreignUserIds, ...parsedSteps.foreignUserIds]);
+            const invalidUserIds = new Set([
+                ...parsedProfiles.invalidUserIds, ...parsedSteps.invalidUserIds]);
             invalidUserIds.forEach((userId) => failedUserIds.add(userId));
+            const foreignUserIds = new Set([
+                ...parsedProfiles.foreignUserIds, ...parsedSteps.foreignUserIds]);
+            foreignUserIds.forEach((userId) => {
+                if (checkedUserIds.has(userId)) failedUserIds.add(userId);
+                else hasAttributionAnomaly = true;
+            });
             if (parsedProfiles.invalidUserIds.size > 0) reportFailure('profiles-validation', batchIndex);
             if (parsedSteps.invalidUserIds.size > 0) reportFailure('steps-validation', batchIndex);
             if (parsedProfiles.foreignUserIds.size > 0) reportFailure('profiles-foreign-row', batchIndex);
@@ -154,15 +145,18 @@ export async function GET(request: Request): Promise<NextResponse> {
             }
         }
 
-        const success = failedUserIds.size === 0;
+        const success = failedUserIds.size === 0 && !hasAttributionAnomaly;
         return NextResponse.json({
             success, message: 'ステップリマインダー通知送信完了',
-            checked: parsedSubscriptions.allUserIds.size, underGoal: totalUnderGoal,
+            checked: preparedSubscriptions.userIds.length, underGoal: totalUnderGoal,
             sent: totalSent, failed: totalFailed, expired: totalExpired,
-            deduplicated: totalDeduplicated, failedUsers: failedUserIds.size, timestamp: new Date().toISOString(),
+            deduplicated: totalDeduplicated, failedUsers: failedUserIds.size, timestamp: snapshotAt,
         }, { status: success ? 200 : 500 });
-    } catch {
-        reportFailure('unexpected');
+    } catch (error: unknown) {
+        const category = error instanceof PushSubscriptionBoundaryError
+            ? `subscriptions-${error.reason}`
+            : 'unexpected';
+        reportFailure(category);
         return internalError();
     }
 }
