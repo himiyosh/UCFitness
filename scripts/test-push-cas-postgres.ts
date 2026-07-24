@@ -145,8 +145,9 @@ async function verifyCatalog(client: Client): Promise<void> {
                 (SELECT NOT EXISTS (SELECT 1 FROM aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) x
                         WHERE x.grantee = 0)
                     AND NOT EXISTS (SELECT 1 FROM pg_attribute a,
-                        aclexplode(COALESCE(a.attacl, '{}'::aclitem[])) x
-                        WHERE a.attrelid = c.oid AND x.grantee = 0)
+                        LATERAL aclexplode(a.attacl) x
+                        WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+                          AND x.grantee = 0)
                     AND NOT EXISTS (SELECT 1 FROM unnest(ARRAY['anon','authenticated']) r,
                         unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
                         WHERE has_table_privilege(r, c.oid, p)
