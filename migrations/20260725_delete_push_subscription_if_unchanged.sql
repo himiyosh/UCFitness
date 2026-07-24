@@ -70,8 +70,11 @@ BEGIN IF target_table IS NULL OR users_table IS NULL OR
         WHERE relation.oid = target_table AND privilege.grantee = 0
     ) OR EXISTS (
         SELECT 1 FROM pg_catalog.pg_attribute AS attribute
-        CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(attribute.attacl, '{}'::aclitem[])) AS privilege
-        WHERE attribute.attrelid = target_table AND privilege.grantee = 0
+        CROSS JOIN LATERAL pg_catalog.aclexplode(attribute.attacl) AS privilege
+        WHERE attribute.attrelid = target_table
+          AND attribute.attnum > 0
+          AND NOT attribute.attisdropped
+          AND privilege.grantee = 0
     ) OR EXISTS (
         SELECT 1 FROM unnest(ARRAY['anon', 'authenticated']) AS role(role_name)
         WHERE pg_catalog.has_table_privilege(role.role_name, target_table,
