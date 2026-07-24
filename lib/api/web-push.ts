@@ -21,6 +21,7 @@ export interface PushSubscriptionData {
 
 export interface StoredPushSubscriptionData {
     id?: string;
+    user_id?: string;
     endpoint: string;
     p256dh: string;
     auth: string;
@@ -41,7 +42,10 @@ export interface PushDeliverySummary {
     failed: number;
     expired: number;
     skippedDuplicates: number;
+    pruned?: number; preserved?: number; cleanupFailed?: number;
 }
+
+export type PushSubscriptionCleanupOutcome = 'deleted' | 'preserved' | 'failed';
 
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com',
@@ -321,6 +325,44 @@ export function findSupersededSubscriptionIds(
         });
 }
 
+function reportPushSubscriptionCleanupFailure(): void {
+    reportError('pushSubscriptionCleanup:compareAndDelete',
+        new Error('Push subscription cleanup failed'));
+}
+
+export async function deletePushSubscriptionIfUnchanged(
+    userId: string,
+    subscription: StoredPushSubscriptionData,
+): Promise<PushSubscriptionCleanupOutcome> {
+    if (!subscription.id
+        || subscription.created_at === undefined
+        || (subscription.user_id !== undefined && subscription.user_id !== userId)) {
+        reportPushSubscriptionCleanupFailure();
+        return 'failed';
+    }
+
+    try {
+        const { supabaseAdmin } = await import('@/lib/supabase');
+        const { data, error } = await supabaseAdmin.rpc(
+            'delete_push_subscription_if_unchanged',
+            {
+                p_id: subscription.id, p_user_id: userId,
+                p_endpoint: subscription.endpoint,
+                p_p256dh: subscription.p256dh, p_auth: subscription.auth,
+                p_user_agent: subscription.user_agent ?? null, p_created_at: subscription.created_at,
+            },
+        );
+        if (error || typeof data !== 'boolean') {
+            reportPushSubscriptionCleanupFailure();
+            return 'failed';
+        }
+        return data ? 'deleted' : 'preserved';
+    } catch {
+        reportPushSubscriptionCleanupFailure();
+        return 'failed';
+    }
+}
+
 export async function sendWebPushNotification(
     subscription: PushSubscriptionData,
     payload: PushPayload,
@@ -412,9 +454,10 @@ export async function sendWebPushNotifications(
     signal?: AbortSignal,
 ): Promise<PushDeliverySummary> {
     const activeSubscriptions = compactPushSubscriptions(subscriptions);
-    const results = await Promise.all(
-        activeSubscriptions.map((subscription) =>
-            sendWebPushNotification(
+    const deliveries = await Promise.all(
+        activeSubscriptions.map(async (subscription) => ({
+            subscription,
+            result: await sendWebPushNotification(
                 {
                     endpoint: subscription.endpoint,
                     keys: {
@@ -424,33 +467,21 @@ export async function sendWebPushNotifications(
                 },
                 payload,
                 signal,
-            )),
+            ),
+        })),
     );
-    const expiredEndpoints = results
-        .map((result, index) => ({ result, endpoint: activeSubscriptions[index]?.endpoint }))
-        .filter(({ result, endpoint }) =>
-            Boolean(endpoint) && (result.statusCode === 404 || result.statusCode === 410))
-        .map(({ endpoint }) => endpoint);
-
-    if (expiredEndpoints.length > 0) {
-        const { supabaseAdmin } = await import('@/lib/supabase');
-        const { error } = await supabaseAdmin
-            .from('push_subscriptions')
-            .delete()
-            .eq('user_id', userId)
-            .in('endpoint', expiredEndpoints);
-        if (error) {
-            reportError('sendWebPush:pruneExpired', error, {
-                count: expiredEndpoints.length,
-            });
-        }
-    }
-
+    const cleanupOutcomes = await Promise.all(deliveries
+        .filter(({ result }) => result.statusCode === 404 || result.statusCode === 410)
+        .map(({ subscription }) =>
+            deletePushSubscriptionIfUnchanged(userId, subscription)));
+    const results = deliveries.map(({ result }) => result);
     const sent = results.filter((result) => result.success).length;
+    const pruned = cleanupOutcomes.filter((outcome) => outcome === 'deleted').length;
+    const preserved = cleanupOutcomes.filter((outcome) => outcome === 'preserved').length;
+    const cleanupFailed = cleanupOutcomes.filter((outcome) => outcome === 'failed').length;
     return {
-        sent,
-        failed: results.length - sent,
-        expired: expiredEndpoints.length,
+        sent, failed: results.length - sent, expired: cleanupOutcomes.length,
         skippedDuplicates: subscriptions.length - activeSubscriptions.length,
+        pruned, preserved, cleanupFailed,
     };
 }

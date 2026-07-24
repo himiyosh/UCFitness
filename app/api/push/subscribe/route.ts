@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
 import {
+    deletePushSubscriptionIfUnchanged,
     findSupersededSubscriptionIds,
     isAllowedPushEndpoint,
     isValidPushKey,
@@ -77,22 +78,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             currentSubscription,
             userAgent,
         );
-        if (staleIds.length > 0) {
-            const { error: pruneError } = await supabaseAdmin
-                .from('push_subscriptions')
-                .delete()
-                .eq('user_id', userId)
-                .in('id', staleIds);
-            if (pruneError) {
-                reportError('push/subscribe:pruneSuperseded', pruneError, {
-                    userId,
-                    count: staleIds.length,
-                });
-                return NextResponse.json({ success: true, pruned: 0 });
-            }
-        }
-
-        return NextResponse.json({ success: true, pruned: staleIds.length });
+        const staleIdSet = new Set(staleIds);
+        const staleSubscriptions = (existingSubscriptions ?? [])
+            .filter((subscription) => subscription.id ? staleIdSet.has(subscription.id) : false);
+        const cleanupOutcomes = await Promise.all(staleSubscriptions.map(
+            (staleSubscription) => deletePushSubscriptionIfUnchanged(userId, staleSubscription)));
+        return NextResponse.json({
+            success: true,
+            pruned: cleanupOutcomes.filter((outcome) => outcome === 'deleted').length,
+            preserved: cleanupOutcomes.filter((outcome) => outcome === 'preserved').length,
+            cleanupFailed: cleanupOutcomes.filter((outcome) => outcome === 'failed').length,
+        });
     } catch (err: unknown) {
         reportError('push/subscribe', err);
         return NextResponse.json({ error: 'Server error' }, { status: 500 });

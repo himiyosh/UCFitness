@@ -1537,3 +1537,10 @@ export const runtime = "edge";
 - **根本原因**: routeのFirst Load JSだけをF020のbudgetとして監視し、Pages Workerの全moduleとWASMを含むupload sizeを出荷ゲートにしていなかった。
 - **対策**: metadata routeは`force-dynamic`のEdge routeとして既存の静的PNGへredirectし、`next/og`依存を除去する。静的化されたredirectはPages上で200空本文になり得るため使用しない。`npm run pages:build`後に全Worker moduleのgzip推定合計を計測し、2.8 MiBを超えたら失敗させる。
 - **教訓**: Cloudflare Pagesではclient bundleとWorker upload sizeを別々に管理する。固定画像に動的画像生成を使わず、deploy段階の3 MiB制限をCI相当のlocal buildで事前検出する。リファレンス: `app/icon.tsx`, `app/apple-icon.tsx`, `scripts/check-cloudflare-worker-size.mjs`
+
+### LL-079: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
+
+- **事象**: 送信中に同じendpointが新しい`p256dh`、`auth`、`created_at`へ再購読された場合、古い送信の404/410を受けた`user_id + endpoint`直接DELETEが有効なreplacementまで削除し得た。再購読時の古い端末整理も、一覧取得後に対象行が更新される同じ競合を持っていた。
+- **根本原因**: Push Service応答が失効を証明するのは送信時に観測した購読版だけであり、endpointを購読行の不変versionとして扱った。アプリ側のread-then-deleteには行ロックも全観測項目の比較もなかった。
+- **対策**: `delete_push_subscription_if_unchanged`をservice-role限定の`SECURITY DEFINER` RPCとして追加し、主キーで`FOR UPDATE`後に`id`、`user_id`、`endpoint`、`p256dh`、`auth`、nullable `user_agent`、nullable `created_at`を`IS NOT DISTINCT FROM`で比較して一致時だけ削除する。404/410件数は既存`expired`を維持し、再購読整理と共有するCASのtrueを`pruned`、falseを`preserved`、RPC障害を固定`cleanupFailed`として分離する。
+- **教訓**: 外部サービスの古い応答を根拠に可変リソースを削除する場合、論理キーだけで削除しない。副作用開始時の完全なrow versionを保持し、DB transaction内のrow lock付きcompare-and-deleteで一致した版だけを削除する。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`

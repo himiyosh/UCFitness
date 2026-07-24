@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -9,6 +10,7 @@ const readRepositoryFile = (path: string): string =>
 const migration = readRepositoryFile(
     'migrations/20260720_harden_push_subscriptions_rls.sql',
 );
+const casMigration = readRepositoryFile('migrations/20260725_delete_push_subscription_if_unchanged.sql');
 const phaseOneMigration = readRepositoryFile(
     'migrations/20260720_harden_api_keys_rls.sql',
 );
@@ -16,12 +18,13 @@ const subscribeRoute = readRepositoryFile('app/api/push/subscribe/route.ts');
 const deliverySources = [
     'app/api/push/send/route.ts', 'app/api/cron/step-reminder/route.ts',
     'app/api/cron/weekly-summary/route.ts', 'lib/services/badge-allocator.ts',
-    'lib/api/web-push.ts',
 ].map(readRepositoryFile);
+const webPushSource = readRepositoryFile('lib/api/web-push.ts');
 const browserSources = [
     'hooks/useWebPush.ts', 'components/PushNotificationManager.tsx',
     'components/PushSubscriptionButton.tsx',
 ].map(readRepositoryFile);
+const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 
 describe('F016 push_subscriptions RLS migration', () => {
     it('Phase 1を維持しPhase 2はpush_subscriptionsだけを対象にする', () => {
@@ -32,6 +35,8 @@ describe('F016 push_subscriptions RLS migration', () => {
             /ALTER TABLE public\.([a-z_]+) ENABLE ROW LEVEL SECURITY/i,
         )?.[1]).toBe('push_subscriptions');
         expect(migration).not.toContain('ALTER TABLE public.api_keys');
+        expect(sha256(migration)).toBe(
+            '5b0e55ee7841df5a5586e5822cb9551dcaefc0238613c19507bf231d5c52dd66');
     });
 
     it('既知schema、FK、主キー、upsert用unique制約をfail closedで検証する', () => {
@@ -111,6 +116,45 @@ describe('F016 push_subscriptions RLS migration', () => {
             source.includes('/api/push/subscribe')
             && !source.includes(".from('push_subscriptions')")
             && !source.includes('@/lib/supabase'))).toBe(true);
+    });
+
+    it('CAS migrationはschema、public.users FK、owner、RLS、ACLをfail closedで検証する', () => {
+        for (const contract of [
+            /^BEGIN;/, /COMMIT;\s*$/, /SET LOCAL search_path = ''/,
+            /to_regclass\('public\.push_subscriptions'\)/, /to_regclass\('public\.users'\)/,
+            /LOCK TABLE public\.push_subscriptions IN ACCESS EXCLUSIVE MODE/,
+            /owner\.rolname = 'postgres'/, /owner\.rolbypassrls/,
+            /created_at:timestamp with time zone:false:true/,
+            /confdeltype = 'c'/, /convalidated/, /pg_catalog\.pg_policy/,
+            /'service_role', target_table, 'DELETE'/, /pg_catalog\.aclexplode/,
+        ]) expect(casMigration).toMatch(contract);
+        expect(casMigration).not.toMatch(/auth\.users|CREATE\s+POLICY/i);
+    });
+
+    it('CAS RPCはrow lock、全version比較、service-role限定ACLと共有wiringを備える', () => {
+        expect(casMigration).toMatch(/WHERE subscription\.id = p_id\s+FOR UPDATE;/);
+        for (const field of ['user_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at']) {
+            expect(casMigration).toContain(
+                `observed_row.${field} IS NOT DISTINCT FROM p_${field}`,
+            );
+        }
+        for (const contract of [
+            /SECURITY DEFINER/, /SET search_path = ''/,
+            /\) OWNER TO postgres;/,
+            /\) FROM PUBLIC, anon, authenticated, service_role;/,
+            /\) TO service_role;/,
+            /procedure\.proconfig = ARRAY\['search_path=""'\]::text\[\]/,
+            /has_function_privilege\('anon', function_oid, 'EXECUTE'\)/,
+        ]) expect(casMigration).toMatch(contract);
+        expect(casMigration).toMatch(/DELETE FROM public\.push_subscriptions AS subscription\s+WHERE subscription\.id = p_id;/);
+        expect(casMigration.match(/RETURN false;/g)).toHaveLength(2);
+        expect(casMigration).toContain('RETURN FOUND;');
+        expect(webPushSource).toContain(
+            "supabaseAdmin.rpc(\n            'delete_push_subscription_if_unchanged'");
+        expect(webPushSource).not.toContain(".in('endpoint'");
+        expect(subscribeRoute).toContain('deletePushSubscriptionIfUnchanged');
+        expect(subscribeRoute).toContain('findSupersededSubscriptionIds');
+        expect(subscribeRoute).not.toContain(".in('id', staleIds)");
     });
 
     it('F001を変更せずF016をin-progressに維持する', () => {
