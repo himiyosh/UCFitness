@@ -245,8 +245,7 @@ describe('sendWebPushNotification', () => {
         const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/test-endpoint', keys: { p256dh: toBase64Url(publicKey), auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) } };
         const result = await sendWebPushNotification(subscription, { title: 'test', body: 'test' }, signal);
         expect(result.success).toBe(false); expect(result.error?.message).toBe('Web push delivery failed');
-        const loggedError = mocks.reportError.mock.calls.at(-1)?.[1];
-        expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
+        const loggedError = mocks.reportError.mock.calls.at(-1)?.[1]; expect(loggedError).not.toBe(rawError); expect(loggedError).toBeInstanceOf(Error); expect(loggedError instanceof Error ? loggedError.message : '').toBe('Web push delivery failed'); expect(Reflect.get(loggedError ?? {}, 'cause')).toBeUndefined();
         vi.useFakeTimers(); let markStarted: (() => void) | undefined; const started = new Promise<void>((resolve) => { markStarted = resolve; });
         fetchMock.mockImplementationOnce(async (_input, init) => { const timeoutSignal = init?.signal; expect(timeoutSignal).toBeInstanceOf(AbortSignal); markStarted?.(); return await new Promise<Response>((_resolve, reject) => timeoutSignal?.addEventListener('abort', () => reject(timeoutSignal.reason), { once: true })); });
         const timeoutPromise = sendWebPushNotifications('private-user', [{ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }], { title: 'test', body: 'test' }); await started; await vi.advanceTimersByTimeAsync(15_000); const timeoutResult = await timeoutPromise; const timeoutError = mocks.reportError.mock.calls.at(-1)?.[1];
