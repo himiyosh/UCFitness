@@ -42,8 +42,8 @@ export interface PushDeliverySummary {
     expired: number;
     skippedDuplicates: number;
 }
-export const MAX_PUSH_SUBSCRIPTIONS = 20; export const MAX_TOTAL_PUSH_SUBSCRIPTIONS = 10_000;
-const PUSH_SEND_TIMEOUT_MS = 15_000; const PUSH_SUBSCRIPTION_PAGE_SIZE = 900;
+export const MAX_PUSH_SUBSCRIPTIONS = 20; export const MAX_TOTAL_PUSH_SUBSCRIPTIONS = 900;
+const PUSH_SEND_TIMEOUT_MS = 15_000; const PUSH_SUBSCRIPTION_QUERY_LIMIT = MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1;
 
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com',
@@ -108,20 +108,19 @@ export async function isValidPushSubscriptionKeys(p256dh: unknown, auth: unknown
     try { await crypto.subtle.importKey('raw', copyToArrayBuffer(base64UrlToUint8Array(p256dh)), { name: 'ECDH', namedCurve: 'P-256' }, false, []); return true; } catch { return false; }
 }
 
-export type PushSubscriptionBoundaryReason = 'query' | 'data' | 'limit'; export class PushSubscriptionBoundaryError extends Error { constructor(readonly reason: PushSubscriptionBoundaryReason) { super('Push subscription boundary failed'); this.name = 'PushSubscriptionBoundaryError'; } } export interface PreparedPushSubscriptions { byUser: Map<string, StoredPushSubscriptionData[]>; userIds: string[]; invalidUserIds: string[]; cappedUserIds: string[] }
+export type PushSubscriptionBoundaryReason = 'query' | 'data' | 'snapshot-cap'; export class PushSubscriptionBoundaryError extends Error { constructor(readonly reason: PushSubscriptionBoundaryReason) { super('Push subscription boundary failed'); this.name = 'PushSubscriptionBoundaryError'; } } export interface PreparedPushSubscriptions { byUser: Map<string, StoredPushSubscriptionData[]>; userIds: string[]; invalidUserIds: string[]; cappedUserIds: string[] }
 function pushBoundaryFail(reason: PushSubscriptionBoundaryReason): never { throw new PushSubscriptionBoundaryError(reason); } function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }
-export async function loadPushSubscriptionSnapshot(snapshot: string): Promise<unknown[]> {
+export async function loadPushSubscriptionSnapshot(): Promise<unknown[]> {
     let admin: (typeof import('@/lib/supabase'))['supabaseAdmin']; try { admin = (await import('@/lib/supabase')).supabaseAdmin; } catch { pushBoundaryFail('query'); }
-    let nullHead; try { nullHead = await admin.from('push_subscriptions').select('id', { count: 'exact', head: true }).is('created_at', null); } catch { pushBoundaryFail('query'); } if (nullHead.error) pushBoundaryFail('query'); if (typeof nullHead.count !== 'number' || !Number.isSafeInteger(nullHead.count) || nullHead.count < 0 || nullHead.count > 0) pushBoundaryFail('data');
-    const rows: unknown[] = []; let cursor: string | null = null; while (true) {
-        const limit = Math.min(PUSH_SUBSCRIPTION_PAGE_SIZE, MAX_TOTAL_PUSH_SUBSCRIPTIONS - rows.length + 1); let query = admin.from('push_subscriptions').select('id, user_id, endpoint, p256dh, auth, user_agent, created_at').lte('created_at', snapshot).order('id', { ascending: true }).limit(limit); if (cursor) query = query.gt('id', cursor);
-        let page; try { page = await query; } catch { pushBoundaryFail('query'); } if (page.error) pushBoundaryFail('query'); if (!Array.isArray(page.data)) pushBoundaryFail('data'); rows.push(...page.data); if (rows.length > MAX_TOTAL_PUSH_SUBSCRIPTIONS) pushBoundaryFail('limit'); if (page.data.length < limit) return rows; const last = page.data.at(-1); if (!isRecord(last) || typeof last.id !== 'string' || (cursor !== null && last.id <= cursor)) pushBoundaryFail('data'); cursor = last.id;
-    }
+    let result; try { result = await admin.from('push_subscriptions').select('id, user_id, endpoint, p256dh, auth, user_agent, created_at', { count: 'exact' }).order('id', { ascending: true }).limit(PUSH_SUBSCRIPTION_QUERY_LIMIT); } catch { pushBoundaryFail('query'); }
+    if (result.error) pushBoundaryFail('query'); if (!Array.isArray(result.data)) pushBoundaryFail('data');
+    if (typeof result.count !== 'number' || !Number.isSafeInteger(result.count) || result.count < 0 || result.count > MAX_TOTAL_PUSH_SUBSCRIPTIONS || result.count !== result.data.length) pushBoundaryFail('snapshot-cap');
+    return result.data;
 }
-export async function preparePushSubscriptionSnapshot(rows: unknown[], snapshot: string): Promise<PreparedPushSubscriptions> {
-    const byUser = new Map<string, StoredPushSubscriptionData[]>(); const userIds = new Set<string>(); const invalid = new Set<string>(); const capped = new Set<string>(); const counts = new Map<string, number>(); const rowIds = new Set<string>(); const identities: Array<{ row: Record<string, unknown>; id: string; userId: string }> = []; const snapshotMs = Date.parse(snapshot);
+export async function preparePushSubscriptionSnapshot(rows: unknown[]): Promise<PreparedPushSubscriptions> {
+    const byUser = new Map<string, StoredPushSubscriptionData[]>(); const userIds = new Set<string>(); const invalid = new Set<string>(); const capped = new Set<string>(); const counts = new Map<string, number>(); const rowIds = new Set<string>(); const identities: Array<{ row: Record<string, unknown>; id: string; userId: string }> = [];
     for (const row of rows) { if (!isRecord(row) || typeof row.id !== 'string' || !UUID_PATTERN.test(row.id) || typeof row.user_id !== 'string' || !UUID_PATTERN.test(row.user_id) || rowIds.has(row.id)) pushBoundaryFail('data'); rowIds.add(row.id); userIds.add(row.user_id); const count = (counts.get(row.user_id) ?? 0) + 1; counts.set(row.user_id, count); if (count > MAX_PUSH_SUBSCRIPTIONS) capped.add(row.user_id); identities.push({ row, id: row.id, userId: row.user_id }); }
-    for (const { row, id, userId } of identities) { if (capped.has(userId) || invalid.has(userId)) continue; if (!isAllowedPushEndpoint(row.endpoint) || typeof row.p256dh !== 'string' || typeof row.auth !== 'string' || !await isValidPushSubscriptionKeys(row.p256dh, row.auth) || (row.user_agent !== null && typeof row.user_agent !== 'string') || typeof row.created_at !== 'string' || !Number.isFinite(Date.parse(row.created_at)) || Date.parse(row.created_at) > snapshotMs) { invalid.add(userId); byUser.delete(userId); continue; } const subs = byUser.get(userId) ?? []; subs.push({ id, endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth, user_agent: row.user_agent, created_at: row.created_at }); byUser.set(userId, subs); }
+    for (const { row, id, userId } of identities) { if (capped.has(userId) || invalid.has(userId)) continue; if (!isAllowedPushEndpoint(row.endpoint) || typeof row.p256dh !== 'string' || typeof row.auth !== 'string' || !await isValidPushSubscriptionKeys(row.p256dh, row.auth) || (row.user_agent !== null && typeof row.user_agent !== 'string') || typeof row.created_at !== 'string' || !Number.isFinite(Date.parse(row.created_at))) { invalid.add(userId); byUser.delete(userId); continue; } const subs = byUser.get(userId) ?? []; subs.push({ id, endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth, user_agent: row.user_agent, created_at: row.created_at }); byUser.set(userId, subs); }
     return { byUser, userIds: Array.from(userIds), invalidUserIds: Array.from(invalid), cappedUserIds: Array.from(capped) };
 }
 

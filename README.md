@@ -29,7 +29,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 | **バッジ & 称号** | 連続達成や累計歩数・順位に応じたバッジ獲得・称号付与システム |
 | **コイン経済** | 歩数でコインを獲得し、7/30/100/365日のストリーク節目で一回限りの追加UCを受け取り、ショップでギアを購入 |
 | **ギア & リアクション** | プロフィールギア装着、メンバーへのリアクション |
-| **プッシュ通知** | 言語対応Web Push、バッジ集約、歩数リマインダー、JST前週サマリー、端末重複制御。共有server正本`lib/api/web-push.ts`は`loadPushSubscriptionSnapshot`・`preparePushSubscriptionSnapshot`・`isValidPushSubscriptionKeys`・`sendWebPushNotifications`でsnapshot/keyset、総10,000/raw user20、WebCrypto鍵検証、active20/15秒timeoutを提供する。週次固有JST/coin処理は`lib/services/weekly-summary.ts`に限定し、非原子的cleanupは行わずoutboxとCAS cleanupの2 stacked PRをmerge前必須とする |
+| **プッシュ通知** | 言語対応Web Push、バッジ集約、歩数リマインダー、JST前週サマリー、端末重複制御。共有server正本`lib/api/web-push.ts`は`loadPushSubscriptionSnapshot`・`preparePushSubscriptionSnapshot`・`isValidPushSubscriptionKeys`・`sendWebPushNotifications`でexact count付き単一statement最大900件、raw user20、WebCrypto鍵検証、active20/15秒timeoutを提供し、超過・count欠落・件数不一致は部分処理せずfail closedとする。将来の拡張にはqueueまたはtransactional RPCが必要。週次固有JST/coin処理は`lib/services/weekly-summary.ts`に限定する。#300は新規weekly legacy-invalid cleanupを追加せずinvalid userを隔離する一方、main既存の404/410 `user_id + endpoint` cleanupは非CASのまま未解決であり、outboxとrow-version CAS cleanupの2 stacked PRをmerge前必須とする |
 | **i18n** | 日本語・英語の 2 言語対応 |
 | **法務情報** | アプリ内の `/legal/terms` と `/legal/privacy` で利用条件・健康情報の注意・データ取扱いを ja/en で明示 |
 | **PWA** | ホーム画面追加、オフライン対応 |

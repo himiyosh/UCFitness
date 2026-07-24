@@ -3,15 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     compactPushSubscriptions,
     findSupersededSubscriptionIds,
-    isValidPushSubscriptionKeys,
+    isValidPushSubscriptionKeys, loadPushSubscriptionSnapshot, MAX_TOTAL_PUSH_SUBSCRIPTIONS,
     preparePushSubscriptionSnapshot,
     sendWebPushNotification,
     sendWebPushNotifications,
 } from '@/lib/api/web-push';
 
-const mocks = vi.hoisted(() => ({ prune: vi.fn(), reportError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ from: vi.fn(), prune: vi.fn(), reportError: vi.fn() }));
 vi.mock('@/lib/errors', async () => ({ ...await vi.importActual<typeof import('@/lib/errors')>('@/lib/errors'), reportError: mocks.reportError }));
-vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: () => ({ delete: () => ({ eq: () => ({ in: mocks.prune }) }) }) } }));
+vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { from: mocks.from } }));
 
 const encoder = new TextEncoder();
 const MAX_ENCRYPTED_PUSH_BODY = 4096;
@@ -152,13 +152,14 @@ async function decryptPayload(
     return JSON.parse(new TextDecoder().decode(plaintext.slice(0, -1))) as Record<string, unknown>;
 }
 
+describe('loadPushSubscriptionSnapshot', () => { const mockSnapshotQuery = (result: { data: unknown; error: unknown; count: unknown }) => { const limit = vi.fn().mockResolvedValue(result); const order = vi.fn(() => ({ limit })); const select = vi.fn(() => ({ order })); mocks.from.mockReturnValue({ select }); return { select, order, limit }; }; beforeEach(() => { vi.clearAllMocks(); }); it.each([0, MAX_TOTAL_PUSH_SUBSCRIPTIONS])('%i件の場合、単一statementの完全snapshotを返す', async (count) => { const rows = Array.from({ length: count }, (_, index) => ({ id: String(index) })); const query = mockSnapshotQuery({ data: rows, error: null, count }); await expect(loadPushSubscriptionSnapshot()).resolves.toEqual(rows); expect(mocks.from).toHaveBeenCalledTimes(1); expect(query.select).toHaveBeenCalledWith('id, user_id, endpoint, p256dh, auth, user_agent, created_at', { count: 'exact' }); expect(query.order).toHaveBeenCalledWith('id', { ascending: true }); expect(query.limit).toHaveBeenCalledWith(MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1); }); it.each([['901件', MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1, MAX_TOTAL_PUSH_SUBSCRIPTIONS + 1], ['count null', null, 0], ['count mismatch', 1, 0], ['count negative', -1, 0], ['count unsafe', Number.MAX_SAFE_INTEGER + 1, 0]])('%sの場合、部分snapshotを返さず固定境界失敗にする', async (_name, count, rowCount) => { mockSnapshotQuery({ data: Array.from({ length: rowCount }, (_, index) => ({ id: String(index) })), error: null, count }); await expect(loadPushSubscriptionSnapshot()).rejects.toMatchObject({ reason: 'snapshot-cap' }); expect(mocks.from).toHaveBeenCalledTimes(1); }); });
 describe('sendWebPushNotification', () => {
     const originalPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     const originalPrivateKey = process.env.VAPID_PRIVATE_KEY;
     const originalSubject = process.env.VAPID_SUBJECT;
 
     beforeEach(async () => {
-        vi.clearAllMocks(); await createVapidEnvironment();
+        vi.clearAllMocks(); mocks.from.mockImplementation(() => ({ delete: () => ({ eq: () => ({ in: mocks.prune }) }) })); await createVapidEnvironment();
     });
 
     afterEach(() => {
@@ -181,7 +182,7 @@ describe('sendWebPushNotification', () => {
         );
         const authSecret = crypto.getRandomValues(new Uint8Array(16));
         expect(await isValidPushSubscriptionKeys(toBase64Url(receiverPublicKey), toBase64Url(authSecret))).toBe(true);
-        const invalid = { id: '10000000-0000-4000-8000-000000000001', user_id: '00000000-0000-4000-8000-000000000001', endpoint: 'https://fcm.googleapis.com/invalid', p256dh: toBase64Url(receiverPublicKey), auth: 'a', user_agent: 'Browser', created_at: '2026-07-01T00:00:00Z' }; const valid = { ...invalid, id: '10000000-0000-4000-8000-000000000002', user_id: '00000000-0000-4000-8000-000000000002', endpoint: 'https://fcm.googleapis.com/valid', auth: toBase64Url(authSecret) }; const invalidRows = Array.from({ length: 21 }, (_, index) => ({ ...invalid, id: `10000000-0000-4000-8001-${String(index + 1).padStart(12, '0')}` })); const prepared = await preparePushSubscriptionSnapshot([...invalidRows, valid], '2026-07-13T00:00:00Z'); expect(prepared.cappedUserIds).toEqual([invalid.user_id]); expect(prepared.byUser.get(valid.user_id)).toHaveLength(1); await expect(preparePushSubscriptionSnapshot([invalid, { ...valid, id: invalid.id }], '2026-07-13T00:00:00Z')).rejects.toMatchObject({ reason: 'data' });
+        const invalid = { id: '10000000-0000-4000-8000-000000000001', user_id: '00000000-0000-4000-8000-000000000001', endpoint: 'https://fcm.googleapis.com/invalid', p256dh: toBase64Url(receiverPublicKey), auth: 'a', user_agent: 'Browser', created_at: '2026-07-01T00:00:00Z' }; const valid = { ...invalid, id: '10000000-0000-4000-8000-000000000002', user_id: '00000000-0000-4000-8000-000000000002', endpoint: 'https://fcm.googleapis.com/valid', auth: toBase64Url(authSecret) }; const invalidRows = Array.from({ length: 21 }, (_, index) => ({ ...invalid, id: `10000000-0000-4000-8001-${String(index + 1).padStart(12, '0')}` })); const prepared = await preparePushSubscriptionSnapshot([...invalidRows, valid]); expect(prepared.cappedUserIds).toEqual([invalid.user_id]); expect(prepared.byUser.get(valid.user_id)).toHaveLength(1); await expect(preparePushSubscriptionSnapshot([invalid, { ...valid, id: invalid.id }])).rejects.toMatchObject({ reason: 'data' });
         const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 201 }));
         vi.stubGlobal('fetch', fetchMock);
 
