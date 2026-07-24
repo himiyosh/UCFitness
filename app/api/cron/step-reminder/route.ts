@@ -60,12 +60,10 @@ export async function GET(request: Request): Promise<NextResponse> {
         userIds.sort();
         let totalSent = 0, totalFailed = 0, totalExpired = 0;
         let totalDeduplicated = 0, totalUnderGoal = 0;
-        const checkedUserIds = new Set(preparedSubscriptions.userIds);
         const failedUserIds = new Set([
             ...preparedSubscriptions.invalidUserIds,
             ...preparedSubscriptions.cappedUserIds,
         ]);
-        let hasAttributionAnomaly = false;
         if (preparedSubscriptions.invalidUserIds.length > 0) reportFailure('subscriptions-validation');
         if (preparedSubscriptions.cappedUserIds.length > 0) reportFailure('subscriptions-user-limit');
 
@@ -90,19 +88,17 @@ export async function GET(request: Request): Promise<NextResponse> {
                 continue;
             }
 
-            const invalidUserIds = new Set([
-                ...parsedProfiles.invalidUserIds, ...parsedSteps.invalidUserIds]);
-            invalidUserIds.forEach((userId) => failedUserIds.add(userId));
-            const foreignUserIds = new Set([
-                ...parsedProfiles.foreignUserIds, ...parsedSteps.foreignUserIds]);
-            foreignUserIds.forEach((userId) => {
-                if (checkedUserIds.has(userId)) failedUserIds.add(userId);
-                else hasAttributionAnomaly = true;
-            });
             if (parsedProfiles.invalidUserIds.size > 0) reportFailure('profiles-validation', batchIndex);
             if (parsedSteps.invalidUserIds.size > 0) reportFailure('steps-validation', batchIndex);
             if (parsedProfiles.foreignUserIds.size > 0) reportFailure('profiles-foreign-row', batchIndex);
             if (parsedSteps.foreignUserIds.size > 0) reportFailure('steps-foreign-row', batchIndex);
+            if (parsedProfiles.foreignUserIds.size > 0 || parsedSteps.foreignUserIds.size > 0) {
+                batch.forEach((userId) => failedUserIds.add(userId));
+                continue;
+            }
+            const invalidUserIds = new Set([
+                ...parsedProfiles.invalidUserIds, ...parsedSteps.invalidUserIds]);
+            invalidUserIds.forEach((userId) => failedUserIds.add(userId));
             const underGoalUserIds = batch.filter((userId) => {
                 if (invalidUserIds.has(userId) || failedUserIds.has(userId)) return false;
                 const info = parsedProfiles.rows.get(userId);
@@ -145,7 +141,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             }
         }
 
-        const success = failedUserIds.size === 0 && !hasAttributionAnomaly;
+        const success = failedUserIds.size === 0;
         return NextResponse.json({
             success, message: 'ステップリマインダー通知送信完了',
             checked: preparedSubscriptions.userIds.length, underGoal: totalUnderGoal,

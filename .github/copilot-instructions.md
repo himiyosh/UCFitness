@@ -1538,6 +1538,6 @@ export const runtime = "edge";
 
 ### LL-078: Cron通知の取得境界と送信batchを分離しないと切り捨てと障害偽装が起きる
 - **事象**: 歩数リマインダーが購読をPostgREST既定上限のまま取得し、全ユーザーIDをusers/stepsの単一`.in`へ渡し、DB障害・不正目標・不明言語を既定値へ変換したまま部分失敗でも200を返していた。
-- **根本原因**: 購読snapshot、validation前raw cap、P-256鍵、active cap/timeout、依存データ検証、通知送信を別の有界境界として設計せず、OFFSETのstable orderやTopic/tagをsnapshot・永続冪等性の代替と誤認していた。
-- **対策**: PR #300の共有Push正本へsingle-statement exact count最大900件、raw/active20、WebCrypto鍵検証、15秒abortを集約し、歩数通知側は20ユーザーのprofile/steps検証、欠測0歩、ja/en payload、部分失敗5xxだけを担う。帰属可能な不正行をユーザー単位で隔離し、raw errorを固定categoryへ変換する。
-- **教訓**: DB成功時の歩数行欠落だけが未記録0歩である。Topic/tagは配送・表示置換の補助で永続冪等性ではないため、`notification-delivery-outbox`の`(JST date,user,notification type)` ledger+claim leaseと、非CAS 404/410削除を置換する`push-subscription-cas`のDB lock付きrow-version CASを#301 merge前必須依存とする。リファレンス: `app/api/cron/step-reminder/route.ts`, `lib/services/step-reminder.ts`, `lib/api/web-push.ts`
+- **根本原因**: 購読snapshot、validation前raw cap、P-256鍵、active cap/timeout、依存データのattribution、通知送信を別の有界境界として設計せず、OFFSETのstable orderやTopic/tagをsnapshot・永続冪等性の代替と誤認した。保存側もendpoint ownershipとraw20を原子的に保証せず、cross-user漏洩と1ユーザー901件によるglobal cap停止を許した。
+- **対策**: PR #300の共有Push正本へsingle-statement exact count最大900件、raw/active20、WebCrypto鍵検証、15秒abortを集約し、歩数通知側は20ユーザーのprofile/steps検証、欠測0歩、ja/en payload、部分失敗5xxだけを担う。users/stepsにforeign行が1件でもあれば該当batch全体を送信せず固定失敗にして次batchを継続する。
+- **教訓**: DB query成功かつforeign行がない場合の期待user歩数行欠落だけが未記録0歩である。Topic/tagは永続冪等性ではないため`notification-delivery-outbox`、非CAS 404/410削除には`push-subscription-cas`、endpoint ownership transfer+raw20保存には`atomic-push-subscription-save`のDB RPCを#300/#301 merge前必須依存とする。routeのglobal capは保存側DoSを部分処理で隠さずfail closedを維持する。リファレンス: `app/api/cron/step-reminder/route.ts`, `lib/services/step-reminder.ts`, `lib/api/web-push.ts`

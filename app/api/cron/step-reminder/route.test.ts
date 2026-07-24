@@ -121,26 +121,27 @@ describe('GET /api/cron/step-reminder', () => {
         expect((await GET(request())).status).toBe(500); expect(mocks.sendPush).not.toHaveBeenCalled();
     });
     it('共有invalid/raw capとprofile/steps不正を隔離し、正常ユーザーを送信する', async () => {
-        const ids = users(5);
-        prepared.invalidUserIds = [ids[0]]; prepared.cappedUserIds = [ids[1]];
+        const ids = users(5); prepared.invalidUserIds = [ids[0]]; prepared.cappedUserIds = [ids[1]];
         prepared.byUser.delete(ids[0]); prepared.byUser.delete(ids[1]);
-        profiles[2] = { id: ids[2], step_goal: 0, language: 'ja' };
-        steps[3] = { user_id: ids[3], steps: -1 };
-        profileResolver = async (batch) => ({ data: [...matching(profiles, batch, 'id'), profiles[0]], error: null });
-        stepResolver = async (batch) => ({ data: [...matching(steps, batch, 'user_id'), steps[0]], error: null });
-        const response = await GET(request()); expect(response.status).toBe(500);
-        expect(mocks.sendPush).toHaveBeenCalledTimes(1);
+        profiles[2] = { id: ids[2], step_goal: 0, language: 'ja' }; steps[3] = { user_id: ids[3], steps: -1 };
+        const response = await GET(request()); expect(response.status).toBe(500); expect(mocks.sendPush).toHaveBeenCalledTimes(1);
         expect(await response.json()).toMatchObject({ checked: 5, underGoal: 1, sent: 1, failedUsers: 4 });
-        expect(mocks.reportError.mock.calls.map(([, , context]) => context.category)).toEqual(
-            expect.arrayContaining(['subscriptions-validation', 'subscriptions-user-limit',
-                'profiles-validation', 'steps-validation', 'profiles-foreign-row', 'steps-foreign-row']));
+        expect(mocks.reportError.mock.calls.map(([, , context]) => context.category)).toEqual(expect.arrayContaining(
+            ['subscriptions-validation', 'subscriptions-user-limit', 'profiles-validation', 'steps-validation']));
     });
-    it('購読snapshot外のforeign profileを失敗ユーザー数へ混ぜず5xxにする', async () => {
-        users(1); profileResolver = async () => ({ data: [profiles[0], { id: id(99), step_goal: 10_000, language: 'ja' }], error: null });
-        const response = await GET(request()); expect(response.status).toBe(500);
-        expect(await response.json()).toMatchObject({ checked: 1, sent: 1, failedUsers: 0 });
-        expect(mocks.sendPush).toHaveBeenCalledTimes(1);
-    });
+    it.each([['profiles', 'foreign+valid'], ['steps', 'foreign+missing']])(
+        '%sに%s行がある場合、該当batchを送信せず次batchを継続する', async (source) => {
+            const ids = users(21); const foreignId = id(99);
+            if (source === 'profiles') profileResolver = async (batch, index) => ({ data: [
+                ...matching(profiles, batch, 'id'), ...(index === 0 ? [{ id: foreignId, step_goal: 10_000, language: 'ja' }] : [])], error: null });
+            else stepResolver = async (batch, index) => ({ data: index === 0
+                ? [{ user_id: foreignId, steps: 1 }] : matching(steps, batch, 'user_id'), error: null });
+            const response = await GET(request()); const body = await response.json();
+            expect(response.status).toBe(500); expect(body).toMatchObject({ checked: 21, sent: 1, failedUsers: 20 });
+            expect(body.failedUsers).toBeLessThanOrEqual(body.checked);
+            expect(mocks.sendPush).toHaveBeenCalledTimes(1); expect(mocks.sendPush.mock.calls[0][0]).toBe(ids[20]);
+            expect(mocks.reportError.mock.calls.map(([, , context]) => context.category)).toContain(`${source}-foreign-row`);
+        });
     it('未記録と記録済み0を有効な0歩とし、70%境界とja/enを区別する', async () => {
         const ids = users(4); profiles[1] = { id: ids[1], step_goal: 10_000, language: 'en' };
         steps = [{ user_id: ids[1], steps: 0 }, { user_id: ids[2], steps: 6999 },
