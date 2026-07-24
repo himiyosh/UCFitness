@@ -1550,7 +1550,6 @@ export const runtime = "edge";
 - **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
 - **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
 - **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
-
 ### LL-080: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
 
 - **事象**: 送信中に同じendpointが新しい`p256dh`、`auth`、`created_at`へ再購読された場合、古い送信の404/410を受けた`user_id + endpoint`直接DELETEが有効なreplacementまで削除し得た。再購読時の古い端末整理も、一覧取得後に対象行が更新される同じ競合を持っていた。
