@@ -31,6 +31,10 @@ function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionReq
         && isValidPushKey(value.keys.auth, 128);
 }
 
+function reportPushSubscriptionError(operation: string, message: string): void {
+    reportError(operation, new Error(message));
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
     const session = await auth();
 
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             .single();
 
         if (upsertError || !currentSubscription) {
-            reportError('push/subscribe:save', upsertError, { userId });
+            reportPushSubscriptionError('push/subscribe:save', 'Push subscription save failed');
             return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });
         }
 
@@ -69,10 +73,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             .select('id, endpoint, p256dh, auth, user_agent, created_at')
             .eq('user_id', userId);
         if (listError) {
-            reportError(
-                'push/subscribe:listExisting',
-                new Error('Push subscription cleanup list failed'),
-            );
+            reportPushSubscriptionError('push/subscribe:listExisting',
+                'Push subscription cleanup list failed');
             return NextResponse.json({ success: true, pruned: 0 });
         }
 
@@ -94,10 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             pruned: pruneResults.filter((result) => result === 'deleted').length,
         });
     } catch {
-        reportError(
-            'push/subscribe',
-            new Error('Push subscription registration failed'),
-        );
+        reportPushSubscriptionError('push/subscribe', 'Push subscription registration failed');
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }
@@ -124,13 +123,15 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
             .match({ user_id: session.user.id, endpoint });
 
         if (error) {
-            reportError('push/subscribe:delete', error, { userId: session.user.id });
+            reportPushSubscriptionError('push/subscribe:delete',
+                'Push subscription delete failed');
             return NextResponse.json({ error: 'Failed to delete subscription' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (err: unknown) {
-        reportError('push/subscribe:delete', err);
+    } catch {
+        reportPushSubscriptionError('push/subscribe:delete',
+            'Push subscription delete failed');
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }

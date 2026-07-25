@@ -118,10 +118,6 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(subscribeRoute).toContain(".from('push_subscriptions')");
         expect(subscribeRoute).toContain('.upsert({');
         expect(subscribeRoute).toContain('.delete()');
-        expect(subscribeRoute).toContain('Push subscription cleanup list failed');
-        expect(subscribeRoute).not.toContain(
-            "reportError('push/subscribe:listExisting', listError",
-        );
         expect(deliverySources.slice(0, -1).every((source) =>
             source.includes(".from('push_subscriptions')")
             && source.includes('supabaseAdmin'))).toBe(true);

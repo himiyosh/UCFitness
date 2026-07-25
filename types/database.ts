@@ -119,18 +119,6 @@ export interface Database {
             };
         };
         Functions: {
-            delete_push_subscription_if_unchanged: {
-                Args: {
-                    p_id: string;
-                    p_user_id: string;
-                    p_endpoint: string;
-                    p_p256dh: string;
-                    p_auth: string;
-                    p_user_agent: string | null;
-                    p_created_at: string | null;
-                };
-                Returns: boolean;
-            };
             get_user_step_stats: {
                 /**
                  * PostgreSQL 関数の宣言 (`RETURNS TABLE` か単一行か) によって

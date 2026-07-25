@@ -2,22 +2,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     compactPushSubscriptions,
+    DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC,
+    deletePushSubscriptionIfUnchanged,
     findSupersededSubscriptionIds,
     sendWebPushNotification,
     sendWebPushNotifications,
 } from '@/lib/api/web-push';
 
-import type { StoredPushSubscriptionData } from '@/lib/api/web-push';
+import type {
+    DeletePushSubscriptionIfUnchangedArgs,
+    StoredPushSubscriptionData,
+} from '@/lib/api/web-push';
 
 const mocks = vi.hoisted(() => ({
     reportError: vi.fn(),
     rpc: vi.fn(),
 }));
-
 vi.mock('@/lib/errors', () => ({
     reportError: mocks.reportError,
 }));
-
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: {
         rpc: mocks.rpc,
@@ -314,232 +317,6 @@ describe('sendWebPushNotification', () => {
     });
 });
 
-describe('sendWebPushNotifications', () => {
-    const userId = '00000000-0000-4000-8000-000000000001';
-    const originalPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    const originalPrivateKey = process.env.VAPID_PRIVATE_KEY;
-    const originalSubject = process.env.VAPID_SUBJECT;
-    let p256dh = '';
-    let auth = '';
-
-    const subscription = (
-        overrides: Partial<StoredPushSubscriptionData> = {},
-    ): StoredPushSubscriptionData => ({
-            id: '00000000-0000-4000-8000-000000000010',
-            endpoint: 'https://fcm.googleapis.com/fcm/send/cas-test',
-            p256dh,
-            auth,
-            user_agent: 'Test Browser',
-            created_at: '2026-07-25T00:00:00.000Z',
-            ...overrides,
-        });
-    const send = (subscriptions: StoredPushSubscriptionData[]) =>
-        sendWebPushNotifications(userId, subscriptions, { title: 'test', body: 'test' });
-    const rpcArgs = (observed: StoredPushSubscriptionData) => ({
-        p_id: observed.id,
-        p_user_id: userId,
-        p_endpoint: observed.endpoint,
-        p_p256dh: observed.p256dh,
-        p_auth: observed.auth,
-        p_user_agent: observed.user_agent,
-        p_created_at: observed.created_at,
-    });
-
-    function stubPushStatuses(...statuses: number[]): ReturnType<typeof vi.fn<typeof fetch>> {
-        const fetchMock = vi.fn<typeof fetch>();
-        for (const status of statuses) {
-            fetchMock.mockResolvedValueOnce(new Response(null, { status }));
-        }
-        vi.stubGlobal('fetch', fetchMock);
-        return fetchMock;
-    }
-
-    beforeEach(async () => {
-        await createVapidEnvironment();
-        const receiverKeys = await crypto.subtle.generateKey(
-            { name: 'ECDH', namedCurve: 'P-256' },
-            true,
-            ['deriveBits'],
-        );
-        p256dh = toBase64Url(new Uint8Array(
-            await crypto.subtle.exportKey('raw', receiverKeys.publicKey),
-        ));
-        auth = toBase64Url(crypto.getRandomValues(new Uint8Array(16)));
-        mocks.reportError.mockReset();
-        mocks.rpc.mockReset();
-    });
-
-    afterEach(() => {
-        vi.unstubAllGlobals();
-        vi.restoreAllMocks();
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = originalPublicKey;
-        process.env.VAPID_PRIVATE_KEY = originalPrivateKey;
-        process.env.VAPID_SUBJECT = originalSubject;
-    });
-
-    it.each([404, 410])(
-        'Push Serviceが%iを返しsnapshotが完全一致する場合、CAS削除だけをexpiredへ数える',
-        async (status) => {
-            const observed = subscription();
-            stubPushStatuses(status);
-            mocks.rpc.mockResolvedValue({ data: true, error: null });
-
-            const result = await send([observed]);
-
-            expect(mocks.rpc).toHaveBeenCalledWith(
-                'delete_push_subscription_if_unchanged',
-                rpcArgs(observed),
-            );
-            expect(result).toEqual({
-                sent: 0,
-                failed: 1,
-                expired: 1,
-                skippedDuplicates: 0,
-            });
-        },
-    );
-
-    it.each([
-        ['stale replacement', 410],
-        ['already missing row', 404],
-    ])('CASが%sとしてfalseを返す場合、購読を保持してexpiredへ数えない', async (_, status) => {
-        stubPushStatuses(status);
-        mocks.rpc.mockResolvedValue({ data: false, error: null });
-
-        const result = await send([subscription()]);
-
-        expect(mocks.rpc).toHaveBeenCalledTimes(1);
-        expect(result.expired).toBe(0);
-    });
-
-    it('送信中に再購読winnerへ更新された場合、古いsnapshotでCASしてwinnerを保持する', async () => {
-        const observed = subscription();
-        let databaseRow = { ...observed };
-        vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => {
-            databaseRow = { ...observed, p256dh: 'winner-p256dh' };
-            return new Response(null, { status: 410 });
-        }));
-        mocks.rpc.mockImplementation((
-            _name: string,
-            args: ReturnType<typeof rpcArgs>,
-        ) => Promise.resolve({
-            data: JSON.stringify(args) === JSON.stringify(rpcArgs(databaseRow)),
-            error: null,
-        }));
-
-        const result = await send([observed]);
-
-        expect(mocks.rpc).toHaveBeenCalledWith(
-            'delete_push_subscription_if_unchanged',
-            rpcArgs(observed),
-        );
-        expect(databaseRow.p256dh).toBe('winner-p256dh');
-        expect(result.expired).toBe(0);
-    });
-
-    it('observed created_atとuser_agentがnullの場合、nullのままRPCへ渡す', async () => {
-        const observed = subscription({ created_at: null, user_agent: null });
-        stubPushStatuses(410);
-        mocks.rpc.mockResolvedValue({ data: true, error: null });
-
-        await send([observed]);
-
-        expect(mocks.rpc).toHaveBeenCalledWith(
-            'delete_push_subscription_if_unchanged',
-            rpcArgs(observed),
-        );
-    });
-
-    it.each([400, 409, 429, 500])(
-        'Push Serviceが%iを返す場合、CAS RPCを呼ばない',
-        async (status) => {
-            stubPushStatuses(status);
-
-            const result = await send([subscription()]);
-
-            expect(mocks.rpc).not.toHaveBeenCalled();
-            expect(result).toMatchObject({ failed: 1, expired: 0 });
-        },
-    );
-
-    it('複数端末でCAS結果とRPC失敗が混在する場合、送信を継続してtrueだけを数える', async () => {
-        const subscriptions = [410, 404, 410, 201].map((_, index) => subscription({
-            id: `00000000-0000-4000-8000-0000000000${index + 10}`,
-            endpoint: `https://fcm.googleapis.com/fcm/send/device-${index}`,
-            user_agent: `Browser ${index}`,
-        }));
-        const statuses = new Map(subscriptions.map((item, index) => [
-            item.endpoint,
-            [410, 404, 410, 201][index],
-        ]));
-        const fetchMock = vi.fn<typeof fetch>(async (input) => {
-            const status = statuses.get(String(input)) ?? 500;
-            return new Response(null, { status });
-        });
-        vi.stubGlobal('fetch', fetchMock);
-        mocks.rpc.mockImplementation((
-            _name: string,
-            args: { p_endpoint: string },
-        ) => Promise.resolve(
-            args.p_endpoint.endsWith('device-0')
-                ? { data: true, error: null }
-                : args.p_endpoint.endsWith('device-1')
-                    ? { data: false, error: null }
-                    : { data: null, error: { message: 'raw database failure' } },
-        ));
-
-        const result = await send(subscriptions);
-
-        expect(fetchMock).toHaveBeenCalledTimes(4);
-        expect(mocks.rpc).toHaveBeenCalledTimes(3);
-        expect(result).toEqual({
-            sent: 1,
-            failed: 3,
-            expired: 1,
-            skippedDuplicates: 0,
-        });
-    });
-
-    it('CAS RPCが失敗する場合、固定エラーだけを記録して購読snapshotを保持する', async () => {
-        const observed = subscription();
-        stubPushStatuses(410);
-        mocks.rpc.mockRejectedValue(new Error('PRIVATE_RPC_THROW'));
-
-        const result = await send([observed]);
-
-        expect(mocks.reportError).toHaveBeenCalledWith(
-            'pushSubscription:deleteUnchanged',
-            expect.objectContaining({ message: 'Push subscription CAS cleanup failed' }),
-        );
-        const cleanupCall = mocks.reportError.mock.calls.find(
-            (call) => call[0] === 'pushSubscription:deleteUnchanged',
-        );
-        expect(cleanupCall).toHaveLength(2);
-        const cleanupError = cleanupCall?.[1];
-        if (!(cleanupError instanceof Error)) throw new Error('Expected fixed cleanup error');
-        expect(cleanupError.cause).toBeUndefined();
-        const loggedArguments = mocks.reportError.mock.calls
-            .flatMap((call) => call)
-            .map((argument) => argument instanceof Error
-                ? argument.message
-                : JSON.stringify(argument))
-            .join(' ');
-        for (const secret of [
-            'PRIVATE_RPC_THROW',
-            userId,
-            observed.id,
-            observed.endpoint,
-            observed.p256dh,
-            observed.auth,
-            observed.user_agent ?? '',
-            observed.created_at ?? '',
-        ]) {
-            expect(loggedArguments).not.toContain(secret);
-        }
-        expect(result.expired).toBe(0);
-    });
-});
-
 describe('compactPushSubscriptions', () => {
     it('同一UAとlegacy購読が複数ある場合、各グループの最新endpointだけを残す', () => {
         const subscriptions = [
@@ -658,5 +435,162 @@ describe('findSupersededSubscriptionIds', () => {
             subscriptions[1],
             'Browser A',
         )).toEqual(['a']);
+    });
+});
+const USER_ID = '00000000-0000-4000-8000-000000000001';
+const stored = (
+    id: string,
+    created_at: string | null,
+    overrides: Partial<StoredPushSubscriptionData> = {},
+): StoredPushSubscriptionData => ({
+    id, endpoint: `https://fcm.googleapis.com/fcm/send/${id}`,
+    p256dh: 'p256dh', auth: 'auth', user_agent: 'Browser A', created_at,
+    ...overrides,
+});
+const rpcArgs = (row: StoredPushSubscriptionData): DeletePushSubscriptionIfUnchangedArgs => ({
+    p_id: row.id, p_user_id: USER_ID, p_endpoint: row.endpoint, p_p256dh: row.p256dh,
+    p_auth: row.auth, p_user_agent: row.user_agent, p_created_at: row.created_at,
+});
+function expectFixedCleanupFailure(secrets: string[]): void {
+    const call = mocks.reportError.mock.calls.at(-1);
+    expect(call).toHaveLength(2);
+    const [operation, error, context] = call ?? [];
+    if (!(error instanceof Error)) throw new Error('Expected fixed cleanup error');
+    expect(operation).toBe('pushSubscription:deleteUnchanged'); expect(error.cause).toBeUndefined();
+    expect(error.message).toBe('Push subscription CAS cleanup failed');
+    const logged = [String(operation), error.message, String(error.cause ?? ''), String(context ?? '')]
+        .join(' ');
+    for (const secret of secrets) expect(logged).not.toContain(secret);
+}
+describe('deletePushSubscriptionIfUnchanged', () => {
+    beforeEach(() => { mocks.reportError.mockReset(); mocks.rpc.mockReset(); });
+    it.each([[true, 'deleted'], [false, 'preserved']] as const)(
+        'RPCが%sの場合、exact name/argsで%sを返す',
+        async (data, expected) => {
+            const row = stored('00000000-0000-4000-8000-000000000010', null);
+            mocks.rpc.mockResolvedValue({ data, error: null });
+            await expect(deletePushSubscriptionIfUnchanged(USER_ID, row)).resolves.toBe(expected);
+            expect(mocks.rpc).toHaveBeenCalledWith(
+                DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC,
+                rpcArgs(row),
+            );
+        },
+    );
+    it.each([null, [], {}, 'false'])(
+        'RPC dataがboolean以外の%jの場合、fixed failureにする',
+        async (data) => {
+            mocks.rpc.mockResolvedValue({ data, error: null });
+            await expect(deletePushSubscriptionIfUnchanged(USER_ID, stored('invalid', null)))
+                .resolves.toBe('failed');
+            expectFixedCleanupFailure([]);
+        },
+    );
+    it.each(['returned', 'thrown'])(
+        'RPCが%s errorの場合、raw identityとsnapshotを記録しない',
+        async (mode) => {
+            const row = stored('private-id', '2026-07-25T00:00:00Z', {
+                endpoint: 'https://fcm.googleapis.com/fcm/send/private-endpoint',
+                p256dh: 'private-p256dh', auth: 'private-auth', user_agent: 'private-agent',
+            });
+            const raw = Object.assign(new Error('PRIVATE_SENTINEL'), {
+                cause: new Error(USER_ID), context: row,
+            });
+            if (mode === 'returned') mocks.rpc.mockResolvedValue({ data: null, error: raw });
+            else mocks.rpc.mockRejectedValue(raw);
+            await expect(deletePushSubscriptionIfUnchanged(USER_ID, row)).resolves.toBe('failed');
+            expectFixedCleanupFailure([
+                'PRIVATE_SENTINEL', USER_ID, row.id, row.endpoint, row.p256dh, row.auth,
+                row.user_agent ?? '', row.created_at ?? '',
+            ]);
+        },
+    );
+});
+describe('subscription recency', () => {
+    const id = (value: number): string => `00000000-0000-4000-8000-${String(value).padStart(12, '0')}`;
+    const cases: Array<[string, StoredPushSubscriptionData[], string]> = [
+        ['same timestamp', [stored(id(1), '2026-07-25T00:00:00Z'), stored(id(2), '2026-07-25T00:00:00Z')], id(2)],
+        ['both null', [stored(id(1), null), stored(id(2), null)], id(2)],
+        ['one null', [stored(id(2), null), stored(id(1), '2026-07-25T00:00:00Z')], id(1)],
+        ['three rows', [stored(id(1), '2026-07-23T00:00:00Z'), stored(id(3), '2026-07-25T00:00:00Z'), stored(id(2), '2026-07-24T00:00:00Z')], id(3)],
+    ];
+    it.each(cases)('%sではinput orderに依存せずcompact winnerとstale IDsが一致する', (_, rows, winnerId) => {
+        for (const input of [rows, [...rows].reverse()]) {
+            const winner = compactPushSubscriptions(input)[0];
+            expect(winner.id).toBe(winnerId);
+            expect(findSupersededSubscriptionIds(input, winner, 'Browser A').sort())
+                .toEqual(rows.filter((row) => row.id !== winnerId).map((row) => row.id).sort());
+        }
+    });
+    it('invalid dateは両経路でvalidation failureにする', () => {
+        const invalid = stored(id(1), 'not-a-date');
+        const valid = stored(id(2), '2026-07-25T00:00:00Z');
+        expect(() => compactPushSubscriptions([invalid, valid]))
+            .toThrow('Invalid push subscription created_at');
+        expect(() => findSupersededSubscriptionIds([invalid, valid], valid, 'Browser A'))
+            .toThrow('Invalid push subscription created_at');
+    });
+});
+describe('sendWebPushNotifications', () => {
+    const originalEnv = { publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        privateKey: process.env.VAPID_PRIVATE_KEY, subject: process.env.VAPID_SUBJECT };
+    let keys: Pick<StoredPushSubscriptionData, 'p256dh' | 'auth'>;
+    beforeEach(async () => {
+        await createVapidEnvironment();
+        const receiver = await crypto.subtle.generateKey(
+            { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+        keys = {
+            p256dh: toBase64Url(new Uint8Array(await crypto.subtle.exportKey('raw', receiver.publicKey))),
+            auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))),
+        };
+        mocks.reportError.mockReset();
+        mocks.rpc.mockReset();
+    });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = originalEnv.publicKey;
+        process.env.VAPID_PRIVATE_KEY = originalEnv.privateKey;
+        process.env.VAPID_SUBJECT = originalEnv.subject;
+    });
+    const send = (rows: StoredPushSubscriptionData[]) =>
+        sendWebPushNotifications(USER_ID, rows, { title: 'test', body: 'test' });
+    it.each([404, 410])('%iだけCASし、deletedだけをexpiredへ数える', async (status) => {
+        const row = stored('expired', null, keys);
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status })));
+        mocks.rpc.mockResolvedValue({ data: true, error: null });
+        await expect(send([row])).resolves.toMatchObject({ failed: 1, expired: 1 });
+        expect(mocks.rpc).toHaveBeenCalledWith(
+            DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC,
+            rpcArgs(row),
+        );
+    });
+    it.each([400, 409, 429, 500])('%iではCASしない', async (status) => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status })));
+        await expect(send([stored('transient', null, keys)]))
+            .resolves.toMatchObject({ failed: 1, expired: 0 });
+        expect(mocks.rpc).not.toHaveBeenCalled();
+    });
+    it('winnerだけへ送信し、古い同一端末をskipする', async () => {
+        const old = stored('00000000-0000-4000-8000-000000000001', null, keys);
+        const winner = stored('00000000-0000-4000-8000-000000000002', null, keys);
+        const fetchMock = vi.fn(async () => new Response(null, { status: 201 }));
+        vi.stubGlobal('fetch', fetchMock);
+        await expect(send([old, winner]))
+            .resolves.toMatchObject({ sent: 1, skippedDuplicates: 1 });
+        expect(fetchMock).toHaveBeenCalledWith(winner.endpoint, expect.any(Object));
+    });
+    it('複数端末のdeleted/preserved/failedを継続し、countを正直に返す', async () => {
+        const rows = [410, 404, 410, 201].map((status, index) => stored(`device-${index}`, null, {
+            ...keys, endpoint: `https://fcm.googleapis.com/fcm/send/${status}-${index}`,
+            user_agent: `Browser ${index}`,
+        }));
+        vi.stubGlobal('fetch', vi.fn(async (input) =>
+            new Response(null, { status: Number(String(input).split('/').at(-1)?.split('-')[0]) })));
+        mocks.rpc.mockResolvedValueOnce({ data: true, error: null })
+            .mockResolvedValueOnce({ data: false, error: null })
+            .mockResolvedValueOnce({ data: null, error: new Error('PRIVATE') });
+        await expect(send(rows)).resolves.toEqual({
+            sent: 1, failed: 3, expired: 1, skippedDuplicates: 0,
+        });
+        expect(mocks.rpc).toHaveBeenCalledTimes(3);
     });
 });

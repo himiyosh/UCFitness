@@ -1569,3 +1569,9 @@ export const runtime = "edge";
 - **事象**: Push Serviceの404/410だけで購読を削除済みと数えると、送信後に更新されたreplacement、既に消えた行、RPC障害を恒久失効として扱い、通知outboxの再試行判断を誤り得た。
 - **根本原因**: 外部Push応答とDB削除結果を同じ`expired`状態にまとめ、CASの`true`、`false`、errorを区別していなかった。
 - **対策・教訓**: 送信時の完全snapshotをCAS RPCへ渡し、`true`だけを`expired`へ数える。`false`はstale/missingとして保持し、RPC errorは生DB error・UUID・endpoint・鍵を記録しない固定エラーへ変換して他端末の送信を継続する。再購読の古い行整理にも同じcompare-and-deleteを再利用する。リファレンス: `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`
+
+### LL-084: 同じ購読winnerを別ロジックで選ぶと送信対象とcleanup対象が分裂する
+
+- **事象**: `created_at`同値・null時に送信compactionは入力順、再購読cleanupはID順を使い、同じ購読集合から別winnerを選び得た。未接続のDB型追加とsource文字列検査も実RPC/query/privacy契約を証明していなかった。
+- **根本原因**: recency、RPC境界、query builder、ログ秘匿を各呼出側で個別実装し、実行時の同一契約として検証しなかった。
+- **対策・教訓**: recencyはvalid時刻→non-null→UUID降順の単一比較器へ集約し、invalid dateを拒否する。RPCは実利用するexact引数型とunknown応答のboolean guardを持つwrapperへ限定する。DB query/filterと固定非PIIログはsource検索でなくbuilder spyと実行時引数で検証する。リファレンス: `lib/api/web-push.ts`, `lib/__tests__/push-subscribe-validation.test.ts`
