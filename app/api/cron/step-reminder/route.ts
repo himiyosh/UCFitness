@@ -202,7 +202,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             });
         }
 
-        const responseMetrics = { ...metrics, underGoal: metrics.eligible, timestamp: snapshotAt };
+        const responseMetrics = { ...metrics, timestamp: snapshotAt };
         if (metrics.failed > 0 || metrics.failedUsers > 0 || metrics.outboxFailures > 0) return NextResponse.json(
             { success: false, error: 'Step reminder delivery incomplete', ...responseMetrics }, { status: 503 });
         const message = metrics.sent > 0 ? 'ステップリマインダー通知送信完了'
