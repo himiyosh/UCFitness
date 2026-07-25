@@ -1609,8 +1609,8 @@ export const runtime = "edge";
 - **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
 - **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`
 
-### LL-093: 型検証後もmutable payloadを保持するとwire生成にTOCTOUが残る
+### LL-093: 全device prepare完了前のfetchは部分送信とcleanup TOCTOUを残す
 
-- **事象**: authorityを型・実行時検証しても、複数await後にoriginal objectを`JSON.stringify`すると、後続mutationや`toJSON`でunbranded/invalid authorityへ差し替えて送信できた。
-- **根本原因**: generic/authorityの排他検証をwire serializationと別時点に置き、検証済みmutable objectを非同期暗号化まで保持した。own data、accessor、prototype、unknown key、symbolのwire可否も固定していなかった。
-- **対策・教訓**: genericは3 fieldを`never`、authorityはprivate symbol brandと3 fieldを必須にする。senderは最初のawait前に許可own dataだけを一度読み、accessorと不正authorityを固定`AppError`で拒否し、null-prototype snapshotを即JSON/UTF-8化する。single/batchはserialized wireだけを暗号化し、batchは全購読の同期検証後までnetworkを開始しない。`toJSON`、prototype、unknown key、brand/symbol、original mutationをwireへ含めない。リファレンス: `lib/api/web-push.ts`
+- **事象**: 同期shape検証後もP-256 import・暗号化を各send内で行うと、先行deviceをfetchした後に後続off-curve keyが失敗する。送信中にstored rowが変わると404/410 cleanupも別versionを削除し得た。
+- **根本原因**: payload/subscription/stored authorityのsnapshot、async crypto request生成、network fetch、CAS cleanupを1つのdevice単位処理へ混在させ、batch全体のprepare barrierとobserved row versionを持たなかった。
+- **対策・教訓**: authorityを含む入力はexact own dataだけを一度snapshotし、accessor/inherited/unknown/`toJSON`/symbolを拒否または除外する。Phase Aで全deviceのVAPID context、P-256 import、暗号化、RequestInitを完了し、1件失敗なら固定`AppError`でfetch 0、Phase Bだけがprepared requestを送る。cleanupはprepared requestのinitial row versionをCAS RPCへ渡し、original mutationを再読しない。リファレンス: `lib/api/web-push.ts`

@@ -118,9 +118,7 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(subscribeRoute).toContain(".from('push_subscriptions')");
         expect(subscribeRoute).toContain('.upsert({');
         expect(subscribeRoute).toContain('.delete()');
-        expect(deliverySources.every((source) =>
-            source.includes(".from('push_subscriptions')")
-            && source.includes('supabaseAdmin'))).toBe(true);
+        expect(deliverySources.every((source, index) => source.includes('supabaseAdmin') && (index === deliverySources.length - 1 ? source.includes("rpc('delete_push_subscription_if_unchanged'") : source.includes(".from('push_subscriptions')")))).toBe(true);
         expect(browserSources.every((source) =>
             source.includes('/api/push/subscribe')
             && !source.includes(".from('push_subscriptions')")
