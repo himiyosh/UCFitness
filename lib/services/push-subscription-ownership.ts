@@ -118,7 +118,7 @@ export async function readPushSubscriptionGenerations(options: ReadPushSubscript
 export async function readReadyPushSubscriptionGenerations(options: ReadPushSubscriptionGenerationsOptions): Promise<Map<string, PushSubscriptionGeneration>> {
     const generations = await readPushSubscriptionGenerations(options);
     return new Map([...generations].filter(([, authority]) =>
-        authority.recipientProtocolVersion === REQUIRED_RECIPIENT_PROTOCOL_VERSION));
+        authority.recipientProtocolVersion >= REQUIRED_RECIPIENT_PROTOCOL_VERSION));
 }
 export async function releasePushSubscription(options: ReleasePushSubscriptionOptions): Promise<boolean> {
     if (!isRecord(options) || !isValidUUID(options.userId) || getPushEndpointOwnershipKey(options.endpoint) !== options.ownershipKey || !isValidUUID(options.recipientGeneration)
