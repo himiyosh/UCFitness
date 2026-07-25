@@ -323,9 +323,9 @@ BEGIN
             WHERE index_relation.oid = 'public.notification_delivery_outbox_retention_idx'::regclass
               AND index_record.indrelid = target_table AND index_record.indisvalid
               AND index_record.indisready AND NOT index_record.indisunique
-              AND index_record.indnkeyatts = 2 AND index_record.indnatts = 2
-              AND index_record.indpred IS NOT NULL AND index_record.indexprs IS NULL
-       ) OR EXISTS (
+              AND index_record.indnkeyatts = 2 AND index_record.indnatts = 2 AND index_record.indexprs IS NULL
+              AND pg_catalog.pg_get_indexdef(index_relation.oid, 1, true) = 'retain_until' AND pg_catalog.pg_get_indexdef(index_relation.oid, 2, true) = 'id' AND pg_catalog.pg_get_expr(index_record.indpred, index_record.indrelid) = '(state = ANY (ARRAY[''completed''::text, ''failed''::text]))'
+       ) OR pg_catalog.pg_get_function_result(functions[1]) IS DISTINCT FROM 'TABLE(user_id uuid, claim_token uuid)' OR pg_catalog.pg_get_function_result(functions[2]) IS DISTINCT FROM 'boolean' OR pg_catalog.pg_get_function_result(functions[3]) IS DISTINCT FROM 'boolean' OR EXISTS (
             SELECT 1 FROM pg_catalog.pg_depend AS dependency
             JOIN pg_catalog.pg_class AS sequence_relation ON sequence_relation.oid = dependency.objid
             WHERE dependency.refobjid = target_table AND sequence_relation.relkind = 'S'
