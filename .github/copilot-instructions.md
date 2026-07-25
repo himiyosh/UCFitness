@@ -1609,8 +1609,8 @@ export const runtime = "edge";
 - **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
 - **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`
 
-### LL-093: optional authority fieldは型上も実行時も部分payloadを許す
+### LL-093: 型検証後もmutable payloadを保持するとwire生成にTOCTOUが残る
 
-- **事象**: PR #314の`PushPayload`へgeneration・version・protocolを個別optionalで追加すると、1〜2 fieldだけを持つpersonalized payloadを暗号化・送信できる余地があった。
-- **根本原因**: generic通知との後方互換をoptional fieldで表し、genericとauthorityの構造的な排他性およびsingle/batch senderの最終境界検証を型へ反映していなかった。
-- **対策・教訓**: generic variantは3 fieldを`never`、authority variantは3 fieldとwireへ出ないprivate symbol brandを必須とし、`withPushRecipientAuthority`だけで構築する。single/batch senderは暗号化・network前にbrandとown propertyをall-or-none検証し、helper迂回・部分形・不正UUID・非正整数version・未対応protocolを内部値なしの固定`AppError`で拒否して内部重複ログを残さない。リファレンス: `lib/api/web-push.ts`, `lib/push-endpoint.ts`
+- **事象**: authorityを型・実行時検証しても、複数await後にoriginal objectを`JSON.stringify`すると、後続mutationや`toJSON`でunbranded/invalid authorityへ差し替えて送信できた。
+- **根本原因**: generic/authorityの排他検証をwire serializationと別時点に置き、検証済みmutable objectを非同期暗号化まで保持した。own data、accessor、prototype、unknown key、symbolのwire可否も固定していなかった。
+- **対策・教訓**: genericは3 fieldを`never`、authorityはprivate symbol brandと3 fieldを必須にする。senderは最初のawait前に許可own dataだけを一度読み、accessorと不正authorityを固定`AppError`で拒否し、null-prototype snapshotを即JSON/UTF-8化する。single/batchはserialized wireだけを暗号化し、batchは全購読の同期検証後までnetworkを開始しない。`toJSON`、prototype、unknown key、brand/symbol、original mutationをwireへ含めない。リファレンス: `lib/api/web-push.ts`

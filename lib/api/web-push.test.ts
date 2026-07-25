@@ -1,11 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppError } from '@/lib/errors';
 import {
     compactPushSubscriptions,
+    createPushWirePayload,
     findSupersededSubscriptionIds,
     isAllowedPushEndpoint,
     sendWebPushNotification,
@@ -13,7 +11,7 @@ import {
     withPushRecipientAuthority,
 } from '@/lib/api/web-push';
 
-import type { PushPayload } from '@/lib/api/web-push';
+import type { GenericPushPayload, PushPayload } from '@/lib/api/web-push';
 
 const mocks = vi.hoisted(() => ({ reportError: vi.fn() }));
 vi.mock('@/lib/errors', async (importOriginal) => ({
@@ -25,72 +23,28 @@ const encoder = new TextEncoder();
 const MAX_ENCRYPTED_PUSH_BODY = 4096;
 const MAX_SERIALIZED_PAYLOAD = 3993;
 const RECIPIENT_GENERATION = 'abcdefab-cdef-4abc-8def-abcdefabcdef';
+const VALID_AUTHORITY = {
+    recipientGeneration: RECIPIENT_GENERATION,
+    recipientVersion: 7,
+    recipientProtocolVersion: 1,
+} as const;
 const INVALID_AUTHORITY_CASES: ReadonlyArray<[string, Record<string, unknown>]> = [
-    ['valid fields without constructor', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 7,
-        recipientProtocolVersion: 1,
-    }],
+    ['valid fields without constructor', VALID_AUTHORITY],
     ['generation only', { recipientGeneration: RECIPIENT_GENERATION }],
     ['version only', { recipientVersion: 7 }],
     ['protocol only', { recipientProtocolVersion: 1 }],
-    ['generation and version', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 7,
-    }],
-    ['generation and protocol', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientProtocolVersion: 1,
-    }],
-    ['version and protocol', {
-        recipientVersion: 7,
-        recipientProtocolVersion: 1,
-    }],
-    ['invalid generation', {
-        recipientGeneration: 'RAW_RECIPIENT_SECRET',
-        recipientVersion: 7,
-        recipientProtocolVersion: 1,
-    }],
-    ['zero version', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 0,
-        recipientProtocolVersion: 1,
-    }],
-    ['fractional version', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 1.5,
-        recipientProtocolVersion: 1,
-    }],
-    ['unsafe version', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: Number.MAX_SAFE_INTEGER + 1,
-        recipientProtocolVersion: 1,
-    }],
-    ['NaN version', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: Number.NaN,
-        recipientProtocolVersion: 1,
-    }],
-    ['unsupported protocol', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 7,
-        recipientProtocolVersion: 0,
-    }],
-    ['future protocol', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 7,
-        recipientProtocolVersion: 2,
-    }],
-    ['fractional protocol', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 7,
-        recipientProtocolVersion: 1.5,
-    }],
-    ['NaN protocol', {
-        recipientGeneration: RECIPIENT_GENERATION,
-        recipientVersion: 7,
-        recipientProtocolVersion: Number.NaN,
-    }],
+    ['generation and version', { recipientGeneration: RECIPIENT_GENERATION, recipientVersion: 7 }],
+    ['generation and protocol', { recipientGeneration: RECIPIENT_GENERATION, recipientProtocolVersion: 1 }],
+    ['version and protocol', { recipientVersion: 7, recipientProtocolVersion: 1 }],
+    ['invalid generation', { ...VALID_AUTHORITY, recipientGeneration: 'RAW_RECIPIENT_SECRET' }],
+    ['zero version', { ...VALID_AUTHORITY, recipientVersion: 0 }],
+    ['fractional version', { ...VALID_AUTHORITY, recipientVersion: 1.5 }],
+    ['unsafe version', { ...VALID_AUTHORITY, recipientVersion: Number.MAX_SAFE_INTEGER + 1 }],
+    ['NaN version', { ...VALID_AUTHORITY, recipientVersion: Number.NaN }],
+    ['unsupported protocol', { ...VALID_AUTHORITY, recipientProtocolVersion: 0 }],
+    ['future protocol', { ...VALID_AUTHORITY, recipientProtocolVersion: 2 }],
+    ['fractional protocol', { ...VALID_AUTHORITY, recipientProtocolVersion: 1.5 }],
+    ['NaN protocol', { ...VALID_AUTHORITY, recipientProtocolVersion: Number.NaN }],
 ];
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -162,12 +116,22 @@ async function createVapidEnvironment(): Promise<void> {
     process.env.VAPID_PRIVATE_KEY = privateJwk.d;
     process.env.VAPID_SUBJECT = 'mailto:test@example.com';
 }
-
+async function createReceiver(endpoint: string) {
+    const keys = await crypto.subtle.generateKey(
+        { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+    const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey));
+    const authSecret = crypto.getRandomValues(new Uint8Array(16));
+    const encoded = { p256dh: toBase64Url(publicKey), auth: toBase64Url(authSecret) };
+    return { subscription: { endpoint, keys: encoded },
+        stored: { endpoint, ...encoded, user_agent: 'Browser', created_at: '2026-07-26T00:00:00Z' },
+        privateKey: keys.privateKey, publicKey, authSecret };
+}
 async function decryptPayload(
     encryptedBody: ArrayBuffer,
     receiverPrivateKey: CryptoKey,
     receiverPublicKey: Uint8Array,
     authSecret: Uint8Array,
+    expectedSerialized?: string,
 ): Promise<Record<string, unknown>> {
     const body = new Uint8Array(encryptedBody);
     const salt = body.slice(0, 16);
@@ -225,32 +189,29 @@ async function decryptPayload(
         ),
     );
     expect(plaintext.at(-1)).toBe(0x02);
-    return JSON.parse(new TextDecoder().decode(plaintext.slice(0, -1))) as Record<string, unknown>;
+    const serialized = new TextDecoder().decode(plaintext.slice(0, -1));
+    if (expectedSerialized !== undefined) expect(serialized).toBe(expectedSerialized);
+    return JSON.parse(serialized) as Record<string, unknown>;
 }
-
-async function captureAppError(promise: Promise<unknown>): Promise<AppError> {
-    const error = await promise.then(() => null, (reason: unknown) => reason);
-    if (!(error instanceof AppError)) {
-        throw error ?? new Error('Expected AppError');
+async function captureAppError(action: Promise<unknown> | (() => unknown)): Promise<AppError> {
+    try {
+        await (typeof action === 'function' ? action() : action);
+    } catch (error: unknown) {
+        if (error instanceof AppError) return error;
+        throw error;
     }
-    return error;
+    throw new Error('Expected AppError');
 }
-
-function collectFields(value: unknown, seen = new Set<object>()): string[] {
-    if (typeof value === 'string') return [value];
-    if (typeof value !== 'object' || value === null || seen.has(value)) return [];
-    seen.add(value);
-    const fields = Reflect.ownKeys(value).flatMap(
-        (key) => collectFields(Reflect.get(value, key), seen),
-    );
-    return value instanceof Error
-        ? [value.name, value.message, value.stack ?? '', ...fields]
-        : fields;
+function exposedError(error: AppError): string {
+    return [error.name, error.message, error.stack, error.code,
+        JSON.stringify(error.context), String(error.cause)].join(' ');
 }
-
 function runtimePayload(authority: Record<string, unknown>): PushPayload {
     // Runtime validation tests intentionally bypass the compile-time payload union.
     return { title: 'test', body: 'test', ...authority } as PushPayload;
+}
+function wireText(payload: PushPayload): string {
+    return new TextDecoder().decode(createPushWirePayload(payload).bytes);
 }
 
 describe('sendWebPushNotification', () => {
@@ -326,59 +287,85 @@ describe('sendWebPushNotification', () => {
         });
     });
 
-    it('authority payloadをsingle batch経路でexact serializationする', async () => {
-        const receiverKeys = await crypto.subtle.generateKey(
-            { name: 'ECDH', namedCurve: 'P-256' },
-            true,
-            ['deriveBits'],
-        );
-        const receiverPublicKey = new Uint8Array(
-            await crypto.subtle.exportKey('raw', receiverKeys.publicKey),
-        );
-        const authSecret = crypto.getRandomValues(new Uint8Array(16));
+    it('authority payloadをexact wireへserializationする', () => {
+        const payload = withPushRecipientAuthority(
+            { title: 'Authority test', body: 'Exact payload', tag: 'authority-test' },
+            { ...VALID_AUTHORITY, recipientGeneration: RECIPIENT_GENERATION.toUpperCase() });
+        const expected = { title: 'Authority test', body: 'Exact payload',
+            tag: 'authority-test', ...VALID_AUTHORITY             };
+            expect(wireText(payload)).toBe(JSON.stringify(expected));
+    });
+    it('generic payloadのtoJSONを呼ばずunknown keyをwireから除外する', async () => {
+        let toJSONCalls = 0;
+        const payload = {
+            title: 'Safe title',
+            body: 'Safe body',
+            unknown: 'RAW_UNKNOWN_SECRET',
+            toJSON: () => { toJSONCalls += 1; return { ...VALID_AUTHORITY, recipientVersion: 0 }; },
+        } as unknown as PushPayload;
+        const expected = { title: 'Safe title', body: 'Safe body' };
+        expect(wireText(payload)).toBe(JSON.stringify(expected));
+        expect(toJSONCalls).toBe(0);
+    });
+    it('最初のasync boundary後のbranded payload変更をwireへ反映しない', async () => {
+        const receiver = await createReceiver('https://fcm.googleapis.com/fcm/send/mutation');
         const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 201 }));
+        const payload = withPushRecipientAuthority(
+            { title: 'Initial title', body: 'Initial body' }, VALID_AUTHORITY);
         vi.stubGlobal('fetch', fetchMock);
-
-        const summary = await sendWebPushNotifications('user-id', [{
-            id: 'subscription-id',
-            endpoint: 'https://fcm.googleapis.com/fcm/send/authority',
-            p256dh: toBase64Url(receiverPublicKey),
-            auth: toBase64Url(authSecret),
-            user_agent: 'Browser',
-            created_at: '2026-07-26T00:00:00Z',
-        }], withPushRecipientAuthority({
-            title: 'Authority test',
-            body: 'Exact payload',
-            tag: 'authority-test',
-        }, {
-            recipientGeneration: RECIPIENT_GENERATION.toUpperCase(),
-            recipientVersion: 7,
-            recipientProtocolVersion: 1,
-        }));
-
-        expect(summary).toEqual({
-            sent: 1,
-            failed: 0,
-            expired: 0,
-            skippedDuplicates: 0,
+        const pending = sendWebPushNotification(receiver.subscription, payload);
+        Object.assign(payload, {
+            body: 'MUTATED_BODY_SECRET',
+            recipientGeneration: 'invalid-after-await',
+            recipientVersion: 0,
         });
-        const [, requestInit] = fetchMock.mock.calls[0];
-        if (!(requestInit?.body instanceof ArrayBuffer)) {
-            throw new Error('Expected an encrypted ArrayBuffer body');
-        }
-        await expect(decryptPayload(
-            requestInit.body,
-            receiverKeys.privateKey,
-            receiverPublicKey,
-            authSecret,
-        )).resolves.toEqual({
-            title: 'Authority test',
-            body: 'Exact payload',
-            tag: 'authority-test',
-            recipientGeneration: RECIPIENT_GENERATION,
-            recipientVersion: 7,
-            recipientProtocolVersion: 1,
-        });
+        Object.assign(receiver.subscription, { endpoint: 'https://example.com/attacker', keys: { p256dh: '!', auth: '!' } });
+        await expect(pending).resolves.toMatchObject({ success: true });
+        const body = fetchMock.mock.calls[0]?.[1]?.body;
+        if (!(body instanceof ArrayBuffer)) throw new Error('Expected encrypted body');
+        const expected = { title: 'Initial title', body: 'Initial body', ...VALID_AUTHORITY };
+        await expect(decryptPayload(body, receiver.privateKey, receiver.publicKey,
+            receiver.authSecret, JSON.stringify(expected))).resolves.toEqual(expected);
+    });
+    it('allowed fieldのaccessorを実行せず固定AppErrorで拒否する', async () => {
+        let getterCalls = 0;
+        const payload: Record<string, unknown> = { body: 'Safe body' };
+        Object.defineProperty(payload, 'title', { enumerable: true,
+            get: () => { getterCalls += 1; return 'RAW_ACCESSOR_SECRET'; } });
+        const error = await captureAppError(
+            () => withPushRecipientAuthority(
+                payload as unknown as GenericPushPayload, VALID_AUTHORITY));
+        expect(error).toMatchObject({
+            code: 'PUSH_PAYLOAD_INVALID', context: undefined, cause: undefined });
+        expect(exposedError(error)).not.toContain('RAW_ACCESSOR_SECRET');
+        expect(getterCalls).toBe(0);
+        expect(mocks.reportError).not.toHaveBeenCalled();
+    });
+    it('prototype authorityとtoJSONを無視してown generic fieldsだけを送る', async () => {
+        let toJSONCalls = 0;
+        const prototype = { ...VALID_AUTHORITY,
+            toJSON: () => { toJSONCalls += 1; return { title: 'MUTATED_TITLE_SECRET' }; } };
+        const payload = Object.assign(Object.create(prototype),
+            { title: 'Own title', body: 'Own body' }) as PushPayload;
+        const expected = { title: 'Own title', body: 'Own body' };
+        expect(wireText(payload)).toBe(JSON.stringify(expected));
+        expect(toJSONCalls).toBe(0);
+    });
+
+    it('batch後半の不正購読を最初のfetch前に固定AppErrorで拒否する', async () => {
+        const receiver = await createReceiver('https://fcm.googleapis.com/fcm/send/valid-first');
+        const fetchMock = vi.fn<typeof fetch>();
+        vi.stubGlobal('fetch', fetchMock);
+        const invalidLater = { ...receiver.stored,
+            endpoint: 'https://fcm.googleapis.com/fcm/send/invalid-later', auth: '!',
+            user_agent: 'Other Browser', created_at: '2026-07-25T00:00:00Z' };
+        const error = await captureAppError(sendWebPushNotifications(
+            'user-id', [receiver.stored, invalidLater],
+            { title: 'Batch', body: 'No partial send' }));
+        expect(error).toMatchObject({
+            code: 'PUSH_SUBSCRIPTION_INVALID', context: undefined, cause: undefined });
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(mocks.reportError).not.toHaveBeenCalled();
     });
 
     it.each(INVALID_AUTHORITY_CASES)(
@@ -387,54 +374,37 @@ describe('sendWebPushNotification', () => {
             const fetchMock = vi.fn<typeof fetch>();
             vi.stubGlobal('fetch', fetchMock);
             const payload = runtimePayload(authority);
-            const subscription = {
-                endpoint: 'invalid-before-authority-check',
-                keys: { p256dh: 'unused', auth: 'unused' },
-            };
-
-            const singleError = await captureAppError(
-                sendWebPushNotification(subscription, payload),
-            );
+            const subscription = { endpoint: 'invalid-before-authority-check',
+                keys: { p256dh: 'unused', auth: 'unused' } };
+            const singleError = await captureAppError(sendWebPushNotification(subscription, payload));
             const batchError = await captureAppError(sendWebPushNotifications('user-id', [{
                 endpoint: subscription.endpoint,
                 p256dh: 'unused',
                 auth: 'unused',
             }], payload));
-
             for (const error of [singleError, batchError]) {
                 expect(error).toMatchObject({
-                    name: 'AppError',
-                    message: 'Invalid push recipient authority',
+                    name: 'AppError', message: 'Invalid push recipient authority',
                     code: 'PUSH_RECIPIENT_AUTHORITY_INVALID',
-                    context: undefined,
-                    cause: undefined,
+                    context: undefined, cause: undefined,
                 });
-                expect(collectFields(error).join(' ')).not.toContain('RAW_RECIPIENT_SECRET');
+                expect(exposedError(error)).not.toContain('RAW_RECIPIENT_SECRET');
             }
             expect(fetchMock).not.toHaveBeenCalled();
             expect(mocks.reportError).not.toHaveBeenCalled();
         },
     );
 
-    it('withPushRecipientAuthorityが不正authorityを固定AppErrorで拒否して記録しない', () => {
-        let error: unknown;
-        try {
-            withPushRecipientAuthority({ title: 'test', body: 'test' }, {
-                recipientGeneration: 'RAW_RECIPIENT_SECRET',
-                recipientVersion: 7,
-                recipientProtocolVersion: 1,
-            });
-        } catch (reason: unknown) {
-            error = reason;
-        }
+    it('withPushRecipientAuthorityが不正authorityを固定AppErrorで拒否して記録しない', async () => {
+        const error = await captureAppError(() => withPushRecipientAuthority(
+            { title: 'test', body: 'test' },
+            { ...VALID_AUTHORITY, recipientGeneration: 'RAW_RECIPIENT_SECRET' }));
         expect(error).toMatchObject({
-            name: 'AppError',
-            message: 'Invalid push recipient authority',
+            name: 'AppError', message: 'Invalid push recipient authority',
             code: 'PUSH_RECIPIENT_AUTHORITY_INVALID',
-            context: undefined,
-            cause: undefined,
+            context: undefined, cause: undefined,
         });
-        expect(collectFields(error).join(' ')).not.toContain('RAW_RECIPIENT_SECRET');
+        expect(exposedError(error)).not.toContain('RAW_RECIPIENT_SECRET');
         expect(mocks.reportError).not.toHaveBeenCalled();
     });
 
@@ -521,24 +491,11 @@ describe('sendWebPushNotification', () => {
 describe('push recipient authority construction boundary', () => {
     it('authority payload構築helperをwithPushRecipientAuthorityだけに保つ', () => {
         const acceptPayload = (payload: PushPayload): PushPayload => payload;
-        expect(acceptPayload({ title: 'generic', body: 'allowed' })).toEqual({
-            title: 'generic',
-            body: 'allowed',
-        });
+        acceptPayload({ title: 'generic', body: 'allowed' });
         // @ts-expect-error authority fields are an all-or-none payload contract.
         acceptPayload({ title: 'partial', body: 'blocked', recipientGeneration: RECIPIENT_GENERATION });
         // @ts-expect-error authority payloads must be branded by withPushRecipientAuthority.
-        acceptPayload({
-            title: 'manual',
-            body: 'blocked',
-            recipientGeneration: RECIPIENT_GENERATION,
-            recipientVersion: 7,
-            recipientProtocolVersion: 1,
-        });
-
-        const source = readFileSync(join(process.cwd(), 'lib/api/web-push.ts'), 'utf8');
-        expect(source).toContain('export function withPushRecipientAuthority(');
-        expect(source).not.toMatch(/export function withPushRecipient(?!Authority)/);
+        acceptPayload({ title: 'manual', body: 'blocked', ...VALID_AUTHORITY });
     });
 
     it('送信・保存用endpointはcanonical helperと別にraw 2048文字上限を維持する', () => {

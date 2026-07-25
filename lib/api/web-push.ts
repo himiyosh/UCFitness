@@ -17,21 +17,17 @@ interface PushPayloadBase {
 }
 
 export interface GenericPushPayload extends PushPayloadBase {
-    recipientGeneration?: never;
-    recipientVersion?: never;
-    recipientProtocolVersion?: never;
+    recipientGeneration?: never; recipientVersion?: never; recipientProtocolVersion?: never;
 }
 
 interface AuthorityPushPayload extends PushPayloadBase {
     readonly [PUSH_RECIPIENT_AUTHORITY]: true;
-    recipientGeneration: string;
-    recipientVersion: number;
+    recipientGeneration: string; recipientVersion: number;
     recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION;
 }
 
 export interface PushRecipientAuthority {
-    recipientGeneration: string;
-    recipientVersion: number;
+    recipientGeneration: string; recipientVersion: number;
     recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION;
 }
 
@@ -69,6 +65,8 @@ export interface PushDeliverySummary {
     skippedDuplicates: number;
 }
 
+export interface PushWirePayload { bytes: Uint8Array; tag?: string }
+
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
 const AES_128_GCM_RECORD_SIZE = 4096;
@@ -87,76 +85,69 @@ export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
         && getPushEndpointOwnershipKey(endpoint) !== null;
 }
 
-function authorityError(): AppError {
-    return new AppError(
-        'Invalid push recipient authority',
-        'PUSH_RECIPIENT_AUTHORITY_INVALID',
-    );
+function authorityError(): AppError { return new AppError('Invalid push recipient authority', 'PUSH_RECIPIENT_AUTHORITY_INVALID'); }
+function payloadError(): AppError { return new AppError('Invalid push payload', 'PUSH_PAYLOAD_INVALID'); }
+function subscriptionError(): AppError { return new AppError('Invalid push subscription', 'PUSH_SUBSCRIPTION_INVALID'); }
+
+function isValidAuthority(value: { recipientGeneration: unknown; recipientVersion: unknown;
+    recipientProtocolVersion: unknown }): value is PushRecipientAuthority {
+    return isValidUUID(value.recipientGeneration)
+        && typeof value.recipientVersion === 'number' && Number.isSafeInteger(value.recipientVersion)
+        && value.recipientVersion > 0
+        && value.recipientProtocolVersion === REQUIRED_RECIPIENT_PROTOCOL_VERSION;
 }
 
-function authorityFieldPresence(value: unknown): readonly [boolean, boolean, boolean] {
-    if (typeof value !== 'object' || value === null) {
-        return [false, false, false];
+function ownData(value: unknown, key: PropertyKey): readonly [boolean, unknown] {
+    if (typeof value !== 'object' || value === null) throw payloadError();
+    let descriptor: PropertyDescriptor | undefined;
+    try { descriptor = Object.getOwnPropertyDescriptor(value, key); } catch { throw payloadError(); }
+    if (!descriptor) return [false, undefined]; if (!Object.hasOwn(descriptor, 'value')) throw payloadError();
+    return [true, descriptor.value];
+}
+
+export function createPushWirePayload(payload: PushPayload): PushWirePayload {
+    if (typeof payload !== 'object' || payload === null) throw payloadError();
+    const snapshot: Record<string, string | number> = Object.create(null);
+    for (const key of ['title', 'body', 'icon', 'url', 'locale', 'tag'] as const) {
+        const [present, value] = ownData(payload, key);
+        const required = key === 'title' || key === 'body';
+        const invalid = key === 'locale'
+            ? value !== 'ja' && value !== 'en'
+            : typeof value !== 'string';
+        if ((required && invalid) || (present && value !== undefined && invalid)) throw payloadError();
+        if (typeof value === 'string') snapshot[key] = value;
     }
-    return [
-        Object.hasOwn(value, 'recipientGeneration'),
-        Object.hasOwn(value, 'recipientVersion'),
-        Object.hasOwn(value, 'recipientProtocolVersion'),
-    ];
-}
-
-function hasAuthorityBrand(value: unknown): boolean {
-    return typeof value === 'object'
-        && value !== null
-        && Object.hasOwn(value, PUSH_RECIPIENT_AUTHORITY)
-        && Reflect.get(value, PUSH_RECIPIENT_AUTHORITY) === true;
-}
-
-function isValidAuthority(
-    recipientGeneration: unknown,
-    recipientVersion: unknown,
-    recipientProtocolVersion: unknown,
-): recipientGeneration is string {
-    return isValidUUID(recipientGeneration)
-        && typeof recipientVersion === 'number'
-        && Number.isSafeInteger(recipientVersion)
-        && recipientVersion > 0
-        && recipientProtocolVersion === REQUIRED_RECIPIENT_PROTOCOL_VERSION;
-}
-
-function assertPushPayloadAuthority(payload: PushPayload): void {
-    const presence = authorityFieldPresence(payload);
-    if (presence.every((present) => !present) && !hasAuthorityBrand(payload)) return;
-    if (!presence.every(Boolean)
-        || !hasAuthorityBrand(payload)
-        || !isValidAuthority(
-            payload.recipientGeneration,
-            payload.recipientVersion,
-            payload.recipientProtocolVersion,
-        )) {
-        throw authorityError();
+    const generation = ownData(payload, 'recipientGeneration');
+    const version = ownData(payload, 'recipientVersion');
+    const protocol = ownData(payload, 'recipientProtocolVersion');
+    const [hasBrand, brand] = ownData(payload, PUSH_RECIPIENT_AUTHORITY);
+    if (generation[0] || version[0] || protocol[0] || hasBrand) {
+        const authority = { recipientGeneration: generation[1],
+            recipientVersion: version[1], recipientProtocolVersion: protocol[1] };
+        if (!generation[0] || !version[0] || !protocol[0] || !hasBrand
+            || brand !== true || !isValidAuthority(authority)) throw authorityError();
+        snapshot.recipientGeneration = authority.recipientGeneration.toLowerCase();
+        snapshot.recipientVersion = authority.recipientVersion;
+        snapshot.recipientProtocolVersion = authority.recipientProtocolVersion;
     }
+    const tag = typeof snapshot.tag === 'string' ? snapshot.tag : undefined;
+    return { bytes: new TextEncoder().encode(JSON.stringify(snapshot)), tag };
 }
 
 export function withPushRecipientAuthority(
     payload: GenericPushPayload,
     authority: PushRecipientAuthority,
 ): AuthorityPushPayload {
-    if (authorityFieldPresence(payload).some(Boolean)
-        || hasAuthorityBrand(payload)
-        || !isValidAuthority(
-            authority.recipientGeneration,
-            authority.recipientVersion,
-            authority.recipientProtocolVersion,
-        )) {
+    if (['recipientGeneration', 'recipientVersion', 'recipientProtocolVersion']
+        .some((key) => ownData(payload, key)[0]) || ownData(payload, PUSH_RECIPIENT_AUTHORITY)[0]
+        || !isValidAuthority(authority)) {
         throw authorityError();
     }
-    return {
-        ...payload,
-        [PUSH_RECIPIENT_AUTHORITY]: true,
+    const cleanPayload = JSON.parse(new TextDecoder().decode(
+        createPushWirePayload(payload).bytes)) as GenericPushPayload;
+    return { ...cleanPayload, [PUSH_RECIPIENT_AUTHORITY]: true,
         recipientGeneration: authority.recipientGeneration.toLowerCase(),
-        recipientVersion: authority.recipientVersion,
-        recipientProtocolVersion: authority.recipientProtocolVersion,
+        recipientVersion: authority.recipientVersion, recipientProtocolVersion: authority.recipientProtocolVersion,
     };
 }
 
@@ -180,6 +171,21 @@ function base64UrlToUint8Array(base64Url: string): Uint8Array {
     }
 
     return output;
+}
+
+function createPushSubscriptionSnapshot(subscription: PushSubscriptionData): PushSubscriptionData {
+    const [, endpoint] = ownData(subscription, 'endpoint'); const [, keys] = ownData(subscription, 'keys');
+    const [, p256dh] = ownData(keys, 'p256dh'); const [, auth] = ownData(keys, 'auth');
+    if (!isAllowedPushEndpoint(endpoint))
+        throw new Error('Invalid push subscription endpoint');
+    if (!isValidPushKey(p256dh, 256) || !isValidPushKey(auth, 128))
+        throw new Error('Invalid push subscription keys');
+    const receiverPublicKey = base64UrlToUint8Array(p256dh);
+    const authSecret = base64UrlToUint8Array(auth);
+    if (receiverPublicKey.length !== P256_PUBLIC_KEY_SIZE || receiverPublicKey[0] !== 0x04)
+        throw new Error('Invalid push subscription public key');
+    if (authSecret.length !== 16) throw new Error('Invalid push subscription auth secret');
+    return { endpoint, keys: { p256dh, auth } };
 }
 
 function uint8ArrayToBase64Url(bytes: Uint8Array): string {
@@ -237,20 +243,14 @@ async function deriveHkdf(
 
 async function encryptPushPayload(
     subscription: PushSubscriptionData,
-    payload: PushPayload,
+    payloadBytes: Uint8Array,
 ): Promise<Uint8Array> {
-    if (!subscription.keys) {
-        throw new Error('Push subscription keys are required');
+    if (payloadBytes.length > MAX_PAYLOAD_BYTES) {
+        throw new Error(`Push payload exceeds ${MAX_PAYLOAD_BYTES} bytes`);
     }
-
+    if (!subscription.keys) throw new Error('Push subscription keys are required');
     const receiverPublicKey = base64UrlToUint8Array(subscription.keys.p256dh);
     const authSecret = base64UrlToUint8Array(subscription.keys.auth);
-    if (receiverPublicKey.length !== P256_PUBLIC_KEY_SIZE || receiverPublicKey[0] !== 0x04) {
-        throw new Error('Invalid push subscription public key');
-    }
-    if (authSecret.length !== 16) {
-        throw new Error('Invalid push subscription auth secret');
-    }
 
     const senderKeyPair = await crypto.subtle.generateKey(
         { name: 'ECDH', namedCurve: 'P-256' },
@@ -301,11 +301,6 @@ async function encryptPushPayload(
         encoder.encode('Content-Encoding: nonce\0'),
         12,
     );
-
-    const payloadBytes = encoder.encode(JSON.stringify(payload));
-    if (payloadBytes.length > MAX_PAYLOAD_BYTES) {
-        throw new Error(`Push payload exceeds ${MAX_PAYLOAD_BYTES} bytes`);
-    }
 
     const plaintext = new Uint8Array(payloadBytes.length + RECORD_DELIMITER_SIZE);
     plaintext.set(payloadBytes);
@@ -405,23 +400,16 @@ export function findSupersededSubscriptionIds(
         });
 }
 
-export async function sendWebPushNotification(
-    subscription: PushSubscriptionData,
-    payload: PushPayload,
-    signal?: AbortSignal,
+function pushFailure(error: unknown): PushSendResult {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    reportError('sendWebPush', error); return { success: false, statusCode: 500, error: { message } };
+}
+
+async function sendWireWebPushNotification(
+    subscription: PushSubscriptionData, wirePayload: PushWirePayload, signal?: AbortSignal,
 ): Promise<PushSendResult> {
-    assertPushPayloadAuthority(payload);
-
     try {
-        if (!isAllowedPushEndpoint(subscription?.endpoint)) {
-            throw new Error('Invalid push subscription endpoint');
-        }
-        if (!subscription.keys
-            || !isValidPushKey(subscription.keys.p256dh, 256)
-            || !isValidPushKey(subscription.keys.auth, 128)) {
-            throw new Error('Invalid push subscription keys');
-        }
-
+        subscription = createPushSubscriptionSnapshot(subscription);
         const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
         const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
         const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
@@ -446,7 +434,7 @@ export async function sendWebPushNotification(
         })
             .setProtectedHeader({ alg: 'ES256', typ: 'JWT' })
             .sign(privateKey);
-        const encryptedPayload = await encryptPushPayload(subscription, payload);
+        const encryptedPayload = await encryptPushPayload(subscription, wirePayload.bytes);
         const headers: Record<string, string> = {
             Authorization: `vapid t=${token}, k=${vapidPublicKey}`,
             TTL: '300',
@@ -455,8 +443,8 @@ export async function sendWebPushNotification(
             'Content-Type': 'application/octet-stream',
         };
 
-        if (payload.tag && TOPIC_PATTERN.test(payload.tag)) {
-            headers.Topic = payload.tag;
+        if (wirePayload.tag && TOPIC_PATTERN.test(wirePayload.tag)) {
+            headers.Topic = wirePayload.tag;
         }
 
         const response = await fetch(subscription.endpoint, {
@@ -481,14 +469,16 @@ export async function sendWebPushNotification(
 
         return { success: true, statusCode: response.status };
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        reportError('sendWebPush', error);
-        return {
-            success: false,
-            statusCode: 500,
-            error: { message },
-        };
+        return pushFailure(error);
     }
+}
+
+export async function sendWebPushNotification(
+    subscription: PushSubscriptionData,
+    payload: PushPayload,
+    signal?: AbortSignal,
+): Promise<PushSendResult> {
+    return sendWireWebPushNotification(subscription, createPushWirePayload(payload), signal);
 }
 
 export async function sendWebPushNotifications(
@@ -497,23 +487,15 @@ export async function sendWebPushNotifications(
     payload: PushPayload,
     signal?: AbortSignal,
 ): Promise<PushDeliverySummary> {
-    assertPushPayloadAuthority(payload);
-
+    const wirePayload = createPushWirePayload(payload);
     const activeSubscriptions = compactPushSubscriptions(subscriptions);
-    const results = await Promise.all(
-        activeSubscriptions.map((subscription) =>
-            sendWebPushNotification(
-                {
-                    endpoint: subscription.endpoint,
-                    keys: {
-                        p256dh: subscription.p256dh,
-                        auth: subscription.auth,
-                    },
-                },
-                payload,
-                signal,
-            )),
-    );
+    let batch: PushSubscriptionData[];
+    try {
+        batch = activeSubscriptions.map(({ endpoint, p256dh, auth }) =>
+            createPushSubscriptionSnapshot({ endpoint, keys: { p256dh, auth } }));
+    } catch { throw subscriptionError(); }
+    const results = await Promise.all(batch.map((subscription) =>
+        sendWireWebPushNotification(subscription, wirePayload, signal)));
     const expiredEndpoints = results
         .map((result, index) => ({ result, endpoint: activeSubscriptions[index]?.endpoint }))
         .filter(({ result, endpoint }) =>
