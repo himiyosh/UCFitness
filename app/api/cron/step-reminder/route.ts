@@ -18,17 +18,19 @@ export const dynamic = 'force-dynamic';
 
 const BATCH_SIZE = 20, GOAL_THRESHOLD = 0.7, NOTIFICATION_TYPE = 'step-reminder' as const;
 interface FailureContext { batchIndex?: number; itemIndex?: number; count?: number }
-interface Metrics { checked: number; eligible: number; claimed: number; skipped: number; completed: number; released: number; sent: number; failed: number; expired: number; deduplicated: number }
-type Result = Pick<Metrics, 'completed' | 'released' | 'sent' | 'failed' | 'expired' | 'deduplicated'>;
+interface Metrics { checked: number; eligible: number; claimed: number; skipped: number; suppressed: number; completed: number; released: number; sent: number; failed: number; failedUsers: number; outboxFailures: number; expired: number; deduplicated: number }
+type Result = Pick<Metrics, 'suppressed' | 'completed' | 'released' | 'sent' | 'failed' | 'failedUsers' | 'outboxFailures' | 'expired' | 'deduplicated'>;
 interface Fence { occurrenceKey: string; leaseOwner: string }
 interface DeliveryContext extends Fence { profiles: NonNullable<ReturnType<typeof parseStepReminderProfiles>>['rows']; steps: NonNullable<ReturnType<typeof parseStepReminderSteps>>['rows']; subscriptions: Awaited<ReturnType<typeof preparePushSubscriptionSnapshot>>['byUser'] }
 function reportFailure(category: string, context: FailureContext = {}): void {
     reportError('cron/step-reminder', new AppError('Step reminder processing failed', 'STEP_REMINDER_FAILURE', { category, ...context }));
 }
-function emptyResult(): Result { return { completed: 0, released: 0, sent: 0, failed: 0, expired: 0, deduplicated: 0 }; }
+function emptyResult(): Result { return { suppressed: 0, completed: 0, released: 0, sent: 0, failed: 0, failedUsers: 0, outboxFailures: 0, expired: 0, deduplicated: 0 }; }
 function addResult(metrics: Metrics, result: Result): void {
-    metrics.completed += result.completed; metrics.released += result.released;
+    metrics.suppressed += result.suppressed; metrics.completed += result.completed;
+    metrics.released += result.released;
     metrics.sent += result.sent; metrics.failed += result.failed;
+    metrics.failedUsers += result.failedUsers; metrics.outboxFailures += result.outboxFailures;
     metrics.expired += result.expired; metrics.deduplicated += result.deduplicated;
 }
 function parseGoals(data: unknown, expectedIds: Set<string>): ParsedStepReminderRows<number> | null {
@@ -39,8 +41,7 @@ function parseGoals(data: unknown, expectedIds: Set<string>): ParsedStepReminder
         if (!isRecord(row) || !isValidUUID(row.id)) return null;
         if (!expectedIds.has(row.id)) { foreignUserIds.add(row.id); continue; }
         if (seen.has(row.id)) { invalidUserIds.add(row.id); continue; }
-        seen.add(row.id);
-        if (!isValidStepGoal(row.step_goal)) invalidUserIds.add(row.id);
+        seen.add(row.id); if (!isValidStepGoal(row.step_goal)) invalidUserIds.add(row.id);
         else rows.set(row.id, row.step_goal);
     }
     expectedIds.forEach((userId) => { if (!seen.has(userId)) invalidUserIds.add(userId); });
@@ -51,11 +52,9 @@ async function releaseClaim(claim: NotificationDeliveryClaim, code: Notification
     fence: Fence, failureContext: FailureContext): Promise<boolean> {
     let released = false;
     try {
-        released = await releaseNotificationDelivery({
-            notificationType: NOTIFICATION_TYPE, occurrenceKey: fence.occurrenceKey,
-            userId: claim.user_id, leaseOwner: fence.leaseOwner,
-            claimToken: claim.claim_token, failureCode: code,
-        });
+        released = await releaseNotificationDelivery({ notificationType: NOTIFICATION_TYPE,
+            occurrenceKey: fence.occurrenceKey, userId: claim.user_id,
+            leaseOwner: fence.leaseOwner, claimToken: claim.claim_token, failureCode: code });
     } catch {
         // The canonical wrapper already converted the backend failure to a fixed AppError.
     }
@@ -64,37 +63,43 @@ async function releaseClaim(claim: NotificationDeliveryClaim, code: Notification
 }
 async function failClaim(claim: NotificationDeliveryClaim, category: string,
     code: NotificationDeliveryFailureCode, context: DeliveryContext,
-    failureContext: FailureContext, result: Result = { ...emptyResult(), failed: 1 },
+    failureContext: FailureContext, result: Result = { ...emptyResult(), failedUsers: 1 },
 ): Promise<Result> {
-    reportFailure(category, failureContext);
-    const released = await releaseClaim(claim, code, context, failureContext);
-    return { ...result, failed: result.failed + (released ? 0 : 1), released: released ? 1 : 0 };
+    reportFailure(category, failureContext); const released =
+        await releaseClaim(claim, code, context, failureContext);
+    return { ...result, released: released ? 1 : 0,
+        outboxFailures: result.outboxFailures + (released ? 0 : 1) };
 }
 async function completeSent(claim: NotificationDeliveryClaim, context: DeliveryContext,
-    failureContext: FailureContext, delivery: Omit<Result, 'completed' | 'released'>,
+    failureContext: FailureContext,
+    delivery: Pick<Result, 'sent' | 'failed' | 'expired' | 'deduplicated'>,
 ): Promise<Result> {
     if (delivery.failed > 0) reportFailure('push-result', failureContext);
     let completed = false;
     try {
-        completed = await completeNotificationDelivery({
-            notificationType: NOTIFICATION_TYPE, occurrenceKey: context.occurrenceKey,
-            userId: claim.user_id, leaseOwner: context.leaseOwner, claimToken: claim.claim_token,
-        });
+        completed = await completeNotificationDelivery({ notificationType: NOTIFICATION_TYPE,
+            occurrenceKey: context.occurrenceKey, userId: claim.user_id,
+            leaseOwner: context.leaseOwner, claimToken: claim.claim_token });
     } catch {
         // A send already happened, so a failed completion must not release for immediate retry.
     }
     if (!completed) reportFailure('outbox-complete', failureContext);
-    return { ...delivery, completed: completed ? 1 : 0, released: 0,
-        failed: delivery.failed + (completed ? 0 : 1) };
+    return { ...emptyResult(), ...delivery, completed: completed ? 1 : 0,
+        failedUsers: delivery.failed > 0 || !completed ? 1 : 0,
+        outboxFailures: completed ? 0 : 1 };
 }
 async function processClaim(claim: NotificationDeliveryClaim, context: DeliveryContext,
     failureContext: FailureContext): Promise<Result> {
     const profile = context.profiles.get(claim.user_id);
     const subscriptions = context.subscriptions.get(claim.user_id);
-    if (!profile || !subscriptions?.length)
-        return failClaim(claim, 'profiles-validation', 'SOURCE_DATA_UNAVAILABLE',
-            context, failureContext);
+    if (!profile || !subscriptions?.length) return failClaim(claim,
+        'profiles-validation', 'SOURCE_DATA_UNAVAILABLE', context, failureContext);
     const currentSteps = context.steps.get(claim.user_id) ?? 0;
+    if (currentSteps >= profile.stepGoal * GOAL_THRESHOLD) {
+        const released = await releaseClaim(claim, 'PUSH_DELIVERY_INCOMPLETE', context, failureContext);
+        return { ...emptyResult(), suppressed: released ? 1 : 0, released: released ? 1 : 0,
+            failedUsers: released ? 0 : 1, outboxFailures: released ? 0 : 1 };
+    }
     let payload: Parameters<typeof sendWebPushNotifications>[2];
     try {
         const remaining = profile.stepGoal - currentSteps;
@@ -108,29 +113,27 @@ async function processClaim(claim: NotificationDeliveryClaim, context: DeliveryC
         return failClaim(claim, 'payload-build', 'PAYLOAD_BUILD_FAILED', context, failureContext);
     }
     let rawDelivery: unknown;
-    try {
-        rawDelivery = await sendWebPushNotifications(claim.user_id, subscriptions, payload);
-    } catch {
+    try { rawDelivery = await sendWebPushNotifications(claim.user_id, subscriptions, payload); }
+    catch {
         return failClaim(claim, 'push', 'PUSH_DELIVERY_FAILED', context, failureContext);
     }
-    if (!isStepReminderDeliverySummary(rawDelivery, subscriptions.length))
-        return failClaim(claim, 'push-result', 'PUSH_DELIVERY_FAILED', context, failureContext);
+    if (!isStepReminderDeliverySummary(rawDelivery, subscriptions.length)) return failClaim(
+        claim, 'push-result', 'PUSH_DELIVERY_FAILED', context, failureContext);
     const delivery = { sent: rawDelivery.sent, failed: rawDelivery.failed,
         expired: rawDelivery.expired, deduplicated: rawDelivery.skippedDuplicates };
-    if (delivery.sent === 0)
-        return failClaim(claim, 'push-result',
-            delivery.failed > 0 ? 'PUSH_DELIVERY_FAILED' : 'PUSH_DELIVERY_INCOMPLETE',
-            context, failureContext,
-            { ...emptyResult(), ...delivery, failed: Math.max(1, delivery.failed) });
+    if (delivery.sent === 0) return failClaim(claim, 'push-result',
+        delivery.failed > 0 ? 'PUSH_DELIVERY_FAILED' : 'PUSH_DELIVERY_INCOMPLETE',
+        context, failureContext, { ...emptyResult(), ...delivery, failedUsers: 1 });
     return completeSent(claim, context, failureContext, delivery);
 }
 async function releaseBatch(claims: NotificationDeliveryClaim[], category: string,
     context: DeliveryContext, batchIndex: number): Promise<Result[]> {
     reportFailure(category, { batchIndex, count: claims.length });
     return Promise.all(claims.map(async (claim, itemIndex) => {
-        const released = await releaseClaim(claim, 'SOURCE_DATA_UNAVAILABLE',
-            context, { batchIndex, itemIndex });
-        return { ...emptyResult(), failed: released ? 1 : 2, released: released ? 1 : 0 };
+        const released = await releaseClaim(claim, 'SOURCE_DATA_UNAVAILABLE', context,
+            { batchIndex, itemIndex });
+        return { ...emptyResult(), failedUsers: 1, outboxFailures: released ? 0 : 1,
+            released: released ? 1 : 0 };
     }));
 }
 
@@ -150,15 +153,10 @@ export async function GET(request: Request): Promise<NextResponse> {
         const prepared = await preparePushSubscriptionSnapshot(
             await loadPushSubscriptionSnapshot());
         const candidateIds = Array.from(prepared.byUser.keys()).sort();
-        const metrics: Metrics = {
-            ...emptyResult(), checked: prepared.userIds.length, eligible: 0,
-            claimed: 0, skipped: 0,
-            failed: new Set([...prepared.invalidUserIds, ...prepared.cappedUserIds]).size,
-        };
-        if (prepared.invalidUserIds.length > 0)
-            reportFailure('subscriptions-validation', { count: prepared.invalidUserIds.length });
-        if (prepared.cappedUserIds.length > 0)
-            reportFailure('subscriptions-user-limit', { count: prepared.cappedUserIds.length });
+        const metrics: Metrics = { ...emptyResult(), checked: prepared.userIds.length,
+            eligible: 0, claimed: 0, skipped: 0, failedUsers: new Set([...prepared.invalidUserIds, ...prepared.cappedUserIds]).size };
+        if (prepared.invalidUserIds.length > 0) reportFailure('subscriptions-validation', { count: prepared.invalidUserIds.length });
+        if (prepared.cappedUserIds.length > 0) reportFailure('subscriptions-user-limit', { count: prepared.cappedUserIds.length });
 
         for (let i = 0; i < candidateIds.length; i += BATCH_SIZE) {
             const batchIndex = i / BATCH_SIZE, batch = candidateIds.slice(i, i + BATCH_SIZE);
@@ -169,33 +167,27 @@ export async function GET(request: Request): Promise<NextResponse> {
                 supabaseAdmin.from('daily_steps').select('user_id, steps')
                     .eq('date', occurrenceKey).in('user_id', batch),
             ]);
-            const goalData = extractStepReminderRows(goalOutcome);
-            const eligibilityStepsData = extractStepReminderRows(eligibilityStepsOutcome);
+            const goalData = extractStepReminderRows(goalOutcome), eligibilityStepsData =
+                extractStepReminderRows(eligibilityStepsOutcome);
             const goals = goalData ? parseGoals(goalData, expectedIds) : null;
-            const eligibilitySteps = eligibilityStepsData
-                ? parseStepReminderSteps(eligibilityStepsData, expectedIds) : null;
+            const eligibilitySteps = eligibilityStepsData ? parseStepReminderSteps(eligibilityStepsData, expectedIds) : null;
             if (!goals || !eligibilitySteps) {
                 reportFailure(!goalData ? 'eligibility-profiles-query'
                     : !eligibilityStepsData ? 'eligibility-steps-query'
                         : !goals ? 'eligibility-profiles-shape' : 'eligibility-steps-shape',
                 { batchIndex, count: batch.length });
-                metrics.failed += batch.length; continue;
+                metrics.failedUsers += batch.length; continue;
             }
             if (goals.foreignUserIds.size > 0 || eligibilitySteps.foreignUserIds.size > 0) {
                 reportFailure(goals.foreignUserIds.size > 0
                     ? 'eligibility-profiles-foreign-row' : 'eligibility-steps-foreign-row',
                 { batchIndex, count: batch.length });
-                metrics.failed += batch.length; continue;
+                metrics.failedUsers += batch.length; continue;
             }
-            if (goals.invalidUserIds.size > 0)
-                reportFailure('eligibility-profiles-validation',
-                    { batchIndex, count: goals.invalidUserIds.size });
-            if (eligibilitySteps.invalidUserIds.size > 0)
-                reportFailure('eligibility-steps-validation',
-                    { batchIndex, count: eligibilitySteps.invalidUserIds.size });
-            const invalidIds = new Set([
-                ...goals.invalidUserIds, ...eligibilitySteps.invalidUserIds]);
-            metrics.failed += invalidIds.size;
+            if (goals.invalidUserIds.size > 0) reportFailure('eligibility-profiles-validation', { batchIndex, count: goals.invalidUserIds.size });
+            if (eligibilitySteps.invalidUserIds.size > 0) reportFailure('eligibility-steps-validation', { batchIndex, count: eligibilitySteps.invalidUserIds.size });
+            const invalidIds = new Set([...goals.invalidUserIds, ...eligibilitySteps.invalidUserIds]);
+            metrics.failedUsers += invalidIds.size;
             const eligibleIds = batch.filter((userId) => {
                 const goal = goals.rows.get(userId), steps = eligibilitySteps.rows.get(userId) ?? 0;
                 return !invalidIds.has(userId) && goal !== undefined
@@ -206,32 +198,27 @@ export async function GET(request: Request): Promise<NextResponse> {
 
             let claims: NotificationDeliveryClaim[];
             try {
-                claims = await claimNotificationDeliveries({
-                    notificationType: NOTIFICATION_TYPE, occurrenceKey,
-                    userIds: eligibleIds, leaseOwner,
-                });
+                claims = await claimNotificationDeliveries({ notificationType: NOTIFICATION_TYPE,
+                    occurrenceKey, userIds: eligibleIds, leaseOwner });
             } catch {
                 reportFailure('outbox-claim', { batchIndex, count: eligibleIds.length });
-                metrics.failed += eligibleIds.length; continue;
+                metrics.failedUsers += eligibleIds.length; metrics.outboxFailures++; continue;
             }
             metrics.claimed += claims.length; metrics.skipped += eligibleIds.length - claims.length;
             if (claims.length === 0) continue;
 
-            const claimedIds = claims.map((claim) => claim.user_id);
-            const claimedSet = new Set(claimedIds);
+            const claimedIds = claims.map((claim) => claim.user_id), claimedSet = new Set(claimedIds);
             const [profileOutcome, stepsOutcome] = await Promise.allSettled([
                 supabaseAdmin.from('users').select('id, step_goal, language').in('id', claimedIds),
                 supabaseAdmin.from('daily_steps').select('user_id, steps')
                     .eq('date', occurrenceKey).in('user_id', claimedIds),
             ]);
-            const profileData = extractStepReminderRows(profileOutcome);
-            const stepsData = extractStepReminderRows(stepsOutcome);
+            const profileData = extractStepReminderRows(profileOutcome), stepsData =
+                extractStepReminderRows(stepsOutcome);
             const profiles = profileData ? parseStepReminderProfiles(profileData, claimedSet) : null;
             const steps = stepsData ? parseStepReminderSteps(stepsData, claimedSet) : null;
-            const context: DeliveryContext = {
-                occurrenceKey, leaseOwner, profiles: profiles?.rows ?? new Map(),
-                steps: steps?.rows ?? new Map(), subscriptions: prepared.byUser,
-            };
+            const context: DeliveryContext = { occurrenceKey, leaseOwner,
+                profiles: profiles?.rows ?? new Map(), steps: steps?.rows ?? new Map(), subscriptions: prepared.byUser };
             if (!profiles || !steps) {
                 const results = await releaseBatch(claims,
                     !profileData ? 'profiles-query' : !stepsData ? 'steps-query'
@@ -245,36 +232,26 @@ export async function GET(request: Request): Promise<NextResponse> {
                     context, batchIndex);
                 results.forEach((result) => addResult(metrics, result)); continue;
             }
-            if (profiles.invalidUserIds.size > 0)
-                reportFailure('profiles-validation',
-                    { batchIndex, count: profiles.invalidUserIds.size });
-            if (steps.invalidUserIds.size > 0)
-                reportFailure('steps-validation', { batchIndex, count: steps.invalidUserIds.size });
-            const invalidClaimIds = new Set([
-                ...profiles.invalidUserIds, ...steps.invalidUserIds]);
+            if (profiles.invalidUserIds.size > 0) reportFailure('profiles-validation', { batchIndex, count: profiles.invalidUserIds.size });
+            if (steps.invalidUserIds.size > 0) reportFailure('steps-validation', { batchIndex, count: steps.invalidUserIds.size });
+            const invalidClaimIds = new Set([...profiles.invalidUserIds, ...steps.invalidUserIds]);
             const results = await Promise.allSettled(claims.map(async (claim, itemIndex) => {
                 if (!invalidClaimIds.has(claim.user_id))
                     return processClaim(claim, context, { batchIndex, itemIndex });
-                const released = await releaseClaim(claim, 'SOURCE_DATA_UNAVAILABLE',
-                    context, { batchIndex, itemIndex });
-                return { ...emptyResult(), failed: released ? 1 : 2,
-                    released: released ? 1 : 0 };
+                const released = await releaseClaim(claim, 'SOURCE_DATA_UNAVAILABLE', context, { batchIndex, itemIndex });
+                return { ...emptyResult(), failedUsers: 1, outboxFailures: released ? 0 : 1, released: released ? 1 : 0 };
             }));
             results.forEach((result, itemIndex) => {
                 if (result.status === 'fulfilled') addResult(metrics, result.value);
-                else { metrics.failed++; reportFailure('unexpected', { batchIndex, itemIndex }); }
+                else { metrics.failedUsers++; reportFailure('unexpected', { batchIndex, itemIndex }); }
             });
         }
 
         const responseMetrics = { ...metrics, underGoal: metrics.eligible, timestamp: snapshotAt };
-        if (metrics.failed > 0)
-            return NextResponse.json({ success: false,
-                error: 'Step reminder delivery incomplete', ...responseMetrics }, { status: 503 });
-        return NextResponse.json({
-            success: true, message: candidateIds.length === 0
-                ? 'プッシュ通知の購読者がいません' : 'ステップリマインダー通知送信完了',
-            ...responseMetrics,
-        });
+        if (metrics.failed > 0 || metrics.failedUsers > 0 || metrics.outboxFailures > 0) return NextResponse.json(
+            { success: false, error: 'Step reminder delivery incomplete', ...responseMetrics }, { status: 503 });
+        return NextResponse.json({ success: true, message: candidateIds.length === 0
+            ? 'プッシュ通知の購読者がいません' : 'ステップリマインダー通知送信完了', ...responseMetrics });
     } catch (error: unknown) {
         reportFailure(error instanceof PushSubscriptionBoundaryError
             ? `subscriptions-${error.reason}` : 'unexpected');

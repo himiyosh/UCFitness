@@ -23,13 +23,14 @@ const SECRET = 'cron-secret', PRIVATE = 'private-user-or-endpoint';
 const OCCURRENCE = '2026-07-25', OWNER_A = '40000000-0000-4000-8000-000000000001', OWNER_B = '40000000-0000-4000-8000-000000000002';
 const VALID_P256DH = 'BGsX0fLhLEJH-Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU';
 const VALID_AUTH = 'A'.repeat(22), ORIGINAL_SECRET = process.env.CRON_SECRET;
-interface ClaimOptions { userIds: readonly string[]; leaseOwner: string } interface FenceOptions { userId: string; leaseOwner: string; claimToken: string } interface Ledger { state: 'pending' | 'claimed' | 'completed'; owner?: string; token?: string; previous?: FenceOptions }
+interface ClaimOptions { notificationType: string; occurrenceKey: string; userIds: readonly string[]; leaseOwner: string } interface FenceOptions { notificationType: string; occurrenceKey: string; userId: string; leaseOwner: string; claimToken: string } interface Ledger { state: 'pending' | 'claimed' | 'completed'; owner?: string; token?: string; previous?: FenceOptions }
+type FenceFault = 'false' | 'owner' | 'token' | 'user' | 'type' | 'occurrence' | 'throw' | null;
 let profiles: unknown[], steps: unknown[], prepared: PreparedPushSubscriptions;
 let profileResolver: Resolver, stepResolver: Resolver, profileCall: number, stepCall: number;
-let queries: Array<{ table: string; ids: string[]; columns: string; claimCalls: number }>;
+let queries: Array<{ table: string; ids: string[]; columns: string; claimCalls: number; date?: unknown }>;
 let ledger: Map<string, Ledger>, tokenSequence: number, claimError: Error | null;
-let completeFault: 'false' | 'owner' | 'token' | 'user' | 'throw' | null;
-let releaseFault: typeof completeFault, expectedReleaseCode: string | null;
+let completeFault: FenceFault;
+let releaseFault: typeof completeFault;
 function id(index: number, prefix = '00000000'): string {
     return `${prefix}-0000-4000-8000-${index.toString(16).padStart(12, '0')}`;
 }
@@ -69,18 +70,23 @@ function categories(): unknown[] { return mocks.reportError.mock.calls.map(([, e
 function token(): string { tokenSequence++; return `30000000-0000-4000-8000-${String(tokenSequence).padStart(12, '0')}`; }
 async function claim(options: ClaimOptions): Promise<Array<{ user_id: string; claim_token: string }>> {
     if (claimError) throw claimError;
+    if (options.notificationType !== 'step-reminder' || options.occurrenceKey !== OCCURRENCE)
+        throw new Error('Invalid occurrence');
     return options.userIds.flatMap((userId) => { const entry = ledger.get(userId) ?? { state: 'pending' as const }; ledger.set(userId, entry); if (entry.state !== 'pending') return []; entry.state = 'claimed'; entry.owner = options.leaseOwner; entry.token = token(); return [{ user_id: userId, claim_token: entry.token }]; });
 }
 function matches(options: FenceOptions, fault: typeof completeFault): Ledger | null {
     const entry = ledger.get(fault === 'user' ? id(99) : options.userId); if (!entry || entry.state !== 'claimed' || fault === 'false') return null;
     const owner = fault === 'owner' ? OWNER_B : options.leaseOwner, claimToken = fault === 'token' ? token() : options.claimToken;
-    return entry.owner === owner && entry.token === claimToken ? entry : null;
+    const notificationType = fault === 'type' ? 'weekly-summary' : options.notificationType;
+    const occurrenceKey = fault === 'occurrence' ? '2026-07-24' : options.occurrenceKey;
+    return notificationType === 'step-reminder' && occurrenceKey === OCCURRENCE
+        && entry.owner === owner && entry.token === claimToken ? entry : null;
 }
 beforeEach(() => {
     vi.clearAllMocks(); process.env.CRON_SECRET = SECRET; profiles = []; steps = [];
     prepared = { byUser: new Map(), userIds: [], invalidUserIds: [], cappedUserIds: [] };
     profileCall = 0; stepCall = 0; queries = []; ledger = new Map(); tokenSequence = 0;
-    claimError = null; completeFault = null; releaseFault = null; expectedReleaseCode = null;
+    claimError = null; completeFault = null; releaseFault = null;
     profileResolver = async (ids) => ({ data: matching(profiles, ids, 'id'), error: null });
     stepResolver = async (ids) => ({ data: matching(steps, ids, 'user_id'), error: null });
     mocks.loadSnapshot.mockResolvedValue([]);
@@ -88,20 +94,28 @@ beforeEach(() => {
     mocks.occurrence.mockReturnValue(OCCURRENCE);
     mocks.claim.mockImplementation(claim);
     mocks.complete.mockImplementation(async (options: FenceOptions) => { if (completeFault === 'throw') throw new Error(PRIVATE); const entry = matches(options, completeFault); if (!entry) return false; entry.state = 'completed'; return true; });
-    mocks.release.mockImplementation(async (options: FenceOptions & { failureCode: string }) => { if (releaseFault === 'throw') throw new Error(PRIVATE); if (expectedReleaseCode && options.failureCode !== expectedReleaseCode) return false; const entry = matches(options, releaseFault); if (!entry) return false; entry.previous = { ...options }; entry.state = 'pending'; entry.owner = undefined; entry.token = undefined; return true; });
+    mocks.release.mockImplementation(async (options: FenceOptions & { failureCode: string }) => { if (releaseFault === 'throw') throw new Error(PRIVATE); const entry = matches(options, releaseFault); if (!entry) return false; entry.previous = { ...options }; entry.state = 'pending'; entry.owner = undefined; entry.token = undefined; return true; });
     mocks.sendPush.mockImplementation(async (_userId: string, rows: unknown[]) =>
         ({ sent: rows.length, failed: 0, expired: 0, skippedDuplicates: 0 }));
     mocks.from.mockImplementation((table: string) => {
         if (table === 'users') return { select: (columns: string) => ({ in: (_key: string, ids: string[]) => {
             queries.push({ table, ids, columns, claimCalls: mocks.claim.mock.calls.length });
             return profileResolver(ids, profileCall++); } }) };
-        return { select: (columns: string) => ({ eq: () => ({ in: (_key: string, ids: string[]) => {
-            queries.push({ table, ids, columns, claimCalls: mocks.claim.mock.calls.length });
+        return { select: (columns: string) => ({ eq: (_key: string, date: unknown) => ({ in: (_field: string, ids: string[]) => {
+            queries.push({ table, ids, columns, claimCalls: mocks.claim.mock.calls.length, date });
             return stepResolver(ids, stepCall++); } }) }) };
     });
     let owner = 0; vi.spyOn(globalThis.crypto, 'randomUUID').mockImplementation(() => [OWNER_A, OWNER_B][owner++] ?? OWNER_B);
 });
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+    for (const [operation, error] of mocks.reportError.mock.calls) {
+        expect(operation).toBe('cron/step-reminder'); expect(error).toBeInstanceOf(Error); if (!(error instanceof Error)) continue;
+        expect(error.message).toBe('Step reminder processing failed'); expect(Reflect.get(error, 'code')).toBe('STEP_REMINDER_FAILURE'); expect(Reflect.get(error, 'cause')).toBeUndefined();
+        const context = Reflect.get(error, 'context') as Record<string, unknown>; expect(Object.keys(context).every((key) => ['category', 'batchIndex', 'itemIndex', 'count'].includes(key))).toBe(true);
+        const text = [operation, error.name, error.message, error.stack ?? '', ...Object.entries(context).flat()].join('|'); expect(text).not.toContain(PRIVATE); expect(text).not.toContain('https://'); expect(text).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i);
+    }
+    vi.restoreAllMocks();
+});
 afterAll(() => { if (ORIGINAL_SECRET === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = ORIGINAL_SECRET; });
 describe('GET /api/cron/step-reminder', () => {
     it.each([[undefined, SECRET], [SECRET, 'wrong']])('認証できない場合、DB前に401を返す',
@@ -133,6 +147,9 @@ describe('GET /api/cron/step-reminder', () => {
         expect(mocks.sendPush).toHaveBeenCalledTimes(41);
         expect(mocks.complete).toHaveBeenCalledTimes(41);
         expect(mocks.sendPush.mock.calls.every((call) => call[1].length <= 20)).toBe(true);
+        expect(mocks.occurrence).toHaveBeenCalledWith(expect.any(Date));
+        expect(queries.filter((query) => query.table === 'daily_steps').every((query) => query.date === OCCURRENCE)).toBe(true);
+        expect(mocks.claim.mock.calls.every(([options]) => options.notificationType === 'step-reminder' && options.occurrenceKey === OCCURRENCE)).toBe(true);
     });
     it.each([
         ['error', { data: [], error: { message: PRIVATE } }], ['null', { data: null, error: null }],
@@ -161,7 +178,8 @@ describe('GET /api/cron/step-reminder', () => {
         profiles[2] = { id: ids[2], step_goal: 0, language: 'ja' }; steps[3] = { user_id: ids[3], steps: -1 };
         const response = await GET(request()); expect(response.status).toBe(503); expect(mocks.sendPush).toHaveBeenCalledTimes(1);
         expect(await response.json()).toMatchObject(
-            { checked: 5, eligible: 1, claimed: 1, completed: 1, sent: 1, failed: 4 });
+            { checked: 5, eligible: 1, claimed: 1, completed: 1, sent: 1,
+                failed: 0, failedUsers: 4, outboxFailures: 0 });
         expect(categories()).toEqual(expect.arrayContaining(['subscriptions-validation',
             'subscriptions-user-limit', 'eligibility-profiles-validation',
             'eligibility-steps-validation']));
@@ -175,7 +193,8 @@ describe('GET /api/cron/step-reminder', () => {
                 ? [{ user_id: foreignId, steps: 1 }] : matching(steps, batch, 'user_id'), error: null });
             const response = await GET(request()); const body = await response.json();
             expect(response.status).toBe(503);
-            expect(body).toMatchObject({ checked: 21, eligible: 1, sent: 1, failed: 20 });
+            expect(body).toMatchObject({ checked: 21, eligible: 1, sent: 1,
+                failed: 0, failedUsers: 20 });
             expect(mocks.sendPush).toHaveBeenCalledTimes(1); expect(mocks.sendPush.mock.calls[0][0]).toBe(ids[20]);
             expect(categories()).toContain(`eligibility-${source}-foreign-row`);
         });
@@ -200,19 +219,20 @@ describe('GET /api/cron/step-reminder', () => {
                     batch, source === 'profiles' ? 'id' : 'user_id'), error: null };
             if (source === 'profiles') profileResolver = rejectFirst; else stepResolver = rejectFirst;
             const response = await GET(request()); const body = await response.json();
-            expect(response.status).toBe(503); expect(body).toMatchObject({ sent: 1, failed: 20 });
+            expect(response.status).toBe(503);
+            expect(body).toMatchObject({ sent: 1, failed: 0, failedUsers: 20 });
             expect(mocks.sendPush).toHaveBeenCalledTimes(1);
             expectFixedLog(raw, { category, batchIndex: 0, count: 20 });
         });
     it.each([
         ['部分集計', { sent: 1, failed: 1, expired: 0, skippedDuplicates: 1 },
-            { sent: 2, failed: 1, deduplicated: 1 }],
+            { sent: 2, failed: 1, failedUsers: 1, deduplicated: 1 }],
         ['例外', new Error(PRIVATE, { cause: new Error(`${PRIVATE}-cause`) }),
-            { sent: 1, failed: 1, deduplicated: 0 }],
+            { sent: 1, failed: 0, failedUsers: 1, deduplicated: 0 }],
         ['不正結果', { sent: 2, failed: 0, expired: 0, skippedDuplicates: 0 },
-            { sent: 1, failed: 1, deduplicated: 0 }],
+            { sent: 1, failed: 0, failedUsers: 1, deduplicated: 0 }],
         ['送信0件', { sent: 0, failed: 0, expired: 0, skippedDuplicates: 3 },
-            { sent: 1, failed: 1, deduplicated: 3 }],
+            { sent: 1, failed: 0, failedUsers: 1, deduplicated: 3 }],
     ])('個別Pushの%s失敗後も次ユーザーを送り、5xxにする',
         async (_name, firstResult, expected) => {
             const ids = users(2);
@@ -226,12 +246,14 @@ describe('GET /api/cron/step-reminder', () => {
             if (firstResult instanceof Error)
                 expectFixedLog(firstResult, { category: 'push', batchIndex: 0, itemIndex: 0 });
         });
-    it('A成功B失敗後のretryは新fenceでBだけを再送しAのpayload読取を省く', async () => { const ids = users(2); let failB = true; mocks.sendPush.mockImplementation(async (userId: string, rows: unknown[]) => { if (userId === ids[1] && failB) { failB = false; throw new Error(PRIVATE); } return { sent: rows.length, failed: 0, expired: 0, skippedDuplicates: 0 }; }); const first = await GET(request()); const stale = ledger.get(ids[1])?.previous; expect(first.status).toBe(503); expect(await first.json()).toMatchObject({ eligible: 2, claimed: 2, completed: 1, released: 1, sent: 1, failed: 1 }); expect(mocks.complete).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[0], leaseOwner: OWNER_A, claimToken: ledger.get(ids[0])?.token })); expect(mocks.release).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[1], leaseOwner: OWNER_A, claimToken: stale?.claimToken, failureCode: 'PUSH_DELIVERY_FAILED' })); steps = [{ user_id: ids[0], steps: 0 }]; const second = await GET(request()); const current = ledger.get(ids[1]); expect(stale?.leaseOwner).toBe(OWNER_A); expect(current?.owner).toBe(OWNER_B); expect(stale?.claimToken).not.toBe(current?.token); expect(mocks.claim.mock.calls[1][0]).toMatchObject({ userIds: ids, leaseOwner: OWNER_B }); expect(second.status).toBe(200); expect(await second.json()).toMatchObject({ eligible: 2, claimed: 1, skipped: 1, completed: 1, sent: 1, failed: 0 }); expect(mocks.sendPush.mock.calls.map(([userId]) => userId)).toEqual([ids[0], ids[1], ids[1]]); expect(mocks.sendPush.mock.calls[2][2].body).toContain('今日の歩数: 0 / 10,000'); expect(queries.filter((query) => query.claimCalls === 2).map((query) => query.ids)).toEqual([[ids[1]], [ids[1]]]); });
-    it('Push処理中の並行GETはactive claimを正常skipして二重送信しない', async () => { users(2); const started = deferred<void>(), gate = deferred<{ sent: number; failed: number; expired: number; skippedDuplicates: number }>(); mocks.sendPush.mockImplementationOnce(async () => { started.resolve(undefined); return gate.promise; }); const firstPromise = GET(request()); await started.promise; const second = await GET(request()); expect(second.status).toBe(200); expect(await second.json()).toMatchObject({ eligible: 2, claimed: 0, skipped: 2, sent: 0, failed: 0 }); gate.resolve({ sent: 1, failed: 0, expired: 0, skippedDuplicates: 0 }); expect((await firstPromise).status).toBe(200); expect(mocks.sendPush).toHaveBeenCalledTimes(2); });
-    it.each([['complete owner', false, 'owner'], ['complete token', false, 'token'], ['complete user', false, 'user'], ['complete false', false, 'false'], ['complete error', false, 'throw'], ['release owner', true, 'owner'], ['release token', true, 'token'], ['release user', true, 'user'], ['release false', true, 'false'], ['release error', true, 'throw'], ['release code', true, null]] as const)('%s fence不一致を成功扱いせず固定503にする', async (_name, releasePath, fault) => { users(1); if (releasePath) { releaseFault = fault; if (fault === null) expectedReleaseCode = 'SOURCE_DATA_UNAVAILABLE'; mocks.sendPush.mockRejectedValueOnce(new Error(PRIVATE)); } else completeFault = fault; const response = await GET(request()); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 1, completed: 0, released: 0, failed: releasePath ? 2 : 1 }); expect(categories()).toContain(releasePath ? 'outbox-release' : 'outbox-complete'); });
-    it.each(['profiles', 'steps'] as const)('%s post-claim失敗はsettle後に全claimをreleaseし次batchを続ける', async (source) => { users(21); const started = deferred<void>(), gate = deferred<void>(); const resolver: Resolver = async (ids, index) => { if (index === 1) { started.resolve(undefined); await gate.promise; return { data: null, error: { message: PRIVATE } }; } return { data: matching(source === 'profiles' ? profiles : steps, ids, source === 'profiles' ? 'id' : 'user_id'), error: null }; }; if (source === 'profiles') profileResolver = resolver; else stepResolver = resolver; const responsePromise = GET(request()); await started.promise; expect(mocks.release).not.toHaveBeenCalled(); gate.resolve(undefined); const response = await responsePromise; expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 21, completed: 1, released: 20, sent: 1, failed: 20 }); expect(mocks.release).toHaveBeenCalledTimes(20); expect(mocks.sendPush.mock.calls.map(([userId]) => userId)).toEqual([id(21)]); });
-    it('Push失敗はsettle後にexact codeでreleaseし後続ユーザーを完了する', async () => { const ids = users(2), started = deferred<void>(), gate = deferred<void>(); mocks.sendPush.mockImplementation(async (userId: string) => { if (userId === ids[0]) { started.resolve(undefined); await gate.promise; throw new Error(PRIVATE); } return { sent: 1, failed: 0, expired: 0, skippedDuplicates: 0 }; }); const responsePromise = GET(request()); await started.promise; expect(mocks.release).not.toHaveBeenCalled(); gate.resolve(undefined); const response = await responsePromise; expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 2, completed: 1, released: 1, sent: 1, failed: 1 }); expect(mocks.release).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[0], leaseOwner: OWNER_A, failureCode: 'PUSH_DELIVERY_FAILED' })); });
-    it('payload生成失敗は送信せずPAYLOAD_BUILD_FAILEDでreleaseする', async () => { const ids = users(1); mocks.body.mockImplementationOnce(() => { throw new Error(PRIVATE); }); const response = await GET(request()); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 1, completed: 0, released: 1, sent: 0, failed: 1 }); expect(mocks.sendPush).not.toHaveBeenCalled(); expect(mocks.release).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[0], leaseOwner: OWNER_A, failureCode: 'PAYLOAD_BUILD_FAILED' })); });
-    it('部分端末成功はcompleteしretryでskipする', async () => { const ids = users(1); prepared.byUser.set(ids[0], [sub(ids[0], 1), sub(ids[0], 2)]); mocks.sendPush.mockResolvedValue({ sent: 1, failed: 1, expired: 0, skippedDuplicates: 0 }); const first = await GET(request()), second = await GET(request()); expect(first.status).toBe(503); expect(await first.json()).toMatchObject({ completed: 1, released: 0, sent: 1, failed: 1 }); expect(second.status).toBe(200); expect(await second.json()).toMatchObject({ claimed: 0, skipped: 1, sent: 0, failed: 0 }); expect(mocks.complete).toHaveBeenCalledTimes(1); expect(mocks.release).not.toHaveBeenCalled(); expect(mocks.sendPush).toHaveBeenCalledTimes(1); });
-    it('claim例外はpayload用DBとPushを呼ばず送信0の固定503にする', async () => { users(1); const raw = new Error(PRIVATE); claimError = raw; const response = await GET(request()); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ eligible: 1, claimed: 0, skipped: 0, sent: 0, failed: 1 }); expect(queries.filter((query) => query.claimCalls > 0)).toHaveLength(0); expect(mocks.sendPush).not.toHaveBeenCalled(); expectFixedLog(raw, { category: 'outbox-claim', batchIndex: 0, count: 1 }); });
+    it('A成功B失敗後のretryは新fence中に旧fenceを拒否しBだけを再送する', async () => { const ids = users(2); let failB = true; mocks.sendPush.mockImplementation(async (userId: string, rows: unknown[]) => { if (userId === ids[1] && failB) { failB = false; throw new Error(PRIVATE); } return { sent: rows.length, failed: 0, expired: 0, skippedDuplicates: 0 }; }); const first = await GET(request()); const stale = ledger.get(ids[1])?.previous; expect(first.status).toBe(503); expect(await first.json()).toMatchObject({ eligible: 2, claimed: 2, completed: 1, released: 1, sent: 1, failed: 0, failedUsers: 1 }); expect(mocks.complete).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[0], leaseOwner: OWNER_A, claimToken: ledger.get(ids[0])?.token })); expect(mocks.release).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[1], leaseOwner: OWNER_A, claimToken: stale?.claimToken, failureCode: 'PUSH_DELIVERY_FAILED' })); stepResolver = async (requested, index) => ({ data: index === 2 ? matching(steps, requested, 'user_id') : [], error: null }); const retryStarted = deferred<void>(), retryGate = deferred<{ sent: number; failed: number; expired: number; skippedDuplicates: number }>(); mocks.sendPush.mockImplementationOnce(async () => { retryStarted.resolve(undefined); return retryGate.promise; }); const secondPromise = GET(request()); await retryStarted.promise; const current = ledger.get(ids[1]); expect(stale?.leaseOwner).toBe(OWNER_A); expect(current).toMatchObject({ state: 'claimed', owner: OWNER_B }); expect(stale?.claimToken).not.toBe(current?.token); expect(mocks.claim.mock.calls[1][0]).toMatchObject({ userIds: ids, leaseOwner: OWNER_B }); if (!stale) throw new Error('Missing stale fence'); expect(await mocks.complete(stale)).toBe(false); expect(await mocks.release({ ...stale, failureCode: 'PUSH_DELIVERY_FAILED' })).toBe(false); retryGate.resolve({ sent: 1, failed: 0, expired: 0, skippedDuplicates: 0 }); const second = await secondPromise; expect(second.status).toBe(200); expect(await second.json()).toMatchObject({ eligible: 2, claimed: 1, skipped: 1, completed: 1, sent: 1, failed: 0, failedUsers: 0 }); expect(mocks.sendPush.mock.calls.map(([userId]) => userId)).toEqual([ids[0], ids[1], ids[1]]); expect(mocks.sendPush.mock.calls[2][2].body).toContain('今日の歩数: 0 / 10,000'); expect(queries.filter((query) => query.claimCalls === 2).map((query) => query.ids)).toEqual([[ids[1]], [ids[1]]]); });
+    it('Push処理中の並行GETはactive claimを正常skipして二重送信しない', async () => { users(2); const started = deferred<void>(), gate = deferred<{ sent: number; failed: number; expired: number; skippedDuplicates: number }>(); mocks.sendPush.mockImplementation(async () => { started.resolve(undefined); return gate.promise; }); const firstPromise = GET(request()); await started.promise; expect([...ledger.values()].every((entry) => entry.state === 'claimed')).toBe(true); const second = await GET(request()); expect(second.status).toBe(200); expect(await second.json()).toMatchObject({ eligible: 2, claimed: 0, skipped: 2, sent: 0, failed: 0, failedUsers: 0 }); gate.resolve({ sent: 1, failed: 0, expired: 0, skippedDuplicates: 0 }); expect((await firstPromise).status).toBe(200); expect(mocks.sendPush).toHaveBeenCalledTimes(2); });
+    it.each([['complete owner', false, 'owner'], ['complete token', false, 'token'], ['complete user', false, 'user'], ['complete type', false, 'type'], ['complete occurrence', false, 'occurrence'], ['complete false', false, 'false'], ['complete error', false, 'throw'], ['release owner', true, 'owner'], ['release token', true, 'token'], ['release user', true, 'user'], ['release type', true, 'type'], ['release occurrence', true, 'occurrence'], ['release false', true, 'false'], ['release error', true, 'throw']] as const)('%s fence不一致を成功扱いせず固定503にする', async (_name, releasePath, fault) => { users(1); if (releasePath) { releaseFault = fault; mocks.sendPush.mockRejectedValueOnce(new Error(PRIVATE)); } else completeFault = fault; const response = await GET(request()); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 1, completed: 0, released: 0, failed: 0, failedUsers: 1, outboxFailures: 1 }); expect(categories()).toContain(releasePath ? 'outbox-release' : 'outbox-complete'); });
+    it.each(['profiles', 'steps'] as const)('%s post-claim失敗は相方settle後に全claimをreleaseし次batchを続ける', async (source) => { users(21); const started = deferred<void>(), gate = deferred<void>(); const failed: Resolver = async (ids, index) => index === 1 ? { data: null, error: { message: PRIVATE } } : { data: matching(source === 'profiles' ? profiles : steps, ids, source === 'profiles' ? 'id' : 'user_id'), error: null }; const settled: Resolver = async (ids, index) => { if (index === 1) { started.resolve(undefined); await gate.promise; } return { data: matching(source === 'profiles' ? steps : profiles, ids, source === 'profiles' ? 'user_id' : 'id'), error: null }; }; if (source === 'profiles') { profileResolver = failed; stepResolver = settled; } else { stepResolver = failed; profileResolver = settled; } const responsePromise = GET(request()); await started.promise; expect(mocks.release).not.toHaveBeenCalled(); gate.resolve(undefined); const response = await responsePromise; expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 21, completed: 1, released: 20, sent: 1, failed: 0, failedUsers: 20, outboxFailures: 0 }); expect(mocks.release).toHaveBeenCalledTimes(20); expect(mocks.sendPush.mock.calls.map(([userId]) => userId)).toEqual([id(21)]); });
+    it.each(['profile-invalid', 'steps-invalid', 'profile-foreign', 'steps-foreign'] as const)('%s post-claim行はforeign batchまたは該当userだけをreleaseする', async (kind) => { const isForeign = kind.endsWith('foreign'), ids = users(isForeign ? 21 : 2), foreign = id(99); if (kind.startsWith('profile')) profileResolver = async (requested, index) => ({ data: index !== 1 ? matching(profiles, requested, 'id') : [...requested.map((userId, rowIndex) => ({ id: userId, step_goal: 10_000, language: !isForeign && rowIndex === 0 ? 'fr' : 'ja' })), ...(isForeign ? [{ id: foreign, step_goal: 10_000, language: 'ja' }] : [])], error: null }); else stepResolver = async (requested, index) => ({ data: index !== 1 ? matching(steps, requested, 'user_id') : [...requested.map((userId, rowIndex) => ({ user_id: userId, steps: !isForeign && rowIndex === 0 ? -1 : 0 })), ...(isForeign ? [{ user_id: foreign, steps: 0 }] : [])], error: null }); const response = await GET(request()), affected = isForeign ? 20 : 1; expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: isForeign ? 21 : 2, completed: 1, released: affected, sent: 1, failedUsers: affected }); expect(mocks.sendPush.mock.calls.map(([userId]) => userId)).toEqual([isForeign ? ids[20] : ids[1]]); expect(mocks.release).toHaveBeenCalledTimes(affected); expect(mocks.release.mock.calls.every(([options]) => options.leaseOwner === OWNER_A && options.failureCode === 'SOURCE_DATA_UNAVAILABLE')).toBe(true); });
+    it('Push失敗はsettle後にexact codeでreleaseし後続ユーザーを完了する', async () => { const ids = users(2), started = deferred<void>(), gate = deferred<void>(); mocks.sendPush.mockImplementation(async (userId: string) => { if (userId === ids[0]) { started.resolve(undefined); await gate.promise; throw new Error(PRIVATE); } return { sent: 1, failed: 0, expired: 0, skippedDuplicates: 0 }; }); const responsePromise = GET(request()); await started.promise; expect(mocks.release).not.toHaveBeenCalled(); gate.resolve(undefined); const response = await responsePromise; expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 2, completed: 1, released: 1, sent: 1, failed: 0, failedUsers: 1 }); expect(mocks.release).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[0], leaseOwner: OWNER_A, failureCode: 'PUSH_DELIVERY_FAILED' })); });
+    it('payload生成失敗はexact release後も後続ユーザーを送信する', async () => { const ids = users(2); mocks.body.mockImplementationOnce(() => { throw new Error(PRIVATE); }); const response = await GET(request()); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ claimed: 2, completed: 1, released: 1, sent: 1, failed: 0, failedUsers: 1 }); expect(mocks.sendPush.mock.calls.map(([userId]) => userId)).toEqual([ids[1]]); expect(mocks.release).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[0], leaseOwner: OWNER_A, failureCode: 'PAYLOAD_BUILD_FAILED' })); });
+    it('claim後に70%以上へ進んだユーザーは正常suppressed releaseにする', async () => { const ids = users(1); stepResolver = async (_requested, index) => ({ data: [{ user_id: ids[0], steps: index === 0 ? 6_999 : 7_000 }], error: null }); const first = await GET(request()), second = await GET(request()); expect(first.status).toBe(200); expect(await first.json()).toMatchObject({ eligible: 1, claimed: 1, suppressed: 1, completed: 0, released: 1, sent: 0, failedUsers: 0, outboxFailures: 0 }); expect(second.status).toBe(200); expect(await second.json()).toMatchObject({ eligible: 0, claimed: 0, sent: 0, failedUsers: 0 }); expect(mocks.body).not.toHaveBeenCalled(); expect(mocks.sendPush).not.toHaveBeenCalled(); expect(mocks.claim).toHaveBeenCalledTimes(1); expect(ledger.get(ids[0])?.state).toBe('pending'); expect(mocks.release).toHaveBeenCalledWith(expect.objectContaining({ userId: ids[0], failureCode: 'PUSH_DELIVERY_INCOMPLETE' })); });
+    it('部分端末成功はcompleteしretryでskipする', async () => { const ids = users(1); prepared.byUser.set(ids[0], [sub(ids[0], 1), sub(ids[0], 2)]); mocks.sendPush.mockResolvedValue({ sent: 1, failed: 1, expired: 0, skippedDuplicates: 0 }); const first = await GET(request()), second = await GET(request()); expect(first.status).toBe(503); expect(await first.json()).toMatchObject({ completed: 1, released: 0, sent: 1, failed: 1, failedUsers: 1 }); expect(second.status).toBe(200); expect(await second.json()).toMatchObject({ claimed: 0, skipped: 1, sent: 0, failed: 0, failedUsers: 0 }); expect(mocks.complete).toHaveBeenCalledTimes(1); expect(mocks.release).not.toHaveBeenCalled(); expect(mocks.sendPush).toHaveBeenCalledTimes(1); });
+    it('claim例外はpayload用DBとPushを呼ばず送信0の固定503にする', async () => { users(1); const raw = new Error(PRIVATE); claimError = raw; const response = await GET(request()); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ eligible: 1, claimed: 0, skipped: 0, sent: 0, failed: 0, failedUsers: 1, outboxFailures: 1 }); expect(queries.filter((query) => query.claimCalls > 0)).toHaveLength(0); expect(mocks.sendPush).not.toHaveBeenCalled(); expectFixedLog(raw, { category: 'outbox-claim', batchIndex: 0, count: 1 }); });
 });

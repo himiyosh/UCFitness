@@ -13,6 +13,7 @@ const instructions = read('.github/copilot-instructions.md');
 const runtimeHarness = read('scripts/test-notification-outbox-postgres.ts'), validateWorkflow = read('.github/workflows/validate.yml'), packageManifest = read('package.json');
 const wrapperPath = 'lib/services/notification-delivery-outbox.ts';
 const wrapperSource = read(wrapperPath);
+const stepReminderRoute = read('app/api/cron/step-reminder/route.ts');
 const trackedTypeScript = execFileSync('git', ['ls-files', '*.ts', '*.tsx'], { encoding: 'utf8' })
     .trim().split('\n').filter(Boolean);
 const outboxImport = /(?:from\s+|import\s*(?:\(\s*)?)['"][^'"]*notification-delivery-outbox['"]/;
@@ -89,10 +90,14 @@ describe('notification delivery outbox Layer 1 migration', () => {
         expect(readme).toContain('Layer 2のruntime PostgreSQL検証');
         expect(readme).toContain('production適用には明示承認が必要');
         expect(readme).toContain('completeは通知結果が契約を満たした場合だけ');
+        expect(readme).toContain('1端末以上成功なら部分端末失敗を含めcomplete');
+        expect(readme).toContain('at-least-once');
         expect(readme).toContain('release→complete→claim→index→table');
         expect(instructions).toContain('### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する');
         expect(wrapperSource).toMatch(/^import 'server-only';/);
-        expect(outboxImporters).toEqual(['lib/services/notification-delivery-outbox.test.ts']);
+        expect(outboxImporters).toEqual(['app/api/cron/step-reminder/route.ts', 'lib/services/notification-delivery-outbox.test.ts']);
+        for (const call of ['buildStepReminderOccurrenceKey', 'claimNotificationDeliveries', 'completeNotificationDelivery', 'releaseNotificationDelivery']) expect(stepReminderRoute.match(new RegExp(`\\b${call}\\s*\\(`, 'g'))).toHaveLength(1);
+        expect(stepReminderRoute).not.toMatch(/\.rpc\s*\(|\.from\(\s*['"]notification_delivery_outbox/);
     });
     it('runtime_Layer 2が固定migrationとloopback CIだけを検証する', () => {
         expect(packageManifest).toContain('"test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts"');
