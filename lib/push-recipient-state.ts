@@ -1,5 +1,4 @@
-'use client';
-export const PUSH_RECIPIENT_PROTOCOL_VERSION = 2;
+'use client'; export const PUSH_RECIPIENT_PROTOCOL_VERSION = 2;
 const SOURCE = 'ucfitness-push-recipient-v1', CACHE = 'ucfitness-push-recipient-v1',
     LOCK = 'ucfitness-push-recipient-transition', TIMEOUT = 5000,
     UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
