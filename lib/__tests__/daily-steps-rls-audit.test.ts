@@ -33,7 +33,7 @@ const expectedDailyStepsSources = [
     'app/api/challenge/[challengeId]/progress/route.ts',
     'app/api/challenge/[challengeId]/route.ts',
     'app/api/cron/step-reminder/route.ts',
-    'app/api/cron/weekly-summary/route.ts',
+    'lib/services/weekly-summary.ts',
     'app/api/debug/db-check/route.ts',
     'app/api/external/ranking/route.ts',
     'app/api/group/[groupId]/events/[eventId]/route.ts',

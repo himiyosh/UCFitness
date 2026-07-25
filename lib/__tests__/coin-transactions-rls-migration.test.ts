@@ -20,7 +20,7 @@ const coinService = readRepositoryFile('lib/services/coin-service.ts');
 const remainingDirectSources = [
     'app/api/user/login-bonus/route.ts',
     'app/api/user/export/route.ts',
-    'app/api/cron/weekly-summary/route.ts',
+    'lib/services/weekly-summary.ts',
     'app/[locale]/wallet/page.tsx',
 ].map(readRepositoryFile);
 const atomicCoinMigration = readRepositoryFile(
