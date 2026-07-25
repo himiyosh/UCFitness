@@ -1546,6 +1546,12 @@ export const runtime = "edge";
 - **対策**: focus handlerからレイアウト・スクロール副作用を除去し、画像fallbackを1回で打ち切る。回帰テストはDOM上のhandler直接呼び出しでなく物理クリックと失敗画像リクエスト上限を検証する。
 - **教訓**: focusは即時の視覚表示に限定し、スクロール補正が必要ならfocus成立後の別契機で行う。fallbackは必ず最終失敗状態を持つ。リファレンス: `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
 
+### LL-076: 外部ランキングが依存障害・切り捨て・未参加者を正常ランキングへ変換していた
+- **事象**: `GET /api/external/ranking`がDB障害やnullを空集合・0歩へ変換し、profile欠落をdrop/Unknown、未記録・0歩を順位として返していた。PostgREST listのexact countを見ず1000行超の部分配列も正常200にし、CRON secret比較は文字列長で早期returnしていた。
+- **根本原因**: 成功形維持を優先し、error・shape・一意性・safe integer・exact countと正当な空集合を分ける境界がなかった。「定時間」を同長UTF-16 loopだけで満たしたと誤認し、異長・Unicodeを同じ比較経路へ通していなかった。
+- **対策**: 全可変list queryで`count: exact`と返却長を照合し、切り捨て・null/負/unsafe countを固定500へ分離した。依存障害は生errorやIDをcause/contextへ渡さず、固定codeとstageだけを持つ`AppError`へ変換する。CRON/OAuth比較はTextEncoder UTF-8をWebCrypto SHA-256の固定32-byte digestへ変換後に固定長loopで比較し、正歩数だけを既存安定sort後に1..Nへ再採番する。
+- **教訓**: 外部ランキングで正常な空集合は完全取得を証明した空配列だけに限定する。stable pagingをsnapshotと呼ばず、上限超の完全取得はtransactional RPCへ委ねる。secret比較は文字列長やUTF-16単位で短絡せず、raw error・secret・IDをログへ渡さない。SHA-256 digest比較は衝突耐性を前提とする等価判定であり、secret保存用hashの代替ではない。リファレンス: `app/api/external/ranking/route.ts`, `app/api/external/ranking/route.test.ts`, `lib/validation.ts`
+
 ### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
 
 - **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
