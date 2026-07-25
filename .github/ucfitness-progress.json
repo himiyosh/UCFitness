@@ -6,7 +6,7 @@
   "lastCommit": "5ac976dcf330957a1594ff8094b475dc9fef5c44",
   "lastBranch": "himiyosh-fix-reward-retry-recovery",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "全達成ボーナスの台帳正本retry、Trending Gearの非同期focus/live復旧、Amazon popup初回通信のcontext隔離を実装。check:all、全963テスト、Pages build、Worker 2.531 MiB、隔離Playwright 375/1280px、専門レビューと2ペルソナをPASS。",
+  "summary": "全達成ボーナスの台帳正本retry、Trending Gearの非同期focus/live復旧、Amazon popup初回通信のcontext隔離を実装。check:all、全963テスト、Pages build、Worker 2.531 MiB、隔離Playwright 375/1280px、専門レビューと2ペルソナをPASS。保護済み件数は9/25据え置き。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
