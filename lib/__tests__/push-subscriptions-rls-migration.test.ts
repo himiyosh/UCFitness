@@ -126,9 +126,11 @@ describe('F016 push_subscriptions RLS migration', () => {
             source.includes(".from('push_subscriptions')")
             && source.includes('supabaseAdmin'))).toBe(true);
         expect(browserSources.every((source) =>
-            source.includes('/api/push/subscribe')
+            source.includes('@/lib/push-recipient-state')
             && !source.includes(".from('push_subscriptions')")
             && !source.includes('@/lib/supabase'))).toBe(true);
+        const browserHelper = readRepositoryFile('lib/push-recipient-state.ts');
+        expect(browserHelper.includes('/api/push/subscribe') && !browserHelper.includes('@/lib/supabase')).toBe(true);
     });
 
     it('F001を変更せずF016をin-progressに維持する', () => {

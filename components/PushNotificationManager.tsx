@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 
+import {
+    getPushRecipientState,
+    releasePushSubscriptionForCurrentRecipient,
+    savePushSubscriptionForCurrentRecipient,
+} from '@/lib/push-recipient-state';
+
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
 export default function PushNotificationManager() {
@@ -24,7 +30,8 @@ export default function PushNotificationManager() {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js');
             const sub = await registration.pushManager.getSubscription();
-            setSubscription(sub);
+            const recipient = await getPushRecipientState();
+            setSubscription(recipient?.recipientGeneration ? sub : null);
         } catch (error) {
             console.error('Service Worker registration failed:', error);
         }
@@ -45,16 +52,7 @@ export default function PushNotificationManager() {
                 applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
             });
 
-            const res = await fetch('/api/push/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sub)
-            });
-
-            if (!res.ok) {
-                await sub.unsubscribe();
-                throw new Error('Failed to save subscription');
-            }
+            await savePushSubscriptionForCurrentRecipient(sub);
 
             setSubscription(sub);
             setMessage(t('success'));
@@ -72,18 +70,7 @@ export default function PushNotificationManager() {
         setLoading(true);
         try {
             if (subscription) {
-                const endpoint = subscription.endpoint;
-                const res = await fetch('/api/push/subscribe', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint }),
-                });
-
-                if (!res.ok) {
-                    throw new Error('Failed to delete subscription');
-                }
-
-                await subscription.unsubscribe();
+                await releasePushSubscriptionForCurrentRecipient(subscription);
                 setSubscription(null);
                 setMessage(t('disabled'));
                 setMessageType('success');
@@ -139,8 +126,10 @@ export default function PushNotificationManager() {
                 </div>
             )}
 
+            <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{messageType === 'success' ? message : ''}</span>
+            <span className="sr-only" role="alert" aria-live="assertive" aria-atomic="true">{messageType === 'error' ? message : ''}</span>
             {message && (
-                <p role="status" className={`mt-3 text-xs font-bold text-center animate-in fade-in slide-in-from-bottom-1 ${messageType === 'error' ? 'text-red-500' : 'text-[var(--theme-primary)]'}`}>
+                <p className={`mt-3 text-center text-xs font-bold ${messageType === 'error' ? 'text-[var(--color-danger)]' : 'text-[var(--theme-primary)]'}`}>
                     {message} {messageType === 'success' && message === t('success') ? '🎉' : ''}
                 </p>
             )}

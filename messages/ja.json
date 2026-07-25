@@ -424,6 +424,8 @@
     "retryStatus": "状態を再取得",
     "accountMissing": "アカウント情報が見つかりません。安全のため、再度ログインしてください。",
     "signInAgain": "再ログインする",
+    "signingOut": "安全にログアウト中...",
+    "secureSignOutError": "通知の受信者情報を安全に解除できませんでした。もう一度お試しください。",
     "submit": "セットアップ完了",
     "saving": "保存中...",
     "loadingSession": "セッションを読み込み中...",
@@ -1002,7 +1004,10 @@
     "challenges": "チャレンジ",
     "analytics": "分析",
     "settings": "設定",
-    "signOut": "ログアウト"
+    "signOut": "ログアウト",
+    "signingOut": "安全にログアウト中...",
+    "retrySignOut": "ログアウトを再試行",
+    "signOutProtectionError": "通知の受信者情報を安全に解除できませんでした。ログアウトを再試行してください。"
   },
   "Bank": {
     "title": "ウォレット",

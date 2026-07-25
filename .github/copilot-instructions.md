@@ -1601,3 +1601,9 @@ export const runtime = "edge";
 - **事象**: clientがendpointだけを送るDELETEで`user_id + endpoint`を直接削除すると、read後のowner移転やgeneration更新をfenceできず、browser unsubscribeとの順序も保証できなかった。
 - **根本原因**: endpointを削除権限そのものとして扱い、DB正本のcurrent subscription ID、recipient generation、ownership versionを同じrelease判定へ結び付けていなかった。
 - **対策・教訓**: serverはsession userからcurrent rowを全列限定取得し、canonical keyとobserved IDをread RPCへ渡して得たgeneration/versionだけでrelease RPCを1回呼ぶ。missingは冪等成功、stale fenceは409、authority未作成のlegacy行は全列一致CASへ分離し、Layer 3Bはrelease成功後だけbrowser subscriptionを解除する。Clientからuser IDやfenceを受け取らず、broad direct deleteへ戻さない。
+
+### LL-089: version tombstoneだけでは未確定の旧POST応答を拒否できない
+
+- **事象**: logout clear時点で既知versionがNでも、clear前に開始した旧POSTが後からN+1以上を返すと、version比較だけでは旧受信者generationを再設定し得た。
+- **根本原因**: DBで将来確定するversionをSWの既知high-water markだけで判定し、どのclearから始まったPOSTかを結び付けていなかった。
+- **対策・教訓**: durable stateは`generation|null + version`に限定しつつ、SW内でclearごとの非永続transition tokenを発行する。message mutationとpush表示を直列化し、setは最新token一致またはactive stateへのexact idempotencyだけを許可する。SW再起動でtokenを失った応答はfail closedで再試行させる。

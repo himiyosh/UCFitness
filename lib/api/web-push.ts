@@ -11,6 +11,7 @@ export interface PushPayload {
     locale?: 'ja' | 'en';
     tag?: string;
     recipientGeneration?: string;
+    recipientVersion?: number;
 }
 
 export interface PushSubscriptionData {
