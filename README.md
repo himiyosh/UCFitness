@@ -255,6 +255,12 @@ Phase 2 migrationは既知7列の型・nullability、`public.users(id)`へのcas
 初期作成履歴には旧policyがあるため、実catalogに残存していればmigrationは自動削除せず
 中断し、適用前の個別確認と承認を要求する。
 
+Push購読CASのclean 3-layerは、Layer 1を`migrations/20260725_delete_push_subscription_if_unchanged.sql`、Layer 2をruntime PostgreSQL検証、Layer 3をアプリ配線とする。PR #302は3層を混在させた994行差分のためsupersedeし、本migrationだけをLayer 1の正本とする。適用順は`20260720_harden_push_subscriptions_rls.sql`、Layer 1、Layer 2のruntime検証、Layer 3の順である。Layer 2がmainへ入りnegative catalog fixture・exact/stale結果・二接続競合を実PostgreSQLで検証する前のproduction適用は禁止し、production適用には明示承認が必要である。
+
+Layer 1は既知schema/default、`public.users(id)` cascade FK、ordered non-deferrable `(user_id, endpoint)` uniqueとvalid/ready/immediate backing index、owner/RLS/policy、table/column ACLをfail closedで検証する。`service_role`だけが実行できる`SECURITY DEFINER` RPCは`id`で特定した主キー行を`FOR UPDATE`し、ロック後に`user_id`、`endpoint`、`p256dh`、`auth`、`user_agent`、`created_at`を`IS NOT DISTINCT FROM`で比較して同じ`id`だけを削除する。missing/staleは`false`、完全一致だけを削除して`true`を返す。static testはmigration SHA-256とcritical clauseを固定するが、runtime PASSはLayer 2でのみ判定する。
+
+ロールバックは依存するLayer 3を先に停止・撤去し、`BEGIN; REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz); COMMIT;`を実行する。`push_subscriptions`本体と既存hardening migrationは保持する。
+
 Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
 `coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
 歩数再計算・ログインボーナス・backfillの`INSERT`/`UPDATE`/`DELETE`を使う。原子RPCも
