@@ -1,6 +1,7 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export interface PushPayload {
     title: string;
@@ -20,12 +21,12 @@ export interface PushSubscriptionData {
 }
 
 export interface StoredPushSubscriptionData {
-    id?: string;
+    id: string;
     endpoint: string;
     p256dh: string;
     auth: string;
-    user_agent?: string | null;
-    created_at?: string | null;
+    user_agent: string | null;
+    created_at: string | null;
 }
 
 export interface PushSendResult {
@@ -43,6 +44,13 @@ export interface PushDeliverySummary {
     skippedDuplicates: number;
 }
 
+export type PushSubscriptionCleanupResult = 'deleted' | 'preserved' | 'failed';
+export const DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC = 'delete_push_subscription_if_unchanged';
+export interface DeletePushSubscriptionIfUnchangedArgs {
+    p_id: string; p_user_id: string; p_endpoint: string; p_p256dh: string;
+    p_auth: string; p_user_agent: string | null;
+    p_created_at: string | null;
+}
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com',
     'updates.push.services.mozilla.com',
@@ -275,11 +283,7 @@ async function importVapidPrivateKey(publicKey: string, privateKey: string) {
 export function compactPushSubscriptions(
     subscriptions: StoredPushSubscriptionData[],
 ): StoredPushSubscriptionData[] {
-    const sorted = [...subscriptions].sort((left, right) => {
-        const leftTime = left.created_at ? Date.parse(left.created_at) : 0;
-        const rightTime = right.created_at ? Date.parse(right.created_at) : 0;
-        return rightTime - leftTime;
-    });
+    const sorted = [...subscriptions].sort(compareSubscriptionRecency);
     const seenDevices = new Set<string>();
 
     return sorted.filter((subscription) => {
@@ -291,34 +295,59 @@ export function compactPushSubscriptions(
     });
 }
 
+export function compareSubscriptionRecency(
+    left: StoredPushSubscriptionData,
+    right: StoredPushSubscriptionData,
+): number {
+    const timestamp = (value: string | null): number => {
+        if (value === null) return Number.NEGATIVE_INFINITY;
+        const parsed = Date.parse(value);
+        if (!Number.isFinite(parsed)) throw new Error('Invalid push subscription created_at');
+        return parsed;
+    };
+    const timestampOrder = timestamp(right.created_at) - timestamp(left.created_at);
+    return timestampOrder || right.id.localeCompare(left.id);
+}
 export function findSupersededSubscriptionIds(
     subscriptions: StoredPushSubscriptionData[],
     currentSubscription: StoredPushSubscriptionData,
     currentUserAgent: string | null,
 ): string[] {
     const normalizedCurrentAgent = currentUserAgent?.trim() || null;
-    const currentTimestamp = currentSubscription.created_at
-        ? Date.parse(currentSubscription.created_at)
-        : 0;
-
-    return subscriptions
-        .flatMap((subscription) => {
-            if (!subscription.id
-                || !currentSubscription.id
-                || subscription.endpoint === currentSubscription.endpoint) {
-                return [];
-            }
-            const storedAgent = subscription.user_agent?.trim() || null;
-            if (storedAgent !== null && storedAgent !== normalizedCurrentAgent) return [];
-
-            const storedTimestamp = subscription.created_at
-                ? Date.parse(subscription.created_at)
-                : 0;
-            const isOlder = storedTimestamp < currentTimestamp
-                || (storedTimestamp === currentTimestamp
-                    && subscription.id.localeCompare(currentSubscription.id) < 0);
-            return isOlder ? [subscription.id] : [];
-        });
+    return subscriptions.flatMap((subscription) => {
+        const storedAgent = subscription.user_agent?.trim() || null;
+        return subscription.endpoint !== currentSubscription.endpoint
+            && (storedAgent === null || storedAgent === normalizedCurrentAgent)
+            && compareSubscriptionRecency(subscription, currentSubscription) > 0
+            ? [subscription.id] : [];
+    });
+}
+function reportCleanupFailure(): PushSubscriptionCleanupResult {
+    reportError('pushSubscription:deleteUnchanged', new AppError('Push subscription CAS cleanup failed',
+        'PUSH_SUBSCRIPTION_CAS_CLEANUP_FAILED'));
+    return 'failed';
+}
+export async function deletePushSubscriptionIfUnchanged(
+    userId: string,
+    subscription: StoredPushSubscriptionData,
+): Promise<PushSubscriptionCleanupResult> {
+    const args: DeletePushSubscriptionIfUnchangedArgs = {
+        p_id: subscription.id, p_user_id: userId, p_endpoint: subscription.endpoint,
+        p_p256dh: subscription.p256dh, p_auth: subscription.auth,
+        p_user_agent: subscription.user_agent, p_created_at: subscription.created_at,
+    };
+    try {
+        const result: { data: unknown; error: unknown } = await supabaseAdmin.rpc(
+            DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC,
+            args,
+        );
+        if (result.error !== null || typeof result.data !== 'boolean') {
+            return reportCleanupFailure();
+        }
+        return result.data ? 'deleted' : 'preserved';
+    } catch {
+        return reportCleanupFailure();
+    }
 }
 
 export async function sendWebPushNotification(
@@ -381,11 +410,8 @@ export async function sendWebPushNotification(
         });
 
         if (!response.ok) {
-            reportError(
-                'sendWebPush:pushService',
-                new Error(`Push service responded with ${response.status}`),
-                { statusCode: response.status },
-            );
+            reportError('sendWebPush:pushService',
+                new AppError('Push service delivery failed', 'PUSH_SERVICE_DELIVERY_FAILED'));
             return {
                 success: false,
                 statusCode: response.status,
@@ -426,31 +452,19 @@ export async function sendWebPushNotifications(
                 signal,
             )),
     );
-    const expiredEndpoints = results
-        .map((result, index) => ({ result, endpoint: activeSubscriptions[index]?.endpoint }))
-        .filter(({ result, endpoint }) =>
-            Boolean(endpoint) && (result.statusCode === 404 || result.statusCode === 410))
-        .map(({ endpoint }) => endpoint);
-
-    if (expiredEndpoints.length > 0) {
-        const { supabaseAdmin } = await import('@/lib/supabase');
-        const { error } = await supabaseAdmin
-            .from('push_subscriptions')
-            .delete()
-            .eq('user_id', userId)
-            .in('endpoint', expiredEndpoints);
-        if (error) {
-            reportError('sendWebPush:pruneExpired', error, {
-                count: expiredEndpoints.length,
-            });
-        }
-    }
+    const pruneResults = await Promise.all(
+        results.flatMap((result, index) => {
+            const subscription = activeSubscriptions[index];
+            return subscription && (result.statusCode === 404 || result.statusCode === 410)
+                ? [deletePushSubscriptionIfUnchanged(userId, subscription)] : [];
+        }),
+    );
 
     const sent = results.filter((result) => result.success).length;
     return {
         sent,
         failed: results.length - sent,
-        expired: expiredEndpoints.length,
+        expired: pruneResults.filter((result) => result === 'deleted').length,
         skippedDuplicates: subscriptions.length - activeSubscriptions.length,
     };
 }

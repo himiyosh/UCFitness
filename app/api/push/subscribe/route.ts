@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import {
+    deletePushSubscriptionIfUnchanged,
     findSupersededSubscriptionIds,
     isAllowedPushEndpoint,
     isValidPushKey,
@@ -28,6 +29,10 @@ function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionReq
     return isAllowedPushEndpoint(value.endpoint)
         && isValidPushKey(value.keys.p256dh, 256)
         && isValidPushKey(value.keys.auth, 128);
+}
+
+function reportPushSubscriptionError(operation: string, message: string, code: string): void {
+    reportError(operation, new AppError(message, code));
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             .single();
 
         if (upsertError || !currentSubscription) {
-            reportError('push/subscribe:save', upsertError, { userId });
+            reportPushSubscriptionError('push/subscribe:save', 'Push subscription save failed', 'PUSH_SUBSCRIPTION_SAVE_FAILED');
             return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });
         }
 
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             .select('id, endpoint, p256dh, auth, user_agent, created_at')
             .eq('user_id', userId);
         if (listError) {
-            reportError('push/subscribe:listExisting', listError, { userId });
+            reportPushSubscriptionError('push/subscribe:listExisting', 'Push subscription cleanup list failed', 'PUSH_SUBSCRIPTION_LIST_FAILED');
             return NextResponse.json({ success: true, pruned: 0 });
         }
 
@@ -77,24 +82,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             currentSubscription,
             userAgent,
         );
-        if (staleIds.length > 0) {
-            const { error: pruneError } = await supabaseAdmin
-                .from('push_subscriptions')
-                .delete()
-                .eq('user_id', userId)
-                .in('id', staleIds);
-            if (pruneError) {
-                reportError('push/subscribe:pruneSuperseded', pruneError, {
-                    userId,
-                    count: staleIds.length,
-                });
-                return NextResponse.json({ success: true, pruned: 0 });
-            }
-        }
+        const staleIdSet = new Set(staleIds);
+        const staleSubscriptions = (existingSubscriptions ?? [])
+            .filter((existingSubscription) => staleIdSet.has(existingSubscription.id));
+        const pruneResults = await Promise.all(
+            staleSubscriptions.map((staleSubscription) =>
+                deletePushSubscriptionIfUnchanged(userId, staleSubscription)),
+        );
 
-        return NextResponse.json({ success: true, pruned: staleIds.length });
-    } catch (err: unknown) {
-        reportError('push/subscribe', err);
+        return NextResponse.json({
+            success: true,
+            pruned: pruneResults.filter((result) => result === 'deleted').length,
+        });
+    } catch {
+        reportPushSubscriptionError('push/subscribe', 'Push subscription registration failed', 'PUSH_SUBSCRIPTION_REGISTRATION_FAILED');
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }
@@ -121,13 +122,13 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
             .match({ user_id: session.user.id, endpoint });
 
         if (error) {
-            reportError('push/subscribe:delete', error, { userId: session.user.id });
+            reportPushSubscriptionError('push/subscribe:delete', 'Push subscription delete failed', 'PUSH_SUBSCRIPTION_DELETE_FAILED');
             return NextResponse.json({ error: 'Failed to delete subscription' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (err: unknown) {
-        reportError('push/subscribe:delete', err);
+    } catch {
+        reportPushSubscriptionError('push/subscribe:delete', 'Push subscription delete failed', 'PUSH_SUBSCRIPTION_DELETE_FAILED');
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }

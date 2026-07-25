@@ -1570,3 +1570,9 @@ export const runtime = "edge";
 - **根本原因**: 配信結果をrequest内カウンターだけで管理し、user単位の永続idempotency key、lease所有権、完了状態がなかった。
 - **対策**: `(notification_type, occurrence_key, user_id)`一意のDB outboxとowner/token付きlease RPCをLayer 1にし、personalized data取得前のclaim、契約成立後だけのcomplete、所有中だけのreleaseをLayer 3契約にする。
 - **教訓**: 外部通知の再試行はHTTP requestではなく論理occurrence単位で永続化する。static migration、runtime競合検証、アプリ配線をclean 3-layerへ分け、Layer 2前のproduction適用を禁止する。
+
+### LL-084: 購読CASのwinner・結果・ログ契約を分散すると有効購読を誤分類する
+
+- **事象**: 404/410を削除成功とみなし、`created_at`同値/null時にcompactionとcleanupが別winnerを選び得た。未接続DB型・source検索・最後のlogだけの検査も実RPC/query/privacy契約を証明しなかった。
+- **根本原因**: recency、CAS結果、RPC型、query filter、ログ秘匿を各呼出側で個別実装し、同じ実行時契約として検証しなかった。
+- **対策・教訓**: recencyをvalid時刻→non-null→UUID降順へ集約し、完全snapshotのRPCはbooleanだけ受理して`true`のみ削除数へ含める。query builderと全log callを実行時検査し、固定AppError以外のDB error・UUID・endpoint・鍵・cause/contextを拒否する。リファレンス: `lib/api/web-push.ts`, `lib/__tests__/push-subscribe-validation.test.ts`
