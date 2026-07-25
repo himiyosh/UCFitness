@@ -59,23 +59,22 @@ async function lock<Result>(operation: () => Promise<Result>): Promise<Result> {
 async function clearUnlocked(required = false): Promise<Reply | null> { return message('clear', undefined, undefined, required); }
 async function begin(): Promise<string> { const reply = await clearUnlocked(true); if (!reply?.transitionToken) throw new PushRecipientStateError('PUSH_RECIPIENT_SW_PROTOCOL_INVALID'); return reply.transitionToken; }
 async function setUnlocked(next: ActiveState, token: string): Promise<void> { if (!state(next) || next.tombstone || !UUID.test(token)) throw new PushRecipientStateError('PUSH_RECIPIENT_STATE_INVALID'); await message('set', next, token); }
-export async function setPushRecipientState(next: ActiveState, token: string): Promise<void> { await lock(() => setUnlocked(next, token)); }
-export async function clearPushRecipientState(): Promise<void> { await lock(() => clearUnlocked()); }
+export async function setPushRecipientState(next: ActiveState, token: string): Promise<void> { await lock(() => setUnlocked(next, token)); } export async function clearPushRecipientState(): Promise<void> { await lock(() => clearUnlocked()); }
 export async function getPushRecipientState(): Promise<PushRecipientState | null> { return (await message('get'))?.state ?? null; }
 export async function runBeforePushRecipientAccountTransition<Result>(operation: () => Promise<Result>): Promise<Result> { return lock(async () => { await clearUnlocked(); return operation(); }); }
 export async function runAfterPushRecipientClear<Result>(operation: () => Promise<Result>, navigate?: (result: Result) => void): Promise<Result> { return lock(async () => { await clearUnlocked(); const result = await operation(); await clearUnlocked(); navigate?.(result); return result; }); }
-export async function savePushSubscriptionForCurrentRecipient(subscription: PushSubscription, signal?: AbortSignal): Promise<void> {
-    await lock(async () => { if (signal?.aborted) throw new PushRecipientStateError('PUSH_RECIPIENT_OPERATION_ABORTED'); const token = await begin(); let response: Response;
-        try { response = await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...subscription.toJSON(), recipientProtocolVersion: PUSH_RECIPIENT_PROTOCOL_VERSION }), signal }); }
-        catch { throw new PushRecipientStateError('PUSH_SUBSCRIPTION_REQUEST_FAILED'); }
+async function saveUnlocked(subscription: PushSubscription, signal?: AbortSignal): Promise<void> { if (signal?.aborted) throw new PushRecipientStateError('PUSH_RECIPIENT_OPERATION_ABORTED'); const token = await begin(); let response: Response;
+        try { response = await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...subscription.toJSON(), recipientProtocolVersion: PUSH_RECIPIENT_PROTOCOL_VERSION }), signal }); }
+        catch { throw new PushRecipientStateError(signal?.aborted ? 'PUSH_RECIPIENT_OPERATION_ABORTED' : 'PUSH_SUBSCRIPTION_REQUEST_FAILED'); }
         const body: unknown = await response.json().catch(() => null), next = response.ok ? active(body) : null;
-        if (!next) throw new PushRecipientStateError('PUSH_SUBSCRIPTION_RESPONSE_INVALID'); if (signal?.aborted) throw new PushRecipientStateError('PUSH_RECIPIENT_OPERATION_ABORTED'); await setUnlocked(next, token); }); }
-export async function releasePushSubscriptionForCurrentRecipient(subscription: PushSubscription): Promise<void> {
-    await lock(async () => { const token = await begin(); let response: Response;
-        try { response = await fetch('/api/push/subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint: subscription.endpoint }) }); }
+        if (!next) throw new PushRecipientStateError('PUSH_SUBSCRIPTION_RESPONSE_INVALID'); if (signal?.aborted) throw new PushRecipientStateError('PUSH_RECIPIENT_OPERATION_ABORTED'); await setUnlocked(next, token); }
+export async function savePushSubscriptionForCurrentRecipient(subscription: PushSubscription, signal?: AbortSignal): Promise<void> { await lock(() => saveUnlocked(subscription, signal)); }
+export async function releasePushSubscriptionForCurrentRecipient(subscription: PushSubscription): Promise<void> { await lock(async () => { const token = await begin(); let response: Response;
+        try { response = await fetch('/api/push/subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: subscription.endpoint }) }); }
         catch { throw new PushRecipientStateError('PUSH_SUBSCRIPTION_REQUEST_FAILED'); }
-        if (!response.ok) throw new PushRecipientStateError('PUSH_SUBSCRIPTION_RELEASE_FAILED'); await message('verify', undefined, token); await subscription.unsubscribe(); }); }
-export async function synchronizePushRecipientForSession(signal?: AbortSignal): Promise<PushSubscription | null> { const registration = await navigator.serviceWorker.getRegistration(), subscription = await registration?.pushManager.getSubscription() ?? null;
-    if (subscription) await savePushSubscriptionForCurrentRecipient(subscription, signal); else await clearPushRecipientState(); return subscription; }
+        if (!response.ok) throw new PushRecipientStateError('PUSH_SUBSCRIPTION_RELEASE_FAILED');
+        try { await message('verify', undefined, token); } catch (error: unknown) { if (!(error instanceof PushRecipientStateError)) throw error; if (error.code === 'PUSH_RECIPIENT_SW_REJECTED') await message('verify', undefined, await begin());
+            else if (error.code === 'PUSH_RECIPIENT_SW_UNAVAILABLE') { await quarantine(); return; } else if (error.code === 'PUSH_RECIPIENT_SW_TIMEOUT' || error.code === 'PUSH_RECIPIENT_SW_PROTOCOL_INVALID') return; else throw error; }
+        await subscription.unsubscribe(); }); }
+export async function synchronizePushRecipientForSession(signal?: AbortSignal): Promise<PushSubscription | null> { return lock(async () => { const registration = await navigator.serviceWorker.getRegistration(), subscription = await registration?.pushManager.getSubscription() ?? null;
+    if (subscription) await saveUnlocked(subscription, signal); else await clearUnlocked(); return subscription; }); }
