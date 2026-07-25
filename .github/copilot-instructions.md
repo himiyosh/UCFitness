@@ -1597,20 +1597,14 @@ export const runtime = "edge";
 - **根本原因**: catalog形状と単一transaction内の分岐を、複数connectionが作るMVCC snapshot、row lock、advisory lockの実行結果と同一視した。
 - **対策・教訓**: target/CAS migrationをSHA固定したfresh PostgreSQL 16で、canonical alias、raw上限、read不変性、stale release、逆順transfer、user削除、CAS-first/save-firstの実lock待機を検証する。Layer 2はDB契約だけを証明し、generation payloadとService Worker比較を含むLayer 3前のproduction適用は禁止する。リファレンス: `scripts/test-push-generation-postgres.ts`
 
-### LL-088: unsubscribeをendpoint直接削除にすると所有権移転後のcurrent rowを消し得る
-
-- **事象**: clientがendpointだけを送るDELETEで`user_id + endpoint`を直接削除すると、read後のowner移転やgeneration更新をfenceできず、browser unsubscribeとの順序も保証できなかった。
-- **根本原因**: endpointを削除権限そのものとして扱い、DB正本のcurrent subscription ID、recipient generation、ownership versionを同じrelease判定へ結び付けていなかった。
-- **対策・教訓**: serverはsession userからcurrent rowを全列限定取得し、canonical keyとobserved IDをread RPCへ渡して得たgeneration/versionだけでrelease RPCを1回呼ぶ。missingは冪等成功、stale fenceは409、authority未作成のlegacy行は全列一致CASへ分離し、Layer 3Bはrelease成功後だけbrowser subscriptionを解除する。Clientからuser IDやfenceを受け取らず、broad direct deleteへ戻さない。
-
 ### LL-090: generation一致だけでは世代対応SWの稼働を証明できない
 
 - **事象**: authorityのowner・generation・versionが一致しても、未訪問の旧Service Workerはgeneration-aware protocolを保存・比較できず、personalized健康payloadを表示し得た。
 - **根本原因**: 受信者所有権の世代と、現在subscriptionが対応できるpayload protocolのreadinessを同じ状態として扱った。
 - **対策・教訓**: authorityへdefault 0のprotocol versionを追加し、旧save/releaseは0へ戻し、allowlist済みversionを申告する再saveだけがexact current authorityをreadyにする。senderはpersonalized送信前に必要versionを要求し、migration、runtime、server、client/SW、旧worker排出を独立Layerで証明する。generic通知は同じreadinessへ暗黙依存させない。
 
-### LL-091: server側のprotocol保存だけでは旧クライアントを安全な送信先にできない
+### LL-092: canonical URL生成とRPC wrapperを再結合するとLayer境界が崩れる
 
-- **事象**: 受信者protocol versionをserverで保存しても、Client/SWのack/stateが未配線、production ownership/protocol migrationとread RPCが未確認、weekly/step senderがgeneration未配線、旧Workerが残存する状態では、personalized payloadを安全に有効化できない。
-- **根本原因**: save成功をrecipient capabilityとrollout完了の証拠として扱い、DB契約、Client/SW state、sender配線、旧Worker排出を別の完了境界として固定していなかった。
-- **対策・教訓**: subscribeはClient/SW ack済みのstrict numeric protocol 1だけを受け、personalized senderはread authorityのprotocol 1以上を必須にする。PR #314はDraftのまま、production migration適用/read RPC可用性、PR #315、weekly/step sender、旧Worker rollout、legacy client互換性の全blockerが解消されるまでmergeしない。
+- **事象**: PR #314のserver実装にはcanonical ownership key生成、route配線、購読整理、RPC境界が同居し、wrapperだけを安全に先行mergeできなかった。
+- **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
+- **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`

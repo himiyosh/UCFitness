@@ -117,7 +117,7 @@ describe('F016 push_subscriptions RLS migration', () => {
     it('購読writeをownership RPCへ限定しbrowserはAPIだけを呼ぶ', () => {
         expect(subscribeRoute).toContain("from '@/lib/services/push-subscription-ownership'");
         expect(ownershipWrapper).toContain('supabaseAdmin.rpc(name, args)');
-        expect(ownershipWrapper).toContain(".from('push_subscriptions')");
+        expect(ownershipWrapper).not.toContain(".from('push_subscriptions')");
         for (const writer of ['.upsert(', '.insert(', '.update(', '.delete(']) {
             expect(subscribeRoute).not.toContain(writer);
             expect(ownershipWrapper).not.toContain(writer);
@@ -140,8 +140,8 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(cronSources.every((source) =>
             !source.includes('readReadyPushSubscriptionGenerations')
             && !source.includes('withPushRecipientAuthority'))).toBe(true);
-        expect(readme).toContain('weekly/step senderのgeneration wiring');
-        expect(readme).toContain('legacy clientはprotocol ackを送れないため');
+        expect(readme).toContain('weekly/step sender generation wiring');
+        expect(readme).toContain('legacy client互換性');
     });
 
     it('F001を変更せずF016をin-progressに維持する', () => {
