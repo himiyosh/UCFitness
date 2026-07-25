@@ -14,6 +14,7 @@
     "check:all": "npm run check:rules && npm run check:i18n && npx tsc --noEmit && npm run lint",
     "audit:responsive": "node scripts/audit-responsive.mjs",
     "test:e2e:dashboard": "node scripts/audit-dashboard-ux.mjs",
+    "test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts",
     "test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts",
     "test": "vitest run",
     "test:watch": "vitest",

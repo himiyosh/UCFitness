@@ -1570,3 +1570,9 @@ export const runtime = "edge";
 - **根本原因**: 配信結果をrequest内カウンターだけで管理し、user単位の永続idempotency key、lease所有権、完了状態がなかった。
 - **対策**: `(notification_type, occurrence_key, user_id)`一意のDB outboxとowner/token付きlease RPCをLayer 1にし、personalized data取得前のclaim、契約成立後だけのcomplete、所有中だけのreleaseをLayer 3契約にする。
 - **教訓**: 外部通知の再試行はHTTP requestではなく論理occurrence単位で永続化する。static migration、runtime競合検証、アプリ配線をclean 3-layerへ分け、Layer 2前のproduction適用を禁止する。
+
+### LL-084: outboxのcheck件数だけでは制約弱体化を検出できない
+
+- **事象**: migration postconditionがcheck constraintの件数だけを確認すると、90日保持を89日へ弱めても同じ件数のまま適用できる。
+- **根本原因**: catalog形状の存在確認と、制約式が守る業務境界の実行確認を同一視した。
+- **対策・教訓**: digest固定に加え、条件を弱めたmigrationをfresh DBへ適用して境界insertが検出されることを確認する。並行claimは任意時間待機でなく実lock待機を観測し、逆順入力でも二重claimとdeadlockがないことを証明する。リファレンス: `scripts/test-notification-outbox-postgres.ts`

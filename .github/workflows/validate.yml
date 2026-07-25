@@ -68,3 +68,8 @@ jobs:
         env:
           UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
           PUSH_CAS_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      - name: Run Notification Outbox PostgreSQL verification
+        run: npm run test:postgres:notification-outbox
+        env:
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
+          NOTIFICATION_OUTBOX_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
