@@ -3,7 +3,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 
 import { getJSTDateString } from '@/lib/date-utils';
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import { sortPositiveStepRankings } from '@/lib/services/ranking-utils';
 import { supabaseAdmin } from '@/lib/supabase';
 import { constantTimeEqual, isRecord, isValidUUID } from '@/lib/validation';
@@ -38,7 +38,10 @@ function getCompleteRows<T>(
     return rows;
 }
 function internalFailure(stage: FailureStage): NextResponse {
-    reportError(`external/ranking:${stage}`, new Error('External ranking request failed'));
+    reportError('external/ranking', new AppError(
+        'External ranking request failed', 'EXTERNAL_RANKING_UNAVAILABLE',
+        { stage },
+    ));
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
 }
 const displayName = (user: UserRow): string | null =>
