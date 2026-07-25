@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -10,11 +11,12 @@ const migration = read(migrationPath);
 const readme = read('README.md');
 const instructions = read('.github/copilot-instructions.md');
 const runtimeHarness = read('scripts/test-notification-outbox-postgres.ts'), validateWorkflow = read('.github/workflows/validate.yml'), packageManifest = read('package.json');
-const runtimeSources = ['app', 'lib'].flatMap((root) =>
-    readdirSync(root, { recursive: true, encoding: 'utf8' })
-        .filter((path) => /\.[jt]sx?$/.test(path) && !/\.(test|spec)\.[jt]sx?$/.test(path))
-        .filter((path) => path !== 'services/notification-delivery-outbox.ts')
-        .map((path) => read(join(root, path))));
+const wrapperPath = 'lib/services/notification-delivery-outbox.ts';
+const wrapperSource = read(wrapperPath);
+const trackedTypeScript = execFileSync('git', ['ls-files', '*.ts', '*.tsx'], { encoding: 'utf8' })
+    .trim().split('\n').filter(Boolean);
+const outboxImport = /(?:from\s+|import\s*(?:\(\s*)?)['"][^'"]*notification-delivery-outbox['"]/;
+const outboxImporters = trackedTypeScript.filter((path) => path !== wrapperPath && outboxImport.test(read(path)));
 const body = (name: string): string => migration.match(new RegExp(
     `CREATE FUNCTION public\\.${name}[\\s\\S]+?AS \\$function\\$([\\s\\S]+?)\\$function\\$;`,
 ))?.[1] ?? '';
@@ -89,7 +91,8 @@ describe('notification delivery outbox Layer 1 migration', () => {
         expect(readme).toContain('completeは通知結果が契約を満たした場合だけ');
         expect(readme).toContain('release→complete→claim→index→table');
         expect(instructions).toContain('### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する');
-        expect(runtimeSources.join('\n')).not.toMatch(/notification[_-]delivery[_-]outbox|(?:claim|complete|release)NotificationDeliver/);
+        expect(wrapperSource).toMatch(/^import 'server-only';/);
+        expect(outboxImporters).toEqual(['lib/services/notification-delivery-outbox.test.ts']);
     });
     it('runtime_Layer 2が固定migrationとloopback CIだけを検証する', () => {
         expect(packageManifest).toContain('"test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts"');

@@ -1577,8 +1577,8 @@ export const runtime = "edge";
 - **根本原因**: catalog形状の存在確認と、制約式が守る業務境界の実行確認を同一視した。
 - **対策・教訓**: digest固定に加え、条件を弱めたmigrationをfresh DBへ適用して境界insertが検出されることを確認する。並行claimは任意時間待機でなく実lock待機を観測し、逆順入力でも二重claimとdeadlockがないことを証明する。リファレンス: `scripts/test-notification-outbox-postgres.ts`
 
-### LL-085: RPCの静的型だけでは実行時shapeと秘匿境界を保証できない
+### LL-086: RPCの静的型だけでは実行時shapeと秘匿境界を保証できない
 
 - **事象**: 通知outbox RPCの引数・戻り値を型定義しても、PostgRESTの不正shape、生DB error、stale owner/tokenを呼出routeへ露出または成功扱いし得た。
 - **根本原因**: compile-timeのRPC型をruntime validationと同一視し、DB境界でのunknown parse、固定エラー変換、semantic falseの契約を一箇所へ集約していなかった。
-- **対策・教訓**: server-only wrapperでexact RPC名/Args型を実使用し、返却値はunknownから厳格parseする。生error・message・details・hint・cause・UUIDを`AppError`やlogへ渡さず、固定code/stageだけを上位routeへthrowして一度だけ記録する。空claimは正常、complete/releaseのfalseはstale等の非成功として維持し、callsite追加前はinertを機械検査する。リファレンス: `lib/services/notification-delivery-outbox.ts`, `lib/services/notification-delivery-outbox.test.ts`
+- **対策・教訓**: wrapper先頭を`import 'server-only'`でcompiler境界化し、exact RPC名/Args型を実使用して各呼出を1回に固定し、返却値はunknownから厳格parseする。日/ISO週keyは4桁年のUTC文字列をparse/roundtripし、0〜99年を`Date.UTC`へ渡さない。生Errorのidentity/name/message/stack/cause/context/nested fields・details・hint・code・UUIDを直接巡回し、内部`reportError` 0回かつ固定`AppError`だけを上位routeへthrowする。空claimは正常、complete/releaseのfalseはstale等の非成功として維持し、全tracked TS/TSXでproduction import 0件を機械検査する。リファレンス: `lib/services/notification-delivery-outbox.ts`, `lib/services/notification-delivery-outbox.test.ts`

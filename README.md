@@ -267,7 +267,7 @@ claimは1〜20件の入力userをUUID安定順で`FOR UPDATE`し、台帳を同�
 
 static testはmigration SHA-256、catalog/default/FK/index/owner/RLS/ACL、lock順、stale token、未配線を固定する。Layer 2のruntime PostgreSQL検証はfresh DBで実catalog、条件を弱体化したmigration fixture、claim・owner/token fencing・5 attempt、JST日/ISO週境界、90日保持、逆順入力の二接続競合、rollback、失敗時cleanupを実行する。Layer 3のCron配線は次段とし、Layer 2がmainへ入った後もproduction適用には明示承認が必要である。rollbackはLayer 3を停止してactive leaseを待ってから`release→complete→claim→index→table`の順にREVOKE/DROPし、過去migrationは編集しない。
 
-Layer 3Aは`lib/services/notification-delivery-outbox.ts`のserver-only typed wrapperだけを提供する。exact RPC引数、最大20 UUIDの安定dedup、JST日/ISO週key、unknown返却shape、owner/token fencing、固定release failure codeと非PII `AppError`を検証するが、Cron callsiteはまだ存在せずinertである。route配線はLayers 3B/Cで別途行い、Layer 1 migrationはproduction未適用のため、このwrapper追加をDB利用可能性や実配信の根拠にしない。
+Layer 3Aは`lib/services/notification-delivery-outbox.ts`のserver-only typed wrapperだけを提供する。先頭の`import 'server-only'`をNext compiler境界とし、exact RPC引数・1回呼出、最大20 UUIDの安定dedup、4桁年をUTC parse/roundtripするJST日/ISO週key、unknown返却shape、owner/token fencing、固定release failure code、内部`reportError`なし、raw Error object graphとUUIDを含まない固定`AppError`を検証する。全tracked TS/TSXのproduction importは0件でCron callsiteはまだinert、route配線はLayers 3B/Cで別途行う。Layer 1 migrationはproduction未適用のため、このwrapper追加をDB利用可能性や実配信の根拠にしない。
 
 Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
 `coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
