@@ -1602,3 +1602,9 @@ export const runtime = "edge";
 - **事象**: authorityのowner・generation・versionが一致しても、未訪問の旧Service Workerはgeneration-aware protocolを保存・比較できず、personalized健康payloadを表示し得た。
 - **根本原因**: 受信者所有権の世代と、現在subscriptionが対応できるpayload protocolのreadinessを同じ状態として扱った。
 - **対策・教訓**: authorityへdefault 0のprotocol versionを追加し、旧save/releaseは0へ戻し、allowlist済みversionを申告する再saveだけがexact current authorityをreadyにする。senderはpersonalized送信前に必要versionを要求し、migration、runtime、server、client/SW、旧worker排出を独立Layerで証明する。generic通知は同じreadinessへ暗黙依存させない。
+
+### LL-092: canonical URL生成とRPC wrapperを再結合するとLayer境界が崩れる
+
+- **事象**: PR #314のserver実装にはcanonical ownership key生成、route配線、購読整理、RPC境界が同居し、wrapperだけを安全に先行mergeできなかった。
+- **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
+- **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`
