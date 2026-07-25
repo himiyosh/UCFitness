@@ -80,6 +80,7 @@ UCFitness は **複数の健康データソースに段階対応する歩数ト�
 - **Fitbit一時障害の再試行**: 冪等な歩数GETだけを429・5xx・通信障害で1秒、2秒、4秒後に再試行する。401は既存の再認証経路へ即時返し、回転するrefresh tokenのPOSTは二重実行しない
 - **通知品質契約**: `users.language`から生成したja/en文言をRFC 8291暗号化payloadで端末へ届ける。バッジは個人・全体・グループをユーザー単位1通へ統合し、同一UA/legacy購読は最新1件、404/410 endpointは削除する。Push `Topic`とNotification `tag`で同種通知を置換し、通知ベルの集約単位と未読数も一致させる
 - **ストリーク節目報酬契約**: 完了済みJST日と全シールド利用履歴をDBで再検証し、7/30/100/365日の限定バッジと固定UCを一回だけ付与する。歩数同期・ミッション入金・節目加算は同じユーザー行ロックへ直列化する
+- **ミッション全達成ボーナス再試行契約**: `GET /api/user/missions` は全ミッション完了時に`coin_transactions`の`mission-bonus:{userId}:{date}`を正本として`bonusStatus`と`bonusPending`を返す。未付与だけを再試行可能にし、付与済み・DB障害・不正応答をpendingへ偽装しない。POSTは既存`credit_balance`のユーザー行ロックと一意な冪等キーを再利用する
 - **ソーシャルデータの状態分離**: `/api/user/following` はプロフィール・歩数クエリ失敗を5xxで返し、歩数未記録は `hasTodaySteps: false`、実際の0歩は `hasTodaySteps: true` として区別する。ホームは `limit=5&sort=recent` で必要な5件だけを取得する
 - **フォロー歩数比較の表示契約**: 日別チャートは記録済み0歩を基準線上の点、未記録を線の切れ目として表示し、tooltipと読み上げ用数値表でも両者を区別する
 - **公開プロフィールAPIの入力契約**: Achievement進捗と年間歩数カレンダーは認証を要求しつつ、UUID検証済みの公開target `userId`をそのまま照会する。フォロー状態と公開リアクションもtarget UUID・emoji・periodをDB操作前に検証する。プロフィール/バナー画像の保存拡張子は元ファイル名ではなく検証済みMIMEから決定し、`contentType`と一致させる
@@ -906,13 +907,13 @@ RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNA
 RESPONSIVE_AUDIT_STORAGE_STATE_EN=/path/to/en-state.json RESPONSIVE_AUDIT_USERNAME_EN=en-user RESPONSIVE_AUDIT_GROUP_ID_EN=en-group \
 npm run audit:responsive
 
-# Dashboardのミッション操作・愛用ギア・モバイル操作領域
-DASHBOARD_E2E_STORAGE_STATE=/path/to/ja-state.json npm run test:e2e:dashboard
+# Dashboardのミッション報酬復旧・愛用ギアfocus・Amazon popup通信隔離
+DASHBOARD_E2E_LOCAL_SECRET=local-fixture-secret DASHBOARD_E2E_SUPABASE_FIXTURE_URL=http://127.0.0.1:54321 npm run test:e2e:dashboard
 ```
 
 - テストフレームワーク: **Vitest**
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
-- Dashboard回帰テストはbonus-only報酬失敗→reload→retry、商品loaded状態、Price/Delivery非表示、有限画像fallback、A/B両treatmentと計測値、LoginBonus閉鎖、AutoSync遮断、375/1280pxの44px操作領域と横overflowを検査
+- Dashboard回帰テストはbonus-only報酬失敗→新規browser context復旧、keyboard/pointer別focus・live通知・二重送信防止、商品loaded/empty/re-failure、有限画像fallback、Amazon popup初回通信隔離、375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用

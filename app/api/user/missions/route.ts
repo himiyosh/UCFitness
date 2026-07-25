@@ -18,6 +18,12 @@ class MissionRewardWriteError extends Error {
     }
 }
 
+class MissionBonusStatusReadError extends Error { constructor() { super('Mission bonus status read failed'); this.name = 'MissionBonusStatusReadError'; } }
+
+type MissionBonusStatus = 'not_eligible' | 'pending' | 'awarded';
+
+const ALL_CLEAR_BONUS_UC = 100;
+
 /**
  * GET /api/user/missions
  * 今日のデイリーミッション一覧を参照専用で取得する。
@@ -46,6 +52,7 @@ export async function GET() {
 
     const missions = existingMissions ?? [];
     const allCompleted = missions.length > 0 && missions.every(m => m.is_completed);
+    const bonusStatus = await getAllCompletedBonusStatus(userId, today, allCompleted);
 
     // ミッション連続達成ストリークを計算
     const streak = await calculateMissionStreak(userId, today);
@@ -54,10 +61,18 @@ export async function GET() {
         missions,
         date: today,
         allCompleted,
+        bonusPending: bonusStatus === 'pending',
+        bonusStatus,
         streak,
         streakUnavailable: streak === null,
     });
   } catch (err) {
+    if (err instanceof MissionBonusStatusReadError) {
+        return NextResponse.json(
+            { error: 'ミッションボーナス状態の取得失敗', code: 'MISSION_BONUS_STATUS_UNAVAILABLE' },
+            { status: 503 },
+        );
+    }
     reportError('user/missions:GET', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
@@ -171,12 +186,14 @@ export async function POST(request: Request) {
         }
     }
 
-    const allCompleted = missions.every(m => m.is_completed);
+    const allCompleted = missions.length > 0 && missions.every(m => m.is_completed);
 
     // 全達成ボーナス
     let bonusAwarded = false;
+    let bonusStatus: MissionBonusStatus = 'not_eligible';
     if (allCompleted) {
         bonusAwarded = await awardAllCompletedBonus(userId, today);
+        bonusStatus = 'awarded';
     }
 
     const streak = await calculateMissionStreak(userId, today);
@@ -189,7 +206,9 @@ export async function POST(request: Request) {
         streakUnavailable: streak === null,
         newlyCompleted,
         bonusAwarded,
-        bonusUc: bonusAwarded ? 100 : 0,
+        bonusPending: false,
+        bonusStatus,
+        bonusUc: bonusAwarded ? ALL_CLEAR_BONUS_UC : 0,
     });
   } catch (err) {
     if (err instanceof MissionRewardWriteError) {
@@ -201,6 +220,30 @@ export async function POST(request: Request) {
     reportError('user/missions:POST', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
+}
+
+async function getAllCompletedBonusStatus(userId: string, date: string, allCompleted: boolean): Promise<MissionBonusStatus> {
+    if (!allCompleted) return 'not_eligible';
+
+    const idempotencyKey = getAllCompletedBonusIdempotencyKey(userId, date);
+    const { data, error } = await supabaseAdmin
+        .from('coin_transactions')
+        .select('id, user_id, type, amount, idempotency_key')
+        .eq('user_id', userId)
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle();
+
+    if (error) {
+        reportError('user/missions:bonus-status', error, { userId, date });
+        throw new MissionBonusStatusReadError();
+    }
+    if (data === null) return 'pending';
+    if (!isAllCompletedBonusTransaction(data, userId, idempotencyKey)) {
+        reportError('user/missions:bonus-status:invalid', new Error('Mission bonus transaction was malformed'), { userId, date });
+        throw new MissionBonusStatusReadError();
+    }
+
+    return 'awarded';
 }
 
 /** ミッション完了処理 + 報酬UC付与 */
@@ -227,7 +270,7 @@ async function completeMissionAndReward(
         throw new MissionRewardWriteError();
     }
 
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
         .from('daily_missions')
         .update({
             is_completed: true,
@@ -235,13 +278,20 @@ async function completeMissionAndReward(
         })
         .eq('id', missionId)
         .eq('user_id', userId)
-        .eq('date', date);
+        .eq('date', date)
+        .eq('is_completed', false)
+        .select('id')
+        .maybeSingle();
     if (error) {
         reportError('user/missions:completeMission:update', error, { missionId });
         throw new MissionRewardWriteError();
     }
+    if (data !== null && (typeof data !== 'object' || !('id' in data) || typeof data.id !== 'string')) {
+        reportError('user/missions:completeMission:update-invalid', new Error('Mission update result was malformed'), { missionId });
+        throw new MissionRewardWriteError();
+    }
 
-    return true;
+    return data !== null;
 }
 
 /** 全達成ボーナス付与 */
@@ -251,10 +301,10 @@ async function awardAllCompletedBonus(
 ): Promise<boolean> {
     const credit = await creditBalance(
         userId,
-        100,
+        ALL_CLEAR_BONUS_UC,
         'MISSION_REWARD',
         'デイリーミッション全達成ボーナス',
-        `mission-bonus:${userId}:${date}`,
+        getAllCompletedBonusIdempotencyKey(userId, date),
         date,
     );
     if (!credit.success) {
@@ -267,6 +317,19 @@ async function awardAllCompletedBonus(
     }
 
     return !credit.already_processed;
+}
+
+function getAllCompletedBonusIdempotencyKey(userId: string, date: string): string {
+    return `mission-bonus:${userId}:${date}`;
+}
+
+function isAllCompletedBonusTransaction(value: unknown, userId: string, idempotencyKey: string): boolean {
+    return typeof value === 'object' && value !== null
+        && 'id' in value && typeof value.id === 'string'
+        && 'user_id' in value && value.user_id === userId
+        && 'type' in value && value.type === 'MISSION_REWARD'
+        && 'amount' in value && value.amount === ALL_CLEAR_BONUS_UC
+        && 'idempotency_key' in value && value.idempotency_key === idempotencyKey;
 }
 
 function shiftDate(date: string, days: number): string {

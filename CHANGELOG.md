@@ -4,6 +4,17 @@ UCFitness の主な変更をこのファイルに記録します。
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) を参考にし、変更日と統合単位が追跡できる見出しを使用します。
 
+## 2026-07-25 - Dashboard再試行の永続復旧
+
+### 修正
+- 全ミッション完了後の100 UCボーナス失敗を`sessionStorage`ではなくコイン台帳の冪等キーから判定し、タブを閉じた後も未付与だけを再試行可能に変更
+- Trending Fitness Gearのキーボード再試行後に、成功・空状態では見出し、再失敗では再試行ボタンへfocusを復元。pointer操作ではfocusを奪わない
+- Amazon商品リンクの`target="_blank"` popup初回通信をbrowser contextで事前mockし、親pageのrouteを継承しない通信が実Amazonへ出ないように修正
+
+### 品質
+- ボーナス未付与・付与済み・DB障害・不正応答・並行再試行のRouteテストを追加
+- 375px/1280pxのChromiumで新規browser context復旧、keyboard/pointer別focus、44px、live error、popup mock hit、未mock Amazon通信0件を検証
+
 ## 2026-07-24 - Dashboard主要操作の回復
 
 ### 修正

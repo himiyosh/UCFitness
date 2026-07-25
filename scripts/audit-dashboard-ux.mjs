@@ -1,62 +1,60 @@
-import assert from "node:assert/strict"; import { access } from "node:fs/promises";
+import assert from "node:assert/strict";
 import { encode } from "@auth/core/jwt";
 import { chromium } from "playwright";
-const baseUrl = process.env.DASHBOARD_E2E_BASE_URL ?? "http://localhost:3000", storageState = process.env.DASHBOARD_E2E_STORAGE_STATE, secret = process.env.DASHBOARD_E2E_LOCAL_SECRET;
-if (!storageState && !secret) throw new Error("Dashboard E2E auth is required"); if (storageState) await access(storageState);
-const token = secret ? await encode({ token: { id: "11111111-1111-4111-8111-111111111111", sub: "fixture-provider", provider: "fitbit", provider_account_id: "fixture-provider", username: "fixture-runner", name: "Fixture Runner", email: "fixture@example.invalid", language: "ja" }, secret, salt: "authjs.session-token", maxAge: 3600 }) : null;
+const baseUrl = process.env.DASHBOARD_E2E_BASE_URL ?? "http://localhost:3000", secret = process.env.DASHBOARD_E2E_LOCAL_SECRET, fixtureUrl = process.env.DASHBOARD_E2E_SUPABASE_FIXTURE_URL, baseOrigin = new URL(baseUrl).origin;
+if (!secret || !fixtureUrl || !["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname) || !["localhost", "127.0.0.1"].includes(new URL(fixtureUrl).hostname)) throw new Error("Dashboard E2E requires local app and Supabase fixture servers");
+if (!(await fetch(`${fixtureUrl}/rest/v1/users?select=id&limit=0`)).ok) throw new Error("Dashboard E2E Supabase fixture is unavailable");
+const token = await encode({ token: { id: "11111111-1111-4111-8111-111111111111", sub: "fixture-provider", provider: "fitbit", provider_account_id: "fixture-provider", username: "fixture-runner", name: "Token-only Runner", email: "fixture@example.invalid", language: "ja" }, secret, salt: "authjs.session-token", maxAge: 3600 });
 const mission = { id: "mission-1", mission_type: "WALK_100", title: "100 steps", description: "Walk 100 steps", reward_uc: 5, is_completed: true, completed_at: "2026-07-24T00:00:00.000Z" };
-const gear = { asin: "B000000001", title: "Lightweight walking shoes", image_url: "https://images.example.invalid/shoes.jpg", affiliate_link: "https://www.amazon.co.jp/dp/B000000001?tag=ucfitness-22", count: 2, users: [{ username: "walker-one", image: null, comment: "Easy to wear" }] }, browser = await chromium.launch({ headless: true }); try {
-  for (const viewport of [{ name: "mobile", width: 375, height: 812 }, { name: "desktop", width: 1280, height: 900 }]) {
-    const context = await browser.newContext({ storageState: storageState || undefined, viewport });
-    if (token) await context.addCookies([{ name: "authjs.session-token", value: token, domain: new URL(baseUrl).hostname, path: "/" }]);
-    const page = await context.newPage();
-    const variant = viewport.name === "mobile" ? "B" : "A"; await page.addInitScript((value) => sessionStorage.setItem("ucfitness:affiliate-experiment:f008-c3-v1", JSON.stringify({ schema: 1, positionVariant: value, copyVariant: value })), variant);
-    let postCount = 0, imageFailures = 0;
-    const analyticsEvents = [];
-    await page.route("**/api/user/missions", (route) => {
-      if (route.request().method() === "POST" && ++postCount === 1) return route.fulfill({ status: 503, contentType: "application/json", json: { error: "Reward unavailable", code: "MISSION_REWARD_DATABASE_ERROR" } });
-      return route.fulfill({ contentType: "application/json", json: route.request().method() === "POST"
-        ? { success: true, missions: [mission], allCompleted: true, streak: 1, newlyCompleted: 0, bonusAwarded: true, bonusUc: 100 }
-        : { missions: postCount ? [mission] : [], date: "2026-07-24", allCompleted: postCount > 0, streak: postCount ? 1 : 0 } });
-    });
-    await page.route("**/api/amazon/trending", (route) => route.fulfill({ contentType: "application/json", json: { items: [gear] } }));
-    await page.route("**/api/gear-reactions", (route) => route.fulfill({ contentType: "application/json", json: { reactions: [] } }));
-    await page.route("**/api/user/login-bonus", (route) => route.fulfill({ contentType: "application/json", json: { claimed: true, alreadyClaimed: false, amount: 100, streak: 1 } }));
-    await page.route("**/api/steps/sync", (route) => route.fulfill({ status: 503, json: { error: "Fixture unavailable" } }));
-    await page.route("**/api/analytics/affiliate", (route) => { analyticsEvents.push(route.request().postDataJSON()); return route.fulfill({ json: { accepted: true } }); });
-    await page.route("https://www.amazon.co.jp/**", (route) => route.fulfill({ contentType: "text/html", body: "fixture" }));
-    await page.route(/https:\/\/(?:images\.example\.invalid|ws-fe\.amazon-adsystem\.com)\/.*/, (route) => { imageFailures += 1; return route.abort(); });
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    const close = page.getByRole("button", { name: /閉じる|Close/ }); await close.waitFor(); const closeBox = await close.boundingBox(); assert.ok(closeBox.width + 0.01 >= 44 && closeBox.height + 0.01 >= 44); await close.click(); await close.waitFor({ state: "detached" });
-    const missionPanel = page.locator(".home-mission-module");
-    await missionPanel.getByRole("button", { name: /今日のミッションを準備|Prepare today's missions/ }).click();
-    await missionPanel.getByText(/報酬を安全に反映できませんでした|reward could not be applied safely/).waitFor(); await page.reload({ waitUntil: "commit", timeout: 60_000 });
-    const retry = missionPanel.getByRole("button", { name: /ミッション再チェック|Refresh missions/ });
-    await retry.click();
-    await missionPanel.getByText(/獲得した全達成ボーナス|All-clear bonus earned/).waitFor();
-    assert.equal(postCount, 2);
-    assert.equal(await missionPanel.getByRole("alert").count(), 0);
-    const gearPanel = page.locator(".trending-gear-module");
-    const product = gearPanel.getByRole("link", { name: /Lightweight walking shoes/ });
-    await product.waitFor();
-    await product.locator("img[hidden]").waitFor({ state: "attached" });
-    assert.equal(await product.locator("img").isHidden(), true);
-    assert.equal(await gearPanel.getByText(/価格:|Price:|配送:|Delivery:/).count(), 0);
-    assert.equal(await product.getAttribute("data-affiliate-position"), variant);
-    assert.equal(await product.getByText(variant === "B" ? /Amazon.co.jpで商品を確認|Check this item on Amazon.co.jp/ : /Amazon.co.jpで詳しく見る|View details on Amazon.co.jp/).count(), 1);
-    assert.equal(await product.locator(`span.order-${variant === "B" ? "first" : "last"}`).count(), 1);
-    const clickRequest = page.waitForRequest((request) => request.url().includes("/api/analytics/affiliate") && request.postDataJSON().event === "click");
-    await Promise.all([clickRequest, product.click()]);
-    assert.deepEqual(analyticsEvents.find((event) => event.event === "click"), { schema: 1, event: "click", experiment: "f008_c3_v1", positionVariant: variant, copyVariant: variant, surface: "dashboard", targetType: "product", targetId: "B000000001" });
-    assert.equal(imageFailures, 4);
-    const controls = page.locator(".home-mission-module button,.trending-gear-module button,.trending-gear-module a[href]");
-    for (const control of await controls.evaluateAll((elements) => elements.map((element) => ({ label: element.getAttribute("aria-label") ?? element.textContent?.trim(), box: element.getBoundingClientRect() })))) {
-      assert.ok(control.box.width + 0.01 >= 44 && control.box.height + 0.01 >= 44, `${control.label}: ${control.box.width}x${control.box.height}`);
-    }
-    assert.equal(await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth), 0);
-    console.log(`OK: dashboard UX ${viewport.name}`);
-    await context.close();
-  }
-} finally {
-  await browser.close();
+const gear = { asin: "B000000001", title: "Lightweight walking shoes", image_url: "https://images.example.invalid/shoes.jpg", affiliate_link: "https://www.amazon.co.jp/dp/B000000001?tag=ucfitness-22", count: 2, users: [{ username: "walker-one", image: null, comment: "Easy to wear" }] };
+const trendingError = { status: 503, json: { error: "Fixture unavailable" } }, trendingSuccess = { status: 200, json: { items: [gear] } }, trendingEmpty = { status: 200, json: { items: [] } };
+const createState = () => ({ analyticsEvents: [], amazonMockHits: 0, bonusAwarded: false, browserErrors: [], imageFailures: 0, loginBonusCalls: 0, missionPostCount: 0, missionPrepared: false, trendingDelayMs: 0, trendingMockHits: 0, trendingMode: "success", unexpectedApiRequests: [], unexpectedExternalRequests: [], unmockedAmazonRequests: 0 });
+async function installRoutes(context, state) {
+  await context.route("**/*", (route) => { if (new URL(route.request().url()).origin === baseOrigin) return route.fallback(); state.unexpectedExternalRequests.push(route.request().url()); return route.abort("blockedbyclient"); });
+  await context.route("**/api/**", (route) => { state.unexpectedApiRequests.push(`${route.request().method()} ${route.request().url()}`); return route.abort("blockedbyclient"); });
+  await context.route(`${baseOrigin}/api/auth/session**`, (route) => route.request().method() === "GET" ? route.continue() : route.abort("blockedbyclient"));
+  await context.route("https://www.amazon.co.jp/**", (route) => { state.unmockedAmazonRequests += 1; return route.abort("blockedbyclient"); });
+  // Last registered matching context route runs first; the guard above blocks a page.route regression.
+  await context.route("https://www.amazon.co.jp/**", (route) => { state.amazonMockHits += 1; return route.fulfill({ status: 200, contentType: "text/html", headers: { "x-ucfitness-amazon-mock": "1" }, body: "<!doctype html><title>Amazon fixture</title><body>fixture</body>" }); });
+  await context.route(`${baseOrigin}/api/user/missions`, (route) => {
+    if (route.request().method() === "POST") { state.missionPostCount += 1; state.missionPrepared = true; if (state.missionPostCount === 1) return route.fulfill({ status: 503, contentType: "application/json", json: { error: "Reward unavailable", code: "MISSION_REWARD_DATABASE_ERROR" } }); state.bonusAwarded = true; return route.fulfill({ contentType: "application/json", json: { success: true, missions: [mission], allCompleted: true, bonusPending: false, bonusStatus: "awarded", streak: 1, newlyCompleted: 0, bonusAwarded: true, bonusUc: 100 } }); }
+    return route.fulfill({ contentType: "application/json", json: state.missionPrepared ? { missions: [mission], date: "2026-07-24", allCompleted: true, bonusPending: !state.bonusAwarded, bonusStatus: state.bonusAwarded ? "awarded" : "pending", streak: 1 } : { missions: [], date: "2026-07-24", allCompleted: false, bonusPending: false, bonusStatus: "not_eligible", streak: 0 } });
+  });
+  await context.route(`${baseOrigin}/api/amazon/trending`, async (route) => { state.trendingMockHits += 1; const response = state.trendingMode === "error" ? trendingError : state.trendingMode === "empty" ? trendingEmpty : trendingSuccess; if (state.trendingDelayMs) await new Promise((resolve) => setTimeout(resolve, state.trendingDelayMs)); return route.fulfill({ status: response.status, contentType: "application/json", json: response.json }); });
+  await context.route(`${baseOrigin}/api/challenge**`, (route) => route.fulfill({ json: { challenges: [] } }));
+  await context.route(`${baseOrigin}/api/user/following**`, (route) => route.fulfill({ json: { following: [], count: 0 } }));
+  await context.route(`${baseOrigin}/api/user/feed/unread-count`, (route) => route.fulfill({ json: { unreadCount: 0, notificationPreferencesAvailable: true } }));
+  await context.route(`${baseOrigin}/api/gear-reactions`, (route) => route.fulfill({ contentType: "application/json", json: { reactions: [] } }));
+  await context.route(`${baseOrigin}/api/user/login-bonus`, (route) => { state.loginBonusCalls += 1; return route.fulfill({ contentType: "application/json", json: state.loginBonusCalls === 1 ? { claimed: true, alreadyClaimed: false, amount: 100, streak: 1 } : { claimed: false, alreadyClaimed: true, amount: 0, streak: 1 } }); });
+  await context.route(`${baseOrigin}/api/steps/sync`, (route) => route.fulfill({ status: 503, json: { error: "Fixture unavailable" } }));
+  await context.route(`${baseOrigin}/api/analytics/affiliate`, (route) => { state.analyticsEvents.push(route.request().postDataJSON()); return route.fulfill({ json: { accepted: true } }); });
+  await context.route(/https:\/\/(?:images\.example\.invalid|ws-fe\.amazon-adsystem\.com)\/.*/, (route) => { state.imageFailures += 1; return route.abort(); });
 }
+const browser = await chromium.launch({ headless: true });
+async function createPage(viewport, variant, state) {
+  const context = await browser.newContext({ viewport }); await context.addCookies([{ name: "authjs.session-token", value: token, domain: new URL(baseUrl).hostname, path: "/" }]); await installRoutes(context, state);
+  const page = await context.newPage(); page.on("console", (message) => { if (message.type() === "error" && !message.text().startsWith("Failed to load resource:")) state.browserErrors.push(message.text()); }); page.on("pageerror", (error) => state.browserErrors.push(error.message));
+  await page.addInitScript((value) => sessionStorage.setItem("ucfitness:affiliate-experiment:f008-c3-v1", JSON.stringify({ schema: 1, positionVariant: value, copyVariant: value })), variant); return { context, page };
+}
+async function assertSize(locator) { const box = await locator.boundingBox(); assert.ok(box && box.width + 0.01 >= 44 && box.height + 0.01 >= 44, box ? `${box.width}x${box.height}` : "missing control"); }
+async function assertFocus(page, locator) { const element = await locator.elementHandle(); assert.ok(element); await page.waitForFunction((target) => document.activeElement === target, element); }
+try {
+  for (const viewport of [{ name: "mobile", width: 375, height: 812 }, { name: "desktop", width: 1280, height: 900 }]) {
+    const state = createState(), variant = viewport.name === "mobile" ? "B" : "A"; let { context, page } = await createPage(viewport, variant, state); await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60_000 }); await page.waitForFunction(() => document.body.innerText.includes("Fixture Runner"));
+    const close = page.getByRole("button", { name: /閉じる|Close/ }); await close.waitFor(); await assertSize(close); await close.click(); await close.waitFor({ state: "detached" });
+    let missions = page.locator(".home-mission-module"); const prepare = missions.getByRole("button", { name: /今日のミッションを準備|Prepare today's missions/ }); await assertSize(prepare); await prepare.click(); await missions.getByText(/報酬を安全に反映できませんでした|reward could not be applied safely/).waitFor(); await missions.getByRole("alert").waitFor(); assert.equal(state.missionPostCount, 1); await context.close();
+    state.trendingMode = "error"; ({ context, page } = await createPage(viewport, variant, state)); await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60_000 }); assert.equal(await page.evaluate(() => sessionStorage.getItem("ucfitness:mission-reward-retry")), null);
+    missions = page.locator(".home-mission-module"); const missionRetry = missions.getByRole("button", { name: /ミッション再チェック|Refresh missions/ }); await missionRetry.waitFor(); await assertSize(missionRetry); await missionRetry.focus(); await missionRetry.press("Enter"); await missions.getByText(/獲得した全達成ボーナス|All-clear bonus earned/).waitFor(); await assertFocus(page, missions.getByRole("heading", { name: /デイリーミッション|Daily Missions/ }));
+    await page.locator('p[aria-live="polite"]').filter({ hasText: /100 UCボーナスを獲得|earned a 100 UC bonus/ }).waitFor(); await missions.locator(".home-mission-bonus").waitFor({ state: "detached" }); assert.equal(await missions.getByText(/獲得した全達成ボーナス|All-clear bonus earned/).count(), 1); assert.equal(state.missionPostCount, 2);
+    let gearPanel = page.locator(".trending-gear-module"), gearRetry = gearPanel.getByRole("button", { name: /再試行|Retry/ }); await gearRetry.waitFor(); await assertSize(gearRetry); assert.equal(await gearPanel.locator('p.sr-only[aria-live="assertive"]').count(), 1); const keyboardHits = state.trendingMockHits; state.trendingMode = "success"; state.trendingDelayMs = 250; await gearRetry.focus(); await gearRetry.press("Enter"); await page.waitForFunction((button) => button.disabled, await gearRetry.elementHandle()); assert.equal(await gearRetry.getAttribute("aria-busy"), "true"); await gearRetry.press("Enter"); assert.equal(state.trendingMockHits, keyboardHits + 1); await gearPanel.getByRole("link", { name: /Lightweight walking shoes/ }).waitFor(); await assertFocus(page, gearPanel.getByRole("heading", { name: /愛用ギア|Trending Fitness Gear/ })); state.trendingDelayMs = 0;
+    state.trendingMode = "error"; await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 }); gearPanel = page.locator(".trending-gear-module"); gearRetry = gearPanel.getByRole("button", { name: /再試行|Retry/ }); await gearRetry.waitFor(); state.trendingMode = "empty"; await gearRetry.focus(); await gearRetry.press("Space"); await gearPanel.getByText(/愛用ギアが集まる|Popular items will appear/).waitFor(); await assertSize(gearPanel.getByRole("link", { name: /愛用ギアを登録|Add your favorite gear/ })); await assertFocus(page, gearPanel.getByRole("heading", { name: /愛用ギア|Trending Fitness Gear/ }));
+    state.trendingMode = "error"; await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 }); gearPanel = page.locator(".trending-gear-module"); gearRetry = gearPanel.getByRole("button", { name: /再試行|Retry/ }); await gearRetry.waitFor(); await gearRetry.focus(); await gearRetry.press("Enter"); await gearPanel.locator('p.sr-only[aria-live="assertive"]').filter({ hasText: /Amazonおすすめ|Amazon recommendations/ }).waitFor(); await assertFocus(page, gearPanel.getByRole("button", { name: /再試行|Retry/ }));
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 }); gearPanel = page.locator(".trending-gear-module"); gearRetry = gearPanel.getByRole("button", { name: /再試行|Retry/ }); await gearRetry.waitFor(); state.trendingMode = "success"; await gearRetry.click(); const product = gearPanel.getByRole("link", { name: /Lightweight walking shoes/ }); await product.waitFor(); assert.equal(await page.evaluate(() => document.activeElement?.tagName), "BODY");
+    await product.locator("img[hidden]").waitFor({ state: "attached" }); assert.equal(await product.locator("img").isHidden(), true); assert.equal(await gearPanel.getByText(/価格:|Price:|配送:|Delivery:/).count(), 0); assert.equal(await product.getAttribute("data-affiliate-position"), variant);
+    assert.equal(await product.getByText(variant === "B" ? /Amazon.co.jpで商品を確認|Check this item on Amazon.co.jp/ : /Amazon.co.jpで詳しく見る|View details on Amazon.co.jp/).count(), 1); assert.equal(await product.locator(`span.order-${variant === "B" ? "first" : "last"}`).count(), 1);
+    const popupPromise = context.waitForEvent("page"), clickRequest = page.waitForRequest((request) => request.url().includes("/api/analytics/affiliate") && request.postDataJSON().event === "click"); const [popup] = await Promise.all([popupPromise, clickRequest, product.click()]); await popup.waitForLoadState("domcontentloaded"); assert.equal(await popup.locator("body").textContent(), "fixture"); assert.equal(state.amazonMockHits, 1); assert.equal(state.unmockedAmazonRequests, 0); await popup.close(); assert.equal(popup.isClosed(), true);
+    assert.deepEqual(state.analyticsEvents.find((event) => event.event === "click"), { schema: 1, event: "click", experiment: "f008_c3_v1", positionVariant: variant, copyVariant: variant, surface: "dashboard", targetType: "product", targetId: "B000000001" }); assert.ok(state.imageFailures > 0 && state.imageFailures < 30); assert.deepEqual(state.browserErrors, []); assert.deepEqual(state.unexpectedApiRequests, []); assert.deepEqual(state.unexpectedExternalRequests, []);
+    const controls = page.locator(".home-mission-module button,.trending-gear-module button,.trending-gear-module a[href]"); for (const control of await controls.evaluateAll((elements) => elements.map((element) => ({ label: element.getAttribute("aria-label") ?? element.textContent?.trim(), box: element.getBoundingClientRect() })))) assert.ok(control.box.width + 0.01 >= 44 && control.box.height + 0.01 >= 44, `${control.label}: ${control.box.width}x${control.box.height}`);
+    assert.equal(await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth), 0); console.log(`OK: dashboard UX ${viewport.name}`); await context.close();
+  }
+} finally { await browser.close(); }

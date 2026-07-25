@@ -21,7 +21,7 @@ interface Mission {
 }
 
 type RefreshError = 'reward' | 'generic' | null;
-const REWARD_RETRY_KEY = 'ucfitness:mission-reward-retry';
+type MissionBonusStatus = 'not_eligible' | 'pending' | 'awarded';
 
 export default function DailyMissions(): ReactNode {
     const t = useTranslations('Mission');
@@ -36,30 +36,34 @@ export default function DailyMissions(): ReactNode {
     const [refreshError, setRefreshError] = useState<RefreshError>(null);
     const [announcement, setAnnouncement] = useState('');
     const [earnedBonus, setEarnedBonus] = useState(false);
+    const [bonusPending, setBonusPending] = useState(false);
     const [focusHeadingAfterRefresh, setFocusHeadingAfterRefresh] = useState(false);
     const missionHeadingRef = useRef<HTMLHeadingElement>(null);
 
-    const fetchMissions = useCallback(async () => {
+    const fetchMissions = useCallback(async (): Promise<MissionBonusStatus | null> => {
         setIsLoading(true);
         setError(false);
         try {
             const res = await fetch('/api/user/missions');
-            if (!res.ok) throw new Error('fetch failed');
-            const data = await res.json();
-            setMissions(data.missions || []);
-            setAllCompleted(data.allCompleted || false);
+            const data: unknown = await res.json().catch(() => null);
+            if (!res.ok || !isMissionResponse(data)) throw new Error('fetch failed');
+            setMissions(data.missions);
+            setAllCompleted(data.allCompleted);
+            setBonusPending(data.bonusPending);
+            setEarnedBonus(data.bonusStatus === 'awarded');
+            setRefreshError(data.bonusPending ? 'reward' : null);
             setStreak(typeof data.streak === 'number' ? data.streak : null);
             setStreakUnavailable(Boolean(data.streakUnavailable));
+            return data.bonusStatus;
         } catch {
             setError(true);
+            return null;
         } finally {
             setIsLoading(false);
         }
     }, []);
-
     useEffect(() => {
-        fetchMissions();
-        try { if (sessionStorage.getItem(REWARD_RETRY_KEY)) setRefreshError('reward'); } catch {}
+        void fetchMissions();
     }, [fetchMissions]);
 
     useEffect(() => {
@@ -78,25 +82,24 @@ export default function DailyMissions(): ReactNode {
                 body: JSON.stringify({ action: 'refresh' }),
             });
             const result: unknown = await res.json().catch(() => null);
-            if (!res.ok || !isMissionActionResponse(result)) {
-                setRefreshError(
+            if (!res.ok || !isMissionResponse(result)) {
+                const nextRefreshError: RefreshError =
                     isErrorResponse(result) && result.code === 'MISSION_REWARD_DATABASE_ERROR'
                         ? 'reward'
-                        : 'generic',
-                );
-                if (isErrorResponse(result) && result.code === 'MISSION_REWARD_DATABASE_ERROR')
-                    try { sessionStorage.setItem(REWARD_RETRY_KEY, '1'); } catch {}
-                await fetchMissions();
+                        : 'generic';
+                const recoveredBonusStatus = await fetchMissions();
+                if (recoveredBonusStatus !== 'awarded') setRefreshError(nextRefreshError);
                 setFocusHeadingAfterRefresh(true);
                 return;
             }
 
             setMissions(result.missions);
-            setAllCompleted(Boolean(result.allCompleted));
+            setAllCompleted(result.allCompleted);
+            setBonusPending(result.bonusPending);
             setStreak(typeof result.streak === 'number' ? result.streak : null);
             setStreakUnavailable(Boolean(result.streakUnavailable));
-            setRefreshError(null);
-            try { sessionStorage.removeItem(REWARD_RETRY_KEY); } catch { /* Success state is still authoritative. */ }
+            setRefreshError(result.bonusPending ? 'reward' : null);
+            setEarnedBonus(result.bonusStatus === 'awarded');
             setAnnouncement(t('updatedAnnouncement', { count: result.missions.length }));
             setFocusHeadingAfterRefresh(true);
             if (result.allCompleted) {
@@ -108,7 +111,9 @@ export default function DailyMissions(): ReactNode {
                 }
             }
         } catch {
-            setRefreshError('generic');
+            const recoveredBonusStatus = await fetchMissions();
+            if (recoveredBonusStatus !== 'awarded') setRefreshError('generic');
+            setFocusHeadingAfterRefresh(true);
         } finally {
             setRefreshing(false);
         }
@@ -141,7 +146,7 @@ export default function DailyMissions(): ReactNode {
                 <div className="home-mission-module flex flex-col justify-center rounded-2xl border border-[var(--color-reward)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
                     <div className="flex flex-col items-center py-4 text-center">
                         <StatusIcon tone="danger" />
-                        <h2 className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('dailyMissions')}</h2>
+                        <h2 ref={missionHeadingRef} tabIndex={-1} className="mt-2 rounded-lg text-sm font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]">{t('dailyMissions')}</h2>
                         <p className="mt-1 text-xs text-[var(--color-text-muted)]" role="alert">{t('loadError')}</p>
                         <button
                             onClick={async () => { await fetchMissions(); setFocusHeadingAfterRefresh(true); }}
@@ -218,7 +223,7 @@ export default function DailyMissions(): ReactNode {
                             {completedCount}/{missions.length}
                         </span>
                         {/* 再チェックボタン */}
-                        {(!allCompleted || refreshError === 'reward') && (
+                        {(!allCompleted || bonusPending) && (
                             <button
                                 onClick={refreshMissions}
                                 disabled={refreshing}
@@ -341,20 +346,40 @@ function isErrorResponse(value: unknown): value is { code?: string } {
     return typeof value === 'object' && value !== null;
 }
 
-function isMissionActionResponse(value: unknown): value is {
+function isMissionResponse(value: unknown): value is {
     missions: Mission[];
     allCompleted: boolean;
+    bonusPending: boolean;
+    bonusStatus: MissionBonusStatus;
     streak: number | null;
     streakUnavailable?: boolean;
     bonusAwarded?: boolean;
     bonusUc?: number;
 } {
-    return typeof value === 'object'
-        && value !== null
-        && 'missions' in value
-        && Array.isArray(value.missions)
-        && 'allCompleted' in value
-        && typeof value.allCompleted === 'boolean';
+    return typeof value === 'object' && value !== null
+        && 'missions' in value && Array.isArray(value.missions) && value.missions.every(isMission)
+        && 'allCompleted' in value && typeof value.allCompleted === 'boolean'
+        && 'bonusPending' in value && typeof value.bonusPending === 'boolean'
+        && 'streak' in value && (typeof value.streak === 'number' || value.streak === null)
+        && (!('streakUnavailable' in value) || typeof value.streakUnavailable === 'boolean')
+        && (!('bonusAwarded' in value) || typeof value.bonusAwarded === 'boolean')
+        && (!('bonusUc' in value) || typeof value.bonusUc === 'number')
+        && 'bonusStatus' in value && (
+            value.bonusStatus === 'not_eligible'
+            || value.bonusStatus === 'pending'
+            || value.bonusStatus === 'awarded'
+        );
+}
+
+function isMission(value: unknown): value is Mission {
+    return typeof value === 'object' && value !== null
+        && 'id' in value && typeof value.id === 'string'
+        && 'mission_type' in value && typeof value.mission_type === 'string'
+        && 'title' in value && typeof value.title === 'string'
+        && 'description' in value && typeof value.description === 'string'
+        && 'reward_uc' in value && typeof value.reward_uc === 'number'
+        && 'is_completed' in value && typeof value.is_completed === 'boolean'
+        && 'completed_at' in value && (typeof value.completed_at === 'string' || value.completed_at === null);
 }
 
 function LoadingSpinner(): ReactNode {

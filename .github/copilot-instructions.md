@@ -1550,3 +1550,10 @@ export const runtime = "edge";
 - **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
 - **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
 - **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
+
+### LL-081: 再試行の権威と保護範囲を短命な画面へ閉じ込めると復旧不能になる
+
+- **事象**: 全達成ボーナスの再試行可否が`sessionStorage`だけにあり、新しいタブでは未付与報酬を再試行できなかった。Trending Gearはloading置換でfocus元を失い、`target="_blank"`のAmazon初回通信は親pageのrouteを継承しなかった。
+- **根本原因**: 永続報酬、非同期DOM置換、別Page通信の各状態を、それぞれタブ内保存、unmountされるbutton、親pageだけという短い寿命・狭い範囲へ置いた。
+- **対策**: 報酬可否はコイン台帳の一意な冪等キーを正本にし、UIは常設landmarkと操作方法refからDOM commit後にfocusを復元する。外部popupはnavigation前のbrowser context routeでmockし、下位guardで未mock通信を実ネットワークへ出さない。
+- **教訓**: 再試行・置換・別Page遷移では、状態や保護を処理完了まで生存する層へ置く。回帰テストは同一page reloadだけでなく、全storageが空の新規context、keyboard/pointer別activeElement、popup最初のrequestまで含める。リファレンス: `app/api/user/missions/route.ts`, `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
