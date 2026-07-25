@@ -112,6 +112,6 @@ describe('LL-085 push ownership Layer 1 migration', () => {
             'PUSH_GENERATION_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres']) {
             expect(runtimeJob).toContain(value);
         }
-        expect(instructions).toContain('### LL-086:');
+        expect(instructions).toContain('### LL-087:');
     });
 });
