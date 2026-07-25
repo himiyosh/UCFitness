@@ -1548,14 +1548,14 @@ export const runtime = "edge";
 
 - **事象**: 週次通知でJST/UTCがずれ、購読/端末fan-outとcoin取得が無上限/1000件cutoff、不正legacy鍵が全体停止、raw invalid 21件がuser上限を迂回した。複数PostgREST requestのcreated_at/keyset走査も同一snapshotを保証できず、同一Push endpointが複数userへ帰属すると双方へ個人サマリーを送信し得た。
 - **根本原因**: identity直後のraw count、global endpoint所有権、calendar round-trip、実abort、exact count、row-version CAS、再試行冪等性を1つの契約として設計せず、複数statementのfilter、`user_id,endpoint`だけのupsert、Topic/tagを永続整合性の代替と誤認した。
-- **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。第一identity passでcredentialなしHTTPS endpointのfragmentを除くRFC3986正規化済み`url.href`によるglobal所有権をraw cap・鍵検証より先に走査し、unreserved escape aliasは同一視する一方、reserved/UTF-8 byte列・query orderのsemantic diffを保持する。same-user/cross-user重複は関係user全員を隔離、global重複row IDは従来どおり全体data errorとする。#300は新規cleanupを行わず、書込時901 DoSとsnapshot後のendpoint ownership transferを未解決として保持する。(1) PR #302のrow-version CAS + runtime PostgreSQL stack、(2) atomic endpoint ownership + per-user raw20、random recipient generation rotation、payload generation binding、current-generation一致時だけ表示するService Worker、logout/account switch後のold payload drop、delayed-delivery browser testを含む配信privacy stack、(3) notification outboxをmerge前必須とする。TTL 300のdelivery lease、Topic/tag、単純ownership transferは遅延配信中privacyを解決しない。
+- **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。第一identity passでcredentialなしHTTPS endpointのfragmentを除くRFC3986正規化済み`url.href`によるglobal所有権をraw cap・鍵検証より先に走査し、unreserved escape aliasは同一視する一方、reserved/UTF-8 byte列・query orderのsemantic diffを保持する。CAS migration/runtimeは#305/#306、outbox migration/runtime/serviceは#308/#309/#311、recipient-generation migration/runtimeは#310/#312でmainへ統合済みとし、残るapp/protocol層をDraft #307/#313/#314/#315/#316で分離する。production CAS/outbox RPC可用性とsender generation readiness完了までPR #300/#301をmergeしない。
 - **教訓**: capとendpoint所有権はvalidation前のraw identity単位で検査し、値やuser IDをlog/responseへ出さない。subscribe境界は固定AppErrorを一回だけreportし、raw PostgREST error/context/causeを渡さない。PostgRESTの複数requestを同一snapshotと称さず、900件超はqueue/RPC、永続的なendpoint移管とraw20はDB transaction、並行削除はDB lock付きCASで保証する。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
 
 ### LL-078: Cron通知の取得境界と送信batchを分離しないと切り捨てと障害偽装が起きる
 - **事象**: 歩数リマインダーが購読をPostgREST既定上限のまま取得し、全ユーザーIDをusers/stepsの単一`.in`へ渡し、DB障害・不正目標・不明言語を既定値へ変換したまま部分失敗でも200を返していた。
 - **根本原因**: 購読snapshot、validation前raw cap、global endpoint ownership、P-256鍵、active cap/timeout、依存データのattribution、通知送信を別の有界境界として設計せず、OFFSETのstable orderやTopic/tagをsnapshot・永続冪等性の代替と誤認した。保存側もendpoint ownershipとraw20を原子的に保証せず、cross-user漏洩と1ユーザー901件によるglobal cap停止を許した。
 - **対策**: PR #300の共有Push正本へsingle-statement exact count最大900件、raw/active20、RFC3986 endpoint ownership quarantine、WebCrypto鍵検証、15秒abortを集約し、歩数通知側は20ユーザーのprofile/steps検証、欠測0歩、ja/en payload、部分失敗5xxだけを担う。users/stepsにforeign行が1件でもあれば該当batch全体を送信せず固定失敗にして次batchを継続する。
-- **教訓**: DB query成功かつforeign行がない場合の期待user歩数行欠落だけが未記録0歩である。#301はDraftを維持し、(1) PR #302のrow-version CAS + runtime PostgreSQL、(2) atomic endpoint ownership + per-user raw20 + random recipient generation rotation + payload generation binding + current-generation Service Worker表示を含む配信privacy、(3) `(JST date,user,notification type)` ledger+claim leaseを持つnotification outboxの3 foundationをmerge前必須依存とする。routeのglobal capは保存側DoSを部分処理で隠さずfail closedを維持する。リファレンス: `app/api/cron/step-reminder/route.ts`, `lib/services/step-reminder.ts`, `lib/api/web-push.ts`
+- **教訓**: DB query成功かつforeign行がない場合の期待user歩数行欠落だけが未記録0歩である。#301/#316はproduction CAS/outbox RPC可用性、Draft #307/#314/#315、sender generation protocol readinessが揃うまでDraftを維持し、routeのglobal capを部分処理へ戻さない。リファレンス: `app/api/cron/step-reminder/route.ts`, `lib/services/step-reminder.ts`, `lib/api/web-push.ts`
 
 ### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
 
@@ -1565,7 +1565,7 @@ export const runtime = "edge";
 
 ### LL-080: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
 
-- **事象**: 送信中に同じendpointが新しい鍵や作成時刻へ再購読された場合、古い404/410応答を根拠にendpointだけで削除すると有効なreplacementまで消し得た。migration、runtime検証、アプリ配線を1 PRへ混在させた旧PR #302はmain差分994行となり、各層の所有権と検証証拠も不明瞭になった。
+- **事象**: 送信中に同じendpointが新しい鍵や作成時刻へ再購読された場合、古い404/410応答を根拠にendpointだけで削除すると有効なreplacementまで消し得た。migration、runtime検証、アプリ配線を1 PRへ混在させた旧統合案では、各層の所有権と検証証拠も不明瞭になった。
 - **根本原因**: endpointを不変versionとして扱い、外部応答が証明するのは送信時に観測した購読版だけという境界をDB transactionへ反映していなかった。また、static SQL契約と実PostgreSQL競合検証を同じ完了条件として扱った。
 - **対策**: clean 3-layerへ分割し、Layer 1は主キー`id`で行を`FOR UPDATE`し、残るrow-version項目が一致した場合だけ同じ`id`を削除するservice-role限定CAS RPC migrationとSHA-256付きstatic catalog/security testを正本にする。Layer 2で実PostgreSQLのnegative catalog・exact/stale・二接続競合を検証し、Layer 3でアプリを配線する。Layer 2がmainへ入る前のproduction適用は禁止する。
 - **教訓**: 古い外部応答で可変リソースを削除するときは完全row versionをDB transaction内でcompare-and-deleteする。migration、runtime証明、利用側配線を独立PRにし、static testだけでruntime PASSを主張しない。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/__tests__/push-subscriptions-rls-migration.test.ts`
@@ -1600,10 +1600,10 @@ export const runtime = "edge";
 
 - **事象**: 通知outbox RPCの引数・戻り値を型定義しても、PostgRESTの不正shape、生DB error、stale owner/tokenを呼出routeへ露出または成功扱いし得た。
 - **根本原因**: compile-timeのRPC型をruntime validationと同一視し、DB境界でのunknown parse、固定エラー変換、semantic falseの契約を一箇所へ集約していなかった。
-- **対策・教訓**: wrapper先頭を`import 'server-only'`でcompiler境界化し、exact RPC名/Args型を実使用して各呼出を1回に固定し、返却値はunknownから厳格parseする。日/ISO週keyは4桁年のUTC文字列をparse/roundtripし、0〜99年を`Date.UTC`へ渡さない。生Errorのidentity/name/message/stack/cause/context/nested fields・details・hint・code・UUIDを直接巡回し、内部`reportError` 0回かつ固定`AppError`だけを上位routeへthrowする。空claimは正常、complete/releaseのfalseはstale等の非成功として維持し、全tracked TS/TSXでproduction import 0件を機械検査する。リファレンス: `lib/services/notification-delivery-outbox.ts`, `lib/services/notification-delivery-outbox.test.ts`
+- **対策・教訓**: wrapper先頭を`import 'server-only'`でcompiler境界化し、exact RPC名/Args型を実使用して各呼出を1回に固定し、返却値はunknownから厳格parseする。日/ISO週keyは4桁年のUTC文字列をparse/roundtripし、0〜99年を`Date.UTC`へ渡さない。生Errorのidentity/name/message/stack/cause/context/nested fields・details・hint・code・UUIDを直接巡回し、内部`reportError` 0回かつ固定`AppError`だけを上位routeへthrowする。空claimは正常、complete/releaseのfalseはstale等の非成功として維持し、Step Reminder routeをproduction importerとしてexact callsite監査する。リファレンス: `lib/services/notification-delivery-outbox.ts`, `lib/services/notification-delivery-outbox.test.ts`, `app/api/cron/step-reminder/route.ts`
 
-### LL-089: eligibility読取とoutbox claimを同一境界にすると完了済み通知の個人データを再読取する
-- **事象**: 歩数リマインダーは当日目標率を判定してから送る必要がある一方、claim前後を分けないとcompleted/active/max-attemptユーザーの言語・歩数・payloadを通常retryでも再取得し得た。
-- **根本原因**: under-goal判定に必要な最小データと、通知本文を生成するpersonalized dataを同じprofile/steps queryとして扱い、outbox fenceの前後を状態機械として設計していなかった。
-- **対策**: subscription snapshot後はID・目標・当日歩数だけで候補を決め、最大20件をclaimしてからclaimed userだけの言語・歩数を再検証する。70%以上への進捗は正常`suppressed` release、1端末以上成功時だけcompleteし、0送信またはsource/profile/steps/payload/Push失敗はallowlist codeでreleaseする。端末失敗・失敗ユーザー・outbox RPC/fence失敗を別集計にし、complete/releaseのfalse/errorは固定非PII失敗として他ユーザーを継続する。
-- **教訓**: user単位outboxは通常retryの重複を抑えるat-least-once fenceであり、Push成功後complete前のcrash windowを消すexactly-onceではない。70%以上の`suppressed` releaseは1 attemptを消費するが、目標不変時は単調歩数により当日再claimされず、送信なしではcompleteしない。この前提を変更する場合は専用suppression RPCを別Layerで追加する。stateful testでowner/token/code、retry、真の並行GET、settled failure、部分端末成功を検証する。リファレンス: `app/api/cron/step-reminder/route.ts`, `app/api/cron/step-reminder/route.test.ts`
+### LL-089: eligibility読取をclaim前に置くと不正データがoutbox attemptを消費しない
+- **事象**: goal/profile/stepsをclaim前に読むとinvalid・missing・DB障害が台帳に記録されず、Cron retryが無制限になる。目標圏内をreleaseすると失敗attemptになり、再claimも可能だった。
+- **根本原因**: 通知候補のsource subscriptionと、claim後に判定すべきeligibility/resolutionを同じ前処理へ混在させ、送信成功と「通知不要でoccurrence解決」を区別していなかった。
+- **対策**: subscription candidateを最大20件で先にclaimし、claimed userだけのprofile/goal/stepsを読む。invalid/missing/foreign/unsafe/query failureはexact releaseして最大5 attemptへ収束し、DB成功時の歩数行欠落だけを0歩とする。70%以上は実送信なしのterminal completeとして`suppressed`、配信成功は`completedDelivery`へ分離する。
+- **教訓**: outbox completeは「外部送信成功」だけでなく、正本データによりoccurrenceがterminal resolvedと判定された場合にも使える。ただし`sent`・`completedDelivery`・`suppressed`を別集計し、全suppressed応答を「送信完了」と称さない。stateful testでowner/token、max attempt、retry、並行GET、settled failure、部分端末成功を検証する。リファレンス: `app/api/cron/step-reminder/route.ts`, `app/api/cron/step-reminder/route.test.ts`

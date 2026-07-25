@@ -85,12 +85,13 @@ describe('notification delivery outbox Layer 1 migration', () => {
         expect(migration).not.toMatch(/CREATE\s+POLICY|GRANT\s+.+\s+ON\s+TABLE/i);
     });
 
-    it('layers_運用文書がruntime必須と未配線とrollback順を固定する', () => {
+    it('layers_運用文書がruntime必須とLayer3C配線とrollback順を固定する', () => {
         expect(readme).toContain('通知配信outboxのclean 3-layer');
-        expect(readme).toContain('Layer 2のruntime PostgreSQL検証');
-        expect(readme).toContain('production適用には明示承認が必要');
-        expect(readme).toContain('completeは通知結果が契約を満たした場合だけ');
-        expect(readme).toContain('1端末以上成功なら部分端末失敗を含めcomplete');
+        expect(readme).toContain('Layer 2 runtime PostgreSQL検証');
+        expect(readme).toContain('production適用には明示承認を必須');
+        expect(readme).toContain('subscription candidateをUUID安定順・最大20件で先にclaim');
+        expect(readme).toContain('実送信なしでもoccurrence resolvedとしてterminal complete');
+        expect(readme).toContain('Step Reminder routeがproduction importer');
         expect(readme).toContain('at-least-once');
         expect(readme).toContain('release→complete→claim→index→table');
         expect(instructions).toContain('### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する');

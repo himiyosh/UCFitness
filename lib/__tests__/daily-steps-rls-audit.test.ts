@@ -71,7 +71,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
             expect(actualHash, path).toBe(expectedHash);
         }
     });
-    it('GROUP進捗RPC化後のdirect経路が32ファイル41 SELECTに限定される', () => {
+    it('GROUP進捗RPC化後のdirect経路が32ファイル40 SELECTに限定される', () => {
         expect(dailyStepsSources).toEqual(expectedDailyStepsSources);
 
         const referenceCount = dailyStepsSources.reduce((count, path) => {
@@ -79,7 +79,7 @@ describe('daily_steps RLS Phase 9 audit', () => {
             const matches = source.matchAll(/\.from\(\s*['"]daily_steps['"]\s*\)/g);
             return count + [...matches].length;
         }, 0);
-        expect(referenceCount).toBe(41);
+        expect(referenceCount).toBe(40);
         for (const path of dailyStepsSources) {
             const source = stripComments(readRepositoryFile(path));
             expect(source, path).not.toMatch(/^['"]use client['"];?/m);
