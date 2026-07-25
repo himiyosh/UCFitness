@@ -1595,3 +1595,9 @@ export const runtime = "edge";
 - **事象**: source上のlock順、generation回転、read/release条件が正しく見えても、CAS cleanup、owner移転、ユーザー削除が別transactionで重なる際の待機順と最終authorityはtext testでは確認できなかった。
 - **根本原因**: catalog形状と単一transaction内の分岐を、複数connectionが作るMVCC snapshot、row lock、advisory lockの実行結果と同一視した。
 - **対策・教訓**: target/CAS migrationをSHA固定したfresh PostgreSQL 16で、canonical alias、raw上限、read不変性、stale release、逆順transfer、user削除、CAS-first/save-firstの実lock待機を検証する。Layer 2はDB契約だけを証明し、generation payloadとService Worker比較を含むLayer 3前のproduction適用は禁止する。リファレンス: `scripts/test-push-generation-postgres.ts`
+
+### LL-088: generation一致だけでは世代対応SWの稼働を証明できない
+
+- **事象**: authorityのowner・generation・versionが一致しても、未訪問の旧Service Workerはgeneration-aware protocolを保存・比較できず、personalized健康payloadを表示し得た。
+- **根本原因**: 受信者所有権の世代と、現在subscriptionが対応できるpayload protocolのreadinessを同じ状態として扱った。
+- **対策・教訓**: authorityへdefault 0のprotocol versionを追加し、旧save/releaseは0へ戻し、allowlist済みversionを申告する再saveだけがexact current authorityをreadyにする。senderはpersonalized送信前に必要versionを要求し、migration、runtime、server、client/SW、旧worker排出を独立Layerで証明する。generic通知は同じreadinessへ暗黙依存させない。
