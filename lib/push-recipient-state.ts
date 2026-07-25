@@ -1,7 +1,6 @@
 'use client'; export const PUSH_RECIPIENT_PROTOCOL_VERSION = 2;
-const SOURCE = 'ucfitness-push-recipient-v1', CACHE = 'ucfitness-push-recipient-v1',
-    LOCK = 'ucfitness-push-recipient-transition', TIMEOUT = 5000,
-    UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SOURCE = 'ucfitness-push-recipient-v1', CACHE = 'ucfitness-push-recipient-v1', LOCK = 'ucfitness-push-recipient-transition',
+    TIMEOUT = 5000, UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export interface PushRecipientState { recipientGeneration: string | null; recipientVersion: number; recipientProtocolVersion: number; tombstone: boolean }
 interface ActiveState extends PushRecipientState { recipientGeneration: string; tombstone: false }
 interface Reply { state: PushRecipientState; transitionToken: string | null }
@@ -65,18 +64,18 @@ export async function clearPushRecipientState(): Promise<void> { await lock(() =
 export async function getPushRecipientState(): Promise<PushRecipientState | null> { return (await message('get'))?.state ?? null; }
 export async function runBeforePushRecipientAccountTransition<Result>(operation: () => Promise<Result>): Promise<Result> { return lock(async () => { await clearUnlocked(); return operation(); }); }
 export async function runAfterPushRecipientClear<Result>(operation: () => Promise<Result>, navigate?: (result: Result) => void): Promise<Result> { return lock(async () => { await clearUnlocked(); const result = await operation(); await clearUnlocked(); navigate?.(result); return result; }); }
-export async function savePushSubscriptionForCurrentRecipient(subscription: PushSubscription): Promise<void> {
-    await lock(async () => { const token = await begin(); let response: Response;
+export async function savePushSubscriptionForCurrentRecipient(subscription: PushSubscription, signal?: AbortSignal): Promise<void> {
+    await lock(async () => { if (signal?.aborted) throw new PushRecipientStateError('PUSH_RECIPIENT_OPERATION_ABORTED'); const token = await begin(); let response: Response;
         try { response = await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...subscription.toJSON(), recipientProtocolVersion: PUSH_RECIPIENT_PROTOCOL_VERSION }) }); }
+            body: JSON.stringify({ ...subscription.toJSON(), recipientProtocolVersion: PUSH_RECIPIENT_PROTOCOL_VERSION }), signal }); }
         catch { throw new PushRecipientStateError('PUSH_SUBSCRIPTION_REQUEST_FAILED'); }
         const body: unknown = await response.json().catch(() => null), next = response.ok ? active(body) : null;
-        if (!next) throw new PushRecipientStateError('PUSH_SUBSCRIPTION_RESPONSE_INVALID'); await setUnlocked(next, token); }); }
+        if (!next) throw new PushRecipientStateError('PUSH_SUBSCRIPTION_RESPONSE_INVALID'); if (signal?.aborted) throw new PushRecipientStateError('PUSH_RECIPIENT_OPERATION_ABORTED'); await setUnlocked(next, token); }); }
 export async function releasePushSubscriptionForCurrentRecipient(subscription: PushSubscription): Promise<void> {
     await lock(async () => { const token = await begin(); let response: Response;
         try { response = await fetch('/api/push/subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ endpoint: subscription.endpoint }) }); }
         catch { throw new PushRecipientStateError('PUSH_SUBSCRIPTION_REQUEST_FAILED'); }
         if (!response.ok) throw new PushRecipientStateError('PUSH_SUBSCRIPTION_RELEASE_FAILED'); await message('verify', undefined, token); await subscription.unsubscribe(); }); }
-export async function synchronizePushRecipientForSession(): Promise<PushSubscription | null> { const registration = await navigator.serviceWorker.getRegistration(), subscription = await registration?.pushManager.getSubscription() ?? null;
-    if (subscription) await savePushSubscriptionForCurrentRecipient(subscription); else await clearPushRecipientState(); return subscription; }
+export async function synchronizePushRecipientForSession(signal?: AbortSignal): Promise<PushSubscription | null> { const registration = await navigator.serviceWorker.getRegistration(), subscription = await registration?.pushManager.getSubscription() ?? null;
+    if (subscription) await savePushSubscriptionForCurrentRecipient(subscription, signal); else await clearPushRecipientState(); return subscription; }

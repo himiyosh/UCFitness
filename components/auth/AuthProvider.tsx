@@ -14,15 +14,16 @@ function PushRecipientLifecycle(): ReactNode {
     useEffect(() => {
         if (userId === undefined) { requestRef.current += 1; return; }
         if (appliedUserRef.current === userId && retryKey === 0) return;
-        const requestId = ++requestRef.current; setFailed(false);
+        const requestId = ++requestRef.current, controller = new AbortController(); setFailed(false);
         void (async () => {
             try {
                 if (userId === "") throw new Error("Invalid session");
                 if (userId === null) await clearPushRecipientState();
-                else await synchronizePushRecipientForSession();
+                else await synchronizePushRecipientForSession(controller.signal);
                 if (requestRef.current === requestId) appliedUserRef.current = userId;
             } catch { if (requestRef.current === requestId) setFailed(true); }
         })();
+        return () => controller.abort();
     }, [retryKey, userId]);
     if (!failed) return null;
     return (
