@@ -912,7 +912,7 @@ npm run audit:responsive
 DASHBOARD_E2E_STORAGE_STATE=/path/to/ja-state.json npm run test:e2e:dashboard
 
 # Push購読CAS（allow_system_table_mods=onの破棄可能なlocalhost PostgreSQLだけで実行）
-PUSH_CAS_POSTGRES_TEST_ONLY=1 PUSH_CAS_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres npm run test:postgres:push-cas
+UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_CAS_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres npm run test:postgres:push-cas
 ```
 
 - テストフレームワーク: **Vitest**
@@ -921,7 +921,7 @@ PUSH_CAS_POSTGRES_TEST_ONLY=1 PUSH_CAS_POSTGRES_URL=postgresql://postgres:postgr
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
-- Push購読CAS runtime jobはdigest固定のPostgreSQL 16 service内にfresh databaseを作成し、既存migrationをUTF-8で適用してcatalog・negative fixture・2接続競合を検証後に全DBを削除する。接続URLのquery/hashを拒否するloopback＋test-only gateを必須とし、本番Supabase、実購読、Push Serviceへ接続しない。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
+- Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
 - テストファイル: `lib/__tests__/` 配下
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 

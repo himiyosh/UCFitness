@@ -66,5 +66,5 @@ jobs:
       - name: Run Push CAS PostgreSQL verification
         run: npm run test:postgres:push-cas
         env:
-          PUSH_CAS_POSTGRES_TEST_ONLY: "1"
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
           PUSH_CAS_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
