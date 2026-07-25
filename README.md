@@ -255,19 +255,19 @@ Phase 2 migrationは既知7列の型・nullability、`public.users(id)`へのcas
 初期作成履歴には旧policyがあるため、実catalogに残存していればmigrationは自動削除せず
 中断し、適用前の個別確認と承認を要求する。
 
-Push購読CASのclean 3-layerは、Layer 1 migrationを#305、Layer 2 runtime PostgreSQL検証を#306でmainへ統合済みとし、Layer 3 app wiringをDraft #307で管理する。production CAS RPCのapply・read可用性を明示確認するまで#307と依存する通知Draftをmergeせず、production適用には明示承認を必須とする。
+Push購読CASのclean 3-layerは、Layer 1 migrationを#305、Layer 2のruntime検証を#306でmainへ統合済みとし、Layer 3 app wiringをDraft #307で管理する。production CAS RPCのapply・read可用性を明示確認するまで#307と依存する通知Draftをmergeせず、production適用には明示承認が必要である。
 
 Layer 1は既知schema/default、`public.users(id)` cascade FK、ordered non-deferrable `(user_id, endpoint)` uniqueとvalid/ready/immediate backing index、owner/RLS/policy、table/column ACLをfail closedで検証する。`service_role`だけが実行できる`SECURITY DEFINER` RPCは`id`で特定した主キー行を`FOR UPDATE`し、ロック後に`user_id`、`endpoint`、`p256dh`、`auth`、`user_agent`、`created_at`を`IS NOT DISTINCT FROM`で比較して同じ`id`だけを削除する。missing/staleは`false`、完全一致だけを削除して`true`を返す。static testはmigration SHA-256とcritical clauseを固定するが、runtime PASSはLayer 2でのみ判定する。
 
 ロールバックは依存するLayer 3を先に停止・撤去し、`BEGIN; REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz); COMMIT;`を実行する。`push_subscriptions`本体と既存hardening migrationは保持する。
 
-Personalized Push delayed-delivery privacyのclean 3-layerは、Layer 1 migrationを#310、Layer 2 runtime PostgreSQL検証を#312でmainへ統合済みとし、Layer 3 serverをDraft #314、client/Service Workerをstacked Draft #315で管理する。sender generation wiringとprotocol readinessが完了し、production RPC可用性を確認するまでPR #300/#301/#313/#316をMERGE BLOCKEDかつproduction適用禁止とする。
+Personalized Push delayed-delivery privacyのclean 3-layerは、Layer 1 migrationを#310、Layer 2のruntime PostgreSQL検証を#312でmainへ統合済みとし、Layer 3 serverをDraft #314、client/Service Workerをstacked Draft #315で管理する。sender generation wiringとprotocol readinessが完了し、production RPC可用性を確認するまでPR #300/#301/#313/#316をMERGE BLOCKEDかつproduction適用禁止とする。
 
 Layer 1はendpoint本文を保持しないSHA-256 digest主キーの`push_subscription_ownership`を作り、owner、`UNIQUE current subscription_id`、ランダム`recipient_generation`、version、時刻をDB正本にする。digestとadvisory lockにはraw endpointでなく、Layer 3共有`getPushEndpointOwnershipKey`がhost case、default port、unreserved percent encoding、fragmentを正規化したcanonical ownership keyを使う。SQLへRFC 3986正規化を再実装せず、legacy raw rowからownerを推測するbackfillは行わない。既存購読はauthority/generationなしで全件隔離して件数だけを報告し、認証済みrefresh/saveで初めてauthorityを作る。
 
 save/transferはraw endpointを`push_subscriptions`保存だけに使い、canonical key単位でownerを移転する。raw 20件上限をuser lock下で守り、same-ownerはgeneration維持＋version進行、transfer/releaseはgeneration回転、releaseはgeneration＋versionでfenceする。非更新read RPCは最大20組のobserved subscription ID＋canonical keyを受け、authority owner・digest・current subscription IDと保存行userがexact一致する行だけ`subscription_id, recipient_generation, version`をUUID順で返す。foreign/missing/staleはskipし、重複入力は1行へ集約する。authority tableのdirect SELECTは許可せず、saveをread代用しない。既存CASはsubscription exact rowだけを削除しauthorityへ触れず、Push network待機中にSQL transactionを保持しない。
 
-Layer 3は#314/#315でraw→canonical key consistency、generation authority read、payload binding、Service Workerのcurrent-generation表示、logout clear、account switch/refresh update、旧generation dropを配線中である。sender generation wiringとprotocol readiness完了後、送信停止中の旧worker排出・新SW確認→`ACCESS EXCLUSIVE` cutoverでdirect write revoke→送信再開する。rollbackは送信停止後にread→release→save RPC、owner index、authority tableの順にREVOKE/DROPし、generation付きqueueが残る間はSW比較を先に撤去しない。
+Layer 3は#314/#315でraw→canonical key consistency、generation authority read、payload binding、Service Workerのcurrent-generation表示、logout clear、account switch/refresh update、旧generation dropを配線中である。generation authorityがないlegacy rowは送らず、sender generation wiringとprotocol readiness完了後、送信停止中の旧worker排出・新SW確認→`ACCESS EXCLUSIVE` cutoverでdirect write revoke→送信再開する。rollbackは送信停止後にread→release→save RPC、owner index、authority tableの順にREVOKE/DROPし、generation付きqueueが残る間はSW比較を先に撤去しない。
 
 通知配信outboxのclean 3-layerは、Layer 1 migrationを#308、Layer 2 runtime PostgreSQL検証を#309、Layer 3A typed wrapperを#311でmainへ統合済みとし、週次CronをDraft #313、歩数CronをDraft #316で配線する。Layer 1は`(notification_type, occurrence_key, user_id)`を一意にし、`step-reminder`のJST日`YYYY-MM-DD`と`weekly-summary`のJST週`YYYY-Www`だけを受理する。payload・endpoint等は保存せず、pending/claimed/completed/failed、owner/token、5分lease、5 attempt、90日保持だけをDB正本にする。
 

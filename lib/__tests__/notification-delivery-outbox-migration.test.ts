@@ -87,8 +87,8 @@ describe('notification delivery outbox Layer 1 migration', () => {
 
     it('layers_運用文書がruntime必須とLayer3C配線とrollback順を固定する', () => {
         expect(readme).toContain('通知配信outboxのclean 3-layer');
-        expect(readme).toContain('Layer 2 runtime PostgreSQL検証');
-        expect(readme).toContain('production適用には明示承認を必須');
+        expect(readme).toContain('Layer 2のruntime検証');
+        expect(readme).toContain('production適用には明示承認が必要');
         expect(readme).toContain('subscription candidateをUUID安定順・最大20件で先にclaim');
         expect(readme).toContain('実送信なしでもoccurrence resolvedとしてterminal complete');
         expect(readme).toContain('Step Reminder routeがproduction importer');
