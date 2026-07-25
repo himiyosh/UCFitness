@@ -1595,3 +1595,9 @@ export const runtime = "edge";
 - **事象**: source上のlock順、generation回転、read/release条件が正しく見えても、CAS cleanup、owner移転、ユーザー削除が別transactionで重なる際の待機順と最終authorityはtext testでは確認できなかった。
 - **根本原因**: catalog形状と単一transaction内の分岐を、複数connectionが作るMVCC snapshot、row lock、advisory lockの実行結果と同一視した。
 - **対策・教訓**: target/CAS migrationをSHA固定したfresh PostgreSQL 16で、canonical alias、raw上限、read不変性、stale release、逆順transfer、user削除、CAS-first/save-firstの実lock待機を検証する。Layer 2はDB契約だけを証明し、generation payloadとService Worker比較を含むLayer 3前のproduction適用は禁止する。リファレンス: `scripts/test-push-generation-postgres.ts`
+
+### LL-088: unsubscribeをendpoint直接削除にすると所有権移転後のcurrent rowを消し得る
+
+- **事象**: clientがendpointだけを送るDELETEで`user_id + endpoint`を直接削除すると、read後のowner移転やgeneration更新をfenceできず、browser unsubscribeとの順序も保証できなかった。
+- **根本原因**: endpointを削除権限そのものとして扱い、DB正本のcurrent subscription ID、recipient generation、ownership versionを同じrelease判定へ結び付けていなかった。
+- **対策・教訓**: serverはsession userからcurrent rowを全列限定取得し、canonical keyとobserved IDをread RPCへ渡して得たgeneration/versionだけでrelease RPCを1回呼ぶ。missingは冪等成功、stale fenceは409、authority未作成のlegacy行は全列一致CASへ分離し、Layer 3Bはrelease成功後だけbrowser subscriptionを解除する。Clientからuser IDやfenceを受け取らず、broad direct deleteへ戻さない。

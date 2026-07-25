@@ -13,6 +13,7 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: mockSupabaseAdmin,
 }));
+vi.mock('server-only', () => ({}));
 
 import { POST } from '@/app/api/push/subscribe/route';
 

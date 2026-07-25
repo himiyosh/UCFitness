@@ -4,6 +4,7 @@ import {
     compactPushSubscriptions,
     findSupersededSubscriptionIds,
     sendWebPushNotification,
+    withPushRecipientGeneration,
 } from '@/lib/api/web-push';
 
 vi.mock('@/lib/errors', () => ({
@@ -187,13 +188,13 @@ describe('sendWebPushNotification', () => {
                     auth: toBase64Url(authSecret),
                 },
             },
-            {
+            withPushRecipientGeneration({
                 title: 'バッジを2個獲得',
                 body: '日本語の通知本文',
                 url: '/user/test',
                 locale: 'ja',
                 tag: 'ucfitness-badges',
-            },
+            }, '30000000-0000-4000-8000-000000000001'),
         );
 
         expect(result.success).toBe(true);
@@ -218,6 +219,7 @@ describe('sendWebPushNotification', () => {
             url: '/user/test',
             locale: 'ja',
             tag: 'ucfitness-badges',
+            recipientGeneration: '30000000-0000-4000-8000-000000000001',
         });
     });
 

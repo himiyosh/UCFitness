@@ -1,6 +1,7 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
+import { isValidUUID } from '@/lib/validation';
 
 export interface PushPayload {
     title: string;
@@ -9,6 +10,7 @@ export interface PushPayload {
     url?: string;
     locale?: 'ja' | 'en';
     tag?: string;
+    recipientGeneration?: string;
 }
 
 export interface PushSubscriptionData {
@@ -43,13 +45,6 @@ export interface PushDeliverySummary {
     skippedDuplicates: number;
 }
 
-const PUSH_ENDPOINT_HOSTS = [
-    'fcm.googleapis.com',
-    'updates.push.services.mozilla.com',
-    'web.push.apple.com',
-    'notify.windows.com',
-] as const;
-
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
 const AES_128_GCM_RECORD_SIZE = 4096;
@@ -57,23 +52,40 @@ const P256_PUBLIC_KEY_SIZE = 65;
 const AES_128_GCM_HEADER_SIZE = 21 + P256_PUBLIC_KEY_SIZE;
 const AES_GCM_TAG_SIZE = 16;
 const RECORD_DELIMITER_SIZE = 1;
+const PUSH_ENDPOINT_HOSTS = [
+    'fcm.googleapis.com', 'updates.push.services.mozilla.com',
+    'web.push.apple.com', 'notify.windows.com',
+] as const;
 const MAX_PAYLOAD_BYTES = AES_128_GCM_RECORD_SIZE
     - AES_128_GCM_HEADER_SIZE
     - AES_GCM_TAG_SIZE
     - RECORD_DELIMITER_SIZE;
 
-export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
-    if (typeof endpoint !== 'string' || endpoint.length > 2048) return false;
-
+export function getPushEndpointOwnershipKey(endpoint: unknown): string | null {
+    if (typeof endpoint !== 'string' || endpoint.length < 1 || endpoint.length > 2048) return null;
     try {
         const url = new URL(endpoint);
-        if (url.protocol !== 'https:') return false;
-        return PUSH_ENDPOINT_HOSTS.some(
-            (host) => url.hostname === host || url.hostname.endsWith(`.${host}`),
-        );
-    } catch {
-        return false;
+        const allowedHost = PUSH_ENDPOINT_HOSTS.some((host) =>
+            url.hostname === host || url.hostname.endsWith(`.${host}`));
+        if (url.protocol !== 'https:' || url.username || url.password || !allowedHost) return null;
+        url.hash = '';
+        const ownershipKey = url.href.replace(/%([0-9a-f]{2})/gi, (_encoded, hex: string) => {
+            const character = String.fromCharCode(Number.parseInt(hex, 16));
+            return /^[A-Za-z0-9._~-]$/.test(character) ? character : `%${hex.toUpperCase()}`;
+        });
+        return ownershipKey.length <= 2048 ? ownershipKey : null;
+    } catch { return null; }
+}
+
+export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
+    return getPushEndpointOwnershipKey(endpoint) !== null;
+}
+
+export function withPushRecipientGeneration(payload: PushPayload, recipientGeneration: string): PushPayload {
+    if (!isValidUUID(recipientGeneration)) {
+        throw new AppError('Invalid push recipient generation', 'PUSH_RECIPIENT_GENERATION_INVALID');
     }
+    return { ...payload, recipientGeneration: recipientGeneration.toLowerCase() };
 }
 
 export function isValidPushKey(value: unknown, maxLength: number): value is string {
@@ -96,6 +108,21 @@ function base64UrlToUint8Array(base64Url: string): Uint8Array {
     }
 
     return output;
+}
+
+export async function isValidPushSubscriptionKeys(p256dh: unknown, auth: unknown): Promise<boolean> {
+    if (!isValidPushKey(p256dh, 256) || !isValidPushKey(auth, 128)) return false;
+    try {
+        const publicKey = base64UrlToUint8Array(p256dh);
+        const authSecret = base64UrlToUint8Array(auth);
+        if (publicKey.length !== P256_PUBLIC_KEY_SIZE || publicKey[0] !== 0x04
+            || authSecret.length !== 16) return false;
+        await crypto.subtle.importKey('raw', copyToArrayBuffer(publicKey),
+            { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 function uint8ArrayToBase64Url(bytes: Uint8Array): string {

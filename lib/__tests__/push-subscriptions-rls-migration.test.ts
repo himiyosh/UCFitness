@@ -22,6 +22,7 @@ const phaseOneMigration = readRepositoryFile(
     'migrations/20260720_harden_api_keys_rls.sql',
 );
 const subscribeRoute = readRepositoryFile('app/api/push/subscribe/route.ts');
+const ownershipWrapper = readRepositoryFile('lib/services/push-subscription-ownership.ts');
 const deliverySources = [
     'app/api/push/send/route.ts', 'app/api/cron/step-reminder/route.ts',
     'app/api/cron/weekly-summary/route.ts', 'lib/services/badge-allocator.ts',
@@ -113,11 +114,14 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(migration).not.toMatch(/GRANT (SELECT|UPDATE|ALL).*ON SEQUENCE/i);
     });
 
-    it('全CRUDがsupabaseAdmin経由でbrowserはAPIだけを呼ぶ', () => {
-        expect(subscribeRoute).toContain("import { supabaseAdmin } from '@/lib/supabase'");
-        expect(subscribeRoute).toContain(".from('push_subscriptions')");
-        expect(subscribeRoute).toContain('.upsert({');
-        expect(subscribeRoute).toContain('.delete()');
+    it('購読writeをownership RPCへ限定しbrowserはAPIだけを呼ぶ', () => {
+        expect(subscribeRoute).toContain("from '@/lib/services/push-subscription-ownership'");
+        expect(ownershipWrapper).toContain('supabaseAdmin.rpc(name, args)');
+        expect(ownershipWrapper).toContain(".from('push_subscriptions')");
+        for (const writer of ['.upsert(', '.insert(', '.update(', '.delete(']) {
+            expect(subscribeRoute).not.toContain(writer);
+            expect(ownershipWrapper).not.toContain(writer);
+        }
         expect(deliverySources.every((source) =>
             source.includes(".from('push_subscriptions')")
             && source.includes('supabaseAdmin'))).toBe(true);
