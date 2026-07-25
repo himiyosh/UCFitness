@@ -261,6 +261,12 @@ Layer 1は既知schema/default、`public.users(id)` cascade FK、ordered non-def
 
 ロールバックは依存するLayer 3を先に停止・撤去し、`BEGIN; REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz); COMMIT;`を実行する。`push_subscriptions`本体と既存hardening migrationは保持する。
 
+通知配信outboxのclean 3-layerは、Layer 1を`migrations/20260725_create_notification_delivery_outbox.sql`、Layer 2をruntime PostgreSQL検証、Layer 3をCron配線とする。Layer 1は`(notification_type, occurrence_key, user_id)`を一意にし、`step-reminder`のJST日`YYYY-MM-DD`と`weekly-summary`のJST週`YYYY-Www`だけを受理する。payload・endpoint等は保存せず、pending/claimed/completed/failed、owner/token、5分lease、5 attempt、90日保持だけをDB正本にする。
+
+claimは1〜20件の入力userをUUID安定順で`FOR UPDATE`し、台帳を同一transactionで作成・lockして、pendingまたは期限切れclaimedだけへ新tokenを発行する。active claim・completed・failedはskipし、返却はuser IDとclaim tokenだけとする。Layer 3はpersonalized data取得・Push送信より前にclaimし、completeは通知結果が契約を満たした場合だけ呼ぶ。端末部分失敗の契約はLayer 3で決定し、releaseは所有中の未期限切れtokenだけを失敗記録して再試行可能にする。HTTP 503の通常retryは非completed行だけを再claimし、completedを再送しない。
+
+static testはmigration SHA-256、catalog/default/FK/index/owner/RLS/ACL、lock順、stale token、未配線を固定するが、Layer 2のruntime PostgreSQL検証でfresh DB・実catalog・exact/stale・期限切れ・二接続競合・rollbackを証明するまでMERGE BLOCKEDとする。Layer 2がmainへ入る前のDB適用は禁止し、production適用には明示承認が必要である。rollbackはLayer 3を停止してactive leaseを待ってから`release→complete→claim→index→table`の順にREVOKE/DROPし、過去migrationは編集しない。
+
 Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
 `coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
 歩数再計算・ログインボーナス・backfillの`INSERT`/`UPDATE`/`DELETE`を使う。原子RPCも
