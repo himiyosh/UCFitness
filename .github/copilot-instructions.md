@@ -1530,7 +1530,6 @@ export const runtime = "edge";
 - **根本原因**: 表示・業務上は固定小数点の倍率差を、JavaScriptの二進浮動小数点差分として直接`floor`していた。同じ式が日次処理とbackfillへ重複していた。
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
-
 ### LL-064: 静的アイコンを`next/og`で再生成するとPages Workerの無料枠を超える
 
 - **事象**: `app/icon.tsx`と`app/apple-icon.tsx`が`ImageResponse`を使ったため、既に同じPNGが`public/`にあるにもかかわらずresvg WASM約1.32 MiBをWorkerへ同梱し、gzip推定3.052 MiBでCloudflare無料枠3 MiBのdeployだけが失敗した。
@@ -1551,6 +1550,12 @@ export const runtime = "edge";
 - **根本原因**: identity直後のraw count、global endpoint所有権、calendar round-trip、実abort、exact count、row-version CAS、再試行冪等性を1つの契約として設計せず、複数statementのfilter、`user_id,endpoint`だけのupsert、Topic/tagを永続整合性の代替と誤認した。
 - **対策**: `lib/api/web-push.ts`へexact count・unique id order・limit 901の単一statement loaderを正本化し、0〜900件かつcountとdata件数が一致する場合だけ完全snapshotとして受理する。第一identity passでcredentialなしHTTPS endpointのfragmentを除くRFC3986正規化済み`url.href`によるglobal所有権をraw cap・鍵検証より先に走査し、unreserved escape aliasは同一視する一方、reserved/UTF-8 byte列・query orderのsemantic diffを保持する。same-user/cross-user重複は関係user全員を隔離、global重複row IDは従来どおり全体data errorとする。#300は新規cleanupを行わず、書込時901 DoSとsnapshot後のendpoint ownership transferを未解決として保持する。(1) PR #302のrow-version CAS + runtime PostgreSQL stack、(2) atomic endpoint ownership + per-user raw20、random recipient generation rotation、payload generation binding、current-generation一致時だけ表示するService Worker、logout/account switch後のold payload drop、delayed-delivery browser testを含む配信privacy stack、(3) notification outboxをmerge前必須とする。TTL 300のdelivery lease、Topic/tag、単純ownership transferは遅延配信中privacyを解決しない。
 - **教訓**: capとendpoint所有権はvalidation前のraw identity単位で検査し、値やuser IDをlog/responseへ出さない。subscribe境界は固定AppErrorを一回だけreportし、raw PostgREST error/context/causeを渡さない。PostgRESTの複数requestを同一snapshotと称さず、900件超はqueue/RPC、永続的なendpoint移管とraw20はDB transaction、並行削除はDB lock付きCASで保証する。リファレンス: `app/api/cron/weekly-summary/route.ts`, `lib/services/weekly-summary.ts`, `lib/api/web-push.ts`
+
+### LL-078: Cron通知の取得境界と送信batchを分離しないと切り捨てと障害偽装が起きる
+- **事象**: 歩数リマインダーが購読をPostgREST既定上限のまま取得し、全ユーザーIDをusers/stepsの単一`.in`へ渡し、DB障害・不正目標・不明言語を既定値へ変換したまま部分失敗でも200を返していた。
+- **根本原因**: 購読snapshot、validation前raw cap、global endpoint ownership、P-256鍵、active cap/timeout、依存データのattribution、通知送信を別の有界境界として設計せず、OFFSETのstable orderやTopic/tagをsnapshot・永続冪等性の代替と誤認した。保存側もendpoint ownershipとraw20を原子的に保証せず、cross-user漏洩と1ユーザー901件によるglobal cap停止を許した。
+- **対策**: PR #300の共有Push正本へsingle-statement exact count最大900件、raw/active20、RFC3986 endpoint ownership quarantine、WebCrypto鍵検証、15秒abortを集約し、歩数通知側は20ユーザーのprofile/steps検証、欠測0歩、ja/en payload、部分失敗5xxだけを担う。users/stepsにforeign行が1件でもあれば該当batch全体を送信せず固定失敗にして次batchを継続する。
+- **教訓**: DB query成功かつforeign行がない場合の期待user歩数行欠落だけが未記録0歩である。#301はDraftを維持し、(1) PR #302のrow-version CAS + runtime PostgreSQL、(2) atomic endpoint ownership + per-user raw20 + random recipient generation rotation + payload generation binding + current-generation Service Worker表示を含む配信privacy、(3) `(JST date,user,notification type)` ledger+claim leaseを持つnotification outboxの3 foundationをmerge前必須依存とする。routeのglobal capは保存側DoSを部分処理で隠さずfail closedを維持する。リファレンス: `app/api/cron/step-reminder/route.ts`, `lib/services/step-reminder.ts`, `lib/api/web-push.ts`
 
 ### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
 
