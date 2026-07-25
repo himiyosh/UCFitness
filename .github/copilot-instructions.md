@@ -1576,3 +1576,10 @@ export const runtime = "edge";
 - **事象**: migration postconditionがcheck constraintの件数だけを確認すると、90日保持を89日へ弱めても同じ件数のまま適用できる。
 - **根本原因**: catalog形状の存在確認と、制約式が守る業務境界の実行確認を同一視した。
 - **対策・教訓**: digest固定に加え、条件を弱めたmigrationをfresh DBへ適用して境界insertが検出されることを確認する。並行claimは任意時間待機でなく実lock待機を観測し、逆順入力でも二重claimとdeadlockがないことを証明する。リファレンス: `scripts/test-notification-outbox-postgres.ts`
+
+### LL-085: endpoint所有権とpayload世代を分離すると遅延Pushが旧ユーザーへ届く
+
+- **事象**: Web Push送信後に同一endpointが別ユーザーへ移転すると、TTL内の旧personalized payloadが新しい端末所有者へ遅延到着し得た。
+- **根本原因**: subscription行の現在ownerだけをDBで管理し、送信時のrecipient世代をpayloadとService Worker表示判定へ拘束していなかった。
+- **対策**: endpoint digestごとのownerとランダムgenerationを原子的に移転・解除するDB権威を作り、Layer 3でpayload generationと端末保存generationの一致だけを表示する。
+- **教訓**: Push privacyは送信時の認可だけで完了しない。queued payloadへ受信者世代を封入し、logout・account switch・再subscribeで世代をclear/rotateして旧世代を端末側でも拒否する。
