@@ -6,8 +6,12 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string): string => readFileSync(join(process.cwd(), path), 'utf8');
 const migration = read('migrations/20260726_create_push_subscription_ownership.sql');
+const hardeningMigration = read('migrations/20260720_harden_push_subscriptions_rls.sql');
 const readme = read('README.md');
 const instructions = read('.github/copilot-instructions.md');
+const runtimeHarness = read('scripts/test-push-generation-postgres.ts');
+const validateWorkflow = read('.github/workflows/validate.yml');
+const packageManifest = read('package.json');
 const runtime = ['app/api/push/subscribe/route.ts', 'lib/api/web-push.ts', 'public/sw.js']
     .map(read).join('\n');
 const body = (name: string): string => migration.match(new RegExp(
@@ -89,5 +93,25 @@ describe('LL-085 push ownership Layer 1 migration', () => {
         }
         expect(instructions).toContain('### LL-085:');
         expect(runtime).not.toMatch(/push_subscription_ownership|read_push_subscription_generations/);
+    });
+
+    it('runtime Layer 2_固定migrationとloopback CIだけを実行する', () => {
+        const runtimeJob = validateWorkflow.match(/  push-cas-postgres:[\s\S]+/)?.[0] ?? '';
+        expect(packageManifest).toContain('"test:postgres:push-generation": "tsx scripts/test-push-generation-postgres.ts"');
+        expect(runtimeHarness).toContain(`const MIGRATION_SHA256 = '${digest(migration)}'`);
+        expect(runtimeHarness).toContain(`const HARDENING_SHA256 = '${digest(hardeningMigration)}'`);
+        expect(runtimeHarness.indexOf('loadMigrations();')).toBeLessThan(runtimeHarness.indexOf("connect('postgres')"));
+        for (const value of ["env.UCFITNESS_POSTGRES_RUNTIME_TEST !== '1'", "url.pathname !== '/postgres'",
+            'DATABASE_PATTERN', "run('negative-check-clause'", "run('cas-save-lock-order'"]) {
+            expect(runtimeHarness).toContain(value);
+        }
+        for (const value of ['timeout-minutes: 10', 'postgres:16.13-bookworm@sha256:',
+            'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+            'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020',
+            'run: npm run test:postgres:push-generation',
+            'PUSH_GENERATION_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres']) {
+            expect(runtimeJob).toContain(value);
+        }
+        expect(instructions).toContain('### LL-086:');
     });
 });

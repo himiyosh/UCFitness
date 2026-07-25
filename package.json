@@ -16,6 +16,7 @@
     "test:e2e:dashboard": "node scripts/audit-dashboard-ux.mjs",
     "test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts",
     "test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts",
+    "test:postgres:push-generation": "tsx scripts/test-push-generation-postgres.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

@@ -73,3 +73,8 @@ jobs:
         env:
           UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
           NOTIFICATION_OUTBOX_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      - name: Run Push Generation PostgreSQL verification
+        run: npm run test:postgres:push-generation
+        env:
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
+          PUSH_GENERATION_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
