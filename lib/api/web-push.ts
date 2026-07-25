@@ -1,6 +1,6 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export interface PushPayload {
@@ -47,12 +47,8 @@ export interface PushDeliverySummary {
 export type PushSubscriptionCleanupResult = 'deleted' | 'preserved' | 'failed';
 export const DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC = 'delete_push_subscription_if_unchanged';
 export interface DeletePushSubscriptionIfUnchangedArgs {
-    p_id: string;
-    p_user_id: string;
-    p_endpoint: string;
-    p_p256dh: string;
-    p_auth: string;
-    p_user_agent: string | null;
+    p_id: string; p_user_id: string; p_endpoint: string; p_p256dh: string;
+    p_auth: string; p_user_agent: string | null;
     p_created_at: string | null;
 }
 const PUSH_ENDPOINT_HOSTS = [
@@ -318,7 +314,6 @@ export function findSupersededSubscriptionIds(
     currentUserAgent: string | null,
 ): string[] {
     const normalizedCurrentAgent = currentUserAgent?.trim() || null;
-
     return subscriptions.flatMap((subscription) => {
         const storedAgent = subscription.user_agent?.trim() || null;
         return subscription.endpoint !== currentSubscription.endpoint
@@ -327,13 +322,11 @@ export function findSupersededSubscriptionIds(
             ? [subscription.id] : [];
     });
 }
-
 function reportCleanupFailure(): PushSubscriptionCleanupResult {
-    reportError('pushSubscription:deleteUnchanged',
-        new Error('Push subscription CAS cleanup failed'));
+    reportError('pushSubscription:deleteUnchanged', new AppError('Push subscription CAS cleanup failed',
+        'PUSH_SUBSCRIPTION_CAS_CLEANUP_FAILED'));
     return 'failed';
 }
-
 export async function deletePushSubscriptionIfUnchanged(
     userId: string,
     subscription: StoredPushSubscriptionData,
@@ -417,11 +410,8 @@ export async function sendWebPushNotification(
         });
 
         if (!response.ok) {
-            reportError(
-                'sendWebPush:pushService',
-                new Error(`Push service responded with ${response.status}`),
-                { statusCode: response.status },
-            );
+            reportError('sendWebPush:pushService',
+                new AppError('Push service delivery failed', 'PUSH_SERVICE_DELIVERY_FAILED'));
             return {
                 success: false,
                 statusCode: response.status,

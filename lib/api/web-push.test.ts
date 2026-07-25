@@ -8,6 +8,7 @@ import {
     sendWebPushNotification,
     sendWebPushNotifications,
 } from '@/lib/api/web-push';
+import { AppError } from '@/lib/errors';
 
 import type {
     DeletePushSubscriptionIfUnchangedArgs,
@@ -18,8 +19,8 @@ const mocks = vi.hoisted(() => ({
     reportError: vi.fn(),
     rpc: vi.fn(),
 }));
-vi.mock('@/lib/errors', () => ({
-    reportError: mocks.reportError,
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(), reportError: mocks.reportError,
 }));
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: {
@@ -438,28 +439,29 @@ describe('findSupersededSubscriptionIds', () => {
     });
 });
 const USER_ID = '00000000-0000-4000-8000-000000000001';
-const stored = (
-    id: string,
-    created_at: string | null,
-    overrides: Partial<StoredPushSubscriptionData> = {},
-): StoredPushSubscriptionData => ({
-    id, endpoint: `https://fcm.googleapis.com/fcm/send/${id}`,
-    p256dh: 'p256dh', auth: 'auth', user_agent: 'Browser A', created_at,
-    ...overrides,
+const stored = (id: string, created_at: string | null,
+    overrides: Partial<StoredPushSubscriptionData> = {}): StoredPushSubscriptionData => ({
+    id, endpoint: `https://fcm.googleapis.com/fcm/send/${id}`, p256dh: 'p256dh',
+    auth: 'auth', user_agent: 'Browser A', created_at, ...overrides,
 });
 const rpcArgs = (row: StoredPushSubscriptionData): DeletePushSubscriptionIfUnchangedArgs => ({
     p_id: row.id, p_user_id: USER_ID, p_endpoint: row.endpoint, p_p256dh: row.p256dh,
     p_auth: row.auth, p_user_agent: row.user_agent, p_created_at: row.created_at,
 });
-function expectFixedCleanupFailure(secrets: string[]): void {
-    const call = mocks.reportError.mock.calls.at(-1);
-    expect(call).toHaveLength(2);
-    const [operation, error, context] = call ?? [];
-    if (!(error instanceof Error)) throw new Error('Expected fixed cleanup error');
-    expect(operation).toBe('pushSubscription:deleteUnchanged'); expect(error.cause).toBeUndefined();
-    expect(error.message).toBe('Push subscription CAS cleanup failed');
-    const logged = [String(operation), error.message, String(error.cause ?? ''), String(context ?? '')]
-        .join(' ');
+const collectReportedLogValues = (calls: unknown[][]): string => calls.flat().flatMap((value) =>
+    value instanceof Error ? [value.name, value.message, value.cause,
+        'context' in value ? value.context : undefined, 'details' in value ? value.details : undefined,
+        'hint' in value ? value.hint : undefined, 'code' in value ? value.code : undefined] : [value],
+).map(String).join(' ');
+function expectSingleFixedAppError(
+    calls: unknown[][], operation: string, message: string, code: string, secrets: string[],
+): void {
+    const logged = collectReportedLogValues(calls);
+    expect(calls).toHaveLength(1); expect(calls[0]).toHaveLength(2);
+    const [actual, error, context] = calls[0] ?? [];
+    if (!(error instanceof AppError)) throw new Error('Expected fixed AppError');
+    expect(actual).toBe(operation); expect(context).toBeUndefined();
+    expect(error).toMatchObject({ name: 'AppError', message, code, cause: undefined, context: undefined });
     for (const secret of secrets) expect(logged).not.toContain(secret);
 }
 describe('deletePushSubscriptionIfUnchanged', () => {
@@ -474,6 +476,7 @@ describe('deletePushSubscriptionIfUnchanged', () => {
                 DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC,
                 rpcArgs(row),
             );
+            expect(mocks.reportError).not.toHaveBeenCalled();
         },
     );
     it.each([null, [], {}, 'false'])(
@@ -482,7 +485,8 @@ describe('deletePushSubscriptionIfUnchanged', () => {
             mocks.rpc.mockResolvedValue({ data, error: null });
             await expect(deletePushSubscriptionIfUnchanged(USER_ID, stored('invalid', null)))
                 .resolves.toBe('failed');
-            expectFixedCleanupFailure([]);
+            expectSingleFixedAppError(mocks.reportError.mock.calls, 'pushSubscription:deleteUnchanged',
+                'Push subscription CAS cleanup failed', 'PUSH_SUBSCRIPTION_CAS_CLEANUP_FAILED', []);
         },
     );
     it.each(['returned', 'thrown'])(
@@ -492,16 +496,17 @@ describe('deletePushSubscriptionIfUnchanged', () => {
                 endpoint: 'https://fcm.googleapis.com/fcm/send/private-endpoint',
                 p256dh: 'private-p256dh', auth: 'private-auth', user_agent: 'private-agent',
             });
-            const raw = Object.assign(new Error('PRIVATE_SENTINEL'), {
-                cause: new Error(USER_ID), context: row,
-            });
+            const raw = Object.assign(new Error('PRIVATE_SENTINEL'), { cause: new Error(USER_ID),
+                context: row, details: 'PRIVATE_DETAILS', hint: 'PRIVATE_HINT', code: 'PRIVATE_CODE' });
             if (mode === 'returned') mocks.rpc.mockResolvedValue({ data: null, error: raw });
             else mocks.rpc.mockRejectedValue(raw);
             await expect(deletePushSubscriptionIfUnchanged(USER_ID, row)).resolves.toBe('failed');
-            expectFixedCleanupFailure([
-                'PRIVATE_SENTINEL', USER_ID, row.id, row.endpoint, row.p256dh, row.auth,
-                row.user_agent ?? '', row.created_at ?? '',
-            ]);
+            expectSingleFixedAppError(mocks.reportError.mock.calls, 'pushSubscription:deleteUnchanged',
+                'Push subscription CAS cleanup failed',
+                'PUSH_SUBSCRIPTION_CAS_CLEANUP_FAILED', [
+                    'PRIVATE_SENTINEL', USER_ID, row.id, row.endpoint, row.p256dh, row.auth,
+                    row.user_agent ?? '', row.created_at ?? '', 'PRIVATE_DETAILS', 'PRIVATE_HINT',
+                    'PRIVATE_CODE']);
         },
     );
 });
@@ -538,21 +543,18 @@ describe('sendWebPushNotifications', () => {
         await createVapidEnvironment();
         const receiver = await crypto.subtle.generateKey(
             { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-        keys = {
-            p256dh: toBase64Url(new Uint8Array(await crypto.subtle.exportKey('raw', receiver.publicKey))),
-            auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))),
-        };
-        mocks.reportError.mockReset();
-        mocks.rpc.mockReset();
+        keys = { p256dh: toBase64Url(new Uint8Array(
+            await crypto.subtle.exportKey('raw', receiver.publicKey))),
+        auth: toBase64Url(crypto.getRandomValues(new Uint8Array(16))) };
+        mocks.reportError.mockReset(); mocks.rpc.mockReset();
     });
     afterEach(() => {
         vi.unstubAllGlobals();
         process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = originalEnv.publicKey;
-        process.env.VAPID_PRIVATE_KEY = originalEnv.privateKey;
-        process.env.VAPID_SUBJECT = originalEnv.subject;
+        process.env.VAPID_PRIVATE_KEY = originalEnv.privateKey; process.env.VAPID_SUBJECT = originalEnv.subject;
     });
-    const send = (rows: StoredPushSubscriptionData[]) =>
-        sendWebPushNotifications(USER_ID, rows, { title: 'test', body: 'test' });
+    const send = (rows: StoredPushSubscriptionData[]) => sendWebPushNotifications(
+        USER_ID, rows, { title: 'test', body: 'test' });
     it.each([404, 410])('%iだけCASし、deletedだけをexpiredへ数える', async (status) => {
         const row = stored('expired', null, keys);
         vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status })));
@@ -562,6 +564,9 @@ describe('sendWebPushNotifications', () => {
             DELETE_PUSH_SUBSCRIPTION_IF_UNCHANGED_RPC,
             rpcArgs(row),
         );
+        expectSingleFixedAppError(mocks.reportError.mock.calls, 'sendWebPush:pushService',
+            'Push service delivery failed', 'PUSH_SERVICE_DELIVERY_FAILED',
+            [USER_ID, row.id, row.endpoint, row.p256dh, row.auth, row.user_agent ?? '']);
     });
     it.each([400, 409, 429, 500])('%iではCASしない', async (status) => {
         vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status })));
@@ -577,6 +582,7 @@ describe('sendWebPushNotifications', () => {
         await expect(send([old, winner]))
             .resolves.toMatchObject({ sent: 1, skippedDuplicates: 1 });
         expect(fetchMock).toHaveBeenCalledWith(winner.endpoint, expect.any(Object));
+        expect(mocks.reportError).not.toHaveBeenCalled();
     });
     it('複数端末のdeleted/preserved/failedを継続し、countを正直に返す', async () => {
         const rows = [410, 404, 410, 201].map((status, index) => stored(`device-${index}`, null, {
@@ -592,5 +598,7 @@ describe('sendWebPushNotifications', () => {
             sent: 1, failed: 3, expired: 1, skippedDuplicates: 0,
         });
         expect(mocks.rpc).toHaveBeenCalledTimes(3);
+        expect(mocks.reportError).toHaveBeenCalledTimes(4);
+        expect(collectReportedLogValues(mocks.reportError.mock.calls)).not.toContain('PRIVATE');
     });
 });

@@ -1571,14 +1571,8 @@ export const runtime = "edge";
 - **対策**: `(notification_type, occurrence_key, user_id)`一意のDB outboxとowner/token付きlease RPCをLayer 1にし、personalized data取得前のclaim、契約成立後だけのcomplete、所有中だけのreleaseをLayer 3契約にする。
 - **教訓**: 外部通知の再試行はHTTP requestではなく論理occurrence単位で永続化する。static migration、runtime競合検証、アプリ配線をclean 3-layerへ分け、Layer 2前のproduction適用を禁止する。
 
-### LL-084: CASのfalseや失敗を失効削除件数に含めると再購読を誤分類する
+### LL-084: 購読CASのwinner・結果・ログ契約を分散すると有効購読を誤分類する
 
-- **事象**: Push Serviceの404/410だけで購読を削除済みと数えると、送信後に更新されたreplacement、既に消えた行、RPC障害を恒久失効として扱い、通知outboxの再試行判断を誤り得た。
-- **根本原因**: 外部Push応答とDB削除結果を同じ`expired`状態にまとめ、CASの`true`、`false`、errorを区別していなかった。
-- **対策・教訓**: 送信時の完全snapshotをCAS RPCへ渡し、`true`だけを`expired`へ数える。`false`はstale/missingとして保持し、RPC errorは生DB error・UUID・endpoint・鍵を記録しない固定エラーへ変換して他端末の送信を継続する。再購読の古い行整理にも同じcompare-and-deleteを再利用する。リファレンス: `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`
-
-### LL-085: 同じ購読winnerを別ロジックで選ぶと送信対象とcleanup対象が分裂する
-
-- **事象**: `created_at`同値・null時に送信compactionは入力順、再購読cleanupはID順を使い、同じ購読集合から別winnerを選び得た。未接続のDB型追加とsource文字列検査も実RPC/query/privacy契約を証明していなかった。
-- **根本原因**: recency、RPC境界、query builder、ログ秘匿を各呼出側で個別実装し、実行時の同一契約として検証しなかった。
-- **対策・教訓**: recencyはvalid時刻→non-null→UUID降順の単一比較器へ集約し、invalid dateを拒否する。RPCは実利用するexact引数型とunknown応答のboolean guardを持つwrapperへ限定する。DB query/filterと固定非PIIログはsource検索でなくbuilder spyと実行時引数で検証する。リファレンス: `lib/api/web-push.ts`, `lib/__tests__/push-subscribe-validation.test.ts`
+- **事象**: 404/410を削除成功とみなし、`created_at`同値/null時にcompactionとcleanupが別winnerを選び得た。未接続DB型・source検索・最後のlogだけの検査も実RPC/query/privacy契約を証明しなかった。
+- **根本原因**: recency、CAS結果、RPC型、query filter、ログ秘匿を各呼出側で個別実装し、同じ実行時契約として検証しなかった。
+- **対策・教訓**: recencyをvalid時刻→non-null→UUID降順へ集約し、完全snapshotのRPCはbooleanだけ受理して`true`のみ削除数へ含める。query builderと全log callを実行時検査し、固定AppError以外のDB error・UUID・endpoint・鍵・cause/contextを拒否する。リファレンス: `lib/api/web-push.ts`, `lib/__tests__/push-subscribe-validation.test.ts`
