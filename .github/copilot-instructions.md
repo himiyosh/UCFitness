@@ -1564,13 +1564,20 @@ export const runtime = "edge";
 - **根本原因**: SQL sourceに期待する語があることと、PostgreSQL catalogへ期待どおり反映され並行transactionで安全に動くことを同一視した。
 - **対策・教訓**: migration bytesのSHA-256をDB接続前に固定し、digest固定PostgreSQL serviceへ実適用してunique列順・FORCE RLSを含むfresh database negative、role別実行、rollback、2接続lock barrierを検証する。接続先はquery/hashなしのloopback maintenance DB・固定test admin・明示flagに限定し、既存roleがあるclusterを拒否する。作成roleとrandom allowlist名のDBだけを失敗時も削除し、workflowの全`uses:`を完全長SHAで固定する。リファレンス: `scripts/test-push-cas-postgres.ts`, `.github/workflows/validate.yml`
 
-### LL-083: CASのfalseや失敗を失効削除件数に含めると再購読を誤分類する
+### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する
+
+- **事象**: Weekly summaryとstep reminderはbatch途中の503や並行Cronで、既に成功したユーザーを同じJST occurrenceとして識別できず再送し得た。
+- **根本原因**: 配信結果をrequest内カウンターだけで管理し、user単位の永続idempotency key、lease所有権、完了状態がなかった。
+- **対策**: `(notification_type, occurrence_key, user_id)`一意のDB outboxとowner/token付きlease RPCをLayer 1にし、personalized data取得前のclaim、契約成立後だけのcomplete、所有中だけのreleaseをLayer 3契約にする。
+- **教訓**: 外部通知の再試行はHTTP requestではなく論理occurrence単位で永続化する。static migration、runtime競合検証、アプリ配線をclean 3-layerへ分け、Layer 2前のproduction適用を禁止する。
+
+### LL-084: CASのfalseや失敗を失効削除件数に含めると再購読を誤分類する
 
 - **事象**: Push Serviceの404/410だけで購読を削除済みと数えると、送信後に更新されたreplacement、既に消えた行、RPC障害を恒久失効として扱い、通知outboxの再試行判断を誤り得た。
 - **根本原因**: 外部Push応答とDB削除結果を同じ`expired`状態にまとめ、CASの`true`、`false`、errorを区別していなかった。
 - **対策・教訓**: 送信時の完全snapshotをCAS RPCへ渡し、`true`だけを`expired`へ数える。`false`はstale/missingとして保持し、RPC errorは生DB error・UUID・endpoint・鍵を記録しない固定エラーへ変換して他端末の送信を継続する。再購読の古い行整理にも同じcompare-and-deleteを再利用する。リファレンス: `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`
 
-### LL-084: 同じ購読winnerを別ロジックで選ぶと送信対象とcleanup対象が分裂する
+### LL-085: 同じ購読winnerを別ロジックで選ぶと送信対象とcleanup対象が分裂する
 
 - **事象**: `created_at`同値・null時に送信compactionは入力順、再購読cleanupはID順を使い、同じ購読集合から別winnerを選び得た。未接続のDB型追加とsource文字列検査も実RPC/query/privacy契約を証明していなかった。
 - **根本原因**: recency、RPC境界、query builder、ログ秘匿を各呼出側で個別実装し、実行時の同一契約として検証しなかった。
