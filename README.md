@@ -255,6 +255,28 @@ Phase 2 migrationは既知7列の型・nullability、`public.users(id)`へのcas
 初期作成履歴には旧policyがあるため、実catalogに残存していればmigrationは自動削除せず
 中断し、適用前の個別確認と承認を要求する。
 
+Push購読CASのclean 3-layerは、Layer 1を`migrations/20260725_delete_push_subscription_if_unchanged.sql`、Layer 2をruntime PostgreSQL検証、Layer 3をアプリ配線とする。PR #302は3層を混在させた994行差分のためsupersedeし、本migrationだけをLayer 1の正本とする。適用順は`20260720_harden_push_subscriptions_rls.sql`、Layer 1、Layer 2のruntime検証、Layer 3の順である。Layer 2がmainへ入りnegative catalog fixture・exact/stale結果・二接続競合を実PostgreSQLで検証する前のproduction適用は禁止し、production適用には明示承認が必要である。
+
+Layer 1は既知schema/default、`public.users(id)` cascade FK、ordered non-deferrable `(user_id, endpoint)` uniqueとvalid/ready/immediate backing index、owner/RLS/policy、table/column ACLをfail closedで検証する。`service_role`だけが実行できる`SECURITY DEFINER` RPCは`id`で特定した主キー行を`FOR UPDATE`し、ロック後に`user_id`、`endpoint`、`p256dh`、`auth`、`user_agent`、`created_at`を`IS NOT DISTINCT FROM`で比較して同じ`id`だけを削除する。missing/staleは`false`、完全一致だけを削除して`true`を返す。static testはmigration SHA-256とcritical clauseを固定するが、runtime PASSはLayer 2でのみ判定する。
+
+ロールバックは依存するLayer 3を先に停止・撤去し、`BEGIN; REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz); COMMIT;`を実行する。`push_subscriptions`本体と既存hardening migrationは保持する。
+
+Personalized Push delayed-delivery privacyのclean 3-layerは、Layer 1を`migrations/20260726_create_push_subscription_ownership.sql`、Layer 2をruntime PostgreSQL検証、Layer 3をsubscribe/payload/Service Worker配線とする。PR #300 / #301のblockerは、HTTP送信後に同一endpointの所有者が変わり、TTL 300の旧ユーザー向け健康payloadが遅延到着し得る点である。Layer 1だけでは解決せず、Layer 2とLayer 3が揃うまでMERGE BLOCKEDかつproduction適用禁止とし、適用には明示承認を必須とする。
+
+Layer 1はendpoint本文を保持しないSHA-256 digest主キーの`push_subscription_ownership`を作り、owner、`UNIQUE current subscription_id`、ランダム`recipient_generation`、version、時刻をDB正本にする。digestとadvisory lockにはraw endpointでなく、Layer 3共有`getPushEndpointOwnershipKey`がhost case、default port、unreserved percent encoding、fragmentを正規化したcanonical ownership keyを使う。SQLへRFC 3986正規化を再実装せず、legacy raw rowからownerを推測するbackfillは行わない。既存購読はauthority/generationなしで全件隔離して件数だけを報告し、認証済みrefresh/saveで初めてauthorityを作る。
+
+save/transferはraw endpointを`push_subscriptions`保存だけに使い、canonical key単位でownerを移転する。raw 20件上限をuser lock下で守り、same-ownerはgeneration維持＋version進行、transfer/releaseはgeneration回転、releaseはgeneration＋versionでfenceする。非更新read RPCは最大20組のobserved subscription ID＋canonical keyを受け、authority owner・digest・current subscription IDと保存行userがexact一致する行だけ`subscription_id, recipient_generation, version`をUUID順で返す。foreign/missing/staleはskipし、重複入力は1行へ集約する。authority tableのdirect SELECTは許可せず、saveをread代用しない。既存CASはsubscription exact rowだけを削除しauthorityへ触れず、Push network待機中にSQL transactionを保持しない。
+
+Layer 3はraw→canonical key consistencyをshared helperのalias vectorで検証し、personalized send前にread RPCを通してgeneration authorityがないlegacy rowを送らない。payloadへgenerationを含め、Service Workerは端末保存generationとの一致時だけ表示し、logoutでclear、account switch/refreshでupdate、旧generationとgenerationなしをdropする。適用順は既存CAS→Layer 1→Layer 2 runtime→Layer 3 deploy→送信停止中の旧worker排出・新SW確認→`ACCESS EXCLUSIVE` cutoverでdirect write revoke→送信再開とし、raw rowからauthorityを再同期しない。Layer 2はcanonical alias/material差、同時claim、19→20/20→reject、逆順transfer、user削除、generation/stale release、legacy隔離、exact read、CAS、rollbackを実PostgreSQLで証明する。rollbackは送信停止後にread→release→save RPC、owner index、authority tableの順にREVOKE/DROPし、generation付きqueueが残る間はSW比較を先に撤去しない。
+
+通知配信outboxのclean 3-layerは、Layer 1を`migrations/20260725_create_notification_delivery_outbox.sql`、Layer 2をruntime PostgreSQL検証、Layer 3を3Aのtyped wrapperと3B/CのCron配線に分ける。Layer 1は`(notification_type, occurrence_key, user_id)`を一意にし、`step-reminder`のJST日`YYYY-MM-DD`と`weekly-summary`のJST週`YYYY-Www`だけを受理する。payload・endpoint等は保存せず、pending/claimed/completed/failed、owner/token、5分lease、5 attempt、90日保持だけをDB正本にする。
+
+claimは1〜20件の入力userをUUID安定順で`FOR UPDATE`し、台帳を同一transactionで作成・lockして、pendingまたは期限切れclaimedだけへ新tokenを発行する。active claim・completed・failedはskipし、返却はuser IDとclaim tokenだけとする。Layer 3はpersonalized data取得・Push送信より前にclaimし、completeは通知結果が契約を満たした場合だけ呼ぶ。端末部分失敗の契約はLayer 3で決定し、releaseは所有中の未期限切れtokenだけを失敗記録して再試行可能にする。HTTP 503の通常retryは非completed行だけを再claimし、completedを再送しない。
+
+static testはmigration SHA-256、catalog/default/FK/index/owner/RLS/ACL、lock順、stale token、未配線を固定する。Layer 2のruntime PostgreSQL検証はfresh DBで実catalog、条件を弱体化したmigration fixture、claim・owner/token fencing・5 attempt、JST日/ISO週境界、90日保持、逆順入力の二接続競合、rollback、失敗時cleanupを実行する。Layer 3のCron配線は次段とし、Layer 2がmainへ入った後もproduction適用には明示承認が必要である。rollbackはLayer 3を停止してactive leaseを待ってから`release→complete→claim→index→table`の順にREVOKE/DROPし、過去migrationは編集しない。
+
+Layer 3Aは`lib/services/notification-delivery-outbox.ts`のserver-only typed wrapperだけを提供する。先頭の`import 'server-only'`をNext compiler境界とし、exact RPC引数・1回呼出、最大20 UUIDの安定dedup、4桁年をUTC parse/roundtripするJST日/ISO週key、unknown返却shape、owner/token fencing、固定release failure code、内部`reportError`なし、raw Error object graphとUUIDを含まない固定`AppError`を検証する。全tracked TS/TSXのproduction importは0件でCron callsiteはまだinert、route配線はLayers 3B/Cで別途行う。Layer 1 migrationはproduction未適用のため、このwrapper追加をDB利用可能性や実配信の根拠にしない。
+
 Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
 `coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
 歩数再計算・ログインボーナス・backfillの`INSERT`/`UPDATE`/`DELETE`を使う。原子RPCも
@@ -672,6 +694,8 @@ npm run dev
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
 | `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
+| `npm run test:postgres:notification-outbox` | loopback PostgreSQLで通知outbox migration・lease・競合・rollbackを実行検証 |
+| `npm run test:postgres:push-cas` | loopback PostgreSQLでPush購読CAS migration・ACL・競合・rollbackを実行検証 |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -908,6 +932,9 @@ npm run audit:responsive
 
 # Dashboardのミッション操作・愛用ギア・モバイル操作領域
 DASHBOARD_E2E_STORAGE_STATE=/path/to/ja-state.json npm run test:e2e:dashboard
+
+# Push購読CAS（allow_system_table_mods=onの破棄可能なlocalhost PostgreSQLだけで実行）
+UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_CAS_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres npm run test:postgres:push-cas
 ```
 
 - テストフレームワーク: **Vitest**
@@ -916,6 +943,7 @@ DASHBOARD_E2E_STORAGE_STATE=/path/to/ja-state.json npm run test:e2e:dashboard
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
+- Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
 - テストファイル: `lib/__tests__/` 配下
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 
