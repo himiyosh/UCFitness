@@ -73,7 +73,7 @@ describe('notification delivery outbox Layer 1 migration', () => {
             'LL083: notification outbox owner, RLS, or ACL changed',
             "ALTER TABLE public.notification_delivery_outbox OWNER TO postgres",
             'ALTER TABLE public.notification_delivery_outbox ENABLE ROW LEVEL SECURITY',
-            "procedure.proconfig IS DISTINCT FROM ARRAY['search_path=\"\"']::text[]", "pg_catalog.pg_get_indexdef(index_relation.oid, 1, true) = 'retain_until'", "pg_catalog.pg_get_expr(index_record.indpred", "pg_catalog.pg_get_function_result(functions[1]) IS DISTINCT FROM 'TABLE(user_id uuid, claim_token uuid)'",
+            "procedure.proconfig IS DISTINCT FROM ARRAY['search_path=\"\"']::text[]", "pg_catalog.pg_get_indexdef(index_relation.oid, 1, true) = 'retain_until'", "pg_catalog.pg_get_indexdef(index_relation.oid, 2, true) = 'id'", "pg_catalog.pg_get_expr(index_record.indpred, index_record.indrelid) = '(state = ANY (ARRAY[''completed''::text, ''failed''::text]))'", "pg_catalog.pg_get_function_result(functions[1]) IS DISTINCT FROM 'TABLE(user_id uuid, claim_token uuid)'", "pg_catalog.pg_get_function_result(functions[2]) IS DISTINCT FROM 'boolean'", "pg_catalog.pg_get_function_result(functions[3]) IS DISTINCT FROM 'boolean'",
         ]) expect(migration).toContain(value);
         expect(migration.match(/LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''/g)).toHaveLength(3);
         expect(migration.match(/GRANT EXECUTE ON FUNCTION public\./g)).toHaveLength(3);
