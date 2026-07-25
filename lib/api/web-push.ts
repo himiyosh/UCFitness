@@ -90,13 +90,6 @@ export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
     return getPushEndpointOwnershipKey(endpoint) !== null;
 }
 
-export function withPushRecipientGeneration(payload: PushPayload, recipientGeneration: string): PushPayload {
-    if (!isValidUUID(recipientGeneration)) {
-        throw new AppError('Invalid push recipient generation', 'PUSH_RECIPIENT_GENERATION_INVALID');
-    }
-    return { ...payload, recipientGeneration: recipientGeneration.toLowerCase() };
-}
-
 export function withPushRecipientAuthority(
     payload: PushPayload,
     authority: PushRecipientAuthority,

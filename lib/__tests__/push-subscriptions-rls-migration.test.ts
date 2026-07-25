@@ -23,6 +23,7 @@ const phaseOneMigration = readRepositoryFile(
 );
 const subscribeRoute = readRepositoryFile('app/api/push/subscribe/route.ts');
 const ownershipWrapper = readRepositoryFile('lib/services/push-subscription-ownership.ts');
+const webPushSource = readRepositoryFile('lib/api/web-push.ts');
 const deliverySources = [
     'app/api/push/send/route.ts', 'app/api/cron/step-reminder/route.ts',
     'app/api/cron/weekly-summary/route.ts', 'lib/services/badge-allocator.ts',
@@ -132,16 +133,16 @@ describe('F016 push_subscriptions RLS migration', () => {
     });
 
     it('Layer 3AはCron senderを変更せずDraft blockerをREADMEへ記録する', () => {
-        const cronSources = [
-            'app/api/cron/step-reminder/route.ts',
-            'app/api/cron/weekly-summary/route.ts',
-        ].map(readRepositoryFile);
-
-        expect(cronSources.every((source) =>
-            !source.includes('readReadyPushSubscriptionGenerations')
-            && !source.includes('withPushRecipientAuthority'))).toBe(true);
+        const cronSources = ['app/api/cron/step-reminder/route.ts', 'app/api/cron/weekly-summary/route.ts'].map(readRepositoryFile);
+        expect(cronSources.every((source) => !source.includes('readReadyPushSubscriptionGenerations') && !source.includes('withPushRecipientAuthority'))).toBe(true);
         expect(readme).toContain('weekly/step sender generation wiring');
         expect(readme).toContain('legacy client互換性');
+    });
+
+    it('personalized payloadはauthority helperだけを提供しgeneric payloadを拘束しない', () => {
+        expect(webPushSource).not.toContain(['withPushRecipient', 'Generation'].join(''));
+        expect(webPushSource).toContain('withPushRecipientAuthority');
+        expect(webPushSource).toContain('payload: PushPayload,');
     });
 
     it('F001を変更せずF016をin-progressに維持する', () => {
