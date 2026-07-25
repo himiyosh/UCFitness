@@ -1563,3 +1563,10 @@ export const runtime = "edge";
 - **事象**: Push購読CAS migrationは文字列検査を通っても、default式、constraint backing index、個別ACL、`SECURITY DEFINER`属性、2 transactionの待機順序を実PostgreSQLで検証できていなかった。
 - **根本原因**: SQL sourceに期待する語があることと、PostgreSQL catalogへ期待どおり反映され並行transactionで安全に動くことを同一視した。
 - **対策・教訓**: migration bytesのSHA-256をDB接続前に固定し、digest固定PostgreSQL serviceへ実適用してunique列順・FORCE RLSを含むfresh database negative、role別実行、rollback、2接続lock barrierを検証する。接続先はquery/hashなしのloopback maintenance DB・固定test admin・明示flagに限定し、既存roleがあるclusterを拒否する。作成roleとrandom allowlist名のDBだけを失敗時も削除し、workflowの全`uses:`を完全長SHAで固定する。リファレンス: `scripts/test-push-cas-postgres.ts`, `.github/workflows/validate.yml`
+
+### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する
+
+- **事象**: Weekly summaryとstep reminderはbatch途中の503や並行Cronで、既に成功したユーザーを同じJST occurrenceとして識別できず再送し得た。
+- **根本原因**: 配信結果をrequest内カウンターだけで管理し、user単位の永続idempotency key、lease所有権、完了状態がなかった。
+- **対策**: `(notification_type, occurrence_key, user_id)`一意のDB outboxとowner/token付きlease RPCをLayer 1にし、personalized data取得前のclaim、契約成立後だけのcomplete、所有中だけのreleaseをLayer 3契約にする。
+- **教訓**: 外部通知の再試行はHTTP requestではなく論理occurrence単位で永続化する。static migration、runtime競合検証、アプリ配線をclean 3-layerへ分け、Layer 2前のproduction適用を禁止する。
