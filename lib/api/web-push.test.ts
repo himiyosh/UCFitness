@@ -12,7 +12,7 @@ import {
     withPushRecipientAuthority,
 } from '@/lib/api/web-push';
 
-import type { GenericPushPayload, PushPayload, PushRecipientAuthority, PushSubscriptionData, StoredPushSubscriptionData } from '@/lib/api/web-push';
+import type { PushRecipientAuthority, PushSubscriptionData, StoredPushSubscriptionData } from '@/lib/api/web-push'; type WirePayloadInput = Parameters<typeof createPushWirePayload>[0];
 
 const mocks = vi.hoisted(() => ({ reportError: vi.fn(), rpc: vi.fn() }));
 vi.mock('@/lib/errors', async (importOriginal) => ({ ...await importOriginal<typeof import('@/lib/errors')>(), reportError: mocks.reportError }));
@@ -21,12 +21,30 @@ const encoder = new TextEncoder();
 const MAX_ENCRYPTED_PUSH_BODY = 4096;
 const MAX_SERIALIZED_PAYLOAD = 3993;
 const RECIPIENT_GENERATION = 'abcdefab-cdef-4abc-8def-abcdefabcdef'; const SUBSCRIPTION_ID = '20000000-0000-4000-8000-000000000001'; const PUSH_ORIGIN = 'https://fcm.googleapis.com';
-const VALID_AUTHORITY = { recipientGeneration: RECIPIENT_GENERATION, recipientVersion: 7, recipientProtocolVersion: 1 } as const;
-const INVALID_AUTHORITY_CASES: ReadonlyArray<[string, Record<string, unknown>]> = [
-    ['unbranded', VALID_AUTHORITY], ['generation', { recipientGeneration: RECIPIENT_GENERATION }], ['version', { recipientVersion: 7 }], ['protocol', { recipientProtocolVersion: 1 }],
+const VALID_AUTHORITY = { recipientGeneration: RECIPIENT_GENERATION, recipientVersion: 7, recipientProtocolVersion: 1 } as const; const INVALID_AUTHORITY_CASES: ReadonlyArray<[string, Record<string, unknown>]> = [
+    ['unbranded', VALID_AUTHORITY], ['generation', { recipientGeneration: RECIPIENT_GENERATION }], ['version', { recipientVersion: 7 }], ['protocol', { recipientProtocolVersion: 1 }], ['undefined', { recipientGeneration: undefined }], ['all undefined', { recipientGeneration: undefined, recipientVersion: undefined, recipientProtocolVersion: undefined }],
     ['gen+version', { recipientGeneration: RECIPIENT_GENERATION, recipientVersion: 7 }], ['gen+protocol', { recipientGeneration: RECIPIENT_GENERATION, recipientProtocolVersion: 1 }], ['version+protocol', { recipientVersion: 7, recipientProtocolVersion: 1 }], ['bad generation', { ...VALID_AUTHORITY, recipientGeneration: 'RAW_RECIPIENT_SECRET' }],
     ...[0, 1.5, Number.MAX_SAFE_INTEGER + 1, Number.NaN].map((recipientVersion) => [`version ${recipientVersion}`, { ...VALID_AUTHORITY, recipientVersion }] as [string, Record<string, unknown>]), ...[0, 2, 1.5, Number.NaN].map((recipientProtocolVersion) => [`protocol ${recipientProtocolVersion}`, { ...VALID_AUTHORITY, recipientProtocolVersion }] as [string, Record<string, unknown>]),
-];
+]; function compilePayloadContract(subscription: PushSubscriptionData, stored: StoredPushSubscriptionData[]): void { const generic = { title: 'generic', body: 'allowed' }; const branded = withPushRecipientAuthority(generic, VALID_AUTHORITY);
+    void sendWebPushNotification(subscription, generic); void sendWebPushNotifications('user', stored, generic); void sendWebPushNotification(subscription, branded); void sendWebPushNotifications('user', stored, branded);
+    const partial = { ...generic, recipientGeneration: undefined }; const allUndefined = { ...partial, recipientVersion: undefined, recipientProtocolVersion: undefined }; const unbranded = { ...generic, ...VALID_AUTHORITY };
+    // @ts-expect-error explicit authority key is forbidden even when undefined.
+    void sendWebPushNotification(subscription, { ...generic, recipientGeneration: undefined });
+    // @ts-expect-error inferred variable with one authority key is forbidden.
+    void sendWebPushNotifications('user', stored, partial);
+    // @ts-expect-error inferred partial variable is also forbidden for single sends.
+    void sendWebPushNotification(subscription, partial);
+    // @ts-expect-error explicit authority key is forbidden for batch sends.
+    void sendWebPushNotifications('user', stored, { ...generic, recipientGeneration: undefined });
+    // @ts-expect-error all explicit undefined authority keys are forbidden.
+    void sendWebPushNotification(subscription, allUndefined);
+    // @ts-expect-error unbranded authority fields are forbidden for single sends.
+    void sendWebPushNotification(subscription, unbranded);
+    // @ts-expect-error unbranded authority fields are forbidden for batch sends.
+    void sendWebPushNotifications('user', stored, unbranded);
+    // @ts-expect-error exported wire helper uses the same authority-key guard.
+    void createPushWirePayload({ ...generic, recipientGeneration: undefined });
+} void compilePayloadContract;
 function toBase64Url(bytes: Uint8Array): string {
     return Buffer.from(bytes).toString('base64url');
 }
@@ -97,16 +115,13 @@ async function createVapidEnvironment(): Promise<void> {
     process.env.VAPID_SUBJECT = 'mailto:test@example.com';
 }
 async function createReceiver(endpoint: string, id = SUBSCRIPTION_ID) {
-    const keys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-    const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey)); const authSecret = crypto.getRandomValues(new Uint8Array(16));
-    const encoded = { p256dh: toBase64Url(publicKey), auth: toBase64Url(authSecret) };
-    return { subscription: { endpoint, keys: encoded }, stored: { id, endpoint, ...encoded, user_agent: 'Browser', created_at: '2026-07-26T00:00:00Z' }, privateKey: keys.privateKey, publicKey, authSecret }; }
+    const keys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']); const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey)); const authSecret = crypto.getRandomValues(new Uint8Array(16));
+    const encoded = { p256dh: toBase64Url(publicKey), auth: toBase64Url(authSecret) }; return { subscription: { endpoint, keys: encoded }, stored: { id, endpoint, ...encoded, user_agent: 'Browser', created_at: '2026-07-26T00:00:00Z' }, privateKey: keys.privateKey, publicKey, authSecret }; }
 async function decryptPayload(
     encryptedBody: ArrayBuffer,
     receiverPrivateKey: CryptoKey,
     receiverPublicKey: Uint8Array,
     authSecret: Uint8Array,
-    expectedSerialized?: string,
 ): Promise<Record<string, unknown>> {
     const body = new Uint8Array(encryptedBody);
     const salt = body.slice(0, 16);
@@ -164,24 +179,17 @@ async function decryptPayload(
         ),
     );
     expect(plaintext.at(-1)).toBe(0x02);
-    const serialized = new TextDecoder().decode(plaintext.slice(0, -1));
-    if (expectedSerialized !== undefined) expect(serialized).toBe(expectedSerialized);
-    return JSON.parse(serialized) as Record<string, unknown>;
+    return JSON.parse(new TextDecoder().decode(plaintext.slice(0, -1))) as Record<string, unknown>;
 }
-async function captureAppError(action: Promise<unknown> | (() => unknown)): Promise<AppError> {
-    try { await (typeof action === 'function' ? action() : action); } catch (error: unknown) {
+async function captureAppError(action: Promise<unknown> | (() => unknown)): Promise<AppError> { try { await (typeof action === 'function' ? action() : action); } catch (error: unknown) {
         if (error instanceof AppError) return error; throw error; } throw new Error('Expected AppError'); }
 function exposedError(error: AppError): string { return [error.name, error.message, error.stack, error.code, JSON.stringify(error.context), String(error.cause)].join(' '); }
-function expectFixedError(error: AppError, code: string, secret?: RegExp): void {
-    expect(error).toMatchObject({ name: 'AppError', code, context: undefined, cause: undefined }); if (secret) expect(exposedError(error)).not.toMatch(secret); }
-function runtimePayload(authority: Record<string, unknown>): PushPayload {
+function expectFixedError(error: AppError, code: string, secret?: RegExp): void { expect(error).toMatchObject({ name: 'AppError', code, context: undefined, cause: undefined }); if (secret) expect(exposedError(error)).not.toMatch(secret); }
+function runtimePayload(authority: Record<string, unknown>): WirePayloadInput {
     // Runtime validation tests intentionally bypass the compile-time payload union.
-    return { title: 'test', body: 'test', ...authority } as PushPayload; }
-function wireText(payload: PushPayload): string { return new TextDecoder().decode(createPushWirePayload(payload).bytes); }
-async function expectBatchFailure(subscriptions: StoredPushSubscriptionData[], code = 'PUSH_PREPARATION_FAILED', secret?: RegExp) {
-    const fetchMock = vi.fn<typeof fetch>(); vi.stubGlobal('fetch', fetchMock);
-    const error = await captureAppError(sendWebPushNotifications('user-id', subscriptions, { title: 'Prepare', body: 'Reject all' }));
-    expectFixedError(error, code, secret); expect(fetchMock).not.toHaveBeenCalled(); }
+    return { title: 'test', body: 'test', ...authority } as WirePayloadInput; } function wireText(payload: WirePayloadInput): string { return new TextDecoder().decode(createPushWirePayload(payload).bytes); }
+async function expectBatchFailure(subscriptions: StoredPushSubscriptionData[], code = 'PUSH_PREPARATION_FAILED', secret?: RegExp) { const fetchMock = vi.fn<typeof fetch>(); vi.stubGlobal('fetch', fetchMock);
+    const error = await captureAppError(sendWebPushNotifications('user-id', subscriptions, { title: 'Prepare', body: 'Reject all' })); expectFixedError(error, code, secret); expect(fetchMock).not.toHaveBeenCalled(); }
 describe('sendWebPushNotification', () => {
     const originalPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     const originalPrivateKey = process.env.VAPID_PRIVATE_KEY;
@@ -260,13 +268,13 @@ describe('sendWebPushNotification', () => {
         const authorityPayload = withPushRecipientAuthority({ title: 'Authority test', body: 'Exact payload', tag: 'authority-test' }, { ...VALID_AUTHORITY, recipientGeneration: RECIPIENT_GENERATION.toUpperCase() });
         expect(wireText(authorityPayload)).toBe(JSON.stringify({ title: 'Authority test', body: 'Exact payload', tag: 'authority-test', ...VALID_AUTHORITY }));
         let toJSONCalls = 0; const maliciousToJSON = () => { toJSONCalls += 1; return VALID_AUTHORITY; };
-        const generic = { title: 'Safe title', body: 'Safe body', unknown: 'RAW_UNKNOWN_SECRET', toJSON: maliciousToJSON } as unknown as PushPayload;
+        const generic = { title: 'Safe title', body: 'Safe body', unknown: 'RAW_UNKNOWN_SECRET', toJSON: maliciousToJSON } as unknown as WirePayloadInput;
         expect(wireText(generic)).toBe('{"title":"Safe title","body":"Safe body"}');
-        const inherited = Object.assign(Object.create({ ...VALID_AUTHORITY, toJSON: maliciousToJSON }), { title: 'Own title', body: 'Own body' }) as PushPayload;
+        const inherited = Object.assign(Object.create({ ...VALID_AUTHORITY, toJSON: maliciousToJSON }), { title: 'Own title', body: 'Own body' }) as WirePayloadInput;
         expect(wireText(inherited)).toBe('{"title":"Own title","body":"Own body"}');
         const accessor: Record<string, unknown> = { body: 'Safe body' };
         Object.defineProperty(accessor, 'title', { enumerable: true, get: () => { toJSONCalls += 1; return 'RAW_ACCESSOR_SECRET'; } });
-        const error = await captureAppError(() => withPushRecipientAuthority(accessor as unknown as GenericPushPayload, VALID_AUTHORITY));
+        const error = await captureAppError(() => withPushRecipientAuthority(accessor as unknown as Parameters<typeof withPushRecipientAuthority>[0], VALID_AUTHORITY));
         expectFixedError(error, 'PUSH_PAYLOAD_INVALID', /RAW_ACCESSOR_SECRET/);
         expect(toJSONCalls).toBe(0); expect(mocks.reportError).not.toHaveBeenCalled();
     });
@@ -281,7 +289,7 @@ describe('sendWebPushNotification', () => {
         const body = fetchMock.mock.calls[0]?.[1]?.body;
         if (!(body instanceof ArrayBuffer)) throw new Error('Expected encrypted body');
         const expected = { title: 'Initial title', body: 'Initial body', ...VALID_AUTHORITY };
-        await expect(decryptPayload(body, receiver.privateKey, receiver.publicKey, receiver.authSecret, JSON.stringify(expected))).resolves.toEqual(expected);
+        await expect(decryptPayload(body, receiver.privateKey, receiver.publicKey, receiver.authSecret)).resolves.toEqual(expected);
     });
     it.each(['key', 'curve', 'crypto'] as const)(
         'batch後半の%s prepare失敗を全fetch前に固定拒否する', async (variant) => {

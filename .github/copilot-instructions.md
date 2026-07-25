@@ -1609,8 +1609,8 @@ export const runtime = "edge";
 - **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
 - **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`
 
-### LL-093: 全device prepare完了前のfetchは部分送信とcleanup TOCTOUを残す
+### LL-093: optional-neverとdevice単位sendは型迂回・部分送信・cleanup TOCTOUを残す
 
-- **事象**: 同期shape検証後もP-256 import・暗号化を各send内で行うと、先行deviceをfetchした後に後続off-curve keyが失敗する。送信中にstored rowが変わると404/410 cleanupも別versionを削除し得た。
-- **根本原因**: payload/subscription/stored authorityのsnapshot、async crypto request生成、network fetch、CAS cleanupを1つのdevice単位処理へ混在させ、batch全体のprepare barrierとobserved row versionを持たなかった。
-- **対策・教訓**: authorityを含む入力はexact own dataだけを一度snapshotし、accessor/inherited/unknown/`toJSON`/symbolを拒否または除外する。Phase Aで全deviceのVAPID context、P-256 import、暗号化、RequestInitを完了し、1件失敗なら固定`AppError`でfetch 0、Phase Bだけがprepared requestを送る。cleanupはprepared requestのinitial row versionをCAS RPCへ渡し、original mutationを再読しない。リファレンス: `lib/api/web-push.ts`
+- **事象**: `exactOptionalPropertyTypes: false`ではgeneric variantの`recipient*?: never`が明示`undefined`を許し、runtime rejectとcompile PASSが不一致になった。P-256 import・暗号化をdevice単位sendへ混在させると後続off-curve失敗前の部分送信とcleanup誤削除も起こり得た。
+- **根本原因**: generic base自身へauthority optional keysを宣言し、public unionがbaseへwidenできた。さらにpayload/subscription/stored snapshot、async request生成、fetch、CAS cleanupをdevice単位へ混在させ、batch prepare barrierとobserved row versionを持たなかった。
+- **対策・教訓**: generic shapeからauthority keysを除外し、single/batchのconst-generic overloadでactual `keyof T`を検査して明示`undefined`もcompile rejectする。private brand outputだけをauthority入力として許可する。Phase Aで全deviceのexact own-data snapshot、P-256 import、暗号化、RequestInitを完了し、1件失敗ならfetch 0、Phase Bだけが送信する。cleanupはinitial row versionをCAS RPCへ渡す。リファレンス: `lib/api/web-push.ts`

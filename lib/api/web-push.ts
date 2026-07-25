@@ -15,10 +15,8 @@ interface PushPayloadBase {
     tag?: string;
 }
 
-export interface GenericPushPayload extends PushPayloadBase { recipientGeneration?: never; recipientVersion?: never; recipientProtocolVersion?: never }
-interface AuthorityPushPayload extends PushPayloadBase { readonly [PUSH_RECIPIENT_AUTHORITY]: true; recipientGeneration: string; recipientVersion: number; recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION }
-export interface PushRecipientAuthority { recipientGeneration: string; recipientVersion: number; recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION }
-export type PushPayload = GenericPushPayload | AuthorityPushPayload;
+type GenericPushPayload = PushPayloadBase; interface AuthorityPushPayload extends PushPayloadBase { readonly [PUSH_RECIPIENT_AUTHORITY]: true; recipientGeneration: string; recipientVersion: number; recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION }
+export interface PushRecipientAuthority { recipientGeneration: string; recipientVersion: number; recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION } type AuthorityKey = 'recipientGeneration' | 'recipientVersion' | 'recipientProtocolVersion'; type GenericPushInput<T extends GenericPushPayload> = T & (Extract<keyof T, AuthorityKey> extends never ? unknown : never); type PushPayload = GenericPushPayload | AuthorityPushPayload; type PushInput<T extends PushPayloadBase> = T extends AuthorityPushPayload ? T : T & (Extract<keyof T, AuthorityKey> extends never ? unknown : never);
 export interface PushSubscriptionData {
     endpoint: string;
     keys?: {
@@ -51,10 +49,8 @@ export interface PushDeliverySummary {
     skippedDuplicates: number;
 }
 
-export interface PushWirePayload { bytes: Uint8Array; tag?: string }
-interface StoredPushSubscriptionSnapshot extends StoredPushSubscriptionData { id: string; user_agent: string | null; created_at: string | null }
-interface PreparedPushRequest { endpoint: string; requestInit: RequestInit; observedRowVersion?: StoredPushSubscriptionSnapshot }
-interface PushPreparationContext { vapidPublicKey: string; vapidSubject: string; privateKey: Awaited<ReturnType<typeof importVapidPrivateKey>> }
+export interface PushWirePayload { bytes: Uint8Array; tag?: string } interface StoredPushSubscriptionSnapshot extends StoredPushSubscriptionData { id: string; user_agent: string | null; created_at: string | null }
+interface PreparedPushRequest { endpoint: string; requestInit: RequestInit; observedRowVersion?: StoredPushSubscriptionSnapshot } interface PushPreparationContext { vapidPublicKey: string; vapidSubject: string; privateKey: Awaited<ReturnType<typeof importVapidPrivateKey>> }
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
 const AES_128_GCM_RECORD_SIZE = 4096;
@@ -71,11 +67,8 @@ export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
     return typeof endpoint === 'string' && endpoint.length <= 2048 && getPushEndpointOwnershipKey(endpoint) !== null;
 }
 
-function authorityError(): AppError { return new AppError('Invalid push recipient authority', 'PUSH_RECIPIENT_AUTHORITY_INVALID'); }
-function payloadError(): AppError { return new AppError('Invalid push payload', 'PUSH_PAYLOAD_INVALID'); }
-function subscriptionError(): AppError { return new AppError('Invalid push subscription', 'PUSH_SUBSCRIPTION_INVALID'); }
-function preparationError(): AppError { return new AppError('Push request preparation failed', 'PUSH_PREPARATION_FAILED'); }
-function sendError(): AppError { return new AppError('Push notification failed', 'PUSH_SEND_FAILED'); }
+function authorityError(): AppError { return new AppError('Invalid push recipient authority', 'PUSH_RECIPIENT_AUTHORITY_INVALID'); } function payloadError(): AppError { return new AppError('Invalid push payload', 'PUSH_PAYLOAD_INVALID'); }
+function subscriptionError(): AppError { return new AppError('Invalid push subscription', 'PUSH_SUBSCRIPTION_INVALID'); } function preparationError(): AppError { return new AppError('Push request preparation failed', 'PUSH_PREPARATION_FAILED'); } function sendError(): AppError { return new AppError('Push notification failed', 'PUSH_SEND_FAILED'); }
 function isValidAuthority(value: { recipientGeneration: unknown; recipientVersion: unknown; recipientProtocolVersion: unknown }): value is PushRecipientAuthority { return isValidUUID(value.recipientGeneration) && typeof value.recipientVersion === 'number' && Number.isSafeInteger(value.recipientVersion) && value.recipientVersion > 0 && value.recipientProtocolVersion === REQUIRED_RECIPIENT_PROTOCOL_VERSION; }
 function ownData(value: unknown, key: PropertyKey, error = payloadError): readonly [boolean, unknown] {
     if (typeof value !== 'object' || value === null) throw error(); let descriptor; try { descriptor = Object.getOwnPropertyDescriptor(value, key); } catch { throw error(); }
@@ -86,7 +79,7 @@ function exactOwnData(value: unknown, fields: readonly string[], error: () => Ap
 function snapshotAuthority(value: PushRecipientAuthority): PushRecipientAuthority {
     const row = exactOwnData(value, ['recipientGeneration', 'recipientVersion', 'recipientProtocolVersion'], authorityError); const authority = { recipientGeneration: row.recipientGeneration, recipientVersion: row.recipientVersion, recipientProtocolVersion: row.recipientProtocolVersion }; if (!isValidAuthority(authority)) throw authorityError();
     return Object.freeze({ ...authority, recipientGeneration: authority.recipientGeneration.toLowerCase() }); }
-export function createPushWirePayload(payload: PushPayload): PushWirePayload {
+export function createPushWirePayload<const T extends PushPayloadBase>(payload: PushInput<T>): PushWirePayload; export function createPushWirePayload(payload: PushPayload): PushWirePayload {
     if (typeof payload !== 'object' || payload === null) throw payloadError();
     const snapshot: Record<string, string | number> = Object.create(null);
     for (const key of ['title', 'body', 'icon', 'url', 'locale', 'tag'] as const) {
@@ -102,13 +95,13 @@ export function createPushWirePayload(payload: PushPayload): PushWirePayload {
     }
     const tag = typeof snapshot.tag === 'string' ? snapshot.tag : undefined;
     return { bytes: new TextEncoder().encode(JSON.stringify(snapshot)), tag }; }
-export function withPushRecipientAuthority(payload: GenericPushPayload, authority: PushRecipientAuthority): AuthorityPushPayload {
+export function withPushRecipientAuthority<const T extends GenericPushPayload>(payload: GenericPushInput<T>, authority: PushRecipientAuthority): AuthorityPushPayload {
     if (['recipientGeneration', 'recipientVersion', 'recipientProtocolVersion']
         .some((key) => ownData(payload, key)[0]) || ownData(payload, PUSH_RECIPIENT_AUTHORITY)[0]) {
         throw authorityError();
     }
     const safeAuthority = snapshotAuthority(authority);
-    const cleanPayload = JSON.parse(new TextDecoder().decode(createPushWirePayload(payload).bytes)) as GenericPushPayload;
+    const cleanPayload = JSON.parse(new TextDecoder().decode(createPushWirePayload(payload as GenericPushPayload).bytes)) as GenericPushPayload;
     return { ...cleanPayload, [PUSH_RECIPIENT_AUTHORITY]: true, ...safeAuthority }; }
 export function isValidPushKey(value: unknown, maxLength: number): value is string {
     return typeof value === 'string'
@@ -388,12 +381,12 @@ async function cleanupExpiredPushSubscriptions(userId: string, requests: Prepare
             return result.error === null && typeof result.data === 'boolean'; } catch { return false; }
     }));
     if (cleanupResults.some((success) => !success)) reportError('sendWebPush:pruneExpired', new AppError('Push subscription cleanup failed', 'PUSH_SUBSCRIPTION_CLEANUP_FAILED'), { count: requests.length }); }
-export async function sendWebPushNotification(subscription: PushSubscriptionData, payload: PushPayload, signal?: AbortSignal): Promise<PushSendResult> {
+export function sendWebPushNotification<const T extends PushPayloadBase>(subscription: PushSubscriptionData, payload: PushInput<T>, signal?: AbortSignal): Promise<PushSendResult>; export async function sendWebPushNotification(subscription: PushSubscriptionData, payload: PushPayload, signal?: AbortSignal): Promise<PushSendResult> {
     try {
         const wirePayload = createPushWirePayload(payload);
         const snapshot = createPushSubscriptionSnapshot(subscription); const context = await createPushPreparationContext();
         return await sendPreparedPushRequest(await preparePushRequest(snapshot, wirePayload, context, signal)); } catch { return pushFailure(); } }
-export async function sendWebPushNotifications(userId: string, subscriptions: StoredPushSubscriptionData[], payload: PushPayload, signal?: AbortSignal): Promise<PushDeliverySummary> {
+export function sendWebPushNotifications<const T extends PushPayloadBase>(userId: string, subscriptions: StoredPushSubscriptionData[], payload: PushInput<T>, signal?: AbortSignal): Promise<PushDeliverySummary>; export async function sendWebPushNotifications(userId: string, subscriptions: StoredPushSubscriptionData[], payload: PushPayload, signal?: AbortSignal): Promise<PushDeliverySummary> {
     const wirePayload = createPushWirePayload(payload);
     let storedSnapshots: StoredPushSubscriptionSnapshot[]; let activeSubscriptions: StoredPushSubscriptionSnapshot[];
     try {
