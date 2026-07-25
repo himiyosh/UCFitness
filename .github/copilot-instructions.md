@@ -1562,3 +1562,9 @@ export const runtime = "edge";
 - **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
 - **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
 - **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
+
+### LL-089: eligibility読取とoutbox claimを同一境界にすると完了済み通知の個人データを再読取する
+- **事象**: 歩数リマインダーは当日目標率を判定してから送る必要がある一方、claim前後を分けないとcompleted/active/max-attemptユーザーの言語・歩数・payloadを通常retryでも再取得し得た。
+- **根本原因**: under-goal判定に必要な最小データと、通知本文を生成するpersonalized dataを同じprofile/steps queryとして扱い、outbox fenceの前後を状態機械として設計していなかった。
+- **対策**: subscription snapshot後はID・目標・当日歩数だけで候補を決め、最大20件をclaimしてからclaimed userだけの言語・歩数を再検証する。1端末以上成功時だけcompleteし、0送信またはsource/profile/steps/payload/Push失敗はallowlist codeでreleaseする。complete/releaseのfalse/errorは固定非PII失敗として他ユーザーを継続する。
+- **教訓**: user単位outboxは通常retryの重複を抑えるat-least-once fenceであり、Push成功後complete前のcrash windowを消すexactly-onceではない。stateful testでowner/token/code、retry、真の並行GET、settled failure、部分端末成功を検証する。リファレンス: `app/api/cron/step-reminder/route.ts`, `app/api/cron/step-reminder/route.test.ts`
