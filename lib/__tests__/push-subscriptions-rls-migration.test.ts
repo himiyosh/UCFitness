@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,6 +15,9 @@ const casMigration = readRepositoryFile(
     'migrations/20260725_delete_push_subscription_if_unchanged.sql',
 );
 const readme = readRepositoryFile('README.md');
+const runtimeHarness = readRepositoryFile('scripts/test-push-cas-postgres.ts');
+const validateWorkflow = readRepositoryFile('.github/workflows/validate.yml');
+const packageManifest = readRepositoryFile('package.json');
 const phaseOneMigration = readRepositoryFile(
     'migrations/20260720_harden_api_keys_rls.sql',
 );
@@ -232,4 +236,47 @@ describe('LL-080 push subscription CAS migration', () => {
             'DROP FUNCTION public.delete_push_subscription_if_unchanged',
         );
     });
+
+    it('CAS runtime jobが固定imageとloopback test-only commandだけを使用する', () => {
+        expect(packageManifest).toContain('"test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts"');
+        expect(runtimeHarness).toContain(`const CAS_MIGRATION_SHA256 = '${sha256(casMigration)}'`);
+        expect(runtimeHarness.indexOf('loadMigrations();')).toBeLessThan(runtimeHarness.indexOf("connect('postgres')"));
+        expect(runtimeHarness).toContain("process.env.UCFITNESS_POSTGRES_RUNTIME_TEST !== '1'");
+        expect(runtimeHarness).toContain("url.pathname !== '/postgres'");
+        expect(runtimeHarness).toContain("url.username !== 'postgres'");
+        expect(runtimeHarness).toContain('TEST_DATABASE_PATTERN');
+        expect(runtimeHarness).toContain("runCase('preexisting-role-rejection'");
+        expect(runtimeHarness).toContain("runCase('partial-failure-cleanup'");
+        expect(runtimeHarness).toContain("name: 'force-rls'");
+        expect(runtimeHarness).toContain('SET allow_system_table_mods=on');
+        expect(validateWorkflow).toContain('postgres:16.13-bookworm@sha256:472efd9a66f2b2f1a5aeb18b28de74332e6ef88c2b93a1a5d812fb6db67a5f60');
+        expect(validateWorkflow).toContain('"127.0.0.1:5432:5432"');
+        expect(validateWorkflow).toContain('UCFITNESS_POSTGRES_RUNTIME_TEST: "1"');
+        expect(validateWorkflow).toContain('PUSH_CAS_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres');
+        expect(validateWorkflow).toContain('run: npm run test:postgres:push-cas');
+        expect(validateWorkflow.match(/uses:\s+\S+@[0-9a-f]{40}\s+#/g)).toHaveLength(4);
+        expect(validateWorkflow.match(/uses:/g)).toHaveLength(4);
+    });
+
+    it('CAS runtime harnessが不正な接続設定をDB接続前に拒否する', () => {
+        const valid = 'postgresql://postgres:postgres@127.0.0.1:5432/postgres';
+        const cases = [
+            ['flag', valid, false], ['host', 'postgresql://postgres:postgres@external.invalid:5432/postgres', true],
+            ['database', 'postgresql://postgres:postgres@127.0.0.1:5432/template1', true],
+            ['user', 'postgresql://other:postgres@127.0.0.1:5432/postgres', true],
+            ['port', 'postgresql://postgres:postgres@127.0.0.1:5433/postgres', true],
+            ['password', 'postgresql://postgres:other@127.0.0.1:5432/postgres', true],
+            ['ssl', `${valid}?sslmode=require`, true], ['hash', `${valid}#unsafe`, true],
+        ] as const;
+        for (const [label, url, enabled] of cases) {
+            const env: NodeJS.ProcessEnv = { ...process.env, PUSH_CAS_POSTGRES_URL: url };
+            if (enabled) env.UCFITNESS_POSTGRES_RUNTIME_TEST = '1';
+            else delete env.UCFITNESS_POSTGRES_RUNTIME_TEST;
+            const probe = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/test-push-cas-postgres.ts'],
+                { encoding: 'utf8', env });
+            expect(probe.status, label).not.toBe(0);
+            expect(probe.stderr.trim(), label).toBe('ERR: bootstrap-config');
+            expect(probe.stdout, label).toBe('');
+        }
+    }, 15_000);
 });
