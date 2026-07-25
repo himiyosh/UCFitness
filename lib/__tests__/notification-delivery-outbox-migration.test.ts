@@ -9,6 +9,7 @@ const migrationPath = 'migrations/20260725_create_notification_delivery_outbox.s
 const migration = read(migrationPath);
 const readme = read('README.md');
 const instructions = read('.github/copilot-instructions.md');
+const runtimeHarness = read('scripts/test-notification-outbox-postgres.ts'), validateWorkflow = read('.github/workflows/validate.yml'), packageManifest = read('package.json');
 const runtimeSources = ['app', 'lib'].flatMap((root) =>
     readdirSync(root, { recursive: true, encoding: 'utf8' })
         .filter((path) => /\.[jt]sx?$/.test(path) && !/\.(test|spec)\.[jt]sx?$/.test(path))
@@ -88,5 +89,12 @@ describe('notification delivery outbox Layer 1 migration', () => {
         expect(readme).toContain('release→complete→claim→index→table');
         expect(instructions).toContain('### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する');
         expect(runtimeSources.join('\n')).not.toMatch(/notification_delivery_outbox/);
+    });
+    it('runtime_Layer 2が固定migrationとloopback CIだけを検証する', () => {
+        expect(packageManifest).toContain('"test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts"');
+        expect(runtimeHarness).toContain(`const MIGRATION_SHA256 = '${createHash('sha256').update(migration).digest('hex')}'`);
+        expect(runtimeHarness.indexOf('loadMigration();')).toBeLessThan(runtimeHarness.indexOf("connect('postgres')"));
+        for (const value of ["env.UCFITNESS_POSTGRES_RUNTIME_TEST !== '1'", "url.pathname !== '/postgres'", 'DATABASE_PATTERN', "run('negative-timeline-clause'"]) expect(runtimeHarness).toContain(value);
+        for (const value of ['run: npm run test:postgres:notification-outbox', 'NOTIFICATION_OUTBOX_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres']) expect(validateWorkflow).toContain(value);
     });
 });

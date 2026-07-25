@@ -265,7 +265,7 @@ Layer 1は既知schema/default、`public.users(id)` cascade FK、ordered non-def
 
 claimは1〜20件の入力userをUUID安定順で`FOR UPDATE`し、台帳を同一transactionで作成・lockして、pendingまたは期限切れclaimedだけへ新tokenを発行する。active claim・completed・failedはskipし、返却はuser IDとclaim tokenだけとする。Layer 3はpersonalized data取得・Push送信より前にclaimし、completeは通知結果が契約を満たした場合だけ呼ぶ。端末部分失敗の契約はLayer 3で決定し、releaseは所有中の未期限切れtokenだけを失敗記録して再試行可能にする。HTTP 503の通常retryは非completed行だけを再claimし、completedを再送しない。
 
-static testはmigration SHA-256、catalog/default/FK/index/owner/RLS/ACL、lock順、stale token、未配線を固定するが、Layer 2のruntime PostgreSQL検証でfresh DB・実catalog・exact/stale・期限切れ・二接続競合・rollbackを証明するまでMERGE BLOCKEDとする。Layer 2がmainへ入る前のDB適用は禁止し、production適用には明示承認が必要である。rollbackはLayer 3を停止してactive leaseを待ってから`release→complete→claim→index→table`の順にREVOKE/DROPし、過去migrationは編集しない。
+static testはmigration SHA-256、catalog/default/FK/index/owner/RLS/ACL、lock順、stale token、未配線を固定する。Layer 2のruntime PostgreSQL検証はfresh DBで実catalog、条件を弱体化したmigration fixture、claim・owner/token fencing・5 attempt、JST日/ISO週境界、90日保持、逆順入力の二接続競合、rollback、失敗時cleanupを実行する。Layer 3のCron配線は次段とし、Layer 2がmainへ入った後もproduction適用には明示承認が必要である。rollbackはLayer 3を停止してactive leaseを待ってから`release→complete→claim→index→table`の順にREVOKE/DROPし、過去migrationは編集しない。
 
 Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
 `coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
@@ -684,6 +684,7 @@ npm run dev
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
 | `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
+| `npm run test:postgres:notification-outbox` | loopback PostgreSQLで通知outbox migration・lease・競合・rollbackを実行検証 |
 | `npm run test:postgres:push-cas` | loopback PostgreSQLでPush購読CAS migration・ACL・競合・rollbackを実行検証 |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
