@@ -1550,3 +1550,10 @@ export const runtime = "edge";
 - **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
 - **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
 - **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
+
+### LL-080: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
+
+- **事象**: 送信中に同じendpointが新しい鍵や作成時刻へ再購読された場合、古い404/410応答を根拠にendpointだけで削除すると有効なreplacementまで消し得た。migration、runtime検証、アプリ配線を1 PRへ混在させた旧PR #302はmain差分994行となり、各層の所有権と検証証拠も不明瞭になった。
+- **根本原因**: endpointを不変versionとして扱い、外部応答が証明するのは送信時に観測した購読版だけという境界をDB transactionへ反映していなかった。また、static SQL契約と実PostgreSQL競合検証を同じ完了条件として扱った。
+- **対策**: clean 3-layerへ分割し、Layer 1は主キー`id`で行を`FOR UPDATE`し、残るrow-version項目が一致した場合だけ同じ`id`を削除するservice-role限定CAS RPC migrationとSHA-256付きstatic catalog/security testを正本にする。Layer 2で実PostgreSQLのnegative catalog・exact/stale・二接続競合を検証し、Layer 3でアプリを配線する。Layer 2がmainへ入る前のproduction適用は禁止する。
+- **教訓**: 古い外部応答で可変リソースを削除するときは完全row versionをDB transaction内でcompare-and-deleteする。migration、runtime証明、利用側配線を独立PRにし、static testだけでruntime PASSを主張しない。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/__tests__/push-subscriptions-rls-migration.test.ts`
