@@ -1603,3 +1603,10 @@ export const runtime = "edge";
 - **根本原因**: user occurrenceの粗い冪等境界と、endpointごとの配信結果・外部Push Serviceへの到達を同一視した。
 - **対策**: 1端末以上成功したuser occurrenceはcompleteし、端末失敗を件数・503で観測しつつuser単位では再試行しない。0端末成功とpersonalized data / payload / Push障害だけをallowlist codeでreleaseする。complete/releaseのfalse・固定AppErrorは非成功として保持する。
 - **教訓**: user単位outboxは通常retryの重複を減らすat-least-once制御でありexactly-onceではない。Push成功からcompleteまでのcrash windowや失敗端末だけの再送を解消するには、recipient generationに加えてendpoint単位のtransactional delivery receiptが必要である。リファレンス: `app/api/cron/weekly-summary/route.ts`
+
+### LL-088: queue型mockはowner/token fencingと並行claimを証明しない
+
+- **事象**: 週次outbox route testが固定claim tokenと常時成功するcomplete/releaseを返し、2回のGETも直列実行していたため、user・owner・token・failure codeの誤配線や同時実行の二重送信があってもPASSし得た。
+- **根本原因**: 期待する戻り値を順番にqueueすることをDB台帳の状態遷移検証と同一視し、routeが渡すfence引数をmock側で照合していなかった。
+- **対策**: `(notification type, occurrence, user)`ごとのpending/claimed/completed/failed、attempt、owner、token、release codeを保持するstateful mockへ置換し、requestごとのUUID、claimごとの新token、exact complete/release、stale fence、deferred Push中の真の並行GETを検証する。
+- **教訓**: lock・lease・冪等性を扱うroute testは結果queueだけで完了しない。mockが本番state machineの最小不変条件を実行し、wrong user/owner/token/codeをfalseにし、重なるrequestを同時に走らせて初めて配線の回帰guardになる。リファレンス: `app/api/cron/weekly-summary/route.test.ts`
