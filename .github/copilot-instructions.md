@@ -1602,8 +1602,8 @@ export const runtime = "edge";
 - **根本原因**: endpointを削除権限そのものとして扱い、DB正本のcurrent subscription ID、recipient generation、ownership versionを同じrelease判定へ結び付けていなかった。
 - **対策・教訓**: serverはsession userからcurrent rowを全列限定取得し、canonical keyとobserved IDをread RPCへ渡して得たgeneration/versionだけでrelease RPCを1回呼ぶ。missingは冪等成功、stale fenceは409、authority未作成のlegacy行は全列一致CASへ分離し、Layer 3Bはrelease成功後だけbrowser subscriptionを解除する。Clientからuser IDやfenceを受け取らず、broad direct deleteへ戻さない。
 
-### LL-089: version tombstoneだけでは未確定の旧POST応答を拒否できない
+### LL-089: tab内tokenだけではaccount lifecycleと共有購読の競合を閉じられない
 
-- **事象**: logout clear時点で既知versionがNでも、clear前に開始した旧POSTが後からN+1以上を返すと、version比較だけでは旧受信者generationを再設定し得た。
-- **根本原因**: DBで将来確定するversionをSWの既知high-water markだけで判定し、どのclearから始まったPOSTかを結び付けていなかった。
-- **対策・教訓**: durable stateは`generation|null + version`に限定しつつ、SW内でclearごとの非永続transition tokenを発行する。message mutationとpush表示を直列化し、setは最新token一致またはactive stateへのexact idempotencyだけを許可する。SW再起動でtokenを失った応答はfail closedで再試行させる。
+- **事象**: logout clear後の旧POSTをSW tokenで拒否しても、別tabのsave/release、account switch、古いSW protocol、共有PushSubscriptionのunsubscribeが同時に進むと新ownerの購読を解除または旧状態を再表示し得た。
+- **根本原因**: SW message順序だけを直列化し、browser tabs全体のaccount transition、NextAuth session遷移、protocol readinessを同じ排他境界へ含めていなかった。
+- **対策・教訓**: Baseline 2022のWeb Locksで全transitionをorigin-wide排他化し、logoutはclear→redirectなしsignOut→clear→navigate、releaseはtoken再検証後だけunsubscribeする。global session lifecycleはunauthenticatedでclear、authenticated初回/ID変更で既存購読を必ずrebindし、user IDを永続化・ログ出力しない。SW/client/APIは固定protocol versionを相互検証し、旧/不明protocolは購読解除・unregister・cache削除でquarantineする。

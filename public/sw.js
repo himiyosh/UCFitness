@@ -8,57 +8,61 @@ const PUSH_FALLBACKS = {
     body: "You have a new update. Open the app to view it.",
   },
 };
-const RECIPIENT_CACHE = "ucfitness-push-recipient-v1";
-const RECIPIENT_CACHE_KEY = new URL("/.ucfitness/push-recipient-state", self.location.origin).href;
-const RECIPIENT_MESSAGE_SOURCE = "ucfitness-push-recipient-v1";
+const RECIPIENT_CACHE = "ucfitness-push-recipient-v1",
+  RECIPIENT_CACHE_KEY = new URL("/.ucfitness/push-recipient-state", self.location.origin).href,
+  RECIPIENT_MESSAGE_SOURCE = "ucfitness-push-recipient-v1", RECIPIENT_PROTOCOL_VERSION = 2;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PERSONALIZED_TAGS = new Set(["group-challenge-reward", "step-reminder", "test-notification", "ucfitness-badges", "weekly-summary"]);
 const PERSONALIZED_TYPES = new Set(["badge", "group-challenge-reward", "health", "step-reminder", "weekly-summary"]);
-const RECIPIENT_MESSAGE_TYPES = new Set(["push-recipient:set", "push-recipient:clear", "push-recipient:get"]);
-let recipientOperation = Promise.resolve();
-let recipientTransitionToken = null;
+const RECIPIENT_MESSAGE_TYPES = new Set(["push-recipient:set", "push-recipient:clear", "push-recipient:get", "push-recipient:verify"]);
+let recipientOperation = Promise.resolve(), recipientTransitionToken = null;
+const emptyRecipientState = (recipientVersion = 0) => ({ recipientGeneration: null, recipientVersion,
+  recipientProtocolVersion: RECIPIENT_PROTOCOL_VERSION, tombstone: true });
 function isRecord(value) { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function isRecipientState(value) {
-  return isRecord(value) && Object.keys(value).length === 2 &&
-    (value.recipientGeneration === null ||
-      typeof value.recipientGeneration === "string" && UUID_PATTERN.test(value.recipientGeneration)) &&
-    Number.isSafeInteger(value.recipientVersion) && value.recipientVersion >= 0;
-}
+  if (!isRecord(value) || Object.keys(value).length !== 4 || value.recipientProtocolVersion !== RECIPIENT_PROTOCOL_VERSION ||
+    typeof value.tombstone !== "boolean" || !Number.isSafeInteger(value.recipientVersion) || value.recipientVersion < 0) return false;
+  return value.tombstone ? value.recipientGeneration === null :
+    typeof value.recipientGeneration === "string" && UUID_PATTERN.test(value.recipientGeneration); }
 async function readRecipientState() {
   const cache = await caches.open(RECIPIENT_CACHE);
   const response = await cache.match(RECIPIENT_CACHE_KEY);
-  if (!response) return { recipientGeneration: null, recipientVersion: 0 };
+  if (!response) return emptyRecipientState();
   const state = await response.json();
-  if (!isRecipientState(state)) throw new Error("Invalid recipient state"); return state;
-}
+  if (!isRecipientState(state)) return emptyRecipientState(); return state; }
 async function writeRecipientState(state) {
   const cache = await caches.open(RECIPIENT_CACHE);
-  await cache.put(RECIPIENT_CACHE_KEY, new Response(JSON.stringify(state), { headers: { "Content-Type": "application/json" } }));
-}
+  await cache.put(RECIPIENT_CACHE_KEY, new Response(JSON.stringify(state), { headers: { "Content-Type": "application/json" } })); }
 function recipientReply(port, ok, state, code, transitionToken = null) {
-  port.postMessage({ source: RECIPIENT_MESSAGE_SOURCE, ok, state, transitionToken, ...(code ? { code } : {}) });
-}
+  port.postMessage({ source: RECIPIENT_MESSAGE_SOURCE, recipientProtocolVersion: RECIPIENT_PROTOCOL_VERSION,
+    ok, state, transitionToken, ...(code ? { code } : {}) }); }
 async function handleRecipientMessage(event) {
   const port = event.ports?.[0];
   if (!port) return;
   const message = event.data;
   try {
-    if (!isRecord(message) || message.source !== RECIPIENT_MESSAGE_SOURCE || !RECIPIENT_MESSAGE_TYPES.has(message.type))
+    if (!isRecord(message) || message.source !== RECIPIENT_MESSAGE_SOURCE ||
+      message.recipientProtocolVersion !== RECIPIENT_PROTOCOL_VERSION || !RECIPIENT_MESSAGE_TYPES.has(message.type))
       return recipientReply(port, false, null, "INVALID_MESSAGE");
     const current = await readRecipientState();
     if (message.type === "push-recipient:get") return recipientReply(port, true, current);
     if (message.type === "push-recipient:clear") {
-      const cleared = { recipientGeneration: null, recipientVersion: current.recipientVersion };
+      const cleared = emptyRecipientState(current.recipientVersion);
       await writeRecipientState(cleared);
       recipientTransitionToken = crypto.randomUUID().toLowerCase();
       return recipientReply(port, true, cleared, null, recipientTransitionToken);
     }
+    if (message.type === "push-recipient:verify") {
+      if (current.tombstone && message.transitionToken === recipientTransitionToken &&
+        typeof message.transitionToken === "string" && UUID_PATTERN.test(message.transitionToken)) {
+        recipientTransitionToken = null; return recipientReply(port, true, current);
+      }
+      return recipientReply(port, false, current, "STALE_TRANSITION");
+    }
     if (!isRecipientState(message.state) || message.state.recipientGeneration === null)
       return recipientReply(port, false, current, "INVALID_STATE");
-    const next = {
-      recipientGeneration: message.state.recipientGeneration.toLowerCase(),
-      recipientVersion: message.state.recipientVersion,
-    };
+    const next = { recipientGeneration: message.state.recipientGeneration.toLowerCase(),
+      recipientVersion: message.state.recipientVersion, recipientProtocolVersion: RECIPIENT_PROTOCOL_VERSION, tombstone: false };
     if (next.recipientVersion === current.recipientVersion &&
       next.recipientGeneration === current.recipientGeneration)
       return recipientReply(port, true, current);
@@ -67,16 +71,10 @@ async function handleRecipientMessage(event) {
     if (next.recipientVersion < current.recipientVersion ||
       next.recipientVersion === current.recipientVersion &&
       next.recipientGeneration !== current.recipientGeneration) return recipientReply(port, false, current, "STALE_STATE");
-    await writeRecipientState(next);
-    recipientTransitionToken = null;
-    recipientReply(port, true, next);
-  } catch {
-    recipientReply(port, false, null, "PERSISTENCE_FAILED");
-  }
-}
+    await writeRecipientState(next); recipientTransitionToken = null; recipientReply(port, true, next);
+  } catch { recipientReply(port, false, null, "PERSISTENCE_FAILED"); } }
 function enqueueRecipientOperation(operation) {
-  const current = recipientOperation.then(operation); recipientOperation = current.catch(() => undefined); return current;
-}
+  const current = recipientOperation.then(operation); recipientOperation = current.catch(() => undefined); return current; }
 
 function normalizeLocale(locale) {
   return locale === "en" ? "en" : "ja";
@@ -114,12 +112,15 @@ async function handlePush(event) {
   const rawTag = typeof payload.tag === "string" ? payload.tag : null;
   const tag = rawTag && /^[A-Za-z0-9_-]{1,32}$/.test(rawTag) ? rawTag : "ucfitness-update";
   const personalized = PERSONALIZED_TAGS.has(rawTag) || PERSONALIZED_TYPES.has(payload.type) ||
-    Object.hasOwn(payload, "recipientGeneration") || Object.hasOwn(payload, "recipientVersion");
+    Object.hasOwn(payload, "recipientGeneration") || Object.hasOwn(payload, "recipientVersion") ||
+    Object.hasOwn(payload, "recipientProtocolVersion");
   if (personalized) {
     const fence = {
       recipientGeneration: typeof payload.recipientGeneration === "string"
         ? payload.recipientGeneration.toLowerCase() : null,
       recipientVersion: payload.recipientVersion,
+      recipientProtocolVersion: payload.recipientProtocolVersion,
+      tombstone: false,
     };
     if (!isRecipientState(fence) || fence.recipientGeneration === null)
       return console.warn("Personalized push dropped: invalid recipient fence");

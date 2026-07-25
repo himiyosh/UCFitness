@@ -18,7 +18,7 @@ if (!KEY) throw new Error('Expected canonical endpoint fixture');
 const saveOptions = { userId: USER, endpoint: ENDPOINT, ownershipKey: KEY, p256dh: P256DH, auth: AUTH, userAgent: UA }, saveRow = { subscription_id: SUB_A, stored_user_id: USER, stored_endpoint: ENDPOINT, stored_p256dh: P256DH, stored_auth: AUTH, stored_user_agent: UA, stored_created_at: '2026-07-25T00:00:00Z', recipient_generation: GEN_A, ownership_version: 7 };
 const current = { id: SUB_A, user_id: USER, endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH, user_agent: UA, created_at: saveRow.stored_created_at }, releaseOptions = { userId: USER, endpoint: ENDPOINT, ownershipKey: KEY, recipientGeneration: GEN_A, ownershipVersion: 7 };
 const readOptions = { userId: USER, observations: [{ subscriptionId: SUB_B, ownershipKey: `${KEY}/b` }, { subscriptionId: SUB_A, ownershipKey: KEY }, { subscriptionId: SUB_A, ownershipKey: KEY }] };
-const post = (endpoint = ENDPOINT, p256dh = P256DH, auth = AUTH, userAgent = UA) => new Request('http://localhost/api/push/subscribe', { method: 'POST', headers: { 'user-agent': userAgent }, body: JSON.stringify({ endpoint, keys: { p256dh, auth } }) });
+const post = (endpoint = ENDPOINT, p256dh = P256DH, auth = AUTH, userAgent = UA, recipientProtocolVersion = 2) => new Request('http://localhost/api/push/subscribe', { method: 'POST', headers: { 'user-agent': userAgent }, body: JSON.stringify({ endpoint, keys: { p256dh, auth }, recipientProtocolVersion }) });
 const remove = () => new Request('http://localhost/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint: ENDPOINT }) });
 function lookup(data: unknown, error: unknown = null): void { mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data, error }) }) }) }) }); }
 function list(data: unknown, error: unknown = null): void { mocks.from.mockReturnValue({ select: () => ({ eq: () => Promise.resolve({ data, error }) }) }); }
@@ -83,7 +83,7 @@ describe('POST/DELETE /api/push/subscribe', () => {
     it('POST_既存応答とgeneration/versionを返しdirect writerを使わない', async () => {
         list([current]); mocks.rpc.mockResolvedValue({ data: [saveRow], error: null });
         const response = await POST(post() as never);
-        expect(await response.json()).toEqual({ success: true, pruned: 0, recipientGeneration: GEN_A, recipientVersion: 7 });
+        expect(await response.json()).toEqual({ success: true, pruned: 0, recipientGeneration: GEN_A, recipientVersion: 7, recipientProtocolVersion: 2 });
         expect(mocks.rpc).toHaveBeenCalledTimes(1); expect(mocks.from).toHaveBeenCalledTimes(1);
     });
     it('POST_同一UAの古い行をCAS削除する', async () => {
@@ -95,7 +95,7 @@ describe('POST/DELETE /api/push/subscribe', () => {
         expect(mocks.reportError).not.toHaveBeenCalled();
     });
     it('POST_不正endpoint・鍵・UA_RPC0で拒否する', async () => {
-        for (const request of [post(ENDPOINT, 'AA'), post(ENDPOINT, P256DH, AUTH, 'x'.repeat(2049))])
+        for (const request of [post(ENDPOINT, 'AA'), post(ENDPOINT, P256DH, AUTH, 'x'.repeat(2049)), post(ENDPOINT, P256DH, AUTH, UA, 1)])
             expect((await POST(request as never)).status).toBe(400);
         expect(mocks.rpc).not.toHaveBeenCalled();
     });

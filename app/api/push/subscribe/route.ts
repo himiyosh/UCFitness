@@ -10,6 +10,7 @@ import { isRecord } from '@/lib/validation';
 
 interface PushSubscriptionRequest {
     endpoint: string;
+    recipientProtocolVersion: number;
     keys: {
         p256dh: string;
         auth: string;
@@ -19,6 +20,7 @@ interface PushSubscriptionRequest {
 function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionRequest {
     if (!isRecord(value) || !isRecord(value.keys)) return false;
     return typeof value.endpoint === 'string'
+        && value.recipientProtocolVersion === 2
         && typeof value.keys.p256dh === 'string'
         && typeof value.keys.auth === 'string';
 }
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
         return NextResponse.json({
             success: true, pruned, recipientGeneration: saved.recipientGeneration,
-            recipientVersion: saved.ownershipVersion,
+            recipientVersion: saved.ownershipVersion, recipientProtocolVersion: 2,
         });
     } catch (error: unknown) {
         return failure('push/subscribe:save', error, 'Failed to save subscription', 'PUSH_SUBSCRIPTION_SAVE_FAILED');

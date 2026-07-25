@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import {
-    getPushRecipientState,
     releasePushSubscriptionForCurrentRecipient,
     savePushSubscriptionForCurrentRecipient,
+    synchronizePushRecipientForSession,
 } from '@/lib/push-recipient-state';
 
 // Helper to convert VAPID key
@@ -41,9 +41,8 @@ export function useWebPush() {
     const registerServiceWorker = async () => {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js');
-            const sub = await registration.pushManager.getSubscription();
-            const recipient = await getPushRecipientState();
-            setSubscription(recipient?.recipientGeneration ? sub : null);
+            await registration.update();
+            setSubscription(await synchronizePushRecipientForSession());
         } catch (error: unknown) {
             console.error('Service Worker registration failed');
         }

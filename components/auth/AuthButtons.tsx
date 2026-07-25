@@ -9,6 +9,7 @@ import {
     AUTH_CALLBACK_STORAGE_KEY,
     getSafeAuthCallbackPath,
 } from '@/lib/auth-flow';
+import { runBeforePushRecipientAccountTransition } from '@/lib/push-recipient-state';
 
 interface AuthButtonsProps {
     callbackUrl?: string;
@@ -20,6 +21,7 @@ export default function AuthButtons({ callbackUrl, label }: AuthButtonsProps) {
     const t = useTranslations('Common');
     const locale = useLocale();
     const [loading, setLoading] = useState(false);
+    const [failed, setFailed] = useState(false);
     const safeCallbackUrl = callbackUrl
         ? getSafeAuthCallbackPath(callbackUrl, locale)
         : undefined;
@@ -27,13 +29,15 @@ export default function AuthButtons({ callbackUrl, label }: AuthButtonsProps) {
     const handleSignIn = useCallback(async (): Promise<void> => {
         if (loading) return;
         setLoading(true);
+        setFailed(false);
         try {
-            if (safeCallbackUrl) {
-                window.sessionStorage.setItem(AUTH_CALLBACK_STORAGE_KEY, safeCallbackUrl);
-            } else {
-                window.sessionStorage.removeItem(AUTH_CALLBACK_STORAGE_KEY);
-            }
-            await signIn('fitbit', safeCallbackUrl ? { callbackUrl: safeCallbackUrl } : undefined);
+            await runBeforePushRecipientAccountTransition(async () => {
+                if (safeCallbackUrl) window.sessionStorage.setItem(AUTH_CALLBACK_STORAGE_KEY, safeCallbackUrl);
+                else window.sessionStorage.removeItem(AUTH_CALLBACK_STORAGE_KEY);
+                await signIn('fitbit', safeCallbackUrl ? { callbackUrl: safeCallbackUrl } : undefined);
+            });
+        } catch {
+            setFailed(true);
         } finally {
             setLoading(false);
         }
@@ -43,12 +47,12 @@ export default function AuthButtons({ callbackUrl, label }: AuthButtonsProps) {
 
 
     return (
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-2">
             <button
                 onClick={handleSignIn}
-                disabled={loading}
                 aria-busy={loading}
-                className="inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--color-primary-solid,#1d4ed8)] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-professional-soft)] transition-colors hover:bg-[var(--color-inverse-surface,#111827)] disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                aria-disabled={loading}
+                className="inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--color-primary-solid,#1d4ed8)] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-professional-soft)] transition-colors hover:bg-[var(--color-inverse-surface,#111827)] aria-disabled:cursor-wait aria-disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
             >
                 {loading && (
                     <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -58,6 +62,7 @@ export default function AuthButtons({ callbackUrl, label }: AuthButtonsProps) {
                 )}
                 {loading ? t('loading') : (label ?? t('signInWithFitbit'))}
             </button>
+            {failed && <p className="max-w-sm text-sm font-semibold text-[var(--color-danger)]" role="alert">{t('secureAuthTransitionError')}</p>}
         </div>
     );
 }

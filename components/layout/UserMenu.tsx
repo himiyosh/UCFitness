@@ -83,10 +83,13 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
         if (signOutState === 'clearing') return;
         setSignOutState('clearing');
         try {
-            await runAfterPushRecipientClear(async () => {
-                await signOut();
+            await runAfterPushRecipientClear(
+                () => signOut({ redirect: false }),
+                (result) => {
                 setIsOpen(false);
-            });
+                    window.location.assign(result.url);
+                },
+            );
         } catch {
             setSignOutState('error');
         }

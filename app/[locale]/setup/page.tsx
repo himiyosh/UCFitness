@@ -81,7 +81,10 @@ export default function SetupPage() {
     };
 
     const signOutSecurely = async (): Promise<void> => {
-        await runAfterPushRecipientClear(async () => { await signOut({ callbackUrl: '/' }); })
+        await runAfterPushRecipientClear(
+            () => signOut({ callbackUrl: '/', redirect: false }),
+            (result) => window.location.assign(result.url),
+        )
             .catch(() => { throw new Error(t('secureSignOutError')); });
     };
 

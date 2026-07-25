@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 
 import {
-    getPushRecipientState,
     releasePushSubscriptionForCurrentRecipient,
     savePushSubscriptionForCurrentRecipient,
+    synchronizePushRecipientForSession,
 } from '@/lib/push-recipient-state';
 
 import { useToast } from '@/components/ui/Toast';
@@ -37,9 +37,8 @@ export default function PushSubscriptionButton() {
     const registerServiceWorker = useCallback(async () => {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js');
-            const sub = await registration.pushManager.getSubscription();
-            const recipient = await getPushRecipientState();
-            setSubscription(recipient?.recipientGeneration ? sub : null);
+            await registration.update();
+            setSubscription(await synchronizePushRecipientForSession());
         } catch (error: unknown) {
             void error;
         }

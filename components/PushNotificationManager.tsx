@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 
 import {
-    getPushRecipientState,
     releasePushSubscriptionForCurrentRecipient,
     savePushSubscriptionForCurrentRecipient,
+    synchronizePushRecipientForSession,
 } from '@/lib/push-recipient-state';
 
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -29,9 +29,8 @@ export default function PushNotificationManager() {
     async function registerServiceWorker() {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js');
-            const sub = await registration.pushManager.getSubscription();
-            const recipient = await getPushRecipientState();
-            setSubscription(recipient?.recipientGeneration ? sub : null);
+            await registration.update();
+            setSubscription(await synchronizePushRecipientForSession());
         } catch (error) {
             console.error('Service Worker registration failed:', error);
         }
