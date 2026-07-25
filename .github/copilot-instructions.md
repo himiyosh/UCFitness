@@ -1557,3 +1557,42 @@ export const runtime = "edge";
 - **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
 - **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
 - **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
+
+### LL-080: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
+
+- **事象**: 送信中に同じendpointが新しい鍵や作成時刻へ再購読された場合、古い404/410応答を根拠にendpointだけで削除すると有効なreplacementまで消し得た。migration、runtime検証、アプリ配線を1 PRへ混在させた旧PR #302はmain差分994行となり、各層の所有権と検証証拠も不明瞭になった。
+- **根本原因**: endpointを不変versionとして扱い、外部応答が証明するのは送信時に観測した購読版だけという境界をDB transactionへ反映していなかった。また、static SQL契約と実PostgreSQL競合検証を同じ完了条件として扱った。
+- **対策**: clean 3-layerへ分割し、Layer 1は主キー`id`で行を`FOR UPDATE`し、残るrow-version項目が一致した場合だけ同じ`id`を削除するservice-role限定CAS RPC migrationとSHA-256付きstatic catalog/security testを正本にする。Layer 2で実PostgreSQLのnegative catalog・exact/stale・二接続競合を検証し、Layer 3でアプリを配線する。Layer 2がmainへ入る前のproduction適用は禁止する。
+- **教訓**: 古い外部応答で可変リソースを削除するときは完全row versionをDB transaction内でcompare-and-deleteする。migration、runtime証明、利用側配線を独立PRにし、static testだけでruntime PASSを主張しない。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/__tests__/push-subscriptions-rls-migration.test.ts`
+
+### LL-082: migrationのtext testだけでは実catalogとrow lock競合を証明できない
+
+- **事象**: Push購読CAS migrationは文字列検査を通っても、default式、constraint backing index、個別ACL、`SECURITY DEFINER`属性、2 transactionの待機順序を実PostgreSQLで検証できていなかった。
+- **根本原因**: SQL sourceに期待する語があることと、PostgreSQL catalogへ期待どおり反映され並行transactionで安全に動くことを同一視した。
+- **対策・教訓**: migration bytesのSHA-256をDB接続前に固定し、digest固定PostgreSQL serviceへ実適用してunique列順・FORCE RLSを含むfresh database negative、role別実行、rollback、2接続lock barrierを検証する。接続先はquery/hashなしのloopback maintenance DB・固定test admin・明示flagに限定し、既存roleがあるclusterを拒否する。作成roleとrandom allowlist名のDBだけを失敗時も削除し、workflowの全`uses:`を完全長SHAで固定する。リファレンス: `scripts/test-push-cas-postgres.ts`, `.github/workflows/validate.yml`
+
+### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する
+
+- **事象**: Weekly summaryとstep reminderはbatch途中の503や並行Cronで、既に成功したユーザーを同じJST occurrenceとして識別できず再送し得た。
+- **根本原因**: 配信結果をrequest内カウンターだけで管理し、user単位の永続idempotency key、lease所有権、完了状態がなかった。
+- **対策**: `(notification_type, occurrence_key, user_id)`一意のDB outboxとowner/token付きlease RPCをLayer 1にし、personalized data取得前のclaim、契約成立後だけのcomplete、所有中だけのreleaseをLayer 3契約にする。
+- **教訓**: 外部通知の再試行はHTTP requestではなく論理occurrence単位で永続化する。static migration、runtime競合検証、アプリ配線をclean 3-layerへ分け、Layer 2前のproduction適用を禁止する。
+
+### LL-084: outboxのcheck件数だけでは制約弱体化を検出できない
+
+- **事象**: migration postconditionがcheck constraintの件数だけを確認すると、90日保持を89日へ弱めても同じ件数のまま適用できる。
+- **根本原因**: catalog形状の存在確認と、制約式が守る業務境界の実行確認を同一視した。
+- **対策・教訓**: digest固定に加え、条件を弱めたmigrationをfresh DBへ適用して境界insertが検出されることを確認する。並行claimは任意時間待機でなく実lock待機を観測し、逆順入力でも二重claimとdeadlockがないことを証明する。リファレンス: `scripts/test-notification-outbox-postgres.ts`
+
+### LL-085: endpoint所有権とpayload世代を分離すると遅延Pushが旧ユーザーへ届く
+
+- **事象**: Web Push送信後のowner移転に加え、host case・default port・percent encoding・fragment aliasをraw文字列hashすると同一endpointが別authority/lockになり、generationを安全に取得する非更新経路もなかった。
+- **根本原因**: URL正規化をDBのraw endpoint hashへ暗黙依存し、legacy rowからownerを推測してbackfillし、save RPCをgeneration readにも流用する設計だった。
+- **対策**: Layer 3共有helperのcanonical ownership keyだけをdigest/lockへ使い、legacyは全隔離する。authorityへcurrent subscription IDを結び、owner・digest・ID・保存行userのexact一致だけを返すservice-role read RPCを分離する。
+- **教訓**: SQLへRFC 3986正規化を再実装しない。canonical key生成とraw→key consistencyは共有アプリ境界で検証し、generation authorityがない購読へpersonalized payloadを送らない。
+
+### LL-086: RPCの静的型だけでは実行時shapeと秘匿境界を保証できない
+
+- **事象**: 通知outbox RPCの引数・戻り値を型定義しても、PostgRESTの不正shape、生DB error、stale owner/tokenを呼出routeへ露出または成功扱いし得た。
+- **根本原因**: compile-timeのRPC型をruntime validationと同一視し、DB境界でのunknown parse、固定エラー変換、semantic falseの契約を一箇所へ集約していなかった。
+- **対策・教訓**: wrapper先頭を`import 'server-only'`でcompiler境界化し、exact RPC名/Args型を実使用して各呼出を1回に固定し、返却値はunknownから厳格parseする。日/ISO週keyは4桁年のUTC文字列をparse/roundtripし、0〜99年を`Date.UTC`へ渡さない。生Errorのidentity/name/message/stack/cause/context/nested fields・details・hint・code・UUIDを直接巡回し、内部`reportError` 0回かつ固定`AppError`だけを上位routeへthrowする。空claimは正常、complete/releaseのfalseはstale等の非成功として維持し、全tracked TS/TSXでproduction import 0件を機械検査する。リファレンス: `lib/services/notification-delivery-outbox.ts`, `lib/services/notification-delivery-outbox.test.ts`
