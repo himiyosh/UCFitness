@@ -277,6 +277,10 @@ static testはmigration SHA-256、catalog/default/FK/index/owner/RLS/ACL、lock�
 
 Layer 3Aは`lib/services/notification-delivery-outbox.ts`のserver-only typed wrapperだけを提供する。先頭の`import 'server-only'`をNext compiler境界とし、exact RPC引数・1回呼出、最大20 UUIDの安定dedup、4桁年をUTC parse/roundtripするJST日/ISO週key、unknown返却shape、owner/token fencing、固定release failure code、内部`reportError`なし、raw Error object graphとUUIDを含まない固定`AppError`を検証する。全tracked TS/TSXのproduction importは0件でCron callsiteはまだinert、route配線はLayers 3B/Cで別途行う。Layer 1 migrationはproduction未適用のため、このwrapper追加をDB利用可能性や実配信の根拠にしない。
 
+Layer 3Bはweekly summaryだけを配線し、前週JSTの開始日から`weekly-summary` occurrenceを生成して、完全な購読snapshotで得た候補をUUID安定順の最大20件ずつpersonalized readより先にclaimする。claimされたuserだけプロフィール・歩数・UCを読み、1端末以上へ成功した場合は端末失敗数を観測・503へ反映しつつuser occurrenceをcompleteして通常retryでは再送しない。0端末成功、source/payload/Push障害、実送信なしはallowlist codeでreleaseし、complete/releaseのfalseまたは固定`AppError`は非成功としてroute全体を503にする。Push成功後からcomplete確定前にprocessが停止する区間はat-least-onceであり、exactly-onceを主張しない。将来厳密化する場合はendpoint単位のtransactional delivery receiptが必要である。
+
+Layer 3B追加後もPR #300の3 blockerであるrow-version CAS＋runtime PostgreSQL、recipient-generation配信privacy stack、notification outboxを削除しない。本stacked PRはDraft / MERGE BLOCKEDを維持し、production outbox RPCのread-only availability確認とrecipient-generation Layer 3が完了するまでmerge・deployしない。production migration applyと実Push送信は別途明示承認を必須とする。
+
 Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
 `coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
 歩数再計算・ログインボーナス・backfillの`INSERT`/`UPDATE`/`DELETE`を使う。原子RPCも

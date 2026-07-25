@@ -1596,3 +1596,17 @@ export const runtime = "edge";
 - **事象**: 通知outbox RPCの引数・戻り値を型定義しても、PostgRESTの不正shape、生DB error、stale owner/tokenを呼出routeへ露出または成功扱いし得た。
 - **根本原因**: compile-timeのRPC型をruntime validationと同一視し、DB境界でのunknown parse、固定エラー変換、semantic falseの契約を一箇所へ集約していなかった。
 - **対策・教訓**: wrapper先頭を`import 'server-only'`でcompiler境界化し、exact RPC名/Args型を実使用して各呼出を1回に固定し、返却値はunknownから厳格parseする。日/ISO週keyは4桁年のUTC文字列をparse/roundtripし、0〜99年を`Date.UTC`へ渡さない。生Errorのidentity/name/message/stack/cause/context/nested fields・details・hint・code・UUIDを直接巡回し、内部`reportError` 0回かつ固定`AppError`だけを上位routeへthrowする。空claimは正常、complete/releaseのfalseはstale等の非成功として維持し、全tracked TS/TSXでproduction import 0件を機械検査する。リファレンス: `lib/services/notification-delivery-outbox.ts`, `lib/services/notification-delivery-outbox.test.ts`
+
+### LL-087: user単位outboxの完了は端末単位のexactly-onceではない
+
+- **事象**: 複数端末の一部だけへ週次通知が届いた場合にuser occurrenceをreleaseすると、通常retryで成功済み端末へ同じ通知を再送する。一方、1端末成功後にcomplete前でprocessが停止すると、user台帳だけでは再送を防げない。
+- **根本原因**: user occurrenceの粗い冪等境界と、endpointごとの配信結果・外部Push Serviceへの到達を同一視した。
+- **対策**: 1端末以上成功したuser occurrenceはcompleteし、端末失敗を件数・503で観測しつつuser単位では再試行しない。0端末成功とpersonalized data / payload / Push障害だけをallowlist codeでreleaseする。complete/releaseのfalse・固定AppErrorは非成功として保持する。
+- **教訓**: user単位outboxは通常retryの重複を減らすat-least-once制御でありexactly-onceではない。Push成功からcompleteまでのcrash windowや失敗端末だけの再送を解消するには、recipient generationに加えてendpoint単位のtransactional delivery receiptが必要である。リファレンス: `app/api/cron/weekly-summary/route.ts`
+
+### LL-088: queue型mockはowner/token fencingと並行claimを証明しない
+
+- **事象**: 週次outbox route testが固定claim tokenと常時成功するcomplete/releaseを返し、2回のGETも直列実行していたため、user・owner・token・failure codeの誤配線や同時実行の二重送信があってもPASSし得た。
+- **根本原因**: 期待する戻り値を順番にqueueすることをDB台帳の状態遷移検証と同一視し、routeが渡すfence引数をmock側で照合していなかった。
+- **対策**: `(notification type, occurrence, user)`ごとのpending/claimed/completed/failed、attempt、owner、token、release codeを保持するstateful mockへ置換し、requestごとのUUID、claimごとの新token、exact complete/release、stale fence、deferred Push中の真の並行GETを検証する。
+- **教訓**: lock・lease・冪等性を扱うroute testは結果queueだけで完了しない。mockが本番state machineの最小不変条件を実行し、wrong user/owner/token/codeをfalseにし、重なるrequestを同時に走らせて初めて配線の回帰guardになる。リファレンス: `app/api/cron/weekly-summary/route.test.ts`

@@ -89,10 +89,15 @@ describe('notification delivery outbox Layer 1 migration', () => {
         expect(readme).toContain('Layer 2のruntime PostgreSQL検証');
         expect(readme).toContain('production適用には明示承認が必要');
         expect(readme).toContain('completeは通知結果が契約を満たした場合だけ');
+        expect(readme).toContain('1端末以上へ成功した場合');
+        expect(readme).toContain('at-least-once');
         expect(readme).toContain('release→complete→claim→index→table');
         expect(instructions).toContain('### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する');
         expect(wrapperSource).toMatch(/^import 'server-only';/);
-        expect(outboxImporters).toEqual(['lib/services/notification-delivery-outbox.test.ts']);
+        expect(outboxImporters).toEqual([
+            'app/api/cron/weekly-summary/route.ts',
+            'lib/services/notification-delivery-outbox.test.ts',
+        ]);
     });
     it('runtime_Layer 2が固定migrationとloopback CIだけを検証する', () => {
         expect(packageManifest).toContain('"test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts"');
