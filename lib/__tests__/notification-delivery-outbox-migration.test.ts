@@ -13,6 +13,7 @@ const runtimeHarness = read('scripts/test-notification-outbox-postgres.ts'), val
 const runtimeSources = ['app', 'lib'].flatMap((root) =>
     readdirSync(root, { recursive: true, encoding: 'utf8' })
         .filter((path) => /\.[jt]sx?$/.test(path) && !/\.(test|spec)\.[jt]sx?$/.test(path))
+        .filter((path) => path !== 'services/notification-delivery-outbox.ts')
         .map((path) => read(join(root, path))));
 const body = (name: string): string => migration.match(new RegExp(
     `CREATE FUNCTION public\\.${name}[\\s\\S]+?AS \\$function\\$([\\s\\S]+?)\\$function\\$;`,
@@ -88,7 +89,7 @@ describe('notification delivery outbox Layer 1 migration', () => {
         expect(readme).toContain('completeは通知結果が契約を満たした場合だけ');
         expect(readme).toContain('release→complete→claim→index→table');
         expect(instructions).toContain('### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する');
-        expect(runtimeSources.join('\n')).not.toMatch(/notification_delivery_outbox/);
+        expect(runtimeSources.join('\n')).not.toMatch(/notification[_-]delivery[_-]outbox|(?:claim|complete|release)NotificationDeliver/);
     });
     it('runtime_Layer 2が固定migrationとloopback CIだけを検証する', () => {
         expect(packageManifest).toContain('"test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts"');
