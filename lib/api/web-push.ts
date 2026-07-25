@@ -1,8 +1,13 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
+import { getPushEndpointOwnershipKey } from '@/lib/push-endpoint';
+import { isValidUUID } from '@/lib/validation';
 
-export interface PushPayload {
+export const REQUIRED_RECIPIENT_PROTOCOL_VERSION = 1 as const;
+const PUSH_RECIPIENT_AUTHORITY = Symbol('pushRecipientAuthority');
+
+interface PushPayloadBase {
     title: string;
     body: string;
     icon?: string;
@@ -10,6 +15,27 @@ export interface PushPayload {
     locale?: 'ja' | 'en';
     tag?: string;
 }
+
+export interface GenericPushPayload extends PushPayloadBase {
+    recipientGeneration?: never;
+    recipientVersion?: never;
+    recipientProtocolVersion?: never;
+}
+
+interface AuthorityPushPayload extends PushPayloadBase {
+    readonly [PUSH_RECIPIENT_AUTHORITY]: true;
+    recipientGeneration: string;
+    recipientVersion: number;
+    recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION;
+}
+
+export interface PushRecipientAuthority {
+    recipientGeneration: string;
+    recipientVersion: number;
+    recipientProtocolVersion: typeof REQUIRED_RECIPIENT_PROTOCOL_VERSION;
+}
+
+export type PushPayload = GenericPushPayload | AuthorityPushPayload;
 
 export interface PushSubscriptionData {
     endpoint: string;
@@ -43,13 +69,6 @@ export interface PushDeliverySummary {
     skippedDuplicates: number;
 }
 
-const PUSH_ENDPOINT_HOSTS = [
-    'fcm.googleapis.com',
-    'updates.push.services.mozilla.com',
-    'web.push.apple.com',
-    'notify.windows.com',
-] as const;
-
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 const TOPIC_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
 const AES_128_GCM_RECORD_SIZE = 4096;
@@ -63,17 +82,82 @@ const MAX_PAYLOAD_BYTES = AES_128_GCM_RECORD_SIZE
     - RECORD_DELIMITER_SIZE;
 
 export function isAllowedPushEndpoint(endpoint: unknown): endpoint is string {
-    if (typeof endpoint !== 'string' || endpoint.length > 2048) return false;
+    return typeof endpoint === 'string'
+        && endpoint.length <= 2048
+        && getPushEndpointOwnershipKey(endpoint) !== null;
+}
 
-    try {
-        const url = new URL(endpoint);
-        if (url.protocol !== 'https:') return false;
-        return PUSH_ENDPOINT_HOSTS.some(
-            (host) => url.hostname === host || url.hostname.endsWith(`.${host}`),
-        );
-    } catch {
-        return false;
+function authorityError(): AppError {
+    return new AppError(
+        'Invalid push recipient authority',
+        'PUSH_RECIPIENT_AUTHORITY_INVALID',
+    );
+}
+
+function authorityFieldPresence(value: unknown): readonly [boolean, boolean, boolean] {
+    if (typeof value !== 'object' || value === null) {
+        return [false, false, false];
     }
+    return [
+        Object.hasOwn(value, 'recipientGeneration'),
+        Object.hasOwn(value, 'recipientVersion'),
+        Object.hasOwn(value, 'recipientProtocolVersion'),
+    ];
+}
+
+function hasAuthorityBrand(value: unknown): boolean {
+    return typeof value === 'object'
+        && value !== null
+        && Object.hasOwn(value, PUSH_RECIPIENT_AUTHORITY)
+        && Reflect.get(value, PUSH_RECIPIENT_AUTHORITY) === true;
+}
+
+function isValidAuthority(
+    recipientGeneration: unknown,
+    recipientVersion: unknown,
+    recipientProtocolVersion: unknown,
+): recipientGeneration is string {
+    return isValidUUID(recipientGeneration)
+        && typeof recipientVersion === 'number'
+        && Number.isSafeInteger(recipientVersion)
+        && recipientVersion > 0
+        && recipientProtocolVersion === REQUIRED_RECIPIENT_PROTOCOL_VERSION;
+}
+
+function assertPushPayloadAuthority(payload: PushPayload): void {
+    const presence = authorityFieldPresence(payload);
+    if (presence.every((present) => !present) && !hasAuthorityBrand(payload)) return;
+    if (!presence.every(Boolean)
+        || !hasAuthorityBrand(payload)
+        || !isValidAuthority(
+            payload.recipientGeneration,
+            payload.recipientVersion,
+            payload.recipientProtocolVersion,
+        )) {
+        throw authorityError();
+    }
+}
+
+export function withPushRecipientAuthority(
+    payload: GenericPushPayload,
+    authority: PushRecipientAuthority,
+): AuthorityPushPayload {
+    if (authorityFieldPresence(payload).some(Boolean)
+        || hasAuthorityBrand(payload)
+        || !isValidAuthority(
+            authority.recipientGeneration,
+            authority.recipientVersion,
+            authority.recipientProtocolVersion,
+        )) {
+        throw authorityError();
+    }
+    return {
+        ...payload,
+        [PUSH_RECIPIENT_AUTHORITY]: true,
+        recipientGeneration: authority.recipientGeneration.toLowerCase(),
+        recipientVersion: authority.recipientVersion,
+        recipientProtocolVersion: authority.recipientProtocolVersion,
+    };
 }
 
 export function isValidPushKey(value: unknown, maxLength: number): value is string {
@@ -326,6 +410,8 @@ export async function sendWebPushNotification(
     payload: PushPayload,
     signal?: AbortSignal,
 ): Promise<PushSendResult> {
+    assertPushPayloadAuthority(payload);
+
     try {
         if (!isAllowedPushEndpoint(subscription?.endpoint)) {
             throw new Error('Invalid push subscription endpoint');
@@ -411,6 +497,8 @@ export async function sendWebPushNotifications(
     payload: PushPayload,
     signal?: AbortSignal,
 ): Promise<PushDeliverySummary> {
+    assertPushPayloadAuthority(payload);
+
     const activeSubscriptions = compactPushSubscriptions(subscriptions);
     const results = await Promise.all(
         activeSubscriptions.map((subscription) =>

@@ -1608,3 +1608,9 @@ export const runtime = "edge";
 - **事象**: PR #314のserver実装にはcanonical ownership key生成、route配線、購読整理、RPC境界が同居し、wrapperだけを安全に先行mergeできなかった。
 - **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
 - **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`
+
+### LL-093: optional authority fieldは型上も実行時も部分payloadを許す
+
+- **事象**: PR #314の`PushPayload`へgeneration・version・protocolを個別optionalで追加すると、1〜2 fieldだけを持つpersonalized payloadを暗号化・送信できる余地があった。
+- **根本原因**: generic通知との後方互換をoptional fieldで表し、genericとauthorityの構造的な排他性およびsingle/batch senderの最終境界検証を型へ反映していなかった。
+- **対策・教訓**: generic variantは3 fieldを`never`、authority variantは3 fieldとwireへ出ないprivate symbol brandを必須とし、`withPushRecipientAuthority`だけで構築する。single/batch senderは暗号化・network前にbrandとown propertyをall-or-none検証し、helper迂回・部分形・不正UUID・非正整数version・未対応protocolを内部値なしの固定`AppError`で拒否して内部重複ログを残さない。リファレンス: `lib/api/web-push.ts`, `lib/push-endpoint.ts`
