@@ -131,6 +131,19 @@ describe('F016 push_subscriptions RLS migration', () => {
             && !source.includes('@/lib/supabase'))).toBe(true);
     });
 
+    it('Layer 3AはCron senderを変更せずDraft blockerをREADMEへ記録する', () => {
+        const cronSources = [
+            'app/api/cron/step-reminder/route.ts',
+            'app/api/cron/weekly-summary/route.ts',
+        ].map(readRepositoryFile);
+
+        expect(cronSources.every((source) =>
+            !source.includes('readReadyPushSubscriptionGenerations')
+            && !source.includes('withPushRecipientAuthority'))).toBe(true);
+        expect(readme).toContain('weekly/step senderのgeneration wiring');
+        expect(readme).toContain('legacy clientはprotocol ackを送れないため');
+    });
+
     it('F001を変更せずF016をin-progressに維持する', () => {
         const ledger = readRepositoryFile('.github/ucfitness-features.json');
         const statusFor = (id: string): string | undefined =>

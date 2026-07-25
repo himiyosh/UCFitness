@@ -10,15 +10,15 @@ vi.mock('@/lib/supabase', () => ({ supabaseAdmin: { rpc: mocks.rpc, from: mocks.
 vi.mock('@/lib/errors', async (original) => ({ ...await original<typeof import('@/lib/errors')>(), reportError: mocks.reportError }));
 import { DELETE, POST } from '@/app/api/push/subscribe/route';
 import { getPushEndpointOwnershipKey } from '@/lib/api/web-push';
-import { DELETE_PUSH_SUBSCRIPTION_CAS_RPC, READ_PUSH_SUBSCRIPTION_GENERATIONS_RPC, readPushSubscriptionGenerations, RELEASE_PUSH_SUBSCRIPTION_RPC, releasePushSubscription, SAVE_PUSH_SUBSCRIPTION_RPC, savePushSubscription } from '@/lib/services/push-subscription-ownership';
+import { DELETE_PUSH_SUBSCRIPTION_CAS_RPC, READ_PUSH_SUBSCRIPTION_GENERATIONS_RPC, readPushSubscriptionGenerations, readReadyPushSubscriptionGenerations, RELEASE_PUSH_SUBSCRIPTION_RPC, releasePushSubscription, SAVE_PUSH_SUBSCRIPTION_RPC, savePushSubscription } from '@/lib/services/push-subscription-ownership';
 const USER = '10000000-0000-4000-8000-000000000001', SUB_A = '20000000-0000-4000-8000-000000000001', SUB_B = '20000000-0000-4000-8000-000000000002';
 const GEN_A = '30000000-0000-4000-8000-000000000001', GEN_B = '30000000-0000-4000-8000-000000000002', ENDPOINT = 'https://fcm.googleapis.com/fcm/send/recipient';
 const KEY = getPushEndpointOwnershipKey(ENDPOINT), P256DH = 'BGsX0fLhLEJH-Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU', AUTH = 'A'.repeat(22), UA = 'Browser';
 if (!KEY) throw new Error('Expected canonical endpoint fixture');
-const saveOptions = { userId: USER, endpoint: ENDPOINT, ownershipKey: KEY, p256dh: P256DH, auth: AUTH, userAgent: UA }, saveRow = { subscription_id: SUB_A, stored_user_id: USER, stored_endpoint: ENDPOINT, stored_p256dh: P256DH, stored_auth: AUTH, stored_user_agent: UA, stored_created_at: '2026-07-25T00:00:00Z', recipient_generation: GEN_A, ownership_version: 7 };
+const saveOptions = { userId: USER, endpoint: ENDPOINT, ownershipKey: KEY, p256dh: P256DH, auth: AUTH, userAgent: UA, recipientProtocolVersion: 1 }, saveRow = { subscription_id: SUB_A, stored_user_id: USER, stored_endpoint: ENDPOINT, stored_p256dh: P256DH, stored_auth: AUTH, stored_user_agent: UA, stored_created_at: '2026-07-25T00:00:00Z', recipient_generation: GEN_A, ownership_version: 7, recipient_protocol_version: 1 };
 const current = { id: SUB_A, user_id: USER, endpoint: ENDPOINT, p256dh: P256DH, auth: AUTH, user_agent: UA, created_at: saveRow.stored_created_at }, releaseOptions = { userId: USER, endpoint: ENDPOINT, ownershipKey: KEY, recipientGeneration: GEN_A, ownershipVersion: 7 };
 const readOptions = { userId: USER, observations: [{ subscriptionId: SUB_B, ownershipKey: `${KEY}/b` }, { subscriptionId: SUB_A, ownershipKey: KEY }, { subscriptionId: SUB_A, ownershipKey: KEY }] };
-const post = (endpoint = ENDPOINT, p256dh = P256DH, auth = AUTH, userAgent = UA) => new Request('http://localhost/api/push/subscribe', { method: 'POST', headers: { 'user-agent': userAgent }, body: JSON.stringify({ endpoint, keys: { p256dh, auth } }) });
+const post = (endpoint = ENDPOINT, p256dh = P256DH, auth = AUTH, userAgent = UA) => new Request('http://localhost/api/push/subscribe', { method: 'POST', headers: { 'user-agent': userAgent }, body: JSON.stringify({ endpoint, keys: { p256dh, auth }, recipientProtocolVersion: 1 }) });
 const remove = () => new Request('http://localhost/api/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint: ENDPOINT }) });
 function lookup(data: unknown, error: unknown = null): void { mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data, error }) }) }) }) }); }
 function list(data: unknown, error: unknown = null): void { mocks.from.mockReturnValue({ select: () => ({ eq: () => Promise.resolve({ data, error }) }) }); }
@@ -40,11 +40,21 @@ describe('push endpoint ownership key', () => {
 });
 describe('push subscription ownership RPC wrappers', () => {
     it('save_exact RPC引数とstrict結果を返す', async () => {
-        mocks.rpc.mockResolvedValue({ data: [saveRow], error: null }); await expect(savePushSubscription(saveOptions)).resolves.toMatchObject({ id: SUB_A, recipientGeneration: GEN_A, ownershipVersion: 7 }); expect(mocks.rpc).toHaveBeenCalledWith(SAVE_PUSH_SUBSCRIPTION_RPC, { p_user_id: USER, p_endpoint: ENDPOINT, p_ownership_key: KEY, p_p256dh: P256DH, p_auth: AUTH, p_user_agent: UA });
+        mocks.rpc.mockResolvedValue({ data: [saveRow], error: null }); await expect(savePushSubscription(saveOptions)).resolves.toMatchObject({ id: SUB_A, recipientGeneration: GEN_A, ownershipVersion: 7, recipientProtocolVersion: 1 }); expect(mocks.rpc).toHaveBeenCalledWith(SAVE_PUSH_SUBSCRIPTION_RPC, { p_user_id: USER, p_endpoint: ENDPOINT, p_ownership_key: KEY, p_p256dh: P256DH, p_auth: AUTH, p_user_agent: UA, p_protocol_version: 1 });
     });
     it('read_入力をUUID順に揃えstrict mapを返す', async () => {
-        mocks.rpc.mockResolvedValue({ data: [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7 }, { subscription_id: SUB_B, recipient_generation: GEN_B, ownership_version: 8 }], error: null }); const result = await readPushSubscriptionGenerations(readOptions); expect([...result]).toEqual([[SUB_A, { recipientGeneration: GEN_A, ownershipVersion: 7 }], [SUB_B, { recipientGeneration: GEN_B, ownershipVersion: 8 }]]);
+        mocks.rpc.mockResolvedValue({ data: [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7, recipient_protocol_version: 1 }, { subscription_id: SUB_B, recipient_generation: GEN_B, ownership_version: 8, recipient_protocol_version: 0 }], error: null }); const result = await readPushSubscriptionGenerations(readOptions); expect([...result]).toEqual([[SUB_A, { recipientGeneration: GEN_A, ownershipVersion: 7, recipientProtocolVersion: 1 }], [SUB_B, { recipientGeneration: GEN_B, ownershipVersion: 8, recipientProtocolVersion: 0 }]]);
         expect(mocks.rpc).toHaveBeenCalledWith(READ_PUSH_SUBSCRIPTION_GENERATIONS_RPC, { p_user_id: USER, p_subscription_ids: [SUB_A, SUB_B], p_ownership_keys: [KEY, `${KEY}/b`] });
+    });
+    it('read_ready protocol 0を除外しprotocol 1だけをpersonalized送信へ渡す', async () => {
+        mocks.rpc.mockResolvedValue({ data: [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7, recipient_protocol_version: 1 }, { subscription_id: SUB_B, recipient_generation: GEN_B, ownership_version: 8, recipient_protocol_version: 0 }], error: null });
+        await expect(readReadyPushSubscriptionGenerations(readOptions)).resolves.toEqual(new Map([
+            [SUB_A, { recipientGeneration: GEN_A, ownershipVersion: 7, recipientProtocolVersion: 1 }],
+        ]));
+    });
+    it.each([2, 1.5, Number.NaN, '1'])('read_unsupported protocol %sを固定AppErrorにする', async (recipient_protocol_version) => {
+        mocks.rpc.mockResolvedValue({ data: [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7, recipient_protocol_version }], error: null });
+        await appError(readPushSubscriptionGenerations(readOptions), 'PUSH_SUBSCRIPTION_GENERATION_RESULT_INVALID');
     });
     it.each([true, false])('release_%s_exact fenceを1回だけ渡す', async (value) => {
         mocks.rpc.mockResolvedValue({ data: value, error: null }); await expect(releasePushSubscription(releaseOptions)).resolves.toBe(value);
@@ -61,7 +71,7 @@ describe('push subscription ownership RPC wrappers', () => {
         ['read', () => readPushSubscriptionGenerations(readOptions), 'PUSH_SUBSCRIPTION_GENERATION_RESULT_INVALID'],
         ['release', () => releasePushSubscription(releaseOptions), 'PUSH_SUBSCRIPTION_RELEASE_RESULT_INVALID']])
     ('%s_result不正_固定AppErrorにする', async (name, call, code) => {
-        mocks.rpc.mockResolvedValue({ data: name === 'read' ? [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7, extra: true }] : null, error: null });
+        mocks.rpc.mockResolvedValue({ data: name === 'read' ? [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7, recipient_protocol_version: 1, extra: true }] : null, error: null });
         await appError(call(), code);
     });
     it('不正入力と21件超過_RPC前に拒否する', async () => {
@@ -83,7 +93,7 @@ describe('POST/DELETE /api/push/subscribe', () => {
     it('POST_既存応答とgeneration/versionを返しdirect writerを使わない', async () => {
         list([current]); mocks.rpc.mockResolvedValue({ data: [saveRow], error: null });
         const response = await POST(post() as never);
-        expect(await response.json()).toEqual({ success: true, pruned: 0, recipientGeneration: GEN_A, recipientVersion: 7 });
+        expect(await response.json()).toEqual({ success: true, pruned: 0, recipientGeneration: GEN_A, recipientVersion: 7, recipientProtocolVersion: 1 });
         expect(mocks.rpc).toHaveBeenCalledTimes(1); expect(mocks.from).toHaveBeenCalledTimes(1);
     });
     it('POST_同一UAの古い行をCAS削除する', async () => {
@@ -99,8 +109,14 @@ describe('POST/DELETE /api/push/subscribe', () => {
             expect((await POST(request as never)).status).toBe(400);
         expect(mocks.rpc).not.toHaveBeenCalled();
     });
+    it.each([undefined, 0, 2, 1.5, null, true, {}, '1'])('POST_protocol version %s_RPC0で拒否する', async (recipientProtocolVersion) => {
+        const body = { endpoint: ENDPOINT, keys: { p256dh: P256DH, auth: AUTH }, ...(recipientProtocolVersion === undefined ? {} : { recipientProtocolVersion }) };
+        const request = new Request('http://localhost/api/push/subscribe', { method: 'POST', body: JSON.stringify(body) });
+        expect((await POST(request as never)).status).toBe(400);
+        expect(mocks.rpc).not.toHaveBeenCalled();
+    });
     it.each([[true, 200], [false, 409]])('DELETE_read fence後のrelease=%s_互換またはstale応答にする', async (released, status) => {
-        lookup(current); mocks.rpc.mockResolvedValueOnce({ data: [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7 }], error: null })
+        lookup(current); mocks.rpc.mockResolvedValueOnce({ data: [{ subscription_id: SUB_A, recipient_generation: GEN_A, ownership_version: 7, recipient_protocol_version: 1 }], error: null })
             .mockResolvedValueOnce({ data: released, error: null });
         expect((await DELETE(remove() as never)).status).toBe(status); expect(mocks.rpc).toHaveBeenCalledTimes(2);
     });

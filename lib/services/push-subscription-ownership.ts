@@ -1,5 +1,10 @@
 import 'server-only';
-import { findSupersededSubscriptionIds, getPushEndpointOwnershipKey, isValidPushSubscriptionKeys } from '@/lib/api/web-push';
+import {
+    findSupersededSubscriptionIds,
+    getPushEndpointOwnershipKey,
+    isValidPushSubscriptionKeys,
+    REQUIRED_RECIPIENT_PROTOCOL_VERSION,
+} from '@/lib/api/web-push';
 import { AppError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isRecord, isValidUUID } from '@/lib/validation';
@@ -14,11 +19,11 @@ const ERRORS = {
     lookupResult: ['Push subscription lookup returned an invalid result', 'PUSH_SUBSCRIPTION_LOOKUP_RESULT_INVALID'], casRpc: ['Push subscription cleanup failed', 'PUSH_SUBSCRIPTION_CLEANUP_FAILED'], casResult: ['Push subscription cleanup returned an invalid result', 'PUSH_SUBSCRIPTION_CLEANUP_RESULT_INVALID'],
 } as const;
 type ErrorKey = keyof typeof ERRORS;
-interface SaveRpcArgs { p_user_id: string; p_endpoint: string; p_ownership_key: string; p_p256dh: string; p_auth: string; p_user_agent: string | null } interface ReadRpcArgs { p_user_id: string; p_subscription_ids: string[]; p_ownership_keys: string[] }
-interface ReleaseRpcArgs { p_user_id: string; p_endpoint: string; p_ownership_key: string; p_recipient_generation: string; p_ownership_version: number } interface ObservedPushSubscription extends StoredPushSubscriptionData { id: string; user_id: string; user_agent: string | null; created_at: string | null } export interface SavedPushSubscription extends StoredPushSubscriptionData { id: string; created_at: string; recipientGeneration: string; ownershipVersion: number; pruned: number }
-export interface SavePushSubscriptionOptions { userId: string; endpoint: string; ownershipKey: string; p256dh: string; auth: string; userAgent: string | null } export interface PushSubscriptionObservation { subscriptionId: string; ownershipKey: string }
+interface SaveRpcArgs { p_user_id: string; p_endpoint: string; p_ownership_key: string; p_p256dh: string; p_auth: string; p_user_agent: string | null; p_protocol_version: number } interface ReadRpcArgs { p_user_id: string; p_subscription_ids: string[]; p_ownership_keys: string[] }
+interface ReleaseRpcArgs { p_user_id: string; p_endpoint: string; p_ownership_key: string; p_recipient_generation: string; p_ownership_version: number } interface ObservedPushSubscription extends StoredPushSubscriptionData { id: string; user_id: string; user_agent: string | null; created_at: string | null } export interface SavedPushSubscription extends StoredPushSubscriptionData { id: string; created_at: string; recipientGeneration: string; ownershipVersion: number; recipientProtocolVersion: number; pruned: number }
+export interface SavePushSubscriptionOptions { userId: string; endpoint: string; ownershipKey: string; p256dh: string; auth: string; userAgent: string | null; recipientProtocolVersion: number } export interface PushSubscriptionObservation { subscriptionId: string; ownershipKey: string }
 export interface ReadPushSubscriptionGenerationsOptions { userId: string; observations: readonly PushSubscriptionObservation[] } export interface ReleasePushSubscriptionOptions { userId: string; endpoint: string; ownershipKey: string; recipientGeneration: string; ownershipVersion: number }
-export interface PushSubscriptionGeneration { recipientGeneration: string; ownershipVersion: number }
+export interface PushSubscriptionGeneration { recipientGeneration: string; ownershipVersion: number; recipientProtocolVersion: number }
 export type CurrentPushSubscriptionRelease = 'missing' | 'stale' | 'released';
 function fixed(key: ErrorKey): AppError { return new AppError(ERRORS[key][0], ERRORS[key][1]); }
 function rawMessage(value: unknown): string | null { if (value instanceof Error) return value.message; return isRecord(value) && typeof value.message === 'string' ? value.message : null; }
@@ -36,6 +41,7 @@ async function rpc(name: string, args: object, errorKey: ErrorKey): Promise<unkn
     return result.data;
 }
 function positiveVersion(value: unknown): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value > 0; }
+function protocolVersion(value: unknown): value is number { return value === 0 || value === REQUIRED_RECIPIENT_PROTOCOL_VERSION; }
 function exact(value: Record<string, unknown>, keys: readonly string[]): boolean { return Object.keys(value).sort().join() === [...keys].sort().join(); }
 function canonical(value: unknown): value is string { return typeof value === 'string' && getPushEndpointOwnershipKey(value) === value; }
 function observed(row: unknown, userId: string): row is ObservedPushSubscription {
@@ -64,8 +70,9 @@ async function pruneAgainst(userId: string, current: StoredPushSubscriptionData)
 }
 export async function savePushSubscription(options: SavePushSubscriptionOptions): Promise<SavedPushSubscription> {
     if (!isRecord(options) || !isValidUUID(options.userId) || getPushEndpointOwnershipKey(options.endpoint) !== options.ownershipKey || !await isValidPushSubscriptionKeys(options.p256dh, options.auth)
+        || options.recipientProtocolVersion !== REQUIRED_RECIPIENT_PROTOCOL_VERSION
         || (options.userAgent !== null && (typeof options.userAgent !== 'string' || options.userAgent.length > 2048))) throw fixed('saveInput');
-    const args: SaveRpcArgs = { p_user_id: options.userId.toLowerCase(), p_endpoint: options.endpoint, p_ownership_key: options.ownershipKey, p_p256dh: options.p256dh, p_auth: options.auth, p_user_agent: options.userAgent };
+    const args: SaveRpcArgs = { p_user_id: options.userId.toLowerCase(), p_endpoint: options.endpoint, p_ownership_key: options.ownershipKey, p_p256dh: options.p256dh, p_auth: options.auth, p_user_agent: options.userAgent, p_protocol_version: options.recipientProtocolVersion };
     let data: unknown, pruned = 0;
     try { data = await rpc(SAVE_PUSH_SUBSCRIPTION_RPC, args, 'saveRpc'); }
     catch (error: unknown) {
@@ -75,13 +82,14 @@ export async function savePushSubscription(options: SavePushSubscriptionOptions)
         data = await rpc(SAVE_PUSH_SUBSCRIPTION_RPC, args, 'saveRpc');
     }
     const row = Array.isArray(data) && data.length === 1 ? data[0] : null;
-    const keys = ['subscription_id', 'stored_user_id', 'stored_endpoint', 'stored_p256dh', 'stored_auth', 'stored_user_agent', 'stored_created_at', 'recipient_generation', 'ownership_version'];
+    const keys = ['subscription_id', 'stored_user_id', 'stored_endpoint', 'stored_p256dh', 'stored_auth', 'stored_user_agent', 'stored_created_at', 'recipient_generation', 'ownership_version', 'recipient_protocol_version'];
     if (!isRecord(row) || !exact(row, keys) || !isValidUUID(row.subscription_id) || !isValidUUID(row.stored_user_id)
         || row.stored_user_id.toLowerCase() !== options.userId.toLowerCase() || row.stored_endpoint !== options.endpoint
         || row.stored_p256dh !== options.p256dh || row.stored_auth !== options.auth || row.stored_user_agent !== options.userAgent
         || (row.stored_user_agent !== null && typeof row.stored_user_agent !== 'string') || typeof row.stored_created_at !== 'string' || !Number.isFinite(Date.parse(row.stored_created_at))
-        || !isValidUUID(row.recipient_generation) || !positiveVersion(row.ownership_version)) throw fixed('saveResult');
-    return { id: row.subscription_id.toLowerCase(), endpoint: row.stored_endpoint, p256dh: row.stored_p256dh, auth: row.stored_auth, user_agent: row.stored_user_agent, created_at: row.stored_created_at, recipientGeneration: row.recipient_generation.toLowerCase(), ownershipVersion: row.ownership_version, pruned };
+        || !isValidUUID(row.recipient_generation) || !positiveVersion(row.ownership_version)
+        || row.recipient_protocol_version !== REQUIRED_RECIPIENT_PROTOCOL_VERSION) throw fixed('saveResult');
+    return { id: row.subscription_id.toLowerCase(), endpoint: row.stored_endpoint, p256dh: row.stored_p256dh, auth: row.stored_auth, user_agent: row.stored_user_agent, created_at: row.stored_created_at, recipientGeneration: row.recipient_generation.toLowerCase(), ownershipVersion: row.ownership_version, recipientProtocolVersion: row.recipient_protocol_version, pruned };
 }
 export async function readPushSubscriptionGenerations(options: ReadPushSubscriptionGenerationsOptions): Promise<Map<string, PushSubscriptionGeneration>> {
     if (!isRecord(options) || !isValidUUID(options.userId) || !Array.isArray(options.observations) || options.observations.length < 1 || options.observations.length > 20) throw fixed('readInput');
@@ -98,13 +106,19 @@ export async function readPushSubscriptionGenerations(options: ReadPushSubscript
     const requested = new Set(args.p_subscription_ids), generations = new Map<string, PushSubscriptionGeneration>();
     let previous = '';
     for (const row of data) {
-        if (!isRecord(row) || !exact(row, ['subscription_id', 'recipient_generation', 'ownership_version']) || !isValidUUID(row.subscription_id)
-            || !isValidUUID(row.recipient_generation) || !positiveVersion(row.ownership_version)) throw fixed('readResult');
+        if (!isRecord(row) || !exact(row, ['subscription_id', 'recipient_generation', 'ownership_version', 'recipient_protocol_version']) || !isValidUUID(row.subscription_id)
+            || !isValidUUID(row.recipient_generation) || !positiveVersion(row.ownership_version)
+            || !protocolVersion(row.recipient_protocol_version)) throw fixed('readResult');
         const id = row.subscription_id.toLowerCase();
         if (!requested.has(id) || generations.has(id) || id < previous) throw fixed('readResult');
-        previous = id; generations.set(id, { recipientGeneration: row.recipient_generation.toLowerCase(), ownershipVersion: row.ownership_version });
+        previous = id; generations.set(id, { recipientGeneration: row.recipient_generation.toLowerCase(), ownershipVersion: row.ownership_version, recipientProtocolVersion: row.recipient_protocol_version });
     }
     return generations;
+}
+export async function readReadyPushSubscriptionGenerations(options: ReadPushSubscriptionGenerationsOptions): Promise<Map<string, PushSubscriptionGeneration>> {
+    const generations = await readPushSubscriptionGenerations(options);
+    return new Map([...generations].filter(([, authority]) =>
+        authority.recipientProtocolVersion === REQUIRED_RECIPIENT_PROTOCOL_VERSION));
 }
 export async function releasePushSubscription(options: ReleasePushSubscriptionOptions): Promise<boolean> {
     if (!isRecord(options) || !isValidUUID(options.userId) || getPushEndpointOwnershipKey(options.endpoint) !== options.ownershipKey || !isValidUUID(options.recipientGeneration)

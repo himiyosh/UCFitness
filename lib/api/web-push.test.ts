@@ -4,10 +4,11 @@ import {
     compactPushSubscriptions,
     findSupersededSubscriptionIds,
     sendWebPushNotification,
-    withPushRecipientGeneration,
+    withPushRecipientAuthority,
 } from '@/lib/api/web-push';
 
-vi.mock('@/lib/errors', () => ({
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(),
     reportError: vi.fn(),
 }));
 
@@ -159,6 +160,16 @@ describe('sendWebPushNotification', () => {
         await createVapidEnvironment();
     });
 
+    describe('withPushRecipientAuthority', () => {
+        it.each([0, 2, 1.5, Number.NaN])('unsupported protocol %sを拒否する', (recipientProtocolVersion) => {
+            expect(() => withPushRecipientAuthority({ title: 'test', body: 'test' }, {
+                recipientGeneration: '30000000-0000-4000-8000-000000000001',
+                recipientVersion: 7,
+                recipientProtocolVersion,
+            })).toThrow('Invalid push recipient authority');
+        });
+    });
+
     afterEach(() => {
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
@@ -188,13 +199,17 @@ describe('sendWebPushNotification', () => {
                     auth: toBase64Url(authSecret),
                 },
             },
-            withPushRecipientGeneration({
+            withPushRecipientAuthority({
                 title: 'バッジを2個獲得',
                 body: '日本語の通知本文',
                 url: '/user/test',
                 locale: 'ja',
                 tag: 'ucfitness-badges',
-            }, '30000000-0000-4000-8000-000000000001'),
+            }, {
+                recipientGeneration: '30000000-0000-4000-8000-000000000001',
+                recipientVersion: 7,
+                recipientProtocolVersion: 1,
+            }),
         );
 
         expect(result.success).toBe(true);
@@ -220,6 +235,8 @@ describe('sendWebPushNotification', () => {
             locale: 'ja',
             tag: 'ucfitness-badges',
             recipientGeneration: '30000000-0000-4000-8000-000000000001',
+            recipientVersion: 7,
+            recipientProtocolVersion: 1,
         });
     });
 

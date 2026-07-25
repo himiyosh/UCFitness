@@ -11,6 +11,14 @@ export interface PushPayload {
     locale?: 'ja' | 'en';
     tag?: string;
     recipientGeneration?: string;
+    recipientVersion?: number;
+    recipientProtocolVersion?: number;
+}
+
+export interface PushRecipientAuthority {
+    recipientGeneration: string;
+    recipientVersion: number;
+    recipientProtocolVersion: number;
 }
 
 export interface PushSubscriptionData {
@@ -52,6 +60,7 @@ const P256_PUBLIC_KEY_SIZE = 65;
 const AES_128_GCM_HEADER_SIZE = 21 + P256_PUBLIC_KEY_SIZE;
 const AES_GCM_TAG_SIZE = 16;
 const RECORD_DELIMITER_SIZE = 1;
+export const REQUIRED_RECIPIENT_PROTOCOL_VERSION = 1;
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com', 'updates.push.services.mozilla.com',
     'web.push.apple.com', 'notify.windows.com',
@@ -86,6 +95,24 @@ export function withPushRecipientGeneration(payload: PushPayload, recipientGener
         throw new AppError('Invalid push recipient generation', 'PUSH_RECIPIENT_GENERATION_INVALID');
     }
     return { ...payload, recipientGeneration: recipientGeneration.toLowerCase() };
+}
+
+export function withPushRecipientAuthority(
+    payload: PushPayload,
+    authority: PushRecipientAuthority,
+): PushPayload {
+    if (!isValidUUID(authority.recipientGeneration)
+        || !Number.isSafeInteger(authority.recipientVersion)
+        || authority.recipientVersion < 1
+        || authority.recipientProtocolVersion !== REQUIRED_RECIPIENT_PROTOCOL_VERSION) {
+        throw new AppError('Invalid push recipient authority', 'PUSH_RECIPIENT_AUTHORITY_INVALID');
+    }
+    return {
+        ...payload,
+        recipientGeneration: authority.recipientGeneration.toLowerCase(),
+        recipientVersion: authority.recipientVersion,
+        recipientProtocolVersion: authority.recipientProtocolVersion,
+    };
 }
 
 export function isValidPushKey(value: unknown, maxLength: number): value is string {

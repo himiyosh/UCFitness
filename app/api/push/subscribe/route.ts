@@ -14,13 +14,15 @@ interface PushSubscriptionRequest {
         p256dh: string;
         auth: string;
     };
+    recipientProtocolVersion: number;
 }
 
 function isPushSubscriptionRequest(value: unknown): value is PushSubscriptionRequest {
     if (!isRecord(value) || !isRecord(value.keys)) return false;
     return typeof value.endpoint === 'string'
         && typeof value.keys.p256dh === 'string'
-        && typeof value.keys.auth === 'string';
+        && typeof value.keys.auth === 'string'
+        && value.recipientProtocolVersion === 1;
 }
 
 function failure(operation: string, error: unknown, message: string, code: string): NextResponse {
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const saved = await savePushSubscription({
             userId: session.user.id, endpoint: subscription.endpoint, ownershipKey,
             p256dh: subscription.keys.p256dh, auth: subscription.keys.auth, userAgent,
+            recipientProtocolVersion: subscription.recipientProtocolVersion,
         });
         let pruned = saved.pruned;
         try {
@@ -65,6 +68,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({
             success: true, pruned, recipientGeneration: saved.recipientGeneration,
             recipientVersion: saved.ownershipVersion,
+            recipientProtocolVersion: saved.recipientProtocolVersion,
         });
     } catch (error: unknown) {
         return failure('push/subscribe:save', error, 'Failed to save subscription', 'PUSH_SUBSCRIPTION_SAVE_FAILED');

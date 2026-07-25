@@ -269,7 +269,13 @@ save/transferはraw endpointを`push_subscriptions`保存だけに使い、canon
 
 Layer 3はraw→canonical key consistencyをshared helperのalias vectorで検証し、personalized send前にread RPCを通してgeneration authorityがないlegacy rowを送らない。payloadへgenerationを含め、Service Workerは端末保存generationとの一致時だけ表示し、logoutでclear、account switch/refreshでupdate、旧generationとgenerationなしをdropする。適用順は既存CAS→Layer 1→Layer 2 runtime→Layer 3 deploy→送信停止中の旧worker排出・新SW確認→`ACCESS EXCLUSIVE` cutoverでdirect write revoke→送信再開とし、raw rowからauthorityを再同期しない。Layer 2はmigration SHA、exact catalog/ACL、canonical alias/material差、同時claim、19→20/20→reject、逆順transfer、user削除、generation/stale release、legacy隔離、exact read、CAS-first/save-first、rollbackをfresh PostgreSQL 16で証明する。rollbackは送信停止後にread→release→save RPC、owner index、authority tableの順にREVOKE/DROPし、generation付きqueueが残る間はSW比較を先に撤去しない。
 
-Layer 3Aは`lib/api/web-push.ts`の`getPushEndpointOwnershipKey`をsubscribeと将来のCronが共有するcanonical SSoTとし、`lib/services/push-subscription-ownership.ts`のserver-only境界からexact save/read/release RPCだけを呼ぶ。POSTはdirect upsertを廃止し、同一UA/legacyの古い行だけを既存CAS RPCで整理して、既存`success`/`pruned`に`recipientGeneration`/`recipientVersion`を追加する。DELETEはsession user＋raw endpointからcurrent rowを限定取得してread RPCのgeneration/versionをrelease RPCへfenceし、authority未作成のlegacy行だけは全列一致CASで解除する。payload helperはgenerationをRFC 8291 JSONへ含められるが既存Cronは未配線であり、production migration適用・read RPC可用性確認・Layer 3BのSW/client generation保存/照合/旧payload dropが揃うまでDraftかつMERGE BLOCKEDを維持する。
+受信者protocol readiness Layer 1は`migrations/20260727_add_push_recipient_protocol_readiness.sql`でauthorityへ`recipient_protocol_version smallint NOT NULL DEFAULT 0`を追加する。既存authorityはdefault 0の未準備状態になり、旧6引数saveとreleaseがowner/generation/versionを更新するとtriggerで0へ戻る。新7引数saveだけがallowlist済みversion 1を同じtransactionのexact current authorityへ保存し、read RPCはexact owner/key/subscription一致へprotocol versionを追加して返す。Layer 3 senderはpersonalized健康payloadに必要なversion以上を要求し、generic通知はsender Layerでこの制約から分離する。
+
+本Layerのruntime PostgreSQL検証は`npm run test:postgres:push-protocol`を正本とし、digest固定の20260726 ownership migrationと20260727 protocol migrationをfresh PostgreSQLへ未変更のまま適用する。exact catalog/default/check/index/FK/owner/RLS/ACL/function contract、既存protocol 0、version 1 save/read/release、旧saveのreadiness reset、逆順競合、rollback、失敗cleanupを実行検証する。PR #314のserver sender、PR #315のclient/SW protocol、旧worker排出を含むrollout planが揃うまでPR #300とPR #301を含むpersonalized送信はMERGE BLOCKEDで、migrationのproduction適用は禁止する。適用順は20260726 ownership Layer 2→本migration→本runtime Layer→server→client/SW→rolloutである。rollbackは新callerを先に停止し、read RPCを20260726の定義へ戻す→7引数save→reset trigger/function→protocol check→columnの順に撤去し、既存authorityと購読行を保持する。main mergeとproduction applyには別途明示承認が必要である。
+
+Layer 3Aは`lib/api/web-push.ts`の`getPushEndpointOwnershipKey`をsubscribeと将来のsenderが共有するcanonical SSoTとし、`lib/services/push-subscription-ownership.ts`のserver-only境界からexact save/read/release RPCだけを呼ぶ。POSTはClient/SWがackしたnumeric integer `recipientProtocolVersion: 1`を必須にし、direct upsertを廃止して、既存`success`/`pruned`に`recipientGeneration`/`recipientVersion`/`recipientProtocolVersion`を追加する。personalized senderはprotocol 1以上のread authorityだけをpayload generation/version/protocolとともに使い、generic通知は任意のままにする。DELETEはsession user＋raw endpointからcurrent rowを限定取得してread RPCのgeneration/versionをrelease RPCへfenceし、authority未作成のlegacy行だけは全列一致CASで解除する。
+
+PR #314はDraftかつMERGE BLOCKEDを維持する。blockerはproduction ownership/protocol migrationの適用とread RPC可用性確認、PR #315のactive Service Worker ack/state、weekly/step senderのgeneration wiring、旧Service Worker排出のrollout確認である。legacy clientはprotocol ackを送れないため互換性維持中のmerge blockerであり、production migrationをこのPRで適用しない。
 
 通知配信outboxのclean 3-layerは、Layer 1を`migrations/20260725_create_notification_delivery_outbox.sql`、Layer 2をruntime PostgreSQL検証、Layer 3を3Aのtyped wrapperと3B/CのCron配線に分ける。Layer 1は`(notification_type, occurrence_key, user_id)`を一意にし、`step-reminder`のJST日`YYYY-MM-DD`と`weekly-summary`のJST週`YYYY-Www`だけを受理する。payload・endpoint等は保存せず、pending/claimed/completed/failed、owner/token、5分lease、5 attempt、90日保持だけをDB正本にする。
 
@@ -699,6 +705,7 @@ npm run dev
 | `npm run test:postgres:notification-outbox` | loopback PostgreSQLで通知outbox migration・lease・競合・rollbackを実行検証 |
 | `npm run test:postgres:push-cas` | loopback PostgreSQLでPush購読CAS migration・ACL・競合・rollbackを実行検証 |
 | `npm run test:postgres:push-generation` | loopback PostgreSQLでPush受信者世代の所有権・競合・CAS相互作用を実行検証 |
+| `npm run test:postgres:push-protocol` | loopback PostgreSQLでPush受信者protocol readiness・競合・rollbackを実行検証 |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -941,6 +948,10 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_CAS_POSTGRES_URL=postgresql://postgres:po
 
 # Push受信者世代（同じ破棄可能なlocalhost PostgreSQLだけで実行）
 UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_GENERATION_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres npm run test:postgres:push-generation
+# Push受信者protocol readiness（同じ破棄可能なlocalhost PostgreSQLだけで実行）
+POSTGRES_TEST_USER=postgres
+POSTGRES_TEST_PASSWORD=postgres
+UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POSTGRES_TEST_USER}:${POSTGRES_TEST_PASSWORD}@127.0.0.1:5432/postgres" npm run test:postgres:push-protocol
 ```
 
 - テストフレームワーク: **Vitest**
@@ -951,6 +962,7 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_GENERATION_POSTGRES_URL=postgresql://post
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
 - Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
 - Push受信者世代runtime jobはtarget/CAS migration SHA-256と同じPostgreSQL 16 serviceを正本に、canonical key digest、raw 20件、read/release fencing、legacy隔離、user削除、逆順transfer、CAS-first/save-firstを実ロック待機で検証する。接続・DB名・role・ログ・cleanupはCAS runtimeと同じtest-only契約を使い、migration、アプリ配線、production DB、実Pushを変更しない
+- Push受信者protocol runtime jobはownership/protocol migration SHA-256と同じPostgreSQL 16 serviceを正本に、smallint protocol 0/1、旧save reset、exact read、release fence、逆順transfer、rollbackを実行検証する。query/hash/SSLなしのloopback `postgres`接続、allowlist済みfresh DB名、既存role拒否、固定非PIIラベル、全DB/role cleanupを必須とし、migration、PR #314/#315のLayer 3、lockfile、production DB、実Pushを変更しない
 - テストファイル: `lib/__tests__/` 配下
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 

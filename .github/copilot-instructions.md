@@ -1080,6 +1080,7 @@ export const runtime = "edge";
 #### ルール
 
 - **フィードバック処理の必須順序**: 1) 指摘を否定せず受け止める 2) 反省点を明文化する 3) 根本原因を特定する 4) `.github/copilot-instructions.md` または該当 instruction/skill に再発防止ルールを追加する 5) 実装修正する 6) ルールに対応した検証を実行する
+- **Lessons Learned番号の一意性**: 新規LL番号はrepository本体だけでなく全open PR refも検索し、既存PRの番号・内容を変更せず未使用番号を確定する
 - コード変更時に関連するプロンプトの処理フロー・ステップ説明・検証項目を**同一コミットで更新**
 - **禁止**: 「次回修正します」と先送り / ユーザーに指摘されてから修正 / 説明だけでコード未修正 / コード修正だけでプロンプト未更新
 - **完了前ゲート**: コード・UI・設定・カスタマイズ・ドキュメント変更後は、ユーザーへ報告する前に必ず `self-critique-gate` skill を実行し、要件充足・回帰防止・技術検証・UI/UX・ルール化を証拠ベースで確認する
@@ -1601,3 +1602,15 @@ export const runtime = "edge";
 - **事象**: clientがendpointだけを送るDELETEで`user_id + endpoint`を直接削除すると、read後のowner移転やgeneration更新をfenceできず、browser unsubscribeとの順序も保証できなかった。
 - **根本原因**: endpointを削除権限そのものとして扱い、DB正本のcurrent subscription ID、recipient generation、ownership versionを同じrelease判定へ結び付けていなかった。
 - **対策・教訓**: serverはsession userからcurrent rowを全列限定取得し、canonical keyとobserved IDをread RPCへ渡して得たgeneration/versionだけでrelease RPCを1回呼ぶ。missingは冪等成功、stale fenceは409、authority未作成のlegacy行は全列一致CASへ分離し、Layer 3Bはrelease成功後だけbrowser subscriptionを解除する。Clientからuser IDやfenceを受け取らず、broad direct deleteへ戻さない。
+
+### LL-090: generation一致だけでは世代対応SWの稼働を証明できない
+
+- **事象**: authorityのowner・generation・versionが一致しても、未訪問の旧Service Workerはgeneration-aware protocolを保存・比較できず、personalized健康payloadを表示し得た。
+- **根本原因**: 受信者所有権の世代と、現在subscriptionが対応できるpayload protocolのreadinessを同じ状態として扱った。
+- **対策・教訓**: authorityへdefault 0のprotocol versionを追加し、旧save/releaseは0へ戻し、allowlist済みversionを申告する再saveだけがexact current authorityをreadyにする。senderはpersonalized送信前に必要versionを要求し、migration、runtime、server、client/SW、旧worker排出を独立Layerで証明する。generic通知は同じreadinessへ暗黙依存させない。
+
+### LL-091: server側のprotocol保存だけでは旧クライアントを安全な送信先にできない
+
+- **事象**: 受信者protocol versionをserverで保存しても、Client/SWのack/stateが未配線、production ownership/protocol migrationとread RPCが未確認、weekly/step senderがgeneration未配線、旧Workerが残存する状態では、personalized payloadを安全に有効化できない。
+- **根本原因**: save成功をrecipient capabilityとrollout完了の証拠として扱い、DB契約、Client/SW state、sender配線、旧Worker排出を別の完了境界として固定していなかった。
+- **対策・教訓**: subscribeはClient/SW ack済みのstrict numeric protocol 1だけを受け、personalized senderはread authorityのprotocol 1以上を必須にする。PR #314はDraftのまま、production migration適用/read RPC可用性、PR #315、weekly/step sender、旧Worker rollout、legacy client互換性の全blockerが解消されるまでmergeしない。

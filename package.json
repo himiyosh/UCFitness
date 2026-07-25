@@ -17,6 +17,7 @@
     "test:postgres:notification-outbox": "tsx scripts/test-notification-outbox-postgres.ts",
     "test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts",
     "test:postgres:push-generation": "tsx scripts/test-push-generation-postgres.ts",
+    "test:postgres:push-protocol": "tsx scripts/test-push-protocol-postgres.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

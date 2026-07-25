@@ -27,10 +27,27 @@ describe('POST /api/push/subscribe validation', () => {
                     p256dh: 'abc_DEF-123',
                     auth: 'abc_DEF-123',
                 },
+                recipientProtocolVersion: 1,
             }),
         });
 
         const response = await POST(request as never);
         expect(response.status).toBe(400);
+    });
+
+    it.each([undefined, 0, 2, 1.5, null, true, {}, '1'])('rejects unacknowledged protocol %s before RPC', async (recipientProtocolVersion) => {
+        const request = new Request('http://localhost/api/push/subscribe', {
+            method: 'POST',
+            body: JSON.stringify({
+                endpoint: 'https://fcm.googleapis.com/fcm/send/test',
+                keys: { p256dh: 'abc_DEF-123', auth: 'abc_DEF-123' },
+                ...(recipientProtocolVersion === undefined ? {} : { recipientProtocolVersion }),
+            }),
+        });
+
+        const response = await POST(request as never);
+
+        expect(response.status).toBe(400);
+        expect(mockSupabaseAdmin.from).not.toHaveBeenCalled();
     });
 });
