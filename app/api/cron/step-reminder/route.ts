@@ -27,11 +27,8 @@ function reportFailure(category: string, context: FailureContext = {}): void {
 }
 function emptyResult(): Result { return { suppressed: 0, completed: 0, released: 0, sent: 0, failed: 0, failedUsers: 0, outboxFailures: 0, expired: 0, deduplicated: 0 }; }
 function addResult(metrics: Metrics, result: Result): void {
-    metrics.suppressed += result.suppressed; metrics.completed += result.completed;
-    metrics.released += result.released;
-    metrics.sent += result.sent; metrics.failed += result.failed;
-    metrics.failedUsers += result.failedUsers; metrics.outboxFailures += result.outboxFailures;
-    metrics.expired += result.expired; metrics.deduplicated += result.deduplicated;
+    metrics.suppressed += result.suppressed; metrics.completed += result.completed; metrics.released += result.released;
+    metrics.sent += result.sent; metrics.failed += result.failed; metrics.failedUsers += result.failedUsers; metrics.outboxFailures += result.outboxFailures; metrics.expired += result.expired; metrics.deduplicated += result.deduplicated;
 }
 function parseGoals(data: unknown, expectedIds: Set<string>): ParsedStepReminderRows<number> | null {
     if (!Array.isArray(data)) return null;
