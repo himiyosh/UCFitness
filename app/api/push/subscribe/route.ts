@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { reportError } from '@/lib/errors';
 import {
+    deletePushSubscriptionIfUnchanged,
     findSupersededSubscriptionIds,
     isAllowedPushEndpoint,
     isValidPushKey,
@@ -68,7 +69,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             .select('id, endpoint, p256dh, auth, user_agent, created_at')
             .eq('user_id', userId);
         if (listError) {
-            reportError('push/subscribe:listExisting', listError, { userId });
+            reportError(
+                'push/subscribe:listExisting',
+                new Error('Push subscription cleanup list failed'),
+            );
             return NextResponse.json({ success: true, pruned: 0 });
         }
 
@@ -77,24 +81,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             currentSubscription,
             userAgent,
         );
-        if (staleIds.length > 0) {
-            const { error: pruneError } = await supabaseAdmin
-                .from('push_subscriptions')
-                .delete()
-                .eq('user_id', userId)
-                .in('id', staleIds);
-            if (pruneError) {
-                reportError('push/subscribe:pruneSuperseded', pruneError, {
-                    userId,
-                    count: staleIds.length,
-                });
-                return NextResponse.json({ success: true, pruned: 0 });
-            }
-        }
+        const staleIdSet = new Set(staleIds);
+        const staleSubscriptions = (existingSubscriptions ?? [])
+            .filter((existingSubscription) => staleIdSet.has(existingSubscription.id));
+        const pruneResults = await Promise.all(
+            staleSubscriptions.map((staleSubscription) =>
+                deletePushSubscriptionIfUnchanged(userId, staleSubscription)),
+        );
 
-        return NextResponse.json({ success: true, pruned: staleIds.length });
-    } catch (err: unknown) {
-        reportError('push/subscribe', err);
+        return NextResponse.json({
+            success: true,
+            pruned: pruneResults.filter((result) => result === 'deleted').length,
+        });
+    } catch {
+        reportError(
+            'push/subscribe',
+            new Error('Push subscription registration failed'),
+        );
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
 }

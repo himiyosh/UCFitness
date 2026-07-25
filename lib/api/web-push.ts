@@ -1,6 +1,7 @@
 import { SignJWT, importJWK, importPKCS8 } from 'jose';
 
 import { reportError } from '@/lib/errors';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export interface PushPayload {
     title: string;
@@ -20,12 +21,12 @@ export interface PushSubscriptionData {
 }
 
 export interface StoredPushSubscriptionData {
-    id?: string;
+    id: string;
     endpoint: string;
     p256dh: string;
     auth: string;
-    user_agent?: string | null;
-    created_at?: string | null;
+    user_agent: string | null;
+    created_at: string | null;
 }
 
 export interface PushSendResult {
@@ -42,6 +43,8 @@ export interface PushDeliverySummary {
     expired: number;
     skippedDuplicates: number;
 }
+
+export type PushSubscriptionCleanupResult = 'deleted' | 'preserved' | 'failed';
 
 const PUSH_ENDPOINT_HOSTS = [
     'fcm.googleapis.com',
@@ -321,6 +324,40 @@ export function findSupersededSubscriptionIds(
         });
 }
 
+export async function deletePushSubscriptionIfUnchanged(
+    userId: string,
+    subscription: StoredPushSubscriptionData,
+): Promise<PushSubscriptionCleanupResult> {
+    try {
+        const { data, error } = await supabaseAdmin.rpc(
+            'delete_push_subscription_if_unchanged',
+            {
+                p_id: subscription.id,
+                p_user_id: userId,
+                p_endpoint: subscription.endpoint,
+                p_p256dh: subscription.p256dh,
+                p_auth: subscription.auth,
+                p_user_agent: subscription.user_agent,
+                p_created_at: subscription.created_at,
+            },
+        );
+        if (error || typeof data !== 'boolean') {
+            reportError(
+                'pushSubscription:deleteUnchanged',
+                new Error('Push subscription CAS cleanup failed'),
+            );
+            return 'failed';
+        }
+        return data ? 'deleted' : 'preserved';
+    } catch {
+        reportError(
+            'pushSubscription:deleteUnchanged',
+            new Error('Push subscription CAS cleanup failed'),
+        );
+        return 'failed';
+    }
+}
+
 export async function sendWebPushNotification(
     subscription: PushSubscriptionData,
     payload: PushPayload,
@@ -426,31 +463,22 @@ export async function sendWebPushNotifications(
                 signal,
             )),
     );
-    const expiredEndpoints = results
-        .map((result, index) => ({ result, endpoint: activeSubscriptions[index]?.endpoint }))
-        .filter(({ result, endpoint }) =>
-            Boolean(endpoint) && (result.statusCode === 404 || result.statusCode === 410))
-        .map(({ endpoint }) => endpoint);
-
-    if (expiredEndpoints.length > 0) {
-        const { supabaseAdmin } = await import('@/lib/supabase');
-        const { error } = await supabaseAdmin
-            .from('push_subscriptions')
-            .delete()
-            .eq('user_id', userId)
-            .in('endpoint', expiredEndpoints);
-        if (error) {
-            reportError('sendWebPush:pruneExpired', error, {
-                count: expiredEndpoints.length,
-            });
-        }
-    }
+    const expiredSubscriptions = results.flatMap((result, index) => {
+        const subscription = activeSubscriptions[index];
+        return subscription && (result.statusCode === 404 || result.statusCode === 410)
+            ? [subscription]
+            : [];
+    });
+    const pruneResults = await Promise.all(
+        expiredSubscriptions.map((subscription) =>
+            deletePushSubscriptionIfUnchanged(userId, subscription)),
+    );
 
     const sent = results.filter((result) => result.success).length;
     return {
         sent,
         failed: results.length - sent,
-        expired: expiredEndpoints.length,
+        expired: pruneResults.filter((result) => result === 'deleted').length,
         skippedDuplicates: subscriptions.length - activeSubscriptions.length,
     };
 }

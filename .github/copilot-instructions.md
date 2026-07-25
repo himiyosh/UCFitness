@@ -1563,3 +1563,9 @@ export const runtime = "edge";
 - **事象**: Push購読CAS migrationは文字列検査を通っても、default式、constraint backing index、個別ACL、`SECURITY DEFINER`属性、2 transactionの待機順序を実PostgreSQLで検証できていなかった。
 - **根本原因**: SQL sourceに期待する語があることと、PostgreSQL catalogへ期待どおり反映され並行transactionで安全に動くことを同一視した。
 - **対策・教訓**: migration bytesのSHA-256をDB接続前に固定し、digest固定PostgreSQL serviceへ実適用してunique列順・FORCE RLSを含むfresh database negative、role別実行、rollback、2接続lock barrierを検証する。接続先はquery/hashなしのloopback maintenance DB・固定test admin・明示flagに限定し、既存roleがあるclusterを拒否する。作成roleとrandom allowlist名のDBだけを失敗時も削除し、workflowの全`uses:`を完全長SHAで固定する。リファレンス: `scripts/test-push-cas-postgres.ts`, `.github/workflows/validate.yml`
+
+### LL-083: CASのfalseや失敗を失効削除件数に含めると再購読を誤分類する
+
+- **事象**: Push Serviceの404/410だけで購読を削除済みと数えると、送信後に更新されたreplacement、既に消えた行、RPC障害を恒久失効として扱い、通知outboxの再試行判断を誤り得た。
+- **根本原因**: 外部Push応答とDB削除結果を同じ`expired`状態にまとめ、CASの`true`、`false`、errorを区別していなかった。
+- **対策・教訓**: 送信時の完全snapshotをCAS RPCへ渡し、`true`だけを`expired`へ数える。`false`はstale/missingとして保持し、RPC errorは生DB error・UUID・endpoint・鍵を記録しない固定エラーへ変換して他端末の送信を継続する。再購読の古い行整理にも同じcompare-and-deleteを再利用する。リファレンス: `lib/api/web-push.ts`, `app/api/push/subscribe/route.ts`
