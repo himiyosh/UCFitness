@@ -17,7 +17,7 @@ BEGIN
        OR pg_catalog.array_position(functions, NULL::regprocedure) IS NOT NULL
        OR pg_catalog.to_regprocedure('public.save_push_subscription_with_generation(uuid,text,text,text,text,text,smallint)') IS NOT NULL
        OR pg_catalog.to_regprocedure('public.reset_push_recipient_protocol_version()') IS NOT NULL
-    THEN RAISE EXCEPTION 'LL088: recipient protocol prerequisites are unavailable'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol prerequisites are unavailable'; END IF;
 
     LOCK TABLE public.push_subscriptions IN SHARE ROW EXCLUSIVE MODE;
     LOCK TABLE public.push_subscription_ownership IN ACCESS EXCLUSIVE MODE;
@@ -47,7 +47,7 @@ BEGIN
         'push_subscription_ownership_state_check:true:CHECKowner_user_idISNULL=subscription_idISNULL',
         'push_subscription_ownership_timeline_check:true:CHECKupdated_at>=created_at',
         'push_subscription_ownership_version_check:true:CHECKownership_version>0']::text[]
-    THEN RAISE EXCEPTION 'LL088: recipient protocol catalog changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol catalog changed'; END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint
         WHERE conrelid = target_table AND contype = 'p'
@@ -85,7 +85,7 @@ BEGIN
            WHERE conrelid = target_table) <> 7
        OR (SELECT pg_catalog.count(*) FROM pg_catalog.pg_index
            WHERE indrelid = target_table) <> 3
-    THEN RAISE EXCEPTION 'LL088: recipient protocol keys or triggers changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol keys or triggers changed'; END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class AS relation
         JOIN pg_catalog.pg_roles AS owner ON owner.oid = relation.relowner
@@ -104,7 +104,7 @@ BEGIN
             'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
            OR pg_catalog.has_any_column_privilege(role.role_name, target_table,
             'SELECT, INSERT, UPDATE, REFERENCES'))
-    THEN RAISE EXCEPTION 'LL088: recipient protocol table security changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol table security changed'; END IF;
 
     IF pg_catalog.pg_get_function_result(functions[1]) IS DISTINCT FROM
         'TABLE(subscription_id uuid, stored_user_id uuid, stored_endpoint text, stored_p256dh text, stored_auth text, stored_user_agent text, stored_created_at timestamp with time zone, recipient_generation uuid, ownership_version bigint)'
@@ -133,7 +133,7 @@ BEGIN
             'save_push_subscription_with_generation',
             'release_push_subscription_with_generation',
             'read_push_subscription_generations'])) <> 3
-    THEN RAISE EXCEPTION 'LL088: recipient protocol RPC security changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol RPC security changed'; END IF;
 END; $preconditions$;
 
 ALTER TABLE public.push_subscription_ownership
@@ -277,7 +277,7 @@ BEGIN
         'push_subscription_ownership_state_check:true:CHECKowner_user_idISNULL=subscription_idISNULL',
         'push_subscription_ownership_timeline_check:true:CHECKupdated_at>=created_at',
         'push_subscription_ownership_version_check:true:CHECKownership_version>0']::text[]
-    THEN RAISE EXCEPTION 'LL088: recipient protocol columns or checks changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol columns or checks changed'; END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint
         WHERE conrelid = target_table AND contype = 'p'
@@ -321,7 +321,7 @@ BEGIN
           AND pg_catalog.pg_get_indexdef(index_record.indexrelid, 1, true) = 'owner_user_id'
           AND pg_catalog.pg_get_indexdef(index_record.indexrelid, 2, true) = 'endpoint_digest'
           AND pg_catalog.pg_get_expr(index_record.indpred, index_record.indrelid) = '(owner_user_id IS NOT NULL)')
-    THEN RAISE EXCEPTION 'LL088: recipient protocol trigger or index changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol trigger or index changed'; END IF;
 
     IF pg_catalog.pg_get_function_result(functions[1]) IS DISTINCT FROM
         'TABLE(subscription_id uuid, stored_user_id uuid, stored_endpoint text, stored_p256dh text, stored_auth text, stored_user_agent text, stored_created_at timestamp with time zone, recipient_generation uuid, ownership_version bigint)'
@@ -362,7 +362,7 @@ BEGIN
             'release_push_subscription_with_generation',
             'read_push_subscription_generations',
             'reset_push_recipient_protocol_version'])) <> 5
-    THEN RAISE EXCEPTION 'LL088: recipient protocol function contract changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol function contract changed'; END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class AS relation
         JOIN pg_catalog.pg_roles AS owner ON owner.oid = relation.relowner
@@ -381,7 +381,7 @@ BEGIN
             'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
            OR pg_catalog.has_any_column_privilege(role.role_name, target_table,
             'SELECT, INSERT, UPDATE, REFERENCES'))
-    THEN RAISE EXCEPTION 'LL088: recipient protocol RLS or ACL changed'; END IF;
+    THEN RAISE EXCEPTION 'LL090: recipient protocol RLS or ACL changed'; END IF;
 END; $postconditions$;
 
 -- Apply after 20260726 ownership Layer 2; runtime proof, server/client/SW wiring, and rollout remain mandatory before production.

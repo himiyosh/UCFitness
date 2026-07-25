@@ -20,10 +20,10 @@ const body = (name: string): string => migration.match(new RegExp(
 ))?.[1] ?? '';
 const digest = (value: string): string => createHash('sha256').update(value).digest('hex');
 
-describe('LL-088 push recipient protocol readiness Layer 1 migration', () => {
+describe('LL-090 push recipient protocol readiness Layer 1 migration', () => {
     it('migration bytes_確定後_SHA-256と追加順序を維持する', () => {
         expect(digest(ownershipMigration)).toBe('918c6f9a6aefaf556d60c241f2f6db0f59037192b484e55f4b86e39795aa6b51');
-        expect(digest(migration)).toBe('653bfba70316f729ef9b79dfdc85160d64d139f14f9788b1a6bb77b99d6375c7');
+        expect(digest(migration)).toBe('e55909943fb6e9c9218afae31c10bb90695e2551a970872cdaa361ef48c0981b');
         expect(migration).toMatch(/^BEGIN;\nSET LOCAL search_path = '';/);
         expect(migration).toMatch(/COMMIT;\s*$/);
     });
@@ -70,10 +70,10 @@ describe('LL-088 push recipient protocol readiness Layer 1 migration', () => {
 
     it('security_既知catalogとservice-role-only RPC以外をfail closedにする', () => {
         for (const value of [
-            'LL088: recipient protocol catalog changed',
-            'LL088: recipient protocol keys or triggers changed',
-            'LL088: recipient protocol RPC security changed',
-            'LL088: recipient protocol RLS or ACL changed',
+            'LL090: recipient protocol catalog changed',
+            'LL090: recipient protocol keys or triggers changed',
+            'LL090: recipient protocol RPC security changed',
+            'LL090: recipient protocol RLS or ACL changed',
             "procedure.proconfig IS DISTINCT FROM ARRAY['search_path=\"\"']::text[]",
             "trigger_record.tgtype = 23 AND trigger_record.tgattr::text = '2 3 4 5'",
         ]) expect(migration).toContain(value);
@@ -88,7 +88,7 @@ describe('LL-088 push recipient protocol readiness Layer 1 migration', () => {
             'generic通知', 'production適用は禁止',
             'read RPCを20260726の定義へ戻す',
         ]) expect(readme).toContain(value);
-        expect(instructions).toContain('### LL-088:');
+        expect(instructions.match(/^### LL-090:/gm)).toHaveLength(1);
         expect(appLayer).not.toContain('recipient_protocol_version');
         expect(migration).toContain('runtime proof, server/client/SW wiring, and rollout remain mandatory');
     });

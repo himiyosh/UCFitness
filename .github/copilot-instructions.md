@@ -1080,6 +1080,7 @@ export const runtime = "edge";
 #### ルール
 
 - **フィードバック処理の必須順序**: 1) 指摘を否定せず受け止める 2) 反省点を明文化する 3) 根本原因を特定する 4) `.github/copilot-instructions.md` または該当 instruction/skill に再発防止ルールを追加する 5) 実装修正する 6) ルールに対応した検証を実行する
+- **Lessons Learned番号の一意性**: 新規LL番号はrepository本体だけでなく全open PR refも検索し、既存PRの番号・内容を変更せず未使用番号を確定する
 - コード変更時に関連するプロンプトの処理フロー・ステップ説明・検証項目を**同一コミットで更新**
 - **禁止**: 「次回修正します」と先送り / ユーザーに指摘されてから修正 / 説明だけでコード未修正 / コード修正だけでプロンプト未更新
 - **完了前ゲート**: コード・UI・設定・カスタマイズ・ドキュメント変更後は、ユーザーへ報告する前に必ず `self-critique-gate` skill を実行し、要件充足・回帰防止・技術検証・UI/UX・ルール化を証拠ベースで確認する
@@ -1596,7 +1597,7 @@ export const runtime = "edge";
 - **根本原因**: catalog形状と単一transaction内の分岐を、複数connectionが作るMVCC snapshot、row lock、advisory lockの実行結果と同一視した。
 - **対策・教訓**: target/CAS migrationをSHA固定したfresh PostgreSQL 16で、canonical alias、raw上限、read不変性、stale release、逆順transfer、user削除、CAS-first/save-firstの実lock待機を検証する。Layer 2はDB契約だけを証明し、generation payloadとService Worker比較を含むLayer 3前のproduction適用は禁止する。リファレンス: `scripts/test-push-generation-postgres.ts`
 
-### LL-088: generation一致だけでは世代対応SWの稼働を証明できない
+### LL-090: generation一致だけでは世代対応SWの稼働を証明できない
 
 - **事象**: authorityのowner・generation・versionが一致しても、未訪問の旧Service Workerはgeneration-aware protocolを保存・比較できず、personalized健康payloadを表示し得た。
 - **根本原因**: 受信者所有権の世代と、現在subscriptionが対応できるpayload protocolのreadinessを同じ状態として扱った。
