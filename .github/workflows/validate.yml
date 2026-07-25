@@ -73,6 +73,14 @@ jobs:
         env:
           UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
           NOTIFICATION_OUTBOX_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      - name: Run Push Protocol PostgreSQL verification
+        run: >-
+          PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POSTGRES_TEST_USER}:${POSTGRES_TEST_PASSWORD}@127.0.0.1:5432/postgres"
+          npm run test:postgres:push-protocol
+        env:
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
+          POSTGRES_TEST_USER: postgres
+          POSTGRES_TEST_PASSWORD: postgres
       - name: Run Push Generation PostgreSQL verification
         run: npm run test:postgres:push-generation
         env:
