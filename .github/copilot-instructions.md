@@ -1579,7 +1579,7 @@ export const runtime = "edge";
 
 ### LL-085: endpoint所有権とpayload世代を分離すると遅延Pushが旧ユーザーへ届く
 
-- **事象**: Web Push送信後に同一endpointが別ユーザーへ移転すると、TTL内の旧personalized payloadが新しい端末所有者へ遅延到着し得た。
-- **根本原因**: subscription行の現在ownerだけをDBで管理し、送信時のrecipient世代をpayloadとService Worker表示判定へ拘束していなかった。
-- **対策**: endpoint digestごとのownerとランダムgenerationを原子的に移転・解除するDB権威を作り、Layer 3でpayload generationと端末保存generationの一致だけを表示する。
-- **教訓**: Push privacyは送信時の認可だけで完了しない。queued payloadへ受信者世代を封入し、logout・account switch・再subscribeで世代をclear/rotateして旧世代を端末側でも拒否する。
+- **事象**: Web Push送信後のowner移転に加え、host case・default port・percent encoding・fragment aliasをraw文字列hashすると同一endpointが別authority/lockになり、generationを安全に取得する非更新経路もなかった。
+- **根本原因**: URL正規化をDBのraw endpoint hashへ暗黙依存し、legacy rowからownerを推測してbackfillし、save RPCをgeneration readにも流用する設計だった。
+- **対策**: Layer 3共有helperのcanonical ownership keyだけをdigest/lockへ使い、legacyは全隔離する。authorityへcurrent subscription IDを結び、owner・digest・ID・保存行userのexact一致だけを返すservice-role read RPCを分離する。
+- **教訓**: SQLへRFC 3986正規化を再実装しない。canonical key生成とraw→key consistencyは共有アプリ境界で検証し、generation authorityがない購読へpersonalized payloadを送らない。

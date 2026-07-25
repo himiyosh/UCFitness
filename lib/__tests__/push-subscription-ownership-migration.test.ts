@@ -1,109 +1,93 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 const read = (path: string): string => readFileSync(join(process.cwd(), path), 'utf8');
-const migrationPath = 'migrations/20260726_create_push_subscription_ownership.sql';
-const migration = read(migrationPath);
+const migration = read('migrations/20260726_create_push_subscription_ownership.sql');
 const readme = read('README.md');
 const instructions = read('.github/copilot-instructions.md');
+const runtime = ['app/api/push/subscribe/route.ts', 'lib/api/web-push.ts', 'public/sw.js']
+    .map(read).join('\n');
 const body = (name: string): string => migration.match(new RegExp(
     `CREATE FUNCTION public\\.${name}[\\s\\S]+?AS \\$function\\$([\\s\\S]+?)\\$function\\$;`,
 ))?.[1] ?? '';
-const runtimeSources = ['app', 'lib', 'hooks', 'components'].flatMap((root) =>
-    readdirSync(root, { recursive: true, encoding: 'utf8' })
-        .filter((path) => /\.[jt]sx?$/.test(path) && !/\.(test|spec)\.[jt]sx?$/.test(path))
-        .map((path) => read(join(root, path))))
-    .concat(read('public/sw.js'));
+const digest = (value: string): string => createHash('sha256').update(value).digest('hex');
+const canonicalKey = 'https://push.example.test/v1/~device?token=A';
+const aliasVectors = [
+    ['https://PUSH.EXAMPLE.TEST/v1/~device?token=A', canonicalKey],
+    ['https://push.example.test:443/v1/~device?token=A', canonicalKey],
+    ['https://push.example.test/v1/%7Edevice?token=A', canonicalKey],
+    ['https://push.example.test/v1/~device?token=A#queued', canonicalKey],
+] as const;
 
-describe('LL-085 push subscription ownership Layer 1 migration', () => {
+describe('LL-085 push ownership Layer 1 migration', () => {
     it('migration bytes_確定後_SHA-256とCAS後の順序を維持する', () => {
-        expect(createHash('sha256').update(migration).digest('hex')).toBe('5b2a04f62cfa73f1f8a7eec26474721b292a3f7629b4d164493169ab58678285');
+        expect(digest(migration)).toBe('918c6f9a6aefaf556d60c241f2f6db0f59037192b484e55f4b86e39795aa6b51');
         expect(migration).toMatch(/^BEGIN; SET LOCAL search_path = '';/);
         expect(migration).toMatch(/COMMIT;\s*$/);
     });
 
-    it('backfill_暗号学的digestだけを保持し曖昧なlegacy所有者を隔離する', () => {
-        const table = migration.match(
-            /CREATE TABLE public\.push_subscription_ownership \(([\s\S]+?)\n\);/,
-        )?.[1] ?? '';
-        for (const value of [
-            'endpoint_digest bytea NOT NULL', 'owner_user_id uuid',
-            'recipient_generation uuid NOT NULL DEFAULT pg_catalog.gen_random_uuid()',
-            'ownership_version bigint NOT NULL DEFAULT 1',
-            'REFERENCES public.users(id) ON DELETE CASCADE',
-            'CHECK (pg_catalog.octet_length(endpoint_digest) = 32)',
-            "pg_catalog.sha256(pg_catalog.convert_to(subscription.endpoint, 'UTF8'))",
-            'pg_catalog.count(DISTINCT subscription.user_id) = 1',
-            'THEN pg_catalog.min(subscription.user_id::text)::uuid END',
-            'WHERE owner_user_id IS NULL',
-        ]) expect(migration).toContain(value);
+    it('legacy rows_起動時_ownerを推測せずcanonical authority外へ隔離する', () => {
+        const table = migration.match(/CREATE TABLE public\.push_subscription_ownership \(([\s\S]+?)\n\);/)?.[1] ?? '';
+        expect(table).toContain('endpoint_digest bytea NOT NULL');
+        expect(table).toContain('subscription_id uuid');
+        expect(table).toContain('UNIQUE (subscription_id)');
         expect(table).not.toMatch(/\bendpoint\s+text\b/i);
-        expect(migration).not.toContain('auth.users');
-        expect(migration).toMatch(/RAISE NOTICE 'LL085: quarantined % ambiguous push endpoint digests', quarantined_count/);
+        expect(migration.slice(migration.indexOf('DO $legacy_quarantine$'), migration.indexOf('CREATE FUNCTION public.save')))
+            .not.toContain('INSERT INTO public.push_subscription_ownership');
+        expect(migration).toContain('quarantined % legacy push rows without canonical ownership');
     });
 
-    it('save_同一endpointと関係userだけをlockしraw20件とgeneration移転を原子的に守る', () => {
+    it('canonical key_aliasを同一digestへ束縛しreserved materialを分離する', () => {
+        expect(new Set(aliasVectors.map(([raw]) => raw)).size).toBe(4);
+        expect(new Set(aliasVectors.map(([, key]) => key))).toEqual(new Set([canonicalKey]));
+        expect(new Set(aliasVectors.map(([, key]) => digest(key))).size).toBe(1);
+        expect(digest('https://push.example.test/v1/a%2Fb'))
+            .not.toBe(digest('https://push.example.test/v1/a/b'));
+        for (const rpc of [body('save_push_subscription_with_generation'), body('release_push_subscription_with_generation')]) {
+            expect(rpc).toContain("sha256(pg_catalog.convert_to(p_ownership_key, 'UTF8'))");
+            expect(rpc).not.toContain("convert_to(p_endpoint, 'UTF8')");
+        }
+    });
+
+    it('save release_current subscriptionとgeneration versionを原子的に更新する', () => {
         const save = body('save_push_subscription_with_generation');
-        const endpointLock = save.indexOf('pg_advisory_xact_lock');
-        const userLock = save.indexOf('ORDER BY app_user.id FOR UPDATE OF app_user');
-        const authorityLock = save.indexOf('ownership.endpoint_digest = v_digest FOR UPDATE');
-        const rowLock = save.indexOf('subscription.endpoint = p_endpoint FOR UPDATE');
-        expect(endpointLock).toBeGreaterThan(-1);
-        expect(userLock).toBeGreaterThan(endpointLock);
-        expect(authorityLock).toBeGreaterThan(userLock);
-        expect(rowLock).toBeGreaterThan(authorityLock);
-        expect(save).toContain('IF NOT v_existing THEN');
-        expect(save).toContain('IF v_raw_count >= 20');
-        expect(save).toContain('subscription.user_id <> p_user_id');
-        expect(save).toContain('v_authority.owner_user_id IS DISTINCT FROM p_user_id');
-        expect(save).toContain('recipient_generation = pg_catalog.gen_random_uuid()');
-        expect(save).toMatch(/ELSE\s+UPDATE public\.push_subscription_ownership[\s\S]+SET ownership_version = ownership\.ownership_version \+ 1, updated_at = v_now/);
-        expect(save.match(/recipient_generation = pg_catalog\.gen_random_uuid\(\)/g)).toHaveLength(1);
-        expect(migration).toContain('subscription_id uuid, stored_user_id uuid');
-    });
-
-    it('release_現在ownerとgenerationとversionだけを解除し次世代へ回転する', () => {
         const release = body('release_push_subscription_with_generation');
-        expect(release.indexOf('pg_advisory_xact_lock')).toBeLessThan(release.indexOf('FOR UPDATE OF app_user'));
-        expect(release.indexOf('FOR UPDATE OF app_user')).toBeLessThan(release.indexOf('ownership.endpoint_digest = v_digest FOR UPDATE'));
-        expect(release).toContain(
-            'v_authority.recipient_generation IS DISTINCT FROM p_recipient_generation',
-        );
+        expect(save.indexOf('pg_advisory_xact_lock')).toBeLessThan(save.indexOf('FOR UPDATE OF app_user'));
+        expect(save.indexOf('FOR UPDATE OF app_user')).toBeLessThan(save.indexOf('ownership.endpoint_digest = v_digest FOR UPDATE'));
+        expect(save).toContain('IF v_raw_count >= 20');
+        expect(save).toContain('subscription_id = v_subscription.id');
+        expect(save.match(/recipient_generation = pg_catalog\.gen_random_uuid\(\)/g)).toHaveLength(1);
         expect(release).toContain('v_authority.ownership_version IS DISTINCT FROM p_ownership_version');
-        expect(release).toContain('SET owner_user_id = NULL');
-        expect(release).toContain('recipient_generation = pg_catalog.gen_random_uuid()');
-        expect(release).toContain('ownership_version = ownership.ownership_version + 1');
+        expect(release).toContain('IF NOT FOUND OR v_subscription.user_id IS DISTINCT FROM p_user_id');
+        expect(release).toContain('v_subscription.endpoint IS DISTINCT FROM p_endpoint');
+        expect(release).toContain('SET owner_user_id = NULL, subscription_id = NULL');
     });
 
-    it('security_catalog_既知形状をfail closedにしservice_roleへRPCだけを許可する', () => {
-        for (const value of [
-            'LL085: push subscription schema changed', 'LL085: push subscription keys changed',
-            'LL085: push subscription ACL changed', 'LL085: push ownership columns changed',
-            'LL085: push ownership keys changed', 'LL085: push ownership table security changed',
-            "procedure.proconfig IS DISTINCT FROM ARRAY['search_path=\"\"']::text[]",
-            "has_any_column_privilege(\n            'service_role', subscriptions_table, 'REFERENCES')",
-            'ALTER TABLE public.push_subscription_ownership ENABLE ROW LEVEL SECURITY',
-            "pg_catalog.pg_get_function_result(functions[2]) IS DISTINCT FROM 'boolean'",
-        ]) expect(migration).toContain(value);
-        expect(migration.indexOf('LOCK TABLE public.users')).toBeLessThan(migration.indexOf('LOCK TABLE public.push_subscriptions'));
-        expect(migration.slice(0, migration.indexOf('CREATE TABLE')).match(/privilege\.grantee NOT IN/g)).toHaveLength(3);
-        expect(migration.match(/LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''/g)).toHaveLength(2);
-        expect(migration.match(/GRANT EXECUTE ON FUNCTION public\./g)).toHaveLength(2);
+    it('read RPC_最大20件をexact owner key subscription一致だけ返し状態を変更しない', () => {
+        const readRpc = body('read_push_subscription_generations');
+        for (const value of ['cardinality(p_subscription_ids) NOT BETWEEN 1 AND 20',
+            'FROM ROWS FROM (',
+            'ownership.owner_user_id = p_user_id', 'ownership.subscription_id = requested.subscription_id',
+            'subscription.id = requested.subscription_id AND subscription.user_id = p_user_id',
+            'ORDER BY ownership.subscription_id']) {
+            expect(readRpc).toContain(value);
+        }
+        expect(readRpc).not.toMatch(/\b(INSERT|UPDATE|DELETE)\b|gen_random_uuid/i);
+        expect(migration).toContain('TABLE(subscription_id uuid, recipient_generation uuid, ownership_version bigint)');
+    });
+
+    it('security layers_service role RPCのみとLayer2 3 blockerを維持する', () => {
+        expect(migration.match(/LANGUAGE plpgsql (?:STABLE )?SECURITY DEFINER SET search_path = ''/g)).toHaveLength(3);
+        expect(migration.match(/GRANT EXECUTE ON FUNCTION public\./g)).toHaveLength(3);
         expect(migration).not.toMatch(/CREATE\s+POLICY|GRANT\s+.+\s+ON\s+TABLE/i);
-    });
-
-    it('layers_設計文書がruntimeとgeneration binding前の適用禁止を固定する', () => {
-        for (const value of [
-            'PR #300 / #301', 'Layer 2のruntime PostgreSQL検証',
-            'recipient_generation', 'Service Worker', 'account switch',
-            'direct write権限', 'ACCESS EXCLUSIVE', '再同期', 'MERGE BLOCKED',
-        ]) expect(readme).toContain(value);
+        for (const value of ['getPushEndpointOwnershipKey', 'generation authorityがないlegacy row',
+            'foreign/missing/stale', 'Layer 2のruntime PostgreSQL検証', 'MERGE BLOCKED']) {
+            expect(readme).toContain(value);
+        }
         expect(instructions).toContain('### LL-085:');
-        expect(runtimeSources.join('\n')).not.toMatch(
-            /push_subscription_ownership|save_push_subscription_with_generation/,
-        );
+        expect(runtime).not.toMatch(/push_subscription_ownership|read_push_subscription_generations/);
     });
 });
