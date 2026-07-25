@@ -1577,6 +1577,13 @@ export const runtime = "edge";
 - **根本原因**: catalog形状の存在確認と、制約式が守る業務境界の実行確認を同一視した。
 - **対策・教訓**: digest固定に加え、条件を弱めたmigrationをfresh DBへ適用して境界insertが検出されることを確認する。並行claimは任意時間待機でなく実lock待機を観測し、逆順入力でも二重claimとdeadlockがないことを証明する。リファレンス: `scripts/test-notification-outbox-postgres.ts`
 
+### LL-085: endpoint所有権とpayload世代を分離すると遅延Pushが旧ユーザーへ届く
+
+- **事象**: Web Push送信後のowner移転に加え、host case・default port・percent encoding・fragment aliasをraw文字列hashすると同一endpointが別authority/lockになり、generationを安全に取得する非更新経路もなかった。
+- **根本原因**: URL正規化をDBのraw endpoint hashへ暗黙依存し、legacy rowからownerを推測してbackfillし、save RPCをgeneration readにも流用する設計だった。
+- **対策**: Layer 3共有helperのcanonical ownership keyだけをdigest/lockへ使い、legacyは全隔離する。authorityへcurrent subscription IDを結び、owner・digest・ID・保存行userのexact一致だけを返すservice-role read RPCを分離する。
+- **教訓**: SQLへRFC 3986正規化を再実装しない。canonical key生成とraw→key consistencyは共有アプリ境界で検証し、generation authorityがない購読へpersonalized payloadを送らない。
+
 ### LL-086: RPCの静的型だけでは実行時shapeと秘匿境界を保証できない
 
 - **事象**: 通知outbox RPCの引数・戻り値を型定義しても、PostgRESTの不正shape、生DB error、stale owner/tokenを呼出routeへ露出または成功扱いし得た。
