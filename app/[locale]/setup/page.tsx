@@ -14,6 +14,9 @@ import {
 } from '@/lib/auth-flow';
 import { reportError } from '@/lib/errors';
 import {
+    runAfterPushRecipientClear,
+} from '@/lib/push-recipient-state';
+import {
     getCommunityDestination,
     getNextSetupStep,
     getPreviousSetupStep,
@@ -75,6 +78,25 @@ export default function SetupPage() {
     const handleCompletionNavigation = (destination: string): void => {
         window.sessionStorage.removeItem(AUTH_CALLBACK_STORAGE_KEY);
         router.push(destination);
+    };
+
+    const signOutSecurely = async (): Promise<void> => {
+        await runAfterPushRecipientClear(
+            () => signOut({ callbackUrl: '/', redirect: false }),
+            (result) => window.location.assign(result.url),
+        )
+            .catch(() => { throw new Error(t('secureSignOutError')); });
+    };
+
+    const handleSignInAgain = async (): Promise<void> => {
+        if (loading) return;
+        setLoading(true);
+        setError(null);
+        try {
+            await signOutSecurely();
+        } catch {
+            setError(t('secureSignOutError')); setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -268,7 +290,7 @@ export default function SetupPage() {
             }
 
             if (data.merged) {
-                await signOut({ callbackUrl: '/' });
+                await signOutSecurely();
                 return;
             }
 
@@ -501,13 +523,20 @@ export default function SetupPage() {
                         <p>{t('accountMissing')}</p>
                         <button
                             type="button"
-                            onClick={() => signOut({ callbackUrl: '/' })}
-                            className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--color-danger)] px-4 py-2 text-sm font-bold transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)] focus-visible:ring-offset-2"
+                            onClick={handleSignInAgain}
+                            aria-busy={loading}
+                            aria-disabled={loading}
+                            aria-describedby={error ? 'setup-error-message' : undefined}
+                            className="mt-2 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[var(--color-danger)] px-4 py-2 text-sm font-bold transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)] focus-visible:ring-offset-2 aria-disabled:cursor-wait aria-disabled:opacity-70"
                         >
-                            {t('signInAgain')}
+                            {loading && <span aria-hidden="true"><Spinner size="xs" /></span>}
+                            {loading ? t('signingOut') : t('signInAgain')}
                         </button>
                     </div>
                 )}
+                <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                    {currentStep === 1 && statusError === 'missing' && loading ? t('signingOut') : ''}
+                </span>
                 {currentStep === 1 && !statusLoading && statusError === null && !provider && (
                     <div className="mb-4 rounded-xl border border-[var(--color-warning)]/30 bg-[var(--color-surface-muted)] px-3 py-2.5">
                         <p className="text-sm font-bold text-[var(--color-text)]">{t('connectionMissingTitle')}</p>
@@ -533,7 +562,7 @@ export default function SetupPage() {
                 <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-6">
                     <form className="space-y-5" onSubmit={handleSubmit} aria-busy={loading || statusLoading}>
                         {error && (
-                            <div className="rounded-xl border border-[var(--color-danger)]/25 bg-[var(--color-surface)] p-3" role="alert">
+                            <div id="setup-error-message" className="rounded-xl border border-[var(--color-danger)]/25 bg-[var(--color-surface)] p-3" role="alert">
                                 <p className="text-sm font-medium text-[var(--color-danger)]">{error}</p>
                             </div>
                         )}

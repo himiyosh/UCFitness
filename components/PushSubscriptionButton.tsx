@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+
+import {
+    releasePushSubscriptionForCurrentRecipient,
+    savePushSubscriptionForCurrentRecipient,
+    synchronizePushRecipientForSession,
+} from '@/lib/push-recipient-state';
+
 import { useToast } from '@/components/ui/Toast';
 
 // Helper to convert VAPID key
@@ -30,8 +37,8 @@ export default function PushSubscriptionButton() {
     const registerServiceWorker = useCallback(async () => {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js');
-            const sub = await registration.pushManager.getSubscription();
-            setSubscription(sub);
+            await registration.update();
+            setSubscription(await synchronizePushRecipientForSession());
         } catch (error: unknown) {
             void error;
         }
@@ -62,14 +69,7 @@ export default function PushSubscriptionButton() {
                 applicationServerKey: urlBase64ToUint8Array(vapidKey)
             });
 
-            // Send subscription to backend
-            const res = await fetch('/api/push/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sub)
-            });
-
-            if (!res.ok) throw new Error('Failed to save subscription');
+            await savePushSubscriptionForCurrentRecipient(sub);
 
             setSubscription(sub);
             toast.success(t('success'));
@@ -85,14 +85,7 @@ export default function PushSubscriptionButton() {
         if (loading || !subscription) return;
         setLoading(true);
         try {
-            await subscription.unsubscribe();
-
-            // Notify backend to remove subscription
-            await fetch('/api/push/subscribe', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: subscription.endpoint })
-            });
+            await releasePushSubscriptionForCurrentRecipient(subscription);
 
             setSubscription(null);
             toast.success(t('disabled') ?? 'Notifications disabled');
@@ -123,7 +116,7 @@ export default function PushSubscriptionButton() {
                         onClick={unsubscribeFromPush}
                         disabled={loading}
                         aria-label={t('disable')}
-                        className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-xs text-red-500 underline hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:opacity-50"
                     >
                         {loading && (
                             <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -139,7 +132,7 @@ export default function PushSubscriptionButton() {
                     onClick={subscribeToPush}
                     disabled={loading}
                     aria-label={t('enable')}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--theme-primary)] text-white rounded-lg text-sm font-medium hover:brightness-110 transition-all disabled:opacity-50"
+                    className="flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                     {loading && (
                         <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">

@@ -1,4 +1,12 @@
+'use client';
+
 import { useState, useEffect, useCallback } from 'react';
+
+import {
+    releasePushSubscriptionForCurrentRecipient,
+    savePushSubscriptionForCurrentRecipient,
+    synchronizePushRecipientForSession,
+} from '@/lib/push-recipient-state';
 
 // Helper to convert VAPID key
 function urlBase64ToUint8Array(base64String: string) {
@@ -33,8 +41,8 @@ export function useWebPush() {
     const registerServiceWorker = async () => {
         try {
             const registration = await navigator.serviceWorker.register('/sw.js');
-            const sub = await registration.pushManager.getSubscription();
-            setSubscription(sub);
+            await registration.update();
+            setSubscription(await synchronizePushRecipientForSession());
         } catch (error: unknown) {
             console.error('Service Worker registration failed');
         }
@@ -59,14 +67,7 @@ export function useWebPush() {
             setSubscription(sub);
             setPermission(Notification.permission);
 
-            // Send subscription to backend
-            const res = await fetch('/api/push/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sub)
-            });
-
-            if (!res.ok) throw new Error('Failed to sync subscription with backend');
+            await savePushSubscriptionForCurrentRecipient(sub);
 
             return true;
         } catch (error: unknown) {
@@ -83,7 +84,7 @@ export function useWebPush() {
         setLoading(true);
         try {
             if (subscription) {
-                await subscription.unsubscribe();
+                await releasePushSubscriptionForCurrentRecipient(subscription);
                 setSubscription(null);
             }
             return true;

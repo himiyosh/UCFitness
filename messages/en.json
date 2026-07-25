@@ -93,6 +93,7 @@
     "profile": "Profile",
     "home": "Home",
     "logout": "Logout",
+    "secureAuthTransitionError": "We could not safely clear the notification recipient. Please retry sign in.",
     "language": "Language",
     "save": "Save",
     "cancel": "Cancel",
@@ -424,6 +425,8 @@
     "retryStatus": "Reload status",
     "accountMissing": "Your account information could not be found. Sign in again to continue safely.",
     "signInAgain": "Sign in again",
+    "signingOut": "Signing out safely...",
+    "secureSignOutError": "We could not safely clear the notification recipient. Please try again.",
     "submit": "Complete Setup",
     "saving": "Saving...",
     "loadingSession": "Loading session...",
@@ -752,7 +755,9 @@
     "success": "Notifications enabled!",
     "error": "Failed to enable notifications.",
     "disableError": "Failed to disable notifications.",
-    "disabled": "Notifications disabled."
+    "disabled": "Notifications disabled.",
+    "recipientSyncError": "We could not safely sync the notification recipient. Notifications remain paused.",
+    "retryRecipientSync": "Retry secure notification sync"
   },
   "Profile": {
     "title": "Profile",
@@ -1002,7 +1007,10 @@
     "challenges": "Challenges",
     "analytics": "Analytics",
     "settings": "Settings",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "signingOut": "Signing out safely...",
+    "retrySignOut": "Retry sign out",
+    "signOutProtectionError": "We could not safely clear the notification recipient. Retry sign out."
   },
   "Bank": {
     "title": "Wallet",

@@ -4,7 +4,10 @@ import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { signOut } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 
+import { runAfterPushRecipientClear } from '@/lib/push-recipient-state';
 import { Link } from '@/navigation';
+
+import Spinner from '@/components/ui/Spinner';
 import UserAvatar from '@/components/UserAvatar';
 
 import type { FocusEvent, ReactNode } from 'react';
@@ -21,6 +24,7 @@ interface UserMenuProps {
 
 export default function UserMenu({ user }: UserMenuProps): ReactNode {
     const [isOpen, setIsOpen] = useState(false);
+    const [signOutState, setSignOutState] = useState<'idle' | 'clearing' | 'error'>('idle');
     const menuRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const menuId = useId();
@@ -49,11 +53,13 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
         if (!isOpen) return;
 
         function handleClickOutside(event: MouseEvent) {
+            if (signOutState === 'clearing') return;
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         }
         function handleEscapeKey(event: KeyboardEvent) {
+            if (signOutState === 'clearing') return;
             if (event.key === 'Escape') {
                 setIsOpen(false);
                 triggerRef.current?.focus();
@@ -65,23 +71,37 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
             document.removeEventListener("mousedown", handleClickOutside);
             document.removeEventListener("keydown", handleEscapeKey);
         };
-    }, [isOpen]);
+    }, [isOpen, signOutState]);
 
     const toggleMenu = useCallback(() => {
+        if (signOutState === 'clearing') return;
+        setSignOutState('idle');
         setIsOpen(prev => !prev);
-    }, []);
+    }, [signOutState]);
 
-    const handleSignOut = useCallback(() => {
-        setIsOpen(false);
-        signOut();
-    }, []);
+    const handleSignOut = useCallback(async (): Promise<void> => {
+        if (signOutState === 'clearing') return;
+        setSignOutState('clearing');
+        try {
+            await runAfterPushRecipientClear(
+                () => signOut({ redirect: false }),
+                (result) => {
+                setIsOpen(false);
+                    window.location.assign(result.url);
+                },
+            );
+        } catch {
+            setSignOutState('error');
+        }
+    }, [signOutState]);
 
     const handleMenuBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
+        if (signOutState === 'clearing') return;
         if (event.relatedTarget instanceof Node && menuRef.current?.contains(event.relatedTarget)) {
             return;
         }
         setIsOpen(false);
-    }, []);
+    }, [signOutState]);
 
     return (
         <div className="relative flex-shrink-0" ref={menuRef} onBlur={handleMenuBlur}>
@@ -176,12 +196,21 @@ export default function UserMenu({ user }: UserMenuProps): ReactNode {
 
                     <button
                         onClick={handleSignOut}
-                        className="flex min-h-[44px] w-full items-center px-4 py-2 text-left text-sm text-[var(--color-danger)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
+                        aria-busy={signOutState === 'clearing'}
+                        aria-disabled={signOutState === 'clearing'}
+                        aria-describedby={signOutState === 'error' ? `${menuId}-signout-error` : undefined}
+                        className="flex min-h-[44px] w-full items-center gap-2 px-4 py-2 text-left text-sm text-[var(--color-danger)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)] aria-disabled:cursor-wait aria-disabled:opacity-70"
                     >
-                        🚪 {commonT('logout')}
+                        {signOutState === 'clearing' ? <span aria-hidden="true"><Spinner size="xs" /></span> : <span aria-hidden="true">🚪</span>}
+                        {signOutState === 'clearing' ? t('signingOut') : signOutState === 'error' ? t('retrySignOut') : commonT('logout')}
                     </button>
+                    {signOutState === 'error' && (
+                        <p id={`${menuId}-signout-error`} className="px-4 py-2 text-xs font-medium text-[var(--color-danger)]">{t('signOutProtectionError')}</p>
+                    )}
                 </div>
             )}
+            <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{signOutState === 'clearing' ? t('signingOut') : ''}</span>
+            <span className="sr-only" role="alert" aria-live="assertive" aria-atomic="true">{signOutState === 'error' ? t('signOutProtectionError') : ''}</span>
         </div>
     );
 }
