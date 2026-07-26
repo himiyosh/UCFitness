@@ -76,7 +76,7 @@ describe('title achievement service', () => {
         vi.clearAllMocks();
         scenario = {
             owned: createResult([]),
-            stats: createResult({ total_steps: 0 }),
+            stats: createResult({ total_steps: 0, total_days: 0 }),
             today: createResult(null),
             user: createResult({ step_goal: 10_000 }),
             balance: createResult(null),
@@ -158,7 +158,7 @@ describe('title achievement service', () => {
         [{ shop_items: [{ item_code: 'title_first_step' }] }],
     ])('owned relationのobject/array形状を受理する', async (ownedRow) => {
         scenario.owned.data = [ownedRow];
-        scenario.stats.data = { total_steps: 1_000 };
+        scenario.stats.data = { total_steps: 1_000, total_days: 1 };
         await expect(checkAndAwardTitleAchievements('user-1')).resolves.toEqual([]);
     });
 
@@ -171,8 +171,12 @@ describe('title achievement service', () => {
     });
 
     it('array statsで称号条件を満たす場合、称号を付与する', async () => {
-        scenario.stats.data = [{ total_steps: 1_000 }];
+        scenario.stats.data = [{ total_steps: 1_000, total_days: 1 }];
         await expect(checkAndAwardTitleAchievements('user-1')).resolves.toEqual(['title_first_step']);
+        expect(mocks.rpc).toHaveBeenCalledWith(
+            'get_user_step_stats',
+            { p_user_id: 'user-1' },
+        );
         expect(mocks.upsert).toHaveBeenCalledWith(
             { user_id: 'user-1', item_id: 'title-item-1', is_equipped: false },
             { onConflict: 'user_id,item_id' },
