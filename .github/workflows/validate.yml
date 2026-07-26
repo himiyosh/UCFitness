@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -35,3 +35,54 @@ jobs:
 
       - name: Audit runtime dependencies
         run: npm audit --omit=dev --audit-level=high
+
+  push-cas-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16.13-bookworm@sha256:472efd9a66f2b2f1a5aeb18b28de74332e6ef88c2b93a1a5d812fb6db67a5f60
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - "127.0.0.1:5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run Push CAS PostgreSQL verification
+        run: npm run test:postgres:push-cas
+        env:
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
+          PUSH_CAS_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      - name: Run Notification Outbox PostgreSQL verification
+        run: npm run test:postgres:notification-outbox
+        env:
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
+          NOTIFICATION_OUTBOX_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      - name: Run Push Protocol PostgreSQL verification
+        run: >-
+          PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POSTGRES_TEST_USER}:${POSTGRES_TEST_PASSWORD}@127.0.0.1:5432/postgres"
+          npm run test:postgres:push-protocol
+        env:
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
+          POSTGRES_TEST_USER: postgres
+          POSTGRES_TEST_PASSWORD: postgres
+      - name: Run Push Generation PostgreSQL verification
+        run: npm run test:postgres:push-generation
+        env:
+          UCFITNESS_POSTGRES_RUNTIME_TEST: "1"
+          PUSH_GENERATION_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres

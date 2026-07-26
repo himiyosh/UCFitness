@@ -63,6 +63,50 @@ function isVisibleFocusable(element: HTMLElement): boolean {
   );
 }
 
+function isAvailableFocusTarget(element: HTMLElement | null): element is HTMLElement {
+  if (
+    !(element instanceof HTMLElement)
+    || !element.isConnected
+    || element.inert
+    || element.matches(':disabled, [aria-disabled="true"]')
+    || element.closest('[hidden], [inert], [aria-hidden="true"]')
+  ) return false;
+
+  let currentElement: HTMLElement | null = element;
+  while (currentElement) {
+    const style = window.getComputedStyle(currentElement);
+    if (style.display === 'none' || style.visibility !== 'visible' || style.opacity === '0') {
+      return false;
+    }
+    currentElement = currentElement.parentElement;
+  }
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+export function createDialogFocusRestorer(
+  previouslyFocused: HTMLElement | null,
+  initialFallbackFocusTarget: HTMLElement | null,
+  getCurrentFallbackFocusTarget: () => HTMLElement | null = () => null,
+  getCurrentMainFocusTarget: () => HTMLElement | null = () => null,
+): () => void {
+  return () => {
+    const focusTargetGetters = [
+      () => previouslyFocused,
+      () => initialFallbackFocusTarget,
+      getCurrentFallbackFocusTarget,
+      getCurrentMainFocusTarget,
+    ];
+    for (const getFocusTarget of focusTargetGetters) {
+      const focusTarget = getFocusTarget();
+      if (isAvailableFocusTarget(focusTarget)) {
+        focusTarget.focus();
+        return;
+      }
+    }
+  };
+}
+
 export function useDialogFocus({
   isOpen,
   onClose,
@@ -86,6 +130,19 @@ export function useDialogFocus({
     const previouslyFocused = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
+    const initialFallbackFocusTarget = fallbackFocusRef?.current ?? null;
+    const getCurrentFallbackFocusTarget = (): HTMLElement | null => (
+      fallbackFocusRef?.current ?? null
+    );
+    const getCurrentMainFocusTarget = (): HTMLElement | null => (
+      document.getElementById('main-page-content')
+    );
+    const restoreFocus = createDialogFocusRestorer(
+      previouslyFocused,
+      initialFallbackFocusTarget,
+      getCurrentFallbackFocusTarget,
+      getCurrentMainFocusTarget,
+    );
     const overlayElement = dialogRef.current?.parentElement ?? null;
     if (!overlayElement) return;
 
@@ -141,15 +198,7 @@ export function useDialogFocus({
       const stackIndex = dialogStack.findIndex((entry) => entry.id === id);
       if (stackIndex >= 0) dialogStack.splice(stackIndex, 1);
       refreshDialogStack();
-
-      const fallbackTarget = fallbackFocusRef?.current
-        ?? document.getElementById('main-page-content');
-      const focusTarget = previouslyFocused?.isConnected && !previouslyFocused.inert
-        ? previouslyFocused
-        : fallbackTarget;
-      if (focusTarget instanceof HTMLElement && focusTarget.isConnected && !focusTarget.inert) {
-        focusTarget.focus();
-      }
+      restoreFocus();
     };
   }, [dialogRef, fallbackFocusRef, initialFocusRef, isOpen]);
 }

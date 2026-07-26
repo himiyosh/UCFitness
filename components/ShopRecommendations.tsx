@@ -51,7 +51,7 @@ export default function ShopRecommendations() {
             fetch('/api/amazon/trending').then(res => { if (!res.ok) throw new Error('fetch failed'); return res.json(); }),
         ]).then(([personalResult, trendResult]) => {
             if (cancelled) return;
-            setLoadError(personalResult.status === 'rejected' && trendResult.status === 'rejected');
+            setLoadError(personalResult.status === 'rejected' || trendResult.status === 'rejected');
             if (personalResult.status === 'fulfilled') {
                 setPersonalData(personalResult.value);
             }
@@ -92,8 +92,7 @@ export default function ShopRecommendations() {
         title.replace(/【.*?】/g, '').trim() || 'Item', []);
 
     if (loading) return null;
-    if (loadError) return <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{t('recommendationsUnavailable')}</p>;
-    if (!personalData && trendingItems.length === 0) return null;
+    if (!loadError && !personalData && trendingItems.length === 0) return null;
 
     const associateTag = process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG || 'ucfitness-22';
     const makeSearchUrl = (keyword: string) =>
@@ -101,7 +100,8 @@ export default function ShopRecommendations() {
 
     return (
         <div className="mb-6 flex flex-col gap-4">
-            <AffiliateDisclosure />
+            {(personalData || trendingItems.length > 0) && <AffiliateDisclosure />}
+            {loadError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{t('recommendationsUnavailable')}</p>}
             {/* あなたへのおすすめ */}
             {personalData && (
                 <div className="rounded-2xl bg-gradient-to-r from-[var(--theme-primary)]/5 to-[var(--theme-gradient-to)]/5 p-4">
