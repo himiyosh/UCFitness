@@ -24,7 +24,10 @@ vi.mock('@/lib/supabase', () => ({
 
 import { GET as getAchievementProgress } from '@/app/api/user/achievement-progress/route';
 import { GET as getFollowStatus } from '@/app/api/user/follow/status/route';
-import { GET as getStepCalendar } from '@/app/api/user/step-calendar/route';
+import {
+    GET as getStepCalendar,
+} from '@/app/api/user/step-calendar/route';
+import { getJSTDateString, resolveStepCalendarYear } from '@/lib/date-utils';
 
 interface QueryResult {
     data: unknown;
@@ -72,6 +75,11 @@ function createQueryChain(result: QueryResult): QueryChain {
 
 const VIEWER_ID = '11111111-1111-1111-1111-111111111111';
 const TARGET_ID = '22222222-2222-2222-2222-222222222222';
+
+function stepCalendarRequest(year?: string): Request {
+    const query = year === undefined ? '' : `&year=${encodeURIComponent(year)}`;
+    return new Request(`http://localhost/api/user/step-calendar?userId=${TARGET_ID}${query}`);
+}
 
 describe('公開target userId API', () => {
     beforeEach(() => {
@@ -159,6 +167,55 @@ describe('公開target userId API', () => {
         expect(payload.data).toEqual([{ date: '2026-01-01', steps: 500 }]);
         expect(mocks.eqCalls).toContainEqual(['user_id', TARGET_ID]);
         expect(mocks.eqCalls).not.toContainEqual(['user_id', VIEWER_ID]);
+    });
+
+    it('step-calendar_未認証の場合_DB照会せず401を返す', async () => {
+        mocks.auth.mockResolvedValue(null);
+        const response = await getStepCalendar(stepCalendarRequest('2026'));
+        expect([response.status, mocks.from.mock.calls.length]).toEqual([401, 0]);
+    });
+
+    it('step-calendar_year省略時_現在年の範囲で照会する', async () => {
+        const chain = createQueryChain({ data: [], error: null });
+        mocks.from.mockReturnValue(chain);
+        const currentYear = getJSTDateString().slice(0, 4);
+        const response = await getStepCalendar(stepCalendarRequest());
+        expect(response.status).toBe(200);
+        expect(chain.gte).toHaveBeenCalledWith('date', `${currentYear}-01-01`);
+        expect(chain.lte).toHaveBeenCalledWith('date', `${currentYear}-12-31`);
+    });
+
+    it('step-calendar_year省略時_JST元日のUTC前年時刻でもJST年を返す', () => {
+        expect(resolveStepCalendarYear(null, new Date('2026-12-31T15:30:00Z'))).toBe(2027);
+    });
+
+    it.each<[string, number]>([
+        ['2000', 2000], ['2100', 2100], ['+2024', 2024],
+    ])('step-calendar_year="%s"の場合_%d年の範囲で照会する', async (value, year) => {
+            const chain = createQueryChain({ data: [], error: null });
+            mocks.from.mockReturnValue(chain);
+            const response = await getStepCalendar(stepCalendarRequest(value));
+            expect(response.status).toBe(200);
+            expect(chain.gte).toHaveBeenCalledWith('date', `${year}-01-01`);
+            expect(chain.lte).toHaveBeenCalledWith('date', `${year}-12-31`);
+    });
+
+    it.each([
+        '', ' ', '1999', '2101', '-2024', '2024junk', '2024.5', '2e3', '0x7e8',
+        '9007199254740992',
+    ])('step-calendar_yearが不正な値"%s"の場合_DB照会せず400を返す', async (year) => {
+        const response = await getStepCalendar(stepCalendarRequest(year));
+        expect([response.status, await response.json(), mocks.from.mock.calls.length])
+            .toEqual([400, { error: 'Invalid year' }, 0]);
+    });
+
+    it('step-calendar_DB取得が失敗した場合_生エラーを露出せず500を返す', async () => {
+        const sensitiveDetail = 'sensitive-database-detail';
+        mocks.from.mockReturnValue(createQueryChain({ data: null, error: { message: sensitiveDetail } }));
+        const response = await getStepCalendar(stepCalendarRequest('2026'));
+        const payload = await response.json();
+        expect([response.status, payload]).toEqual([500, { error: 'Database error' }]);
+        expect(JSON.stringify([payload, ...mocks.reportError.mock.calls])).not.toContain(sensitiveDetail);
     });
 
     it('follow/status_正当なtargetUserIdの場合_閲覧者から対象への関係を照会する', async () => {

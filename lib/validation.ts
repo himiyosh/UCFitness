@@ -6,6 +6,7 @@
 /** UUID v4 形式の正規表現 */
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DECIMAL_INTEGER_REGEX = /^[+-]?\d+$/;
 
 // UTF-8入力を固定長digestへ変換し、文字列長による比較loopの短絡を避ける。
 export async function constantTimeEqual(actual: string, expected: string): Promise<boolean> {
@@ -28,6 +29,15 @@ export function isValidUUID(value: unknown): value is string {
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function parseStrictInteger(value: string): number | null {
+    if (!DECIMAL_INTEGER_REGEX.test(value)) {
+        return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
 export function isValidISODate(value: unknown): value is string {

@@ -1532,6 +1532,12 @@ export const runtime = "edge";
 - **対策**: 倍率差を整数百分率へ`Math.round`で正規化してから計算し、processCoinsとbackfillが同じ共有ヘルパーを使うようにした。10,000歩・7日ストリークが2,000 UCになる日次RPC payloadとbackfillの両方をテストする。
 - **教訓**: UCなどの離散報酬で固定率の差分を計算する場合、浮動小数点の差分へ直接`floor`を適用しない。最小通貨単位に対応する整数率へ正規化し、代表的な倍率境界を両方の書き込み経路で検証する。リファレンス: `lib/services/coin-service.ts`, `lib/services/coin-service.test.ts`
 
+### LL-070: API入力だけのparseInt監査でClient送信値とJST境界を見落とした
+
+- **事象**: query整数の部分受理修正後も、`WalkingRoutes`のduration入力が`parseInt`で`1e2`・`1.5`・`3abc`を部分受理し、Step Calendarの省略yearはEdge UTCの元日境界で前年を選び得た。Client修正後も汎用alertだけで、入力の無効状態と修正方法が支援技術へ関連付いていなかった。さらにnumber inputの`1e309`等はDOM valueが空でも`validity.badInput=true`となり、文字列だけでは未指定と誤認し、同じ空valueのまま有効へ戻る操作ではReact `onChange`が発火しなかった。
+- **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、native `ValidityState`とvalue不変時のevent差を確認しなかった。React state更新直後の同期focusで、ARIA属性とerror DOMのcommit前に入力へ移動し、実DOM testはPlaywright bundled browserがCIに存在すると仮定した。runner既設Chromeへ移行後も、bundleとbrowserのcold startupが15秒以内で安定すると見積もっていた。
+- **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは`validity.badInput`を空文字判定より先に確認し、native `input`イベントでValidityState修正を追跡し、試行counterを契機とするeffectでARIA/error DOM commit後に毎回focusする。CI run 30051872077の初回15.012秒timeoutと再実行8.599秒PASSを根拠に、Google Chrome実DOM testだけを30秒、各Playwright操作を5秒とし、global timeoutは変更しない。
+- **教訓**: 入力検証監査はHTTP境界だけで完了とせず、native validity・value不変時のinput event・フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付け、無効化と修正直後の解除を実ブラウザで固定する。CIのbrowser testはdownload済みbrowserを暗黙前提にせず、実行環境の既設browser経路を使う。cold startupの実測から対象testだけの起動予算を決め、短い操作timeoutを別に保って失敗assertionを隠さない。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`
 ### LL-064: 静的アイコンを`next/og`で再生成するとPages Workerの無料枠を超える
 
 - **事象**: `app/icon.tsx`と`app/apple-icon.tsx`が`ImageResponse`を使ったため、既に同じPNGが`public/`にあるにもかかわらずresvg WASM約1.32 MiBをWorkerへ同梱し、gzip推定3.052 MiBでCloudflare無料枠3 MiBのdeployだけが失敗した。
@@ -1614,3 +1620,10 @@ export const runtime = "edge";
 - **事象**: PR #314のserver実装にはcanonical ownership key生成、route配線、購読整理、RPC境界が同居し、wrapperだけを安全に先行mergeできなかった。
 - **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
 - **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`
+
+### LL-093: Route Handlerから補助関数をexportするとCloudflare buildが停止する
+
+- **事象**: Step CalendarのJST年解決helperを`app/api/user/step-calendar/route.ts`からexportした結果、Next.jsのRoute Handler型検査が許可しないexportとしてCloudflare Pages buildを停止した。
+- **根本原因**: テストで参照する純粋helperをRoute Handlerに置いても、HTTP methodとRoute configだけをexportできるApp Routerのmodule契約を満たすと誤認した。
+- **対策**: Route HandlerはHTTP methodと許可済みRoute configだけをexportし、Server/Client共通またはテスト対象の純粋helperは`lib/`へ配置してimportする。型検査だけでなくPages buildも実行してRoute export制約を確認する。
+- **教訓**: App Routerの`route.ts`は再利用モジュールではない。補助exportが必要になった時点で共有moduleへ切り出し、Route HandlerをHTTP境界だけに保つ。リファレンス: `app/api/user/step-calendar/route.ts`, `lib/date-utils.ts`
