@@ -6,14 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 import { useDialogFocus } from '@/hooks/useDialogFocus';
-import {
-    clampBannerOffsets,
-    getBannerCropGeometry,
-    getBannerScaleBounds,
-    resizeBannerCropState,
-    resolveBannerCropState,
-    scaleBannerCropState,
-} from "@/lib/banner-crop-geometry";
+import { clampBannerOffsets, getBannerCropPixels, getBannerCropGeometry, getBannerScaleBounds,
+    resizeBannerCropState, resolveBannerCropState, scaleBannerCropState } from '@/lib/banner-crop-geometry';
 import { compressImage } from '@/lib/image-utils';
 
 interface BannerImageEditorProps {
@@ -21,21 +15,14 @@ interface BannerImageEditorProps {
     children?: React.ReactNode;
 }
 
-interface CropInteractionSnapshot {
-    hasFile: boolean;
-    imageSize: { w: number; h: number } | null;
-    offsetX: number;
-    offsetY: number;
-    scale: number;
-}
-
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
-const DEFAULT_CONTAINER_WIDTH = 360;
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+function getDevicePixelRatio(): number { const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio; return Number.isFinite(ratio) && ratio > 0 ? ratio : 1; }
 
 export default function BannerImageEditor({ currentBanner, children }: BannerImageEditorProps) {
     const [isOpen, setIsOpen] = useState(false);
@@ -43,6 +30,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const [previewUrl, setPreviewUrl] = useState<string | null>(currentBanner || null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [statusMessage, setStatusMessage] = useState('');
     const router = useRouter();
     const t = useTranslations('BannerEditor');
 
@@ -52,35 +40,39 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     const [offsetY, setOffsetY] = useState(0);
     const [scale, setScale] = useState(1);
     const [isDragging, setIsDragging] = useState(false);
-    const [containerWidth, setContainerWidth] = useState(DEFAULT_CONTAINER_WIDTH);
+    const [containerWidth, setContainerWidth] = useState(0);
     const dragStartRef = useRef<{ x: number; y: number; startOffsetX: number; startOffsetY: number }>({ x: 0, y: 0, startOffsetX: 0, startOffsetY: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
     const dialogRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
-    const previousContainerWidthRef = useRef(DEFAULT_CONTAINER_WIDTH);
-    const latestCropRef = useRef<CropInteractionSnapshot>({
-        hasFile: false,
-        imageSize: null,
-        offsetX: 0,
-        offsetY: 0,
-        scale: MIN_SCALE,
+    const previousContainerWidthRef = useRef(0);
+    const imageLoadGenerationRef = useRef(0);
+    const latestCropRef = useRef<{
+        hasFile: boolean; imageSize: { w: number; h: number } | null; offsetX: number; offsetY: number; scale: number;
+    }>({
+        hasFile: false, imageSize: null, offsetX: 0, offsetY: 0, scale: MIN_SCALE,
     });
-    latestCropRef.current = {
-        hasFile: Boolean(file),
-        imageSize,
-        offsetX,
-        offsetY,
-        scale,
-    };
-    const readContainerWidth = useCallback(
-        (): number => containerRef.current?.clientWidth || DEFAULT_CONTAINER_WIDTH,
-        [],
-    );
+    latestCropRef.current = { hasFile: Boolean(file), imageSize, offsetX, offsetY, scale };
+    const readContainerWidth = useCallback((): number => {
+        const width = containerRef.current?.getBoundingClientRect().width ?? 0;
+        const dpr = getDevicePixelRatio();
+        return width > 0 ? Math.round(width * dpr) / dpr : 0;
+    }, []);
+    const applyCropState = useCallback((next: { x: number; y: number; scale: number }): void => {
+        Object.assign(latestCropRef.current, {
+            offsetX: next.x, offsetY: next.y, scale: next.scale,
+        });
+        setOffsetX(next.x); setOffsetY(next.y); setScale(next.scale);
+    }, []);
     const handleClose = useCallback(() => {
+        imageLoadGenerationRef.current += 1;
         setIsOpen(false);
         setFile(null);
+        setImageSize(null);
+        setPreviewUrl(currentBanner || null);
         setError(null);
-    }, []);
+    }, [currentBanner]);
+    const handleOpen = () => { setStatusMessage(''); setIsOpen(true); };
 
     useDialogFocus({
         isOpen,
@@ -94,67 +86,50 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
 
         const container = containerRef.current;
         if (!container) return;
+        let active = true;
 
         const updateContainerGeometry = (): void => {
+            if (!active) return;
             const nextWidth = readContainerWidth();
             const previousWidth = previousContainerWidthRef.current;
+            if (nextWidth <= 0 || nextWidth === previousWidth) return;
             previousContainerWidthRef.current = nextWidth;
-            setContainerWidth((currentWidth) => (
-                currentWidth === nextWidth ? currentWidth : nextWidth
-            ));
+            setContainerWidth(nextWidth);
 
             const current = latestCropRef.current;
             if (!current.hasFile || !current.imageSize) return;
 
-            const resized = resizeBannerCropState({
-                offsetX: current.offsetX,
-                offsetY: current.offsetY,
-                scale: current.scale,
-                imageSize: current.imageSize,
+            applyCropState(resizeBannerCropState({
+                ...current,
                 previousContainerWidth: previousWidth,
                 nextContainerWidth: nextWidth,
                 preferredMaxScale: MAX_SCALE,
-            });
-            setScale(resized.scale);
-            setOffsetX(resized.x);
-            setOffsetY(resized.y);
+            }));
         };
-
-        updateContainerGeometry();
-        const observer = new ResizeObserver(updateContainerGeometry);
-        observer.observe(container);
-
-        return () => observer.disconnect();
-    }, [isOpen, readContainerWidth]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const container = containerRef.current;
-        if (!container) return;
 
         const handleNativeWheel = (event: WheelEvent): void => {
             const current = latestCropRef.current;
             if (!current.hasFile || !current.imageSize) return;
 
             event.preventDefault();
-            const next = scaleBannerCropState({
-                offsetX: current.offsetX,
-                offsetY: current.offsetY,
-                scale: current.scale,
+            applyCropState(scaleBannerCropState({
+                ...current,
                 nextScale: current.scale - event.deltaY * 0.002,
-                imageSize: current.imageSize,
                 containerWidth: readContainerWidth(),
                 preferredMaxScale: MAX_SCALE,
-            });
-            setScale(next.scale);
-            setOffsetX(next.x);
-            setOffsetY(next.y);
+            }));
         };
 
-        container.addEventListener("wheel", handleNativeWheel, { passive: false });
-        return () => container.removeEventListener("wheel", handleNativeWheel);
-    }, [isOpen, readContainerWidth]);
+        updateContainerGeometry();
+        const observer = new ResizeObserver(updateContainerGeometry);
+        observer.observe(container);
+        container.addEventListener('wheel', handleNativeWheel, { passive: false });
+        return () => {
+            active = false;
+            observer.disconnect();
+            container.removeEventListener('wheel', handleNativeWheel);
+        };
+    }, [applyCropState, isOpen, readContainerWidth]);
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -175,6 +150,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             }
 
             setError(null);
+            const loadGeneration = ++imageLoadGenerationRef.current;
 
             // Revoke previous object URL to prevent memory leaks
             if (previewUrl && previewUrl.startsWith('blob:')) {
@@ -182,12 +158,17 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             }
 
             setFile(selectedFile);
+            setImageSize(null);
+            latestCropRef.current = {
+                hasFile: true, imageSize: null, offsetX: 0, offsetY: 0, scale: MIN_SCALE,
+            };
             const url = URL.createObjectURL(selectedFile);
             setPreviewUrl(url);
 
             const img = new Image();
             img.onload = () => {
-                const nextImageSize = { w: img.width, h: img.height };
+                if (loadGeneration !== imageLoadGenerationRef.current) return;
+                const nextImageSize = { w: img.naturalWidth, h: img.naturalHeight };
                 const initial = resolveBannerCropState({
                     offsetX: 0,
                     offsetY: 0,
@@ -196,14 +177,19 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                     containerWidth: readContainerWidth(),
                     preferredMaxScale: MAX_SCALE,
                 });
+                latestCropRef.current.imageSize = nextImageSize;
                 setImageSize(nextImageSize);
-                setOffsetX(initial.x);
-                setOffsetY(initial.y);
-                setScale(initial.scale);
+                applyCropState(initial);
+            };
+            img.onerror = () => {
+                if (loadGeneration === imageLoadGenerationRef.current) {
+                    setFile(null);
+                    setError(t('invalidType'));
+                }
             };
             img.src = url;
         }
-    }, [previewUrl, readContainerWidth, t]);
+    }, [applyCropState, previewUrl, readContainerWidth, t]);
 
     // Cleanup object URLs on unmount
     useEffect(() => {
@@ -214,18 +200,18 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         };
     }, [previewUrl]);
 
-    const cropGeometry = getBannerCropGeometry(
-        containerWidth,
-        Boolean(file && imageSize),
-    );
+    const cropGeometry = getBannerCropGeometry(containerWidth, Boolean(file && imageSize));
     const scaleBounds = getBannerScaleBounds(imageSize, containerWidth, MAX_SCALE);
+    const clampOffsets = useCallback((x: number, y: number) => clampBannerOffsets({
+        offsetX: x, offsetY: y, scale, imageSize, containerWidth: readContainerWidth(),
+    }), [imageSize, readContainerWidth, scale]);
 
     // ドラッグ開始
     const handlePointerDown = (e: React.PointerEvent) => {
-        if (!file) return;
+        if (!file || !imageSize || readContainerWidth() <= 0) return;
         setIsDragging(true);
         dragStartRef.current = { x: e.clientX, y: e.clientY, startOffsetX: offsetX, startOffsetY: offsetY };
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        e.currentTarget.setPointerCapture(e.pointerId);
     };
 
     // ドラッグ中
@@ -233,15 +219,11 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         if (!isDragging) return;
         const dx = e.clientX - dragStartRef.current.x;
         const dy = e.clientY - dragStartRef.current.y;
-        const clamped = clampBannerOffsets({
-            offsetX: dragStartRef.current.startOffsetX + dx,
-            offsetY: dragStartRef.current.startOffsetY + dy,
-            scale,
-            imageSize,
-            containerWidth: readContainerWidth(),
-        });
-        setOffsetX(clamped.x);
-        setOffsetY(clamped.y);
+        const clamped = clampOffsets(
+            dragStartRef.current.startOffsetX + dx,
+            dragStartRef.current.startOffsetY + dy,
+        );
+        applyCropState({ ...clamped, scale });
     };
 
     // ドラッグ終了
@@ -250,35 +232,28 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     };
 
     const handleCropKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-        if (!file || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+        if (!file || !imageSize || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
             return;
         }
         event.preventDefault();
         const step = event.shiftKey ? 25 : 10;
-        const nextX = event.key === "ArrowLeft"
+        const nextX = event.key === 'ArrowLeft'
             ? offsetX - step
-            : event.key === "ArrowRight"
+            : event.key === 'ArrowRight'
                 ? offsetX + step
                 : offsetX;
-        const nextY = event.key === "ArrowUp"
+        const nextY = event.key === 'ArrowUp'
             ? offsetY - step
-            : event.key === "ArrowDown"
+            : event.key === 'ArrowDown'
                 ? offsetY + step
                 : offsetY;
-        const clamped = clampBannerOffsets({
-            offsetX: nextX,
-            offsetY: nextY,
-            scale,
-            imageSize,
-            containerWidth: readContainerWidth(),
-        });
-        setOffsetX(clamped.x);
-        setOffsetY(clamped.y);
-    }, [file, imageSize, offsetX, offsetY, readContainerWidth, scale]);
+        const clamped = clampOffsets(nextX, nextY);
+        applyCropState({ ...clamped, scale });
+    }, [applyCropState, clampOffsets, file, imageSize, offsetX, offsetY, scale]);
 
     // スライダーでズーム
     const handleScaleChange = (newScale: number) => {
-        const next = scaleBannerCropState({
+        applyCropState(scaleBannerCropState({
             offsetX,
             offsetY,
             scale,
@@ -286,11 +261,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
             imageSize,
             containerWidth: readContainerWidth(),
             preferredMaxScale: MAX_SCALE,
-        });
-
-        setScale(next.scale);
-        setOffsetX(next.x);
-        setOffsetY(next.y);
+        }));
     };
 
     // クロップしてから保存
@@ -300,6 +271,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
         try {
             const currentWidth = readContainerWidth();
             const { cropHeight } = getBannerCropGeometry(currentWidth, false);
+            if (currentWidth <= 0 || cropHeight <= 0) throw new Error('Invalid crop geometry');
             const current = resolveBannerCropState({
                 offsetX,
                 offsetY,
@@ -308,7 +280,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                 containerWidth: currentWidth,
                 preferredMaxScale: MAX_SCALE,
             });
-            const croppedFile = await cropBanner(file, imageSize, current.x, current.y, current.scale, currentWidth, cropHeight);
+            const croppedFile = await cropBanner(file, current.x, current.y, current.scale, currentWidth, cropHeight, getDevicePixelRatio());
             const compressedFile = await compressImage(croppedFile, 1200, 0.8);
 
             const formData = new FormData();
@@ -323,8 +295,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                 throw new Error('Failed to upload banner');
             }
 
-            setIsOpen(false);
-            setFile(null);
+            setStatusMessage(t('saveSuccess')); handleClose();
             router.refresh();
         } catch (_) {
             setError(t('uploadFailed'));
@@ -336,15 +307,16 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
     return (
         <>
             {children ? (
-                <div onClick={() => setIsOpen(true)}>{children}</div>
+                <div onClick={handleOpen}>{children}</div>
             ) : (
                 <button
-                    onClick={() => setIsOpen(true)}
+                    onClick={handleOpen}
                     className="inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--theme-primary)] hover:underline"
                 >
                     {t('changeBanner')}
                 </button>
             )}
+            {typeof document !== 'undefined' && createPortal(<p data-dialog-live-region className="sr-only" role="status">{statusMessage}</p>, document.body)}
 
             {isOpen && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
@@ -356,7 +328,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                             className="absolute right-2 top-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 sm:right-4 sm:top-4"
                             aria-label={t('close')}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
@@ -371,7 +343,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                     type="file"
                                     accept="image/*"
                                     onChange={handleFileChange}
-                                    className="block w-full text-sm text-gray-500
+                                    className="block min-h-[44px] w-full text-sm text-gray-500
                                         file:mr-4 file:py-2 file:px-4
                                         file:rounded-md file:border-0
                                         file:text-sm file:font-semibold
@@ -388,8 +360,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                             <div ref={containerRef} className="rounded-lg overflow-hidden bg-gray-900">
                                 {previewUrl ? (
                                     <div
-                                        className={`relative w-full overflow-hidden select-none ${file ? 'touch-none cursor-grab active:cursor-grabbing' : ''}`}
-                                        style={{ height: `${file ? cropGeometry.previewHeight : cropGeometry.cropHeight}px` }}
+                                        className={`relative w-full select-none overflow-hidden ${file ? 'aspect-square touch-none cursor-grab focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--theme-primary)] active:cursor-grabbing' : 'aspect-[5/2]'}`}
                                         onPointerDown={handlePointerDown}
                                         onPointerMove={handlePointerMove}
                                         onPointerUp={handlePointerUp}
@@ -404,6 +375,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         {file && imageSize ? (
                                             <div
                                                 className="absolute inset-0 pointer-events-none"
+                                                aria-hidden="true"
                                                 style={{
                                                     backgroundImage: `url(${previewUrl})`,
                                                     backgroundSize: `${containerWidth * scale}px auto`,
@@ -451,20 +423,20 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         )}
 
                                         {/* ドラッグヒント */}
-                                        {file && (
+                                        {file && containerWidth > 0 && (
                                             <div
                                                 className="absolute left-0 right-0 bg-gradient-to-t from-black/50 to-transparent py-2 text-center pointer-events-none z-20"
                                                 style={{ top: `${cropGeometry.bleed + cropGeometry.cropHeight - 28}px`, height: '28px' }}
                                             >
                                                 <span className="text-white text-xs font-medium drop-shadow flex items-center justify-center gap-1">
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                                                    <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                                                     {t('cropKeyboardHint')}
                                                 </span>
                                             </div>
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="w-full flex items-center justify-center text-gray-400" style={{ height: `${cropGeometry.cropHeight}px` }}>
+                                    <div className="flex aspect-[5/2] w-full items-center justify-center text-gray-400">
                                         {t('noImage')}
                                     </div>
                                 )}
@@ -474,7 +446,7 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                             {file && (
                                 <div className="flex items-center gap-3 px-1">
                                     <span id="banner-crop-keyboard-hint" className="sr-only">{t('cropKeyboardHint')}</span>
-                                    <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg aria-hidden="true" className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
                                     </svg>
                                     <input
@@ -484,10 +456,10 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                         step={0.01}
                                         value={scale}
                                         onChange={(e) => handleScaleChange(Number(e.target.value))}
-                                        className="flex-1 h-1.5 accent-[var(--theme-primary)] cursor-pointer"
+                                        className="h-11 flex-1 cursor-pointer accent-[var(--theme-primary)]"
                                         aria-label={t('zoomLabel')}
                                     />
-                                    <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg aria-hidden="true" className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
                                     </svg>
                                     <span className="text-xs text-gray-500 w-10 text-right tabular-nums">{Math.round(scale * 100)}%</span>
@@ -503,8 +475,8 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    disabled={isLoading || !file}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/90 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={isLoading || !file || !imageSize || containerWidth <= 0}
+                                    className="min-h-[44px] rounded-md bg-[var(--theme-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--theme-primary)]/90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {isLoading ? t('saving') : t('save')}
                                 </button>
@@ -523,12 +495,12 @@ export default function BannerImageEditor({ currentBanner, children }: BannerIma
  */
 function cropBanner(
     file: File,
-    imageSize: { w: number; h: number },
     offsetX: number,
     offsetY: number,
     scale: number,
     containerWidth: number,
     containerHeight: number,
+    devicePixelRatio: number,
 ): Promise<File> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -537,22 +509,24 @@ function cropBanner(
             const img = new Image();
             img.src = event.target?.result as string;
             img.onload = () => {
-                // 表示上の画像幅 = containerWidth * scale だから
-                // 表示1px = img.width / (containerWidth * scale) 元画像ピクセル
-                const pxPerDisplayPx = img.width / (containerWidth * scale);
-
-                const sx = Math.round(-offsetX * pxPerDisplayPx);
-                const sy = Math.round(-offsetY * pxPerDisplayPx);
-                const sw = Math.round(containerWidth * pxPerDisplayPx);
-                const sh = Math.round(containerHeight * pxPerDisplayPx);
+                const crop = getBannerCropPixels({
+                    offsetX,
+                    offsetY,
+                    scale,
+                    imageSize: { w: img.naturalWidth, h: img.naturalHeight },
+                    containerWidth,
+                    cropHeight: containerHeight,
+                    devicePixelRatio,
+                });
+                if (!crop) { reject(new Error('Invalid crop geometry')); return; }
 
                 const canvas = document.createElement('canvas');
-                canvas.width = sw;
-                canvas.height = sh;
+                canvas.width = crop.outputWidth;
+                canvas.height = crop.outputHeight;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) { reject(new Error('No canvas ctx')); return; }
 
-                ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+                ctx.drawImage(img, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, 0, 0, crop.outputWidth, crop.outputHeight);
 
                 canvas.toBlob((blob) => {
                     if (!blob) { reject(new Error('Crop failed')); return; }

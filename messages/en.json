@@ -2001,6 +2001,7 @@
     "previewAlt": "Banner image preview",
     "bleedHint": "Area visible when zoomed",
     "cropArea": "Banner display area",
+    "saveSuccess": "Banner saved.",
     "uploadFailed": "Failed to update banner. Please try again.",
     "invalidType": "Select a JPEG, PNG, WebP, or GIF image.",
     "fileTooLarge": "File size must be {size}MB or less."

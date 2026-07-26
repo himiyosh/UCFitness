@@ -2001,6 +2001,7 @@
     "previewAlt": "バナー画像のプレビュー",
     "bleedHint": "拡大で表示される領域",
     "cropArea": "バナー表示領域",
+    "saveSuccess": "バナーを保存しました。",
     "uploadFailed": "バナーの更新に失敗しました。再度お試しください。",
     "invalidType": "JPEG、PNG、WebP、GIF形式の画像を選択してください。",
     "fileTooLarge": "ファイルサイズは{size}MB以下にしてください。"

@@ -1,186 +1,100 @@
 const BANNER_ASPECT = 2.5;
 const DEFAULT_MAX_SCALE = 3;
-
-interface BannerImageSize {
-    w: number;
-    h: number;
+const MAX_OUTPUT_WIDTH = 1200;
+interface BannerImageSize { w: number; h: number }
+interface BannerCropGeometry { cropHeight: number; bleed: number; previewHeight: number }
+interface BannerScaleBounds { minScale: number; maxScale: number }
+interface BannerOffsets { x: number; y: number }
+interface BannerCropInput {
+    offsetX: number; offsetY: number; scale: number; imageSize: BannerImageSize | null;
+    containerWidth: number; preferredMaxScale?: number;
 }
-
-interface BannerCropGeometry {
-    cropHeight: number;
-    bleed: number;
-    previewHeight: number;
+interface BannerScaleInput extends BannerCropInput { nextScale: number }
+interface BannerResizeInput extends Omit<BannerCropInput, 'containerWidth'> {
+    previousContainerWidth: number; nextContainerWidth: number;
 }
-
-interface BannerScaleBounds {
-    minScale: number;
-    maxScale: number;
+interface BannerCropState extends BannerOffsets, BannerScaleBounds { scale: number }
+interface BannerCropPixelsInput extends BannerCropInput { cropHeight: number; devicePixelRatio: number }
+interface BannerCropPixels {
+    sourceX: number; sourceY: number; sourceWidth: number; sourceHeight: number;
+    outputWidth: number; outputHeight: number;
 }
-
-interface ClampBannerOffsetsOptions {
-    offsetX: number;
-    offsetY: number;
-    scale: number;
-    imageSize: BannerImageSize | null;
-    containerWidth: number;
-    preferredMaxScale?: number;
+function positive(value: number): number { return Number.isFinite(value) && value > 0 ? value : 0; }
+function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, Number.isFinite(value) ? value : 0)); }
+function hasValidImageSize(imageSize: BannerImageSize | null): imageSize is BannerImageSize { return Boolean(imageSize && positive(imageSize.w) && positive(imageSize.h)); }
+export function getBannerCropGeometry(containerWidth: number, editable: boolean): BannerCropGeometry {
+    const cropHeight = positive(containerWidth) / BANNER_ASPECT;
+    const bleed = editable ? cropHeight * 0.75 : 0;
+    return { cropHeight, bleed, previewHeight: cropHeight + bleed * 2 };
 }
-
-interface ScaleBannerOffsetsOptions extends ClampBannerOffsetsOptions {
-    nextScale: number;
-}
-
-interface ResizeBannerCropOptions {
-    offsetX: number;
-    offsetY: number;
-    scale: number;
-    imageSize: BannerImageSize | null;
-    previousContainerWidth: number;
-    nextContainerWidth: number;
-    preferredMaxScale?: number;
-}
-
-interface BannerOffsets {
-    x: number;
-    y: number;
-}
-
-interface BannerCropState extends BannerOffsets, BannerScaleBounds {
-    scale: number;
-}
-
-export function getBannerCropGeometry(
-    containerWidth: number,
-    hasEditableImage: boolean,
-): BannerCropGeometry {
-    const cropHeight = containerWidth / BANNER_ASPECT;
-    const bleed = hasEditableImage ? Math.round(cropHeight * 0.75) : 0;
-
-    return {
-        cropHeight,
-        bleed,
-        previewHeight: cropHeight + bleed * 2,
-    };
-}
-
-export function getBannerScaleBounds(
-    imageSize: BannerImageSize | null,
-    containerWidth: number,
-    preferredMaxScale: number = DEFAULT_MAX_SCALE,
-): BannerScaleBounds {
+export function getBannerScaleBounds(imageSize: BannerImageSize | null, containerWidth: number, preferredMaxScale: number = DEFAULT_MAX_SCALE): BannerScaleBounds {
     const fallbackMaxScale = Math.max(1, preferredMaxScale);
-    if (!imageSize || imageSize.w <= 0 || imageSize.h <= 0 || containerWidth <= 0) {
-        return { minScale: 1, maxScale: fallbackMaxScale };
-    }
-
+    if (!hasValidImageSize(imageSize) || positive(containerWidth) === 0) return { minScale: 1, maxScale: fallbackMaxScale };
     const { cropHeight } = getBannerCropGeometry(containerWidth, false);
     const baseHeight = (imageSize.h / imageSize.w) * containerWidth;
     const minScale = Math.max(1, cropHeight / baseHeight);
-
-    return {
-        minScale,
-        maxScale: Math.max(fallbackMaxScale, minScale),
-    };
+    return { minScale, maxScale: Math.max(fallbackMaxScale, minScale) };
 }
-
-export function resolveBannerCropState({
-    offsetX,
-    offsetY,
-    scale,
-    imageSize,
-    containerWidth,
-    preferredMaxScale = DEFAULT_MAX_SCALE,
-}: ClampBannerOffsetsOptions): BannerCropState {
-    const { cropHeight } = getBannerCropGeometry(containerWidth, false);
-    const bounds = getBannerScaleBounds(imageSize, containerWidth, preferredMaxScale);
-    const effectiveScale = Math.max(bounds.minScale, Math.min(bounds.maxScale, scale));
-    const displayWidth = containerWidth * effectiveScale;
-    const baseHeight = imageSize
-        ? (imageSize.h / imageSize.w) * containerWidth
-        : cropHeight;
-    const displayHeight = baseHeight * effectiveScale;
-    const minX = Math.min(0, containerWidth - displayWidth);
-    const minY = Math.min(0, cropHeight - displayHeight);
-
+export function resolveBannerCropState(input: BannerCropInput): BannerCropState {
+    const width = positive(input.containerWidth);
+    const bounds = getBannerScaleBounds(input.imageSize, width, input.preferredMaxScale);
+    const scale = clamp(input.scale, bounds.minScale, bounds.maxScale);
+    const { cropHeight } = getBannerCropGeometry(width, false);
+    const baseHeight = hasValidImageSize(input.imageSize) ? (input.imageSize.h / input.imageSize.w) * width : cropHeight;
     return {
-        x: Math.max(minX, Math.min(0, offsetX)),
-        y: Math.max(minY, Math.min(0, offsetY)),
-        scale: effectiveScale,
+        x: clamp(input.offsetX, Math.min(0, width - width * scale), 0),
+        y: clamp(input.offsetY, Math.min(0, cropHeight - baseHeight * scale), 0),
+        scale,
         ...bounds,
     };
 }
-
-export function clampBannerOffsets(options: ClampBannerOffsetsOptions): BannerOffsets {
-    const { x, y } = resolveBannerCropState(options);
-    return { x, y };
+export function clampBannerOffsets(input: BannerCropInput): BannerOffsets {
+    const { x, y } = resolveBannerCropState(input); return { x, y };
 }
-
-export function scaleBannerCropState({
-    offsetX,
-    offsetY,
-    scale,
-    nextScale,
-    imageSize,
-    containerWidth,
-    preferredMaxScale = DEFAULT_MAX_SCALE,
-}: ScaleBannerOffsetsOptions): BannerCropState {
-    const current = resolveBannerCropState({
-        offsetX,
-        offsetY,
-        scale,
-        imageSize,
-        containerWidth,
-        preferredMaxScale,
-    });
-    const bounds = getBannerScaleBounds(imageSize, containerWidth, preferredMaxScale);
-    const effectiveNextScale = Math.max(bounds.minScale, Math.min(bounds.maxScale, nextScale));
-    const { cropHeight } = getBannerCropGeometry(containerWidth, false);
-    const ratio = effectiveNextScale / current.scale;
-    const nextOffsetX = current.x * ratio - (containerWidth / 2) * (ratio - 1);
-    const nextOffsetY = current.y * ratio - (cropHeight / 2) * (ratio - 1);
-
+export function scaleBannerCropState(input: BannerScaleInput): BannerCropState {
+    const current = resolveBannerCropState(input);
+    const nextScale = clamp(input.nextScale, current.minScale, current.maxScale);
+    const ratio = nextScale / current.scale;
+    const { cropHeight } = getBannerCropGeometry(input.containerWidth, false);
     return resolveBannerCropState({
-        offsetX: nextOffsetX,
-        offsetY: nextOffsetY,
-        scale: effectiveNextScale,
-        imageSize,
-        containerWidth,
-        preferredMaxScale,
+        ...input,
+        offsetX: current.x * ratio - (input.containerWidth / 2) * (ratio - 1),
+        offsetY: current.y * ratio - (cropHeight / 2) * (ratio - 1),
+        scale: nextScale,
     });
 }
-
-export function scaleBannerOffsets(options: ScaleBannerOffsetsOptions): BannerOffsets {
-    const { x, y } = scaleBannerCropState(options);
-    return { x, y };
+export function scaleBannerOffsets(input: BannerScaleInput): BannerOffsets {
+    const { x, y } = scaleBannerCropState(input); return { x, y };
 }
-
-export function resizeBannerCropState({
-    offsetX,
-    offsetY,
-    scale,
-    imageSize,
-    previousContainerWidth,
-    nextContainerWidth,
-    preferredMaxScale = DEFAULT_MAX_SCALE,
-}: ResizeBannerCropOptions): BannerCropState {
-    const current = resolveBannerCropState({
-        offsetX,
-        offsetY,
-        scale,
-        imageSize,
-        containerWidth: previousContainerWidth,
-        preferredMaxScale,
-    });
-    const resizeRatio = previousContainerWidth > 0
-        ? nextContainerWidth / previousContainerWidth
-        : 1;
-
+export function resizeBannerCropState(input: BannerResizeInput): BannerCropState {
+    const current = resolveBannerCropState({ ...input, containerWidth: input.previousContainerWidth });
+    const ratio = positive(input.previousContainerWidth) ? positive(input.nextContainerWidth) / input.previousContainerWidth : 1;
     return resolveBannerCropState({
-        offsetX: current.x * resizeRatio,
-        offsetY: current.y * resizeRatio,
+        ...input,
+        offsetX: current.x * ratio,
+        offsetY: current.y * ratio,
         scale: current.scale,
-        imageSize,
-        containerWidth: nextContainerWidth,
-        preferredMaxScale,
+        containerWidth: input.nextContainerWidth,
     });
+}
+export function getBannerCropPixels(input: BannerCropPixelsInput): BannerCropPixels | null {
+    const width = positive(input.containerWidth);
+    const cropHeight = positive(input.cropHeight);
+    if (!hasValidImageSize(input.imageSize) || width === 0 || cropHeight === 0) return null;
+    const current = resolveBannerCropState(input);
+    const sourceRatio = input.imageSize.w / (width * current.scale);
+    const sourceWidth = width * sourceRatio;
+    const sourceHeight = cropHeight * sourceRatio;
+    const dpr = positive(input.devicePixelRatio) || 1;
+    const outputWidth = Math.max(1, Math.min(
+        MAX_OUTPUT_WIDTH, Math.floor(sourceWidth), Math.round(width * dpr),
+    ));
+    return {
+        sourceX: clamp(-current.x * sourceRatio, 0, input.imageSize.w - sourceWidth),
+        sourceY: clamp(-current.y * sourceRatio, 0, input.imageSize.h - sourceHeight),
+        sourceWidth,
+        sourceHeight,
+        outputWidth,
+        outputHeight: Math.max(1, Math.round(outputWidth / BANNER_ASPECT)),
+    };
 }
