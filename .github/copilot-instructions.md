@@ -1538,6 +1538,13 @@ export const runtime = "edge";
 - **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、native `ValidityState`とvalue不変時のevent差を確認しなかった。React state更新直後の同期focusで、ARIA属性とerror DOMのcommit前に入力へ移動し、実DOM testはPlaywright bundled browserがCIに存在すると仮定した。runner既設Chromeへ移行後も、bundleとbrowserのcold startupが15秒以内で安定すると見積もっていた。
 - **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは`validity.badInput`を空文字判定より先に確認し、native `input`イベントでValidityState修正を追跡し、試行counterを契機とするeffectでARIA/error DOM commit後に毎回focusする。CI run 30051872077の初回15.012秒timeoutと再実行8.599秒PASSを根拠に、Google Chrome実DOM testだけを30秒、各Playwright操作を5秒とし、global timeoutは変更しない。
 - **教訓**: 入力検証監査はHTTP境界だけで完了とせず、native validity・value不変時のinput event・フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付け、無効化と修正直後の解除を実ブラウザで固定する。CIのbrowser testはdownload済みbrowserを暗黙前提にせず、実行環境の既設browser経路を使う。cold startupの実測から対象testだけの起動予算を決め、短い操作timeoutを別に保って失敗assertionを隠さない。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`
+
+### LL-071: optional decimalを`type="number"`で受けると厳格検証前に字句を失う
+
+- **事象**: Walking Routesの任意距離を`parseFloat`から全文parserへ変更しても、`type="number"`がReactの`onInput`より前に`+1`→`1`、`3abc`→`3`、前後空白と`1.`→`1`へ正規化し、禁止した生文字列が正常値としてPOSTされた。純粋parser testは正規化前文字列を直接渡すため検出できなかった。
+- **根本原因**: 数値キーボードの提供と生文字列の保持を同じ`type="number"`へ委ね、ブラウザDOMのvalue sanitizationを送信境界に含めていなかった。parser単体の全文一致を、実UIからparserへ同じ字句が届く証拠として扱った。
+- **対策**: 距離だけを`type="text"` + `inputMode="decimal"`へ変更して生文字列を保持し、空文字だけを`null`、存在時は符号・空白・指数・locale依存のカンマ表記を含まない非負10進数全文かつfiniteの場合だけ送信する。距離専用error/ARIA/commit後focus、可視の任意ラベル、16px入力、320px縦積み、意味色outlineを維持する。既設Chrome channelのUIへ禁止字句を実入力し、raw value、POST 0回、反復submit、空への修正、0/1.5 payload、44px、320/375/1280px、keyboard、consoleを固定する。
+- **教訓**: 字句自体を厳格検証するdecimal入力では`type="number"`を正本にしない。`inputMode`はモバイルキーボードのhintに限定し、localeで意味が変わる区切り文字を暗黙変換しない。raw文字列をClient parserへ渡した証拠と、変換後numberを再検証するServer契約の両方を持つ。エラー文追加時は狭幅の入力幅と全テーマの実focus indicatorも同じ完了条件にする。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`
 ### LL-064: 静的アイコンを`next/og`で再生成するとPages Workerの無料枠を超える
 
 - **事象**: `app/icon.tsx`と`app/apple-icon.tsx`が`ImageResponse`を使ったため、既に同じPNGが`public/`にあるにもかかわらずresvg WASM約1.32 MiBをWorkerへ同梱し、gzip推定3.052 MiBでCloudflare無料枠3 MiBのdeployだけが失敗した。
