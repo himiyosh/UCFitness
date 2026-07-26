@@ -22,7 +22,8 @@ vi.mock('@/lib/auth', () => ({
     auth: mocks.auth,
 }));
 
-vi.mock('@/lib/errors', () => ({
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(),
     reportError: mocks.reportError,
 }));
 
@@ -127,11 +128,11 @@ describe('/api/user/missions', () => {
     });
 
     it.each([
-        { label: '台帳なし', data: null, error: null, httpStatus: 200, pending: true, bonusStatus: 'pending', reports: 0 },
-        { label: '付与済み', data: { id: 'transaction-1', user_id: 'user-1', type: 'MISSION_REWARD', amount: 100, idempotency_key: `mission-bonus:user-1:${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })}` }, error: null, httpStatus: 200, pending: false, bonusStatus: 'awarded', reports: 0 },
-        { label: 'DB障害', data: null, error: { code: 'XX000', message: 'ledger unavailable' }, httpStatus: 503, pending: undefined, bonusStatus: undefined, reports: 1 },
-        { label: '不正応答', data: { id: 'transaction-1', amount: 99 }, error: null, httpStatus: 503, pending: undefined, bonusStatus: undefined, reports: 1 },
-    ])('GETの全完了ボーナスが$labelの場合、台帳正本の状態を返す', async ({ data, error, httpStatus, pending, bonusStatus, reports }) => {
+        { label: '台帳なし', data: null, error: null, httpStatus: 200, pending: true, bonusStatus: 'pending', reports: 0, stage: null },
+        { label: '付与済み', data: { type: 'MISSION_REWARD', amount: 100, idempotency_key: `mission-bonus:user-1:${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })}` }, error: null, httpStatus: 200, pending: false, bonusStatus: 'awarded', reports: 0, stage: null },
+        { label: 'DB障害', data: null, error: { code: 'XX000', message: 'SENSITIVE_LEDGER_ERROR', cause: { userId: 'SENSITIVE_USER_ID' } }, httpStatus: 503, pending: undefined, bonusStatus: undefined, reports: 1, stage: 'query' },
+        { label: '不正応答', data: { id: 'SENSITIVE_TRANSACTION_ID', amount: 99 }, error: null, httpStatus: 503, pending: undefined, bonusStatus: undefined, reports: 1, stage: 'data' },
+    ])('GETの全完了ボーナスが$labelの場合、台帳正本の状態を返す', async ({ data, error, httpStatus, pending, bonusStatus, reports, stage }) => {
         mocks.dailyMissionsOrder.mockResolvedValue({ data: [{ ...mission('mission-1', 'WALK_500', 10), is_completed: true }], error: null });
         mocks.bonusMaybeSingle.mockResolvedValue({ data, error });
 
@@ -144,6 +145,10 @@ describe('/api/user/missions', () => {
         expect(body.code).toBe(httpStatus === 503 ? 'MISSION_BONUS_STATUS_UNAVAILABLE' : undefined);
         expect(mocks.reportError).toHaveBeenCalledTimes(reports);
         expect(mocks.bonusMaybeSingle).toHaveBeenCalledTimes(1);
+        if (stage) {
+            const [, reportedError, reportContext] = mocks.reportError.mock.calls[0] ?? [];
+            expect(reportedError).toMatchObject({ message: 'Mission bonus status read failed', code: 'MISSION_BONUS_STATUS_UNAVAILABLE', context: { stage }, cause: undefined }); expect(reportContext).toBeUndefined(); expect(JSON.stringify(reportedError)).not.toContain('SENSITIVE_');
+        }
     });
 
     it('GETのストリーク取得が失敗した場合、0へ偽装せず部分状態を返す', async () => {
@@ -226,12 +231,14 @@ describe('/api/user/missions', () => {
         expect(mocks.reportError).toHaveBeenCalled();
     });
 
-    it('POSTでミッション完了済みの場合、ミッションを再付与せずボーナスだけ再試行する', async () => {
+    it('POSTで既存ボーナス台帳が不正な場合、付与済みへ偽装しない', async () => {
         mocks.dailyMissionsOrder.mockResolvedValue({
             data: [{ ...mission('mission-1', 'WALK_500', 10), is_completed: true }],
             error: null,
         });
         mocks.stepSingle.mockResolvedValue({ data: { steps: 500 }, error: null });
+        mocks.creditBalance.mockResolvedValue({ success: true, already_processed: true });
+        mocks.bonusMaybeSingle.mockResolvedValue({ data: { amount: 99 }, error: null });
 
         const response = await POST(new Request('http://localhost/api/user/missions', {
             method: 'POST',
@@ -240,9 +247,8 @@ describe('/api/user/missions', () => {
         }));
         const body = await response.json();
 
-        expect(response.status).toBe(200);
-        expect(body.newlyCompleted).toBe(0);
-        expect(body.bonusAwarded).toBe(true);
+        expect(response.status).toBe(503);
+        expect(body.code).toBe('MISSION_BONUS_STATUS_UNAVAILABLE');
         expect(mocks.creditBalance).toHaveBeenCalledTimes(1);
         expect(mocks.missionUpdateResult).not.toHaveBeenCalled();
     });
@@ -272,6 +278,7 @@ describe('/api/user/missions', () => {
             .mockResolvedValueOnce({ success: true, already_processed: true })
             .mockResolvedValueOnce({ success: true, already_processed: false })
             .mockResolvedValueOnce({ success: true, already_processed: true });
+        mocks.bonusMaybeSingle.mockResolvedValue({ data: { type: 'MISSION_REWARD', amount: 100, idempotency_key: `mission-bonus:user-1:${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })}` }, error: null });
         mocks.missionUpdateResult.mockResolvedValueOnce({ data: { id: 'mission-1' }, error: null }).mockResolvedValueOnce({ data: null, error: null });
         const request = () => new Request('http://localhost/api/user/missions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'refresh' }) });
 

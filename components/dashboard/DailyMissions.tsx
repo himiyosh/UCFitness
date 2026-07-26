@@ -39,6 +39,7 @@ export default function DailyMissions(): ReactNode {
     const [bonusPending, setBonusPending] = useState(false);
     const [focusHeadingAfterRefresh, setFocusHeadingAfterRefresh] = useState(false);
     const missionHeadingRef = useRef<HTMLHeadingElement>(null);
+    const restoreFocusAfterRefreshRef = useRef(false);
 
     const fetchMissions = useCallback(async (): Promise<MissionBonusStatus | null> => {
         setIsLoading(true);
@@ -68,7 +69,8 @@ export default function DailyMissions(): ReactNode {
 
     useEffect(() => {
         if (!focusHeadingAfterRefresh || isLoading) return;
-        missionHeadingRef.current?.focus();
+        if (restoreFocusAfterRefreshRef.current) missionHeadingRef.current?.focus();
+        restoreFocusAfterRefreshRef.current = false;
         setFocusHeadingAfterRefresh(false);
     }, [focusHeadingAfterRefresh, isLoading, missions.length]);
 
@@ -149,7 +151,7 @@ export default function DailyMissions(): ReactNode {
                         <h2 ref={missionHeadingRef} tabIndex={-1} className="mt-2 rounded-lg text-sm font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]">{t('dailyMissions')}</h2>
                         <p className="mt-1 text-xs text-[var(--color-text-muted)]" role="alert">{t('loadError')}</p>
                         <button
-                            onClick={async () => { await fetchMissions(); setFocusHeadingAfterRefresh(true); }}
+                            onClick={async (event) => { restoreFocusAfterRefreshRef.current = event.detail === 0; await fetchMissions(); setFocusHeadingAfterRefresh(true); }}
                             className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-primary-strong)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                         >
                             {t('retry')}
@@ -170,7 +172,7 @@ export default function DailyMissions(): ReactNode {
                         <h2 ref={missionHeadingRef} tabIndex={-1} className="mb-1 mt-3 rounded-lg text-sm font-bold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]">{t('dailyMissions')}</h2>
                         <p className="text-xs text-[var(--color-text-muted)]" role="status">{t('noMissions')}</p>
                         <button
-                            onClick={refreshMissions}
+                            onClick={(event) => { restoreFocusAfterRefreshRef.current = event.detail === 0; void refreshMissions(); }}
                             disabled={refreshing}
                             aria-busy={refreshing}
                             className="home-mission-prepare mt-3 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[var(--color-reward-solid)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-reward-strong)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -225,7 +227,7 @@ export default function DailyMissions(): ReactNode {
                         {/* 再チェックボタン */}
                         {(!allCompleted || bonusPending) && (
                             <button
-                                onClick={refreshMissions}
+                                onClick={(event) => { restoreFocusAfterRefreshRef.current = event.detail === 0; void refreshMissions(); }}
                                 disabled={refreshing}
                                 aria-busy={refreshing}
                                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 transition-colors hover:bg-[var(--color-surface-muted)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -373,12 +375,9 @@ function isMissionResponse(value: unknown): value is {
 
 function isMission(value: unknown): value is Mission {
     return typeof value === 'object' && value !== null
-        && 'id' in value && typeof value.id === 'string'
-        && 'mission_type' in value && typeof value.mission_type === 'string'
-        && 'title' in value && typeof value.title === 'string'
-        && 'description' in value && typeof value.description === 'string'
-        && 'reward_uc' in value && typeof value.reward_uc === 'number'
-        && 'is_completed' in value && typeof value.is_completed === 'boolean'
+        && 'id' in value && typeof value.id === 'string' && 'mission_type' in value && typeof value.mission_type === 'string'
+        && 'title' in value && typeof value.title === 'string' && 'description' in value && typeof value.description === 'string'
+        && 'reward_uc' in value && typeof value.reward_uc === 'number' && 'is_completed' in value && typeof value.is_completed === 'boolean'
         && 'completed_at' in value && (typeof value.completed_at === 'string' || value.completed_at === null);
 }
 
