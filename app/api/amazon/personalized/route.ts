@@ -5,12 +5,13 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getInvestorRank } from '@/lib/constants';
 import { getJSTDateString } from '@/lib/date-utils';
-import { reportError } from '@/lib/errors';
+import { AppError, reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 const UNAVAILABLE_BODY = { error: 'Personalized recommendations unavailable' };
+type FailureStage = 'balance-query' | 'steps-query' | 'balance-data' | 'steps-data' | 'rank-data' | 'keyword-data' | 'unexpected';
 
 /**
  * 投資家ランク別のおすすめ検索キーワードマッピング
@@ -87,13 +88,13 @@ function isPersonalizedRank(value: unknown): value is PersonalizedRank {
         && value.icon.length > 0;
 }
 
-function unavailableResponse(): NextResponse {
+function unavailableResponse(stage: FailureStage): NextResponse {
+    reportError('amazon-personalized', new AppError(
+        'Personalized recommendation request failed',
+        'AMAZON_PERSONALIZED_UNAVAILABLE',
+        { stage },
+    ));
     return NextResponse.json(UNAVAILABLE_BODY, { status: 503 });
-}
-
-function reportUnavailable(operation: string, message: string): NextResponse {
-    reportError(operation, new Error(message));
-    return unavailableResponse();
 }
 
 /**
@@ -102,7 +103,7 @@ function reportUnavailable(operation: string, message: string): NextResponse {
  */
 async function getPersonalizedResponse(): Promise<NextResponse> {
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
@@ -128,49 +129,31 @@ async function getPersonalizedResponse(): Promise<NextResponse> {
     ]);
 
     if (balanceResult.error !== null) {
-        return reportUnavailable(
-            'amazon-personalized:balance-query',
-            'Personalized balance query failed',
-        );
+        return unavailableResponse('balance-query');
     }
     if (stepsResult.error !== null) {
-        return reportUnavailable(
-            'amazon-personalized:steps-query',
-            'Personalized steps query failed',
-        );
+        return unavailableResponse('steps-query');
     }
 
     const totalEarned = parseTotalEarned(balanceResult.data);
     if (totalEarned === null) {
-        return reportUnavailable(
-            'amazon-personalized:balance-data',
-            'Invalid personalized balance data',
-        );
+        return unavailableResponse('balance-data');
     }
 
     const avgSteps = calculateAverageSteps(stepsResult.data);
     if (avgSteps === null) {
-        return reportUnavailable(
-            'amazon-personalized:steps-data',
-            'Invalid personalized steps data',
-        );
+        return unavailableResponse('steps-data');
     }
 
     const rank = getInvestorRank(totalEarned);
     if (!isPersonalizedRank(rank)) {
-        return reportUnavailable(
-            'amazon-personalized:rank-data',
-            'Invalid personalized rank data',
-        );
+        return unavailableResponse('rank-data');
     }
 
     const rankKws = RANK_KEYWORDS[rank.rank];
     const stepsKws = STEPS_KEYWORDS.find((range) => avgSteps >= range.min)?.keywords;
     if (!stepsKws || stepsKws.length === 0) {
-        return reportUnavailable(
-            'amazon-personalized:keyword-data',
-            'Invalid personalized keyword data',
-        );
+        return unavailableResponse('keyword-data');
     }
 
     const seed = parseInt(today.replace(/-/g, ''), 10);
@@ -192,9 +175,6 @@ export async function GET(): Promise<NextResponse> {
     try {
         return await getPersonalizedResponse();
     } catch {
-        return reportUnavailable(
-            'amazon-personalized:unexpected',
-            'Personalized recommendation request failed',
-        );
+        return unavailableResponse('unexpected');
     }
 }

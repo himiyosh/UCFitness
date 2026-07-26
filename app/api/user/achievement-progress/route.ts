@@ -1,8 +1,18 @@
+export const runtime = 'edge';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
+import { getJSTDateString } from '@/lib/date-utils';
 import { reportError } from '@/lib/errors';
+import {
+    parseOwnedItemCode,
+    parseSingleTotalSteps,
+    parseStreakRecords,
+} from '@/lib/services/title-achievement-service';
+import { isValidStepGoal } from '@/lib/step-goal';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isValidUUID } from '@/lib/validation';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * アチーブメント進捗データ定義
@@ -13,6 +23,24 @@ interface AchievementMilestone {
     target: number;
     /** 現在の進捗値を返すためのキー */
     contextKey: 'totalSteps' | 'currentStreak' | 'ucBalance' | 'shopPurchaseCount' | 'groupCount';
+}
+
+type AchievementDependency =
+    | 'step-stats'
+    | 'step-goal'
+    | 'coin-balance'
+    | 'purchase-count'
+    | 'group-count'
+    | 'streak-steps'
+    | 'owned-items'
+    | 'request';
+
+type FailureKind = 'dependency' | 'invalid' | 'unexpected';
+
+interface QueryResult {
+    data: unknown;
+    error: unknown;
+    count?: unknown;
 }
 
 const ACHIEVEMENT_MILESTONES: AchievementMilestone[] = [
@@ -35,6 +63,45 @@ const ACHIEVEMENT_MILESTONES: AchievementMilestone[] = [
     { itemCode: 'title_shopaholic', category: 'special', target: 5, contextKey: 'shopPurchaseCount' },
     { itemCode: 'title_team_player', category: 'special', target: 3, contextKey: 'groupCount' },
 ];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonnegativeSafeInteger(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function failureResponse(stage: AchievementDependency, kind: FailureKind): NextResponse {
+    const isDependencyFailure = kind === 'dependency';
+    const isInvalidData = kind === 'invalid';
+    const message = isDependencyFailure
+        ? 'Achievement progress dependency unavailable'
+        : isInvalidData
+            ? 'Invalid achievement progress data'
+            : 'Unexpected achievement progress failure';
+
+    reportError(`achievement-progress:${stage}`, new Error(message), { stage, kind });
+
+    return NextResponse.json(
+        {
+            error: isDependencyFailure
+                ? 'Achievement progress data unavailable'
+                : isInvalidData ? 'Invalid achievement progress data' : 'Internal Server Error',
+            code: isDependencyFailure
+                ? 'DEPENDENCY_UNAVAILABLE'
+                : isInvalidData ? 'INVALID_DATA' : 'INTERNAL_ERROR',
+        },
+        { status: isDependencyFailure ? 503 : 500 },
+    );
+}
+
+function parseCoinBalance(value: unknown): number | null {
+    if (value === null) return 0;
+    return isRecord(value) && isNonnegativeSafeInteger(value.total_balance)
+        ? value.total_balance
+        : null;
+}
 
 /**
  * ストリーク計算（title-achievement-service.ts と同じロジック）
@@ -70,7 +137,7 @@ function calculateStreak(
     return streak;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -88,14 +155,7 @@ export async function GET(request: NextRequest) {
 
     try {
         // JSTの今日の日付
-        const now = new Date();
-        const formatter = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Asia/Tokyo',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-        });
-        const today = formatter.format(now);
+        const today = getJSTDateString();
 
         // 並列でデータ取得
         const [
@@ -108,10 +168,7 @@ export async function GET(request: NextRequest) {
             ownedItemsResult,
         ] = await Promise.all([
             // 累計歩数
-            supabaseAdmin
-                .from('daily_steps')
-                .select('steps')
-                .eq('user_id', userId),
+            supabaseAdmin.rpc('get_user_step_stats', { p_user_id: userId }),
             // ユーザー設定（step_goal）
             supabaseAdmin
                 .from('users')
@@ -148,22 +205,58 @@ export async function GET(request: NextRequest) {
                 .eq('user_id', userId),
         ]);
 
-        const totalSteps = (stepsResult.data || []).reduce((sum, r) => sum + (r.steps || 0), 0);
-        const stepGoal = userResult.data?.step_goal || 10000;
-        const ucBalance = balanceResult.data?.total_balance || 0;
-        const shopPurchaseCount = purchaseResult.count || 0;
-        const groupCount = groupResult.count || 0;
-        const currentStreak = calculateStreak(streakResult.data || [], stepGoal, today);
+        for (const [stage, result] of [
+            ['step-stats', stepsResult],
+            ['step-goal', userResult],
+            ['coin-balance', balanceResult],
+            ['purchase-count', purchaseResult],
+            ['group-count', groupResult],
+            ['streak-steps', streakResult],
+            ['owned-items', ownedItemsResult],
+        ] as const satisfies ReadonlyArray<readonly [AchievementDependency, QueryResult]>) {
+            if (result.error !== null) {
+                return failureResponse(stage, 'dependency');
+            }
+        }
+
+        const totalSteps = parseSingleTotalSteps(stepsResult.data);
+        if (totalSteps === null) return failureResponse('step-stats', 'invalid');
+
+        if (!isRecord(userResult.data) || !isValidStepGoal(userResult.data.step_goal)) {
+            return failureResponse('step-goal', 'invalid');
+        }
+        const stepGoal = userResult.data.step_goal;
+
+        const ucBalance = parseCoinBalance(balanceResult.data);
+        if (ucBalance === null) return failureResponse('coin-balance', 'invalid');
+
+        if (!isNonnegativeSafeInteger(purchaseResult.count)) {
+            return failureResponse('purchase-count', 'invalid');
+        }
+        const shopPurchaseCount = purchaseResult.count;
+
+        if (!isNonnegativeSafeInteger(groupResult.count)) {
+            return failureResponse('group-count', 'invalid');
+        }
+        const groupCount = groupResult.count;
+
+        const streakRecords = parseStreakRecords(streakResult.data, today);
+        if (streakRecords === null) return failureResponse('streak-steps', 'invalid');
+        const currentStreak = calculateStreak(streakRecords, stepGoal, today);
 
         // 所持アイテムコード一覧
+        if (!Array.isArray(ownedItemsResult.data)) {
+            return failureResponse('owned-items', 'invalid');
+        }
         const ownedCodes = new Set<string>();
-        for (const ui of (ownedItemsResult.data || [])) {
-            const code = (ui as { shop_items?: { item_code?: string } }).shop_items?.item_code;
-            if (code) ownedCodes.add(code);
+        for (const item of ownedItemsResult.data) {
+            const code = parseOwnedItemCode(item);
+            if (code === null) return failureResponse('owned-items', 'invalid');
+            ownedCodes.add(code);
         }
 
         // コンテキスト値マップ
-        const contextValues: Record<string, number> = {
+        const contextValues: Record<AchievementMilestone['contextKey'], number> = {
             totalSteps,
             currentStreak,
             ucBalance,
@@ -173,7 +266,7 @@ export async function GET(request: NextRequest) {
 
         // 各マイルストーンの進捗を計算
         const progress = ACHIEVEMENT_MILESTONES.map((milestone) => {
-            const current = contextValues[milestone.contextKey] || 0;
+            const current = contextValues[milestone.contextKey];
             const earned = ownedCodes.has(milestone.itemCode);
             const percentage = Math.min(100, Math.round((current / milestone.target) * 100));
 
@@ -188,10 +281,7 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json({ progress });
-    } catch (error: unknown) {
-        reportError('achievement-progress', error, { userId });
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    } catch {
+        return failureResponse('request', 'unexpected');
     }
 }
-
-export const runtime = 'edge';

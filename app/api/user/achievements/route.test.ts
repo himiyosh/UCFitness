@@ -322,6 +322,10 @@ describe('GET /api/user/achievements', () => {
             totalUc: 500,
             investorRank: 'SILVER',
         });
+        expect(mocks.rpc).toHaveBeenCalledWith(
+            'get_user_step_stats',
+            { p_user_id: TARGET_ID },
+        );
         expect(mocks.from.mock.calls.filter(([name]) => name === 'daily_steps')).toHaveLength(2);
     });
 });

@@ -8,19 +8,11 @@ const mocks = vi.hoisted(() => ({
     reportError: vi.fn(),
 }));
 
-vi.mock('@/lib/auth', () => ({
-    auth: mocks.auth,
-}));
-
-vi.mock('@/lib/constants', () => ({
-    getInvestorRank: mocks.getInvestorRank,
-}));
-
-vi.mock('@/lib/date-utils', () => ({
-    getJSTDateString: mocks.getJSTDateString,
-}));
-
-vi.mock('@/lib/errors', () => ({
+vi.mock('@/lib/auth', () => ({ auth: mocks.auth }));
+vi.mock('@/lib/constants', () => ({ getInvestorRank: mocks.getInvestorRank }));
+vi.mock('@/lib/date-utils', () => ({ getJSTDateString: mocks.getJSTDateString }));
+vi.mock('@/lib/errors', async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/lib/errors')>(),
     reportError: mocks.reportError,
 }));
 
@@ -96,23 +88,19 @@ function configureQueries(): void {
     });
 }
 
-function expectFixedReport(operation: string, message: string): void {
+function expectFixedReport(stage: string, body?: unknown): void {
     expect(mocks.reportError).toHaveBeenCalledTimes(1);
     const call = mocks.reportError.mock.calls[0];
     expect(call).toHaveLength(2);
-    expect(call[0]).toBe(operation);
+    expect(call[0]).toBe('amazon-personalized');
     expect(call[1]).toBeInstanceOf(Error);
-    expect(call[1]).toEqual(expect.objectContaining({ message }));
-    expect(Object.prototype.hasOwnProperty.call(Object(call[1]), 'cause')).toBe(false);
-}
-
-function expectNoSensitiveLeak(body: unknown): void {
-    const reports = mocks.reportError.mock.calls.map(([operation, error, context]) => ({
-        operation,
-        message: error instanceof Error ? error.message : error,
-        context,
+    expect(call[1]).toEqual(expect.objectContaining({
+        message: 'Personalized recommendation request failed',
+        code: 'AMAZON_PERSONALIZED_UNAVAILABLE',
+        context: { stage },
+        cause: undefined,
     }));
-    const serialized = JSON.stringify({ body, reports });
+    const serialized = JSON.stringify({ body, operation: call[0], error: call[1] });
     expect(serialized).not.toContain(RAW_MESSAGE);
     expect(serialized).not.toContain(USER_ID);
 }
@@ -138,8 +126,8 @@ describe('GET /api/amazon/personalized', () => {
         configureQueries();
     });
 
-    it('未認証の場合_DB照会せず401を返す', async () => {
-        mocks.auth.mockResolvedValue(null);
+    it.each([null, { user: {} }])('認証主体が不正な場合_DB照会せず401を返す', async (session) => {
+        mocks.auth.mockResolvedValue(session);
 
         const response = await GET();
 
@@ -215,13 +203,12 @@ describe('GET /api/amazon/personalized', () => {
     });
 
     it.each([
-        ['残高', 'balance', 'amazon-personalized:balance-query', 'Personalized balance query failed'],
-        ['歩数', 'steps', 'amazon-personalized:steps-query', 'Personalized steps query failed'],
+        ['残高', 'balance', 'balance-query'],
+        ['歩数', 'steps', 'steps-query'],
     ])('%sDB照会が失敗した場合_後続判定せず秘匿した503を返す', async (
         _label,
         dependency,
-        operation,
-        message,
+        stage,
     ) => {
         if (dependency === 'balance') {
             balanceResult = { data: null, error: RAW_ERROR };
@@ -233,8 +220,7 @@ describe('GET /api/amazon/personalized', () => {
         const body = await expectUnavailable(response);
 
         expect(mocks.getInvestorRank).not.toHaveBeenCalled();
-        expectFixedReport(operation, message);
-        expectNoSensitiveLeak(body);
+        expectFixedReport(stage, body);
     });
 
     it.each([
@@ -252,10 +238,7 @@ describe('GET /api/amazon/personalized', () => {
 
         await expectUnavailable(response);
         expect(mocks.getInvestorRank).not.toHaveBeenCalled();
-        expectFixedReport(
-            'amazon-personalized:balance-data',
-            'Invalid personalized balance data',
-        );
+        expectFixedReport('balance-data');
     });
 
     it.each([
@@ -275,10 +258,7 @@ describe('GET /api/amazon/personalized', () => {
 
         await expectUnavailable(response);
         expect(mocks.getInvestorRank).not.toHaveBeenCalled();
-        expectFixedReport(
-            'amazon-personalized:steps-data',
-            'Invalid personalized steps data',
-        );
+        expectFixedReport('steps-data');
     });
 
     it('ランク結果が不正な場合_BEGINNERへfallbackせず固定503を返す', async () => {
@@ -290,10 +270,7 @@ describe('GET /api/amazon/personalized', () => {
         const response = await GET();
 
         await expectUnavailable(response);
-        expectFixedReport(
-            'amazon-personalized:rank-data',
-            'Invalid personalized rank data',
-        );
+        expectFixedReport('rank-data');
     });
 
     it.each(['auth', 'balance query', 'steps query'])(
@@ -312,11 +289,7 @@ describe('GET /api/amazon/personalized', () => {
             const body = await expectUnavailable(response);
 
             expect(mocks.getInvestorRank).not.toHaveBeenCalled();
-            expectFixedReport(
-                'amazon-personalized:unexpected',
-                'Personalized recommendation request failed',
-            );
-            expectNoSensitiveLeak(body);
+            expectFixedReport('unexpected', body);
         },
     );
 });

@@ -369,7 +369,8 @@
   "LoginBonus": {
     "title": "Daily Bonus",
     "claimed": "+{amount} UC! (Day {streak})",
-    "streak": "Login Streak: {streak} days"
+    "multiplier": "x{value} bonus",
+    "streak": "{streak}-day login streak"
   },
   "Setup": {
     "displayNameRequired": "Enter a display name",
@@ -1159,7 +1160,12 @@
   },
   "TrendingGear": {
     "title": "Trending Fitness Gear",
-    "subtitle": "Popular picks from the community",
+    "subtitle": "See what more community members use",
+    "loading": "Loading popular community gear",
+    "empty": "Popular items will appear once community members add their favorite gear.",
+    "itemFallback": "Fitness gear",
+    "addGear": "Add your favorite gear",
+    "popularity": "{count, plural, one {# community member uses this} other {# community members use this}}",
     "scrollLeft": "Show previous gear",
     "scrollRight": "Show next gear"
   },
@@ -1562,6 +1568,7 @@
     "prepare": "Prepare today's missions",
     "preparing": "Preparing...",
     "refreshError": "Could not refresh missions. Please try again.",
+    "rewardUnavailable": "Your missions are available, but the reward could not be applied safely. Check again later.",
     "updatedAnnouncement": "{count} missions are ready for today.",
     "bonusAnnouncement": "All missions completed. You earned a {amount} UC bonus.",
     "bonusEarned": "All-clear bonus earned: +{amount} UC",
@@ -1739,14 +1746,17 @@
     "emptyHint": "Record your favorite walking routes",
     "namePlaceholder": "Route name",
     "descriptionPlaceholder": "Description (optional)",
-    "distancePlaceholder": "Distance (km)",
-    "durationPlaceholder": "Duration (min)",
+    "distanceLabel": "Distance (km, optional)",
+    "distancePlaceholder": "For example, 1.5",
+    "durationLabel": "Duration (min, optional)",
+    "durationPlaceholder": "For example, 30",
     "difficulty": "Difficulty",
     "difficultyEasy": "Easy",
     "difficultyNormal": "Normal",
     "difficultyHard": "Hard",
     "save": "Save",
     "cancel": "Cancel",
+    "dismissActionError": "Dismiss action error",
     "logWalk": "Walked!",
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites",
@@ -1758,6 +1768,8 @@
     "favorites": "Favorites",
     "minutes": "min",
     "times": "times",
+    "distanceError": "Enter distance in km as a decimal number, 0 or greater, using a period as the decimal separator (for example, 1.5). Commas and exponential notation are not supported.",
+    "durationError": "Enter duration as a whole number of minutes, 0 or greater (for example, 30).",
     "createError": "Failed to create route. Please try again.",
     "updateError": "Failed to update. Please try again.",
     "deleteError": "Failed to delete. Please try again."
