@@ -1552,6 +1552,15 @@ export const runtime = "edge";
 - **根本原因**: field validationの関連付けだけをアクセシビリティ境界として確認し、非同期action結果のannouncement、翻訳、操作領域、action lifecycleを同じ状態契約で監査していなかった。`actionLoadingId`のReact stateと同一routeのdisabledだけを排他制御に使い、same-tick・別route・create・delete dialogを跨ぐ同期lockがなかった。dialog identityもopen/closedのbooleanだけで、closureを発行したroute/generationと、操作完了後もDOMへ残る安定したfocus復帰先を管理していなかった。
 - **対策**: action本文だけを`role="alert"` + `aria-atomic`へ載せ、button名の読み上げを混在させない。dismissはnext-intl名を持つnative 44px buttonと明示outlineにし、各error objectへ起動入力のfocus意図を同梱する。create/favorite/log/deleteは同期ref lockで1件へ直列化し、pending中は全route controls・追加・キャンセルをdisabled、対象routeだけspinner表示、delete dialogとは相互排他にする。`finally`はloading state終了とmonotonic release tokenだけをscheduleし、error DOM/focusまたはsuccess/loadingがcommitした単一effectでtokenを一度だけ消費してref lockを解放する。alert解除は接続中の起動button、favorite/logのキーボード成功は起動button、作成・削除成功は安定した追加buttonへcommit後focusを戻す。dialogは説明を`aria-describedby`で関連付け、active route ID + monotonic tokenを全close経路で同期invalidateする。Chromeでfailure resolve直後の割込み拒否、alert commit後の再操作、success/pointer release、stale token/inert/ja/en、focus復帰を固定する。
 - **教訓**: 非同期操作エラーは支援技術へ届くことだけで完了とせず、操作位置から視覚的にも発見可能にする。UI disabledだけで二重送信を防いだと判断せずhandler境界の同期lockを持ち、ref lockはPromise settleでなく関連DOM・loading・focusのcommit後に解放する。保存中にフォームを消す操作を許可せず、focused controlを成功・dismiss・破壊的操作で除去する場合は、DOMに残る安定した復帰先を同じcommit後effectでfocusする。close可否をbooleanだけで表さず、破壊的confirmはroute/generationをclosure発行時と実行時に完全一致させ、assertive通知と同一文言再発はDOM remountまで実ブラウザで固定する。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`
+
+### LL-073: 並列DB結果の既定化で依存障害を未達成へ偽装した
+
+- **事象**: 実績進捗APIが7件のSupabase結果の`.error`とshapeを確認せず、DB障害・null・壊れたrelation rowを0件、0歩、未所有として200で返していた。累計歩数の全行取得はPostgRESTの1000行上限で欠落し得た。
+- **根本原因**: `data || []`、optional chaining、`count || 0`を正常系の既定値として使い、取得失敗・不正形状・正当なzero/emptyを同じ分岐へ統合した。全期間集計にも既存RPCを再利用しなかった。
+- **対策**: `get_user_step_stats`と称号サービスの共有parserへ統一し、7依存のDB errorを固定503、不正形状を固定500へ分離した。正当な0・空・残高行なし、公開target契約だけを維持し、生errorをログ・responseへ渡さないbehavior testを追加した。
+- **教訓**: 並列DB結果は各resultのerrorとdata/count shapeを個別に検証し、zero/emptyを許可する契約を依存ごとに明示する。集計は取得件数上限のある全行走査ではなくDB側RPCを使い、relation rowは壊れた要素をskipせず全体を失敗させる。リファレンス: `app/api/user/achievement-progress/route.ts`, `lib/services/title-achievement-service.ts`
+- **追加教訓**: `JSON.stringify(Error)`は非列挙のmessage/causeを落として`{}`になるため、ログ非漏洩の証拠にしない。raw error identityと固定operation、Error message/name/code/cause/context、固定contextを直接分解し、PII値ごとに非包含を検証する。
+
 ### LL-064: 静的アイコンを`next/og`で再生成するとPages Workerの無料枠を超える
 
 - **事象**: `app/icon.tsx`と`app/apple-icon.tsx`が`ImageResponse`を使ったため、既に同じPNGが`public/`にあるにもかかわらずresvg WASM約1.32 MiBをWorkerへ同梱し、gzip推定3.052 MiBでCloudflare無料枠3 MiBのdeployだけが失敗した。

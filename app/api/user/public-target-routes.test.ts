@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
     auth: vi.fn(),
     from: vi.fn(),
+    rpc: vi.fn(),
     reportError: vi.fn(),
     eqCalls: [] as Array<[string, unknown]>,
 }));
@@ -19,6 +20,7 @@ vi.mock('@/lib/errors', () => ({
 vi.mock('@/lib/supabase', () => ({
     supabaseAdmin: {
         from: mocks.from,
+        rpc: mocks.rpc,
     },
 }));
 
@@ -86,6 +88,7 @@ describe('公開target userId API', () => {
         vi.clearAllMocks();
         mocks.eqCalls.length = 0;
         mocks.auth.mockResolvedValue({ user: { id: VIEWER_ID } });
+        mocks.rpc.mockResolvedValue({ data: { total_steps: 1_200, total_days: 1 }, error: null });
     });
 
     it.each([
@@ -98,6 +101,7 @@ describe('公開target userId API', () => {
 
         expect(response.status).toBe(400);
         expect(mocks.from).not.toHaveBeenCalled();
+        expect(mocks.rpc).not.toHaveBeenCalled();
     });
 
     it('follow/status_不正なtargetUserIdの場合_DB照会せず400を返す', async () => {
@@ -110,13 +114,11 @@ describe('公開target userId API', () => {
     });
 
     it('achievement-progress_正当な他ユーザーIDの場合_公開対象の進捗を照会する', async () => {
-        let dailyStepsQueryCount = 0;
         let userItemsQueryCount = 0;
         mocks.from.mockImplementation((table: string) => {
             if (table === 'daily_steps') {
-                dailyStepsQueryCount += 1;
                 return createQueryChain({
-                    data: dailyStepsQueryCount === 1 ? [{ steps: 1_200 }] : [],
+                    data: [],
                     error: null,
                 });
             }
@@ -144,6 +146,10 @@ describe('公開target userId API', () => {
 
         expect(response.status).toBe(200);
         expect(payload.progress).toEqual(expect.any(Array));
+        expect(mocks.rpc).toHaveBeenCalledWith(
+            'get_user_step_stats',
+            { p_user_id: TARGET_ID },
+        );
         expect(mocks.eqCalls).toContainEqual(['id', TARGET_ID]);
         expect(
             mocks.eqCalls
