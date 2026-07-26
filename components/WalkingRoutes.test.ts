@@ -76,7 +76,7 @@ describe('WalkingRoutes field validation', () => {
         });
         const browser = await chromium.launch({ channel: 'chrome', headless: true });
         try {
-            const page = await browser.newPage({ viewport: { width: 320, height: 800 } });
+            const page = await browser.newPage({ viewport: { width: 320, height: 800 } }); page.setDefaultTimeout(5_000);
             const pageErrors: string[] = []; page.on('pageerror', (error) => pageErrors.push(error.message));
             await page.setContent('<div id="root"></div>'); await page.addScriptTag({ content: bundle.outputFiles[0].text });
             await page.getByRole('button', { name: 'addRoute' }).click();
@@ -104,8 +104,7 @@ describe('WalkingRoutes field validation', () => {
             for (const expectedFocusCount of ['1', '2']) {
                 await save.click();
                 await page.waitForFunction((count) => document.body.dataset.focusCount === count, expectedFocusCount);
-                expect(await page.locator('body').getAttribute('data-focus-snapshot')).toBe(
-                    'true|walking-route-duration-error|true');
+                expect(await page.locator('body').getAttribute('data-focus-snapshot')).toBe('true|walking-route-duration-error|true');
                 expect(await page.locator('body').getAttribute('data-post-count')).toBe('0');
             }
             await duration.press('Backspace');
@@ -188,5 +187,5 @@ describe('WalkingRoutes field validation', () => {
         } finally {
             await browser.close();
         }
-    }, 15_000);
+    }, 30_000); // CI cold runの15.012秒を実測し、起動余裕はこのテストだけに限定する。
 });

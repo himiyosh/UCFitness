@@ -190,6 +190,29 @@ export interface Database {
                 Args: { p_user_id: string; p_lease_id: string };
                 Returns: { released_count: number; total_reward: number }[];
             };
+            claim_notification_delivery_outbox: {
+                Args: {
+                    p_notification_type: 'step-reminder' | 'weekly-summary';
+                    p_occurrence_key: string;
+                    p_user_ids: string[];
+                    p_lease_owner: string;
+                };
+                Returns: { user_id: string; claim_token: string }[];
+            };
+            complete_notification_delivery_outbox: {
+                Args: {
+                    p_notification_type: 'step-reminder' | 'weekly-summary';
+                    p_occurrence_key: string;
+                    p_user_id: string;
+                    p_lease_owner: string;
+                    p_claim_token: string;
+                };
+                Returns: boolean;
+            };
+            release_notification_delivery_outbox: {
+                Args: Database['public']['Functions']['complete_notification_delivery_outbox']['Args'];
+                Returns: boolean;
+            };
         };
     };
 }
@@ -213,6 +236,10 @@ export type GroupChallengeSettlementRpcArgs = Database['public']['Functions']['s
 export type GroupChallengeSettlementRpcRow = Database['public']['Functions']['settle_group_challenge']['Returns'][number];
 export type GroupChallengeRewardClaimRpcRow =
     Database['public']['Functions']['claim_group_challenge_reward_outbox']['Returns'][number];
+export type NotificationDeliveryClaimRpcArgs = Database['public']['Functions']['claim_notification_delivery_outbox']['Args'];
+export type NotificationDeliveryClaimRpcRow = Database['public']['Functions']['claim_notification_delivery_outbox']['Returns'][number];
+export type NotificationDeliveryCompleteRpcArgs = Database['public']['Functions']['complete_notification_delivery_outbox']['Args'];
+export type NotificationDeliveryReleaseRpcArgs = Database['public']['Functions']['release_notification_delivery_outbox']['Args'];
 
 /** ランキング・フォロー等で頻出する公開プロフィール射影 (PII 除外) */
 export type PublicUserSummary = Pick<UserRow, 'id' | 'name' | 'image' | 'username'>;
