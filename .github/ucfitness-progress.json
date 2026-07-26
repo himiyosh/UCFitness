@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "AI Harness 進捗ファイル — セッション間のハンドオフ用構造化メモ。Anthropic 'Effective Harnesses for Long-Running Agents' + everything-claude-code の Continuous Learning に基づく設計。JSON 形式を採用し、エージェントによる不用意なコンテンツ改変を防止する。Feature Backlog は .github/ucfitness-features.json に分離（200+ 件規模に備えた Anthropic 流の構造化）。",
-  "lastUpdated": "2026-07-26T05:33:33Z",
-  "lastAgent": "UCFitnessAgent (Main Integration + React + Accessibility + QA + Self-Critique)",
-  "lastCommit": "259d975b2bf37b5c8d02b15dfb1e3206ad5a6f55",
-  "lastBranch": "himiyosh-fix-walking-routes-distance-input",
+  "lastUpdated": "2026-07-26T07:03:41Z",
+  "lastAgent": "UCFitnessAgent (Main Integration + React + Accessibility + QA + Persona + Self-Critique)",
+  "lastCommit": "b3bd4c283b48c5b72c7f85e9b2e796c4b96f4428",
+  "lastBranch": "himiyosh-fix-walking-routes-error-toast",
   "promptVersion": "2.0.1-rule-enforcement",
-  "summary": "PR #294をorigin/main ce33159cへnon-force mergeでrestackし、PR baseをmainへ更新できる状態にした。Walking Routes距離はtype=text + inputMode=decimalでraw字句を保持し、空文字だけnull、存在時は小数点`.`の非負finiteな10進数全文だけを受理する。部分受理、NaN/Infinity、符号・空白・指数・全角・曖昧なカンマ値をPOSTせず、可視ja/enラベル、16px入力、44px、field alert、aria-invalid/aria-describedby、commit後focusを維持した。実Chromeで320/375/1280px、keyboard、console、53 focused tests、全1179 tests、check:all、production build、2ペルソナ、Self-CritiqueをPASS。PR #296のbase依存は維持し、production DB・実Push変更なし。F016保護済み件数は9/25据え置き。",
+  "summary": "PR #296をorigin/main 45ba61f8へnon-force mergeでrestackし、main統合済みのstrict distance inputを重複させず、操作失敗のrole=alert、ja/en 44px dismiss、全write同期lock、pending中の全操作無効化、stale delete世代拒否、成功・失敗・dismiss後のcommit後focus復帰だけを独立差分として維持した。実Google Chromeで320/375/1280px、keyboard、error/retry/success、aria-describedby、横overflow 0、console error 0を固定。focused 36件、全1179件、check:all、runtime audit 0、Pages build、Worker 2.544 MiB、Mobile Beginner/Accessibility Keyboard、Self-CritiqueをPASS。production DB・実Push変更なし。",
   "devServerPort": 3000,
   "environmentStatus": {
     "tscErrors": 0,
     "lintErrors": 0,
     "lintErrorsNote": "残る62件はno-unused-vars等の既存warningで、今回変更による新規warningは0。",
     "devServerRunning": false,
-    "lastVerified": "2026-07-26T05:33:33Z"
+    "lastVerified": "2026-07-26T07:03:41Z"
   },
   "knownIssues": [
     "AdSense 審査未申請",
@@ -1389,6 +1389,7 @@
     {"date":"2026-07-24","agent":"UCFitnessAgent (React + Accessibility + Security + QA + Persona + Self-Critique)","action":"PR #296独立レビューの2指摘に対応し、Walking Routesの全writeを同期lockで直列化、pending中は全route controls/Saveをdisabled、対象routeのみspinner、delete dialogとは相互排他にした。deferred Chrome testでsame-tick PATCH 1回、dialog 0件、create共有lock、同一updateErrorのunmount/remount 2回、keyboard/pointer focus、dialog cancel/confirm、inert外ja alert、disabled opacityを固定した。対象34件、全1040テスト（--maxWorkers=1）、check:all、Security/Accessibility/Code、Mobile Beginner/Accessibility Keyboard、Self-CritiqueをPASS。依存・build/CI・base parser/API/JST/DBは変更なし。stack差分7 files/239 additions/59 deletions（298 changed lines）。","commit":"be68834b9e0141a8bf97b694fa73a753add2eb8c","filesChanged":["components/WalkingRoutes.tsx","components/WalkingRoutes.test.ts","README.md",".github/copilot-instructions.md"]},
     {"date":"2026-07-24","agent":"UCFitnessAgent (React + Accessibility + Security + QA + Persona + Self-Critique)","action":"PR #296 stale confirm follow-upでactive delete dialogをroute ID + monotonic token管理へ変更し、全close経路で同期invalidate、confirmはactive identity完全一致時だけDELETEを許可した。dialog openをnative disabled条件から外してinert+handler guardで背景を守り、Cancel/Escape後のtrigger focus復帰を回復した。Chrome testでCancel/Escape同tick stale DELETE 0、same-route旧token 0・新confirm 1、generation変化、focus復帰、inert外ja alertを固定。対象34件、全1040テスト、check:all、Security/Accessibility/Code、2ペルソナ、Self-CritiqueをPASS。依存・build/CI・base parser/API/JST/DB変更なし。stack差分7 files/240 additions/59 deletions（299 changed lines）。","commit":"b252dd6b0802adab20f4949fff13321db9579d66","filesChanged":["components/WalkingRoutes.tsx","components/WalkingRoutes.test.ts","README.md",".github/copilot-instructions.md"]},
     {"date":"2026-07-24","agent":"UCFitnessAgent (React + Accessibility + Security + QA + Persona + Self-Critique)","action":"PR #296 post-commit release follow-upで、finallyはloading終了とmonotonic release tokenだけをscheduleし、actionError DOM/focusまたはsuccess/loading commit後の単一effectでref lockを解放するよう修正した。Chrome testでfailure resolve→2 microtasks→direct delete handlerでもdialog 0、alert commit/focus後の新dialog可、pointer/success release、stale generation/focus/inert/remount維持を固定。対象34件、全1040テスト、check:all、Security/Accessibility/Code、2ペルソナ、Self-CritiqueをPASS。依存・build/CI・base parser/API/JST/DB変更なし。stack差分7 files/239 additions/59 deletions（298 changed lines）。","commit":"4faaf0031ca9a989ae05d1fd73335b8804277bd2","filesChanged":["components/WalkingRoutes.tsx","components/WalkingRoutes.test.ts","README.md",".github/copilot-instructions.md"]}
+    ,{"date":"2026-07-26","agent":"UCFitnessAgent (Main Integration + React + Accessibility + QA + Persona + Self-Critique)","action":"PR #296をorigin/main 45ba61f8へnon-force mergeでrestackし、strict distance inputを保持したまま操作失敗通知・重複送信防止・delete世代管理・全writeの成功/失敗/dismiss後focusを統合した。focused 36件、全1179件、check:all、runtime audit 0、Pages build、Worker 2.544 MiB、320/375/1280px実Chrome、Mobile Beginner/Accessibility Keyboard、Self-CritiqueをPASS。7 files/500 changed lines未満、DB接続/read/write/apply・実Pushなし。","commit":"b3bd4c283b48c5b72c7f85e9b2e796c4b96f4428","filesChanged":["components/WalkingRoutes.tsx","components/WalkingRoutes.test.ts","messages/ja.json","messages/en.json","README.md",".github/copilot-instructions.md",".github/ucfitness-progress.json"]}
   ],
   "instincts": {
     "$comment": "everything-claude-code の Continuous Learning v2 (Instinct) に相当。セッション中に学んだパターンを自動蓄積。confidence が 0.8 を超えたら copilot-instructions.md に昇格する。",
