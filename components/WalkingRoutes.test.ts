@@ -1,5 +1,7 @@
+import tailwindcss from '@tailwindcss/postcss';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
+import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -17,11 +19,11 @@ const jaWalkingRoutes = jaMessages.WalkingRoutes;
 describe('WalkingRoutes field validation', () => {
     it.each([
         ['1e2', undefined], ['1E2', undefined], ['1.', undefined], ['1,', undefined],
-        ['.5', undefined],
+        ['.5', undefined], ['1,5', undefined], ['1,234', undefined], ['１.５', undefined],
         ['+1', undefined], ['-1', undefined], ['3abc', undefined], [' ', undefined],
         ['1\n', undefined], ['\t1', undefined], ['NaN', undefined], ['Infinity', undefined],
         ['9'.repeat(400), undefined],
-        ['', null], ['0', 0], ['0.0', 0], ['1.5', 1.5], ['1,5', 1.5], ['001.50', 1.5],
+        ['', null], ['0', 0], ['0.0', 0], ['1.5', 1.5], ['001.50', 1.5],
     ])('距離入力"%s"を非負10進数全文として検証する', (value, expected) => {
         expect(parseWalkingRouteDistance(value)).toBe(expected);
     });
@@ -42,6 +44,10 @@ describe('WalkingRoutes field validation', () => {
         expect(getWalkingRouteDistanceAria(invalid)).toEqual(expected);
     });
     it('入力検証と非同期操作エラーを実ChromeのDOM・focus・localeで検証する', async () => {
+        const styles = await postcss([tailwindcss()]).process(
+            '@import "tailwindcss" source(none); @source "./components/WalkingRoutes.tsx";',
+            { from: `${process.cwd()}/walking-routes-test.css` },
+        );
         const bundle = await build({
             stdin: {
                 contents: `
@@ -52,6 +58,7 @@ describe('WalkingRoutes field validation', () => {
                     document.documentElement.lang = 'en';
                     document.body.dataset.postCount = '0';
                     let routeIdSequence = 0;
+                    const routeStore = new Map();
                     globalThis.fetch = async (_input, init) => {
                         const method = init?.method;
                         if (method) { const key = method.toLowerCase() + 'AttemptCount';
@@ -68,15 +75,40 @@ describe('WalkingRoutes field validation', () => {
                             const body = JSON.parse(String(init.body));
                             document.body.dataset.postCount = String(Number(document.body.dataset.postCount) + 1);
                             document.body.dataset.postBody = JSON.stringify(body);
-                            return {ok: true, json: async () => ({route: {
+                            const route = {
                                 id: 'route-' + (++routeIdSequence),
                                 name: body.name, description: body.description,
                                 distance_km: body.distance_km, duration_minutes: body.duration_minutes,
                                 difficulty: body.difficulty, is_favorite: false, walk_count: 0,
                                 last_walked_at: null, created_at: '2026-07-24T00:00:00.000Z',
-                            }})};
+                            };
+                            routeStore.set(route.id, route);
+                            return {ok: true, json: async () => ({route})};
                         }
-                        return {ok: true, json: async () => ({routes: []})};
+                        const routeId = String(_input).split('/').pop();
+                        if (init?.method === 'PATCH') {
+                            const currentRoute = routeStore.get(routeId);
+                            if (!currentRoute) return {ok: false, json: async () => ({})};
+                            const body = JSON.parse(String(init.body));
+                            const route = {
+                                ...currentRoute,
+                                is_favorite: typeof body.is_favorite === 'boolean'
+                                    ? body.is_favorite
+                                    : currentRoute.is_favorite,
+                                walk_count: body.log_walk
+                                    ? currentRoute.walk_count + 1
+                                    : currentRoute.walk_count,
+                                last_walked_at: body.log_walk
+                                    ? '2026-07-24T01:00:00.000Z'
+                                    : currentRoute.last_walked_at,
+                            };
+                            routeStore.set(route.id, route);
+                            return {ok: true, json: async () => ({route})};
+                        }
+                        if (init?.method === 'DELETE') {
+                            return {ok: routeStore.delete(routeId), json: async () => ({})};
+                        }
+                        return {ok: true, json: async () => ({routes: Array.from(routeStore.values())})};
                     };
                     createRoot(document.querySelector('#root')).render(<WalkingRoutes />);`,
                 loader: 'tsx', resolveDir: process.cwd(),
@@ -97,25 +129,60 @@ describe('WalkingRoutes field validation', () => {
         });
         const browser = await chromium.launch({ channel: 'chrome', headless: true });
         try {
-            const page = await browser.newPage({ viewport: { width: 320, height: 800 } });
+            const page = await browser.newPage({ viewport: { width: 320, height: 800 } }); page.setDefaultTimeout(5_000);
             const pageErrors: string[] = []; page.on('pageerror', (error) => pageErrors.push(error.message));
-            await page.setContent(`
-                <style>
-                    [class~="min-h-[44px]"] { min-height: 44px; }
-                    [class~="min-w-[44px]"] { min-width: 44px; }
-                </style>
-                <div id="root"></div>
-            `);
+            const consoleErrors: string[] = [];
+            page.on('console', (message) => {
+                if (message.type() === 'error') consoleErrors.push(message.text());
+            });
+            await page.setContent('<div id="root"></div>');
+            await page.addStyleTag({ content: styles.css });
             await page.addScriptTag({ content: bundle.outputFiles[0].text });
             const body = page.locator('body'); const bodyAttr = (name: string) => body.getAttribute(`data-${name}`);
             const actionAlert = (message: string) => page.getByRole('alert').filter({ hasText: message });
             const setActionFlag = (name: 'failNextAction' | 'deferNextAction') => page.evaluate(
                 (flag) => { document.body.dataset[flag] = 'true'; }, name);
-            await page.getByRole('button', { name: enWalkingRoutes.addRoute }).click();
+            const addRouteButton = page.getByRole('button', { name: enWalkingRoutes.addRoute });
+            await addRouteButton.click();
             expect(pageErrors).toEqual([]);
-            await page.getByRole('textbox', { name: enWalkingRoutes.namePlaceholder }).fill('Route');
-            const duration = page.getByRole('spinbutton', { name: enWalkingRoutes.durationPlaceholder });
+            const name = page.getByRole('textbox', { name: enWalkingRoutes.namePlaceholder });
+            const description = page.getByRole('textbox', { name: enWalkingRoutes.descriptionPlaceholder });
+            const distance = page.getByRole('textbox', { name: enWalkingRoutes.distanceLabel });
+            const duration = page.getByRole('spinbutton', { name: enWalkingRoutes.durationLabel });
+            await name.fill('Route');
+            for (const width of [320, 375, 1280]) {
+                await page.setViewportSize({ width, height: 800 });
+                const metrics = await page.evaluate(() => {
+                    const distanceInput = document.querySelector<HTMLInputElement>('#walking-route-distance');
+                    const durationInput = document.querySelector<HTMLInputElement>('#walking-route-duration');
+                    if (!distanceInput || !durationInput) throw new Error('Route inputs missing');
+                    return {
+                        distance: distanceInput.getBoundingClientRect().toJSON(),
+                        duration: durationInput.getBoundingClientRect().toJSON(),
+                        distanceFontSize: getComputedStyle(distanceInput).fontSize,
+                        durationFontSize: getComputedStyle(durationInput).fontSize,
+                        hasHorizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+                    };
+                });
+                expect(metrics.hasHorizontalOverflow).toBe(false);
+                expect([metrics.distanceFontSize, metrics.durationFontSize]).toEqual(['16px', '16px']);
+                expect(Math.min(metrics.distance.height, metrics.duration.height)).toBeGreaterThanOrEqual(44);
+                if (width < 640) {
+                    expect(metrics.duration.top).toBeGreaterThan(metrics.distance.bottom);
+                } else {
+                    expect(Math.abs(metrics.duration.top - metrics.distance.top)).toBeLessThanOrEqual(1);
+                }
+            }
+            await page.setViewportSize({ width: 320, height: 800 });
+            await name.focus();
+            await page.keyboard.press('Tab');
+            expect(await description.evaluate((input) => document.activeElement === input)).toBe(true);
+            await page.keyboard.press('Tab');
+            expect(await distance.evaluate((input) => document.activeElement === input)).toBe(true);
+            await page.keyboard.press('Tab');
+            expect(await duration.evaluate((input) => document.activeElement === input)).toBe(true);
             expect(await duration.getAttribute('class')).toContain('min-h-[44px]');
+            expect(await duration.getAttribute('class')).toContain('text-base');
             expect(await duration.getAttribute('class')).toContain('focus:ring-[var(--color-primary)]');
             expect(await duration.getAttribute('class')).toContain('focus:outline-[var(--color-primary)]');
             await duration.pressSequentially('-');
@@ -136,8 +203,7 @@ describe('WalkingRoutes field validation', () => {
             for (const expectedFocusCount of ['1', '2']) {
                 await save.click();
                 await page.waitForFunction((count) => document.body.dataset.focusCount === count, expectedFocusCount);
-                expect(await page.locator('body').getAttribute('data-focus-snapshot')).toBe(
-                    'true|walking-route-duration-error|true');
+                expect(await page.locator('body').getAttribute('data-focus-snapshot')).toBe('true|walking-route-duration-error|true');
                 expect(await page.locator('body').getAttribute('data-post-count')).toBe('0');
             }
             await duration.press('Backspace');
@@ -146,8 +212,8 @@ describe('WalkingRoutes field validation', () => {
                 input.getAttribute('aria-describedby'), Boolean(document.getElementById('walking-route-duration-error')),
             ])).toEqual([false, null, null, false]);
 
-            const distance = page.getByRole('textbox', { name: enWalkingRoutes.distancePlaceholder });
             expect(await distance.getAttribute('class')).toContain('min-h-[44px]');
+            expect(await distance.getAttribute('class')).toContain('text-base');
             expect(await distance.getAttribute('class')).toContain('focus:ring-[var(--color-primary)]');
             expect(await distance.getAttribute('class')).toContain('focus:outline-[var(--color-primary)]');
             expect(await distance.locator('xpath=../..').getAttribute('class')).toContain('flex-col');
@@ -156,7 +222,7 @@ describe('WalkingRoutes field validation', () => {
             expect(await distance.getAttribute('min')).toBeNull();
             expect(await distance.getAttribute('step')).toBeNull();
             const invalidDistanceValues = [
-                '+1', '3abc', ' 1 ', '1.', '1e2', '-1', '9'.repeat(400),
+                '+1', '3abc', ' 1 ', '1.', '1e2', '-1', '1,5', '1,234', '9'.repeat(400),
             ];
             await distance.fill(invalidDistanceValues[0]);
             await distance.evaluate((input) => {
@@ -202,16 +268,18 @@ describe('WalkingRoutes field validation', () => {
             expect([atomic, live, alertFocused, buttonFocused, label, ['min-h-[44px]', 'min-w-[44px]', 'focus-visible:outline'].every((token) => dismissClass?.includes(token)),
                 [dismissBox?.width, dismissBox?.height].every((value) => (value ?? 0) >= 44)]).toEqual(['true', null, false, false, enWalkingRoutes.dismissActionError, true, true]);
             await englishDismissButton.focus(); await englishDismissButton.press('Enter'); await englishActionAlert.waitFor({ state: 'detached' });
+            expect(await save.evaluate((button) => document.activeElement === button)).toBe(true);
 
             await setActionFlag('failNextAction'); await save.click(); await englishActionAlert.waitFor();
-            await save.click(); await englishActionAlert.waitFor({ state: 'detached' });
+            await save.press('Enter'); await englishActionAlert.waitFor({ state: 'detached' });
             await page.getByRole('textbox', { name: enWalkingRoutes.namePlaceholder }).waitFor({ state: 'detached' }); expect(await bodyAttr('post-count')).toBe('1');
+            expect(await addRouteButton.evaluate((button) => document.activeElement === button)).toBe(true);
 
             await page.evaluate(() => { document.body.dataset.postCount = '0'; delete document.body.dataset.postBody; });
             await page.getByRole('button', { name: enWalkingRoutes.addRoute }).click();
             await page.getByRole('textbox', { name: enWalkingRoutes.namePlaceholder }).fill('Route');
             for (const [index, [value, expected]] of [
-                ['0', 0], ['1.5', 1.5], ['1,5', 1.5],
+                ['0', 0], ['1.5', 1.5], ['001.50', 1.5],
             ].entries()) {
                 if (index > 0) {
                     await page.getByRole('button', { name: enWalkingRoutes.addRoute }).click();
@@ -263,8 +331,9 @@ describe('WalkingRoutes field validation', () => {
             }, enWalkingRoutes.favorite);
             await page.waitForFunction(() => document.body.dataset.patchAttemptCount === '1');
             expect([await disabledStates(), await lastLogWalkButton.locator('.animate-spin').count(),
-                await logButtons.first().locator('.animate-spin').count(), await save.isDisabled()])
-                .toEqual([[true, true, true], 1, 0, true]);
+                await logButtons.first().locator('.animate-spin').count(), await save.isDisabled(),
+                await addRouteButton.isDisabled()])
+                .toEqual([[true, true, true], 1, 0, true, true]);
             await forceClick(deleteButtons); expect([
                 await page.getByRole('alertdialog').count(), await bodyAttr('delete-attempt-count')])
                 .toEqual([0, '0']);
@@ -275,7 +344,9 @@ describe('WalkingRoutes field validation', () => {
                 return rect !== undefined && rect.top >= 0 && rect.bottom <= window.innerHeight;
             }, enWalkingRoutes.updateError);
             expect([await duration.getAttribute('aria-invalid'), await durationAlert.count(), await updateActionAlert.getAttribute('tabindex'), await updateActionAlert.evaluate((alert) => document.activeElement === alert), await bodyAttr('update-alert-mounts')]).toEqual(['true', 1, '-1', true, '1']);
-            await deleteButtons.first().click(); await deleteDialog.waitFor(); await deleteDialog.getByRole('button', { name: enWalkingRoutes.cancel }).click(); await deleteDialog.waitFor({ state: 'detached' });
+            await deleteButtons.first().click(); await deleteDialog.waitFor();
+            expect(await deleteDialog.getAttribute('aria-describedby')).toBe('walking-route-delete-description');
+            await deleteDialog.getByRole('button', { name: enWalkingRoutes.cancel }).click(); await deleteDialog.waitFor({ state: 'detached' });
 
             await setActionFlag('deferNextAction'); await favoriteButtons.first().click();
             await page.waitForFunction(() => document.body.dataset.patchAttemptCount === '2');
@@ -290,7 +361,12 @@ describe('WalkingRoutes field validation', () => {
 
             await duration.press('Backspace'); await setActionFlag('deferNextAction'); await save.click();
             await page.waitForFunction(() => document.body.dataset.postAttemptCount === '1');
-            expect(await disabledStates()).toEqual([true, true, true]); await forceClick(logButtons);
+            expect([
+                await disabledStates(),
+                await addRouteButton.isDisabled(),
+                await page.getByRole('button', { name: enWalkingRoutes.cancel }).isDisabled(),
+            ]).toEqual([[true, true, true], true, true]);
+            await forceClick(logButtons);
             expect(await bodyAttr('patch-attempt-count')).toBe('2'); await settleDeferredFailure();
             const createActionAlert = actionAlert(enWalkingRoutes.createError); await createActionAlert.waitFor();
             await page.getByRole('button', { name: enWalkingRoutes.dismissActionError }).click();
@@ -315,9 +391,41 @@ describe('WalkingRoutes field validation', () => {
             await page.evaluate(() => { document.documentElement.lang = 'ja'; });
             await settleDeferredFailure(); const deleteActionAlert = actionAlert(jaWalkingRoutes.deleteError); await deleteActionAlert.waitFor();
             expect([await deleteActionAlert.evaluate((alert) => alert.closest('[inert]')), await deleteActionAlert.evaluate((alert) => document.activeElement === alert), await page.getByRole('button', { name: jaWalkingRoutes.dismissActionError }).getAttribute('aria-label')]).toEqual([null, false, jaWalkingRoutes.dismissActionError]);
+
+            await page.evaluate(() => { document.documentElement.lang = 'en'; });
+            await page.getByRole('button', { name: jaWalkingRoutes.dismissActionError }).click();
+            await deleteActionAlert.waitFor({ state: 'detached' });
+            expect(await addRouteButton.evaluate((button) => document.activeElement === button)).toBe(true);
+            await favoriteButtons.first().press('Enter');
+            const unfavoriteButton = page.getByRole('button', { name: enWalkingRoutes.unfavorite }).first();
+            await unfavoriteButton.waitFor();
+            expect(await unfavoriteButton.evaluate((button) => document.activeElement === button)).toBe(true);
+            expect(await disabledStates()).toEqual([false, false, false]);
+
+            await logButtons.first().press('Enter');
+            await page.getByText(`🚶 1 ${enWalkingRoutes.times}`).waitFor();
+            expect(await logButtons.first().evaluate((button) => document.activeElement === button)).toBe(true);
+            expect(await disabledStates()).toEqual([false, false, false]);
+
+            const routeCountBeforeDelete = await deleteButtons.count();
+            await deleteButtons.first().click();
+            await deleteDialog.getByRole('button', { name: enWalkingRoutes.delete }).press('Enter');
+            await page.waitForFunction(
+                ({ count, title }) =>
+                    document.querySelectorAll(`button[title="${title}"]`).length === count,
+                { count: routeCountBeforeDelete - 1, title: enWalkingRoutes.delete },
+            );
+            expect([
+                await deleteDialog.count(),
+                await deleteButtons.count(),
+                await disabledStates(),
+                await page.getByRole('alert').filter({ hasText: enWalkingRoutes.deleteError }).count(),
+            ]).toEqual([0, routeCountBeforeDelete - 1, [false, false, false], 0]);
+            expect(await addRouteButton.evaluate((button) => document.activeElement === button)).toBe(true);
             expect(pageErrors).toEqual([]);
+            expect(consoleErrors).toEqual([]);
         } finally {
             await browser.close();
         }
-    }, 30_000);
+    }, 30_000); // CI cold runの15.012秒を実測し、起動余裕はこのテストだけに限定する。
 });

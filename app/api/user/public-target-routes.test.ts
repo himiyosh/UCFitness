@@ -26,9 +26,8 @@ import { GET as getAchievementProgress } from '@/app/api/user/achievement-progre
 import { GET as getFollowStatus } from '@/app/api/user/follow/status/route';
 import {
     GET as getStepCalendar,
-    resolveStepCalendarYear,
 } from '@/app/api/user/step-calendar/route';
-import { getJSTDateString } from '@/lib/date-utils';
+import { getJSTDateString, resolveStepCalendarYear } from '@/lib/date-utils';
 
 interface QueryResult {
     data: unknown;

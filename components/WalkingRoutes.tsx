@@ -24,7 +24,8 @@ interface WalkingRouteDistanceAria {
     'aria-invalid'?: true;
 }
 
-interface WalkingRouteActionError { message: string; shouldFocus: boolean } interface DeleteDialogIdentity { routeId: string; token: number }
+interface WalkingRouteActionError { message: string; shouldFocus: boolean }
+interface DeleteDialogIdentity { routeId: string; token: number }
 
 interface WalkingRoute {
     id: string;
@@ -48,7 +49,10 @@ const DIFFICULTY_MAP: Record<Difficulty, { emoji: string; colorClass: string }> 
 
 const WALKING_ROUTE_DISTANCE_ERROR_ID = 'walking-route-distance-error';
 const WALKING_ROUTE_DURATION_ERROR_ID = 'walking-route-duration-error';
-const NONNEGATIVE_DECIMAL_REGEX = /^\d+(?:[.,]\d+)?$/;
+const WALKING_ROUTE_DISTANCE_INPUT_ID = 'walking-route-distance';
+const WALKING_ROUTE_DURATION_INPUT_ID = 'walking-route-duration';
+const WALKING_ROUTE_DELETE_DESCRIPTION_ID = 'walking-route-delete-description';
+const NONNEGATIVE_DECIMAL_REGEX = /^\d+(?:\.\d+)?$/;
 
 export function parseWalkingRouteDistance(value: string): number | null | undefined {
     if (value === '') return null;
@@ -92,21 +96,59 @@ export default function WalkingRoutes() {
     const [isSaving, setIsSaving] = useState(false);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const [deleteDialogToken, setDeleteDialogToken] = useState(0); const [mutationReleaseToken, setMutationReleaseToken] = useState(0);
-    const actionErrorRef = useRef<HTMLDivElement>(null); const actionErrorAlertRef = useRef<HTMLDivElement>(null);
-    const mutationLockRef = useRef(false); const activeDeleteDialogRef = useRef<DeleteDialogIdentity | null>(null); const nextDeleteDialogTokenRef = useRef(0); const nextMutationReleaseTokenRef = useRef(0); const releasedMutationTokenRef = useRef(0);
+    const [deleteDialogToken, setDeleteDialogToken] = useState(0);
+    const [mutationReleaseToken, setMutationReleaseToken] = useState(0);
+    const [shouldRestoreActionFocus, setShouldRestoreActionFocus] = useState(false);
+    const actionErrorRef = useRef<HTMLDivElement>(null);
+    const actionErrorAlertRef = useRef<HTMLDivElement>(null);
+    const actionTriggerRef = useRef<HTMLButtonElement | null>(null);
+    const addRouteButtonRef = useRef<HTMLButtonElement>(null);
+    const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
+    const successFocusTargetRef = useRef<'trigger' | 'add-route' | null>(null);
+    const mutationLockRef = useRef(false);
+    const activeDeleteDialogRef = useRef<DeleteDialogIdentity | null>(null);
+    const nextDeleteDialogTokenRef = useRef(0);
+    const nextMutationReleaseTokenRef = useRef(0);
+    const releasedMutationTokenRef = useRef(0);
     const deleteDialogRef = useRef<HTMLDivElement>(null);
     const deleteCancelRef = useRef<HTMLButtonElement>(null);
-    const closeDeleteDialog = useCallback(() => { activeDeleteDialogRef.current = null; setDeleteConfirmId(null); }, []);
-    const openDeleteDialog = useCallback((routeId: string) => { if (mutationLockRef.current || activeDeleteDialogRef.current) return; const token = ++nextDeleteDialogTokenRef.current; activeDeleteDialogRef.current = { routeId, token }; setDeleteConfirmId(routeId); setDeleteDialogToken(token); }, []);
-    const beginMutation = useCallback((routeId?: string): boolean => {
+    const closeDeleteDialog = useCallback(() => {
+        activeDeleteDialogRef.current = null;
+        setDeleteConfirmId(null);
+    }, []);
+    const openDeleteDialog = useCallback((routeId: string, trigger?: HTMLButtonElement) => {
+        if (mutationLockRef.current || activeDeleteDialogRef.current) return;
+
+        const token = ++nextDeleteDialogTokenRef.current;
+        activeDeleteDialogRef.current = { routeId, token };
+        deleteTriggerRef.current = trigger ?? null;
+        setDeleteConfirmId(routeId);
+        setDeleteDialogToken(token);
+    }, []);
+    const dismissActionError = useCallback(() => {
+        setActionError(null);
+        setShouldRestoreActionFocus(true);
+    }, []);
+    const beginMutation = useCallback((routeId?: string, trigger?: HTMLButtonElement | null): boolean => {
         if (mutationLockRef.current || activeDeleteDialogRef.current) return false;
-        mutationLockRef.current = true; setActionError(null);
-        if (routeId === undefined) setIsSaving(true); else setActionLoadingId(routeId);
+
+        mutationLockRef.current = true;
+        actionTriggerRef.current = trigger ?? null;
+        setActionError(null);
+        if (routeId === undefined) {
+            setIsSaving(true);
+        } else {
+            setActionLoadingId(routeId);
+        }
         return true;
     }, []);
     const endMutation = useCallback((routeId?: string): void => {
-        if (routeId === undefined) setIsSaving(false); else setActionLoadingId(null); setMutationReleaseToken(++nextMutationReleaseTokenRef.current);
+        if (routeId === undefined) {
+            setIsSaving(false);
+        } else {
+            setActionLoadingId(null);
+        }
+        setMutationReleaseToken(++nextMutationReleaseTokenRef.current);
     }, []);
 
     useDialogFocus({
@@ -166,12 +208,39 @@ export default function WalkingRoutes() {
     }, [durationValidationAttempt]);
 
     useEffect(() => {
-        if (actionError) actionErrorRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (actionError?.shouldFocus) actionErrorAlertRef.current?.focus({ preventScroll: true });
-        if (mutationReleaseToken > releasedMutationTokenRef.current) { releasedMutationTokenRef.current = mutationReleaseToken; mutationLockRef.current = false; }
-    }, [actionError, mutationReleaseToken]);
+        if (actionError) {
+            actionErrorRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+        if (actionError?.shouldFocus) {
+            actionErrorAlertRef.current?.focus({ preventScroll: true });
+        }
+        if (shouldRestoreActionFocus) {
+            const trigger = actionTriggerRef.current;
+            if (trigger?.isConnected) {
+                trigger.focus();
+            } else {
+                addRouteButtonRef.current?.focus();
+            }
+            setShouldRestoreActionFocus(false);
+        }
+        if (mutationReleaseToken > releasedMutationTokenRef.current) {
+            const successFocusTarget = successFocusTargetRef.current;
+            if (!actionError && successFocusTarget) {
+                successFocusTargetRef.current = null;
+                const trigger = actionTriggerRef.current;
+                if (successFocusTarget === 'trigger' && trigger?.isConnected) {
+                    trigger.focus();
+                } else {
+                    addRouteButtonRef.current?.focus();
+                }
+            }
+            releasedMutationTokenRef.current = mutationReleaseToken;
+            mutationLockRef.current = false;
+        }
+    }, [actionError, mutationReleaseToken, shouldRestoreActionFocus]);
 
     // コース作成
-    const handleCreate = useCallback(async (shouldFocusActionError: boolean) => {
+    const handleCreate = useCallback(async (shouldFocusActionError: boolean, trigger?: HTMLButtonElement) => {
         const name = formName.trim();
         if (!name || isSaving) return;
 
@@ -193,7 +262,7 @@ export default function WalkingRoutes() {
             return;
         }
 
-        if (!beginMutation()) return;
+        if (!beginMutation(undefined, trigger)) return;
         setIsDistanceInvalid(false);
         setIsDurationInvalid(false);
         try {
@@ -213,6 +282,7 @@ export default function WalkingRoutes() {
             const data = await res.json();
 
             setRoutes((prev) => [data.route, ...prev]);
+            successFocusTargetRef.current = shouldFocusActionError ? 'add-route' : null;
             setShowForm(false);
             setFormName('');
             setFormDescription('');
@@ -228,9 +298,9 @@ export default function WalkingRoutes() {
 
     // お気に入り切替
     const handleToggleFavorite = useCallback(async (
-        routeId: string, currentValue: boolean, shouldFocusActionError: boolean,
+        routeId: string, currentValue: boolean, shouldFocusActionError: boolean, trigger?: HTMLButtonElement,
     ) => {
-        if (!beginMutation(routeId)) return;
+        if (!beginMutation(routeId, trigger)) return;
         try {
             const res = await fetch(`/api/user/walking-routes/${routeId}`, {
                 method: 'PATCH',
@@ -239,6 +309,7 @@ export default function WalkingRoutes() {
             });
             if (!res.ok) throw new Error('update failed');
             const data = await res.json();
+            successFocusTargetRef.current = shouldFocusActionError ? 'trigger' : null;
             setRoutes((prev) => prev.map((r) => (r.id === routeId ? data.route : r)));
         } catch {
             setActionError({ message: t('updateError'), shouldFocus: shouldFocusActionError });
@@ -248,8 +319,10 @@ export default function WalkingRoutes() {
     }, [beginMutation, endMutation, t]);
 
     // 歩いた記録
-    const handleLogWalk = useCallback(async (routeId: string, shouldFocusActionError: boolean) => {
-        if (!beginMutation(routeId)) return;
+    const handleLogWalk = useCallback(async (
+        routeId: string, shouldFocusActionError: boolean, trigger?: HTMLButtonElement,
+    ) => {
+        if (!beginMutation(routeId, trigger)) return;
         try {
             const res = await fetch(`/api/user/walking-routes/${routeId}`, {
                 method: 'PATCH',
@@ -258,6 +331,7 @@ export default function WalkingRoutes() {
             });
             if (!res.ok) throw new Error('log walk failed');
             const data = await res.json();
+            successFocusTargetRef.current = shouldFocusActionError ? 'trigger' : null;
             setRoutes((prev) => prev.map((r) => (r.id === routeId ? data.route : r)));
         } catch {
             setActionError({ message: t('updateError'), shouldFocus: shouldFocusActionError });
@@ -267,23 +341,37 @@ export default function WalkingRoutes() {
     }, [beginMutation, endMutation, t]);
 
     // 削除
-    const handleDelete = useCallback(async (routeId: string, dialogToken: number, shouldFocusActionError: boolean) => {
-        const activeDialog = activeDeleteDialogRef.current;
-        if (!activeDialog || activeDialog.routeId !== routeId || activeDialog.token !== dialogToken || mutationLockRef.current) return; activeDeleteDialogRef.current = null;
-        if (!beginMutation(routeId)) return;
-        setDeleteConfirmId(null);
-        try {
-            const res = await fetch(`/api/user/walking-routes/${routeId}`, {
-                method: 'DELETE',
-            });
-            if (!res.ok) throw new Error('delete failed');
-            setRoutes((prev) => prev.filter((r) => r.id !== routeId));
-        } catch {
-            setActionError({ message: t('deleteError'), shouldFocus: shouldFocusActionError });
-        } finally {
-            endMutation(routeId);
-        }
-    }, [beginMutation, endMutation, t]);
+    const handleDelete = useCallback(
+        async (routeId: string, dialogToken: number, shouldFocusActionError: boolean) => {
+            const activeDialog = activeDeleteDialogRef.current;
+            if (
+                !activeDialog
+                || activeDialog.routeId !== routeId
+                || activeDialog.token !== dialogToken
+                || mutationLockRef.current
+            ) {
+                return;
+            }
+
+            activeDeleteDialogRef.current = null;
+            if (!beginMutation(routeId, deleteTriggerRef.current)) return;
+
+            setDeleteConfirmId(null);
+            try {
+                const res = await fetch(`/api/user/walking-routes/${routeId}`, {
+                    method: 'DELETE',
+                });
+                if (!res.ok) throw new Error('delete failed');
+                successFocusTargetRef.current = shouldFocusActionError ? 'add-route' : null;
+                setRoutes((prev) => prev.filter((r) => r.id !== routeId));
+            } catch {
+                setActionError({ message: t('deleteError'), shouldFocus: shouldFocusActionError });
+            } finally {
+                endMutation(routeId);
+            }
+        },
+        [beginMutation, endMutation, t],
+    );
 
     const routeActionsDisabled = isSaving || actionLoadingId !== null;
 
@@ -319,18 +407,23 @@ export default function WalkingRoutes() {
         <div className="bg-white midnight-solid-panel rounded-2xl border border-gray-100 p-4 hover:shadow-lg transition-shadow">
             {/* アクションエラートースト */}
             {actionError && (
-                <div ref={actionErrorRef} className="mb-3 flex scroll-mt-20 items-center justify-between gap-2 rounded-lg border border-[var(--color-danger)] bg-[var(--color-surface)] p-2">
+                <div
+                    ref={actionErrorRef}
+                    className="mb-3 flex scroll-mt-20 items-center justify-between gap-2 rounded-lg border border-[var(--color-danger)] bg-[var(--color-surface)] p-2"
+                >
                     <div
                         ref={actionErrorAlertRef}
                         className="flex min-w-0 items-start gap-2 rounded-sm focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-danger)]"
-                        role="alert" aria-atomic="true" tabIndex={-1}
+                        role="alert"
+                        aria-atomic="true"
+                        tabIndex={-1}
                     >
                         <span className="shrink-0" aria-hidden="true">⚠️</span>
                         <p className="text-xs font-medium text-[var(--color-danger-strong)]">{actionError.message}</p>
                     </div>
                     <button
                         type="button"
-                        onClick={() => setActionError(null)}
+                        onClick={dismissActionError}
                         className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-[var(--color-danger-strong)] transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-danger)]"
                         aria-label={t('dismissActionError')}
                     >
@@ -351,12 +444,14 @@ export default function WalkingRoutes() {
                     )}
                 </h3>
                 <button
+                    ref={addRouteButtonRef}
                     onClick={() => {
                         setShowForm((prev) => !prev);
                         setIsDistanceInvalid(false);
                         setIsDurationInvalid(false);
                     }}
-                    className="text-xs font-semibold text-[var(--theme-primary)] hover:underline min-h-[44px] px-2 flex items-center gap-1"
+                    disabled={routeActionsDisabled}
+                    className="text-xs font-semibold text-[var(--theme-primary)] hover:underline min-h-[44px] px-2 flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label={t('addRoute')}
                 >
                     ➕ {t('addRoute')}
@@ -403,11 +498,19 @@ export default function WalkingRoutes() {
                         aria-label={t('descriptionPlaceholder')}
                     />
                     <div className="flex flex-col gap-2 sm:flex-row">
-                        <div className="flex-1">
+                        <div className="min-w-0 flex-1">
+                            <label
+                                className="mb-1 block text-xs font-normal text-gray-600"
+                                htmlFor={WALKING_ROUTE_DISTANCE_INPUT_ID}
+                            >
+                                {t('distanceLabel')}
+                            </label>
                             <input
+                                id={WALKING_ROUTE_DISTANCE_INPUT_ID}
                                 ref={distanceInputRef}
                                 type="text"
                                 inputMode="decimal"
+                                name="distance_km"
                                 value={formDistance}
                                 onInput={(e) => {
                                     const value = e.currentTarget.value;
@@ -420,8 +523,9 @@ export default function WalkingRoutes() {
                                     }
                                 }}
                                 placeholder={t('distancePlaceholder')}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 min-h-[44px]"
-                                aria-label={t('distancePlaceholder')}
+                                className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-base focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 ${
+                                    isDistanceInvalid ? 'border-red-600' : 'border-gray-200'
+                                }`}
                                 {...distanceAria}
                             />
                             {isDistanceInvalid && (
@@ -434,10 +538,18 @@ export default function WalkingRoutes() {
                                 </p>
                             )}
                         </div>
-                        <div className="flex-1">
+                        <div className="min-w-0 flex-1">
+                            <label
+                                className="mb-1 block text-xs font-normal text-gray-600"
+                                htmlFor={WALKING_ROUTE_DURATION_INPUT_ID}
+                            >
+                                {t('durationLabel')}
+                            </label>
                             <input
+                                id={WALKING_ROUTE_DURATION_INPUT_ID}
                                 ref={durationInputRef}
                                 type="number"
+                                name="duration_minutes"
                                 value={formDuration}
                                 onInput={(e) => {
                                     const value = e.currentTarget.value;
@@ -451,9 +563,10 @@ export default function WalkingRoutes() {
                                     }
                                 }}
                                 placeholder={t('durationPlaceholder')}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 min-h-[44px]"
+                                className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-base focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 ${
+                                    isDurationInvalid ? 'border-red-600' : 'border-gray-200'
+                                }`}
                                 min="0"
-                                aria-label={t('durationPlaceholder')}
                                 {...durationAria}
                             />
                             {isDurationInvalid && (
@@ -482,7 +595,7 @@ export default function WalkingRoutes() {
                     </div>
                     <div className="flex gap-2 pt-1">
                         <button
-                            onClick={(event) => handleCreate(event.detail === 0)}
+                            onClick={(event) => handleCreate(event.detail === 0, event.currentTarget)}
                             disabled={!formName.trim() || routeActionsDisabled}
                             className="flex-1 px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg bg-[var(--theme-primary)] text-white disabled:opacity-40 hover:scale-105 active:scale-95 transition-transform flex items-center justify-center gap-2"
                         >
@@ -498,6 +611,7 @@ export default function WalkingRoutes() {
                                 setIsDistanceInvalid(false);
                                 setIsDurationInvalid(false);
                             }}
+                            disabled={routeActionsDisabled}
                             className="px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                         >
                             {t('cancel')}
@@ -554,9 +668,9 @@ export default function WalkingRoutes() {
                                     {/* アクションボタン */}
                                     <div className="flex items-center gap-1 flex-shrink-0 [&>button:disabled]:cursor-not-allowed [&>button:disabled]:opacity-40">
                                         <button
-                                            onClick={(event) => handleLogWalk(route.id, event.detail === 0)}
+                                            onClick={(event) => handleLogWalk(route.id, event.detail === 0, event.currentTarget)}
                                             disabled={routeActionsDisabled}
-                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-green-700 transition-colors hover:bg-green-50"
+                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-green-700 transition-colors hover:bg-green-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                                             aria-label={t('logWalk')}
                                             title={t('logWalk')}
                                         >
@@ -567,18 +681,18 @@ export default function WalkingRoutes() {
                                             )}
                                         </button>
                                         <button
-                                            onClick={(event) => handleToggleFavorite(route.id, route.is_favorite, event.detail === 0)}
+                                            onClick={(event) => handleToggleFavorite(route.id, route.is_favorite, event.detail === 0, event.currentTarget)}
                                             disabled={routeActionsDisabled}
-                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs transition-colors hover:bg-amber-50"
+                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs transition-colors hover:bg-amber-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                                             aria-label={route.is_favorite ? t('unfavorite') : t('favorite')}
                                             title={route.is_favorite ? t('unfavorite') : t('favorite')}
                                         >
                                             {route.is_favorite ? '⭐' : '☆'}
                                         </button>
                                         <button
-                                            onClick={() => openDeleteDialog(route.id)}
+                                            onClick={(event) => openDeleteDialog(route.id, event.currentTarget)}
                                             disabled={routeActionsDisabled}
-                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-red-700 transition-colors hover:bg-red-50"
+                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-xs text-red-700 transition-colors hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                                             aria-label={t('delete')}
                                             title={t('delete')}
                                         >
@@ -605,11 +719,14 @@ export default function WalkingRoutes() {
                             role="alertdialog"
                             aria-modal="true"
                             aria-label={t('deleteConfirm')}
+                            aria-describedby={WALKING_ROUTE_DELETE_DESCRIPTION_ID}
                             tabIndex={-1}
                             data-delete-dialog-token={deleteDialogToken}
                         >
                             <h4 className="text-base font-bold text-gray-900 mb-2">{t('deleteConfirm')}</h4>
-                            <p className="text-sm text-gray-500 mb-4">{t('deleteConfirmDesc')}</p>
+                            <p id={WALKING_ROUTE_DELETE_DESCRIPTION_ID} className="text-sm text-gray-500 mb-4">
+                                {t('deleteConfirmDesc')}
+                            </p>
                             <div className="flex gap-2">
                                 <button
                                     onClick={(event) => handleDelete(deleteConfirmId, deleteDialogToken, event.detail === 0)}

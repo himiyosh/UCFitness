@@ -369,7 +369,8 @@
   "LoginBonus": {
     "title": "デイリーボーナス",
     "claimed": "+{amount} UC! ({streak}日連続)",
-    "streak": "ログイン連続: {streak}日"
+    "multiplier": "x{value} ボーナス",
+    "streak": "{streak}日連続ログイン"
   },
   "Setup": {
     "displayNameRequired": "表示名を入力してください",
@@ -1159,7 +1160,12 @@
   },
   "TrendingGear": {
     "title": "みんなの愛用ギア",
-    "subtitle": "コミュニティで人気のフィットネスアイテム",
+    "subtitle": "愛用者が多い順にチェック",
+    "loading": "人気の愛用ギアを読み込んでいます",
+    "empty": "愛用ギアが集まると、コミュニティで人気のアイテムを確認できます。",
+    "itemFallback": "フィットネスギア",
+    "addGear": "愛用ギアを登録",
+    "popularity": "{count}人が愛用",
     "scrollLeft": "前のギアを表示",
     "scrollRight": "次のギアを表示"
   },
@@ -1562,6 +1568,7 @@
     "prepare": "今日のミッションを準備",
     "preparing": "準備しています...",
     "refreshError": "ミッションを更新できませんでした。もう一度お試しください。",
+    "rewardUnavailable": "ミッションは表示できますが、報酬を安全に反映できませんでした。時間をおいて再チェックしてください。",
     "updatedAnnouncement": "今日のミッションを{count}件表示しました。",
     "bonusAnnouncement": "全ミッション達成。{amount} UCボーナスを獲得しました。",
     "bonusEarned": "獲得した全達成ボーナス: +{amount} UC",
@@ -1739,8 +1746,10 @@
     "emptyHint": "お気に入りのウォーキングコースを記録しましょう",
     "namePlaceholder": "コース名",
     "descriptionPlaceholder": "説明（任意）",
-    "distancePlaceholder": "距離 (km・任意)",
-    "durationPlaceholder": "時間 (分)",
+    "distanceLabel": "距離 (km・任意)",
+    "distancePlaceholder": "例: 1.5",
+    "durationLabel": "時間 (分・任意)",
+    "durationPlaceholder": "例: 30",
     "difficulty": "難易度",
     "difficultyEasy": "かんたん",
     "difficultyNormal": "ふつう",
@@ -1759,7 +1768,7 @@
     "favorites": "お気に入り",
     "minutes": "分",
     "times": "回",
-    "distanceError": "距離（km）は0以上の通常の10進数で入力してください（例: 1.5。小数点キーが「,」の場合は1,5）。指数表記は使用できません。",
+    "distanceError": "距離（km）は、小数点に「.」を使った0以上の10進数で入力してください（例: 1.5）。「,」や指数表記は使用できません。",
     "durationError": "時間（分）は0以上の整数で入力してください（例: 30）。",
     "createError": "コースの作成に失敗しました。再度お試しください。",
     "updateError": "更新に失敗しました。再度お試しください。",
