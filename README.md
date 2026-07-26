@@ -705,6 +705,7 @@ npm run dev
 | `npm run pages:build` | Cloudflare Pages ビルド + Worker 2.8 MiB budget検証 |
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
+| `npm run test:e2e` | Playwright 公開主要導線E2E (localhost:3000、320 / 1280px、ja/en) |
 | `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
 | `npm run test:postgres:notification-outbox` | loopback PostgreSQLで通知outbox migration・lease・競合・rollbackを実行検証 |
 | `npm run test:postgres:push-cas` | loopback PostgreSQLでPush購読CAS migration・ACL・競合・rollbackを実行検証 |
@@ -947,6 +948,12 @@ npm run audit:responsive
 # Dashboardのミッション報酬復旧・愛用ギアfocus・Amazon popup通信隔離
 DASHBOARD_E2E_LOCAL_SECRET=local-fixture-secret DASHBOARD_E2E_SUPABASE_FIXTURE_URL=http://127.0.0.1:54321 npm run test:e2e:dashboard
 
+# 未認証の公開主要導線E2E
+npm run test:e2e
+
+# 同じbranch・commitのlocalhost:3000を意図的に再利用する場合のみ
+PLAYWRIGHT_REUSE_SERVER=1 npm run test:e2e
+
 # Push購読CAS（allow_system_table_mods=onの破棄可能なlocalhost PostgreSQLだけで実行）
 UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_CAS_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres npm run test:postgres:push-cas
 
@@ -958,7 +965,10 @@ POSTGRES_TEST_PASSWORD=postgres
 UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POSTGRES_TEST_USER}:${POSTGRES_TEST_PASSWORD}@127.0.0.1:5432/postgres" npm run test:postgres:push-protocol
 ```
 
-- テストフレームワーク: **Vitest**
+- テストフレームワーク: **Vitest**、公開主要導線E2Eは既存の `playwright/test`
+- `npm run test:e2e` はlocalhost:3000の未認証公開面だけを対象とし、320px日本語と1280px英語でLP、実際の言語切替と切替後のfocus復帰、スキップリンク、ログインCTA、利用規約、プライバシーポリシー、ランドマーク、唯一の`h1`、横overflowをユーザー導線として検証する
+- E2Eのweb serverはデフォルトで専用のlocalhost:3000を起動し、別worktreeや古いcommitの既存サーバーを再利用しない。ポート競合時も既存プロセスをkillせず失敗する。同じbranch・commitのサーバーを意図的に管理している場合だけ、`PLAYWRIGHT_REUSE_SERVER=1`で明示的に再利用できる。ローカル専用プレースホルダー環境変数を使い、OAuth・DB write・本番操作は実行しない
+- CIではPlaywrightの再試行後に成功したflaky testも失敗扱いにし、回帰を成功として隠さない
 - CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
 - current main `5afdb51f` のsingle-worker coverage実行は103ファイル・1273テストで、Statements 68.13%、Branches 65.24%、Functions 78.93%、Lines 69.30%（48.67秒）。通常`npm test`は再実測18.76秒、single-workerは42.33秒でPASSしたが、F026の5秒条件は未達のためstatusは`in-progress`
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査

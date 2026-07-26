@@ -70,3 +70,5 @@ improvement-report.json
 # playwright MCP テスト出力
 .playwright-mcp/
 screenshots/
+playwright-report/
+test-results/

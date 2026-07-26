@@ -1,6 +1,6 @@
-import { getTranslations } from 'next-intl/server';
+import Link from 'next/link';
 
-import { Link } from '@/navigation';
+import { getTranslations } from 'next-intl/server';
 
 export default async function Footer() {
   const t = await getTranslations('Footer');
@@ -26,12 +26,14 @@ export default async function Footer() {
             </a>
             <Link
               href="/legal/terms"
+              target="_top"
               className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               {t('terms')}
             </Link>
             <Link
               href="/legal/privacy"
+              target="_top"
               className="inline-flex min-h-[44px] items-center rounded-lg transition-colors hover:text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               {t('privacy')}
