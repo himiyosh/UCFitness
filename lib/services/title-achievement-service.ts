@@ -52,16 +52,18 @@ function titleAchievementError(
     return new AppError(message, code, { stage }, cause);
 }
 
-function parseSingleTotalSteps(value: unknown): number | null {
+export function parseSingleTotalSteps(value: unknown): number | null {
     const row = Array.isArray(value)
         ? value.length === 1 ? value[0] : null
         : value;
-    return isRecord(row) && isNonnegativeSafeInteger(row.total_steps)
+    return isRecord(row)
+        && isNonnegativeSafeInteger(row.total_steps)
+        && isNonnegativeSafeInteger(row.total_days)
         ? row.total_steps
         : null;
 }
 
-function parseOwnedItemCode(value: unknown): string | null {
+export function parseOwnedItemCode(value: unknown): string | null {
     if (!isRecord(value)) return null;
     const relation = value.shop_items;
     const item = Array.isArray(relation)
@@ -82,7 +84,7 @@ function parseCount(result: QueryResult, subject: string, codePrefix: string, st
     return result.count;
 }
 
-function parseStreakRecords(value: unknown, today: string): StreakRecord[] | null {
+export function parseStreakRecords(value: unknown, today: string): StreakRecord[] | null {
     if (!Array.isArray(value)) return null;
     const seenDates = new Set<string>();
     const records: StreakRecord[] = [];

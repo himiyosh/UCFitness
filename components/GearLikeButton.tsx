@@ -57,7 +57,7 @@ export default function GearLikeButton({
             onClick={handleClick}
             aria-label={isLiked ? t('unlike') : t('like')}
             aria-pressed={isLiked}
-            className="inline-flex min-h-[44px] min-w-[44px] cursor-pointer select-none items-center justify-center gap-1 rounded-full px-2 py-1 transition-colors active:scale-90"
+            className="inline-flex min-h-[44px] min-w-[44px] cursor-pointer select-none items-center justify-center gap-1 rounded-full px-2 py-1 transition-colors hover:bg-[var(--color-surface-muted)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
         >
             {/* ハートアイコン — SVG で塗りと線を制御 */}
             <svg

@@ -1,13 +1,14 @@
+export const runtime = 'edge';
+
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { reportError } from "@/lib/errors";
 import { getPersonalAnalytics } from "@/lib/services/analytics-service";
-
-export const runtime = 'edge';
+import { parseStrictInteger } from "@/lib/validation";
 
 // パーソナル分析API: 月別歩数統計・曜日別平均・ベスト記録を返す
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -17,16 +18,20 @@ export async function GET(request: Request) {
     const userId = session.user.id;
     const { searchParams } = new URL(request.url);
     const monthsParam = searchParams.get("months");
-    const months = monthsParam ? Math.min(Math.max(parseInt(monthsParam, 10), 1), 12) : 3;
+    const months = monthsParam === null ? 3 : parseStrictInteger(monthsParam);
 
-    if (isNaN(months)) {
+    if (months === null || months < 1 || months > 12) {
         return NextResponse.json({ error: "Invalid months parameter" }, { status: 400 });
     }
 
     try {
         return NextResponse.json(await getPersonalAnalytics(userId, months));
-    } catch (error: unknown) {
-        reportError("analytics-fetch", error);
+    } catch {
+        reportError(
+            "analytics-fetch",
+            new Error("Failed to fetch analytics"),
+            { code: "ANALYTICS_FETCH_FAILED" },
+        );
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

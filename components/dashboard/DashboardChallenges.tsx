@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { useTranslations } from 'next-intl';
 
@@ -48,6 +48,8 @@ export default function DashboardChallenges(): ReactNode {
     const [progressMap, setProgressMap] = useState<Record<string, number | null>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const focusAfterRetryRef = useRef(false);
+    const focusHeading = useCallback((node: HTMLHeadingElement | null) => { if (node && focusAfterRetryRef.current) { node.focus(); focusAfterRetryRef.current = false; } }, []);
 
     // チャレンジを取得（retry にも使える useCallback 版）
     const fetchChallenges = useCallback(async () => {
@@ -118,7 +120,7 @@ export default function DashboardChallenges(): ReactNode {
                     <h2 className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('activeChallenges')}</h2>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]" role="alert">{t('loadError')}</p>
                     <button
-                        onClick={fetchChallenges}
+                        onClick={() => { focusAfterRetryRef.current = true; void fetchChallenges(); }}
                         className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--color-inverse-surface)]"
                     >
                         {t('retry') || '再試行'}
@@ -131,7 +133,7 @@ export default function DashboardChallenges(): ReactNode {
     if (challenges.length === 0) {
         return (
             <div className="home-competition-module flex h-full flex-col justify-center rounded-2xl border border-[var(--color-competition)]/30 bg-[var(--color-surface)] p-3 text-center shadow-sm">
-                <h2 className="text-base font-bold text-[var(--color-text)]">{t('activeChallenges')}</h2>
+                <h2 ref={focusHeading} tabIndex={-1} className="text-base font-bold text-[var(--color-text)]">{t('activeChallenges')}</h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]" role="status">
                     {t('dashboardEmpty')}
                 </p>
@@ -154,7 +156,7 @@ export default function DashboardChallenges(): ReactNode {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 20V4m0 1h10l-2 3 2 3H5" />
                         </svg>
                     </span>
-                    <h2 className="text-balance text-sm font-bold leading-5 text-[var(--color-text)]">
+                    <h2 ref={focusHeading} tabIndex={-1} className="text-balance text-sm font-bold leading-5 text-[var(--color-text)]">
                         {t('activeChallenges')}
                     </h2>
                 </div>
