@@ -3,15 +3,10 @@ export const runtime = 'edge';
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { getJSTDateString } from "@/lib/date-utils";
+import { resolveStepCalendarYear } from "@/lib/date-utils";
 import { reportError } from "@/lib/errors";
 import { supabaseAdmin } from "@/lib/supabase";
-import { isValidUUID, parseStrictInteger } from "@/lib/validation";
-
-export function resolveStepCalendarYear(yearParam: string | null, now: Date = new Date()): number | null {
-    const value = yearParam ?? getJSTDateString(now).slice(0, 4);
-    return parseStrictInteger(value);
-}
+import { isValidUUID } from "@/lib/validation";
 
 // 歩数カレンダー用API: 指定年の日別歩数データを返す
 export async function GET(request: Request): Promise<NextResponse> {

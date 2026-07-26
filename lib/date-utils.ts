@@ -1,3 +1,5 @@
+import { parseStrictInteger } from "@/lib/validation";
+
 // ============================================
 // JST 日付ユーティリティ
 // Intl.DateTimeFormat を使用した信頼性の高いJST日付計算
@@ -31,6 +33,11 @@ function assertDateString(dateStr: string): void {
  */
 export function getJSTDateString(date: Date = new Date()): string {
     return JST_FORMATTER.format(date);
+}
+
+export function resolveStepCalendarYear(yearParam: string | null, now: Date = new Date()): number | null {
+    const value = yearParam ?? getJSTDateString(now).slice(0, 4);
+    return parseStrictInteger(value);
 }
 
 /**

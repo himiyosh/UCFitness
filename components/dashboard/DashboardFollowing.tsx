@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useTranslations } from 'next-intl';
 
@@ -44,6 +44,8 @@ export default function DashboardFollowing({ className = '' }: DashboardFollowin
     const [isLoading, setIsLoading] = useState(true);
     const [hasData, setHasData] = useState(false);
     const [error, setError] = useState(false);
+    const focusAfterRetryRef = useRef(false);
+    const focusHeading = useCallback((node: HTMLHeadingElement | null) => { if (node && focusAfterRetryRef.current) { node.focus(); focusAfterRetryRef.current = false; } }, []);
 
     // フォロー中ユーザーを取得（retry にも使える useCallback 版）
     const fetchFollowing = useCallback(async () => {
@@ -104,7 +106,7 @@ export default function DashboardFollowing({ className = '' }: DashboardFollowin
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 0 2 2 4-4" />
                             </svg>
                         </span>
-                        <h2 id="friend-pulse-empty-title" className="mt-3 text-base font-bold text-[var(--color-text)]">{t('followingActivity')}</h2>
+                        <h2 ref={focusHeading} id="friend-pulse-empty-title" tabIndex={-1} className="mt-3 text-base font-bold text-[var(--color-text)]">{t('followingActivity')}</h2>
                         <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">{t('noFollowing')}</p>
                         <ol className="mt-3 hidden gap-2 xl:grid xl:flex-1 xl:auto-rows-fr">
                             {[t('discoverStepRanking'), t('discoverStepProfile'), t('discoverStepPulse')].map(step => (
@@ -133,7 +135,7 @@ export default function DashboardFollowing({ className = '' }: DashboardFollowin
                     <h2 id="friend-pulse-error-title" className="mt-3 text-sm font-bold text-[var(--color-text)]">{t('followingActivity')}</h2>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('loadError')}</p>
                     <button
-                        onClick={fetchFollowing}
+                        onClick={() => { focusAfterRetryRef.current = true; void fetchFollowing(); }}
                         className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                     >
                         {t('retry')}
@@ -169,7 +171,7 @@ export default function DashboardFollowing({ className = '' }: DashboardFollowin
                         </svg>
                         </span>
                         <div className="min-w-0">
-                            <h2 id="friend-pulse-title" className="text-sm font-bold text-[var(--color-text)] sm:text-base">{t('followingActivity')}</h2>
+                            <h2 ref={focusHeading} id="friend-pulse-title" tabIndex={-1} className="text-sm font-bold text-[var(--color-text)] sm:text-base">{t('followingActivity')}</h2>
                             <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{t('friendPulseSubtitle')}</p>
                         </div>
                     </div>

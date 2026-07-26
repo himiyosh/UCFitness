@@ -1080,6 +1080,7 @@ export const runtime = "edge";
 #### ルール
 
 - **フィードバック処理の必須順序**: 1) 指摘を否定せず受け止める 2) 反省点を明文化する 3) 根本原因を特定する 4) `.github/copilot-instructions.md` または該当 instruction/skill に再発防止ルールを追加する 5) 実装修正する 6) ルールに対応した検証を実行する
+- **Lessons Learned番号の一意性**: 新規LL番号はrepository本体だけでなく全open PR refも検索し、既存PRの番号・内容を変更せず未使用番号を確定する
 - コード変更時に関連するプロンプトの処理フロー・ステップ説明・検証項目を**同一コミットで更新**
 - **禁止**: 「次回修正します」と先送り / ユーザーに指摘されてから修正 / 説明だけでコード未修正 / コード修正だけでプロンプト未更新
 - **完了前ゲート**: コード・UI・設定・カスタマイズ・ドキュメント変更後は、ユーザーへ報告する前に必ず `self-critique-gate` skill を実行し、要件充足・回帰防止・技術検証・UI/UX・ルール化を証拠ベースで確認する
@@ -1534,9 +1535,23 @@ export const runtime = "edge";
 ### LL-070: API入力だけのparseInt監査でClient送信値とJST境界を見落とした
 
 - **事象**: query整数の部分受理修正後も、`WalkingRoutes`のduration入力が`parseInt`で`1e2`・`1.5`・`3abc`を部分受理し、Step Calendarの省略yearはEdge UTCの元日境界で前年を選び得た。Client修正後も汎用alertだけで、入力の無効状態と修正方法が支援技術へ関連付いていなかった。さらにnumber inputの`1e309`等はDOM valueが空でも`validity.badInput=true`となり、文字列だけでは未指定と誤認し、同じ空valueのまま有効へ戻る操作ではReact `onChange`が発火しなかった。
-- **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、native `ValidityState`とvalue不変時のevent差を確認しなかった。React state更新直後の同期focusで、ARIA属性とerror DOMのcommit前に入力へ移動し、実DOM testはPlaywright bundled browserがCIに存在すると仮定した。
-- **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは`validity.badInput`を空文字判定より先に確認し、native `input`イベントでValidityState修正を追跡し、試行counterを契機とするeffectでARIA/error DOM commit後に毎回focusする。CI実DOM testはrunner既設Chromeのchannelとbrowser起動を含むtest timeoutを明示する。
-- **教訓**: 入力検証監査はHTTP境界だけで完了とせず、native validity・value不変時のinput event・フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付け、無効化と修正直後の解除を実ブラウザで固定する。CIのbrowser testはdownload済みbrowserを暗黙前提にせず、実行環境の既設browser経路と起動予算を明示する。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`
+- **根本原因**: repository監査をquery/path/bodyのサーバー受信箇所へ狭め、Clientが生文字列をnumberへ変換して送信する境界を含めなかった。既定年もサーバーのローカル年とJST業務日が同じだと仮定し、native `ValidityState`とvalue不変時のevent差を確認しなかった。React state更新直後の同期focusで、ARIA属性とerror DOMのcommit前に入力へ移動し、実DOM testはPlaywright bundled browserがCIに存在すると仮定した。runner既設Chromeへ移行後も、bundleとbrowserのcold startupが15秒以内で安定すると見積もっていた。
+- **対策**: ユーザー入力の整数監査はClient stateからAPI validationまでを追跡し、生文字列を共有`parseStrictInteger`で全文検証する。業務日由来の既定年は`getJSTDateString`正本を使い、Date注入可能な純粋helperでJST元日境界を固定する。Client検証エラーは`validity.badInput`を空文字判定より先に確認し、native `input`イベントでValidityState修正を追跡し、試行counterを契機とするeffectでARIA/error DOM commit後に毎回focusする。CI run 30051872077の初回15.012秒timeoutと再実行8.599秒PASSを根拠に、Google Chrome実DOM testだけを30秒、各Playwright操作を5秒とし、global timeoutは変更しない。
+- **教訓**: 入力検証監査はHTTP境界だけで完了とせず、native validity・value不変時のinput event・フォーム変換・JSON生成・API再検証を一続きで確認する。検証エラーを汎用失敗へ丸めず、可視文言・ARIA状態・focusを同時に対象入力へ結び付け、無効化と修正直後の解除を実ブラウザで固定する。CIのbrowser testはdownload済みbrowserを暗黙前提にせず、実行環境の既設browser経路を使う。cold startupの実測から対象testだけの起動予算を決め、短い操作timeoutを別に保って失敗assertionを隠さない。年・月・日を既定化する処理はruntime timezoneへ依存させず、業務timezoneの境界時刻を決定的テストへ含める。リファレンス: `components/WalkingRoutes.tsx`, `app/api/user/step-calendar/route.ts`
+
+### LL-071: optional decimalを`type="number"`で受けると厳格検証前に字句を失う
+
+- **事象**: Walking Routesの任意距離を`parseFloat`から全文parserへ変更しても、`type="number"`がReactの`onInput`より前に`+1`→`1`、`3abc`→`3`、前後空白と`1.`→`1`へ正規化し、禁止した生文字列が正常値としてPOSTされた。純粋parser testは正規化前文字列を直接渡すため検出できなかった。
+- **根本原因**: 数値キーボードの提供と生文字列の保持を同じ`type="number"`へ委ね、ブラウザDOMのvalue sanitizationを送信境界に含めていなかった。parser単体の全文一致を、実UIからparserへ同じ字句が届く証拠として扱った。
+- **対策**: 距離だけを`type="text"` + `inputMode="decimal"`へ変更して生文字列を保持し、空文字だけを`null`、存在時は符号・空白・指数・locale依存のカンマ表記を含まない非負10進数全文かつfiniteの場合だけ送信する。距離専用error/ARIA/commit後focus、可視の任意ラベル、16px入力、320px縦積み、意味色outlineを維持する。既設Chrome channelのUIへ禁止字句を実入力し、raw value、POST 0回、反復submit、空への修正、0/1.5 payload、44px、320/375/1280px、keyboard、consoleを固定する。
+- **教訓**: 字句自体を厳格検証するdecimal入力では`type="number"`を正本にしない。`inputMode`はモバイルキーボードのhintに限定し、localeで意味が変わる区切り文字を暗黙変換しない。raw文字列をClient parserへ渡した証拠と、変換後numberを再検証するServer契約の両方を持つ。エラー文追加時は狭幅の入力幅と全テーマの実focus indicatorも同じ完了条件にする。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`
+
+### LL-072: 可視トーストだけでは非同期操作失敗が支援技術へ届かない
+
+- **事象**: Walking Routesの作成・更新・削除失敗は可視トーストだけで、支援技術へ即時通知するlive semanticsがなかった。dismiss buttonは英語固定名かつ44pxと明示focusを持たず、別actionの成功後も以前のエラーが残り得た。さらに複数routeの並行更新は同一errorをDOM mutationなしで上書きし、pending中に開いたdelete dialogは後着alertをinert subtreeへ隠し得た。boolean dialog guard追加後も、Cancel/Escape直後のcaptured confirm closureは同route再open時の新dialogと区別できず、dialog openを全button disabled条件へ含めるとトリガーfocusも失われた。mutation `finally`でref lockをcommit前に解除すると後着alertを再びinert配下へ隠し、保存中に追加/キャンセルでフォームを閉じると次操作が無言で拒否され、作成・削除成功やalert解除でfocused controlを除去するとfocusが`body`へ落ちた。
+- **根本原因**: field validationの関連付けだけをアクセシビリティ境界として確認し、非同期action結果のannouncement、翻訳、操作領域、action lifecycleを同じ状態契約で監査していなかった。`actionLoadingId`のReact stateと同一routeのdisabledだけを排他制御に使い、same-tick・別route・create・delete dialogを跨ぐ同期lockがなかった。dialog identityもopen/closedのbooleanだけで、closureを発行したroute/generationと、操作完了後もDOMへ残る安定したfocus復帰先を管理していなかった。
+- **対策**: action本文だけを`role="alert"` + `aria-atomic`へ載せ、button名の読み上げを混在させない。dismissはnext-intl名を持つnative 44px buttonと明示outlineにし、各error objectへ起動入力のfocus意図を同梱する。create/favorite/log/deleteは同期ref lockで1件へ直列化し、pending中は全route controls・追加・キャンセルをdisabled、対象routeだけspinner表示、delete dialogとは相互排他にする。`finally`はloading state終了とmonotonic release tokenだけをscheduleし、error DOM/focusまたはsuccess/loadingがcommitした単一effectでtokenを一度だけ消費してref lockを解放する。alert解除は接続中の起動button、favorite/logのキーボード成功は起動button、作成・削除成功は安定した追加buttonへcommit後focusを戻す。dialogは説明を`aria-describedby`で関連付け、active route ID + monotonic tokenを全close経路で同期invalidateする。Chromeでfailure resolve直後の割込み拒否、alert commit後の再操作、success/pointer release、stale token/inert/ja/en、focus復帰を固定する。
+- **教訓**: 非同期操作エラーは支援技術へ届くことだけで完了とせず、操作位置から視覚的にも発見可能にする。UI disabledだけで二重送信を防いだと判断せずhandler境界の同期lockを持ち、ref lockはPromise settleでなく関連DOM・loading・focusのcommit後に解放する。保存中にフォームを消す操作を許可せず、focused controlを成功・dismiss・破壊的操作で除去する場合は、DOMに残る安定した復帰先を同じcommit後effectでfocusする。close可否をbooleanだけで表さず、破壊的confirmはroute/generationをclosure発行時と実行時に完全一致させ、assertive通知と同一文言再発はDOM remountまで実ブラウザで固定する。リファレンス: `components/WalkingRoutes.tsx`, `components/WalkingRoutes.test.ts`
 
 ### LL-073: 並列DB結果の既定化で依存障害を未達成へ偽装した
 
@@ -1545,3 +1560,93 @@ export const runtime = "edge";
 - **対策**: `get_user_step_stats`と称号サービスの共有parserへ統一し、7依存のDB errorを固定503、不正形状を固定500へ分離した。正当な0・空・残高行なし、公開target契約だけを維持し、生errorをログ・responseへ渡さないbehavior testを追加した。
 - **教訓**: 並列DB結果は各resultのerrorとdata/count shapeを個別に検証し、zero/emptyを許可する契約を依存ごとに明示する。集計は取得件数上限のある全行走査ではなくDB側RPCを使い、relation rowは壊れた要素をskipせず全体を失敗させる。リファレンス: `app/api/user/achievement-progress/route.ts`, `lib/services/title-achievement-service.ts`
 - **追加教訓**: `JSON.stringify(Error)`は非列挙のmessage/causeを落として`{}`になるため、ログ非漏洩の証拠にしない。raw error identityと固定operation、Error message/name/code/cause/context、固定contextを直接分解し、PII値ごとに非包含を検証する。
+
+### LL-064: 静的アイコンを`next/og`で再生成するとPages Workerの無料枠を超える
+
+- **事象**: `app/icon.tsx`と`app/apple-icon.tsx`が`ImageResponse`を使ったため、既に同じPNGが`public/`にあるにもかかわらずresvg WASM約1.32 MiBをWorkerへ同梱し、gzip推定3.052 MiBでCloudflare無料枠3 MiBのdeployだけが失敗した。
+- **根本原因**: routeのFirst Load JSだけをF020のbudgetとして監視し、Pages Workerの全moduleとWASMを含むupload sizeを出荷ゲートにしていなかった。
+- **対策**: metadata routeは`force-dynamic`のEdge routeとして既存の静的PNGへredirectし、`next/og`依存を除去する。静的化されたredirectはPages上で200空本文になり得るため使用しない。`npm run pages:build`後に全Worker moduleのgzip推定合計を計測し、2.8 MiBを超えたら失敗させる。
+- **教訓**: Cloudflare Pagesではclient bundleとWorker upload sizeを別々に管理する。固定画像に動的画像生成を使わず、deploy段階の3 MiB制限をCI相当のlocal buildで事前検出する。リファレンス: `app/icon.tsx`, `app/apple-icon.tsx`, `scripts/check-cloudflare-worker-size.mjs`
+
+### LL-074: focus時のスクロールと無制限画像fallbackが隣接操作を無反応にした
+
+- **事象**: Daily Missionsのprepare buttonをPlaywrightで物理クリックするとPOSTが発生せず、Trending Gearでは画像失敗が数万件の再リクエストになった。
+- **根本原因**: buttonの`onFocus`がmousedownとclickの間に`scrollIntoView()`してポインター着地点を別要素へ移し、画像`onError`も失敗するfallback URLを再設定し続けた。
+- **対策**: focus handlerからレイアウト・スクロール副作用を除去し、画像fallbackを1回で打ち切る。回帰テストはDOM上のhandler直接呼び出しでなく物理クリックと失敗画像リクエスト上限を検証する。
+- **教訓**: focusは即時の視覚表示に限定し、スクロール補正が必要ならfocus成立後の別契機で行う。fallbackは必ず最終失敗状態を持つ。リファレンス: `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
+
+### LL-076: 外部ランキングが依存障害・切り捨て・未参加者を正常ランキングへ変換していた
+- **事象**: `GET /api/external/ranking`がDB障害やnullを空集合・0歩へ変換し、profile欠落をdrop/Unknown、未記録・0歩を順位として返していた。PostgREST listのexact countを見ず1000行超の部分配列も正常200にし、CRON secret比較は文字列長で早期returnしていた。
+- **根本原因**: 成功形維持を優先し、error・shape・一意性・safe integer・exact countと正当な空集合を分ける境界がなかった。「定時間」を同長UTF-16 loopだけで満たしたと誤認し、異長・Unicodeを同じ比較経路へ通していなかった。
+- **対策**: 全可変list queryで`count: exact`と返却長を照合し、切り捨て・null/負/unsafe countを固定500へ分離した。依存障害は生errorやIDをcause/contextへ渡さず、固定codeとstageだけを持つ`AppError`へ変換する。CRON/OAuth比較はTextEncoder UTF-8をWebCrypto SHA-256の固定32-byte digestへ変換後に固定長loopで比較し、正歩数だけを既存安定sort後に1..Nへ再採番する。
+- **教訓**: 外部ランキングで正常な空集合は完全取得を証明した空配列だけに限定する。stable pagingをsnapshotと呼ばず、上限超の完全取得はtransactional RPCへ委ねる。secret比較は文字列長やUTF-16単位で短絡せず、raw error・secret・IDをログへ渡さない。SHA-256 digest比較は衝突耐性を前提とする等価判定であり、secret保存用hashの代替ではない。リファレンス: `app/api/external/ranking/route.ts`, `app/api/external/ranking/route.test.ts`, `lib/validation.ts`
+
+### LL-079: 既定npm proxyの遅延を公開registry未公開と誤認した
+
+- **事象**: 既定の`packagefeedproxy.microsoft.io`ではNext 15.5.21とNextAuth beta.32が404だったため公開待ちと判断したが、`registry.npmjs.org`には両版とsha512 integrityが公開済みだった。
+- **根本原因**: `npm config get registry`を確認せず、既定proxyのpackumentとtarball可用性をnpm公式registryの公開状態として扱った。
+- **対策・教訓**: 脆弱性修正版の公開判定は、設定中registryとlockfile許可先を分けて確認する。UCFitnessでは`registry.npmjs.org`のHTTPS tarballとsha512を検証してlockを生成し、`npm audit --omit=dev --audit-level=high`を通す。proxy未同期を理由に`npm audit fix --force`やmajor downgradeへ逃げない。
+
+### LL-080: 古いPush応答をendpointだけで削除すると再購読replacementを消し得る
+
+- **事象**: 送信中に同じendpointが新しい鍵や作成時刻へ再購読された場合、古い404/410応答を根拠にendpointだけで削除すると有効なreplacementまで消し得た。migration、runtime検証、アプリ配線を1 PRへ混在させた旧PR #302はmain差分994行となり、各層の所有権と検証証拠も不明瞭になった。
+- **根本原因**: endpointを不変versionとして扱い、外部応答が証明するのは送信時に観測した購読版だけという境界をDB transactionへ反映していなかった。また、static SQL契約と実PostgreSQL競合検証を同じ完了条件として扱った。
+- **対策**: clean 3-layerへ分割し、Layer 1は主キー`id`で行を`FOR UPDATE`し、残るrow-version項目が一致した場合だけ同じ`id`を削除するservice-role限定CAS RPC migrationとSHA-256付きstatic catalog/security testを正本にする。Layer 2で実PostgreSQLのnegative catalog・exact/stale・二接続競合を検証し、Layer 3でアプリを配線する。Layer 2がmainへ入る前のproduction適用は禁止する。
+- **教訓**: 古い外部応答で可変リソースを削除するときは完全row versionをDB transaction内でcompare-and-deleteする。migration、runtime証明、利用側配線を独立PRにし、static testだけでruntime PASSを主張しない。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/__tests__/push-subscriptions-rls-migration.test.ts`
+
+### LL-082: migrationのtext testだけでは実catalogとrow lock競合を証明できない
+
+- **事象**: Push購読CAS migrationは文字列検査を通っても、default式、constraint backing index、個別ACL、`SECURITY DEFINER`属性、2 transactionの待機順序を実PostgreSQLで検証できていなかった。
+- **根本原因**: SQL sourceに期待する語があることと、PostgreSQL catalogへ期待どおり反映され並行transactionで安全に動くことを同一視した。
+- **対策・教訓**: migration bytesのSHA-256をDB接続前に固定し、digest固定PostgreSQL serviceへ実適用してunique列順・FORCE RLSを含むfresh database negative、role別実行、rollback、2接続lock barrierを検証する。接続先はquery/hashなしのloopback maintenance DB・固定test admin・明示flagに限定し、既存roleがあるclusterを拒否する。作成roleとrandom allowlist名のDBだけを失敗時も削除し、workflowの全`uses:`を完全長SHAで固定する。リファレンス: `scripts/test-push-cas-postgres.ts`, `.github/workflows/validate.yml`
+
+### LL-083: 通知送信の再試行をHTTP応答だけで管理すると成功済みユーザーへ再送する
+
+- **事象**: Weekly summaryとstep reminderはbatch途中の503や並行Cronで、既に成功したユーザーを同じJST occurrenceとして識別できず再送し得た。
+- **根本原因**: 配信結果をrequest内カウンターだけで管理し、user単位の永続idempotency key、lease所有権、完了状態がなかった。
+- **対策**: `(notification_type, occurrence_key, user_id)`一意のDB outboxとowner/token付きlease RPCをLayer 1にし、personalized data取得前のclaim、契約成立後だけのcomplete、所有中だけのreleaseをLayer 3契約にする。
+- **教訓**: 外部通知の再試行はHTTP requestではなく論理occurrence単位で永続化する。static migration、runtime競合検証、アプリ配線をclean 3-layerへ分け、Layer 2前のproduction適用を禁止する。
+
+### LL-084: outboxのcheck件数だけでは制約弱体化を検出できない
+
+- **事象**: migration postconditionがcheck constraintの件数だけを確認すると、90日保持を89日へ弱めても同じ件数のまま適用できる。
+- **根本原因**: catalog形状の存在確認と、制約式が守る業務境界の実行確認を同一視した。
+- **対策・教訓**: digest固定に加え、条件を弱めたmigrationをfresh DBへ適用して境界insertが検出されることを確認する。並行claimは任意時間待機でなく実lock待機を観測し、逆順入力でも二重claimとdeadlockがないことを証明する。リファレンス: `scripts/test-notification-outbox-postgres.ts`
+
+### LL-085: endpoint所有権とpayload世代を分離すると遅延Pushが旧ユーザーへ届く
+
+- **事象**: Web Push送信後のowner移転に加え、host case・default port・percent encoding・fragment aliasをraw文字列hashすると同一endpointが別authority/lockになり、generationを安全に取得する非更新経路もなかった。
+- **根本原因**: URL正規化をDBのraw endpoint hashへ暗黙依存し、legacy rowからownerを推測してbackfillし、save RPCをgeneration readにも流用する設計だった。
+- **対策**: Layer 3共有helperのcanonical ownership keyだけをdigest/lockへ使い、legacyは全隔離する。authorityへcurrent subscription IDを結び、owner・digest・ID・保存行userのexact一致だけを返すservice-role read RPCを分離する。
+- **教訓**: SQLへRFC 3986正規化を再実装しない。canonical key生成とraw→key consistencyは共有アプリ境界で検証し、generation authorityがない購読へpersonalized payloadを送らない。
+
+### LL-086: RPCの静的型だけでは実行時shapeと秘匿境界を保証できない
+
+- **事象**: 通知outbox RPCの引数・戻り値を型定義しても、PostgRESTの不正shape、生DB error、stale owner/tokenを呼出routeへ露出または成功扱いし得た。
+- **根本原因**: compile-timeのRPC型をruntime validationと同一視し、DB境界でのunknown parse、固定エラー変換、semantic falseの契約を一箇所へ集約していなかった。
+- **対策・教訓**: wrapper先頭を`import 'server-only'`でcompiler境界化し、exact RPC名/Args型を実使用して各呼出を1回に固定し、返却値はunknownから厳格parseする。日/ISO週keyは4桁年のUTC文字列をparse/roundtripし、0〜99年を`Date.UTC`へ渡さない。生Errorのidentity/name/message/stack/cause/context/nested fields・details・hint・code・UUIDを直接巡回し、内部`reportError` 0回かつ固定`AppError`だけを上位routeへthrowする。空claimは正常、complete/releaseのfalseはstale等の非成功として維持し、全tracked TS/TSXでproduction import 0件を機械検査する。リファレンス: `lib/services/notification-delivery-outbox.ts`, `lib/services/notification-delivery-outbox.test.ts`
+
+### LL-087: 世代所有権のstatic SQL検査だけではCASとユーザー削除の競合を証明できない
+
+- **事象**: source上のlock順、generation回転、read/release条件が正しく見えても、CAS cleanup、owner移転、ユーザー削除が別transactionで重なる際の待機順と最終authorityはtext testでは確認できなかった。
+- **根本原因**: catalog形状と単一transaction内の分岐を、複数connectionが作るMVCC snapshot、row lock、advisory lockの実行結果と同一視した。
+- **対策・教訓**: target/CAS migrationをSHA固定したfresh PostgreSQL 16で、canonical alias、raw上限、read不変性、stale release、逆順transfer、user削除、CAS-first/save-firstの実lock待機を検証する。Layer 2はDB契約だけを証明し、generation payloadとService Worker比較を含むLayer 3前のproduction適用は禁止する。リファレンス: `scripts/test-push-generation-postgres.ts`
+
+### LL-090: generation一致だけでは世代対応SWの稼働を証明できない
+
+- **事象**: authorityのowner・generation・versionが一致しても、未訪問の旧Service Workerはgeneration-aware protocolを保存・比較できず、personalized健康payloadを表示し得た。
+- **根本原因**: 受信者所有権の世代と、現在subscriptionが対応できるpayload protocolのreadinessを同じ状態として扱った。
+- **対策・教訓**: authorityへdefault 0のprotocol versionを追加し、旧save/releaseは0へ戻し、allowlist済みversionを申告する再saveだけがexact current authorityをreadyにする。senderはpersonalized送信前に必要versionを要求し、migration、runtime、server、client/SW、旧worker排出を独立Layerで証明する。generic通知は同じreadinessへ暗黙依存させない。
+
+### LL-092: canonical URL生成とRPC wrapperを再結合するとLayer境界が崩れる
+
+- **事象**: PR #314のserver実装にはcanonical ownership key生成、route配線、購読整理、RPC境界が同居し、wrapperだけを安全に先行mergeできなかった。
+- **根本原因**: URL identityの正本を作る責務と、既に確定したidentityをDBへ渡してunknown結果を検証する責務を分離していなかった。
+- **対策・教訓**: server-only wrapperは共有helperからcanonical ownership keyを入力として受け、DB互換shape、exact RPC引数、strict result、固定`AppError`だけを担当する。URL正規化、route、payload、pruning、callsiteは別Layerへ残し、production import 0件のinert状態を静的テストで固定する。リファレンス: `lib/services/push-subscription-ownership.ts`
+
+### LL-093: Route Handlerから補助関数をexportするとCloudflare buildが停止する
+
+- **事象**: Step CalendarのJST年解決helperを`app/api/user/step-calendar/route.ts`からexportした結果、Next.jsのRoute Handler型検査が許可しないexportとしてCloudflare Pages buildを停止した。
+- **根本原因**: テストで参照する純粋helperをRoute Handlerに置いても、HTTP methodとRoute configだけをexportできるApp Routerのmodule契約を満たすと誤認した。
+- **対策**: Route HandlerはHTTP methodと許可済みRoute configだけをexportし、Server/Client共通またはテスト対象の純粋helperは`lib/`へ配置してimportする。型検査だけでなくPages buildも実行してRoute export制約を確認する。
+- **教訓**: App Routerの`route.ts`は再利用モジュールではない。補助exportが必要になった時点で共有moduleへ切り出し、Route HandlerをHTTP境界だけに保つ。リファレンス: `app/api/user/step-calendar/route.ts`, `lib/date-utils.ts`
