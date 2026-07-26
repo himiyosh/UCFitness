@@ -7,6 +7,7 @@ import { getInvestorRank } from '@/lib/constants';
 import { getJSTDateString } from '@/lib/date-utils';
 import { AppError, reportError } from '@/lib/errors';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isRecord } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,21 +43,11 @@ interface PersonalizedRank {
     icon: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isNonnegativeSafeInteger(value: unknown): value is number {
-    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
-}
+const isNonnegativeSafeInteger = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
 function parseTotalEarned(value: unknown): number | null {
-    if (value === null) {
-        return 0;
-    }
-    return isRecord(value) && isNonnegativeSafeInteger(value.total_earned)
-        ? value.total_earned
-        : null;
+    return value === null ? 0 : isRecord(value) && isNonnegativeSafeInteger(value.total_earned) ? value.total_earned : null;
 }
 
 function calculateAverageSteps(value: unknown): number | null {

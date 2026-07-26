@@ -25,8 +25,7 @@ it('片側取得失敗時_警告と取得済みおすすめと開示を維持す
                 context.onResolve({ filter: /Affiliate(?:Disclosure|Link)$/ }, ({ path }) => ({ path, namespace: 'mock' }));
                 context.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path }) => ({
                     loader: 'jsx', resolveDir: process.cwd(),
-                    contents: path === 'next-intl'
-                        ? 'export const useTranslations = () => (key) => key;'
+                    contents: path === 'next-intl' ? 'export const useTranslations = () => (key) => key;'
                         : path.endsWith('AffiliateDisclosure')
                             ? 'import React from "react"; export default function Disclosure(){return <p>disclosure</p>}'
                             : 'import React from "react"; export default function Link({children}){return <a href="#">{children}</a>}',
@@ -38,12 +37,9 @@ it('片側取得失敗時_警告と取得済みおすすめと開示を維持す
     try {
         for (const width of [375, 1280]) {
             const page = await browser.newPage({ viewport: { width, height: 800 } });
-            const pageErrors: string[] = [];
-            page.on('pageerror', (error) => pageErrors.push(error.message));
-            await page.setContent('<div id="root"></div>');
-            await page.addScriptTag({ content: bundle.outputFiles[0].text });
-            await page.waitForTimeout(100);
-            expect(pageErrors).toEqual([]);
+            const pageErrors: string[] = []; page.on('pageerror', (error) => pageErrors.push(error.message));
+            await page.setContent('<div id="root"></div>'); await page.addScriptTag({ content: bundle.outputFiles[0].text });
+            await page.waitForTimeout(100); expect(pageErrors).toEqual([]);
             await page.getByRole('alert').waitFor();
             expect(await page.getByRole('alert').textContent()).toBe('recommendationsUnavailable');
             expect(await page.getByText('disclosure').textContent()).toBe('disclosure');
