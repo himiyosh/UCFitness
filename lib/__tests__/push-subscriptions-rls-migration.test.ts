@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -9,6 +11,13 @@ const readRepositoryFile = (path: string): string =>
 const migration = readRepositoryFile(
     'migrations/20260720_harden_push_subscriptions_rls.sql',
 );
+const casMigration = readRepositoryFile(
+    'migrations/20260725_delete_push_subscription_if_unchanged.sql',
+);
+const readme = readRepositoryFile('README.md');
+const runtimeHarness = readRepositoryFile('scripts/test-push-cas-postgres.ts');
+const validateWorkflow = readRepositoryFile('.github/workflows/validate.yml');
+const packageManifest = readRepositoryFile('package.json');
 const phaseOneMigration = readRepositoryFile(
     'migrations/20260720_harden_api_keys_rls.sql',
 );
@@ -22,6 +31,8 @@ const browserSources = [
     'hooks/useWebPush.ts', 'components/PushNotificationManager.tsx',
     'components/PushSubscriptionButton.tsx',
 ].map(readRepositoryFile);
+const sha256 = (value: string): string =>
+    createHash('sha256').update(value).digest('hex');
 
 describe('F016 push_subscriptions RLS migration', () => {
     it('Phase 1を維持しPhase 2はpush_subscriptionsだけを対象にする', () => {
@@ -32,6 +43,9 @@ describe('F016 push_subscriptions RLS migration', () => {
             /ALTER TABLE public\.([a-z_]+) ENABLE ROW LEVEL SECURITY/i,
         )?.[1]).toBe('push_subscriptions');
         expect(migration).not.toContain('ALTER TABLE public.api_keys');
+        expect(sha256(migration)).toBe(
+            '5b0e55ee7841df5a5586e5822cb9551dcaefc0238613c19507bf231d5c52dd66',
+        );
     });
 
     it('既知schema、FK、主キー、upsert用unique制約をfail closedで検証する', () => {
@@ -121,4 +135,148 @@ describe('F016 push_subscriptions RLS migration', () => {
         expect(statusFor('F001')).toBe('not-started');
         expect(statusFor('F016')).toBe('in-progress');
     });
+});
+
+describe('LL-080 push subscription CAS migration', () => {
+    it('migration_内容が同一の場合_SHA-256契約を維持する', () => {
+        expect(sha256(casMigration)).toBe(
+            '8906b26cc66ccdceeb13703320740ce9c5e264cb311371d650c550500ab9cbd0',
+        );
+    });
+
+    it('catalog preflight_既知schemaと権限が異なる場合_fail closedにする', () => {
+        for (const evidence of [
+            "SET LOCAL search_path = ''",
+            'LOCK TABLE public.push_subscriptions IN ACCESS EXCLUSIVE MODE',
+            "'created_at:timestamp with time zone:false:true'",
+            "'id:uuid:true:true'",
+            "'created_at:now()'",
+            "'id:gen_random_uuid()'",
+            "confrelid = users_table",
+            "confdeltype = 'c'",
+            'NOT constraint_record.condeferrable',
+            'NOT constraint_record.condeferred',
+            'backing_index.indisunique',
+            'backing_index.indisvalid',
+            'backing_index.indisready',
+            'backing_index.indimmediate',
+            'backing_index.indnkeyatts = 2',
+            'backing_index.indnatts = 2',
+            "owner.rolname = 'postgres'",
+            'relforcerowsecurity',
+            'pg_catalog.pg_policy',
+            "expected.column_name, 'SELECT'",
+            "expected.column_name, 'INSERT'",
+            "expected.column_name, 'UPDATE'",
+            "has_any_column_privilege('service_role', target_table, 'REFERENCES')",
+        ]) {
+            expect(casMigration).toContain(evidence);
+        }
+        expect(casMigration).toMatch(
+            /constraint_record\.conkey = ARRAY\[[\s\S]+attname = 'user_id'[\s\S]+attname = 'endpoint'/,
+        );
+        expect(casMigration).toMatch(
+            /aclexplode\(attribute\.attacl\)[\s\S]+attribute\.attnum > 0[\s\S]+NOT attribute\.attisdropped/,
+        );
+        expect(casMigration).not.toMatch(/COALESCE\(\s*attribute\.attacl/);
+        expect(casMigration).not.toMatch(/auth\.users|CREATE\s+POLICY/i);
+    });
+
+    it('row version_対象行が変わらない場合だけ_lock後に削除する', () => {
+        const functionBody = casMigration.match(
+            /CREATE FUNCTION public\.delete_push_subscription_if_unchanged[\s\S]+?AS \$function\$([\s\S]+?)\$function\$;/,
+        )?.[1] ?? '';
+        const lockIndex = functionBody.indexOf('FOR UPDATE;');
+        const compareIndex = functionBody.indexOf('observed_row.user_id IS NOT DISTINCT FROM p_user_id');
+        const deleteIndex = functionBody.indexOf('DELETE FROM public.push_subscriptions');
+
+        expect(lockIndex).toBeGreaterThan(-1);
+        expect(compareIndex).toBeGreaterThan(lockIndex);
+        expect(deleteIndex).toBeGreaterThan(compareIndex);
+        expect(functionBody).toMatch(
+            /FROM public\.push_subscriptions AS subscription\s+WHERE subscription\.id = p_id\s+FOR UPDATE;/,
+        );
+        expect(functionBody).toMatch(
+            /DELETE FROM public\.push_subscriptions AS subscription\s+WHERE subscription\.id = p_id;/,
+        );
+        for (const field of [
+            'user_id', 'endpoint', 'p256dh', 'auth', 'user_agent', 'created_at',
+        ]) {
+            expect(functionBody).toContain(
+                `observed_row.${field} IS NOT DISTINCT FROM p_${field}`,
+            );
+        }
+        expect(functionBody).toContain('IF NOT FOUND THEN RETURN false; END IF;');
+        expect(functionBody.match(/RETURN false;/g)).toHaveLength(2);
+        expect(functionBody).toContain('RETURN FOUND;');
+    });
+
+    it('RPC security_既存関数または属性不一致の場合_transactionを中止する', () => {
+        expect(casMigration).toContain(
+            "LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''",
+        );
+        expect(casMigration).not.toContain('CREATE OR REPLACE FUNCTION');
+        expect(casMigration).toMatch(/\) OWNER TO postgres;/);
+        expect(casMigration).toMatch(
+            /\) FROM PUBLIC, anon, authenticated, service_role;/,
+        );
+        expect(casMigration).toMatch(/\) TO service_role;/);
+        expect(casMigration).toContain(
+            "procedure.proname = 'delete_push_subscription_if_unchanged') <> 1",
+        );
+        expect(casMigration).toContain(
+            "procedure.proconfig = ARRAY['search_path=\"\"']::text[]",
+        );
+    });
+
+    it('runtime検証_Layer 2へ分離した場合_static契約だけではPASSを主張しない', () => {
+        expect(readme).toContain('Layer 2のruntime検証');
+        expect(readme).toContain('production適用には明示承認が必要');
+        expect(readme).toContain(
+            'DROP FUNCTION public.delete_push_subscription_if_unchanged',
+        );
+    });
+
+    it('CAS runtime jobが固定imageとloopback test-only commandだけを使用する', () => {
+        expect(packageManifest).toContain('"test:postgres:push-cas": "tsx scripts/test-push-cas-postgres.ts"');
+        expect(runtimeHarness).toContain(`const CAS_MIGRATION_SHA256 = '${sha256(casMigration)}'`);
+        expect(runtimeHarness.indexOf('loadMigrations();')).toBeLessThan(runtimeHarness.indexOf("connect('postgres')"));
+        expect(runtimeHarness).toContain("process.env.UCFITNESS_POSTGRES_RUNTIME_TEST !== '1'");
+        expect(runtimeHarness).toContain("url.pathname !== '/postgres'");
+        expect(runtimeHarness).toContain("url.username !== 'postgres'");
+        expect(runtimeHarness).toContain('TEST_DATABASE_PATTERN');
+        expect(runtimeHarness).toContain("runCase('preexisting-role-rejection'");
+        expect(runtimeHarness).toContain("runCase('partial-failure-cleanup'");
+        expect(runtimeHarness).toContain("name: 'force-rls'");
+        expect(runtimeHarness).toContain('SET allow_system_table_mods=on');
+        expect(validateWorkflow).toContain('postgres:16.13-bookworm@sha256:472efd9a66f2b2f1a5aeb18b28de74332e6ef88c2b93a1a5d812fb6db67a5f60');
+        expect(validateWorkflow).toContain('"127.0.0.1:5432:5432"');
+        expect(validateWorkflow).toContain('UCFITNESS_POSTGRES_RUNTIME_TEST: "1"');
+        expect(validateWorkflow).toContain('PUSH_CAS_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres');
+        expect(validateWorkflow).toContain('run: npm run test:postgres:push-cas');
+        expect(validateWorkflow.match(/uses:\s+\S+@[0-9a-f]{40}\s+#/g)).toHaveLength(4);
+        expect(validateWorkflow.match(/uses:/g)).toHaveLength(4);
+    });
+
+    it('CAS runtime harnessが不正な接続設定をDB接続前に拒否する', () => {
+        const valid = 'postgresql://postgres:postgres@127.0.0.1:5432/postgres';
+        const cases = [
+            ['flag', valid, false], ['host', 'postgresql://postgres:postgres@external.invalid:5432/postgres', true],
+            ['database', 'postgresql://postgres:postgres@127.0.0.1:5432/template1', true],
+            ['user', 'postgresql://other:postgres@127.0.0.1:5432/postgres', true],
+            ['port', 'postgresql://postgres:postgres@127.0.0.1:5433/postgres', true],
+            ['password', 'postgresql://postgres:other@127.0.0.1:5432/postgres', true],
+            ['ssl', `${valid}?sslmode=require`, true], ['hash', `${valid}#unsafe`, true],
+        ] as const;
+        for (const [label, url, enabled] of cases) {
+            const env: NodeJS.ProcessEnv = { ...process.env, PUSH_CAS_POSTGRES_URL: url };
+            if (enabled) env.UCFITNESS_POSTGRES_RUNTIME_TEST = '1';
+            else delete env.UCFITNESS_POSTGRES_RUNTIME_TEST;
+            const probe = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/test-push-cas-postgres.ts'],
+                { encoding: 'utf8', env });
+            expect(probe.status, label).not.toBe(0);
+            expect(probe.stderr.trim(), label).toBe('ERR: bootstrap-config');
+            expect(probe.stdout, label).toBe('');
+        }
+    }, 15_000);
 });

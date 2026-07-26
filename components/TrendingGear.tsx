@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
+
 import { useTranslations } from 'next-intl';
 
 import { Link } from '@/navigation';
@@ -33,34 +35,76 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
     const commonT = useTranslations('Common');
     const [items, setItems] = useState<TrendingItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [retrying, setRetrying] = useState(false);
     const [error, setError] = useState(false);
+    const [retryAnnouncement, setRetryAnnouncement] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
+    const requestGenerationRef = useRef(0);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    const retryButtonRef = useRef<HTMLButtonElement>(null);
+    const focusAfterRetryRef = useRef(false);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
 
-    // グローバルギアリアクション管理
     const { reactions, handleReactionToggle } = useGlobalGearReactions(userId);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        // トレンディングアイテムを取得
-        fetch('/api/amazon/trending')
-            .then(res => { if (!res.ok) throw new Error('fetch failed'); return res.json(); })
-            .then(data => {
-                if (!cancelled && data.items?.length > 0) {
-                    setItems(data.items);
+    const fetchItems = useCallback(async (isRetry = false): Promise<void> => {
+        const generation = ++requestGenerationRef.current;
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        if (isRetry) {
+            setRetrying(true);
+            setRetryAnnouncement('');
+        }
+        else {
+            setLoading(true);
+            setError(false);
+        }
+        try {
+            const response = await fetch('/api/amazon/trending', { signal: controller.signal });
+            const data: unknown = await response.json().catch(() => null);
+            if (!response.ok || !isTrendingResponse(data)) {
+                if (generation === requestGenerationRef.current) {
+                    setError(true);
+                    if (isRetry) setRetryAnnouncement(recT('recommendationsUnavailable'));
                 }
-            })
-            .catch(() => {
-                if (!cancelled) setError(true);
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
+                return;
+            }
+            if (generation === requestGenerationRef.current) {
+                setItems(data.items);
+                setError(false);
+            }
+        } catch (fetchError: unknown) {
+            if (!isAbortError(fetchError) && generation === requestGenerationRef.current) {
+                setError(true);
+                if (isRetry) setRetryAnnouncement(recT('recommendationsUnavailable'));
+            }
+        } finally {
+            if (generation === requestGenerationRef.current) {
+                abortControllerRef.current = null;
+                if (isRetry) setRetrying(false);
+                else setLoading(false);
+            }
+        }
+    }, [recT]);
 
-        return () => { cancelled = true; };
-    }, []);
+    useEffect(() => {
+        void fetchItems();
+        return () => {
+            requestGenerationRef.current += 1;
+            abortControllerRef.current?.abort();
+        };
+    }, [fetchItems]);
+
+    useEffect(() => {
+        if (retrying || !focusAfterRetryRef.current) return;
+        const target = error ? retryButtonRef.current : headingRef.current;
+        if (!target) return;
+        target.focus();
+        focusAfterRetryRef.current = false;
+    }, [error, items.length, retrying]);
 
     /** スクロール状態を監視 */
     const updateScrollState = useCallback(() => {
@@ -86,32 +130,64 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
 
     /** タイトルから【】内の装飾テキストを除去して整形 */
     const cleanTitle = useCallback((title: string) =>
-        title.replace(/【.*?】/g, '').trim() || 'Item', []);
+        title.replace(/【.*?】/g, '').trim() || t('itemFallback'), [t]);
 
-    // アイテムがない場合（ローディング含む）は非表示
-    if (loading) return null;
-    if (error) {
+    const handleRetry = useCallback((event: MouseEvent<HTMLButtonElement>): void => {
+        focusAfterRetryRef.current = event.detail === 0;
+        void fetchItems(true);
+    }, [fetchItems]);
+
+    if (loading) {
         return (
-            <div role="alert" className="glass-card rounded-2xl p-6 text-center flex flex-col items-center justify-center">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-amber-50 flex items-center justify-center">
-                    <span className="text-2xl">⚠️</span>
-                </div>
-                <p className="text-sm text-gray-700 font-medium">{t('title')}</p>
-                <p className="mb-3 mt-1 text-xs text-[var(--color-text-muted)]">{recT('recommendationsUnavailable')}</p>
-                <button
-                    onClick={() => { setError(false); setLoading(true); window.location.reload(); }}
-                    className="min-h-[44px] rounded-lg px-4 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"
-                    style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-gradient-to))' }}
-                >
-                    ↻ {commonT('retry')}
-                </button>
-            </div>
+            <section aria-busy="true" aria-labelledby="trending-gear-heading" className="trending-gear-module glass-card rounded-2xl p-4">
+                <h3 id="trending-gear-heading" ref={headingRef} tabIndex={-1} className="rounded-lg text-sm font-bold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">{t('title')}</h3>
+                <p className="sr-only" role="status">{t('loading')}</p>
+                <div className="mt-3 h-48 animate-pulse rounded-xl bg-[var(--color-surface-muted)]" />
+            </section>
         );
     }
-    if (items.length === 0) return null;
+    if (error) {
+        return (
+            <section aria-labelledby="trending-gear-heading" className="trending-gear-module glass-card rounded-2xl p-6 text-center flex flex-col items-center justify-center">
+                <h3 id="trending-gear-heading" ref={headingRef} tabIndex={-1} className="rounded-lg text-sm font-medium text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">{t('title')}</h3>
+                <div className="w-12 h-12 mx-auto mb-3 mt-3 rounded-xl bg-amber-50 flex items-center justify-center" aria-hidden="true">
+                    <span className="text-2xl">⚠️</span>
+                </div>
+                <p id="trending-gear-error" className="mb-3 mt-1 text-xs text-[var(--color-text-muted)]" role="alert">{recT('recommendationsUnavailable')}</p>
+                <p aria-atomic="true" aria-live="assertive" className="sr-only">{retryAnnouncement}</p>
+                <button
+                    ref={retryButtonRef}
+                    onClick={handleRetry}
+                    disabled={retrying}
+                    aria-busy={retrying}
+                    aria-describedby="trending-gear-error"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-primary-strong)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <span aria-hidden="true" className={retrying ? 'animate-spin' : ''}>↻</span>
+                    {commonT('retry')}
+                </button>
+            </section>
+        );
+    }
+    if (items.length === 0) {
+        return (
+            <section aria-labelledby="trending-gear-heading" className="trending-gear-module glass-card rounded-2xl p-4 text-center">
+                <h3 id="trending-gear-heading" ref={headingRef} tabIndex={-1} className="rounded-lg text-sm font-bold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">{t('title')}</h3>
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[var(--color-text-muted)]" role="status">
+                    {t('empty')}
+                </p>
+                <Link
+                    href="/recommendations"
+                    className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-[var(--color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                >
+                    {t('addGear')}
+                </Link>
+            </section>
+        );
+    }
 
     return (
-        <div className="glass-card rounded-2xl flex flex-col">
+        <section aria-labelledby="trending-gear-heading" className="trending-gear-module glass-card rounded-2xl flex flex-col">
             {/* ヘッダー */}
             <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
@@ -121,7 +197,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                         </svg>
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-gray-900 tracking-tight">
+                        <h3 id="trending-gear-heading" ref={headingRef} tabIndex={-1} className="rounded-lg text-sm font-bold text-gray-900 tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
                             {t('title')}
                         </h3>
                         <p className="text-xs text-[var(--color-text-muted)] font-medium">
@@ -155,7 +231,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                 </div>
                 )}
             </div>
-            <AffiliateDisclosure className="px-4 pb-2" />
+            <AffiliateDisclosure className="px-4 pb-2" showMerchantDetails={false} />
 
             {/* 横カルーセル */}
             <div
@@ -178,7 +254,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                                 style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))', transform: 'translateX(-50%)' }}
                             >
                                 <div className="bg-[var(--theme-primary)] rounded-lg px-2 py-1.5">
-                                    <p className="text-[10px] text-white leading-snug line-clamp-2 break-words text-center">
+                                    <p className="line-clamp-2 break-words text-center text-xs leading-snug text-white">
                                         {commented.comment}
                                     </p>
                                 </div>
@@ -192,7 +268,8 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                         surface="dashboard"
                         targetType="product"
                         targetId={item.asin}
-                        className="w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 p-2 transition-all duration-200 hover:scale-[1.03] hover:border-[var(--theme-primary)]/20 hover:shadow-lg group"
+                        showMerchantDetails={false}
+                        className="group w-full rounded-xl border border-gray-100 bg-gradient-to-b from-white to-gray-50/80 p-2 transition-colors duration-200 hover:border-[var(--theme-primary)]/20 hover:bg-[var(--color-primary-soft)] active:translate-y-px"
                     >
                         {/* 商品画像 — コンパクト */}
                         <div className="w-full h-[90px] rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden mb-1.5">
@@ -202,9 +279,7 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                                 alt=""
                                 className="max-w-[85%] max-h-[85%] object-contain"
                                 loading={index === 0 ? 'eager' : 'lazy'}
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${item.asin}&Format=_SL160_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=studio344-22`;
-                                }}
+                                onError={(event) => handleImageError(event.currentTarget, item.asin)}
                             />
                         </div>
 
@@ -213,11 +288,13 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                             {cleanTitle(item.title)}
                         </p>
 
-                        {/* 愛用者アバター */}
+                        <p className="mb-1.5 text-xs font-semibold text-[var(--color-competition-strong)]">
+                            {t('popularity', { count: item.count })}
+                        </p>
                         <div className="flex items-center -space-x-1.5 mb-1" aria-hidden="true">
-                            {item.users.slice(0, 3).map((u, i) => (
+                            {item.users.slice(0, 3).map((u) => (
                                 <div
-                                    key={i}
+                                    key={u.username}
                                     className="w-4 h-4 rounded-full border-[1.5px] border-white overflow-hidden bg-gray-200 shadow-sm"
                                     title={u.username}
                                 >
@@ -232,16 +309,13 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                                 </div>
                             ))}
                             {item.count > 3 && (
-                                <span className="text-[8px] text-gray-400 font-medium ml-1">+{item.count - 3}</span>
+                                <span className="text-xs text-gray-400 font-medium ml-1">+{item.count - 3}</span>
                             )}
                         </div>
                     </AffiliateLink>
                     {/* ギア Like ボタン — Instagram 風のハートボタン */}
                     {userId && (
-                        <div
-                            className="flex justify-start mt-1 pl-0.5"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                        >
+                        <div className="flex justify-start mt-1 pl-0.5">
                             <GearLikeButton
                                 asin={item.asin}
                                 currentUserId={userId}
@@ -261,6 +335,26 @@ export default function TrendingGear({ userId }: TrendingGearProps) {
                     🛍️ {recT('viewShop')}
                 </Link>
             </div>
-        </div>
+        </section>
     );
+}
+
+function isTrendingResponse(value: unknown): value is { items: TrendingItem[] } {
+    return typeof value === 'object'
+        && value !== null
+        && 'items' in value
+        && Array.isArray(value.items);
+}
+
+function isAbortError(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function handleImageError(image: HTMLImageElement, asin: string): void {
+    if (image.dataset.fallbackApplied === 'true') {
+        image.hidden = true;
+        return;
+    }
+    image.dataset.fallbackApplied = 'true';
+    image.src = `https://ws-fe.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${asin}&Format=_SL160_&ID=AsinImage&MarketPlace=JP&ServiceVersion=20070822&WS=1&tag=studio344-22`;
 }

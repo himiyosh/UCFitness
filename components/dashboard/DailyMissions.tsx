@@ -20,6 +20,9 @@ interface Mission {
     completed_at: string | null;
 }
 
+type RefreshError = 'reward' | 'generic' | null;
+type MissionBonusStatus = 'not_eligible' | 'pending' | 'awarded';
+
 export default function DailyMissions(): ReactNode {
     const t = useTranslations('Mission');
     const [missions, setMissions] = useState<Mission[]>([]);
@@ -30,60 +33,76 @@ export default function DailyMissions(): ReactNode {
     const [showBonus, setShowBonus] = useState(false);
     const [streak, setStreak] = useState<number | null>(null);
     const [streakUnavailable, setStreakUnavailable] = useState(false);
-    const [refreshError, setRefreshError] = useState(false);
+    const [refreshError, setRefreshError] = useState<RefreshError>(null);
     const [announcement, setAnnouncement] = useState('');
     const [earnedBonus, setEarnedBonus] = useState(false);
+    const [bonusPending, setBonusPending] = useState(false);
     const [focusHeadingAfterRefresh, setFocusHeadingAfterRefresh] = useState(false);
     const missionHeadingRef = useRef<HTMLHeadingElement>(null);
+    const restoreFocusAfterRefreshRef = useRef(false);
 
-    const fetchMissions = useCallback(async () => {
+    const fetchMissions = useCallback(async (): Promise<MissionBonusStatus | null> => {
         setIsLoading(true);
         setError(false);
         try {
             const res = await fetch('/api/user/missions');
-            if (!res.ok) throw new Error('fetch failed');
-            const data = await res.json();
-            setMissions(data.missions || []);
-            setAllCompleted(data.allCompleted || false);
+            const data: unknown = await res.json().catch(() => null);
+            if (!res.ok || !isMissionResponse(data)) throw new Error('fetch failed');
+            setMissions(data.missions);
+            setAllCompleted(data.allCompleted);
+            setBonusPending(data.bonusPending);
+            setEarnedBonus(data.bonusStatus === 'awarded');
+            setRefreshError(data.bonusPending ? 'reward' : null);
             setStreak(typeof data.streak === 'number' ? data.streak : null);
             setStreakUnavailable(Boolean(data.streakUnavailable));
+            return data.bonusStatus;
         } catch {
             setError(true);
+            return null;
         } finally {
             setIsLoading(false);
         }
     }, []);
-
     useEffect(() => {
-        fetchMissions();
+        void fetchMissions();
     }, [fetchMissions]);
 
     useEffect(() => {
-        if (!focusHeadingAfterRefresh || missions.length === 0) return;
-        missionHeadingRef.current?.focus();
+        if (!focusHeadingAfterRefresh || isLoading) return;
+        if (restoreFocusAfterRefreshRef.current) missionHeadingRef.current?.focus();
+        restoreFocusAfterRefreshRef.current = false;
         setFocusHeadingAfterRefresh(false);
-    }, [focusHeadingAfterRefresh, missions.length]);
+    }, [focusHeadingAfterRefresh, isLoading, missions.length]);
 
     // 歩数同期後にミッション再チェック
     const refreshMissions = useCallback(async () => {
         setRefreshing(true);
-        setRefreshError(false);
         try {
             const res = await fetch('/api/user/missions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'refresh' }),
             });
-            if (!res.ok) throw new Error('refresh failed');
-            const result = await res.json();
-
-            if (result.missions) {
-                setMissions(result.missions);
+            const result: unknown = await res.json().catch(() => null);
+            if (!res.ok || !isMissionResponse(result)) {
+                const nextRefreshError: RefreshError =
+                    isErrorResponse(result) && result.code === 'MISSION_REWARD_DATABASE_ERROR'
+                        ? 'reward'
+                        : 'generic';
+                const recoveredBonusStatus = await fetchMissions();
+                if (recoveredBonusStatus !== 'awarded') setRefreshError(nextRefreshError);
+                setFocusHeadingAfterRefresh(true);
+                return;
             }
-            setAllCompleted(Boolean(result.allCompleted));
+
+            setMissions(result.missions);
+            setAllCompleted(result.allCompleted);
+            setBonusPending(result.bonusPending);
             setStreak(typeof result.streak === 'number' ? result.streak : null);
             setStreakUnavailable(Boolean(result.streakUnavailable));
-            setAnnouncement(t('updatedAnnouncement', { count: result.missions?.length ?? missions.length }));
+            setRefreshError(result.bonusPending ? 'reward' : null);
+            setEarnedBonus(result.bonusStatus === 'awarded');
+            setAnnouncement(t('updatedAnnouncement', { count: result.missions.length }));
             setFocusHeadingAfterRefresh(true);
             if (result.allCompleted) {
                 if (result.bonusAwarded) {
@@ -94,11 +113,13 @@ export default function DailyMissions(): ReactNode {
                 }
             }
         } catch {
-            setRefreshError(true);
+            const recoveredBonusStatus = await fetchMissions();
+            if (recoveredBonusStatus !== 'awarded') setRefreshError('generic');
+            setFocusHeadingAfterRefresh(true);
         } finally {
             setRefreshing(false);
         }
-    }, [missions.length, t]);
+    }, [fetchMissions, t]);
 
     if (isLoading) {
         return (
@@ -127,11 +148,11 @@ export default function DailyMissions(): ReactNode {
                 <div className="home-mission-module flex flex-col justify-center rounded-2xl border border-[var(--color-reward)]/30 bg-[var(--color-surface)] p-3 shadow-sm">
                     <div className="flex flex-col items-center py-4 text-center">
                         <StatusIcon tone="danger" />
-                        <h2 className="mt-2 text-sm font-semibold text-[var(--color-text)]">{t('dailyMissions')}</h2>
+                        <h2 ref={missionHeadingRef} tabIndex={-1} className="mt-2 rounded-lg text-sm font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]">{t('dailyMissions')}</h2>
                         <p className="mt-1 text-xs text-[var(--color-text-muted)]" role="alert">{t('loadError')}</p>
                         <button
-                            onClick={fetchMissions}
-                            className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-[var(--color-inverse-surface)]"
+                            onClick={async (event) => { restoreFocusAfterRefreshRef.current = event.detail === 0; await fetchMissions(); setFocusHeadingAfterRefresh(true); }}
+                            className="mt-3 min-h-[44px] rounded-lg bg-[var(--color-primary-solid)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-primary-strong)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                         >
                             {t('retry')}
                         </button>
@@ -151,15 +172,18 @@ export default function DailyMissions(): ReactNode {
                         <h2 ref={missionHeadingRef} tabIndex={-1} className="mb-1 mt-3 rounded-lg text-sm font-bold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)]">{t('dailyMissions')}</h2>
                         <p className="text-xs text-[var(--color-text-muted)]" role="status">{t('noMissions')}</p>
                         <button
-                            onClick={refreshMissions}
-                            onFocus={(event) => event.currentTarget.scrollIntoView({ block: 'center' })}
+                            onClick={(event) => { restoreFocusAfterRefreshRef.current = event.detail === 0; void refreshMissions(); }}
                             disabled={refreshing}
-                            className="home-mission-prepare mt-3 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[var(--color-reward-solid)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-reward-strong)] disabled:opacity-50"
+                            aria-busy={refreshing}
+                            className="home-mission-prepare mt-3 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[var(--color-reward-solid)] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--color-reward-strong)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
+                            {refreshing && <LoadingSpinner />}
                             {refreshing ? t('preparing') : t('prepare')}
                         </button>
                         {refreshError && (
-                            <p className="mt-2 text-xs text-[var(--color-danger)]" role="alert">{t('refreshError')}</p>
+                            <p className="mt-2 max-w-sm text-xs leading-5 text-[var(--color-danger)]" role="alert">
+                                {t(refreshError === 'reward' ? 'rewardUnavailable' : 'refreshError')}
+                            </p>
                         )}
                     </div>
                 </div>
@@ -201,11 +225,12 @@ export default function DailyMissions(): ReactNode {
                             {completedCount}/{missions.length}
                         </span>
                         {/* 再チェックボタン */}
-                        {!allCompleted && (
+                        {(!allCompleted || bonusPending) && (
                             <button
-                                onClick={refreshMissions}
+                                onClick={(event) => { restoreFocusAfterRefreshRef.current = event.detail === 0; void refreshMissions(); }}
                                 disabled={refreshing}
-                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 transition-colors hover:bg-[var(--color-surface-muted)] disabled:opacity-50"
+                                aria-busy={refreshing}
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 transition-colors hover:bg-[var(--color-surface-muted)] active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-reward)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 title={t('refresh')}
                                 aria-label={t('refresh')}
                             >
@@ -219,7 +244,7 @@ export default function DailyMissions(): ReactNode {
             </div>
             {refreshError && (
                 <p className="px-3 pb-2 text-center text-xs text-[var(--color-danger)] sm:px-4" role="alert">
-                    {t('refreshError')}
+                    {t(refreshError === 'reward' ? 'rewardUnavailable' : 'refreshError')}
                 </p>
             )}
 
@@ -316,6 +341,52 @@ function MissionAnnouncement({ message }: { message: string }): ReactNode {
         <p className="sr-only" aria-live="polite" aria-atomic="true">
             {message}
         </p>
+    );
+}
+
+function isErrorResponse(value: unknown): value is { code?: string } {
+    return typeof value === 'object' && value !== null;
+}
+
+function isMissionResponse(value: unknown): value is {
+    missions: Mission[];
+    allCompleted: boolean;
+    bonusPending: boolean;
+    bonusStatus: MissionBonusStatus;
+    streak: number | null;
+    streakUnavailable?: boolean;
+    bonusAwarded?: boolean;
+    bonusUc?: number;
+} {
+    return typeof value === 'object' && value !== null
+        && 'missions' in value && Array.isArray(value.missions) && value.missions.every(isMission)
+        && 'allCompleted' in value && typeof value.allCompleted === 'boolean'
+        && 'bonusPending' in value && typeof value.bonusPending === 'boolean'
+        && 'streak' in value && (typeof value.streak === 'number' || value.streak === null)
+        && (!('streakUnavailable' in value) || typeof value.streakUnavailable === 'boolean')
+        && (!('bonusAwarded' in value) || typeof value.bonusAwarded === 'boolean')
+        && (!('bonusUc' in value) || typeof value.bonusUc === 'number')
+        && 'bonusStatus' in value && (
+            value.bonusStatus === 'not_eligible'
+            || value.bonusStatus === 'pending'
+            || value.bonusStatus === 'awarded'
+        );
+}
+
+function isMission(value: unknown): value is Mission {
+    return typeof value === 'object' && value !== null
+        && 'id' in value && typeof value.id === 'string' && 'mission_type' in value && typeof value.mission_type === 'string'
+        && 'title' in value && typeof value.title === 'string' && 'description' in value && typeof value.description === 'string'
+        && 'reward_uc' in value && typeof value.reward_uc === 'number' && 'is_completed' in value && typeof value.is_completed === 'boolean'
+        && 'completed_at' in value && (typeof value.completed_at === 'string' || value.completed_at === null);
+}
+
+function LoadingSpinner(): ReactNode {
+    return (
+        <span
+            className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+            aria-hidden="true"
+        />
     );
 }
 

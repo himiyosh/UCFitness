@@ -1,9 +1,10 @@
 export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { reportError } from '@/lib/errors';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,18 @@ const MAX_ROUTES_PER_USER = 50;
 
 type Difficulty = 'easy' | 'normal' | 'hard';
 const VALID_DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard'];
+
+function parseOptionalNonnegativeNumber(
+    value: unknown,
+    requireInteger: boolean,
+): number | null | undefined {
+    if (value === null || value === undefined) return null;
+    if (
+        typeof value !== 'number' || !Number.isFinite(value) || value < 0
+        || (requireInteger && !Number.isSafeInteger(value))
+    ) return undefined;
+    return value;
+}
 
 /**
  * GET /api/user/walking-routes
@@ -61,8 +74,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const body = await request.json();
         const name = typeof body?.name === 'string' ? body.name.trim() : '';
         const description = typeof body?.description === 'string' ? body.description.trim() : '';
-        const distanceKm = typeof body?.distance_km === 'number' && body.distance_km >= 0 ? body.distance_km : null;
-        const durationMinutes = typeof body?.duration_minutes === 'number' && Number.isInteger(body.duration_minutes) && body.duration_minutes >= 0 ? body.duration_minutes : null;
+        const distanceKm = parseOptionalNonnegativeNumber(body?.distance_km, false);
+        const durationMinutes = parseOptionalNonnegativeNumber(body?.duration_minutes, true);
         const difficulty: Difficulty = VALID_DIFFICULTIES.includes(body?.difficulty) ? body.difficulty : 'normal';
 
         // バリデーション
@@ -74,6 +87,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
         if (description.length > MAX_DESCRIPTION_LENGTH) {
             return NextResponse.json({ error: `説明は${MAX_DESCRIPTION_LENGTH}文字以内にしてください` }, { status: 400 });
+        }
+        if (distanceKm === undefined) {
+            return NextResponse.json({ error: 'Invalid distance_km' }, { status: 400 });
+        }
+        if (durationMinutes === undefined) {
+            return NextResponse.json({ error: 'Invalid duration_minutes' }, { status: 400 });
         }
 
         // コース数の上限チェック

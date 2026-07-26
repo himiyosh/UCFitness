@@ -64,7 +64,24 @@ function isVisibleFocusable(element: HTMLElement): boolean {
 }
 
 function isAvailableFocusTarget(element: HTMLElement | null): element is HTMLElement {
-  return element instanceof HTMLElement && element.isConnected && !element.inert;
+  if (
+    !(element instanceof HTMLElement)
+    || !element.isConnected
+    || element.inert
+    || element.matches(':disabled, [aria-disabled="true"]')
+    || element.closest('[hidden], [inert], [aria-hidden="true"]')
+  ) return false;
+
+  let currentElement: HTMLElement | null = element;
+  while (currentElement) {
+    const style = window.getComputedStyle(currentElement);
+    if (style.display === 'none' || style.visibility !== 'visible' || style.opacity === '0') {
+      return false;
+    }
+    currentElement = currentElement.parentElement;
+  }
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
 }
 
 export function createDialogFocusRestorer(
