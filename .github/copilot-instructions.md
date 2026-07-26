@@ -1669,3 +1669,10 @@ export const runtime = "edge";
 - **事象**: Dialogを開いたトリガーがcloseまでDOMに残っていても、保存状態や条件付きUIでdisabled・hidden・`aria-hidden`になると、接続済み判定だけでは不可視または操作不能な要素へfocusを戻し得た。
 - **根本原因**: focus復帰先の可用性を`isConnected`と`inert`だけで判定し、rendered geometry、CSS visibility、disabled state、hidden ancestorを同じ境界で検証していなかった。
 - **対策・教訓**: previous active element→開始時fallback→cleanup時current fallback→最新mainの順序は維持し、各候補を接続・非`inert`・非disabled・非hidden・可視geometryで検証する。実Chromeで320/375/1280px、Tab循環、Escape、保存中close拒否後の退出、pointerのmousedown/click間のscroll/layout不変、disabled・hidden・unmount後のfocus復帰を固定する。リファレンス: `hooks/useDialogFocus.ts`, `hooks/useDialogFocus.test.ts`
+
+### LL-096: crop geometryを固定幅や単一イベントへ委ねると選択範囲がずれる
+
+- **事象**: 初回修正ではresize後に旧offsetを新幅でclampするだけだったため元画像上の選択中心がずれ、横長画像ではscale 1のままcrop枠へ空白が入った。固定360px fallback、画像loadの後着、passive wheelも初期0幅・連続選択・browser zoomでstale geometryを作り得た。
+- **根本原因**: rendered container幅、DPR、natural image size、offset、scale、load/measurement世代を一体のgeometry契約として扱わず、各イベント経路を個別に補正した。
+- **対策**: 初期幅0は`aspect-ratio`で予約し、`getBoundingClientRect()`をDPR精度へ正規化する。resizeはoffsetを幅比補正して同じpure helperでclampし、natural size由来のdynamic minimum scaleを全操作へ共通適用する。画像loadはgenerationで後着を拒否し、保存canvasはDPRとnatural crop上限から最大1200pxで生成する。wheel/ResizeObserverは局所登録・cleanupし、close時はblob previewを正本へ戻す。
+- **教訓**: crop操作はcallbackごとの修正でなく、全入力経路が同じ正規化state transitionを使う。0幅、320〜1280px境界、orientation、DPR変更、連続load、source center、画像被覆、listener cleanup、focus/alt semanticsをpure testと実Chromeの両方で固定する。リファレンス: `components/BannerImageEditor.tsx`, `lib/banner-crop-geometry.ts`
