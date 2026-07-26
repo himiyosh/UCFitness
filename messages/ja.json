@@ -1756,6 +1756,7 @@
     "difficultyHard": "ハード",
     "save": "保存",
     "cancel": "キャンセル",
+    "dismissActionError": "操作エラーを閉じる",
     "logWalk": "歩いた！",
     "favorite": "お気に入りに追加",
     "unfavorite": "お気に入りから削除",
