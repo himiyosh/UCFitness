@@ -430,6 +430,7 @@ snapshotではない。同期中に別pageへ移ると集計時点は混在し�
 
 | 経路 | 現在の偽装 | 正しい障害境界 |
 |---|---|---|
+| `app/api/amazon/personalized/route.ts` | 修正前は残高・歩数のerror / null / 不正値をBEGINNER・0歩へ変換 | 残高行なしだけを新規ユーザー0として許可し、DB障害・不正shape・unsafe数値・予期しないrejectはPIIを含まない固定AppErrorと503で判定停止。空歩数・記録済み0歩は平均0、UIは片側障害を警告しつつ取得済みおすすめを維持 |
 | `app/api/user/achievements/route.ts` | 修正前はcount / goal / `get_user_step_stats` errorを0歩・0日・未達成へ変換 | DB障害・未設定・不正shapeを0や10,000へ偽装せず、query別の固定5xxで判定停止 |
 | `lib/services/badge-allocator.ts` | 修正前は日次歩数・累計RPC errorを0へ変換しbadge未達成として継続 | DB障害・不正shapeを未達成へ偽装せず対象ユーザーの割当失敗として隔離し、insert成功後だけ通知 |
 | `lib/services/badge-awards.ts` | Phase A/Bに続きPhase Cでstreak milestone RPCのexact row・報酬・SQLSTATE・重複を検証し、部分成功は成功通知後に固定AppErrorでCronへ伝播。Teams enrichmentはuser/badge全件の検証失敗を固定AppErrorだけで1回reportし、主バッジ付与を維持 | badge-awards coreの依存障害分離は完了。Teams webhook transport自体のbest-effort処理は`lib/api/teams.ts`の別境界で維持 |

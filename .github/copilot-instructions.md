@@ -1650,3 +1650,9 @@ export const runtime = "edge";
 - **根本原因**: テストで参照する純粋helperをRoute Handlerに置いても、HTTP methodとRoute configだけをexportできるApp Routerのmodule契約を満たすと誤認した。
 - **対策**: Route HandlerはHTTP methodと許可済みRoute configだけをexportし、Server/Client共通またはテスト対象の純粋helperは`lib/`へ配置してimportする。型検査だけでなくPages buildも実行してRoute export制約を確認する。
 - **教訓**: App Routerの`route.ts`は再利用モジュールではない。補助exportが必要になった時点で共有moduleへ切り出し、Route HandlerをHTTP境界だけに保つ。リファレンス: `app/api/user/step-calendar/route.ts`, `lib/date-utils.ts`
+### LL-094: nullableなDB結果を既定値へ畳むと障害と新規状態を混同する
+
+- **事象**: AmazonパーソナライズAPIが残高・歩数照会のerrorを無視し、nullや不正値もBEGINNER・0歩の成功レスポンスへ変換していた。
+- **根本原因**: DB照会結果のerror・正当な行なし・不正shapeを分類する前に`|| 0`と`|| []`へ畳み、ランクfallbackでも内部不整合を隠した。
+- **対策**: 残高は`.maybeSingle()`の行なしだけを新規ユーザー0として許可し、query error・不正shape・unsafe数値・予期しないrejectを固定AppErrorと503へ分離した。生error・message・cause・user IDはログと応答へ渡さず、空歩数と記録済み0歩は合法な平均0として維持し、UIは片側障害を警告しつつ取得済みおすすめを表示する。
+- **教訓**: nullableなDB結果は既定化前に`error`・absence・shapeを分類する。0や空配列を使えるのは正本が欠落を正常状態と定義する場合だけで、障害境界は固定エラーとtable-driven testで回帰固定する。リファレンス: `app/api/amazon/personalized/route.ts`
