@@ -1663,3 +1663,9 @@ export const runtime = "edge";
 - **根本原因**: DB照会結果のerror・正当な行なし・不正shapeを分類する前に`|| 0`と`|| []`へ畳み、ランクfallbackでも内部不整合を隠した。
 - **対策**: 残高は`.maybeSingle()`の行なしだけを新規ユーザー0として許可し、query error・不正shape・unsafe数値・予期しないrejectを固定AppErrorと503へ分離した。生error・message・cause・user IDはログと応答へ渡さず、空歩数と記録済み0歩は合法な平均0として維持し、UIは片側障害を警告しつつ取得済みおすすめを表示する。
 - **教訓**: nullableなDB結果は既定化前に`error`・absence・shapeを分類する。0や空配列を使えるのは正本が欠落を正常状態と定義する場合だけで、障害境界は固定エラーとtable-driven testで回帰固定する。リファレンス: `app/api/amazon/personalized/route.ts`
+
+### LL-095: Dialogのfocus復帰先は接続状態だけでは安全と判定できない
+
+- **事象**: Dialogを開いたトリガーがcloseまでDOMに残っていても、保存状態や条件付きUIでdisabled・hidden・`aria-hidden`になると、接続済み判定だけでは不可視または操作不能な要素へfocusを戻し得た。
+- **根本原因**: focus復帰先の可用性を`isConnected`と`inert`だけで判定し、rendered geometry、CSS visibility、disabled state、hidden ancestorを同じ境界で検証していなかった。
+- **対策・教訓**: previous active element→開始時fallback→cleanup時current fallback→最新mainの順序は維持し、各候補を接続・非`inert`・非disabled・非hidden・可視geometryで検証する。実Chromeで320/375/1280px、Tab循環、Escape、保存中close拒否後の退出、pointerのmousedown/click間のscroll/layout不変、disabled・hidden・unmount後のfocus復帰を固定する。リファレンス: `hooks/useDialogFocus.ts`, `hooks/useDialogFocus.test.ts`
