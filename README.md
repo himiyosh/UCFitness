@@ -712,7 +712,7 @@ npm run dev
 | `npm run test:postgres:push-protocol` | loopback PostgreSQLでPush受信者protocol readiness・競合・rollbackを実行検証 |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
-| `npm run test:coverage` | テストカバレッジレポート |
+| `npm run test:coverage` | `lib/` の全本番モジュールを対象にした V8 カバレッジレポートと global 60% 回帰ゲート |
 
 ### 公開LPのCore Web Vitals基準
 
@@ -936,8 +936,8 @@ npm test
 # ウォッチモード
 npm run test:watch
 
-# カバレッジ付き
-npm run test:coverage
+# カバレッジ付き（CI と同じ single-worker 実行）
+npm run test:coverage -- --maxWorkers=1
 
 # 全主要画面のレスポンシブ監査
 RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNAME_JA=ja-user RESPONSIVE_AUDIT_GROUP_ID_JA=ja-group \
@@ -959,6 +959,8 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 ```
 
 - テストフレームワーク: **Vitest**
+- CI はテストスイートをカバレッジ付きで1回だけ実行し、`lib/**/*.{ts,tsx}` の全本番モジュール（テスト、test-utils、型定義を除く）について Statements / Branches / Functions / Lines の global threshold 60% を検証
+- current main `5afdb51f` のsingle-worker coverage実行は103ファイル・1273テストで、Statements 68.13%、Branches 65.24%、Functions 78.93%、Lines 69.30%（48.67秒）。通常`npm test`は再実測18.76秒、single-workerは42.33秒でPASSしたが、F026の5秒条件は未達のためstatusは`in-progress`
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
 - Dashboard回帰テストはbonus-only報酬失敗→新規browser context復旧、keyboard/pointer別focus・live通知・二重送信防止、商品loaded/empty/re-failure、有限画像fallback、Amazon popup初回通信隔離、320/375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
@@ -967,7 +969,7 @@ UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POS
 - Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
 - Push受信者世代runtime jobはtarget/CAS migration SHA-256と同じPostgreSQL 16 serviceを正本に、canonical key digest、raw 20件、read/release fencing、legacy隔離、user削除、逆順transfer、CAS-first/save-firstを実ロック待機で検証する。接続・DB名・role・ログ・cleanupはCAS runtimeと同じtest-only契約を使い、migration、アプリ配線、production DB、実Pushを変更しない
 - Push受信者protocol runtime jobはownership/protocol migration SHA-256と同じPostgreSQL 16 serviceを正本に、smallint protocol 0/1、旧save reset、exact read、release fence、逆順transfer、rollbackを実行検証する。query/hash/SSLなしのloopback `postgres`接続、allowlist済みfresh DB名、既存role拒否、固定非PIIラベル、全DB/role cleanupを必須とし、migration、PR #314/#315のLayer 3、lockfile、production DB、実Pushを変更しない
-- テストファイル: `lib/__tests__/` 配下
+- テストファイル: リポジトリ内の `*.test.ts`（Vitest設定の `**/*.test.ts`）
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 
 ## 注意事項 / 制約

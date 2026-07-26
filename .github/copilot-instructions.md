@@ -1524,6 +1524,7 @@ export const runtime = "edge";
 - **対策**: 構造化台帳は対象objectの一意な識別子範囲を先に読み、変更後に対象値と同名キーを持つ他objectの差分を同時検証する。
 - **教訓**: 同名キーが反復する台帳は値だけで編集しない。識別子をanchorにし、PR差分で意図したobjectだけが変わったことを確認する。
 - **追加教訓**: 履歴テストは可変のtop-level `lastCommit`ではなく対象sessionLogを固定し、進捗更新後にfull testを再実行する。
+- **追加教訓**: feature台帳の`status` / `lastAttempt` / `lastError`を変更した後は、対象IDの値だけでなく、同名キーが変わった全IDを構造化比較し、対象外IDの変更をcommit前に拒否する。
 
 ### LL-063: 報酬倍率差を浮動小数点のまま切り捨てると正規UCを1減らす
 
@@ -1676,3 +1677,10 @@ export const runtime = "edge";
 - **根本原因**: rendered container幅、DPR、natural image size、offset、scale、load/measurement世代を一体のgeometry契約として扱わず、各イベント経路を個別に補正した。
 - **対策**: 初期幅0は`aspect-ratio`で予約し、`getBoundingClientRect()`をDPR精度へ正規化する。resizeはoffsetを幅比補正して同じpure helperでclampし、natural size由来のdynamic minimum scaleを全操作へ共通適用する。画像loadはgenerationで後着を拒否し、保存canvasはDPRとnatural crop上限から最大1200pxで生成する。wheel/ResizeObserverは局所登録・cleanupし、close時はblob previewを正本へ戻す。
 - **教訓**: crop操作はcallbackごとの修正でなく、全入力経路が同じ正規化state transitionを使う。0幅、320〜1280px境界、orientation、DPR変更、連続load、source center、画像被覆、listener cleanup、focus/alt semanticsをpure testと実Chromeの両方で固定する。リファレンス: `components/BannerImageEditor.tsx`, `lib/banner-crop-geometry.ts`
+
+### LL-097: coverage分母と通常suiteの時間条件を同じ完了判定へ固定しない
+
+- **事象**: PR #289の60%回帰ゲートは現mainでも4指標をPASSした一方、F026をpassingにした89ファイル時点の通常suite 2.75秒は、103ファイル・1273テストの現mainで18.76秒となり5秒条件を満たさなかった。
+- **根本原因**: 未import本番ファイルを含むcoverage分母、single-workerのmock分離、通常suiteの性能を別々の検証軸として維持せず、成長前の時間baselineをfeature完了状態へ固定した。
+- **対策**: `coverage.include`へ`lib/**/*.{ts,tsx}`を明示し、CIは`forks` + `isolate: true`のsingle-worker coverageを決定的に実行する。coverage 4指標と通常suite時間はcurrent mainで個別に再測定し、F026はcoverage達成を維持しつつ5秒条件未達の`in-progress`へ戻す。
+- **教訓**: coverage gateは全本番ファイルの分母と各指標の余裕で判断し、suite時間はテスト数・cold start・実ブラウザや子process testの増加を含む独立budgetとして追跡する。古い時間baselineだけでfeatureをpassingにしない。リファレンス: `vitest.config.ts`, `.github/ucfitness-features.json`, `README.md`
