@@ -4,8 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createDialogFocusRestorer } from './useDialogFocus';
 
-const originalHTMLElementDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'HTMLElement');
-const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+const originalHTMLElementDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'HTMLElement'); const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
 
 class TestHTMLElement {
   isConnected = true;
@@ -38,18 +37,11 @@ function setConnected(element: HTMLElement, isConnected: boolean): void {
 }
 
 beforeAll(() => {
-  Object.defineProperty(globalThis, 'HTMLElement', {
-    configurable: true,
-    value: TestHTMLElement,
-  });
+  Object.defineProperty(globalThis, 'HTMLElement', { configurable: true, value: TestHTMLElement });
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: {
-      getComputedStyle: (element: TestHTMLElement) => ({
-        display: element.display,
-        visibility: element.visibility,
-        opacity: element.opacity,
-      }),
+      getComputedStyle: (element: TestHTMLElement) => ({ display: element.display, visibility: element.visibility, opacity: element.opacity }),
     },
   });
 });
