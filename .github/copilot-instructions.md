@@ -1594,6 +1594,13 @@ export const runtime = "edge";
 - **対策**: clean 3-layerへ分割し、Layer 1は主キー`id`で行を`FOR UPDATE`し、残るrow-version項目が一致した場合だけ同じ`id`を削除するservice-role限定CAS RPC migrationとSHA-256付きstatic catalog/security testを正本にする。Layer 2で実PostgreSQLのnegative catalog・exact/stale・二接続競合を検証し、Layer 3でアプリを配線する。Layer 2がmainへ入る前のproduction適用は禁止する。
 - **教訓**: 古い外部応答で可変リソースを削除するときは完全row versionをDB transaction内でcompare-and-deleteする。migration、runtime証明、利用側配線を独立PRにし、static testだけでruntime PASSを主張しない。リファレンス: `migrations/20260725_delete_push_subscription_if_unchanged.sql`, `lib/__tests__/push-subscriptions-rls-migration.test.ts`
 
+### LL-081: 再試行の権威と保護範囲を短命な画面へ閉じ込めると復旧不能になる
+
+- **事象**: 全達成ボーナスの再試行可否が`sessionStorage`だけにあり、新しいタブでは未付与報酬を再試行できなかった。Trending Gearはloading置換でfocus元を失い、`target="_blank"`のAmazon初回通信は親pageのrouteを継承しなかった。
+- **根本原因**: 永続報酬、非同期DOM置換、別Page通信の各状態を、それぞれタブ内保存、unmountされるbutton、親pageだけという短い寿命・狭い範囲へ置いた。
+- **対策**: 報酬可否はコイン台帳の一意な冪等キーを正本にし、UIは常設landmarkと操作方法refからDOM commit後にfocusを復元する。外部popupはnavigation前のbrowser context routeでmockし、下位guardで未mock通信を実ネットワークへ出さない。
+- **教訓**: 再試行・置換・別Page遷移では、状態や保護を処理完了まで生存する層へ置く。回帰テストは同一page reloadだけでなく、全storageが空の新規context、keyboard/pointer別activeElement、popup最初のrequestまで含める。リファレンス: `app/api/user/missions/route.ts`, `components/dashboard/DailyMissions.tsx`, `components/TrendingGear.tsx`, `scripts/audit-dashboard-ux.mjs`
+
 ### LL-082: migrationのtext testだけでは実catalogとrow lock競合を証明できない
 
 - **事象**: Push購読CAS migrationは文字列検査を通っても、default式、constraint backing index、個別ACL、`SECURITY DEFINER`属性、2 transactionの待機順序を実PostgreSQLで検証できていなかった。

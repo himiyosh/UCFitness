@@ -4,6 +4,9 @@ UCFitness の主な変更をこのファイルに記録します。
 
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) を参考にし、変更日と統合単位が追跡できる見出しを使用します。
 
+## 2026-07-25 - Dashboard再試行の永続復旧
+- 全達成ボーナスの未付与状態をコイン台帳から復旧し、ミッション/愛用ギアのkeyboard focusとpointer非奪取、Amazon popup通信隔離を320px/375px/1280pxで回帰検証
+
 ## 2026-07-24 - Dashboard主要操作の回復
 
 ### 修正
