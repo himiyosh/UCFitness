@@ -256,6 +256,34 @@ Phase 2 migrationは既知7列の型・nullability、`public.users(id)`へのcas
 初期作成履歴には旧policyがあるため、実catalogに残存していればmigrationは自動削除せず
 中断し、適用前の個別確認と承認を要求する。
 
+Push購読CASのclean 3-layerは、Layer 1を`migrations/20260725_delete_push_subscription_if_unchanged.sql`、Layer 2をruntime PostgreSQL検証、Layer 3をアプリ配線とする。PR #302は3層を混在させた994行差分のためsupersedeし、本migrationだけをLayer 1の正本とする。適用順は`20260720_harden_push_subscriptions_rls.sql`、Layer 1、Layer 2のruntime検証、Layer 3の順である。Layer 2がmainへ入りnegative catalog fixture・exact/stale結果・二接続競合を実PostgreSQLで検証する前のproduction適用は禁止し、production適用には明示承認が必要である。
+
+Layer 1は既知schema/default、`public.users(id)` cascade FK、ordered non-deferrable `(user_id, endpoint)` uniqueとvalid/ready/immediate backing index、owner/RLS/policy、table/column ACLをfail closedで検証する。`service_role`だけが実行できる`SECURITY DEFINER` RPCは`id`で特定した主キー行を`FOR UPDATE`し、ロック後に`user_id`、`endpoint`、`p256dh`、`auth`、`user_agent`、`created_at`を`IS NOT DISTINCT FROM`で比較して同じ`id`だけを削除する。missing/staleは`false`、完全一致だけを削除して`true`を返す。static testはmigration SHA-256とcritical clauseを固定するが、runtime PASSはLayer 2でのみ判定する。
+
+ロールバックは依存するLayer 3を先に停止・撤去し、`BEGIN; REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz); COMMIT;`を実行する。`push_subscriptions`本体と既存hardening migrationは保持する。
+
+Personalized Push delayed-delivery privacyのclean 3-layerは、Layer 1を`migrations/20260726_create_push_subscription_ownership.sql`、Layer 2を`npm run test:postgres:push-generation`のruntime PostgreSQL検証、Layer 3をsubscribe/payload/Service Worker配線とする。PR #300 / #301のblockerは、HTTP送信後に同一endpointの所有者が変わり、TTL 300の旧ユーザー向け健康payloadが遅延到着し得る点である。Layer 2は実DB契約だけを証明し、Layer 3が揃うまでアプリ配線はMERGE BLOCKED、migrationのproduction適用も禁止とし、適用には明示承認を必須とする。
+
+Layer 1はendpoint本文を保持しないSHA-256 digest主キーの`push_subscription_ownership`を作り、owner、`UNIQUE current subscription_id`、ランダム`recipient_generation`、version、時刻をDB正本にする。digestとadvisory lockにはraw endpointでなく、Layer 3共有`getPushEndpointOwnershipKey`がhost case、default port、unreserved percent encoding、fragmentを正規化したcanonical ownership keyを使う。SQLへRFC 3986正規化を再実装せず、legacy raw rowからownerを推測するbackfillは行わない。既存購読はauthority/generationなしで全件隔離して件数だけを報告し、認証済みrefresh/saveで初めてauthorityを作る。
+
+save/transferはraw endpointを`push_subscriptions`保存だけに使い、canonical key単位でownerを移転する。raw 20件上限をuser lock下で守り、same-ownerはgeneration維持＋version進行、transfer/releaseはgeneration回転、releaseはgeneration＋versionでfenceする。非更新read RPCは最大20組のobserved subscription ID＋canonical keyを受け、authority owner・digest・current subscription IDと保存行userがexact一致する行だけ`subscription_id, recipient_generation, version`をUUID順で返す。foreign/missing/staleはskipし、重複入力は1行へ集約する。authority tableのdirect SELECTは許可せず、saveをread代用しない。既存CASはsubscription exact rowだけを削除しauthorityへ触れず、Push network待機中にSQL transactionを保持しない。
+
+Layer 3はraw→canonical key consistencyをshared helperのalias vectorで検証し、personalized send前にread RPCを通してgeneration authorityがないlegacy rowを送らない。payloadへgenerationを含め、Service Workerは端末保存generationとの一致時だけ表示し、logoutでclear、account switch/refreshでupdate、旧generationとgenerationなしをdropする。適用順は既存CAS→Layer 1→Layer 2 runtime→Layer 3 deploy→送信停止中の旧worker排出・新SW確認→`ACCESS EXCLUSIVE` cutoverでdirect write revoke→送信再開とし、raw rowからauthorityを再同期しない。Layer 2はmigration SHA、exact catalog/ACL、canonical alias/material差、同時claim、19→20/20→reject、逆順transfer、user削除、generation/stale release、legacy隔離、exact read、CAS-first/save-first、rollbackをfresh PostgreSQL 16で証明する。rollbackは送信停止後にread→release→save RPC、owner index、authority tableの順にREVOKE/DROPし、generation付きqueueが残る間はSW比較を先に撤去しない。
+
+受信者protocol readiness Layer 1は`migrations/20260727_add_push_recipient_protocol_readiness.sql`でauthorityへ`recipient_protocol_version smallint NOT NULL DEFAULT 0`を追加する。既存authorityはdefault 0の未準備状態になり、旧6引数saveとreleaseがowner/generation/versionを更新するとtriggerで0へ戻る。新7引数saveだけがallowlist済みversion 1を同じtransactionのexact current authorityへ保存し、read RPCはexact owner/key/subscription一致へprotocol versionを追加して返す。Layer 3 senderはpersonalized健康payloadに必要なversion以上を要求し、generic通知はsender Layerでこの制約から分離する。
+
+本Layerのruntime PostgreSQL検証は`npm run test:postgres:push-protocol`を正本とし、digest固定の20260726 ownership migrationと20260727 protocol migrationをfresh PostgreSQLへ未変更のまま適用する。exact catalog/default/check/index/FK/owner/RLS/ACL/function contract、既存protocol 0、version 1 save/read/release、旧saveのreadiness reset、逆順競合、rollback、失敗cleanupを実行検証する。PR #314のserver sender、PR #315のclient/SW protocol、旧worker排出を含むrollout planが揃うまでPR #300とPR #301を含むpersonalized送信はMERGE BLOCKEDで、migrationのproduction適用は禁止する。適用順は20260726 ownership Layer 2→本migration→本runtime Layer→server→client/SW→rolloutである。rollbackは新callerを先に停止し、read RPCを20260726の定義へ戻す→7引数save→reset trigger/function→protocol check→columnの順に撤去し、既存authorityと購読行を保持する。main mergeとproduction applyには別途明示承認が必要である。
+
+Layer 3A1は`lib/services/push-subscription-ownership.ts`のserver-only typed wrapperだけを提供する。将来の共有helperが生成するcanonical ownership keyを入力として受け、wrapperではDB契約と同じ長さ・HTTPS・fragmentなしのshapeだけを検証し、URL正規化を重複実装しない。protocol 1の7引数save、最大20件をUUID順でexact dedupするread、generation/version fence付きreleaseを各1回だけ呼び、unknown結果を厳格parseして`subscriptionId`・generation・version・protocolまたはstrict booleanだけを返す。生DB error・UUID・ownership keyを`cause`/`context`/内部ログへ渡さず、現時点のproduction importは0件でPR #314のcallsite配線までinertとする。ownership/protocol migrationはproduction未適用であり、本wrapperだけをDB可用性や安全なpersonalized配信の根拠にしない。
+
+通知配信outboxのclean 3-layerは、Layer 1を`migrations/20260725_create_notification_delivery_outbox.sql`、Layer 2をruntime PostgreSQL検証、Layer 3を3Aのtyped wrapperと3B/CのCron配線に分ける。Layer 1は`(notification_type, occurrence_key, user_id)`を一意にし、`step-reminder`のJST日`YYYY-MM-DD`と`weekly-summary`のJST週`YYYY-Www`だけを受理する。payload・endpoint等は保存せず、pending/claimed/completed/failed、owner/token、5分lease、5 attempt、90日保持だけをDB正本にする。
+
+claimは1〜20件の入力userをUUID安定順で`FOR UPDATE`し、台帳を同一transactionで作成・lockして、pendingまたは期限切れclaimedだけへ新tokenを発行する。active claim・completed・failedはskipし、返却はuser IDとclaim tokenだけとする。Layer 3はpersonalized data取得・Push送信より前にclaimし、completeは通知結果が契約を満たした場合だけ呼ぶ。端末部分失敗の契約はLayer 3で決定し、releaseは所有中の未期限切れtokenだけを失敗記録して再試行可能にする。HTTP 503の通常retryは非completed行だけを再claimし、completedを再送しない。
+
+static testはmigration SHA-256、catalog/default/FK/index/owner/RLS/ACL、lock順、stale token、未配線を固定する。Layer 2のruntime PostgreSQL検証はfresh DBで実catalog、条件を弱体化したmigration fixture、claim・owner/token fencing・5 attempt、JST日/ISO週境界、90日保持、逆順入力の二接続競合、rollback、失敗時cleanupを実行する。Layer 3のCron配線は次段とし、Layer 2がmainへ入った後もproduction適用には明示承認が必要である。rollbackはLayer 3を停止してactive leaseを待ってから`release→complete→claim→index→table`の順にREVOKE/DROPし、過去migrationは編集しない。
+
+Layer 3Aは`lib/services/notification-delivery-outbox.ts`のserver-only typed wrapperだけを提供する。先頭の`import 'server-only'`をNext compiler境界とし、exact RPC引数・1回呼出、最大20 UUIDの安定dedup、4桁年をUTC parse/roundtripするJST日/ISO週key、unknown返却shape、owner/token fencing、固定release failure code、内部`reportError`なし、raw Error object graphとUUIDを含まない固定`AppError`を検証する。全tracked TS/TSXのproduction importは0件でCron callsiteはまだinert、route配線はLayers 3B/Cで別途行う。Layer 1 migrationはproduction未適用のため、このwrapper追加をDB利用可能性や実配信の根拠にしない。
+
 Phase 3 は `migrations/20260720_harden_coin_transactions_rls.sql` で、高整合性台帳
 `coin_transactions` を保護する。直接経路は履歴・Wallet・export・週次通知の`SELECT`、
 歩数再計算・ログインボーナス・backfillの`INSERT`/`UPDATE`/`DELETE`を使う。原子RPCも
@@ -361,7 +389,7 @@ RLS/policy/owned sequenceを確定できないためaudit-onlyとし、9/25に�
 | Group / challenge | `app/[locale]/groups/[groupId]/page.tsx` (1), `app/api/challenge/[challengeId]/progress/route.ts` (2), `app/api/challenge/[challengeId]/route.ts` (1), `app/api/group/[groupId]/events/[eventId]/route.ts` (1), `app/api/group/[groupId]/ranking/route.ts` (1), `app/api/group/[groupId]/weekly-report/route.ts` (1), `lib/services/group-comparison-service.ts` (1) | session / membership認可後の期間集計。一部の参加者・歩数結果は別Fix候補 |
 | Reward / achievement | `app/api/amazon/personalized/route.ts` (1), `app/api/user/achievement-progress/route.ts` (2), `app/api/user/achievements/route.ts` (2), `app/api/user/missions/route.ts` (2), `app/api/user/step-calendar/route.ts` (1), `app/api/user/weekly-goal/route.ts` (1), `lib/services/badge-allocator.ts` (1), `lib/services/badge-awards.ts` (3), `lib/services/coin-service.ts` (2), `lib/services/title-achievement-service.ts` (2) | session / service / cron境界。複数経路がDB errorを0・未達成・no dataへ変換するため別Fix候補 |
 | Social / export | `app/api/user/following/route.ts` (1), `app/api/user/following-comparison/route.ts` (1), `app/api/user/export/route.ts` (1) | session userを固定。following-comparisonの部分障害境界は別Fix候補 |
-| Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証 |
+| Cron / integration / debug | `app/api/cron/step-reminder/route.ts` (1), `app/api/cron/weekly-summary/route.ts` (1), `app/api/external/ranking/route.ts` (1), `app/api/notify-teams/route.ts` (1), `app/api/debug/db-check/route.ts` (1) | cron secret / API key / sessionを各routeで検証。外部ランキングはoptional `groupId`をUUID全文検証し、不正400・不存在404・DB/shape障害500を固定`AppError`へ分離する。4 list queryは`count: exact`と返却長を照合し、PostgREST上限による部分配列を500で拒否する。成功形`{ date, groups }`は維持し、記録済み正歩数だけを安定順で連続rank化する。設定上限を超える完全取得と一貫したsnapshotは将来のtransactional RPC対象 |
 | Utility / script | `lib/supabase-utils.ts` (1), `scripts/check_group_info.ts` (1) | server helper / service-role運用script。JSDoc例は件数から除外 |
 
 関連RPC呼び出しは合計10件である。4 writerは
@@ -669,9 +697,14 @@ npm run dev
 |---|---|
 | `npm run dev` | 開発サーバー起動 (ポート 3000) |
 | `npm run build` | プロダクションビルド |
-| `npm run pages:build` | Cloudflare Pages ビルド |
+| `npm run pages:build` | Cloudflare Pages ビルド + Worker 2.8 MiB budget検証 |
 | `npm run lint` | ESLint 実行 |
 | `npm run audit:responsive` | Playwright レスポンシブ/a11y監査 (320 / 375 / 768 / 1024 / 1920px、ja/en) |
+| `npm run test:e2e:dashboard` | 認証fixtureを使うDashboard主要操作のPlaywright回帰テスト |
+| `npm run test:postgres:notification-outbox` | loopback PostgreSQLで通知outbox migration・lease・競合・rollbackを実行検証 |
+| `npm run test:postgres:push-cas` | loopback PostgreSQLでPush購読CAS migration・ACL・競合・rollbackを実行検証 |
+| `npm run test:postgres:push-generation` | loopback PostgreSQLでPush受信者世代の所有権・競合・CAS相互作用を実行検証 |
+| `npm run test:postgres:push-protocol` | loopback PostgreSQLでPush受信者protocol readiness・競合・rollbackを実行検証 |
 | `npm test` | Vitest テスト実行 |
 | `npm run test:watch` | Vitest ウォッチモード |
 | `npm run test:coverage` | テストカバレッジレポート |
@@ -687,6 +720,8 @@ npm run dev
 ### Client bundle budget
 
 - `npm run build` のroute表で、全ページのFirst Load JSを200KB未満に保つ
+- `npm run pages:build`でWorker moduleのgzip推定合計を2.8 MiB以下に保ち、Cloudflare無料枠3 MiBへ十分な余裕を残す
+- favicon / Apple Touch Iconは`public/`の静的PNGを正本とし、metadata routeは`force-dynamic`の307で参照する。`next/og`のresvg WASMをWorkerへ同梱せず、Pages静的化でredirect statusを失わない
 - Client Componentと共有するmoduleからSupabase等のserver-only依存を静的importしない
 - Recharts、下部チャット、ギア等の非critical UIはClient境界内の`next/dynamic`とviewport判定で遅延し、loading名、`aria-busy`、低減モーション、JS無効時の主要情報を維持する
 - 2026-07-18のF020実測: wallet 260→141KB、group detail 207→152KB、leaderboard 198→146KB。遅延chunkの存在と初期route manifestからの分離も同じproduction buildで確認した
@@ -704,6 +739,9 @@ npm run pages:build
 
 - すべての `page.tsx` / `route.ts` に `export const runtime = 'edge'` が必要
 - `layout.tsx` には不要
+- Next.jsはApp Router/Server Actions修正版15.5.21以上、NextAuthは`@auth/core` 0.41.3を含む5.0.0-beta.32以上を使用する
+- transitive依存は`sharp` 0.35.3、`postcss` 8.5.18へoverrideし、`npm audit --omit=dev --audit-level=high`を0件に保つ。`npm audit fix --force`やmajor downgradeは使用しない
+- `@cloudflare/next-on-pages`のpeer範囲はNext.js 15.5.2までのため警告が出る。15.5.21との互換性は`npm run pages:build`で検証し、adapter移行は別変更として扱う
 
 ## エージェント・プロンプト構成
 
@@ -824,7 +862,7 @@ npm run pages:build
 | 名前 | ファイル | モデル | 役割 |
 |---|---|---|---|
 | **UCFitnessAgent** | [UCFitnessAgent.agent.md](.github/agents/UCFitnessAgent.agent.md) | - | マスターオーケストレーター。Setup/Settings/Profile/Wallet/Groups状態分離、Home Quest/Friend Pulse、Competition Mission、Challenge継続、認証App Shell、通知品質、固定ランキング、OAuth・同期・並行membershipの原子性を統括する |
-| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.18 App Router / Server Components / Edge Runtime / next-intl 専門 |
+| Next.js Expert | [expert-nextjs-developer.agent.md](.github/agents/expert-nextjs-developer.agent.md) | GPT-4.1 | Next.js 15.5.21 App Router / Server Components / Edge Runtime / next-intl 専門 |
 | React Expert | [expert-react-frontend-engineer.agent.md](.github/agents/expert-react-frontend-engineer.agent.md) | - | React 18.3 Hooks / Client Components / a11y / パフォーマンス最適化 |
 | SE: Security | [se-security-reviewer.agent.md](.github/agents/se-security-reviewer.agent.md) | GPT-5 | OWASP Top 10 / Zero Trust / LLM Security / API エンドポイントセキュリティ |
 | SE: UX Designer | [se-ux-ui-designer.agent.md](.github/agents/se-ux-ui-designer.agent.md) | GPT-5 | JTBD 分析 / ユーザージャーニー / UX リサーチ / Figma 連携 |
@@ -900,13 +938,30 @@ npm run test:coverage
 RESPONSIVE_AUDIT_STORAGE_STATE_JA=/path/to/ja-state.json RESPONSIVE_AUDIT_USERNAME_JA=ja-user RESPONSIVE_AUDIT_GROUP_ID_JA=ja-group \
 RESPONSIVE_AUDIT_STORAGE_STATE_EN=/path/to/en-state.json RESPONSIVE_AUDIT_USERNAME_EN=en-user RESPONSIVE_AUDIT_GROUP_ID_EN=en-group \
 npm run audit:responsive
+
+# Dashboardのミッション操作・愛用ギア・モバイル操作領域
+DASHBOARD_E2E_STORAGE_STATE=/path/to/ja-state.json npm run test:e2e:dashboard
+
+# Push購読CAS（allow_system_table_mods=onの破棄可能なlocalhost PostgreSQLだけで実行）
+UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_CAS_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres npm run test:postgres:push-cas
+
+# Push受信者世代（同じ破棄可能なlocalhost PostgreSQLだけで実行）
+UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_GENERATION_POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres npm run test:postgres:push-generation
+# Push受信者protocol readiness（同じ破棄可能なlocalhost PostgreSQLだけで実行）
+POSTGRES_TEST_USER=postgres
+POSTGRES_TEST_PASSWORD=postgres
+UCFITNESS_POSTGRES_RUNTIME_TEST=1 PUSH_PROTOCOL_POSTGRES_URL="postgresql://${POSTGRES_TEST_USER}:${POSTGRES_TEST_PASSWORD}@127.0.0.1:5432/postgres" npm run test:postgres:push-protocol
 ```
 
 - テストフレームワーク: **Vitest**
 - レスポンシブ監査は `screenshots/responsive/` に全画面画像、`summary.json`、`report.json` を保存し、320/375pxの44px操作領域、横スクロール、CLS、固定要素の見切れ、言語・タイトル、重要アセット取得を検査
+- Dashboard回帰テストはbonus-only報酬失敗→reload→retry、商品loaded状態、Price/Delivery非表示、有限画像fallback、A/B両treatmentと計測値、LoginBonus閉鎖、AutoSync遮断、375/1280pxの44px操作領域と横overflowを検査
 - 同じ監査で、操作要素のaccessible name、フォームラベル、見出し順、重複ID、`aria-hidden`内のfocusable要素、スキップリンクの可視focusとmainへの移動、固定ヘッダー下の到達性、公開LPのモバイルメニューのviewport整列・44px・Escape焦点復帰、reduced-motion設定で初期表示中に開始・継続するCSS/ウェブアニメーションも検査
 - 未認証の公開LP・利用規約・プライバシーポリシーだけを確認する場合は `RESPONSIVE_AUDIT_SCOPE=public npm run audit:responsive` を使用（30ケース）。全150ケースの監査はja/en別の認証state、username、閲覧可能なgroup IDを必須とし、DB保存言語への同期、認証切れ、動的ページ省略を成功扱いにしない
 - Supabase等のファイル単位モックを確実に分離するため、`forks` pool + `isolate: true` を使用
+- Push購読CAS runtime jobはmigration SHA-256とdigest固定PostgreSQL 16 serviceを正本に、random prefixのfresh databaseごとにcatalog・negative fixture・2接続競合を検証し、全DBと作成roleを削除する。接続先はquery/hashなしの`postgresql://postgres:postgres@{loopback}:5432/postgres`と明示test-only flagに固定し、既存roleがあるcluster、本番Supabase、実購読、Push Serviceを拒否する。rollbackは依存コード停止後に`REVOKE ALL ON FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated, service_role; DROP FUNCTION public.delete_push_subscription_if_unchanged(uuid, uuid, text, text, text, text, timestamptz);`を同一transactionで実行し、テーブルは保持する
+- Push受信者世代runtime jobはtarget/CAS migration SHA-256と同じPostgreSQL 16 serviceを正本に、canonical key digest、raw 20件、read/release fencing、legacy隔離、user削除、逆順transfer、CAS-first/save-firstを実ロック待機で検証する。接続・DB名・role・ログ・cleanupはCAS runtimeと同じtest-only契約を使い、migration、アプリ配線、production DB、実Pushを変更しない
+- Push受信者protocol runtime jobはownership/protocol migration SHA-256と同じPostgreSQL 16 serviceを正本に、smallint protocol 0/1、旧save reset、exact read、release fence、逆順transfer、rollbackを実行検証する。query/hash/SSLなしのloopback `postgres`接続、allowlist済みfresh DB名、既存role拒否、固定非PIIラベル、全DB/role cleanupを必須とし、migration、PR #314/#315のLayer 3、lockfile、production DB、実Pushを変更しない
 - テストファイル: `lib/__tests__/` 配下
 - 型チェック: `npx tsc --noEmit` (ビルド検証の代替としても使用)
 

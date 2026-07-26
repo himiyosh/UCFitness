@@ -1,3 +1,5 @@
+import { constantTimeEqual } from '@/lib/validation';
+
 const ALLOWED_SETTINGS_PATH = /^\/(ja|en)\/settings$/;
 const GOOGLE_HEALTH_OAUTH_STATE_VERSION = 'v1';
 const GOOGLE_HEALTH_OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60;
@@ -31,18 +33,6 @@ function bytesToBase64Url(bytes: Uint8Array): string {
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/g, '');
-}
-
-function constantTimeEqual(actual: string, expected: string): boolean {
-    if (!actual || actual.length !== expected.length) {
-        return false;
-    }
-
-    let difference = 0;
-    for (let index = 0; index < actual.length; index += 1) {
-        difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
-    }
-    return difference === 0;
 }
 
 function getOAuthStateSecret(): string {
@@ -109,7 +99,7 @@ export async function isMatchingGoogleHealthOAuthState(
     expected: string,
     userId: string,
 ): Promise<boolean> {
-    if (!constantTimeEqual(actual, expected)) {
+    if (!await constantTimeEqual(actual, expected)) {
         return false;
     }
 
@@ -142,5 +132,5 @@ export async function isMatchingGoogleHealthOAuthState(
 
     const payload = `${version}.${issuedAtValue}.${nonce}`;
     const expectedSignature = await createOAuthStateSignature(payload, userId);
-    return constantTimeEqual(signature, expectedSignature);
+    return await constantTimeEqual(signature, expectedSignature);
 }
