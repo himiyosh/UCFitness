@@ -1,5 +1,7 @@
+import tailwindcss from '@tailwindcss/postcss';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
+import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,11 +14,11 @@ import {
 describe('WalkingRoutes field validation', () => {
     it.each([
         ['1e2', undefined], ['1E2', undefined], ['1.', undefined], ['1,', undefined],
-        ['.5', undefined],
+        ['.5', undefined], ['1,5', undefined], ['1,234', undefined], ['１.５', undefined],
         ['+1', undefined], ['-1', undefined], ['3abc', undefined], [' ', undefined],
         ['1\n', undefined], ['\t1', undefined], ['NaN', undefined], ['Infinity', undefined],
         ['9'.repeat(400), undefined],
-        ['', null], ['0', 0], ['0.0', 0], ['1.5', 1.5], ['1,5', 1.5], ['001.50', 1.5],
+        ['', null], ['0', 0], ['0.0', 0], ['1.5', 1.5], ['001.50', 1.5],
     ])('距離入力"%s"を非負10進数全文として検証する', (value, expected) => {
         expect(parseWalkingRouteDistance(value)).toBe(expected);
     });
@@ -37,6 +39,10 @@ describe('WalkingRoutes field validation', () => {
         expect(getWalkingRouteDistanceAria(invalid)).toEqual(expected);
     });
     it('距離の生文字列と時間のnative badInputを検証し、エラーDOM反映後に毎回入力へfocusする', async () => {
+        const styles = await postcss([tailwindcss()]).process(
+            '@import "tailwindcss" source(none); @source "./components/WalkingRoutes.tsx";',
+            { from: `${process.cwd()}/walking-routes-test.css` },
+        );
         const bundle = await build({
             stdin: {
                 contents: `
@@ -78,12 +84,53 @@ describe('WalkingRoutes field validation', () => {
         try {
             const page = await browser.newPage({ viewport: { width: 320, height: 800 } }); page.setDefaultTimeout(5_000);
             const pageErrors: string[] = []; page.on('pageerror', (error) => pageErrors.push(error.message));
-            await page.setContent('<div id="root"></div>'); await page.addScriptTag({ content: bundle.outputFiles[0].text });
+            const consoleErrors: string[] = [];
+            page.on('console', (message) => {
+                if (message.type() === 'error') consoleErrors.push(message.text());
+            });
+            await page.setContent('<div id="root"></div>');
+            await page.addStyleTag({ content: styles.css });
+            await page.addScriptTag({ content: bundle.outputFiles[0].text });
             await page.getByRole('button', { name: 'addRoute' }).click();
             expect(pageErrors).toEqual([]);
-            await page.getByRole('textbox', { name: 'namePlaceholder' }).fill('Route');
-            const duration = page.getByRole('spinbutton', { name: 'durationPlaceholder' });
+            const name = page.getByRole('textbox', { name: 'namePlaceholder' });
+            const description = page.getByRole('textbox', { name: 'descriptionPlaceholder' });
+            const distance = page.getByRole('textbox', { name: 'distanceLabel' });
+            const duration = page.getByRole('spinbutton', { name: 'durationLabel' });
+            await name.fill('Route');
+            for (const width of [320, 375, 1280]) {
+                await page.setViewportSize({ width, height: 800 });
+                const metrics = await page.evaluate(() => {
+                    const distanceInput = document.querySelector<HTMLInputElement>('#walking-route-distance');
+                    const durationInput = document.querySelector<HTMLInputElement>('#walking-route-duration');
+                    if (!distanceInput || !durationInput) throw new Error('Route inputs missing');
+                    return {
+                        distance: distanceInput.getBoundingClientRect().toJSON(),
+                        duration: durationInput.getBoundingClientRect().toJSON(),
+                        distanceFontSize: getComputedStyle(distanceInput).fontSize,
+                        durationFontSize: getComputedStyle(durationInput).fontSize,
+                        hasHorizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+                    };
+                });
+                expect(metrics.hasHorizontalOverflow).toBe(false);
+                expect([metrics.distanceFontSize, metrics.durationFontSize]).toEqual(['16px', '16px']);
+                expect(Math.min(metrics.distance.height, metrics.duration.height)).toBeGreaterThanOrEqual(44);
+                if (width < 640) {
+                    expect(metrics.duration.top).toBeGreaterThan(metrics.distance.bottom);
+                } else {
+                    expect(Math.abs(metrics.duration.top - metrics.distance.top)).toBeLessThanOrEqual(1);
+                }
+            }
+            await page.setViewportSize({ width: 320, height: 800 });
+            await name.focus();
+            await page.keyboard.press('Tab');
+            expect(await description.evaluate((input) => document.activeElement === input)).toBe(true);
+            await page.keyboard.press('Tab');
+            expect(await distance.evaluate((input) => document.activeElement === input)).toBe(true);
+            await page.keyboard.press('Tab');
+            expect(await duration.evaluate((input) => document.activeElement === input)).toBe(true);
             expect(await duration.getAttribute('class')).toContain('min-h-[44px]');
+            expect(await duration.getAttribute('class')).toContain('text-base');
             expect(await duration.getAttribute('class')).toContain('focus:ring-[var(--color-primary)]');
             expect(await duration.getAttribute('class')).toContain('focus:outline-[var(--color-primary)]');
             await duration.pressSequentially('-');
@@ -113,8 +160,8 @@ describe('WalkingRoutes field validation', () => {
                 input.getAttribute('aria-describedby'), Boolean(document.getElementById('walking-route-duration-error')),
             ])).toEqual([false, null, null, false]);
 
-            const distance = page.getByRole('textbox', { name: 'distancePlaceholder' });
             expect(await distance.getAttribute('class')).toContain('min-h-[44px]');
+            expect(await distance.getAttribute('class')).toContain('text-base');
             expect(await distance.getAttribute('class')).toContain('focus:ring-[var(--color-primary)]');
             expect(await distance.getAttribute('class')).toContain('focus:outline-[var(--color-primary)]');
             expect(await distance.locator('xpath=../..').getAttribute('class')).toContain('flex-col');
@@ -123,7 +170,7 @@ describe('WalkingRoutes field validation', () => {
             expect(await distance.getAttribute('min')).toBeNull();
             expect(await distance.getAttribute('step')).toBeNull();
             const invalidDistanceValues = [
-                '+1', '3abc', ' 1 ', '1.', '1e2', '-1', '9'.repeat(400),
+                '+1', '3abc', ' 1 ', '1.', '1e2', '-1', '1,5', '1,234', '9'.repeat(400),
             ];
             await distance.fill(invalidDistanceValues[0]);
             await distance.evaluate((input) => {
@@ -163,7 +210,7 @@ describe('WalkingRoutes field validation', () => {
             }
 
             for (const [index, [value, expected]] of [
-                ['0', 0], ['1.5', 1.5], ['1,5', 1.5],
+                ['0', 0], ['1.5', 1.5], ['001.50', 1.5],
             ].entries()) {
                 if (index > 0) {
                     await page.getByRole('button', { name: 'addRoute' }).click();
@@ -184,6 +231,7 @@ describe('WalkingRoutes field validation', () => {
                 });
             }
             expect(pageErrors).toEqual([]);
+            expect(consoleErrors).toEqual([]);
         } finally {
             await browser.close();
         }

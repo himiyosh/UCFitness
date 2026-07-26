@@ -46,7 +46,9 @@ const DIFFICULTY_MAP: Record<Difficulty, { emoji: string; colorClass: string }> 
 
 const WALKING_ROUTE_DISTANCE_ERROR_ID = 'walking-route-distance-error';
 const WALKING_ROUTE_DURATION_ERROR_ID = 'walking-route-duration-error';
-const NONNEGATIVE_DECIMAL_REGEX = /^\d+(?:[.,]\d+)?$/;
+const WALKING_ROUTE_DISTANCE_INPUT_ID = 'walking-route-distance';
+const WALKING_ROUTE_DURATION_INPUT_ID = 'walking-route-duration';
+const NONNEGATIVE_DECIMAL_REGEX = /^\d+(?:\.\d+)?$/;
 
 export function parseWalkingRouteDistance(value: string): number | null | undefined {
     if (value === '') return null;
@@ -368,11 +370,19 @@ export default function WalkingRoutes() {
                         aria-label={t('descriptionPlaceholder')}
                     />
                     <div className="flex flex-col gap-2 sm:flex-row">
-                        <div className="flex-1">
+                        <div className="min-w-0 flex-1">
+                            <label
+                                className="mb-1 block text-xs font-normal text-gray-600"
+                                htmlFor={WALKING_ROUTE_DISTANCE_INPUT_ID}
+                            >
+                                {t('distanceLabel')}
+                            </label>
                             <input
+                                id={WALKING_ROUTE_DISTANCE_INPUT_ID}
                                 ref={distanceInputRef}
                                 type="text"
                                 inputMode="decimal"
+                                name="distance_km"
                                 value={formDistance}
                                 onInput={(e) => {
                                     const value = e.currentTarget.value;
@@ -385,8 +395,9 @@ export default function WalkingRoutes() {
                                     }
                                 }}
                                 placeholder={t('distancePlaceholder')}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 min-h-[44px]"
-                                aria-label={t('distancePlaceholder')}
+                                className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-base focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 ${
+                                    isDistanceInvalid ? 'border-red-600' : 'border-gray-200'
+                                }`}
                                 {...distanceAria}
                             />
                             {isDistanceInvalid && (
@@ -399,10 +410,18 @@ export default function WalkingRoutes() {
                                 </p>
                             )}
                         </div>
-                        <div className="flex-1">
+                        <div className="min-w-0 flex-1">
+                            <label
+                                className="mb-1 block text-xs font-normal text-gray-600"
+                                htmlFor={WALKING_ROUTE_DURATION_INPUT_ID}
+                            >
+                                {t('durationLabel')}
+                            </label>
                             <input
+                                id={WALKING_ROUTE_DURATION_INPUT_ID}
                                 ref={durationInputRef}
                                 type="number"
+                                name="duration_minutes"
                                 value={formDuration}
                                 onInput={(e) => {
                                     const value = e.currentTarget.value;
@@ -416,9 +435,10 @@ export default function WalkingRoutes() {
                                     }
                                 }}
                                 placeholder={t('durationPlaceholder')}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 min-h-[44px]"
+                                className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-base focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 ${
+                                    isDurationInvalid ? 'border-red-600' : 'border-gray-200'
+                                }`}
                                 min="0"
-                                aria-label={t('durationPlaceholder')}
                                 {...durationAria}
                             />
                             {isDurationInvalid && (
